@@ -1,0 +1,913 @@
+/**
+ * DMB Backlog - Reports Page
+ */
+
+const reportConfig = {
+  directorate: {
+    name: 'Статус для Директорской оперативки',
+    desc: 'Сводка по задачам для директората',
+    icon: 'crown',
+    gradient: 'grad-rose',
+    filters: [
+      { field: 'priority', op: 'eq', value: 'ВЫСОКИЙ', logic: 'or' },
+      { field: 'directorate_status', op: 'in', value: ['Риск','На контроле'], logic: 'or' }
+    ],
+    fields: ['team_name','business_customer','department_name','project_name','title','task_type_name','owner_name','directorate_status'],
+    group: null,
+    sort: null
+  },
+  did: {
+    name: 'Статус для оперативки ДИД',
+    desc: 'Все активные задачи платформы',
+    icon: 'building-2',
+    gradient: 'grad-indigo',
+    filters: [
+      { field: 'did_status', op: 'in', value: ['В работе','Требует решения','Блокировано'], logic: 'and' }
+    ],
+    fields: ['team_name','business_customer','customer_department','project','title','task_type','owner','did_status'],
+    group: null,
+    sort: null
+  },
+  projects: {
+    name: 'Статус по ключевым проектам',
+    desc: 'Задачи с признаком ключевого проекта',
+    icon: 'target',
+    gradient: 'grad-emerald',
+    filters: [
+      { field: 'key_project', op: 'eq', value: true, logic: 'and' }
+    ],
+    fields: ['id','title','project_name','team_name','status_name','priority_name','deadline_name','progress','key_project_status'],
+    group: 'project',
+    sort: 'priority-desc'
+  },
+  'reg-directors': {
+    name: 'Отчет для Рег. директоров',
+    desc: 'Сводка по ключевым инициативам, высоким рискам и финансовым эффектам',
+    icon: 'users',
+    gradient: 'grad-violet',
+    filters: [
+      { field: 'priority', op: 'eq', value: 'ВЫСОКИЙ', logic: 'and' }
+    ],
+    fields: ['id','title','team_name','project','status','priority','financial_effect','progress'],
+    group: 'team_name',
+    sort: 'priority-desc'
+  }
+};
+
+let currentReport = null;
+let tasksCache = [];
+let reportSortField = null;
+let reportSortDir = 'asc';
+let reportColumnFilters = {};
+
+let reportFilterDropdown = null;
+let reportFilterDropdownField = null;
+
+function isRiskStatus(s) {
+  return s === 'ХОЛД' || s === 'ЭСКАЛАЦИЯ НА ЛТ';
+}
+
+function isActiveStatus(s) {
+  return ['СБОР ТРЕБОВАНИЙ','ПРОВЕРКА ТРЕБОВАНИЙ','УТОЧНЕНИЕ ТРЕБОВАНИЙ','ЭКСПРЕСС-ОЦЕНКА','ПРИНЯТИЕ РЕШЕНИЯ','ПРИНЯТА В РАБОТУ'].includes(s);
+}
+
+function renderPriority(priority) {
+  const map = { 'ВЫСОКИЙ': 'high', 'СРЕДНИЙ': 'medium', 'НИЗКИЙ': 'low' };
+  const cls = map[priority] || 'medium';
+  return `<span class="badge badge-${cls}">${priority || 'СРЕДНИЙ'}</span>`;
+}
+
+function renderStatus(status) {
+  const statusClass = status ? status.replace(/\s+/g, '_') : 'backlog';
+  const colors = {
+    'НОВАЯ_ЗАДАЧА': 'badge-status-backlog',
+    'НАЗНАЧЕНА_КОМАНДА': 'badge-status-backlog',
+    'СБОР_ТРЕБОВАНИЙ': 'badge-status-backlog',
+    'ПРОВЕРКА_ТРЕБОВАНИЙ': 'badge-status-backlog',
+    'УТОЧНЕНИЕ_ТРЕБОВАНИЙ': 'badge-status-backlog',
+    'ЭКСПРЕСС-ОЦЕНКА': 'badge-status-backlog',
+    'ПРИНЯТИЕ_РЕШЕНИЯ': 'badge-status-review',
+    'ПРИНЯТА_В_РАБОТУ': 'badge-status-in_progress',
+    'ЭСКАЛАЦИЯ_НА_ЛТ': 'badge-status-on_hold',
+    'ХОЛД': 'badge-status-on_hold',
+    'ОТКЛОНЕНА': 'badge-danger',
+    'НЕ_АКТУАЛЬНА': 'badge-low',
+    'ВЫПОЛНЕНА': 'badge-status-done'
+  };
+  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${status || 'СБОР ТРЕБОВАНИЙ'}</span>`;
+}
+
+function renderProgress(progress) {
+  const p = progress || 0;
+  let colorClass = '';
+  if (p >= 100) colorClass = 'success';
+  else if (p > 0) colorClass = 'warning';
+  return `
+    <div style="display:flex;align-items:center;gap:8px;min-width:100px;">
+      <div class="progress-bar" style="flex:1;">
+        <div class="progress-fill ${colorClass}" style="width:${p}%"></div>
+      </div>
+      <span style="font-size:var(--text-xs);color:var(--text-secondary);min-width:30px;text-align:right;">${p}%</span>
+    </div>`;
+}
+
+function renderCell(task, field) {
+  switch (field) {
+    case 'id': return `<span class="font-mono text-muted">#${task.id}</span>`;
+    case 'title': return `<strong>${task.title}</strong>`;
+    case 'status': return renderStatus(task.status_name || task.status);
+    case 'status_name': return renderStatus(task.status_name || task.status);
+    case 'priority': return renderPriority(task.priority_name || task.priority);
+    case 'priority_name': return renderPriority(task.priority_name || task.priority);
+    case 'progress': return renderProgress(task.progress);
+    case 'team_name': return `<span class="badge badge-info">${task.team_name || '—'}</span>`;
+    case 'project': return task.project_name || task.project || '—';
+    case 'project_name': return task.project_name || task.project || '—';
+    case 'deadline': return task.deadline_name || task.deadline || '—';
+    case 'deadline_name': return task.deadline_name || task.deadline || '—';
+    case 'status_comment': return task.status_comment || '—';
+    case 'financial_effect': return task.financial_effect ? `${task.financial_effect} млн ₽` : '—';
+    case 'business_customer': return task.business_customer_name || task.business_customer || '—';
+    case 'department_name': return task.department_name || '—';
+    case 'channel_name': return task.channel_name || '—';
+    case 'task_type_name': return task.task_type_name || '—';
+    case 'owner': return task.owner_name || task.owner || '—';
+    case 'owner_name': return task.owner_name || task.owner || '—';
+    case 'directorate_status': return renderDirectorateStatus(task.directorate_status);
+    case 'did_status': return renderDidStatus(task.did_status);
+    case 'key_project_status': return renderDirectorateStatus(task.key_project_status);
+    default: return task[field] || '—';
+  }
+}
+
+function renderDirectorateStatus(status) {
+  if (!status) return '—';
+  const colors = {
+    'В работе': 'badge-status-in_progress',
+    'На контроле': 'badge-warning',
+    'Риск': 'badge-danger',
+    'Выполнен': 'badge-status-done',
+    'Не актуальна': 'badge-low',
+  };
+  const cls = colors[status] || 'badge-status-backlog';
+  return `<span class="badge ${cls}">${status}</span>`;
+}
+
+function renderDidStatus(status) {
+  if (!status) return '—';
+  const colors = {
+    'В работе': 'badge-status-in_progress',
+    'Требует решения': 'badge-warning',
+    'Закрыта': 'badge-status-done',
+    'Блокировано': 'badge-danger',
+  };
+  const cls = colors[status] || 'badge-status-backlog';
+  return `<span class="badge ${cls}">${status}</span>`;
+}
+
+const fieldLabels = {
+  id: 'ID', title: 'Наименование задачи', team_name: 'Команда', project: 'Проект',
+  status: 'Статус', priority: 'Приоритет', deadline: 'Срок',
+  progress: 'Прогресс', status_comment: 'Комментарий', financial_effect: 'Фин. эффект',
+  business_customer: 'Бизнес-заказчик', department_name: 'Подразделение заказчика',
+  channel_name: 'Канал поступления', task_type_name: 'Тип задачи',
+  owner: 'Исполнитель', directorate_status: 'Статус для директорской оперативки',
+  did_status: 'Статус для оперативки ДИД', key_project_status: 'Статус ключевых проектов'
+};
+
+function applyFilterValue(task, field, op, value) {
+  switch (op) {
+    case 'eq': return task[field] === value;
+    case 'neq': return task[field] !== value;
+    case 'in': return Array.isArray(value) && value.includes(task[field]);
+    case 'gt': return parseFloat(task[field]) > value;
+    case 'lt': return parseFloat(task[field]) < value;
+    case 'contains': return String(task[field] || '').includes(String(value));
+    case 'empty': return task[field] === null || task[field] === undefined || task[field] === '';
+    case 'notEmpty': return task[field] !== null && task[field] !== undefined && task[field] !== '';
+    default: return true;
+  }
+}
+
+function applyReportFilters(kind, tasks) {
+  const config = reportConfig[kind];
+  if (!config || !config.filters) return tasks;
+  const andFilters = config.filters.filter(f => f.logic === 'and');
+  const orFilters = config.filters.filter(f => f.logic === 'or');
+  return tasks.filter(task => {
+    const andPass = andFilters.length === 0 || andFilters.every(f => applyFilterValue(task, f.field, f.op, f.value));
+    const orPass = orFilters.length === 0 || orFilters.some(f => applyFilterValue(task, f.field, f.op, f.value));
+    return andPass && orPass;
+  });
+}
+
+function closeFilterDropdown() {
+  if (reportFilterDropdown) {
+    reportFilterDropdown.remove();
+    reportFilterDropdown = null;
+    reportFilterDropdownField = null;
+  }
+}
+
+function renderFilterDropdown(field, triggerEl) {
+  const wasOpen = reportFilterDropdownField === field;
+  closeFilterDropdown();
+  if (wasOpen) return;
+
+  const values = [...new Set(tasksCache.map(t => String(t[field] || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const activeVals = reportColumnFilters[field] || [];
+
+  const rect = triggerEl.getBoundingClientRect();
+  const dd = document.createElement('div');
+  dd.style.cssText = 'position:fixed;z-index:10000;min-width:180px;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:6px;max-height:280px;overflow-y:auto;';
+
+  let left = rect.left;
+  if (left + 200 > window.innerWidth) left = window.innerWidth - 200;
+  dd.style.left = left + 'px';
+  dd.style.top = (rect.bottom + 4) + 'px';
+
+  const allSelected = activeVals.length === values.length && values.length > 0;
+  const someSelected = activeVals.length > 0 && !allSelected;
+
+  let html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f1f5f9;margin-bottom:2px;">';
+  html += '<span style="font-size:11px;font-weight:600;color:#64748b;">Фильтр</span>';
+  html += activeVals.length ? '<span style="font-size:10px;color:#3b82f6;cursor:pointer" data-clear-field="' + field + '">Сбросить</span>' : '';
+  html += '</div>';
+
+  const allCheckedAttr = allSelected ? ' checked' : '';
+  const allIndeterminate = someSelected ? ' indeterminate' : '';
+  html += '<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:12px;cursor:pointer;border-radius:4px;transition:background 0.1s;">';
+  html += '<input type="checkbox" data-select-all ' + allCheckedAttr + allIndeterminate + ' style="accent-color:#3b82f6;cursor:pointer">';
+  html += '<span style="color:#334155;font-weight:500">Выбрать все</span>';
+  html += '<span style="margin-left:auto;font-size:10px;color:#94a3b8">' + activeVals.length + '/' + values.length + '</span>';
+  html += '</label>';
+
+  if (values.length) {
+    html += '<div style="border-top:1px solid #f1f5f9;margin:4px 0;"></div>';
+    values.forEach(v => {
+      const checked = activeVals.includes(v) ? ' checked' : '';
+      html += '<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:12px;cursor:pointer;border-radius:4px;transition:background 0.1s;">';
+      html += '<input type="checkbox" value="' + v.replace(/"/g, '&quot;') + '"' + checked + ' style="accent-color:#3b82f6;cursor:pointer">';
+      html += '<span style="color:#334155">' + v + '</span>';
+      html += '</label>';
+    });
+  } else {
+    html += '<div style="padding:12px 8px;text-align:center;font-size:12px;color:#94a3b8">Нет значений</div>';
+  }
+
+  dd.innerHTML = html;
+
+  dd.addEventListener('change', (e) => {
+    const cb = e.target;
+    if (cb.dataset.selectAll !== undefined) {
+      const checkboxes = dd.querySelectorAll('input[type=checkbox][value]');
+      const allChecked = cb.checked;
+      checkboxes.forEach(c => c.checked = allChecked);
+    }
+    applyFilterFromDropdown(field, dd);
+  });
+
+  dd.addEventListener('click', (e) => {
+    const clearBtn = e.target.closest('[data-clear-field]');
+    if (clearBtn) {
+      const checkboxes = dd.querySelectorAll('input[type=checkbox]');
+      checkboxes.forEach(c => c.checked = false);
+      const selectAll = dd.querySelector('input[data-select-all]');
+      if (selectAll) selectAll.checked = false;
+      applyFilterFromDropdown(field, dd);
+    }
+  });
+
+  document.body.appendChild(dd);
+  reportFilterDropdown = dd;
+  reportFilterDropdownField = field;
+
+  document.addEventListener('click', reportFilterOutsideClick, true);
+}
+
+function applyFilterFromDropdown(field, dd) {
+  const valCbs = dd.querySelectorAll('input[type=checkbox][value]');
+  const checked = dd.querySelectorAll('input[type=checkbox][value]:checked');
+  reportColumnFilters[field] = Array.from(checked).map(c => c.value).filter(Boolean);
+  const selectAll = dd.querySelector('input[data-select-all]');
+  if (selectAll) {
+    const checkedCount = checked.length;
+    selectAll.checked = checkedCount === valCbs.length && valCbs.length > 0;
+    selectAll.indeterminate = checkedCount > 0 && checkedCount < valCbs.length;
+  }
+  const totalSpan = dd.querySelector('label:first-child span:last-child');
+  if (totalSpan) {
+    totalSpan.textContent = checked.length + '/' + valCbs.length;
+  }
+  const config = reportConfig[currentReport];
+  const filtered = applyReportFilters(currentReport, tasksCache);
+  renderReportContent(config, currentReport, filtered);
+}
+
+function reportFilterOutsideClick(e) {
+  if (reportFilterDropdown && !reportFilterDropdown.contains(e.target)) {
+    const trigger = e.target.closest('.filter-trigger');
+    if (trigger && trigger.dataset.field === reportFilterDropdownField) return;
+    closeFilterDropdown();
+    document.removeEventListener('click', reportFilterOutsideClick, true);
+  }
+}
+
+function renderReportTable(list, fields) {
+  if (!list || !list.length) return '<p class="text-muted" style="padding:var(--space-4);">Нет задач</p>';
+
+  let filtered = list;
+  const hasFilters = Object.keys(reportColumnFilters).some(k => reportColumnFilters[k] && reportColumnFilters[k].length);
+  if (hasFilters) {
+    filtered = list.filter(task =>
+      Object.entries(reportColumnFilters).every(([field, vals]) => {
+        if (!vals || !vals.length) return true;
+        return vals.includes(String(task[field] || '').trim());
+      })
+    );
+  }
+
+  if (reportSortField) {
+    filtered = [...filtered].sort((a, b) => {
+      const va = String(a[reportSortField] || '').toLowerCase();
+      const vb = String(b[reportSortField] || '').toLowerCase();
+      return reportSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+  }
+
+  const hasAnyFilter = Object.keys(reportColumnFilters).some(k => reportColumnFilters[k] && reportColumnFilters[k].length);
+
+  const headers = fields.map(f => {
+    const label = fieldLabels[f] || f;
+    const sorted = reportSortField === f;
+    const arrow = sorted ? (reportSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+    const activeVals = reportColumnFilters[f] || [];
+    const hasActive = activeVals.length > 0;
+    const count = activeVals.length;
+
+    return `<th data-sort="${f}" style="cursor:pointer;user-select:none;white-space:nowrap;padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;border-bottom:1px solid var(--border-color);background:var(--bg-tertiary);position:relative">
+      <div style="display:flex;align-items:center;gap:4px;justify-content:space-between">
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${label}${arrow}</span>
+        <span class="filter-trigger" data-field="${f}" style="flex-shrink:0;cursor:pointer;padding:3px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;${hasActive ? 'color:#3b82f6;background:#eff6ff' : 'color:#94a3b8'}" title="Фильтр">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          ${count > 0 ? `<span style="font-size:9px;margin-left:1px;font-weight:700">${count}</span>` : ''}
+        </span>
+      </div>
+    </th>`;
+  }).join('');
+
+  const rows = filtered.map(task =>
+    `<tr>${fields.map(f => `<td style="padding:8px 12px;border-bottom:1px solid var(--border-color);font-size:13px">${renderCell(task, f)}</td>`).join('')}</tr>`
+  ).join('');
+
+  let footerHtml = `<span style="font-size:11px;color:var(--text-muted)">${filtered.length} из ${list.length} задач</span>`;
+
+  if (hasAnyFilter) {
+    footerHtml += `<span style="margin-left:12px;font-size:11px;color:#3b82f6;cursor:pointer;text-decoration:underline" id="report-clear-filters">Сбросить все фильтры</span>`;
+  }
+
+  return `
+    <div class="table-container">
+      <table class="table" style="width:100%;border-collapse:collapse">
+        <thead><tr>${headers}</tr></thead>
+        <tbody>${rows || '<tr><td colspan="99" style="text-align:center;padding:24px;color:var(--text-muted)">Нет совпадений</td></tr>'}</tbody>
+      </table>
+      <div style="padding:8px 12px;">
+        ${footerHtml}
+      </div>
+    </div>`;
+}
+
+function exportReportExcel(kind, tasks, app) {
+  const config = reportConfig[kind];
+  if (!config || !tasks.length) return;
+  const fields = config.fields;
+  const headers = fields.map(f => fieldLabels[f] || f);
+  const rows = tasks.map(task => fields.map(f => {
+    const val = task[f];
+    return val !== null && val !== undefined ? String(val) : '';
+  }));
+  if (typeof XLSX !== 'undefined') {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = fields.map(() => ({ wch: 20 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Отчёт');
+    XLSX.writeFile(wb, `${kind}_report.xlsx`);
+  } else {
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${kind}_report.csv`;
+    link.click();
+  }
+}
+
+function openMeetingReport(kind, app) {
+  currentReport = kind;
+  app.router.navigate('/reports/detail');
+}
+
+async function loadReportData(app) {
+  const config = reportConfig[currentReport];
+  if (!config) return;
+  try {
+    Object.keys(reportChartInstances).forEach(k => { reportChartInstances[k]?.destroy(); delete reportChartInstances[k]; });
+    const data = await app.api.get('/tasks?per_page=1000');
+    tasksCache = data.items || [];
+    reportSortField = null;
+    reportSortDir = 'asc';
+    reportColumnFilters = {};
+    const filtered = applyReportFilters(currentReport, tasksCache);
+    renderReportContent(config, currentReport, filtered);
+  } catch (e) {
+    const body = document.getElementById('report-body');
+    if (body) body.innerHTML = `<p class="text-muted" style="padding:var(--space-8);">Ошибка загрузки: ${e.message}</p>`;
+  }
+}
+
+function renderReportContent(config, reportKey, tasks) {
+  const total = tasks.length;
+  const high = tasks.filter(t => (t.priority_name || t.priority) === 'ВЫСОКИЙ').length;
+  const statusField = reportKey === 'directorate' ? 'directorate_status' : reportKey === 'did' ? 'did_status' : 'status';
+  const riskStatuses = reportKey === 'directorate' ? ['Риск','На контроле'] : reportKey === 'did' ? ['Блокировано','Требует решения'] : ['ХОЛД','ЭСКАЛАЦИЯ НА ЛТ','ОТКЛОНЕНА'];
+  const risk = tasks.filter(t => riskStatuses.includes(t[statusField])).length;
+  const avg = total ? Math.round(tasks.reduce((s, t) => s + (t.progress || 0), 0) / total) : 0;
+
+  renderReportCharts(tasks);
+
+  const totalEl = document.getElementById('report-total');
+  const highEl = document.getElementById('report-high');
+  const riskEl = document.getElementById('report-risk');
+  const avgEl = document.getElementById('report-avg');
+  if (totalEl) totalEl.textContent = total;
+  if (highEl) highEl.textContent = high;
+  if (riskEl) riskEl.textContent = risk;
+  if (avgEl) avgEl.textContent = avg + '%';
+
+  const body = document.getElementById('report-body');
+  if (!body) return;
+
+  if (!tasks.length) {
+    body.innerHTML = '<div class="empty-state"><p class="text-muted">Нет данных для отображения</p></div>';
+    return;
+  }
+
+  if (config.group) {
+    const groupField = config.group;
+    const groups = {};
+    tasks.forEach(t => {
+      const key = t[groupField] || 'Без группы';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    });
+    const sortedGroups = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
+    body.innerHTML = sortedGroups.map(([groupName, groupTasks]) => `
+      <div class="card" style="margin-bottom:var(--space-4);">
+        <div class="card-header">
+          <h3 class="card-title">${groupName}</h3>
+          <span class="badge badge-info">${groupTasks.length} ${formatCount(groupTasks.length)}</span>
+        </div>
+        ${renderReportTable(groupTasks, config.fields)}
+      </div>
+    `).join('');
+  } else {
+    body.innerHTML = renderReportTable(tasks, config.fields);
+  }
+}
+
+function formatCount(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return 'задача';
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) return 'задачи';
+  return 'задач';
+}
+
+export function renderReports(app) {
+  const standardKeys = ['directorate', 'did', 'projects'];
+  const customKeys = ['reg-directors'];
+
+  function renderCard(key, cfg, subtitle) {
+    return `
+      <div class="cursor-pointer ${cfg.gradient} report-card" data-report="${key}" style="border-radius:16px;padding:24px;color:white;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
+            <i data-lucide="${cfg.icon}" style="width:20px;height:20px;"></i>
+          </div>
+          <i data-lucide="arrow-up-right" style="width:20px;height:20px;opacity:0.6;"></i>
+        </div>
+        <div style="font-size:12px;opacity:0.8;margin-bottom:4px;">${subtitle}</div>
+        <div style="font-size:20px;font-weight:700;">${cfg.name}</div>
+        <div style="font-size:12px;opacity:0.75;margin-top:8px;">${cfg.desc}</div>
+        <div style="font-size:24px;font-weight:700;margin-top:16px;" id="count-${key}">0</div>
+        <div style="font-size:12px;opacity:0.8;">задач</div>
+      </div>`;
+  }
+
+  const standardCards = standardKeys.map(k => renderCard(k, reportConfig[k], 'Статус-отчёт')).join('');
+  const customCards = customKeys.map(k => renderCard(k, reportConfig[k], 'Пользовательский отчёт')).join('');
+
+  return `
+    <div class="page-header animate-fade-in">
+      <h1>Статусы для встреч</h1>
+      <p>Готовые отчёты для оперативок и директорских</p>
+    </div>
+    <div style="margin-bottom:32px;">
+      <h3 class="text-xs font-bold text-muted" style="text-transform:uppercase;letter-spacing:0.05em;margin-bottom:16px;">Стандартные отчёты</h3>
+      <div class="reports-grid">
+        ${standardCards}
+      </div>
+    </div>
+    <div>
+      <h3 class="text-xs font-bold text-muted" style="text-transform:uppercase;letter-spacing:0.05em;margin-bottom:16px;">Пользовательские отчёты</h3>
+      <div class="reports-grid">
+        ${customCards}
+        <div class="card" style="display:flex;align-items:center;justify-content:center;border:2px dashed var(--border-color);cursor:pointer;border-radius:16px;padding:24px;" onclick="toast('Создание пользовательского отчёта — в разработке','info')">
+          <div style="text-align:center;">
+            <i data-lucide="plus-circle" style="width:40px;height:40px;color:var(--text-muted);margin:0 auto 8px;display:block;"></i>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">Добавить свой отчёт</div>
+            <div class="text-xs text-muted">Настраиваемый под себя</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+export async function initReports(app) {
+  try {
+    const data = await app.api.get('/tasks?per_page=1000');
+    tasksCache = data.items || [];
+
+    Object.keys(reportConfig).forEach(key => {
+      const filtered = applyReportFilters(key, tasksCache);
+      const el = document.getElementById(`count-${key}`);
+      if (el) el.textContent = filtered.length;
+    });
+
+    document.querySelectorAll('.report-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const kind = card.dataset.report;
+        openMeetingReport(kind, app);
+      });
+    });
+
+    document.getElementById('refresh-reports')?.addEventListener('click', () => {
+      initReports(app);
+    });
+  } catch (e) {
+    console.error('Reports load error:', e);
+  }
+}
+
+const reportChartInstances = {};
+
+function getReportChartColors() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return {
+    textColor: dark ? '#e2e8f0' : '#334155',
+    gridColor: dark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(15, 23, 42, 0.08)',
+    bgCard: dark ? '#1e293b' : '#ffffff',
+  };
+}
+
+function createReportChart(canvasId, config) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (reportChartInstances[canvasId]) {
+    reportChartInstances[canvasId].destroy();
+  }
+  const ctx = canvas.getContext('2d');
+  reportChartInstances[canvasId] = new window.Chart(ctx, config);
+}
+
+function renderReportCharts(tasks) {
+  const { textColor, gridColor } = getReportChartColors();
+
+  function commonOpts(title) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: 800,
+        easing: 'easeOutQuart',
+      },
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: !!title,
+          text: title || '',
+          color: textColor,
+          font: { size: 13, weight: '600' },
+          padding: { bottom: 12 },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor, font: { size: 11 } },
+          grid: { color: gridColor },
+        },
+        y: {
+          ticks: { color: textColor, font: { size: 11 } },
+          grid: { color: gridColor },
+          beginAtZero: true,
+        },
+      },
+    };
+  }
+
+  const byStatus = {};
+  const byPriority = {};
+  const byTeam = {};
+
+  tasks.forEach(t => {
+    byStatus[t.status || 'Не указан'] = (byStatus[t.status || 'Не указан'] || 0) + 1;
+    byPriority[t.priority_name || t.priority || 'СРЕДНИЙ'] = (byPriority[t.priority_name || t.priority || 'СРЕДНИЙ'] || 0) + 1;
+    const team = t.team_name || 'Без команды';
+    byTeam[team] = (byTeam[team] || 0) + 1;
+  });
+
+  const statusColors = {
+    'НОВАЯ ЗАДАЧА': '#6366f1', 'НАЗНАЧЕНА КОМАНДА': '#8b5cf6',
+    'СБОР ТРЕБОВАНИЙ': '#6366f1', 'ПРОВЕРКА ТРЕБОВАНИЙ': '#a78bfa',
+    'УТОЧНЕНИЕ ТРЕБОВАНИЙ': '#c4b5fd', 'ЭКСПРЕСС-ОЦЕНКА': '#8b5cf6',
+    'ПРИНЯТИЕ РЕШЕНИЯ': '#f59e0b', 'ПРИНЯТА В РАБОТУ': '#10b981',
+    'ЭСКАЛАЦИЯ НА ЛТ': '#f97316', 'ХОЛД': '#f43f5e',
+    'ОТКЛОНЕНА': '#ef4444', 'НЕ АКТУАЛЬНА': '#94a3b8',
+    'ВЫПОЛНЕНА': '#22c55e',
+  };
+
+  const statusLabels = Object.keys(byStatus);
+  const statusValues = Object.values(byStatus);
+  const statusColorsArr = statusLabels.map(l => statusColors[l] || '#94a3b8');
+
+  createReportChart('chart-report-status', {
+    type: 'bar',
+    data: {
+      labels: statusLabels,
+      datasets: [{
+        label: 'Задач',
+        data: statusValues,
+        backgroundColor: statusColorsArr,
+        borderRadius: 6,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      ...commonOpts('Распределение по статусам'),
+      plugins: {
+        ...commonOpts().plugins,
+        legend: { display: false },
+      },
+      scales: {
+        ...commonOpts().scales,
+        x: { ...commonOpts().scales.x, grid: { display: false } },
+      },
+    },
+  });
+
+  const priorityLabels = Object.keys(byPriority);
+  const priorityValues = Object.values(byPriority);
+  const priorityColors = priorityLabels.map(l => {
+    if (l === 'ВЫСОКИЙ') return '#f43f5e';
+    if (l === 'СРЕДНИЙ') return '#f59e0b';
+    return '#94a3b8';
+  });
+  const priorityTotal = priorityValues.reduce((s, v) => s + v, 0);
+
+  createReportChart('chart-report-priority', {
+    type: 'doughnut',
+    data: {
+      labels: priorityLabels,
+      datasets: [{
+        data: priorityValues,
+        backgroundColor: priorityColors,
+        borderWidth: 0,
+        hoverOffset: 8,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        animateRotate: true,
+        duration: 1000,
+        easing: 'easeOutQuart',
+      },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: textColor,
+            font: { size: 11 },
+            padding: 12,
+            usePointStyle: true,
+            pointStyle: 'circle',
+          },
+        },
+        title: {
+          display: true,
+          text: 'По приоритету',
+          color: textColor,
+          font: { size: 13, weight: '600' },
+          padding: { bottom: 12 },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const pct = ((ctx.parsed / priorityTotal) * 100).toFixed(1);
+              return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const teamSorted = Object.entries(byTeam).sort((a, b) => b[1] - a[1]);
+  const teamColors = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#ec4899', '#14b8a6', '#f97316'];
+
+  createReportChart('chart-report-team', {
+    type: 'bar',
+    data: {
+      labels: teamSorted.map(d => d[0]),
+      datasets: [{
+        label: 'Задач',
+        data: teamSorted.map(d => d[1]),
+        backgroundColor: teamSorted.map((_, i) => teamColors[i % teamColors.length]),
+        borderRadius: 6,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      ...commonOpts('По командам'),
+      indexAxis: 'y',
+      plugins: {
+        ...commonOpts().plugins,
+        legend: { display: false },
+      },
+      scales: {
+        x: { ...commonOpts().scales.x, grid: { display: false }, beginAtZero: true },
+        y: { ...commonOpts().scales.y, grid: { display: false } },
+      },
+    },
+  });
+}
+
+export function renderReportPage(app) {
+  const config = reportConfig[currentReport];
+  if (!config) return '<p class="text-muted">Отчёт не выбран</p>';
+
+  return `
+    <div class="animate-fade-in">
+      <div style="display:flex;align-items:flex-start;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" id="report-back-btn" style="margin-top:4px;flex-shrink:0;">
+          <i data-lucide="arrow-left" style="width:18px;height:18px;"></i>
+        </button>
+        <div style="flex:1;min-width:0;">
+          <h1 style="font-weight:var(--font-bold);color:var(--text-primary);">${config.name}</h1>
+          <p style="color:var(--text-muted);font-size:var(--text-sm);margin-top:var(--space-1);">${config.desc}</p>
+        </div>
+      </div>
+
+      <div class="action-bar action-bar--end" style="justify-content:space-between;">
+        <span class="badge badge-info" style="font-size:var(--text-xs);">Статус-отчёт</span>
+        <div class="flex gap-2" style="flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" id="report-excel">
+            <i data-lucide="file-spreadsheet" style="width:14px;height:14px;"></i>
+            Excel
+          </button>
+          <button class="btn btn-secondary btn-sm" id="report-refresh">
+            <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+            Обновить
+          </button>
+        </div>
+      </div>
+
+      <div class="dashboard-stats" style="margin-bottom:var(--space-6);">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--info-light);color:var(--info);">
+            <i data-lucide="list"></i>
+          </div>
+          <div class="stat-value" id="report-total">0</div>
+          <div class="stat-label">Всего задач</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--danger-light);color:var(--danger);">
+            <i data-lucide="arrow-up"></i>
+          </div>
+          <div class="stat-value" id="report-high">0</div>
+          <div class="stat-label">Высокий приоритет</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--warning-light);color:var(--warning);">
+            <i data-lucide="alert-triangle"></i>
+          </div>
+          <div class="stat-value" id="report-risk">0</div>
+          <div class="stat-label">В риске</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--success-light);color:var(--success);">
+            <i data-lucide="trending-up"></i>
+          </div>
+          <div class="stat-value" id="report-avg">0%</div>
+          <div class="stat-label">Средний прогресс</div>
+        </div>
+      </div>
+
+      <div class="chart-grid-3">
+        <div class="card" style="padding:16px;border-radius:12px;">
+          <div style="height:200px;"><canvas id="chart-report-status"></canvas></div>
+        </div>
+        <div class="card" style="padding:16px;border-radius:12px;">
+          <div style="height:200px;"><canvas id="chart-report-priority"></canvas></div>
+        </div>
+        <div class="card" style="padding:16px;border-radius:12px;">
+          <div style="height:200px;"><canvas id="chart-report-team"></canvas></div>
+        </div>
+      </div>
+
+      <div id="report-body">
+        <div class="text-center text-muted" style="padding:var(--space-8);">Загрузка...</div>
+      </div>
+    </div>`;
+}
+
+export function initReportPage(app) {
+  loadReportData(app);
+
+  // Update breadcrumb with actual report name
+  const config = reportConfig[currentReport];
+  if (config) {
+    const bc = document.getElementById('breadcrumb-nav');
+    if (bc) {
+      bc.innerHTML = `
+        <a href="#/dashboard" style="color: var(--text-muted); text-decoration: none;">DMB Backlog</a>
+        <span style="color: var(--text-muted);">/</span>
+        <a href="#/reports" style="color: var(--text-muted); text-decoration: none;">Статусы для встреч</a>
+        <span style="color: var(--text-muted);">/</span>
+        <span style="color: var(--text-primary); font-weight: 500;">${config.name}</span>`;
+    }
+  }
+
+  document.getElementById('report-back-btn')?.addEventListener('click', () => {
+    Object.keys(reportChartInstances).forEach(k => { reportChartInstances[k]?.destroy(); delete reportChartInstances[k]; });
+    app.router.navigate('/reports');
+  });
+
+  document.getElementById('report-refresh')?.addEventListener('click', () => {
+    loadReportData(app);
+  });
+
+  document.getElementById('report-excel')?.addEventListener('click', () => {
+    if (currentReport && tasksCache.length) {
+      let visible = applyReportFilters(currentReport, tasksCache);
+      const hasFilters = Object.keys(reportColumnFilters).some(k => reportColumnFilters[k] && reportColumnFilters[k].length);
+      if (hasFilters) {
+        visible = visible.filter(task =>
+          Object.entries(reportColumnFilters).every(([field, vals]) => !vals || !vals.length || vals.includes(String(task[field] || '').trim()))
+        );
+      }
+      if (reportSortField) {
+        visible = [...visible].sort((a, b) => {
+          const va = String(a[reportSortField] || '').toLowerCase();
+          const vb = String(b[reportSortField] || '').toLowerCase();
+          return reportSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+      }
+      exportReportExcel(currentReport, visible, app);
+    }
+  });
+
+  document.getElementById('report-body')?.addEventListener('click', (e) => {
+    if (e.target.closest('.filter-trigger')) {
+      e.stopPropagation();
+      const trigger = e.target.closest('.filter-trigger');
+      const field = trigger.dataset.field;
+      renderFilterDropdown(field, trigger);
+      return;
+    }
+
+    if (e.target.closest('#report-clear-filters')) {
+      closeFilterDropdown();
+      reportColumnFilters = {};
+      const config = reportConfig[currentReport];
+      const filtered = applyReportFilters(currentReport, tasksCache);
+      renderReportContent(config, currentReport, filtered);
+      return;
+    }
+
+    const th = e.target.closest('th[data-sort]');
+    if (!th) return;
+    const field = th.dataset.sort;
+    if (reportSortField === field) {
+      reportSortDir = reportSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      reportSortField = field;
+      reportSortDir = 'asc';
+    }
+    const config = reportConfig[currentReport];
+    const filtered = applyReportFilters(currentReport, tasksCache);
+    renderReportContent(config, currentReport, filtered);
+  });
+}

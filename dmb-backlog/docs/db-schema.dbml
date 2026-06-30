@@ -1,0 +1,260 @@
+// ==================== LOOKUP TABLES ====================
+
+Table channels {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null]
+}
+
+Table deadlines {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null]
+}
+
+Table departments {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(255) [not null]
+}
+
+Table priorities {
+  id int [pk, increment]
+  name varchar(50) [not null]
+  sla_multiplier float
+}
+
+Table task_types {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null]
+  dod_required boolean [default: false]
+  financial_value_required boolean [default: false]
+}
+
+Table team_types {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null]
+}
+
+Table project_statuses {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null]
+}
+
+Table statuses {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null]
+  group varchar(50)
+  sla_hours int
+  sort_order int [default: 0]
+  color varchar(20)
+}
+
+// ==================== CORE TABLES ====================
+
+Table teams {
+  id int [pk, increment]
+  name varchar(100) [unique, not null]
+  team_type_id int [ref: > team_types.id]
+  color varchar(20) [default: "indigo"]
+  domain varchar(200)
+  description text
+  pl varchar(100)
+  po varchar(100)
+  cl varchar(100)
+  members text
+  created_at timestamp [default: `now()`]
+}
+
+Table roles {
+  id int [pk, increment]
+  name varchar(50) [unique, not null]
+  status varchar(20) [default: "active"]
+  description text
+  backlog_dmb_access varchar(20) [default: "read"]
+  backlog_team_access varchar(20) [default: "read_own"]
+  reports_access varchar(20) [default: "read"]
+  settings_access varchar(20) [default: "available"]
+  admin_access varchar(20) [default: "none"]
+  can_edit_tasks boolean [default: true]
+  can_delete_tasks boolean [default: false]
+  can_export boolean [default: true]
+  created_at timestamp [default: `now()`]
+}
+
+Table users {
+  id int [pk, increment]
+  login varchar(50)
+  email varchar(255) [unique, not null]
+  password_hash varchar(255) [not null]
+  name varchar(100) [not null]
+  position varchar(100)
+  team_id int [ref: > teams.id]
+  role_id int [ref: > roles.id]
+  can_edit boolean [default: true]
+  can_delete boolean [default: false]
+  can_export boolean [default: true]
+  is_active boolean [default: true]
+  last_login timestamp
+  created_at timestamp [default: `now()`]
+}
+
+Table projects {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(255) [not null]
+  description text
+  status_id int [ref: > project_statuses.id]
+  responsible_pl int [ref: > users.id]
+  created_at timestamp [default: `now()`]
+}
+
+Table tasks {
+  id int [pk, increment]
+  team_id int [ref: > teams.id, not null]
+  title varchar(255) [not null]
+  description text
+  date_received date
+  channel_id int [ref: > channels.id]
+  business_customer varchar(200)
+  department_id int [ref: > departments.id]
+  project_id int [ref: > projects.id]
+  task_type_id int [ref: > task_types.id]
+  involved_teams text
+  priority_id int [ref: > priorities.id]
+  status_id int [ref: > statuses.id]
+  deadline_id int [ref: > deadlines.id]
+  deadline_po_id int [ref: > deadlines.id]
+  effort_days int
+  effort_rub float
+  financial_effect float
+  cv float
+  ice_score float
+  progress int [default: 0]
+  what_if text
+  dod text
+  link_mockups varchar(500)
+  link_jira varchar(500)
+  rejection_reason text
+  comment text
+  status_comment text
+  owner_id int [ref: > users.id]
+  responsible_po_id int [ref: > users.id]
+  business_analyst_id int [ref: > users.id]
+  it_product_lead_id int [ref: > users.id]
+  key_project boolean [default: false]
+  key_project_status varchar(50)
+  directorate_status varchar(50)
+  did_status varchar(50)
+  is_from_leadership boolean [default: false]
+  is_regular boolean [default: false]
+  last_updated date
+  created_by int [ref: > users.id]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  is_deleted boolean [default: false]
+}
+
+// ==================== HISTORY & AUDIT ====================
+
+Table task_history {
+  id int [pk, increment]
+  task_id int [ref: > tasks.id, not null]
+  changed_by int [ref: > users.id]
+  changed_at timestamp [default: `now()`]
+  field_name varchar(50) [not null]
+  old_value text
+  new_value text
+}
+
+Table audit_log {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  action varchar(50) [not null]
+  entity_type varchar(50) [not null]
+  entity_id int
+  details text
+  ip_address varchar(45)
+  created_at timestamp [default: `now()`]
+}
+
+// ==================== NOTIFICATIONS ====================
+
+Table notifications {
+  id int [pk, increment]
+  user_id int [ref: > users.id, not null]
+  task_id int [ref: > tasks.id]
+  type varchar(50) [not null]
+  message text [not null]
+  is_read boolean [default: false]
+  created_at timestamp [default: `now()`]
+}
+
+Table notification_templates {
+  id int [pk, increment]
+  name varchar(200) [not null]
+  text text [not null]
+  recipients varchar(500)
+  deadline_days int
+  repeat_frequency varchar(50)
+  repeat_day int
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+// ==================== REPORTS ====================
+
+Table reports {
+  id int [pk, increment]
+  name varchar(200) [not null]
+  description text
+  type varchar(20) [default: "custom"]
+  created_by int [ref: > users.id]
+  filters text
+  fields text
+  group_by varchar(50)
+  sort_by varchar(50)
+  is_public boolean [default: false]
+  created_at timestamp [default: `now()`]
+}
+
+// ==================== DICTIONARIES ====================
+
+Table dictionary_items {
+  id int [pk, increment]
+  dict_type varchar(50) [not null]
+  name varchar(100) [not null]
+  code varchar(50)
+  color varchar(20)
+  sort_order int [default: 0]
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+}
+
+// ==================== TAGS (MANY-TO-MANY) ====================
+
+Table tags {
+  id int [pk, increment]
+  name varchar(100) [not null]
+  color varchar(20)
+  description text
+  created_at timestamp [default: `now()`]
+  creator int [ref: > users.id]
+}
+
+Table issue_tags {
+  id int [pk, increment]
+  issue_id int [ref: > tasks.id, not null]
+  tag_id int [ref: > tags.id, not null]
+}
+
+Table project_tags {
+  id int [pk, increment]
+  project_id int [ref: > projects.id, not null]
+  tag_id int [ref: > tags.id, not null]
+}

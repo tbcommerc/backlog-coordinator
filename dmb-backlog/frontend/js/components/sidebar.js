@@ -1,0 +1,127 @@
+/**
+ * DMB Backlog - Sidebar Component
+ */
+
+export function renderSidebar() {
+    const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    return `
+    <aside class="sidebar${collapsed ? ' collapsed' : ''}">
+        <div class="sidebar-logo">
+            <div class="logo-icon">D</div>
+            <span class="logo-text">DMB Backlog</span>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Управление бэклогом</div>
+                <a href="#/dashboard" class="sidebar-item active" aria-label="Главная">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Главная</span>
+                </a>
+                <a href="#/backlog" class="sidebar-item" aria-label="Бэклог DMB">
+                    <i data-lucide="list"></i>
+                    <span>Бэклог DMB</span>
+                </a>
+                <a href="#/team-backlog" class="sidebar-item" aria-label="Бэклог команды">
+                    <i data-lucide="users"></i>
+                    <span>Бэклог команды</span>
+                </a>
+                <a href="#/express-estimate" class="sidebar-item" aria-label="Экспресс-оценка">
+                    <i data-lucide="zap"></i>
+                    <span>Экспресс-оценка</span>
+                </a>
+                <a href="#/kanban" class="sidebar-item" aria-label="Канбан-доска">
+                    <i data-lucide="columns"></i>
+                    <span>Канбан-доска</span>
+                </a>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Аналитика</div>
+                <a href="#/reports" class="sidebar-item" aria-label="Статусы для встреч">
+                    <i data-lucide="file-text"></i>
+                    <span>Статусы для встреч</span>
+                </a>
+                <a href="#/analytics/tribe" class="sidebar-item" aria-label="Аналитика ЛТ">
+                    <i data-lucide="trending-up"></i>
+                    <span>Аналитика ЛТ</span>
+                </a>
+                <a href="#/analytics/po-pl" class="sidebar-item" aria-label="Аналитика PO/PL">
+                    <i data-lucide="bar-chart-2"></i>
+                    <span>Аналитика PO/PL</span>
+                </a>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Бизнес-заказчику</div>
+                <a href="#/customer" class="sidebar-item" aria-label="Мои задачи">
+                    <i data-lucide="briefcase"></i>
+                    <span>Мои задачи</span>
+                </a>
+                <a href="#/customer/create" class="sidebar-item sidebar-item-sub" aria-label="Создать задачу">
+                    <i data-lucide="plus-circle"></i>
+                    <span>Создать задачу</span>
+                </a>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Настройки и администрирование</div>
+                <a href="#/notifications" class="sidebar-item" aria-label="Мои уведомления">
+                    <i data-lucide="bell"></i>
+                    <span>Мои уведомления</span>
+                    <span class="item-badge" id="notification-count">0</span>
+                </a>
+                <a href="#/settings" class="sidebar-item" aria-label="Настройки">
+                    <i data-lucide="settings"></i>
+                    <span>Настройки</span>
+                </a>
+                <a href="#/admin" class="sidebar-item" aria-label="Администрирование">
+                    <i data-lucide="shield"></i>
+                    <span>Администрирование</span>
+                </a>
+            </div>
+        </nav>
+        <button class="sidebar-toggle" title="Свернуть/развернуть" aria-label="Свернуть или развернуть боковую панель">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+    </aside>
+    `;
+}
+
+export function initSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const toggle = sidebar?.querySelector('.sidebar-toggle');
+    if (!sidebar || !toggle) return;
+
+    toggle.addEventListener('click', () => {
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    });
+
+    // Permission-based visibility (hides items without access)
+    setTimeout(() => {
+        const user = window.app?.store?.get('currentUser');
+        const perms = user?.permissions;
+        if (!perms) return; // no permissions data yet — keep everything visible
+        const map = {
+            'Бэклог DMB': 'backlog_dmb',
+            'Канбан-доска': 'backlog_dmb',
+            'Бэклог команды': 'backlog_team',
+            'Экспресс-оценка': 'backlog_team',
+            'Статусы для встреч': 'reports',
+            'Аналитика ЛТ': 'analytics',
+            'Аналитика PO/PL': 'analytics',
+            'Мои задачи': 'customer',
+            'Создать задачу': 'customer',
+            'Настройки': 'settings',
+            'Администрирование': 'admin',
+        };
+        document.querySelectorAll('.sidebar-item').forEach(el => {
+            const label = el.getAttribute('aria-label');
+            const perm = map[label];
+            if (perm && (perms[perm] || 'none') === 'none') {
+                el.style.display = 'none';
+            }
+        });
+    }, 100);
+}

@@ -1,0 +1,458 @@
+"""
+DMB Backlog - SQLAlchemy Models (normalized)
+"""
+from sqlalchemy import (
+    Column, Integer, String, Text, Boolean, DateTime, Date,
+    ForeignKey, Enum, DECIMAL, JSON, Float
+)
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from database import Base
+import enum
+
+
+class PriorityEnum(str, enum.Enum):
+    HIGH = "ВЫСОКИЙ"
+    MEDIUM = "СРЕДНИЙ"
+    LOW = "НИЗКИЙ"
+
+
+class StatusEnum(str, enum.Enum):
+    NEW = "НОВАЯ ЗАДАЧА"
+    TEAM_ASSIGNED = "НАЗНАЧЕНА КОМАНДА"
+    COLLECT = "СБОР ТРЕБОВАНИЙ"
+    CHECK_REQUIREMENTS = "ПРОВЕРКА ТРЕБОВАНИЙ"
+    CLARIFY_REQUIREMENTS = "УТОЧНЕНИЕ ТРЕБОВАНИЙ"
+    ESTIMATE = "ЭКСПРЕСС-ОЦЕНКА"
+    DECISION = "ПРИНЯТИЕ РЕШЕНИЯ"
+    WORK = "ПРИНЯТА В РАБОТУ"
+    REJECTED = "ОТКЛОНЕНА"
+    NOT_RELEVANT = "НЕ АКТУАЛЬНА"
+    DONE = "ВЫПОЛНЕНА"
+    ESCALATION = "ЭСКАЛАЦИЯ НА ЛТ"
+    HOLD = "ХОЛД"
+
+
+class RoleStatusEnum(str, enum.Enum):
+    ACTIVE = "active"
+    IN_DEV = "in_dev"
+    ARCHIVED = "archived"
+
+
+# ==================== LOOKUP TABLES ====================
+
+class Channel(Base):
+    __tablename__ = "channels"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+
+
+class Deadline(Base):
+    __tablename__ = "deadlines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+
+
+class Department(Base):
+    __tablename__ = "departments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(255), nullable=False)
+
+
+class Priority(Base):
+    __tablename__ = "priorities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False)
+    sla_multiplier = Column(Float, nullable=True)
+
+
+class TaskType(Base):
+    __tablename__ = "task_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    dod_required = Column(Boolean, default=False)
+    financial_value_required = Column(Boolean, default=False)
+
+
+class TeamType(Base):
+    __tablename__ = "team_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+
+
+class ProjectStatus(Base):
+    __tablename__ = "project_statuses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+
+
+class BusinessCustomer(Base):
+    __tablename__ = "business_customers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    department = relationship("Department")
+
+
+class TaskStatus(Base):
+    __tablename__ = "statuses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    group = Column(String(50), nullable=True)
+    sla_hours = Column(Integer, nullable=True)
+    sort_order = Column(Integer, default=0)
+    color = Column(String(20), nullable=True)
+
+
+# ==================== CORE TABLES ====================
+
+class Team(Base):
+    __tablename__ = "teams"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+    team_type_id = Column(Integer, ForeignKey("team_types.id"), nullable=True)
+    color = Column(String(20), default="indigo")
+    domain = Column(String(200), nullable=True)
+    description = Column(Text, nullable=True)
+    pl = Column(String(100), nullable=True)
+    po = Column(String(100), nullable=True)
+    cl = Column(String(100), nullable=True)
+    it_pl = Column(String(100), nullable=True)
+    abbr = Column(String(10), nullable=True)
+    members = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    team_type = relationship("TeamType")
+    tasks = relationship("Task", back_populates="team")
+    users = relationship("User", back_populates="team_rel")
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)
+    status = Column(String(20), default="active")
+    description = Column(Text, nullable=True)
+    backlog_dmb_access = Column(String(20), default="read")
+    backlog_team_access = Column(String(20), default="read_own")
+    reports_access = Column(String(20), default="read")
+    analytics_access = Column(String(20), default="read")
+    customer_access = Column(String(20), default="read")
+    settings_access = Column(String(20), default="available")
+    admin_access = Column(String(20), default="none")
+    can_edit_tasks = Column(Boolean, default=True)
+    can_delete_tasks = Column(Boolean, default=False)
+    can_export = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    users = relationship("User", back_populates="role")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    login = Column(String(50), nullable=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    name = Column(String(100), nullable=False)
+    position = Column(String(100), nullable=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
+    can_edit = Column(Boolean, default=True)
+    can_delete = Column(Boolean, default=False)
+    can_export = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True)
+    last_login = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    role = relationship("Role", back_populates="users")
+    team_rel = relationship("Team", back_populates="users")
+
+    @property
+    def team_name(self):
+        return self.team_rel.name if self.team_rel else None
+
+    @property
+    def role_name(self):
+        return self.role.name if self.role else None
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    status_id = Column(Integer, ForeignKey("project_statuses.id"), nullable=True)
+    responsible_pl = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    status = relationship("ProjectStatus")
+    pl = relationship("User")
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    date_received = Column(Date, nullable=True)
+    channel_id = Column(Integer, ForeignKey("channels.id"), nullable=True)
+    business_customer = Column(String(200), nullable=True)
+    business_customer_id = Column(Integer, ForeignKey("business_customers.id"), nullable=True)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    task_type_id = Column(Integer, ForeignKey("task_types.id"), nullable=True)
+    involved_teams = Column(Text, nullable=True)
+    priority_id = Column(Integer, ForeignKey("priorities.id"), nullable=True)
+    status_id = Column(Integer, ForeignKey("statuses.id"), nullable=True)
+    deadline_id = Column(Integer, ForeignKey("deadlines.id"), nullable=True)
+    deadline_po_id = Column(Integer, ForeignKey("deadlines.id"), nullable=True)
+    effort_days = Column(Integer, nullable=True)
+    effort_rub = Column(Float, nullable=True)
+    effort_ba = Column(Float, nullable=True, comment='Бизнес-аналитика (дни)')
+    effort_sa = Column(Float, nullable=True, comment='Системная аналитика (дни)')
+    effort_fe = Column(Float, nullable=True, comment='Front-end разработка (дни)')
+    effort_be = Column(Float, nullable=True, comment='Back-end разработка (дни)')
+    effort_test = Column(Float, nullable=True, comment='Тестирование (дни)')
+    effort_design = Column(Float, nullable=True, comment='Дизайн (дни)')
+    financial_effect = Column(Float, nullable=True)
+    cv = Column(Float, nullable=True)
+    ice_score = Column(Float, nullable=True)
+    progress = Column(Integer, default=0)
+    what_if = Column(Text, nullable=True)
+    dod = Column(Text, nullable=True)
+    link_mockups = Column(String(500), nullable=True)
+    link_jira = Column(String(500), nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+    comment = Column(Text, nullable=True)
+    status_comment = Column(Text, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    responsible_po_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    business_analyst_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    it_product_lead_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    key_project = Column(Boolean, default=False, index=True)
+    key_project_status = Column(String(50), nullable=True)
+    directorate_status = Column(String(50), nullable=True)
+    did_status = Column(String(50), nullable=True)
+    is_from_leadership = Column(Boolean, default=False)
+    is_regular = Column(Boolean, default=False)
+    last_updated = Column(Date, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    is_deleted = Column(Boolean, default=False, index=True)
+
+    team = relationship("Team", back_populates="tasks")
+    channel = relationship("Channel")
+    business_customer_rel = relationship("BusinessCustomer")
+    department = relationship("Department")
+    project = relationship("Project")
+    task_type = relationship("TaskType")
+    priority = relationship("Priority")
+    status = relationship("TaskStatus")
+    deadline = relationship("Deadline", foreign_keys=[deadline_id])
+    deadline_po = relationship("Deadline", foreign_keys=[deadline_po_id])
+    owner = relationship("User", foreign_keys=[owner_id])
+    responsible_po = relationship("User", foreign_keys=[responsible_po_id])
+    business_analyst = relationship("User", foreign_keys=[business_analyst_id])
+    it_product_lead = relationship("User", foreign_keys=[it_product_lead_id])
+    history = relationship("TaskHistory", back_populates="task")
+    epics = relationship("Epic", back_populates="task", cascade="all, delete-orphan")
+
+
+class Epic(Base):
+    __tablename__ = "epics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    effort_ba = Column(Float, nullable=True, comment='Бизнес-аналитика (дни)')
+    effort_sa = Column(Float, nullable=True, comment='Системная аналитика (дни)')
+    effort_fe = Column(Float, nullable=True, comment='Front-end разработка (дни)')
+    effort_be = Column(Float, nullable=True, comment='Back-end разработка (дни)')
+    effort_test = Column(Float, nullable=True, comment='Тестирование (дни)')
+    effort_design = Column(Float, nullable=True, comment='Дизайн (дни)')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    task = relationship("Task", back_populates="epics")
+    stories = relationship("Story", back_populates="epic", cascade="all, delete-orphan")
+
+
+class Story(Base):
+    __tablename__ = "stories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    epic_id = Column(Integer, ForeignKey("epics.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    effort_ba = Column(Float, nullable=True, comment='Бизнес-аналитика (дни)')
+    effort_sa = Column(Float, nullable=True, comment='Системная аналитика (дни)')
+    effort_fe = Column(Float, nullable=True, comment='Front-end разработка (дни)')
+    effort_be = Column(Float, nullable=True, comment='Back-end разработка (дни)')
+    effort_test = Column(Float, nullable=True, comment='Тестирование (дни)')
+    effort_design = Column(Float, nullable=True, comment='Дизайн (дни)')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    epic = relationship("Epic", back_populates="stories")
+
+
+class DisplaySetting(Base):
+    __tablename__ = "display_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    page = Column(String(50), unique=True, nullable=False)
+    settings = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ColumnLabel(Base):
+    __tablename__ = "column_labels"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(50), unique=True, nullable=False, index=True)
+    label = Column(String(200), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class TaskHistory(Base):
+    __tablename__ = "task_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    changed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    changed_at = Column(DateTime(timezone=True), server_default=func.now())
+    field_name = Column(String(50), nullable=False)
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+
+    task = relationship("Task", back_populates="history")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
+    type = Column(String(50), nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
+
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    type = Column(String(20), default="custom")
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    filters = Column(Text, nullable=True)
+    fields = Column(Text, nullable=True)
+    group_by = Column(String(50), nullable=True)
+    sort_by = Column(String(50), nullable=True)
+    is_public = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class DictionaryItem(Base):
+    __tablename__ = "dictionary_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    dict_type = Column(String(50), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    code = Column(String(50), nullable=True)
+    color = Column(String(20), nullable=True)
+    sort_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class NotificationTemplate(Base):
+    __tablename__ = "notification_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    text = Column(Text, nullable=False)
+    recipients = Column(String(500), nullable=True)
+    deadline_days = Column(Integer, nullable=True)
+    repeat_frequency = Column(String(50), nullable=True)
+    repeat_day = Column(Integer, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    action = Column(String(50), nullable=False)
+    entity_type = Column(String(50), nullable=False)
+    entity_id = Column(Integer, nullable=True)
+    details = Column(Text, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ==================== JUNCTION TABLES ====================
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    color = Column(String(20), nullable=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    creator = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+
+class IssueTag(Base):
+    __tablename__ = "issue_tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    issue_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False)
+
+
+class ProjectTag(Base):
+    __tablename__ = "project_tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False)

@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DMB Backlog · Варианты карточек задач</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/index.css">
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f1f5f9; }
+  .card-hover { transition: all .2s ease; }
+  .card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(99,102,241,.2); }
+  .tab-active { background: #6366f1; color: white; }
+  .progress-bar { background: linear-gradient(90deg, #6366f1, #818cf8); }
+  .shimmer { background: linear-gradient(90deg, #e0e7ff 0%, #c7d2fe 50%, #e0e7ff 100%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .risk-pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .grid-bg { background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px); background-size: 20px 20px; }
+  details[open] summary svg { transform: rotate(180deg); }
+  summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- HEADER -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-bold">D</div>
+      <div>
+        <h1 class="text-lg font-bold text-slate-900">DMB Backlog · Карточки задач</h1>
+        <p class="text-xs text-slate-500">6 вариантов дизайна · UX/UI rationale</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full font-medium">PO/Designer Mode</span>
+      <img src="https://ui-avatars.com/api/?name=Тимофей+Б.&background=6366f1&color=fff&size=40&bold=true" class="w-9 h-9 rounded-full" alt="">
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-6 py-8">
+
+  <!-- INTRO -->
+  <section class="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl p-8 text-white mb-8 shadow-lg">
+    <div class="flex items-start gap-4">
+      <div class="w-12 h-12 bg-white/15 backdrop-blur rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+      </div>
+      <div>
+        <h2 class="text-2xl font-bold mb-2">Контекст задачи</h2>
+        <p class="text-indigo-100 leading-relaxed">Карточка — базовая единица DMB Backlog. Она должна работать в 4 сценариях: канбан-доска (drag&drop), бэклог команды (таблица+карточки), статус-отчёты для директорских, аналитические дэшборды PO/PL. Каждый вариант ниже решает определённую пользовательскую задачу.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- VARIANT 1: COMPACT -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+    <div class="p-6 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">1</div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-lg">Компактная (Kanban-оптимизированная)</h3>
+          <p class="text-sm text-slate-500">Для drag&drop досок с высокой плотностью колонок</p>
+        </div>
+      </div>
+      <span class="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md font-medium">Рекомендован для Канбан-доски</span>
+    </div>
+
+    <div class="p-8 grid-bg">
+      <div class="max-w-sm mx-auto">
+        <div class="card-hover bg-white rounded-lg border-2 border-slate-200 p-3 shadow-sm cursor-pointer">
+          <!-- Color stripe via left border trick -->
+          <div class="flex items-start gap-2">
+            <div class="w-1 h-full bg-rose-500 rounded-full flex-shrink-0" style="margin:-12px 0 -12px -12px; height: calc(100% + 24px);"></div>
+            <div class="flex-1 min-w-0 pl-1">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] font-mono text-slate-400">#PT-1247</span>
+                <span class="text-[10px] px-1.5 py-0.5 bg-rose-50 text-rose-700 rounded font-semibold">P1</span>
+              </div>
+              <h4 class="text-sm font-semibold text-slate-900 leading-tight mb-2 line-clamp-2">Интеграция MOEX ICE с pre-trade compliance</h4>
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded font-medium">В работе</span>
+                <span class="text-[10px] text-slate-500">→ 28.06</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="progress-bar h-full" style="width:65%"></div>
+                </div>
+                <span class="text-[10px] font-semibold text-slate-600">65%</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                <span class="text-[10px] text-slate-500">👥 Pre-trade</span>
+                <div class="flex -space-x-1">
+                  <img src="https://ui-avatars.com/api/?name=А&background=6366f1&color=fff&size=20" class="w-5 h-5 rounded-full border-2 border-white" alt="">
+                  <img src="https://ui-avatars.com/api/?name=М&background=10b981&color=fff&size=20" class="w-5 h-5 rounded-full border-2 border-white" alt="">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="border-t border-slate-200">
+      <summary class="p-5 cursor-pointer flex items-center justify-between hover:bg-slate-50">
+        <span class="font-semibold text-slate-700 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/></svg>
+          UX/UI rationale (PO взгляд)
+        </span>
+        <svg class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </summary>
+      <div class="px-5 pb-5 text-sm text-slate-600 space-y-2 bg-slate-50">
+        <p><strong class="text-slate-900">Цель:</strong> максимальная плотность информации на колонку канбана (обычно 280-320px).</p>
+        <p><strong class="text-slate-900">Иерархия чтения (F-pattern):</strong></p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><strong>ID + приоритет</strong> — мгновенная идентификация, P1 виден сразу (красный бейдж)</li>
+          <li><strong>Название</strong> — главный объект, 2 строки с line-clamp защищает layout от длинных формулировок</li>
+          <li><strong>Статус + срок</strong> — операционная информация "что происходит"</li>
+          <li><strong>Прогресс-бар</strong> — визуальный якорь, работает периферийно</li>
+          <li><strong>Команда + assignees</strong> — социальный слой, помогает в daily standup</li>
+        </ul>
+        <p><strong class="text-slate-900">Почему левая цветная полоса:</strong> цвет приоритета работает как преаттентивный атрибут — мозг считывает его за 50мс без фокуса внимания (по Гестальту). Эффективнее, чем фоновая подсветка всей карточки.</p>
+        <p><strong class="text-slate-900">Компромиссы:</strong> убрали фин. метрики (S/V, млн ₽) — на канбан-доске они шум, их место в бэклоге команды.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- VARIANT 2: DETAILED -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+    <div class="p-6 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">2</div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-lg">Детальная (Бэклог команды)</h3>
+          <p class="text-sm text-slate-500">Полный набор атрибутов для Product Owner и команды</p>
+        </div>
+      </div>
+      <span class="text-xs px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-md font-medium">Рекомендован для Бэклога команды</span>
+    </div>
+
+    <div class="p-8 bg-slate-50">
+      <div class="max-w-2xl mx-auto">
+        <div class="card-hover bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <!-- Top bar with priority + status -->
+          <div class="px-5 py-3 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono text-slate-500">#PT-1247</span>
+              <span class="text-[10px] px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full font-bold">● P1 Высокий</span>
+              <span class="text-[10px] px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-semibold">Pre-trade</span>
+            </div>
+            <span class="text-[11px] px-2.5 py-1 bg-amber-100 text-amber-800 rounded-md font-medium flex items-center gap-1">
+              <span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>В работе
+            </span>
+          </div>
+
+          <div class="p-5">
+            <h4 class="text-base font-bold text-slate-900 mb-1 leading-snug">Интеграция MOEX ICE с pre-trade compliance модулем</h4>
+            <p class="text-sm text-slate-600 mb-4 line-clamp-2">Реализовать двусторонний обмен данными между торговой платформой и compliance-движком для блокировки ордеров до исполнения. Вовлечены команды Risk и Infra.</p>
+
+            <!-- Key metrics grid -->
+            <div class="grid grid-cols-4 gap-2 mb-4 pb-4 border-b border-slate-100">
+              <div class="text-center p-2 bg-slate-50 rounded-lg">
+                <div class="text-[10px] text-slate-500 uppercase tracking-wide">Срок</div>
+                <div class="text-sm font-bold text-slate-900">28.06</div>
+              </div>
+              <div class="text-center p-2 bg-slate-50 rounded-lg">
+                <div class="text-[10px] text-slate-500 uppercase tracking-wide">Трудозатраты</div>
+                <div class="text-sm font-bold text-slate-900">124 ч/д</div>
+              </div>
+              <div class="text-center p-2 bg-emerald-50 rounded-lg">
+                <div class="text-[10px] text-emerald-700 uppercase tracking-wide">Фин. эффект</div>
+                <div class="text-sm font-bold text-emerald-700">+48 млн ₽</div>
+              </div>
+              <div class="text-center p-2 bg-indigo-50 rounded-lg">
+                <div class="text-[10px] text-indigo-700 uppercase tracking-wide">S/V Value</div>
+                <div class="text-sm font-bold text-indigo-700">3.8x</div>
+              </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="mb-4">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-medium text-slate-700">Прогресс</span>
+                <span class="text-xs font-bold text-indigo-600">65%</span>
+              </div>
+              <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div class="progress-bar h-full rounded-full transition-all"></div>
+              </div>
+            </div>
+
+            <!-- Status comment -->
+            <div class="flex items-start gap-2 p-3 bg-blue-50 rounded-lg mb-4">
+              <svg class="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"/></svg>
+              <div class="flex-1 min-w-0">
+                <div class="text-[10px] text-blue-700 font-semibold uppercase mb-0.5">Комментарий по статусу</div>
+                <p class="text-xs text-slate-700">API готов, на интеграционных тестах. Блокер — задержка от Risk по обновлению правил.</p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+              <div class="flex items-center gap-2">
+                <div class="flex -space-x-2">
+                  <img src="https://ui-avatars.com/api/?name=Тимофей+Б.&background=6366f1&color=fff&size=32" class="w-7 h-7 rounded-full border-2 border-white" alt="">
+                  <img src="https://ui-avatars.com/api/?name=Анна+К.&background=10b981&color=fff&size=32" class="w-7 h-7 rounded-full border-2 border-white" alt="">
+                  <img src="https://ui-avatars.com/api/?name=М+И.&background=f59e0b&color=fff&size=32" class="w-7 h-7 rounded-full border-2 border-white" alt="">
+                </div>
+                <span class="text-xs text-slate-500">+2 участника</span>
+              </div>
+              <div class="flex items-center gap-1 text-xs text-slate-500">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+                3
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="border-t border-slate-200">
+      <summary class="p-5 cursor-pointer flex items-center justify-between hover:bg-slate-50">
+        <span class="font-semibold text-slate-700 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/></svg>
+          UX/UI rationale (PO взгляд)
+        </span>
+        <svg class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </summary>
+      <div class="px-5 pb-5 text-sm text-slate-600 space-y-2 bg-slate-50">
+        <p><strong class="text-slate-900">Цель:</strong> одна карточка = полноценный "паспорт задачи" для grooming и sprint planning.</p>
+        <p><strong class="text-slate-900">Трёхуровневая структура:</strong></p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><strong>Header</strong> — идентификация и таксономия (ID, приоритет, команда, статус). Позволяет фильтровать взглядом.</li>
+          <li><strong>Body</strong> — описание + метрики в grid 2×2. Числа в "плитке" — известный паттерн dashboard'а, глаз быстро сканирует KPI.</li>
+          <li><strong>Footer</strong> — социальный контекст (кто работает) и прогресс.</li>
+        </ul>
+        <p><strong class="text-slate-900">Цветовая семантика метрик:</strong> фин. эффект — изумруд (позитив), S/V — индиго (аналитика). Цвет несёт смысл, не декор.</p>
+        <p><strong class="text-slate-900">Блок "Комментарий по статусу":</strong> выделен синим, т.к. это последняя актуальная информация — PO читает именно его перед директорской. Blue = информационный, не тревожный.</p>
+        <p><strong class="text-slate-900">Почему не collapsed:</strong> в бэклоге команды задачи просматриваются поштучно, а не массово — плотность не критична, важна полнота.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- VARIANT 3: VALUE FOCUSED -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+    <div class="p-6 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center font-bold">3</div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-lg">Value-фокус (Аналитика PO/PL)</h3>
+          <p class="text-sm text-slate-500">Для приоритизации и защиты бюджета</p>
+        </div>
+      </div>
+      <span class="text-xs px-2.5 py-1 bg-violet-50 text-violet-700 rounded-md font-medium">Рекомендован для Аналитики ЛТ</span>
+    </div>
+
+    <div class="p-8 bg-slate-50">
+      <div class="max-w-2xl mx-auto">
+        <div class="card-hover bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <!-- Value hero -->
+          <div class="relative px-6 py-5 bg-gradient-to-br from-violet-600 via-indigo-600 to-indigo-700 text-white">
+            <div class="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+            <div class="relative flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-xs font-mono text-indigo-200">#PT-1247</span>
+                  <span class="text-[10px] px-2 py-0.5 bg-white/20 backdrop-blur rounded-full font-semibold">Высокий Value</span>
+                </div>
+                <h4 class="text-base font-bold leading-snug max-w-md">Интеграция MOEX ICE с pre-trade compliance</h4>
+              </div>
+              <div class="text-right">
+                <div class="text-[10px] text-indigo-200 uppercase tracking-wider">S/V Ratio</div>
+                <div class="text-3xl font-black">3.8<span class="text-lg text-indigo-200">x</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Financial metrics -->
+          <div class="p-5">
+            <div class="grid grid-cols-3 gap-3 mb-4">
+              <div class="p-3 border border-slate-200 rounded-lg">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                  <span class="text-[10px] text-slate-500 uppercase tracking-wide">Затраты</span>
+                </div>
+                <div class="text-lg font-bold text-slate-900">12.6 <span class="text-xs text-slate-500 font-medium">млн ₽</span></div>
+                <div class="text-[10px] text-slate-400">124 чел-дней</div>
+              </div>
+              <div class="p-3 border border-emerald-200 bg-emerald-50/50 rounded-lg">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                  <span class="text-[10px] text-emerald-700 uppercase tracking-wide font-semibold">Фин. эффект</span>
+                </div>
+                <div class="text-lg font-bold text-emerald-700">+48 <span class="text-xs font-medium">млн ₽/год</span></div>
+                <div class="text-[10px] text-emerald-600">ROI 280% за 3 года</div>
+              </div>
+              <div class="p-3 border border-indigo-200 bg-indigo-50/50 rounded-lg">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span class="text-[10px] text-indigo-700 uppercase tracking-wide font-semibold">Payback</span>
+                </div>
+                <div class="text-lg font-bold text-indigo-700">9.5 <span class="text-xs font-medium">мес</span></div>
+                <div class="text-[10px] text-indigo-600">Быстрая окупаемость</div>
+              </div>
+            </div>
+
+            <!-- Progress with value realization -->
+            <div class="p-3 bg-slate-50 rounded-lg mb-3">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-700">Реализация ценности</span>
+                <span class="text-xs text-slate-500">65% выполнено · осталось ~4.4 млн ₽ затрат</span>
+              </div>
+              <div class="h-2 bg-slate-200 rounded-full overflow-hidden relative">
+                <div class="progress-bar h-full" style="width:65%"></div>
+                <div class="absolute top-0 h-full w-0.5 bg-amber-500" style="left:50%"></div>
+              </div>
+              <div class="flex justify-between mt-1 text-[10px] text-slate-500">
+                <span>Старт</span>
+                <span class="text-amber-600 font-medium">Точка безубыточности →</span>
+                <span>Релиз</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 text-slate-500">
+                <span class="px-2 py-0.5 bg-slate-100 rounded">Pre-trade</span>
+                <span>· Срок 28.06.2026</span>
+              </div>
+              <button class="text-indigo-600 font-semibold hover:text-indigo-700">Детали →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="border-t border-slate-200">
+      <summary class="p-5 cursor-pointer flex items-center justify-between hover:bg-slate-50">
+        <span class="font-semibold text-slate-700 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/></svg>
+          UX/UI rationale (PO/Designer)
+        </span>
+        <svg class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </summary>
+      <div class="px-5 pb-5 text-sm text-slate-600 space-y-2 bg-slate-50">
+        <p><strong class="text-slate-900">User story:</strong> "Как Leader Трайба, я хочу видеть ROI задач, чтобы защищать бюджет квартала перед CIO."</p>
+        <p><strong class="text-slate-900">Hero-блок с S/V:</strong> главная метрика вынесена в цветной header крупным шрифтом (3xl). Это якорь внимания — по исследованиям Nielsen, первые 2-3 элемента получают 80% внимания.</p>
+        <p><strong class="text-slate-900">Финансовый grid 3×1:</strong> Затраты (нейтральный серый) → Эффект (позитивный зелёный) → Payback (аналитический индиго). Порядок слева направо = логика принятия решения.</p>
+        <p><strong class="text-slate-900">Точка безубыточности на прогресс-баре:</strong> уникальный элемент. Показывает не "сколько сделали", а "когда начнёт окупаться". Маркер-линия на 50% — момент, когда cumulative effect > cumulative cost.</p>
+        <p><strong class="text-slate-900">Что НЕ показываем:</strong> assignees, комментарии, статусы — не релевантно для финансовой аналитики. Закон Хика: меньше опций = быстрее решение.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- VARIANT 4: RISK ALERT -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+    <div class="p-6 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-bold">4</div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-lg">Risk-Alert (Статус-отчёты)</h3>
+          <p class="text-sm text-slate-500">Для директорских и эскалаций</p>
+        </div>
+      </div>
+      <span class="text-xs px-2.5 py-1 bg-rose-50 text-rose-700 rounded-md font-medium">Рекомендован для "В рисках"</span>
+    </div>
+
+    <div class="p-8 bg-slate-50">
+      <div class="max-w-2xl mx-auto">
+        <div class="card-hover bg-white rounded-xl border-2 border-rose-300 shadow-md overflow-hidden relative">
+          <!-- Risk banner -->
+          <div class="bg-rose-500 px-5 py-2 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-white">
+              <svg class="w-4 h-4 risk-pulse" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+              <span class="text-xs font-bold uppercase tracking-wider">Требует эскалации</span>
+            </div>
+            <span class="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded font-mono">Просрочено на 4 дня</span>
+          </div>
+
+          <div class="p-5">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-xs font-mono text-slate-500">#PT-1247</span>
+                  <span class="text-[10px] px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full font-bold">P1</span>
+                  <span class="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full">Ключевой проект</span>
+                </div>
+                <h4 class="text-base font-bold text-slate-900 leading-snug">Интеграция MOEX ICE с pre-trade compliance</h4>
+              </div>
+            </div>
+
+            <!-- Risk indicators -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="p-3 bg-rose-50 border border-rose-200 rounded-lg">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[10px] font-semibold text-rose-700 uppercase">Срок</span>
+                  <svg class="w-3.5 h-3.5 text-rose-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                </div>
+                <div class="text-sm font-bold text-rose-900">Был 24.06</div>
+                <div class="text-[11px] text-rose-700">Новый: 02.07 · согласован</div>
+              </div>
+              <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[10px] font-semibold text-amber-700 uppercase">Прогресс</span>
+                  <svg class="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm2 1v10h10V4H5z" clip-rule="evenodd"/></svg>
+                </div>
+                <div class="text-sm font-bold text-amber-900">65% вместо 85%</div>
+                <div class="text-[11px] text-amber-700">Отставание: -20 п.п.</div>
+              </div>
+            </div>
+
+            <!-- Blocker -->
+            <div class="p-3 bg-slate-900 rounded-lg mb-4 text-white">
+              <div class="flex items-center gap-2 mb-1.5">
+                <svg class="w-3.5 h-3.5 text-rose-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6c0 1.887.873 3.563 2.236 4.632A5.002 5.002 0 005 16a5 5 0 005 5 5 5 0 005-5 5.002 5.002 0 00-1.236-3.368A5.998 5.998 0 0016 8a6 6 0 00-6-6z"/></svg>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-rose-300">Блокер</span>
+              </div>
+              <p class="text-sm leading-relaxed">Команда <strong>Risk</strong> не обновила правила compliance-движка. Задержка: 6 рабочих дней. Ответственный: <strong>С. Иванов (CL Risk)</strong>.</p>
+            </div>
+
+            <!-- Impact -->
+            <div class="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg mb-4">
+              <div class="text-center">
+                <div class="text-[10px] text-indigo-700 uppercase font-semibold">Фин. риск</div>
+                <div class="text-lg font-bold text-indigo-900">-8.2 млн ₽</div>
+              </div>
+              <div class="h-8 w-px bg-indigo-200"></div>
+              <div class="text-center">
+                <div class="text-[10px] text-indigo-700 uppercase font-semibold">Зависимостей</div>
+                <div class="text-lg font-bold text-indigo-900">3 задачи</div>
+              </div>
+              <div class="h-8 w-px bg-indigo-200"></div>
+              <div class="text-center">
+                <div class="text-[10px] text-indigo-700 uppercase font-semibold">SLA клиентов</div>
+                <div class="text-lg font-bold text-indigo-900">Под угрозой</div>
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex items-center gap-2">
+              <button class="flex-1 px-3 py-2 bg-rose-600 text-white text-xs font-semibold rounded-lg hover:bg-rose-700 transition">🚨 Эскалировать CIO</button>
+              <button class="flex-1 px-3 py-2 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200 transition">Созвон с CL Risk</button>
+              <button class="px-3 py-2 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="border-t border-slate-200">
+      <summary class="p-5 cursor-pointer flex items-center justify-between hover:bg-slate-50">
+        <span class="font-semibold text-slate-700 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/></svg>
+          UX/UI rationale (PO/Designer)
+        </span>
+        <svg class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </summary>
+      <div class="px-5 pb-5 text-sm text-slate-600 space-y-2 bg-slate-50">
+        <p><strong class="text-slate-900">Принцип "Negative-first":</strong> красный banner + border-2 + pulse-анимация иконки. Карточка должна "кричать" — это OK для редких критических кейсов.</p>
+        <p><strong class="text-slate-900">Структура "Сигнал → Диагноз → Действие":</strong></p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><strong>Banner</strong> — что случилось (просрочено, эскалация)</li>
+          <li><strong>Grid 2×1 индикаторов</strong> — конкретные цифры отклонения (не "плохо", а "65% вместо 85%")</li>
+          <li><strong>Блокер в тёмной плашке</strong> — причина + ответственный. Тёмный фон = "чёрный ящик" проблемы</li>
+          <li><strong>Impact-линейка</strong> — последствия в цифрах. Фин. риск, downstream зависимости, SLA</li>
+          <li><strong>CTA-buttons</strong> — действие внутри карточки, не нужно открывать детали</li>
+        </ul>
+        <p><strong class="text-slate-900">Почему CTA внутри:</strong> для директорской статус-встречи это критично — решение принимается за 30 секунд на задачу. Переход в детали = потеря темпа совещания.</p>
+        <p><strong class="text-slate-900">Accessibility:</strong> цвет не единственный канал — везде есть иконки и текст. WCAG AA compliant.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- VARIANT 5: MINIMAL -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+    <div class="p-6 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">5</div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-lg">Минималистичная (Quick-scan)</h3>
+          <p class="text-sm text-slate-500">Для массового сканирования списка</p>
+        </div>
+      </div>
+      <span class="text-xs px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md font-medium">Рекомендован для Табличного вида</span>
+    </div>
+
+    <div class="p-8 bg-slate-50">
+      <div class="max-w-3xl mx-auto space-y-2">
+        <!-- 3 mini cards -->
+        <div class="card-hover bg-white rounded-lg border border-slate-200 p-3 flex items-center gap-4">
+          <div class="w-1.5 h-10 bg-rose-500 rounded-full"></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="text-[10px] font-mono text-slate-400">#PT-1247</span>
+              <span class="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded font-medium">Pre-trade</span>
+            </div>
+            <h4 class="text-sm font-semibold text-slate-900 truncate">Интеграция MOEX ICE с pre-trade compliance</h4>
+          </div>
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <div class="text-right hidden sm:block">
+              <div class="text-[10px] text-slate-500">Срок</div>
+              <div class="text-xs font-semibold text-rose-600">28.06 ⚠</div>
+            </div>
+            <div class="w-20">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-[10px] text-slate-500">65%</span>
+              </div>
+              <div class="h-1 bg-slate-100 rounded-full overflow-hidden">
+                <div class="progress-bar h-full" style="width:65%"></div>
+              </div>
+            </div>
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+
+        <div class="card-hover bg-white rounded-lg border border-slate-200 p-3 flex items-center gap-4">
+          <div class="w-1.5 h-10 bg-emerald-500 rounded-full"></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="text-[10px] font-mono text-slate-400">#PT-1253</span>
+              <span class="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded font-medium">Pre-trade</span>
+            </div>
+            <h4 class="text-sm font-semibold text-slate-900 truncate">Оптимизация маршрутизации ордеров FIX-протокол</h4>
+          </div>
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <div class="text-right hidden sm:block">
+              <div class="text-[10px] text-slate-500">Срок</div>
+              <div class="text-xs font-semibold text-slate-900">15.07</div>
+            </div>
+            <div class="w-20">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-[10px] text-slate-500">40%</span>
+              </div>
+              <div class="h-1 bg-slate-100 rounded-full overflow-hidden">
+                <div class="progress-bar h-full" style="width:40%"></div>
+              </div>
+            </div>
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+
+        <div class="card-hover bg-white rounded-lg border border-slate-200 p-3 flex items-center gap-4">
+          <div class="w-1.5 h-10 bg-amber-500 rounded-full"></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="text-[10px] font-mono text-slate-400">#PT-1261</span>
+              <span class="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded font-medium">Pre-trade</span>
+            </div>
+            <h4 class="text-sm font-semibold text-slate-900 truncate">Миграция риск-калькулятора на Kubernetes</h4>
+          </div>
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <div class="text-right hidden sm:block">
+              <div class="text-[10px] text-slate-500">Срок</div>
+              <div class="text-xs font-semibold text-slate-900">30.08</div>
+            </div>
+            <div class="w-20">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-[10px] text-slate-500">15%</span>
+              </div>
+              <div class="h-1 bg-slate-100 rounded-full overflow-hidden">
+                <div class="progress-bar h-full" style="width:15%"></div>
+              </div>
+            </div>
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="border-t border-slate-200">
+      <summary class="p-5 cursor-pointer flex items-center justify-between hover:bg-slate-50">
+        <span class="font-semibold text-slate-700 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/></svg>
+          UX/UI rationale (PO/Designer)
+        </span>
+        <svg class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </summary>
+      <div class="px-5 pb-5 text-sm text-slate-600 space-y-2 bg-slate-50">
+        <p><strong class="text-slate-900">Паттерн "List-row as card":</strong> гибрид таблицы и карточки. Работает когда задач 50+ и пользователь сканирует список.</p>
+        <p><strong class="text-slate-900">Горизонтальная композиция (Z-pattern):</strong></p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><strong>Слева</strong> — цветовая индикация приоритета (тонкая полоска 6px, не массивная)</li>
+          <li><strong>Центр</strong> — ID + команда + название (основной контент)</li>
+          <li><strong>Справа</strong> — операционные метрики (срок, прогресс, навигация)</li>
+        </ul>
+        <p><strong class="text-slate-900">Высота 60-70px:</strong> оптимально для "одна задача = одна строка зрения". На 24" мониторе помещается ~12 задач без скролла.</p>
+        <p><strong class="text-slate-900">Прогресс в мини-формате:</strong> bar высотой 4px — периферийная информация, не отвлекает от названия.</p>
+        <p><strong class="text-slate-900">Адаптивность:</strong> на мобильных колонка "Срок" скрывается, остаётся только прогресс — progressive disclosure.</p>
+        <p><strong class="text-slate-900">Идеальный use-case:</strong>替代表格 в "Карточках" режиме бэклога команды. Быстрее чем таблица, информативнее чем список.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- VARIANT 6: EXECUTIVE -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+    <div class="p-6 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold">6</div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-lg">Executive (Для ключевых проектов)</h3>
+          <p class="text-sm text-slate-500">Для отчётов перед топ-менеджментом</p>
+        </div>
+      </div>
+      <span class="text-xs px-2.5 py-1 bg-slate-900 text-white rounded-md font-medium">Рекомендован для Ключевых проектов</span>
+    </div>
+
+    <div class="p-8 bg-slate-50">
+      <div class="max-w-3xl mx-auto">
+        <div class="card-hover bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
+          <!-- Executive header with gradient -->
+          <div class="relative bg-gradient-to-br from-slate-900 via-indigo-900 to-indigo-800 px-6 py-6 text-white overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div class="absolute bottom-0 left-0 w-48 h-48 bg-violet-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+
+            <div class="relative flex items-start justify-between mb-4">
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-[10px] px-2 py-0.5 bg-amber-400/20 text-amber-300 rounded-full font-bold uppercase tracking-wider border border-amber-400/30">⭐ Ключевой проект</span>
+                  <span class="text-[10px] font-mono text-indigo-300">#PT-1247</span>
+                </div>
+                <h4 class="text-xl font-bold leading-tight max-w-lg">Интеграция MOEX ICE с pre-trade compliance модулем</h4>
+              </div>
+              <div class="flex -space-x-1">
+                <img src="https://ui-avatars.com/api/?name=ТБ&background=6366f1&color=fff&size=32" class="w-8 h-8 rounded-full border-2 border-indigo-900" alt="">
+                <img src="https://ui-avatars.com/api/?name=АК&background=10b981&color=fff&size=32" class="w-8 h-8 rounded-full border-2 border-indigo-900" alt="">
+                <img src="https://ui-avatars.com/api/?name=МИ&background=f59e0b&color=fff&size=32" class="w-8 h-8 rounded-full border-2 border-indigo-900" alt="">
+                <div class="w-8 h-8 rounded-full border-2 border-indigo-900 bg-white/10 backdrop-blur flex items-center justify-center text-[10px] font-semibold">+4</div>
+              </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="relative pt-3 border-t border-white/10">
+              <div class="flex items-center justify-between text-[10px] mb-1.5">
+                <span class="text-indigo-300 uppercase tracking-wider">Timeline</span>
+                <span class="text-indigo-200">15.03 → 28.06.2026 · <strong class="text-white">105 дней</strong></span>
+              </div>
+              <div class="h-1.5 bg-white/10 rounded-full overflow-hidden relative">
+                <div class="h-full bg-gradient-to-r from-emerald-400 to-amber-400" style="width:65%"></div>
+                <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-lg" style="left:65%; transform: translate(-50%, -50%);"></div>
+              </div>
+              <div class="flex justify-between mt-1.5 text-[10px]">
+                <span class="text-indigo-300">Старт</span>
+                <span class="text-white font-semibold">Сегодня · 65%</span>
+                <span class="text-indigo-300">Дедлайн</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body metrics -->
+          <div class="p-6">
+            <div class="grid grid-cols-4 gap-3 mb-5">
+              <div>
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Бюджет</div>
+                <div class="text-lg font-bold text-slate-900">12.6 <span class="text-xs text-slate-500">млн ₽</span></div>
+                <div class="text-[10px] text-emerald-600 font-medium">В рамках</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Эффект</div>
+                <div class="text-lg font-bold text-emerald-600">+48 <span class="text-xs">млн ₽</span></div>
+                <div class="text-[10px] text-slate-500 font-medium">ROI 280%</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Команда</div>
+                <div class="text-lg font-bold text-slate-900">7</div>
+                <div class="text-[10px] text-slate-500 font-medium">3 команды</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Здоровье</div>
+                <div class="flex items-center gap-1">
+                  <div class="text-lg font-bold text-emerald-600">A</div>
+                  <div class="flex gap-0.5">
+                    <div class="w-1 h-4 bg-emerald-500 rounded-sm"></div>
+                    <div class="w-1 h-3 bg-emerald-500 rounded-sm"></div>
+                    <div class="w-1 h-2 bg-emerald-500 rounded-sm"></div>
+                  </div>
+                </div>
+                <div class="text-[10px] text-emerald-600 font-medium">On track</div>
+              </div>
+            </div>
+
+            <!-- Milestones -->
+            <div class="mb-5">
+              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-semibold">Milestones</div>
+              <div class="space-y-2">
+                <div class="flex items-center gap-3">
+                  <div class="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  </div>
+                  <div class="flex-1 text-xs">
+                    <span class="font-semibold text-slate-900">API-интерфейс готов</span>
+                    <span class="text-slate-500 ml-2">· 15 мая</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <div class="w-2 h-2 bg-amber-500 rounded-full risk-pulse"></div>
+                  </div>
+                  <div class="flex-1 text-xs">
+                    <span class="font-semibold text-slate-900">Интеграционные тесты</span>
+                    <span class="text-amber-600 ml-2 font-medium">· в процессе</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <div class="w-2 h-2 bg-slate-400 rounded-full"></div>
+                  </div>
+                  <div class="flex-1 text-xs">
+                    <span class="font-medium text-slate-600">Prod-релиз</span>
+                    <span class="text-slate-500 ml-2">· 28 июня</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Risk summary -->
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+              <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+              <div class="flex-1">
+                <div class="text-xs font-bold text-amber-900 mb-0.5">Умеренный риск · Mitigated</div>
+                <p class="text-xs text-slate-700 leading-relaxed">Задержка со стороны Risk-команды по обновлению compliance-правил. План Б — временный fallback на legacy-движок.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="border-t border-slate-200">
+      <summary class="p-5 cursor-pointer flex items-center justify-between hover:bg-slate-50">
+        <span class="font-semibold text-slate-700 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/></svg>
+          UX/UI rationale (PO/Designer)
+        </span>
+        <svg class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </summary>
+      <div class="px-5 pb-5 text-sm text-slate-600 space-y-2 bg-slate-50">
+        <p><strong class="text-slate-900">Концепция "Project Passport":</strong> для 5-10 ключевых инициатив банка. Одна карточка заменяет отчёт на 2 страницы.</p>
+        <p><strong class="text-slate-900">Dark-header premium:</strong> тёмный градиент = "VIP-статус". Психология: чёрный ассоциируется с важностью (black card, executive class). Отделяет ключевые проекты от обычных задач.</p>
+        <p><strong class="text-slate-900">Timeline с "точкой сейчас":</strong> белый кружок на прогресс-баре — уникальный элемент. Показывает не абстрактный %, а "где мы во времени". Gradient emerald→amber — эмоциональный сигнал "начали хорошо, приближаемся к дедлайну".</p>
+        <p><strong class="text-slate-900">Health score "A":</strong> как в кредитных рейтингах (S&P, Moody's). Топ-менеджмент привык к этой шкале — не нужно объяснять.</p>
+        <p><strong class="text-slate-900">Milestones вместо статуса:</strong> executives мыслят вехами, не процентами. Три состояния: ✓ сделано / 🔄 в процессе / ○ впереди. Гештальт: прогресс как путь.</p>
+        <p><strong class="text-slate-900">Risk с планом Б:</strong> не просто "есть риск", а "есть риск + есть mitigating action". Топ-менеджмент не любит проблемы без решений.</p>
+        <p><strong class="text-slate-900">Высота ~500px:</strong> сознательный выбор. Executive карточка открывается полноэкранно или в модале — это отдельный артефакт, не элемент списка.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- COMPARISON MATRIX -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+    <div class="p-6 border-b border-slate-200">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center font-bold">Σ</div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-lg">Матрица выбора · Когда что использовать</h3>
+          <p class="text-sm text-slate-500">Итоговая рекомендация Product Owner</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr>
+            <th class="text-left px-5 py-3 font-semibold text-slate-700">Вариант</th>
+            <th class="text-left px-5 py-3 font-semibold text-slate-700">Сценарий</th>
+            <th class="text-center px-5 py-3 font-semibold text-slate-700">Плотность</th>
+            <th class="text-center px-5 py-3 font-semibold text-slate-700">Аудитория</th>
+            <th class="text-center px-5 py-3 font-semibold text-slate-700">Атрибутов</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr class="hover:bg-slate-50">
+            <td class="px-5 py-3"><span class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><span class="font-medium">1. Компактная</span></span></td>
+            <td class="px-5 py-3 text-slate-600">Канбан-доска, daily standup</td>
+            <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold">Высокая</span></td>
+            <td class="px-5 py-3 text-center text-xs">Team / Scrum Master</td>
+            <td class="px-5 py-3 text-center font-mono text-slate-500">6</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="px-5 py-3"><span class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="font-medium">2. Детальная</span></span></td>
+            <td class="px-5 py-3 text-slate-600">Бэклог команды, grooming</td>
+            <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs font-semibold">Средняя</span></td>
+            <td class="px-5 py-3 text-center text-xs">PO / Команда</td>
+            <td class="px-5 py-3 text-center font-mono text-slate-500">14</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="px-5 py-3"><span class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-violet-500"></span><span class="font-medium">3. Value-фокус</span></span></td>
+            <td class="px-5 py-3 text-slate-600">Аналитика ЛТ, защита бюджета</td>
+            <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 bg-violet-100 text-violet-700 rounded text-xs font-semibold">Средняя</span></td>
+            <td class="px-5 py-3 text-center text-xs">Leader Трайба / CFO</td>
+            <td class="px-5 py-3 text-center font-mono text-slate-500">8</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="px-5 py-3"><span class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-rose-500"></span><span class="font-medium">4. Risk-Alert</span></span></td>
+            <td class="px-5 py-3 text-slate-600">Статус-отчёты, эскалации</td>
+            <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-xs font-semibold">Низкая</span></td>
+            <td class="px-5 py-3 text-center text-xs">CIO / CL / Risk</td>
+            <td class="px-5 py-3 text-center font-mono text-slate-500">10</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="px-5 py-3"><span class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span class="font-medium">5. Минималистичная</span></span></td>
+            <td class="px-5 py-3 text-slate-600">Табличный вид, массовые операции</td>
+            <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-semibold">Очень высокая</span></td>
+            <td class="px-5 py-3 text-center text-xs">PO / Админ</td>
+            <td class="px-5 py-3 text-center font-mono text-slate-500">4</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="px-5 py-3"><span class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-slate-900"></span><span class="font-medium">6. Executive</span></span></td>
+            <td class="px-5 py-3 text-slate-600">Директорские, ключевые проекты</td>
+            <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 bg-slate-200 text-slate-700 rounded text-xs font-semibold">Очень низкая</span></td>
+            <td class="px-5 py-3 text-center text-xs">Board / CIO</td>
+            <td class="px-5 py-3 text-center font-mono text-slate-500">12</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="p-6 bg-gradient-to-br from-indigo-50 to-violet-50 border-t border-slate-200">
+      <div class="flex items-start gap-3">
+        <svg class="w-6 h-6 text-indigo-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+        <div>
+          <h4 class="font-bold text-slate-900 mb-1">Итоговая стратегия реализации</h4>
+          <p class="text-sm text-slate-700 leading-relaxed">Рекомендую <strong>не выбирать один вариант</strong>, а внедрить адаптивную систему: базовый компонент <code class="px-1.5 py-0.5 bg-white rounded text-indigo-700 font-mono text-xs">&lt;TaskCard variant="..."&gt;</code> с 6 пресетами. Переключение по контексту (раздел приложения) + ручной override в настройках пользователя. Это соответствует паттерну <em>"Progressive Disclosure"</em> и учитывает разные ментальные модели аудиторий (team vs executives).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="text-center py-6 text-xs text-slate-500">
+    © 2026 DMB Backlog · Дизайн-система карточек · v1.0
+  </footer>
+
+</main>
+
+<script>
+  // Smooth scroll for in-page nav if needed
+  document.querySelectorAll('details').forEach(d => {
+    d.addEventListener('toggle', () => {
+      if (d.open) {
+        setTimeout(() => d.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
+
