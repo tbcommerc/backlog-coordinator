@@ -1,6 +1,6 @@
 console.log('[DMB] taskTable.js v20260626.5 loaded');
 import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader } from './filterToolbar.js';
-import { renderTaskCard, openTaskModal, setOnTaskSaved, openConfirmModal } from './modal.js';
+import { renderTaskCard, openTaskModal, setOnTaskSaved } from './modal.js';
 
 let tasksCache = null;
 let currentView = 'table';
@@ -40,7 +40,7 @@ export function renderTasksPage(app) {
   return `
     ${renderToolbar('backlog', {
       title: 'Бэклог DMB',
-      subtitle: 'Все задачи платформы · read-only',
+      subtitle: 'Все задачи платформы',
       columnSettings,
       columnOrder,
       columnLabels: COLUMN_LABELS,

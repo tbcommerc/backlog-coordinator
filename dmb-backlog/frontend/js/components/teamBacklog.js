@@ -1,6 +1,6 @@
 console.log('[DMB] teamBacklog.js v20260626.5 loaded');
 import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader } from './filterToolbar.js';
-import { renderTaskCard, openTaskModal, setOnTaskSaved } from './modal.js';
+import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved } from './modal.js';
 
 const DEFAULT_COLUMN_LABELS = {
   id: 'ID', title: 'Задача', description: 'Описание', date_received: 'Дата получения',
@@ -156,11 +156,7 @@ export async function initTeamBacklog(app) {
         onColumnChange: () => renderTeamCurrentView(),
         onColumnOrderChange: () => renderTeamCurrentView(),
         onExport: () => { const list = ftFilteredList('team', teamTasksCache?.items || []); teamExportExcel(list); },
-        onAddTask: async () => {
-            const modal = openTaskModal();
-            await populateTeamSelect();
-            setupTaskFormSave(modal, null, app);
-        },
+        onAddTask: () => openCreateTaskModal(app),
         onRefresh: () => loadTeamTasks(app),
     });
 

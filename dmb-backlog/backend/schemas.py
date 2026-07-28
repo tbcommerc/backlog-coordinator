@@ -80,6 +80,10 @@ class TeamBase(BaseModel):
     po: Optional[str] = Field(None, max_length=100)
     cl: Optional[str] = Field(None, max_length=100)
     it_pl: Optional[str] = Field(None, max_length=100)
+    pl_id: Optional[int] = None
+    po_id: Optional[int] = None
+    cl_id: Optional[int] = None
+    it_pl_id: Optional[int] = None
     abbr: Optional[str] = Field(None, max_length=10)
     members: Optional[str] = Field(None, max_length=5000)
 
@@ -98,6 +102,10 @@ class TeamUpdate(BaseModel):
     po: Optional[str] = Field(None, max_length=100)
     cl: Optional[str] = Field(None, max_length=100)
     it_pl: Optional[str] = Field(None, max_length=100)
+    pl_id: Optional[int] = None
+    po_id: Optional[int] = None
+    cl_id: Optional[int] = None
+    it_pl_id: Optional[int] = None
     abbr: Optional[str] = Field(None, max_length=10)
     members: Optional[str] = Field(None, max_length=5000)
 
@@ -177,14 +185,19 @@ class TaskBase(BaseModel):
     deadline_po_id: Optional[int] = None
     effort_days: Optional[int] = Field(None, ge=0, le=10000)
     effort_rub: Optional[float] = Field(None, ge=0)
-    effort_ba: Optional[float] = None
-    effort_sa: Optional[float] = None
-    effort_fe: Optional[float] = None
+    effort_designee: Optional[float] = None
+    effort_analytics: Optional[float] = None
     effort_be: Optional[float] = None
+    effort_python_be: Optional[float] = None
+    effort_fe: Optional[float] = None
     effort_test: Optional[float] = None
-    effort_design: Optional[float] = None
+    effort_test_auto: Optional[float] = None
+    effort_delivery: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
     ice_score: Optional[float] = Field(None)
+    ice_impact: Optional[float] = Field(None, ge=1, le=10)
+    ice_confidence: Optional[float] = Field(None, ge=1, le=10)
+    ice_ease: Optional[float] = Field(None, ge=1, le=10)
     progress: int = Field(default=0, ge=0, le=100)
     what_if: Optional[str] = Field(None, max_length=10000)
     dod: Optional[str] = Field(None, max_length=10000)
@@ -199,14 +212,22 @@ class TaskBase(BaseModel):
     it_product_lead_id: Optional[int] = None
     key_project: bool = False
     key_project_status: Optional[str] = Field(None, max_length=50)
-    directorate_status: Optional[str] = Field(None, max_length=50)
-    did_status: Optional[str] = Field(None, max_length=50)
+    directorate_status: Optional[str] = Field(None, max_length=1000)
+    directorate_status_updated_at: Optional[datetime] = None
+    did_status: Optional[str] = Field(None, max_length=1000)
+    did_status_updated_at: Optional[datetime] = None
     is_from_leadership: bool = False
     is_regular: bool = False
 
 
 class TaskCreate(TaskBase):
-    pass
+    title: str = Field(min_length=1, max_length=255)
+    team_id: int
+    priority_id: int
+    description: Optional[str] = Field(None, max_length=10000)
+    ice_impact: Optional[float] = Field(None, ge=1, le=10)
+    ice_confidence: Optional[float] = Field(None, ge=1, le=10)
+    ice_ease: Optional[float] = Field(None, ge=1, le=10)
 
 
 class TaskUpdate(BaseModel):
@@ -227,14 +248,19 @@ class TaskUpdate(BaseModel):
     deadline_po_id: Optional[int] = None
     effort_days: Optional[int] = Field(None, ge=0, le=10000)
     effort_rub: Optional[float] = Field(None, ge=0)
-    effort_ba: Optional[float] = None
-    effort_sa: Optional[float] = None
-    effort_fe: Optional[float] = None
+    effort_designee: Optional[float] = None
+    effort_analytics: Optional[float] = None
     effort_be: Optional[float] = None
+    effort_python_be: Optional[float] = None
+    effort_fe: Optional[float] = None
     effort_test: Optional[float] = None
-    effort_design: Optional[float] = None
+    effort_test_auto: Optional[float] = None
+    effort_delivery: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
     ice_score: Optional[float] = Field(None)
+    ice_impact: Optional[float] = Field(None, ge=1, le=10)
+    ice_confidence: Optional[float] = Field(None, ge=1, le=10)
+    ice_ease: Optional[float] = Field(None, ge=1, le=10)
     progress: Optional[int] = Field(None, ge=0, le=100)
     what_if: Optional[str] = Field(None, max_length=10000)
     dod: Optional[str] = Field(None, max_length=10000)
@@ -249,20 +275,28 @@ class TaskUpdate(BaseModel):
     it_product_lead_id: Optional[int] = None
     key_project: Optional[bool] = None
     key_project_status: Optional[str] = Field(None, max_length=50)
-    directorate_status: Optional[str] = Field(None, max_length=50)
-    did_status: Optional[str] = Field(None, max_length=50)
+    directorate_status: Optional[str] = Field(None, max_length=1000)
+    did_status: Optional[str] = Field(None, max_length=1000)
     is_from_leadership: Optional[bool] = None
     is_regular: Optional[bool] = None
+    version: Optional[int] = Field(None, description='Версия задачи для optimistic lock')
 
 
 class TaskResponse(TaskBase):
     id: int
     cv: Optional[float] = None
     ice_score: Optional[float] = None
+    ice_impact: Optional[float] = None
+    ice_confidence: Optional[float] = None
+    ice_ease: Optional[float] = None
     last_updated: Optional[date] = None
     created_by: Optional[int] = None
     created_at: datetime
     updated_at: datetime
+    version: int = 0
+    lock_owner_id: Optional[int] = None
+    lock_owner_name: Optional[str] = None
+    lock_until: Optional[datetime] = None
     team_name: Optional[str] = None
     channel_name: Optional[str] = None
     department_name: Optional[str] = None
@@ -289,6 +323,60 @@ class TaskListResponse(BaseModel):
     pages: int
 
 
+# ==================== TASK COMMENT ====================
+
+class CommentCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+    mentioned_user_ids: Optional[List[int]] = None
+    parent_id: Optional[int] = None
+
+
+class CommentResponse(BaseModel):
+    id: int
+    task_id: int
+    user_id: int
+    user_name: Optional[str] = None
+    text: str
+    mentioned_user_ids: Optional[List[int]] = None
+    parent_id: Optional[int] = None
+    replies: List['CommentResponse'] = []
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CommentListResponse(BaseModel):
+    items: List[CommentResponse]
+    total: int
+
+
+class AttachmentResponse(BaseModel):
+    id: int
+    task_id: int
+    user_id: int
+    user_name: Optional[str] = None
+    filename: str
+    original_name: str
+    mime_type: Optional[str] = None
+    file_size: Optional[int] = None
+    download_url: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AttachmentListResponse(BaseModel):
+    items: List[AttachmentResponse]
+    total: int
+
+
+class TaskLinkUpdate(BaseModel):
+    link_mockups: Optional[str] = None
+    link_jira: Optional[str] = None
+
+
 class BulkActionRequest(BaseModel):
     action: str = Field(max_length=50)
     task_ids: List[int] = Field(max_length=500)
@@ -307,6 +395,32 @@ class TaskHistoryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ==================== TASK LOCK ====================
+
+class TaskLockResponse(BaseModel):
+    locked: bool
+    lock_owner_id: Optional[int] = None
+    lock_owner_name: Optional[str] = None
+    lock_until: Optional[datetime] = None
+    is_mine: bool = False
+    version: Optional[int] = None
+
+
+# ==================== TASK VIEWERS ====================
+
+class TaskViewerResponse(BaseModel):
+    user_id: int
+    user_name: Optional[str] = None
+    last_seen_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TaskViewersListResponse(BaseModel):
+    viewers: List[TaskViewerResponse]
 
 
 # ==================== REPORT ====================
@@ -341,13 +455,39 @@ class ReportResponse(ReportBase):
 class NotificationResponse(BaseModel):
     id: int
     task_id: Optional[int] = None
-    type: str
-    message: str
+    category: str
+    title: str
+    body: Optional[str] = None
+    importance: str
     is_read: bool
+    is_dismissed: bool
+    action_url: Optional[str] = None
+    group_key: Optional[str] = None
+    group_count: int = 1
     created_at: datetime
+    read_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+
+class NotificationListResponse(BaseModel):
+    items: List[NotificationResponse]
+    total: int
+    page: int
+    per_page: int
+
+
+class UnreadCountResponse(BaseModel):
+    count: int
+
+
+class NotificationPreferencesResponse(BaseModel):
+    preferences: dict
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    preferences: dict
 
 
 # ==================== ANALYTICS ====================
@@ -395,44 +535,24 @@ class DictionaryItemUpdate(BaseModel):
 class DictionaryItemResponse(DictionaryItemBase):
     id: int
     created_at: Optional[datetime] = None
+    version: int = 0
+    lock_owner_id: Optional[int] = None
+    lock_owner_name: Optional[str] = None
+    lock_until: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
-# ==================== NOTIFICATION TEMPLATE ====================
+# ==================== DICTIONARY LOCK ====================
 
-class NotificationTemplateBase(BaseModel):
-    name: str = Field(max_length=200)
-    text: str = Field(max_length=5000)
-    recipients: Optional[str] = Field(None, max_length=500)
-    deadline_days: Optional[int] = None
-    repeat_frequency: Optional[str] = Field(None, max_length=50)
-    repeat_day: Optional[int] = None
-    is_active: bool = True
-
-
-class NotificationTemplateCreate(NotificationTemplateBase):
-    pass
-
-
-class NotificationTemplateUpdate(BaseModel):
-    name: Optional[str] = Field(None, max_length=200)
-    text: Optional[str] = Field(None, max_length=5000)
-    recipients: Optional[str] = Field(None, max_length=500)
-    deadline_days: Optional[int] = None
-    repeat_frequency: Optional[str] = Field(None, max_length=50)
-    repeat_day: Optional[int] = None
-    is_active: Optional[bool] = None
-
-
-class NotificationTemplateResponse(NotificationTemplateBase):
-    id: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
+class DictLockResponse(BaseModel):
+    locked: bool
+    lock_owner_id: Optional[int] = None
+    lock_owner_name: Optional[str] = None
+    lock_until: Optional[datetime] = None
+    is_mine: bool = False
+    version: int = 0
 
 
 # ==================== LOOKUPS ====================
@@ -694,49 +814,76 @@ class DisplaySettingResponse(BaseModel):
         from_attributes = True
 
 
+# ==================== TEAM COMPETENCY RESOURCES ====================
+
+class TeamCompetencyResourceResponse(BaseModel):
+    competency: str
+    capacity: float
+    senior_count: int = 0
+    middle_count: int = 0
+    junior_count: int = 0
+    vacation_days: int = 0
+    working_days: int = 66
+
+
+class CompetencyCostResponse(BaseModel):
+    competency: str
+    cost_per_day: float
+
+
 # ==================== EPIC & STORY (Экспресс-оценка) ====================
 
 class EffortFields(BaseModel):
-    effort_ba: Optional[float] = None
-    effort_sa: Optional[float] = None
-    effort_fe: Optional[float] = None
+    effort_designee: Optional[float] = None
+    effort_analytics: Optional[float] = None
     effort_be: Optional[float] = None
+    effort_python_be: Optional[float] = None
+    effort_fe: Optional[float] = None
     effort_test: Optional[float] = None
-    effort_design: Optional[float] = None
+    effort_test_auto: Optional[float] = None
+    effort_delivery: Optional[float] = None
 
 
 class EpicCreate(EffortFields):
     task_id: int
     title: str = Field(max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
+    priority: Optional[str] = Field(None, max_length=50)
 
 
 class EpicUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
-    effort_ba: Optional[float] = None
-    effort_sa: Optional[float] = None
-    effort_fe: Optional[float] = None
+    priority: Optional[str] = Field(None, max_length=50)
+    effort_designee: Optional[float] = None
+    effort_analytics: Optional[float] = None
     effort_be: Optional[float] = None
+    effort_python_be: Optional[float] = None
+    effort_fe: Optional[float] = None
     effort_test: Optional[float] = None
-    effort_design: Optional[float] = None
+    effort_test_auto: Optional[float] = None
+    effort_delivery: Optional[float] = None
 
 
 class StoryCreate(EffortFields):
     epic_id: int
     title: str = Field(max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
+    progress: Optional[int] = Field(0, ge=0, le=100)
 
 
 class StoryUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
-    effort_ba: Optional[float] = None
-    effort_sa: Optional[float] = None
-    effort_fe: Optional[float] = None
+    progress: Optional[int] = Field(None, ge=0, le=100)
+    effort_designee: Optional[float] = None
+    effort_analytics: Optional[float] = None
     effort_be: Optional[float] = None
+    effort_python_be: Optional[float] = None
+    effort_fe: Optional[float] = None
     effort_test: Optional[float] = None
-    effort_design: Optional[float] = None
+    effort_test_auto: Optional[float] = None
+    effort_delivery: Optional[float] = None
 
 
 class EpicResponse(EffortFields):
@@ -744,6 +891,7 @@ class EpicResponse(EffortFields):
     task_id: int
     title: str
     description: Optional[str] = None
+    priority: Optional[str] = None
     stories: List['StoryResponse'] = []
     created_at: datetime
     updated_at: datetime
@@ -757,6 +905,7 @@ class StoryResponse(EffortFields):
     epic_id: int
     title: str
     description: Optional[str] = None
+    progress: Optional[int] = 0
     created_at: datetime
     updated_at: datetime
 

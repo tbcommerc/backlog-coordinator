@@ -45,6 +45,20 @@ export function renderSettings(app) {
         <p>Настройки профиля, темы и интерфейса</p>
       </div>
       <div class="settings-grid" style="display:grid;gap:16px;">
+        <div id="settings-notif-prefs" class="card" style="padding:16px;border-radius:12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <div>
+              <h2 style="font-size:15px;font-weight:600;margin:0">Уведомления</h2>
+              <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted)">Какие уведомления вы хотите получать</p>
+            </div>
+          </div>
+          <div id="notif-prefs-list" style="display:flex;flex-direction:column;gap:6px;">
+            <p style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">Загрузка...</p>
+          </div>
+          <div id="notif-prefs-save-status" style="font-size:11px;color:var(--success);margin-top:8px;min-height:16px;"></div>
+        </div>
+
         <div class="card" style="padding:16px;border-radius:12px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
             ${paletteIcon}
@@ -139,6 +153,7 @@ export async function initSettings(app) {
   bindThemeToggle(app);
   bindColorSwatches(app);
   bindCompactToggle(app);
+  loadNotificationPrefs(app);
 }
 
 function bindThemeToggle(app) {
@@ -213,4 +228,60 @@ function toggleCompactMode() {
   const isCompact = document.body.classList.contains('compact-mode');
   if (checkbox) checkbox.checked = isCompact;
   localStorage.setItem('dmb_compact', isCompact ? 'true' : 'false');
+}
+
+const NOTIF_CATEGORIES = [
+  { key: 'risk',          label: 'Риски (ХОЛД, ЭСКАЛАЦИЯ НА ЛТ, ОТКЛОНЕНА)', icon: 'alert-triangle' },
+  { key: 'deadline',      label: 'Приближение дедлайна',                     icon: 'clock' },
+  { key: 'status_change', label: 'Смена статуса',                            icon: 'refresh-cw' },
+  { key: 'assignment',    label: 'Назначение ответственного',                icon: 'user-plus' },
+  { key: 'mention',       label: 'Упоминание в комментарии (@)',             icon: 'at-sign' },
+  { key: 'comment',       label: 'Новый комментарий к задаче',               icon: 'message-circle' },
+  { key: 'express',       label: 'Экспресс-импорт',                          icon: 'zap' },
+  { key: 'stale',         label: 'Застоявшиеся задачи (>14 дней)',           icon: 'timer' },
+  { key: 'attrs',         label: 'Незаполненные атрибуты',                   icon: 'file-text' },
+  { key: 'system',        label: 'Системные',                                icon: 'info' },
+];
+
+async function loadNotificationPrefs(app) {
+  const container = document.getElementById('notif-prefs-list');
+  if (!container) return;
+  try {
+    const resp = await app.api.get('/notifications/preferences');
+    const prefs = resp.preferences || {};
+    const disabledSet = new Set(
+      Object.entries(prefs).filter(([_, enabled]) => !enabled).map(([key]) => key)
+    );
+
+    container.innerHTML = NOTIF_CATEGORIES.map(cat => {
+      const checked = !disabledSet.has(cat.key);
+      return `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-primary);transition:background 0.15s;"
+               onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='transparent'">
+          <input type="checkbox" class="notif-pref-toggle" data-category="${cat.key}" ${checked ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;">
+          <span style="flex:1">${cat.label}</span>
+        </label>`;
+    }).join('');
+
+    container.addEventListener('change', (e) => {
+      if (e.target.classList.contains('notif-pref-toggle')) {
+        saveNotifPrefs(app);
+      }
+    });
+  } catch (err) {
+    container.innerHTML = '<p style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">Не удалось загрузить</p>';
+  }
+}
+
+async function saveNotifPrefs(app) {
+  const toggles = document.querySelectorAll('.notif-pref-toggle');
+  const preferences = {};
+  toggles.forEach(t => { preferences[t.dataset.category] = t.checked; });
+  const statusEl = document.getElementById('notif-prefs-save-status');
+  try {
+    await app.api.put('/notifications/preferences', { preferences });
+    if (statusEl) { statusEl.textContent = 'Сохранено'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
+  } catch (err) {
+    if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = 'Ошибка'; setTimeout(() => { statusEl.textContent = ''; statusEl.style.color = ''; }, 2000); }
+  }
 }

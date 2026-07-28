@@ -10,6 +10,7 @@ import { renderSettings, initSettings } from './components/settings.js';
 import { renderAdmin, initAdmin } from './components/admin.js';
 import { renderCustomerPortal, initCustomerPortal } from './components/customerPortal.js';
 import { renderCustomerChat, initCustomerChat } from './components/customerChat.js';
+import { renderAuditLog, initAuditLog } from './components/auditLog.js';
 
 export class Router {
     constructor(app) {
@@ -27,6 +28,7 @@ export class Router {
             '/notifications': { render: renderNotifications, init: initNotifications },
             '/settings': { render: renderSettings, init: initSettings },
             '/admin': { render: renderAdmin, init: initAdmin },
+            '/audit-log': { render: renderAuditLog, init: initAuditLog },
             '/customer': { render: renderCustomerPortal, init: initCustomerPortal },
             '/customer/create': { render: renderCustomerChat, init: initCustomerChat },
         };
@@ -71,6 +73,7 @@ export class Router {
                         '/notifications': 'Мои уведомления',
                         '/settings': 'Настройки',
                         '/admin': 'Администрирование',
+                        '/audit-log': 'Аудит действий',
                         '/customer': 'Мои задачи',
                         '/customer/create': 'Создать задачу',
                     };

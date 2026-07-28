@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, Response
 from contextlib import asynccontextmanager
+import asyncio
 import os
 import stat
 import time
@@ -17,17 +18,52 @@ from middleware import LoggingMiddleware, AuditMiddleware
 from routers import auth_router, tasks_router, teams_router, users_router, reports_router
 from routers import admin_router, customer_router
 from routers import express_router
+from routers import notifications_router
+
+
+async def _notification_scheduler():
+    while True:
+        try:
+            from database import SessionLocal
+            from notifications import check_scheduled_notifications
+            db = SessionLocal()
+            check_scheduled_notifications(db)
+            db.close()
+        except Exception as e:
+            print(f"[scheduler] notification check failed: {e}")
+        await asyncio.sleep(3600)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup/shutdown events"""
     init_db()
-    from seed import seed_dict_always, seed_initial_data
+    from seed import seed_dict_always, seed_initial_data, seed_team_resources, migrate_team_fk_ids
     seed_dict_always()
     seed_initial_data()
+    seed_team_resources()
+    migrate_team_fk_ids()
+
+    # Startup verification: log user count for safety
+    try:
+        from database import SessionLocal
+        from models import User
+        db = SessionLocal()
+        user_count = db.query(User).count()
+        db.close()
+        print(f"[startup] Users in DB: {user_count}")
+        if user_count == 0:
+            print("[startup] WARNING: No users found — DB may have been reset!")
+    except Exception as e:
+        print(f"[startup] DB verification failed: {e}")
+
+    # Start notification scheduler
+    scheduler_task = asyncio.create_task(_notification_scheduler())
+    print("[startup] Notification scheduler started (hourly)")
+
     yield
-    pass
+
+    scheduler_task.cancel()
 
 
 app = FastAPI(
@@ -89,6 +125,7 @@ app.include_router(reports_router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(admin_router.router, prefix="/api/v1/admin")
 app.include_router(customer_router, prefix="/api/v1/customer", tags=["Customer Portal"])
 app.include_router(express_router, prefix="/api/v1", tags=["Express Estimate"])
+app.include_router(notifications_router.router, prefix="/api/v1", tags=["Notifications"])
 
 
 # Health check
@@ -115,6 +152,11 @@ if os.path.exists(frontend_path):
             os.path.join(frontend_path, "index.html"),
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
         )
+
+# Serve uploaded files
+uploads_path = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(uploads_path, exist_ok=True)
+app.mount("/uploads", NoCacheStaticFiles(directory=uploads_path), name="uploads")
 
 
 if __name__ == "__main__":

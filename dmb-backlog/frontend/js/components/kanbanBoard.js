@@ -218,21 +218,11 @@ export async function initKanban(app) {
         }
         renderKanbanCards(app, items);
 
-        const { openTaskModal, setOnTaskSaved } = await import('./modal.js');
+        const { openTaskModal, openCreateTaskModal, setOnTaskSaved } = await import('./modal.js');
         setOnTaskSaved(() => initKanban(app));
 
         document.getElementById('kanban-add-task-btn')?.addEventListener('click', async () => {
-            const modal = openTaskModal();
-            const select = document.getElementById('task-team');
-            try {
-                const teamsResp = await window.app?.api?.get('/teams') || [];
-                const teams = teamsResp.items || [];
-                if (select) {
-                    select.innerHTML = teams.map(t =>
-                        `<option value="${t.id}">${t.name}</option>`
-                    ).join('');
-                }
-            } catch { /* ignore */ }
+            openCreateTaskModal(app);
         });
 
     } catch (e) {

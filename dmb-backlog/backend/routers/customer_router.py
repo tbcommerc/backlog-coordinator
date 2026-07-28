@@ -10,6 +10,7 @@ from models import Task, User, Team
 from schemas import TaskResponse, TaskListResponse
 from auth import get_current_user
 from routers.tasks_router import task_to_response
+from notifications import notify_customer_task_created
 
 router = APIRouter()
 
@@ -135,6 +136,10 @@ async def create_task_from_chat(
     db.add(task)
     db.commit()
     db.refresh(task)
+
+    # Notifications: customer task created
+    notify_customer_task_created(db, task, current_user.name)
+    db.commit()
 
     response_text = f"Задача создана: #{task.id} - {task.title}\n"
     response_text += f"Приоритет: {task.priority}\n"

@@ -79,6 +79,10 @@ export function renderSidebar() {
                     <i data-lucide="shield"></i>
                     <span>Администрирование</span>
                 </a>
+                <a href="#/audit-log" class="sidebar-item" aria-label="Аудит действий">
+                    <i data-lucide="scroll-text"></i>
+                    <span>Аудит действий</span>
+                </a>
             </div>
         </nav>
         <button class="sidebar-toggle" title="Свернуть/развернуть" aria-label="Свернуть или развернуть боковую панель">
@@ -115,6 +119,7 @@ export function initSidebar() {
             'Создать задачу': 'customer',
             'Настройки': 'settings',
             'Администрирование': 'admin',
+            'Аудит действий': 'admin',
         };
         document.querySelectorAll('.sidebar-item').forEach(el => {
             const label = el.getAttribute('aria-label');

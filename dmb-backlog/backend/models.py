@@ -137,13 +137,21 @@ class Team(Base):
     po = Column(String(100), nullable=True)
     cl = Column(String(100), nullable=True)
     it_pl = Column(String(100), nullable=True)
+    pl_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    po_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    cl_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    it_pl_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     abbr = Column(String(10), nullable=True)
     members = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     team_type = relationship("TeamType")
     tasks = relationship("Task", back_populates="team")
-    users = relationship("User", back_populates="team_rel")
+    users = relationship("User", back_populates="team_rel", foreign_keys="User.team_id")
+    pl_user = relationship("User", foreign_keys=[pl_id], post_update=True)
+    po_user = relationship("User", foreign_keys=[po_id], post_update=True)
+    cl_user = relationship("User", foreign_keys=[cl_id], post_update=True)
+    it_pl_user = relationship("User", foreign_keys=[it_pl_id], post_update=True)
 
 
 class Role(Base):
@@ -187,7 +195,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     role = relationship("Role", back_populates="users")
-    team_rel = relationship("Team", back_populates="users")
+    team_rel = relationship("Team", back_populates="users", foreign_keys=[team_id])
 
     @property
     def team_name(self):
@@ -234,15 +242,20 @@ class Task(Base):
     deadline_po_id = Column(Integer, ForeignKey("deadlines.id"), nullable=True)
     effort_days = Column(Integer, nullable=True)
     effort_rub = Column(Float, nullable=True)
-    effort_ba = Column(Float, nullable=True, comment='Бизнес-аналитика (дни)')
-    effort_sa = Column(Float, nullable=True, comment='Системная аналитика (дни)')
-    effort_fe = Column(Float, nullable=True, comment='Front-end разработка (дни)')
-    effort_be = Column(Float, nullable=True, comment='Back-end разработка (дни)')
-    effort_test = Column(Float, nullable=True, comment='Тестирование (дни)')
-    effort_design = Column(Float, nullable=True, comment='Дизайн (дни)')
+    effort_designee = Column(Float, nullable=True, comment='Designee (дни)')
+    effort_analytics = Column(Float, nullable=True, comment='Аналитика (дни)')
+    effort_be = Column(Float, nullable=True, comment='Разработка BE (дни)')
+    effort_python_be = Column(Float, nullable=True, comment='Разработка python BE (дни)')
+    effort_fe = Column(Float, nullable=True, comment='Разработка FE (дни)')
+    effort_test = Column(Float, nullable=True, comment='Tester (дни)')
+    effort_test_auto = Column(Float, nullable=True, comment='Tester Auto (дни)')
+    effort_delivery = Column(Float, nullable=True, comment='Delivery (дни)')
     financial_effect = Column(Float, nullable=True)
     cv = Column(Float, nullable=True)
     ice_score = Column(Float, nullable=True)
+    ice_impact = Column(Float, nullable=True, comment='ICE: Impact (1-10)')
+    ice_confidence = Column(Float, nullable=True, comment='ICE: Confidence (1-10)')
+    ice_ease = Column(Float, nullable=True, comment='ICE: Ease (1-10)')
     progress = Column(Integer, default=0)
     what_if = Column(Text, nullable=True)
     dod = Column(Text, nullable=True)
@@ -257,8 +270,10 @@ class Task(Base):
     it_product_lead_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     key_project = Column(Boolean, default=False, index=True)
     key_project_status = Column(String(50), nullable=True)
-    directorate_status = Column(String(50), nullable=True)
-    did_status = Column(String(50), nullable=True)
+    directorate_status = Column(Text, nullable=True)
+    directorate_status_updated_at = Column(DateTime(timezone=True), nullable=True)
+    did_status = Column(Text, nullable=True)
+    did_status_updated_at = Column(DateTime(timezone=True), nullable=True)
     is_from_leadership = Column(Boolean, default=False)
     is_regular = Column(Boolean, default=False)
     last_updated = Column(Date, nullable=True)
@@ -266,6 +281,9 @@ class Task(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_deleted = Column(Boolean, default=False, index=True)
+    version = Column(Integer, default=0, comment='Версия задачи (optimistic lock)')
+    lock_owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    lock_until = Column(DateTime(timezone=True), nullable=True)
 
     team = relationship("Team", back_populates="tasks")
     channel = relationship("Channel")
@@ -281,7 +299,10 @@ class Task(Base):
     responsible_po = relationship("User", foreign_keys=[responsible_po_id])
     business_analyst = relationship("User", foreign_keys=[business_analyst_id])
     it_product_lead = relationship("User", foreign_keys=[it_product_lead_id])
+    lock_owner = relationship("User", foreign_keys=[lock_owner_id])
     history = relationship("TaskHistory", back_populates="task")
+    comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")
+    attachments = relationship("TaskAttachment", back_populates="task", cascade="all, delete-orphan")
     epics = relationship("Epic", back_populates="task", cascade="all, delete-orphan")
 
 
@@ -292,12 +313,16 @@ class Epic(Base):
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    effort_ba = Column(Float, nullable=True, comment='Бизнес-аналитика (дни)')
-    effort_sa = Column(Float, nullable=True, comment='Системная аналитика (дни)')
-    effort_fe = Column(Float, nullable=True, comment='Front-end разработка (дни)')
-    effort_be = Column(Float, nullable=True, comment='Back-end разработка (дни)')
-    effort_test = Column(Float, nullable=True, comment='Тестирование (дни)')
-    effort_design = Column(Float, nullable=True, comment='Дизайн (дни)')
+    priority = Column(String(50), nullable=True, comment='Приоритет эпика')
+    effort_designee = Column(Float, nullable=True, comment='Designee (дни)')
+    effort_analytics = Column(Float, nullable=True, comment='Аналитика (дни)')
+    effort_be = Column(Float, nullable=True, comment='Разработка BE (дни)')
+    effort_python_be = Column(Float, nullable=True, comment='Разработка python BE (дни)')
+    effort_fe = Column(Float, nullable=True, comment='Разработка FE (дни)')
+    effort_test = Column(Float, nullable=True, comment='Tester (дни)')
+    effort_test_auto = Column(Float, nullable=True, comment='Tester Auto (дни)')
+    effort_delivery = Column(Float, nullable=True, comment='Delivery (дни)')
+    sort_order = Column(Integer, default=0, comment='Порядок сортировки')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -312,12 +337,16 @@ class Story(Base):
     epic_id = Column(Integer, ForeignKey("epics.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    effort_ba = Column(Float, nullable=True, comment='Бизнес-аналитика (дни)')
-    effort_sa = Column(Float, nullable=True, comment='Системная аналитика (дни)')
-    effort_fe = Column(Float, nullable=True, comment='Front-end разработка (дни)')
-    effort_be = Column(Float, nullable=True, comment='Back-end разработка (дни)')
-    effort_test = Column(Float, nullable=True, comment='Тестирование (дни)')
-    effort_design = Column(Float, nullable=True, comment='Дизайн (дни)')
+    progress = Column(Integer, default=0, comment='Прогресс: 0, 50, 100')
+    effort_designee = Column(Float, nullable=True, comment='Designee (дни)')
+    effort_analytics = Column(Float, nullable=True, comment='Аналитика (дни)')
+    effort_be = Column(Float, nullable=True, comment='Разработка BE (дни)')
+    effort_python_be = Column(Float, nullable=True, comment='Разработка python BE (дни)')
+    effort_fe = Column(Float, nullable=True, comment='Разработка FE (дни)')
+    effort_test = Column(Float, nullable=True, comment='Tester (дни)')
+    effort_test_auto = Column(Float, nullable=True, comment='Tester Auto (дни)')
+    effort_delivery = Column(Float, nullable=True, comment='Delivery (дни)')
+    sort_order = Column(Integer, default=0, comment='Порядок сортировки')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -358,16 +387,36 @@ class TaskHistory(Base):
     task = relationship("Task", back_populates="history")
 
 
+class TaskViewer(Base):
+    __tablename__ = "task_viewers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    last_seen_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
+    task = relationship("Task")
+
+
 class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
-    type = Column(String(50), nullable=False)
-    message = Column(Text, nullable=False)
+    category = Column(String(50), nullable=False, default="system")
+    title = Column(String(300), nullable=False)
+    body = Column(Text, nullable=True)
+    importance = Column(String(20), default="medium")
     is_read = Column(Boolean, default=False)
+    is_dismissed = Column(Boolean, default=False)
+    action_url = Column(String(200), nullable=True)
+    group_key = Column(String(100), nullable=True)
+    group_count = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    read_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User")
 
@@ -384,6 +433,7 @@ class Report(Base):
     fields = Column(Text, nullable=True)
     group_by = Column(String(50), nullable=True)
     sort_by = Column(String(50), nullable=True)
+    sort_order = Column(String(4), default="asc")
     is_public = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -399,21 +449,54 @@ class DictionaryItem(Base):
     sort_order = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    version = Column(Integer, default=0, comment='Версия справочника (optimistic lock)')
+    lock_owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    lock_until = Column(DateTime(timezone=True), nullable=True)
+
+    lock_owner = relationship("User", foreign_keys=[lock_owner_id])
 
 
-class NotificationTemplate(Base):
-    __tablename__ = "notification_templates"
+class UserNotificationPreference(Base):
+    __tablename__ = "user_notification_preferences"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(200), nullable=False)
-    text = Column(Text, nullable=False)
-    recipients = Column(String(500), nullable=True)
-    deadline_days = Column(Integer, nullable=True)
-    repeat_frequency = Column(String(50), nullable=True)
-    repeat_day = Column(Integer, nullable=True)
-    is_active = Column(Boolean, default=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    preferences = Column(Text, nullable=False, default='{}')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class TaskComment(Base):
+    __tablename__ = "task_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("task_comments.id"), nullable=True, index=True)
+    text = Column(Text, nullable=False)
+    mentioned_user_ids = Column(Text, nullable=True, comment='JSON array of mentioned user IDs')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    task = relationship("Task", back_populates="comments")
+    user = relationship("User")
+    parent = relationship("TaskComment", remote_side="TaskComment.id", back_populates="replies")
+    replies = relationship("TaskComment", back_populates="parent", cascade="all, delete-orphan")
+
+
+class TaskAttachment(Base):
+    __tablename__ = "task_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    original_name = Column(String(255), nullable=False)
+    mime_type = Column(String(100), nullable=True)
+    file_size = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    task = relationship("Task", back_populates="attachments")
+    user = relationship("User")
 
 
 class AuditLog(Base):
@@ -456,3 +539,18 @@ class ProjectTag(Base):
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False)
+
+
+class TeamCompetencyResource(Base):
+    __tablename__ = "team_competency_resources"
+
+    id = Column(Integer, primary_key=True, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False, index=True)
+    competency = Column(String(50), nullable=False, comment='Компетенция')
+    senior_count = Column(Integer, default=0, comment='Кол-во Senior')
+    middle_count = Column(Integer, default=0, comment='Кол-во Middle')
+    junior_count = Column(Integer, default=0, comment='Кол-во Junior')
+    vacation_days = Column(Integer, default=0, comment='Дни отпуска')
+    working_days = Column(Integer, default=66, comment='Рабочие дни в квартале')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

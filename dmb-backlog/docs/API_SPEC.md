@@ -1,7 +1,7 @@
 # API Спецификация DMB Backlog
 
-**Версия:** 3.0  
-**Дата:** 2026-06-29
+**Версия:** 3.1  
+**Дата:** 2026-07-25
 
 ---
 
@@ -310,33 +310,71 @@ API версионируется через префикс пути: `/api/v1/`.
 ### POST /tasks
 Создать задачу (требует `backlog_team: write_own`).
 
+**Обязательные поля:** `title` (min_length=1), `team_id`, `priority_id`
+
+**Опциональные поля:** `description`, `date_received`, `business_customer`, `project_id`, `task_type_id`, `channel_id`, `department_id`, `deadline_id`, `deadline_po_id`, `effort_days`, `effort_rub`, `financial_effect`, `progress` (default: 0), `key_project`, `is_from_leadership`, `is_regular`, `ice_impact`, `ice_confidence`, `ice_ease`, `link_mockups`, `link_jira`, `comment`
+
+**Бизнес-логика:**
+- `status_id` устанавливается в 1 (НОВАЯ ЗАДАЧА) по умолчанию
+- `cv` = `financial_effect / effort_rub` (если оба заполнены и effort_rub > 0)
+- `ice_score` = `(ice_impact × ice_confidence × ice_ease) / 10` (если все три заполнены)
+- Создаётся запись в `task_history` для обязательных + заполненных полей
+- Создаётся запись в `audit_log` (action=create, entity_type=task)
+- `created_by` устанавливается из JWT-токена текущего пользователя
+
 **Request:**
 ```json
 {
   "team_id": 1,
   "title": "Интеграция с API ЦБ",
   "description": "Описание задачи...",
+  "priority_id": 1,
   "date_received": "2026-06-01",
   "business_customer": "ДИД",
-  "project": "API Integration",
-  "task_type": "Feature",
-  "priority": "Высокий",
-  "status": "Сбор требований",
-  "deadline": "3Q 26",
+  "project_id": 2,
+  "task_type_id": 1,
+  "channel_id": 1,
   "effort_days": 10,
-  "effort_rub": 2.5,
-  "financial_effect": 15.0,
-  "progress": 0,
-  "key_project": false
+  "effort_rub": 2500000,
+  "financial_effect": 15000000,
+  "ice_impact": 8,
+  "ice_confidence": 7,
+  "ice_ease": 6
 }
 ```
 
-**Response 201:** объект задачи
+**Response 201:** объект задачи с вычисленными `cv`, `ice_score`, `status_id = 1`
 
 ### PUT /tasks/{id}
 Обновить задачу (передаются только изменяемые поля). Автоматически создаётся запись в `task_history` для каждого изменённого поля.
 
+**Параметры запроса:**
+- Все поля из TaskUpdate (опциональные)
+- `version` (int) — текущая версия задачи для optimistic lock. Если передана и не совпадает с текущей версией в БД — 409 Conflict.
+- `force_save` (bool, default: false) — принудительное сохранение. Если true — игнорирует проверку version и перезаписывает данные. Используется при разрешении конфликта версий.
+
+**Блокировка:** Если задача заблокирована другим пользователем — ответ 423 (Locked). Если заблокирована текущим пользователем — обновление разрешено (блокировка сохраняется).
+
+**Оптимистическая блокировка:** Если `version` в запросе не совпадает с `version` в БД — ответ 409 Conflict с текущим состоянием задачи для разрешения конфликта.
+
+**Бизнес-логика при обновлении:**
+- Если изменены `financial_effect` или `effort_rub` — пересчитывается `cv`
+- Если изменены `ice_impact`, `ice_confidence` или `ice_ease` — пересчитывается `ice_score`
+- Все изменения записываются в `task_history` (field_name, old_value, new_value)
+
 **Response 200:** обновлённый объект задачи
+
+**Response 409:** Версия задачи изменилась (optimistic lock conflict)
+```json
+{
+  "detail": {
+    "message": "Задача была изменена другим пользователем. Пожалуйста, обновите страницу и повторите изменения.",
+    "current_version": 5,
+    "submitted_version": 3,
+    "task": { "id": 1, "version": 5, "..." : "..." }
+  }
+}
+```
 
 ### DELETE /tasks/{id}
 Мягкое удаление задачи (ставит `is_deleted = True`).
@@ -347,6 +385,79 @@ API версионируется через префикс пути: `/api/v1/`.
   "message": "Task deleted"
 }
 ```
+
+### GET /tasks/{id}/lock
+Получить статус блокировки задачи.
+
+**Response 200:**
+```json
+{
+  "locked": true,
+  "lock_owner_id": 3,
+  "lock_owner_name": "Иванов И.И.",
+  "lock_until": "2026-07-27T15:30:00Z",
+  "is_mine": false
+}
+```
+
+### POST /tasks/{id}/lock
+Захватить блокировку (15 минут). Если уже заблокирована другим пользователем — 423. Если заблокирована текущим пользователем — продлевает.
+
+**Response 200:**
+```json
+{
+  "locked": true,
+  "lock_owner_id": 3,
+  "lock_owner_name": "Иванов И.И.",
+  "lock_until": "2026-07-27T15:45:00Z",
+  "is_mine": true
+}
+```
+
+**Response 423:**
+```json
+{
+  "detail": "Задача в данный момент редактируется пользователем Петров П.П."
+}
+```
+
+### DELETE /tasks/{id}/lock
+Снять блокировку (только владелец). Fire-and-forget на клиенте.
+
+**Response 200:** `{ "message": "Lock released" }`
+
+### POST /tasks/{id}/viewers
+Зарегистрировать текущего пользователя как «смотрящего». Если уже зарегистрирован — обновляет `last_seen_at`.
+
+**Response 200:**
+```json
+{
+  "user_id": 3,
+  "user_name": "Иванов И.И.",
+  "last_seen_at": "2026-07-27T15:30:00Z"
+}
+```
+
+### GET /tasks/{id}/viewers
+Получить список активных «смотрящих» (кроме текущего пользователя). Автоматически удаляет записи старше 10 минут.
+
+**Response 200:**
+```json
+{
+  "viewers": [
+    {
+      "user_id": 5,
+      "user_name": "Петров П.П.",
+      "last_seen_at": "2026-07-27T15:28:00Z"
+    }
+  ]
+}
+```
+
+### DELETE /tasks/{id}/viewers
+Удалить текущего пользователя из списка «смотрящих». Вызывается при закрытии модалки задачи.
+
+**Response 200:** `{ "message": "ok" }`
 
 ### POST /tasks/bulk
 Массовые операции.
@@ -365,6 +476,152 @@ API версионируется через префикс пути: `/api/v1/`.
   "message": "Action 'close' applied to 3 tasks"
 }
 ```
+
+### GET /tasks/{id}/comments
+Получить комментарии задачи (древовидная структура: корневые + вложенные ответы).
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "task_id": 10,
+      "user_id": 3,
+      "user_name": "Иванов И.И.",
+      "text": "Нужно ускорить реализацию",
+      "mentioned_user_ids": [5, 7],
+      "parent_id": null,
+      "replies": [
+        {
+          "id": 2,
+          "task_id": 10,
+          "user_id": 5,
+          "user_name": "Петров П.П.",
+          "text": "Принято, начну завтра",
+          "mentioned_user_ids": null,
+          "parent_id": 1,
+          "replies": [],
+          "created_at": "2026-07-24T16:00:00Z"
+        }
+      ],
+      "created_at": "2026-07-24T15:30:00Z"
+    }
+  ],
+  "total": 5
+}
+```
+
+Корневые комментарии (`parent_id=null`) содержат массив `replies` с вложенными ответами. `total` — общее количество комментариев (включая ответы всех уровней).
+
+### POST /tasks/{id}/comments
+Добавить комментарий к задаче. Поддерживает ответы на другие комментарии через `parent_id`.
+Автоматически создаёт:
+- запись в `task_history` (field="comment")
+- уведомления типа `mention` для каждого @упомянутого пользователя
+
+**Request:**
+```json
+{
+  "text": "Начать завтра, @petrov посодействовать",
+  "parent_id": 1
+}
+```
+```
+
+**Синтаксис @-упоминаний:** `@login` — ищет пользователя по логину (без пробелов). При вводе `@` появляется выпадающий список пользователей для выбора.
+
+**Response 201:** созданный комментарий
+
+**Response 422:** `"Комментарий не может быть пустым"`
+
+---
+
+## ВЛОЖЕНИЯ (ATTACHMENTS)
+
+### GET /tasks/{task_id}/attachments
+Список файловых вложений задачи.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "task_id": 44,
+      "user_id": 2,
+      "user_name": "Иван Иванов",
+      "filename": "a1b2c3d4.pdf",
+      "original_name": "specification.pdf",
+      "mime_type": "application/pdf",
+      "file_size": 1048576,
+      "download_url": "/uploads/44/a1b2c3d4.pdf",
+      "created_at": "2026-07-24T15:00:00"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### POST /tasks/{task_id}/attachments
+Загрузка файла к задаче.
+
+**Headers:** `Authorization: Bearer <token>`, `Content-Type: multipart/form-data`
+
+**Body (form-data):**
+| Поле | Тип | Описание |
+|------|-----|----------|
+| file | File | Файл (макс. 50 МБ) |
+
+**Response 201:** созданный объект вложения (см. GET response item)
+
+**Response 413:** `"File too large (max 50 MB)"`
+
+**Side effects:**
+- Файл сохраняется в `uploads/{task_id}/{uuid}.{ext}`
+- Создаётся запись в `task_history` (field="attachment", new_value="Загружен файл: name.ext")
+
+---
+
+### DELETE /tasks/{task_id}/attachments/{attachment_id}
+Удаление вложения.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response 200:**
+```json
+{"success": true, "detail": null}
+```
+
+**Side effects:**
+- Файл удаляется с диска
+- Создаётся запись в `task_history` (field="attachment", old_value="Удалён файл: name.ext")
+
+---
+
+### PUT /tasks/{task_id}/links
+Обновление ссылок на макеты и Jira.
+
+**Headers:** `Authorization: Bearer <token>`, `Content-Type: application/json`
+
+**Body:**
+```json
+{
+  "link_mockups": "https://figma.com/file/abc123",
+  "link_jira": "https://jira.example.com/PROJ-123"
+}
+```
+
+Оба поля опциональны. Переданные значения заменяют текущие. Пустая строка или `null` очищает поле.
+
+**Response 200:** обновлённая задача (TaskResponse)
+
+**Side effects:**
+- Для каждого изменённого поля создаётся запись в `task_history`
 
 ---
 
@@ -522,13 +779,59 @@ API версионируется через префикс пути: `/api/v1/`.
 ]
 ```
 
+### GET /reports/{id}
+Получить отчёт по ID.
+
+**Response 200:** объект отчёта (аналогично элементу списка)
+
+**Response 404:** `{ "detail": "Report not found" }`
+
 ### POST /reports
 Создать пользовательский отчёт.
 
-### GET /reports/{id}/execute
-Выполнить отчёт с его фильтрами.
+**Request:**
+```json
+{
+  "name": "Мои задачи команды",
+  "description": "Задачи моей команды в статусе В РАБОТЕ",
+  "type": "custom",
+  "filters": "[{\"field\":\"team_name\",\"operator\":\"equals\",\"value\":\"Pre-trade\"},{\"field\":\"status_name\",\"operator\":\"equals\",\"value\":\"ПРИНЯТА В РАБОТУ\"}]",
+  "fields": "[\"title\",\"priority_name\",\"status_name\",\"progress\",\"owner_name\"]",
+  "group_by": "status_name",
+  "sort_by": "priority_name",
+  "sort_order": "desc",
+  "is_public": false
+}
+```
 
-**Response 200:**
+**Response 201:** созданный объект отчёта
+
+### PUT /reports/{id}
+Обновить отчёт (передаются только изменяемые поля).
+
+**Request:** аналогично POST (любая комбинация полей)
+
+**Response 200:** обновлённый объект отчёта
+
+**Response 404:** `{ "detail": "Report not found" }`
+
+### DELETE /reports/{id}
+Удалить отчёт.
+
+**Response 200:** `{ "message": "Report deleted" }`
+
+**Response 404:** `{ "detail": "Report not found" }`
+
+### GET /reports/{id}/execute
+Выполнить отчёт с его фильтрами, группировкой и сортировкой.
+
+**Бизнес-логика:**
+- Применяет фильтры из JSON (поддержка операторов: equals, not_equals, contains, in, gt, lt)
+- Для строковых фильтров (team_name, status_name, priority_name, project_name) выполняет JOIN со справочниками
+- Применяет сортировку (sort_by + sort_order: asc/desc)
+- Если указана группировка (group_by) — группирует результаты
+
+**Response 200 (без группировки):**
 ```json
 {
   "total": 25,
@@ -536,20 +839,38 @@ API версионируется через префикс пути: `/api/v1/`.
     {
       "id": 1,
       "title": "Задача 1",
-      "team": "Pre-trade",
-      "priority": "Высокий",
-      "status": "В работе",
-      "deadline": "3Q 26",
+      "team_name": "Pre-trade",
+      "priority_name": "Высокий",
+      "status_name": "ПРИНЯТА В РАБОТУ",
       "progress": 45,
       "financial_effect": 15.0,
-      "estimate_cost": null,
-      "value_score": null
+      "owner_name": "Фомин Д."
+    }
+  ],
+  "grouped": false
+}
+```
+
+**Response 200 (с группировкой):**
+```json
+{
+  "total": 25,
+  "grouped": true,
+  "group_field": "status_name",
+  "groups": [
+    {
+      "name": "ПРИНЯТА В РАБОТУ",
+      "count": 15,
+      "items": [ ... ]
+    },
+    {
+      "name": "ВЫПОЛНЕНА",
+      "count": 10,
+      "items": [ ... ]
     }
   ]
 }
 ```
-
-### PUT /reports/{id} — обновить отчёт (TODO)
 
 ---
 
@@ -576,7 +897,45 @@ API версионируется через префикс пути: `/api/v1/`.
 ]
 ```
 
-POST/PUT/DELETE для каждого справочника (требуют `admin: partial`).
+POST/PUT/DELETE для каждого справочника (требуют `admin: partial`). PUT/POST/DELETE проверяют блокировку — HTTP 423 если справочник заблокирован другим пользователем.
+
+### GET /admin/dict-locks
+Статус блокировки всех справочников (для отображения индикаторов на карточках).
+
+**Response 200:**
+```json
+{
+  "priority": {
+    "locked": true,
+    "lock_owner_id": 1,
+    "lock_owner_name": "Иванов И.И.",
+    "lock_until": "2026-07-27T12:15:00Z",
+    "is_mine": false,
+    "version": 3
+  },
+  "status": { "locked": false, "is_mine": false, "version": 0 }
+}
+```
+
+### POST /admin/{dict_type}/lock
+Захватить блокировку справочника на 15 минут (требует `admin: partial`). Если заблокирован другим — HTTP 423.
+
+**Response 200:**
+```json
+{
+  "locked": true,
+  "lock_owner_id": 1,
+  "lock_owner_name": "Иванов И.И.",
+  "lock_until": "2026-07-27T12:15:00Z",
+  "is_mine": true,
+  "version": 3
+}
+```
+
+### DELETE /admin/{dict_type}/lock
+Снять блокировку (при сохранении или закрытии модалки). Срабатывает даже если владелец другой — для fire-and-forget.
+
+**Response 200:** DictLockResponse (locked: false)
 
 ### GET /admin/notification-templates
 Список всех шаблонов уведомлений.
@@ -606,6 +965,63 @@ POST/PUT/DELETE для каждого справочника (требуют `ad
 
 ### DELETE /admin/notification-templates/{id}
 Удалить шаблон (требует `admin: partial`).
+
+---
+
+## AUDIT LOG
+
+### GET /admin/audit-log
+Журнал аудита действий с фильтрацией и пагинацией (требует `admin: read`).
+
+**Query Parameters:**
+
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|-------------|----------|
+| `page` | int | 1 | Номер страницы |
+| `per_page` | int | 50 | Записей на страницу (1-200) |
+| `user_id` | int | — | Фильтр по ID пользователя |
+| `action` | string | — | Фильтр по типу действия: `create`, `update`, `delete` |
+| `entity_type` | string | — | Фильтр по типу сущности: `tasks`, `teams`, `users`, `roles` и др. |
+| `date_from` | date | — | Начальная дата диапазона (YYYY-MM-DD) |
+| `date_to` | date | — | Конечная дата диапазона (YYYY-MM-DD) |
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "user_name": "Администратор",
+      "action": "create",
+      "entity_type": "tasks",
+      "entity_id": 42,
+      "details": "{\"method\": \"POST\", \"path\": \"/api/v1/tasks\", \"status_code\": 201}",
+      "ip_address": "192.168.1.100",
+      "created_at": "2026-07-25T14:30:00"
+    }
+  ],
+  "total": 1500,
+  "page": 1,
+  "per_page": 50,
+  "pages": 30
+}
+```
+
+### GET /admin/audit-log/filters
+Получить доступные значения для фильтров (требует `admin: read`).
+
+**Response 200:**
+```json
+{
+  "actions": ["create", "update", "delete"],
+  "entity_types": ["tasks", "teams", "users", "roles", "projects"],
+  "users": [
+    { "id": 1, "name": "Администратор" },
+    { "id": 2, "name": "Т. Бабиак" }
+  ]
+}
+```
 
 ---
 
@@ -693,7 +1109,19 @@ POST/PUT/DELETE для каждого справочника (требуют `ad
 | 401 | Нет токена | `{ "detail": "Invalid or expired token" }` |
 | 403 | Нет прав | `{ "detail": "Permission denied" }` |
 | 404 | Задача не найдена | `{ "detail": "Task not found" }` |
+| 409 | Конфликт версий | `{ "detail": { "message", "current_version", "submitted_version", "task" } }` |
 | 422 | Ошибка валидации | `{ "detail": [...] }` |
+
+### Conflict Resolution Flow
+
+Клиентская логика разрешения конфликта версий (frontend):
+
+1. При получении 409 → открывается модалка «Конфликт версий» с таблицей diff
+2. Пользователь выбирает radio-кнопки для каждого конфликтного поля (сервер / ваше)
+3. **«Сохранить выбранные»** — собираются данные из формы + значения с сервера для выбранных серверных полей → `PUT /tasks/{id}` с `version` = серверная версия
+4. **«Принудительно сохранить»** — `PUT /tasks/{id}` с `force_save: true`, все данные берутся из формы
+5. **«Обновить с сервера»** — `GET /tasks/{id}` → перезагрузка карточки
+6. При повторном 409 (шаг 3) — модалка пересоздаётся с актуальными данными
 
 ### DELETE /tasks/{id}
 | Код | Ситуация | Ответ |

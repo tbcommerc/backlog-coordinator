@@ -160,14 +160,36 @@ def check_rate_limit(key: str, max_requests: int, window: int) -> bool:
 
 ### 4.4 Аудит
 
-Middleware (`backend/middleware.py`) логирует:
-- Все write-операции (POST, PUT, DELETE)
+**Сбор данных:**
+Middleware (`backend/middleware.py`) автоматически логирует:
+- Все write-операции (POST, PUT, DELETE, PATCH) к `/api/*`
 - IP-адрес запроса
-- User ID (из токена)
+- User ID (из JWT-токена)
 - Timestamp
-- Path запроса
+- Path запроса, HTTP-метод, статус-код ответа
+- Тип сущности (извлекается из URL: `/api/v1/{entity_type}/...`)
+- ID сущности (извлекается из URL: 4-й сегмент пути)
 
-Логи хранятся в `backend/logs/`.
+Данные записываются в таблицу `audit_log` в БД.
+
+**Просмотр журнала:**
+Администраторы (`admin: read`) могут просматривать журнал аудита через интерфейс `#/audit-log` (отдельная страница в sidebar). Реализованы фильтры:
+- По пользователю (select)
+- По типу действия: CREATE, UPDATE, DELETE (select)
+- По типу сущности: tasks, teams, users, roles и др. (select)
+- По диапазону дат (date pickers)
+- Пагинация: 50 записей на страницу
+
+**API-эндпоинты:**
+- `GET /admin/audit-log` — получение записей с фильтрами и пагинацией
+- `GET /admin/audit-log/filters` — получение доступных значений фильтров
+
+**Хранение:**
+- Записи хранятся в таблице `audit_log` БД (SQLite)
+- Логи приложения — в `backend/logs/`
+
+**Защита:**
+- Доступ к просмотру журнала — только для ролей с `admin: read` или `admin: partial`
 
 ---
 

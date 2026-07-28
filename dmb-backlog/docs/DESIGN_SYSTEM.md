@@ -336,6 +336,20 @@
 | **Error** | Тост-уведомление, модалка закрывается |
 | **Fullscreen** (≤768px) | `width: 95%; max-height: 90vh` |
 
+### 5.7.6a Модалка конфликта версий (conflict-modal--wide)
+
+| Элемент | Внешний вид |
+|---------|------------|
+| **Overlay** | `.conflict-overlay`: `position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px)` |
+| **Модалка** | `.conflict-modal--wide`: `max-width: 680px; border-radius: 12px; padding: 28px 32px` |
+| **Заголовок** | Иконка предупреждения (28×28, amber) + название + подзаголовок |
+| **Версии** | `.conflict-versions`: жёлтый баннер с номерами версий |
+| **Diff-таблица** | `.diff-table--selectable`: двухколоночный diff с radio-кнопками |
+| **Radio-кнопки** | 2 колонки: «Сервер» / «Ваше». Акцентный цвет при выборе |
+| **Подсветка** | Выбранная колонка: сервер — `background: #dcfce7; color: #166534`, ваше — `background: #dbeafe; color: #1e40af` |
+| **Действия** | `.conflict-actions--row`: горизонтальный ряд 4 кнопок (primary / danger / secondary / ghost) |
+| **Прокрутка** | `.conflict-diff-wrap`: `max-height: 360px; overflow-y: auto` |
+
 ### 5.7.7 Sidebar
 
 | Состояние | Внешний вид |
@@ -640,4 +654,27 @@
 200       — Sticky-элементы навигации
 300-400   — Модальные окна (backdrop 300, modal 400)
 500       — Toast-уведомления
+10000     — Модалка конфликта версий (z-index: 10000)
 ```
+
+## 13. Conflict Resolution UI
+
+### 13.1 Компоненты
+
+| Компонент | Класс | Описание |
+|-----------|-------|----------|
+| Overlay | `.conflict-overlay` | Затемнённый фон модалки конфликта |
+| Модалка | `.conflict-modal--wide` | Расширенная модалка (680px) с diff-таблицей |
+| Diff-таблица | `.diff-table--selectable` | Таблица с radio-кнопками для выбора значений |
+| Radio-ячейка | `.diff-radio-cell` | Ячейка с radio-кнопкой (28px) |
+| Radio | `.diff-radio` | Радио-кнопка с accent-color |
+| Строка diff | `.diff-row` | Строка таблицы с hover-эффектом |
+| Обёртка таблицы | `.conflict-diff-wrap` | Контейнер с прокруткой (max-height: 360px) |
+| Гorizontalный ряд | `.conflict-actions--row` | Ряд кнопок действий (flex-direction: row) |
+
+### 13.2 Цвета выбора
+
+| Выбор | Цвет фона | Цвет текста | Описание |
+|-------|-----------|-------------|----------|
+| Сервер (по умолчанию) | `#dcfce7` | `#166534` | Зелёный — серверное значение |
+| Ваше | `#dbeafe` | `#1e40af` | Синий — ваше значение |

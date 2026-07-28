@@ -12,7 +12,7 @@ from models import (
     ProjectStatus, TaskStatus,
     Team, Role, User, Project, Task, TaskHistory,
     Notification, Report, DictionaryItem,
-    NotificationTemplate, AuditLog,
+    UserNotificationPreference, AuditLog,
     Tag, IssueTag, ProjectTag
 )
 

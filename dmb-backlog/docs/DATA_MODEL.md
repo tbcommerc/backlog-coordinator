@@ -1,7 +1,7 @@
 # Модель данных DMB Backlog
 
-**Версия:** 3.0  
-**Дата:** 2026-06-29
+**Версия:** 3.1  
+**Дата:** 2026-07-25
 
 ---
 
@@ -161,7 +161,9 @@ erDiagram
         boolean key_project
         varchar key_project_status
         varchar directorate_status
+        timestamp directorate_status_updated_at
         varchar did_status
+        timestamp did_status_updated_at
         boolean is_from_leadership
         boolean is_regular
         date last_updated
@@ -169,6 +171,7 @@ erDiagram
         timestamp created_at
         timestamp updated_at
         boolean is_deleted
+        int version
     }
     epics {
         int id PK
@@ -237,6 +240,25 @@ erDiagram
         varchar field_name
         text old_value
         text new_value
+    }
+    task_comments {
+        int id PK
+        int task_id FK
+        int user_id FK
+        int parent_id FK
+        text text
+        text mentioned_user_ids
+        timestamp created_at
+    }
+    task_attachments {
+        int id PK
+        int task_id FK
+        int user_id FK
+        varchar filename
+        varchar original_name
+        varchar mime_type
+        int file_size
+        timestamp created_at
     }
     audit_log {
         int id PK
@@ -313,6 +335,8 @@ erDiagram
     users ||--o{ projects : "responsible_pl"
     tasks ||--o{ task_history : ""
     users ||--o{ task_history : "changed_by"
+    tasks ||--o{ task_comments : ""
+    users ||--o{ task_comments : "author"
     users ||--o{ notifications : ""
     tasks ||--o{ notifications : ""
     users ||--o{ reports : "created_by"
@@ -513,8 +537,10 @@ erDiagram
 | it_product_lead_id | int | → users.id | IT Product Lead |
 | key_project | boolean | — | Ключевой проект |
 | key_project_status | varchar(50) | — | Статус ключ. проекта |
-| directorate_status | varchar(50) | — | Статус для директоров |
-| did_status | varchar(50) | — | Статус для ДИД |
+| directorate_status | text | — | Статус для директорской оперативки (текст) |
+| directorate_status_updated_at | timestamp | — | Дата обновления статуса для директорской |
+| did_status | text | — | Статус для оперативки ДИД (текст) |
+| did_status_updated_at | timestamp | — | Дата обновления статуса для ДИД |
 | is_from_leadership | boolean | — | От руководства |
 | is_regular | boolean | — | Регулярная задача |
 | last_updated | date | — | Дата последнего изменения |
@@ -522,6 +548,9 @@ erDiagram
 | created_at | timestamp | — | Дата создания |
 | updated_at | timestamp | — | Дата обновления |
 | is_deleted | boolean | — | Мягкое удаление |
+| version | int | — | Версия задачи (optimistic lock, инкрементируется при каждом PUT) |
+| lock_owner_id | int | → users.id | Блокировка: ID владельца блокировки |
+| lock_until | timestamp | — | Блокировка: время окончания (UTC) |
 
 ---
 
@@ -596,6 +625,31 @@ erDiagram
 | old_value | text | — |
 | new_value | text | — |
 
+### task_comments — Комментарии к задачам
+| Колонка | Тип | FK | Описание |
+|---------|-----|-----|----------|
+| id | int PK | — | Автоинкремент |
+| task_id | int | → tasks.id | Задача |
+| user_id | int | → users.id | Автор |
+| parent_id | int | → task_comments.id | Родительский комментарий (NULL = корневой) |
+| text | text | — | Текст комментария |
+| mentioned_user_ids | text (JSON) | — | ID упомянутых пользователей `["1","3"]` |
+| created_at | timestamp | — | Дата создания |
+
+### task_attachments — Файловые вложения
+| Колонка | Тип | FK | Описание |
+|---------|-----|-----|----------|
+| id | int PK | — | Автоинкремент |
+| task_id | int | → tasks.id | Задача |
+| user_id | int | → users.id | Кто загрузил |
+| filename | varchar(255) | — | Имя файла на диске (UUID.ext) |
+| original_name | varchar(255) | — | Оригинальное имя файла |
+| mime_type | varchar(100) | — | MIME-тип |
+| file_size | int | — | Размер в байтах |
+| created_at | timestamp | — | Дата загрузки |
+
+Файлы хранятся в `backend/uploads/{task_id}/`. Связь `Task.attachments` с `cascade="all, delete-orphan"` обеспечивает автоматическое удаление вложений при удалении задачи.
+
 ### audit_log — Аудит
 | Колонка | Тип | FK |
 |---------|-----|-----|
@@ -666,20 +720,38 @@ erDiagram
 ## Отчёты и словари
 
 ### reports — Отчёты
-| Колонка | Тип | FK |
-|---------|-----|-----|
-| id | int PK | — |
-| name | varchar(200) | — |
-| description | text | — |
-| type | varchar(20) | standard/custom |
-| created_by | int | → users.id |
-| filters | text | JSON фильтров |
-| fields | text | JSON полей |
-| group_by | varchar(50) | — |
-| sort_by | varchar(50) | — |
-| sort_order | varchar(4) | asc/desc |
-| is_public | boolean | — |
-| created_at | timestamp | — |
+| Колонка | Тип | FK | Описание |
+|---------|-----|-----|----------|
+| id | int PK | — | Автоинкремент |
+| name | varchar(200) | — | Название отчёта |
+| description | text | — | Описание |
+| type | varchar(20) | — | Тип: standard (предустановленный) / custom (пользовательский) |
+| created_by | int | → users.id | Автор (NULL для стандартных) |
+| filters | text | — | JSON-массив фильтров `[{"field":"...","operator":"...","value":"..."}]` |
+| fields | text | — | JSON-массив полей для отображения `["title","priority_name","..."]` или NULL (все) |
+| group_by | varchar(50) | — | Поле группировки: team_name, project_name, status_name, priority_name, department_name |
+| sort_by | varchar(50) | — | Поле сортировки |
+| sort_order | varchar(4) | — | Направление сортировки: asc (по умолчанию) / desc |
+| is_public | boolean | — | Видимость: false = только автор, true = все пользователи |
+| created_at | timestamp | — | Дата создания |
+
+**Формат filters:**
+```json
+[
+  {"field": "priority_name", "operator": "equals", "value": "ВЫСОКИЙ"},
+  {"field": "team_name", "operator": "in", "value": ["Pre-trade", "Risk"]},
+  {"field": "progress", "operator": "gt", "value": 50}
+]
+```
+
+Операторы: `equals`, `not_equals`, `contains`, `in` (массив), `gt`, `lt`.
+
+**Формат fields:**
+```json
+["title", "team_name", "priority_name", "status_name", "progress", "financial_effect"]
+```
+
+Доступные поля: id, title, description, team_name, priority_name, status_name, project_name, business_customer, department_name, channel_name, task_type_name, deadline_name, owner_name, progress, effort_days, effort_rub, financial_effect, cv, ice_score, key_project, key_project_status, directorate_status, did_status, date_received, created_at, updated_at.
 
 ### dictionary_items — Элементы справочников (legacy/admin UI)
 | Колонка | Тип | Описание |
@@ -692,8 +764,17 @@ erDiagram
 | sort_order | int | Порядок сортировки |
 | is_active | boolean | Активен |
 | created_at | timestamp | — |
+| version | int | Версия (optimistic lock, инкремент при каждом PUT) |
+| lock_owner_id | int FK→users | Владелец блокировки |
+| lock_until | timestamp | Время окончания блокировки (UTC) |
 
 Типы справочников: priority, status, task_type, business_customer, channel, deadline, department, team_type, project_status.
+
+**Блокировка справочников:**
+- Аналогична блокировке задач (поле `tasks.lock_owner_id` / `tasks.lock_until`)
+- `lock_owner_id` → `users` — кто открыл справочник на редактирование
+- `lock_until` — автоистечение через 15 минут; при PUT/DELETE проверяется `_is_dict_lock_active()`
+- PUT возвращает HTTP 423 если заблокирован другим пользователем; владелец блокировки может редактировать
 
 ---
 
@@ -708,6 +789,7 @@ erDiagram
 | `tasks` | `ix_tasks_key_project` | key_project | Фильтрация ключевых проектов (отчёты, дашборд) |
 | `tasks` | `ix_tasks_is_deleted` | is_deleted | Исключение удалённых задач из всех запросов |
 | `task_history` | (FK index) | task_id | Быстрый поиск истории изменений по задаче |
+| `task_comments` | (FK index) | task_id | Быстрый поиск комментариев по задаче |
 | `dictionary_items` | `ix_dictionary_items_dict_type` | dict_type | Фильтрация по типу справочника |
 | `notification_templates` | (no explicit) | — | Мало данных (сотни), индекс не требуется |
 | `audit_log` | (no explicit) | — | Мало данных, поиск по user_id |
@@ -730,6 +812,7 @@ CREATE INDEX idx_tasks_deadline_id ON tasks(deadline_id);
 CREATE INDEX idx_tasks_created_at ON tasks(created_at);
 CREATE INDEX idx_task_history_task_id ON task_history(task_id);
 CREATE INDEX idx_task_history_changed_at ON task_history(changed_at);
+CREATE INDEX idx_task_comments_task_id ON task_comments(task_id);
 CREATE INDEX idx_audit_log_created_at ON audit_log(created_at);
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_notifications_is_read ON notifications(is_read);
@@ -774,6 +857,15 @@ CREATE INDEX idx_stories_epic_id ON stories(epic_id);
   - `task_id`, `changed_by`, `changed_at`, `field_name`, `old_value`, `new_value`
 - История позволяет восстановить предыдущие значения.
 - Лимит истории: последние 50 записей возвращаются API, физического удаления нет.
+
+### Комментарии к задачам
+
+- Комментарии хранятся в `task_comments` (отдельная таблица, не конфликтует с существующими полями `comment` и `status_comment` в tasks).
+- При создании комментария:
+  - создаётся запись в `task_comments` (task_id, user_id, text, mentioned_user_ids, created_at)
+  - создаётся запись в `task_history` (field="comment", new_value=text)
+  - для каждого @упомянутого пользователя создаётся уведомление типа `mention` в `notifications`
+- Синтаксис @-упоминаний: `@login` (по логину пользователя, без пробелов).
 
 ### Аудит операций
 

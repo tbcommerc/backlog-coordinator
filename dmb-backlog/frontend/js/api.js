@@ -179,4 +179,46 @@ export class API {
      * @returns {Promise<*>}
      */
     async patch(path, data) { return this.request('PATCH', path, data); }
+
+    /**
+     * Upload file via FormData
+     * @param {string} path
+     * @param {File} file
+     * @returns {Promise<*>}
+     */
+    async upload(path, file) {
+        const url = `${this.baseURL}${path}`;
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const tokens = JSON.parse(localStorage.getItem('dmb_tokens') || '{}');
+        const headers = {};
+        if (tokens.access) {
+            headers['Authorization'] = `Bearer ${tokens.access}`;
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: formData
+        });
+
+        if (response.status === 401) {
+            const refreshed = await this.refreshToken();
+            if (refreshed) {
+                const retryHeaders = {};
+                const newTokens = JSON.parse(localStorage.getItem('dmb_tokens') || '{}');
+                if (newTokens.access) retryHeaders['Authorization'] = `Bearer ${newTokens.access}`;
+                const retryResponse = await fetch(url, { method: 'POST', headers: retryHeaders, body: formData });
+                return this.handleResponse(retryResponse);
+            } else {
+                localStorage.removeItem('dmb_tokens');
+                localStorage.removeItem('dmb_user');
+                window.location.reload();
+                throw new APIError('Authentication expired', 401);
+            }
+        }
+
+        return this.handleResponse(response);
+    }
 }

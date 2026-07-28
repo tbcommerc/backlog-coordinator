@@ -2,19 +2,21 @@
 DMB Backlog - Admin Router (CRUD for roles, teams, users, dictionaries)
 """
 import json
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import case as sql_case
+from sqlalchemy import case as sql_case, desc
 from typing import List, Optional
+from datetime import datetime, timezone, timedelta
 
 from database import get_db
-from models import Role, Team, User, Task, DictionaryItem, NotificationTemplate, DisplaySetting, ColumnLabel, Project, BusinessCustomer, Department
+from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, Project, BusinessCustomer, Department, AuditLog
 from schemas import (
     RoleCreate, RoleUpdate, RoleResponse,
     TeamCreate, TeamUpdate, TeamResponse,
     UserCreate, UserUpdate, UserResponse,
     DictionaryItemCreate, DictionaryItemUpdate, DictionaryItemResponse,
-    NotificationTemplateCreate, NotificationTemplateUpdate, NotificationTemplateResponse,
+    DictLockResponse,
     DisplaySettingUpdate, DisplaySettingResponse,
     ColumnLabelUpdate, ColumnLabelResponse,
     ProjectCreate, ProjectUpdate, ProjectResponse,
@@ -23,6 +25,111 @@ from schemas import (
 from auth import get_current_user, require_permission, get_password_hash
 
 router = APIRouter(tags=["admin"])
+
+
+# ==================== AUDIT LOG ====================
+
+@router.get("/audit-log")
+async def get_audit_log(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    user_id: Optional[int] = Query(None),
+    action: Optional[str] = Query(None),
+    entity_type: Optional[str] = Query(None),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "read"))
+):
+    query = db.query(AuditLog)
+
+    if user_id is not None:
+        query = query.filter(AuditLog.user_id == user_id)
+    if action:
+        query = query.filter(AuditLog.action == action)
+    if entity_type:
+        query = query.filter(AuditLog.entity_type == entity_type)
+    if date_from:
+        query = query.filter(AuditLog.created_at >= date_from)
+    if date_to:
+        from datetime import datetime, timedelta
+        query = query.filter(AuditLog.created_at < datetime.combine(date_to, datetime.max.time()))
+
+    total = query.count()
+    items = query.order_by(desc(AuditLog.created_at)).offset((page - 1) * per_page).limit(per_page).all()
+
+    user_ids = list({item.user_id for item in items if item.user_id})
+    users_map = {}
+    if user_ids:
+        users = db.query(User).filter(User.id.in_(user_ids)).all()
+        users_map = {u.id: u.name for u in users}
+
+    result = []
+    for item in items:
+        result.append({
+            "id": item.id,
+            "user_id": item.user_id,
+            "user_name": users_map.get(item.user_id) if item.user_id else None,
+            "action": item.action,
+            "entity_type": item.entity_type,
+            "entity_id": item.entity_id,
+            "details": item.details,
+            "ip_address": item.ip_address,
+            "created_at": item.created_at.isoformat() if item.created_at else None,
+        })
+
+    return {
+        "items": result,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": (total + per_page - 1) // per_page,
+    }
+
+
+# ==================== AUDIT LOG FILTER VALUES ====================
+
+@router.get("/audit-log/filters")
+async def get_audit_log_filters(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "read"))
+):
+    actions = db.query(AuditLog.action).distinct().all()
+    entity_types = db.query(AuditLog.entity_type).distinct().all()
+    users = db.query(User.id, User.name).distinct().join(
+        AuditLog, AuditLog.user_id == User.id
+    ).all()
+
+    return {
+        "actions": [a[0] for a in actions if a[0]],
+        "entity_types": [e[0] for e in entity_types if e[0]],
+        "users": [{"id": u[0], "name": u[1]} for u in users],
+    }
+
+
+def _resolve_team_names(team, db: Session) -> dict:
+    """Resolve pl/po/cl/it_pl display names from FK user references."""
+    pl_name = team.pl
+    po_name = team.po
+    cl_name = team.cl
+    it_pl_name = team.it_pl
+    if team.pl_id:
+        u = db.query(User).filter(User.id == team.pl_id).first()
+        if u:
+            pl_name = u.name
+    if team.po_id:
+        u = db.query(User).filter(User.id == team.po_id).first()
+        if u:
+            po_name = u.name
+    if team.cl_id:
+        u = db.query(User).filter(User.id == team.cl_id).first()
+        if u:
+            cl_name = u.name
+    if team.it_pl_id:
+        u = db.query(User).filter(User.id == team.it_pl_id).first()
+        if u:
+            it_pl_name = u.name
+    return {"pl": pl_name, "po": po_name, "cl": cl_name, "it_pl": it_pl_name}
 
 
 # ==================== ROLES CRUD ====================
@@ -114,10 +221,12 @@ async def admin_get_teams(
     result = []
     for team in teams:
         members = team.members.split(",") if team.members else []
+        names = _resolve_team_names(team, db)
         result.append(TeamResponse(
             id=team.id, name=team.name, team_type_id=team.team_type_id, abbr=team.abbr, color=team.color,
             domain=team.domain, description=team.description,
-            pl=team.pl, po=team.po, cl=team.cl, it_pl=team.it_pl,
+            pl=names["pl"], po=names["po"], cl=names["cl"], it_pl=names["it_pl"],
+            pl_id=team.pl_id, po_id=team.po_id, cl_id=team.cl_id, it_pl_id=team.it_pl_id,
             members=team.members, created_at=team.created_at,
             member_count=len([m for m in members if m.strip()]) if members else 0
         ))
@@ -135,10 +244,12 @@ async def admin_create_team(
     db.commit()
     db.refresh(team)
     members = team.members.split(",") if team.members else []
+    names = _resolve_team_names(team, db)
     return TeamResponse(
         id=team.id, name=team.name, team_type_id=team.team_type_id, abbr=team.abbr, color=team.color,
         domain=team.domain, description=team.description,
-        pl=team.pl, po=team.po, cl=team.cl, it_pl=team.it_pl,
+        pl=names["pl"], po=names["po"], cl=names["cl"], it_pl=names["it_pl"],
+        pl_id=team.pl_id, po_id=team.po_id, cl_id=team.cl_id, it_pl_id=team.it_pl_id,
         members=team.members, created_at=team.created_at,
         member_count=len([m for m in members if m.strip()]) if members else 0
     )
@@ -159,10 +270,12 @@ async def admin_update_team(
     db.commit()
     db.refresh(team)
     members = team.members.split(",") if team.members else []
+    names = _resolve_team_names(team, db)
     return TeamResponse(
         id=team.id, name=team.name, team_type_id=team.team_type_id, abbr=team.abbr, color=team.color,
         domain=team.domain, description=team.description,
-        pl=team.pl, po=team.po, cl=team.cl, it_pl=team.it_pl,
+        pl=names["pl"], po=names["po"], cl=names["cl"], it_pl=names["it_pl"],
+        pl_id=team.pl_id, po_id=team.po_id, cl_id=team.cl_id, it_pl_id=team.it_pl_id,
         members=team.members, created_at=team.created_at,
         member_count=len([m for m in members if m.strip()]) if members else 0
     )
@@ -277,12 +390,157 @@ async def admin_delete_user(
 
 # ==================== DICTIONARIES CRUD ====================
 
+DICT_LOCK_MINUTES = 15
+
+VALID_DICT_TYPES = [
+    "priority", "status", "task_type", "channel", "deadline",
+    "department", "team_type", "project_status",
+]
+
+
+def _is_dict_lock_active(item: DictionaryItem) -> bool:
+    if not item.lock_owner_id or not item.lock_until:
+        return False
+    return item.lock_until.replace(tzinfo=None) > datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _get_dict_lock_info(dict_type: str, db: Session) -> dict:
+    """Get lock status for a dictionary type from its first active item."""
+    item = db.query(DictionaryItem).filter(
+        DictionaryItem.dict_type == dict_type,
+        DictionaryItem.is_active == True,
+    ).first()
+    if item and _is_dict_lock_active(item):
+        owner = db.query(User).filter(User.id == item.lock_owner_id).first()
+        return {
+            "locked": True,
+            "lock_owner_id": item.lock_owner_id,
+            "lock_owner_name": owner.name if owner else None,
+            "lock_until": item.lock_until,
+            "version": item.version or 0,
+        }
+    return {"locked": False, "version": item.version if item else 0}
+
+
+def _acquire_dict_lock(dict_type: str, user: User, db: Session) -> DictLockResponse:
+    """Acquire or extend a lock on a dictionary type for all its active items."""
+    items = db.query(DictionaryItem).filter(
+        DictionaryItem.dict_type == dict_type,
+        DictionaryItem.is_active == True,
+    ).all()
+    if not items:
+        raise HTTPException(status_code=404, detail="Dictionary not found")
+
+    now = datetime.now(timezone.utc)
+    new_until = now + timedelta(minutes=DICT_LOCK_MINUTES)
+    first = items[0]
+
+    if _is_dict_lock_active(first):
+        if first.lock_owner_id == user.id:
+            for item in items:
+                item.lock_until = new_until
+            db.commit()
+            return DictLockResponse(
+                locked=True, lock_owner_id=user.id, lock_owner_name=user.name,
+                lock_until=new_until, is_mine=True, version=first.version or 0,
+            )
+        else:
+            owner = db.query(User).filter(User.id == first.lock_owner_id).first()
+            raise HTTPException(
+                status_code=423,
+                detail=f"Справочник редактируется администратором {owner.name if owner else 'Неизвестный'}. Доступен просмотр.",
+            )
+
+    for item in items:
+        item.lock_owner_id = user.id
+        item.lock_until = new_until
+        item.version = (item.version or 0) + 1
+    db.commit()
+    return DictLockResponse(
+        locked=True, lock_owner_id=user.id, lock_owner_name=user.name,
+        lock_until=new_until, is_mine=True, version=first.version or 0,
+    )
+
+
+def _release_dict_lock(dict_type: str, user: User, db: Session) -> DictLockResponse:
+    """Release lock on a dictionary type for all its active items."""
+    items = db.query(DictionaryItem).filter(
+        DictionaryItem.dict_type == dict_type,
+        DictionaryItem.is_active == True,
+    ).all()
+    for item in items:
+        if item.lock_owner_id == user.id or not _is_dict_lock_active(item):
+            item.lock_owner_id = None
+            item.lock_until = None
+    db.commit()
+    return DictLockResponse(locked=False, is_mine=False, version=0)
+
+
+@router.get("/dict-locks")
+async def get_all_dict_locks(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get lock status for all dictionary types (for card indicators)."""
+    result = {}
+    for dt in VALID_DICT_TYPES:
+        result[dt] = _get_dict_lock_info(dt, db)
+    return result
+
+
+@router.get("/{dict_type}/lock")
+async def get_dict_lock(
+    dict_type: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Check lock status for a specific dictionary type."""
+    if dict_type not in VALID_DICT_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid dictionary type")
+    info = _get_dict_lock_info(dict_type, db)
+    info["is_mine"] = info.get("lock_owner_id") == current_user.id if info.get("locked") else False
+    return DictLockResponse(**info)
+
+
+@router.post("/{dict_type}/lock")
+async def acquire_dict_lock(
+    dict_type: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial")),
+):
+    """Acquire lock on a dictionary type for editing."""
+    if dict_type not in VALID_DICT_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid dictionary type")
+    return _acquire_dict_lock(dict_type, current_user, db)
+
+
+@router.delete("/{dict_type}/lock")
+async def release_dict_lock(
+    dict_type: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Release lock on a dictionary type."""
+    if dict_type not in VALID_DICT_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid dictionary type")
+    return _release_dict_lock(dict_type, current_user, db)
+
 def get_dict_items(dict_type: str, db: Session):
     items = db.query(DictionaryItem).filter(
         DictionaryItem.dict_type == dict_type,
         DictionaryItem.is_active == True
     ).order_by(DictionaryItem.sort_order).all()
     return items
+
+
+def _check_dict_lock(dict_type: str, user: User, db: Session):
+    """Check if dictionary is locked by another user; raise 423 if so."""
+    info = _get_dict_lock_info(dict_type, db)
+    if info["locked"] and not info.get("is_mine", False) and info["lock_owner_id"] != user.id:
+        raise HTTPException(
+            status_code=423,
+            detail=f"Справочник редактируется администратором {info['lock_owner_name']}. Доступен просмотр.",
+        )
 
 
 @router.get("/priorities", response_model=List[DictionaryItemResponse])
@@ -333,6 +591,7 @@ async def create_priority(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
+    _check_dict_lock("priority", current_user, db)
     item = DictionaryItem(dict_type="priority", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
     db.commit()
@@ -346,6 +605,7 @@ async def create_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
+    _check_dict_lock("status", current_user, db)
     item = DictionaryItem(dict_type="status", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
     db.commit()
@@ -359,6 +619,7 @@ async def create_task_type(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
+    _check_dict_lock("task_type", current_user, db)
     item = DictionaryItem(dict_type="task_type", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
     db.commit()
@@ -376,8 +637,10 @@ async def update_priority(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "priority").first()
     if not item:
         raise HTTPException(status_code=404, detail="Priority not found")
+    _check_dict_lock("priority", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
+    item.version = (item.version or 0) + 1
     db.commit()
     db.refresh(item)
     return item
@@ -393,8 +656,10 @@ async def update_status(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "status").first()
     if not item:
         raise HTTPException(status_code=404, detail="Status not found")
+    _check_dict_lock("status", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
+    item.version = (item.version or 0) + 1
     db.commit()
     db.refresh(item)
     return item
@@ -410,8 +675,10 @@ async def update_task_type(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "task_type").first()
     if not item:
         raise HTTPException(status_code=404, detail="Task type not found")
+    _check_dict_lock("task_type", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
+    item.version = (item.version or 0) + 1
     db.commit()
     db.refresh(item)
     return item
@@ -426,6 +693,7 @@ async def delete_priority(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Priority not found")
+    _check_dict_lock("priority", current_user, db)
     item.is_active = False
     db.commit()
     return {"message": "Priority deleted"}
@@ -440,6 +708,7 @@ async def delete_status(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Status not found")
+    _check_dict_lock("status", current_user, db)
     item.is_active = False
     db.commit()
     return {"message": "Status deleted"}
@@ -454,6 +723,7 @@ async def delete_task_type(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Task type not found")
+    _check_dict_lock("task_type", current_user, db)
     item.is_active = False
     db.commit()
     return {"message": "Task type deleted"}
@@ -517,6 +787,7 @@ async def create_channel(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
+    _check_dict_lock("channel", current_user, db)
     item = DictionaryItem(dict_type="channel", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
     db.commit()
@@ -534,8 +805,10 @@ async def update_channel(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "channel").first()
     if not item:
         raise HTTPException(status_code=404, detail="Channel not found")
+    _check_dict_lock("channel", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
+    item.version = (item.version or 0) + 1
     db.commit()
     db.refresh(item)
     return item
@@ -550,6 +823,7 @@ async def delete_channel(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Channel not found")
+    _check_dict_lock("channel", current_user, db)
     item.is_active = False
     db.commit()
     return {"message": "Channel deleted"}
@@ -569,6 +843,7 @@ async def create_deadline(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
+    _check_dict_lock("deadline", current_user, db)
     item = DictionaryItem(dict_type="deadline", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
     db.commit()
@@ -586,8 +861,10 @@ async def update_deadline(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "deadline").first()
     if not item:
         raise HTTPException(status_code=404, detail="Deadline not found")
+    _check_dict_lock("deadline", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
+    item.version = (item.version or 0) + 1
     db.commit()
     db.refresh(item)
     return item
@@ -602,6 +879,7 @@ async def delete_deadline(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Deadline not found")
+    _check_dict_lock("deadline", current_user, db)
     item.is_active = False
     db.commit()
     return {"message": "Deadline deleted"}
@@ -621,6 +899,7 @@ async def create_department(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
+    _check_dict_lock("department", current_user, db)
     item = DictionaryItem(dict_type="department", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
     db.commit()
@@ -638,8 +917,10 @@ async def update_department(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "department").first()
     if not item:
         raise HTTPException(status_code=404, detail="Department not found")
+    _check_dict_lock("department", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
+    item.version = (item.version or 0) + 1
     db.commit()
     db.refresh(item)
     return item
@@ -654,6 +935,7 @@ async def delete_department(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Department not found")
+    _check_dict_lock("department", current_user, db)
     item.is_active = False
     db.commit()
     return {"message": "Department deleted"}
@@ -673,6 +955,7 @@ async def create_team_type(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
+    _check_dict_lock("team_type", current_user, db)
     item = DictionaryItem(dict_type="team_type", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
     db.commit()
@@ -690,8 +973,10 @@ async def update_team_type(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "team_type").first()
     if not item:
         raise HTTPException(status_code=404, detail="Team type not found")
+    _check_dict_lock("team_type", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
+    item.version = (item.version or 0) + 1
     db.commit()
     db.refresh(item)
     return item
@@ -706,6 +991,7 @@ async def delete_team_type(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Team type not found")
+    _check_dict_lock("team_type", current_user, db)
     item.is_active = False
     db.commit()
     return {"message": "Team type deleted"}
@@ -725,6 +1011,7 @@ async def create_project_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
+    _check_dict_lock("project_status", current_user, db)
     item = DictionaryItem(dict_type="project_status", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
     db.commit()
@@ -742,8 +1029,10 @@ async def update_project_status(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "project_status").first()
     if not item:
         raise HTTPException(status_code=404, detail="Project status not found")
+    _check_dict_lock("project_status", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
+    item.version = (item.version or 0) + 1
     db.commit()
     db.refresh(item)
     return item
@@ -758,6 +1047,7 @@ async def delete_project_status(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Project status not found")
+    _check_dict_lock("project_status", current_user, db)
     item.is_active = False
     db.commit()
     return {"message": "Project status deleted"}
@@ -963,60 +1253,6 @@ async def update_column_labels(
     labels = db.query(ColumnLabel).all()
     return {item.key: item.label for item in labels}
 
-
-# ==================== NOTIFICATION TEMPLATES CRUD ====================
-
-@router.get("/notification-templates", response_model=List[NotificationTemplateResponse])
-async def get_notification_templates(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "read"))
-):
-    templates = db.query(NotificationTemplate).order_by(NotificationTemplate.created_at.desc()).all()
-    return templates
-
-
-@router.post("/notification-templates", response_model=NotificationTemplateResponse, status_code=status.HTTP_201_CREATED)
-async def create_notification_template(
-    data: NotificationTemplateCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
-):
-    template = NotificationTemplate(**data.model_dump())
-    db.add(template)
-    db.commit()
-    db.refresh(template)
-    return template
-
-
-@router.put("/notification-templates/{template_id}", response_model=NotificationTemplateResponse)
-async def update_notification_template(
-    template_id: int,
-    data: NotificationTemplateUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
-):
-    template = db.query(NotificationTemplate).filter(NotificationTemplate.id == template_id).first()
-    if not template:
-        raise HTTPException(status_code=404, detail="Notification template not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(template, field, value)
-    db.commit()
-    db.refresh(template)
-    return template
-
-
-@router.delete("/notification-templates/{template_id}")
-async def delete_notification_template(
-    template_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
-):
-    template = db.query(NotificationTemplate).filter(NotificationTemplate.id == template_id).first()
-    if not template:
-        raise HTTPException(status_code=404, detail="Notification template not found")
-    db.delete(template)
-    db.commit()
-    return {"message": "Notification template deleted"}
 
 
 @router.delete("/business-customers/{item_id}")

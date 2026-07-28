@@ -1,10 +1,12 @@
 let adminTab = 'teams';
-let adminData = { teams: [], users: [], roles: [], priorities: [], statuses: [], taskTypes: [], businessCustomers: [], channels: [], deadlines: [], departments: [], teamTypes: [], projectStatuses: [], projects: [], reports: [], notifications: [], teamTypeRefs: [] };
+let adminData = { teams: [], users: [], roles: [], priorities: [], statuses: [], taskTypes: [], businessCustomers: [], channels: [], deadlines: [], departments: [], teamTypes: [], projectStatuses: [], projects: [], reports: [], teamTypeRefs: [] };
 let adminModal = { show: false, mode: 'add', type: 'team', data: {} };
 let currentAdminUser = null;
 let userSort = { field: 'role', dir: 'asc' };
 let userSearch = '';
 let userFilters = { role: '', team: '', status: '' };
+let dictLocks = {};
+let currentDictLockType = null;
 
 const TEAM_ABBR = {
   'Pre-Trade': 'Pre',
@@ -174,9 +176,9 @@ function getRoleStatusBadge(status) {
 
 export function renderAdmin(app) {
   adminTab = 'teams';
-  const tabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'dictionaries', 'notifications', 'display', 'reports'];
-  const tabLabels = { teams: 'Команды', projects: 'Проекты', businessCustomers: 'Бизнес-заказчики', users: 'Пользователи', roles: 'Роли', dictionaries: 'Справочники', notifications: 'Уведомления', display: 'Отображение', reports: 'Отчёты' };
-  const tabIcons = { teams: 'users', projects: 'briefcase', businessCustomers: 'user-cog', users: 'user', roles: 'shield', dictionaries: 'book-open', notifications: 'bell', display: 'eye', reports: 'bar-chart-3' };
+  const tabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'dictionaries', 'display', 'reports'];
+  const tabLabels = { teams: 'Команды', projects: 'Проекты', businessCustomers: 'Бизнес-заказчики', users: 'Пользователи', roles: 'Роли', dictionaries: 'Справочники', display: 'Отображение', reports: 'Отчёты' };
+  const tabIcons = { teams: 'users', projects: 'briefcase', businessCustomers: 'user-cog', users: 'user', roles: 'shield', dictionaries: 'book-open', display: 'eye', reports: 'bar-chart-3' };
 
   const tabBar = tabs.map(t =>
     `<button class="admin-tab${adminTab === t ? ' active' : ''}" data-tab="${t}">
@@ -284,7 +286,6 @@ function renderTabContent(tab, app) {
     case 'users': return renderUsersTab(app);
     case 'roles': return renderRolesTab(app);
     case 'dictionaries': return renderDictionariesTab(app);
-    case 'notifications': return renderNotificationsTab(app);
     case 'display': return renderDisplayTab(app);
     case 'reports': return renderReportsTab(app);
     default: return '<p class="text-muted">Выберите вкладку</p>';
@@ -702,33 +703,43 @@ function renderRolesTab(app) {
 
 function renderDictionariesTab(app) {
   const dicts = [
-    { key: 'priorities', label: 'Приоритеты', icon: 'flag', count: (adminData.priorities || []).length, preview: (adminData.priorities || []).slice(0, 3) },
-    { key: 'statuses', label: 'Статусы задачи', icon: 'circle', count: (adminData.statuses || []).length, preview: (adminData.statuses || []).slice(0, 3) },
-    { key: 'taskTypes', label: 'Типы задач', icon: 'tag', count: (adminData.taskTypes || []).length, preview: (adminData.taskTypes || []).slice(0, 3) },
-    { key: 'channels', label: 'Каналы', icon: 'radio', count: (adminData.channels || []).length, preview: (adminData.channels || []).slice(0, 3) },
-    { key: 'deadlines', label: 'Сроки', icon: 'clock', count: (adminData.deadlines || []).length, preview: (adminData.deadlines || []).slice(0, 3) },
-    { key: 'departments', label: 'Подразделения', icon: 'building', count: (adminData.departments || []).length, preview: (adminData.departments || []).slice(0, 3) },
-    { key: 'teamTypes', label: 'Типы команд', icon: 'layers', count: (adminData.teamTypes || []).length, preview: (adminData.teamTypes || []).slice(0, 3) },
-    { key: 'projectStatuses', label: 'Статусы проектов', icon: 'git-branch', count: (adminData.projectStatuses || []).length, preview: (adminData.projectStatuses || []).slice(0, 3) },
+    { key: 'priorities', dictType: 'priority', label: 'Приоритеты', icon: 'flag', count: (adminData.priorities || []).length, preview: (adminData.priorities || []).slice(0, 3) },
+    { key: 'statuses', dictType: 'status', label: 'Статусы задачи', icon: 'circle', count: (adminData.statuses || []).length, preview: (adminData.statuses || []).slice(0, 3) },
+    { key: 'taskTypes', dictType: 'task_type', label: 'Типы задач', icon: 'tag', count: (adminData.taskTypes || []).length, preview: (adminData.taskTypes || []).slice(0, 3) },
+    { key: 'channels', dictType: 'channel', label: 'Каналы', icon: 'radio', count: (adminData.channels || []).length, preview: (adminData.channels || []).slice(0, 3) },
+    { key: 'deadlines', dictType: 'deadline', label: 'Сроки', icon: 'clock', count: (adminData.deadlines || []).length, preview: (adminData.deadlines || []).slice(0, 3) },
+    { key: 'departments', dictType: 'department', label: 'Подразделения', icon: 'building', count: (adminData.departments || []).length, preview: (adminData.departments || []).slice(0, 3) },
+    { key: 'teamTypes', dictType: 'team_type', label: 'Типы команд', icon: 'layers', count: (adminData.teamTypes || []).length, preview: (adminData.teamTypes || []).slice(0, 3) },
+    { key: 'projectStatuses', dictType: 'project_status', label: 'Статусы проектов', icon: 'git-branch', count: (adminData.projectStatuses || []).length, preview: (adminData.projectStatuses || []).slice(0, 3) },
   ];
 
   const cards = dicts.map(d => {
+    const lock = dictLocks[d.dictType];
+    const isLocked = lock && lock.locked && !lock.is_mine;
+    const isMine = lock && lock.locked && lock.is_mine;
+    const lockBanner = isLocked
+      ? `<div style="position:absolute;top:0;left:0;right:0;padding:4px 12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;font-size:11px;font-weight:600;border-radius:12px 12px 0 0;text-align:center;z-index:1">
+          <i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px"></i>
+          Редактируется: ${lock.lock_owner_name || 'Администратор'}
+        </div>`
+      : '';
     const previewItems = d.preview.map(v =>
       v.color
         ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:${v.color}20;color:${v.color};margin:2px">${v.name}</span>`
         : `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:var(--bg-tertiary);color:var(--text-muted);margin:2px">${v.name}</span>`
     ).join('');
     return `
-      <div class="card rounded-xl p-5 card-hover admin-dict-card" data-dict="${d.key}" style="cursor:pointer;height:200px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-          <div style="width:40px;height:40px;border-radius:10px;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <i data-lucide="${d.icon}" style="width:18px;height:18px;color:var(--accent)"></i>
+      <div class="card rounded-xl p-5 card-hover admin-dict-card${isLocked ? ' dict-locked' : ''}" data-dict="${d.key}" style="cursor:${isLocked ? 'default' : 'pointer'};height:${isLocked ? '220' : '200'}px;position:relative;${isLocked ? 'opacity:0.85' : ''}">
+        ${lockBanner}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px${lockBanner ? ';margin-top:20px' : ''}">
+          <div style="width:40px;height:40px;border-radius:10px;background:${isLocked ? '#f59e0b20' : 'var(--bg-tertiary)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i data-lucide="${isLocked ? 'lock' : d.icon}" style="width:18px;height:18px;color:${isLocked ? '#f59e0b' : 'var(--accent)'}"></i>
           </div>
           <div style="flex:1">
             <div style="font-weight:600;font-size:14px;color:var(--text-primary)">${d.label}</div>
             <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${d.count} значений</div>
           </div>
-          <i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--text-muted)"></i>
+          ${isMine ? '<span style="font-size:10px;background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Вы редактируете</span>' : '<i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--text-muted)"></i>'}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${previewItems || '<span style="font-size:12px;color:var(--text-muted)">Нет значений</span>'}</div>
       </div>
@@ -742,34 +753,414 @@ function renderDictionariesTab(app) {
 
 // ==================== REPORTS TAB ====================
 
-function renderReportsTab(app) {
-  const reports = adminData.reports.length
-    ? adminData.reports
-    : [
-        { id: 1, name: 'Директорат', code: 'directorate', description: 'Команда, Бизнес-заказчик, Проект, Задача, Тип, Исполнитель, Статус для директорской', icon: 'crown', gradient: 'grad-rose', tasks: 0, filters: 2, fields: 7 },
-        { id: 2, name: 'DID', code: 'did', description: 'Команда, Бизнес-заказчик, Проект, Задача, Тип, Исполнитель, Статус для ДИД', icon: 'building-2', gradient: 'grad-indigo', tasks: 0, filters: 1, fields: 7 },
-        { id: 3, name: 'Проекты', code: 'projects', description: 'Статус по проектным инициативам', icon: 'target', gradient: 'grad-emerald', tasks: 0, filters: 3, fields: 10 },
-        { id: 4, name: 'Рег-директора', code: 'reg-directors', description: 'Сводка для региональных директоров', icon: 'users', gradient: 'grad-violet', tasks: 0, filters: 2, fields: 7 },
-      ];
+const REPORT_FIELDS = [
+  { key: 'id', label: 'ID' },
+  { key: 'title', label: 'Название задачи' },
+  { key: 'description', label: 'Описание' },
+  { key: 'team_name', label: 'Команда' },
+  { key: 'priority_name', label: 'Приоритет' },
+  { key: 'status_name', label: 'Статус' },
+  { key: 'project_name', label: 'Проект' },
+  { key: 'business_customer', label: 'Бизнес-заказчик' },
+  { key: 'business_customer_name', label: 'Бизнес-заказчик (имя)' },
+  { key: 'department_name', label: 'Подразделение' },
+  { key: 'channel_name', label: 'Канал поступления' },
+  { key: 'task_type_name', label: 'Тип задачи' },
+  { key: 'deadline_name', label: 'Дедлайн' },
+  { key: 'owner_name', label: 'Исполнитель' },
+  { key: 'progress', label: 'Прогресс' },
+  { key: 'effort_days', label: 'Трудозатраты (дни)' },
+  { key: 'effort_rub', label: 'Трудозатраты (руб)' },
+  { key: 'financial_effect', label: 'Фин. эффект' },
+  { key: 'cv', label: 'C/V' },
+  { key: 'ice_score', label: 'ICE Score' },
+  { key: 'key_project', label: 'Ключевой проект' },
+  { key: 'key_project_status', label: 'Статус ключ. проекта' },
+  { key: 'directorate_status', label: 'Статус для директорской' },
+  { key: 'did_status', label: 'Статус для ДИД' },
+  { key: 'date_received', label: 'Дата получения' },
+  { key: 'created_at', label: 'Дата создания' },
+  { key: 'updated_at', label: 'Дата обновления' },
+];
 
-  const cards = reports.map(r => `
-    <div class="card rounded-xl p-5 report-card ${r.gradient}" style="color:white;cursor:pointer;min-height:160px;display:flex;flex-direction:column" data-report="${r.code}">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <i data-lucide="${r.icon}" style="width:20px;height:20px;opacity:0.9"></i>
-        <h4 style="margin:0;font-size:14px;font-weight:600;color:white">${r.name}</h4>
+const REPORT_GROUP_OPTIONS = [
+  { value: '', label: 'Без группировки' },
+  { value: 'team_name', label: 'По командам' },
+  { value: 'project_name', label: 'По проектам' },
+  { value: 'status_name', label: 'По статусам' },
+  { value: 'priority_name', label: 'По приоритетам' },
+  { value: 'department_name', label: 'По подразделениям' },
+];
+
+const REPORT_SORT_FIELDS = [
+  { value: '', label: 'Без сортировки' },
+  { value: 'title', label: 'По названию' },
+  { value: 'priority_name', label: 'По приоритету' },
+  { value: 'status_name', label: 'По статусу' },
+  { value: 'team_name', label: 'По команде' },
+  { value: 'project_name', label: 'По проекту' },
+  { value: 'progress', label: 'По прогрессу' },
+  { value: 'financial_effect', label: 'По фин. эффекту' },
+  { value: 'cv', label: 'По C/V' },
+  { value: 'ice_score', label: 'По ICE Score' },
+  { value: 'created_at', label: 'По дате создания' },
+];
+
+let adminReportView = null;
+
+function parseReportJson(str) {
+  if (!str) return null;
+  try { return typeof str === 'string' ? JSON.parse(str) : str; } catch { return null; }
+}
+
+function renderReportsTab(app) {
+  const dbReports = adminData.reports || [];
+  const standardReports = [
+    { id: 0, name: 'Директорат', description: 'Приоритет Высокий + риски для директорской оперативки', type: 'standard' },
+    { id: 0, name: 'DID', description: 'Активные задачи для оперативки ДИД', type: 'standard' },
+    { id: 0, name: 'Проекты', description: 'Статус по ключевым проектным инициативам', type: 'standard' },
+    { id: 0, name: 'Рег-директора', description: 'Сводка для региональных директоров', type: 'standard' },
+  ];
+
+  if (adminReportView) {
+    return renderReportView(app);
+  }
+
+  const standardCards = standardReports.map(r => `
+    <div class="card rounded-xl" style="padding:20px;min-height:140px;display:flex;flex-direction:column;background:linear-gradient(135deg,#64748b,#475569);color:white;opacity:0.7">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <i data-lucide="file-text" style="width:18px;height:18px;opacity:0.8"></i>
+        <h4 style="margin:0;font-size:13px;font-weight:600;color:white">${r.name}</h4>
+        <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px">Стандартный</span>
       </div>
-      <div style="font-size:12px;opacity:0.85;flex:1">${r.description}</div>
-      <div style="display:flex;gap:16px;margin-top:12px;font-size:11px;opacity:0.8">
-        <span>Задач: ${r.tasks || '—'}</span>
-        <span>Фильтров: ${r.filters || '—'}</span>
-        <span>Полей: ${r.fields || '—'}</span>
-      </div>
+      <div style="font-size:12px;opacity:0.8;flex:1">${r.description}</div>
     </div>
   `).join('');
 
+  const customCards = dbReports.filter(r => r.type === 'custom').map(r => {
+    const filters = parseReportJson(r.filters);
+    const fields = parseReportJson(r.fields);
+    const filterCount = filters ? (Array.isArray(filters) ? filters.length : 0) : 0;
+    const fieldCount = fields ? (Array.isArray(fields) ? fields.length : 0) : 0;
+    const isOwn = r.created_by === (currentAdminUser ? currentAdminUser.id : null);
+
+    return `
+      <div class="card rounded-xl" style="padding:20px;min-height:140px;display:flex;flex-direction:column;border:1px solid var(--border-color);cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''"
+        data-admin-report-id="${r.id}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <i data-lucide="bar-chart-3" style="width:18px;height:18px;color:var(--accent)"></i>
+            <h4 style="margin:0;font-size:13px;font-weight:600;color:var(--text-primary)">${r.name}</h4>
+            ${r.is_public ? '<span style="font-size:10px;background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Публичный</span>' : ''}
+          </div>
+          <div style="display:flex;gap:2px" onclick="event.stopPropagation()">
+            <button class="admin-edit-btn" data-type="report" data-id="${r.id}" style="padding:4px;border:none;background:transparent;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
+              <i data-lucide="pen-line" style="width:14px;height:14px;color:var(--text-muted)"></i>
+            </button>
+            <button class="admin-delete-btn" data-type="report" data-id="${r.id}" style="padding:4px;border:none;background:transparent;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
+              <i data-lucide="trash-2" style="width:14px;height:14px;color:#f43f5e"></i>
+            </button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);flex:1">${r.description || 'Без описания'}</div>
+        <div style="display:flex;gap:12px;margin-top:10px;font-size:11px;color:var(--text-muted)">
+          <span>Фильтров: ${filterCount}</span>
+          <span>Полей: ${fieldCount || 'все'}</span>
+          ${r.group_by ? `<span>Группировка: ${r.group_by}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
   return `
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">${cards}</div>
+    <div class="admin-action-row" style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      <button class="btn btn-primary btn-sm admin-add-btn" data-type="report">
+        <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить новый отчёт
+      </button>
+    </div>
+    ${standardReports.length ? `
+    <div style="margin-bottom:24px">
+      <h4 style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Стандартные отчёты</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">${standardCards}</div>
+    </div>` : ''}
+    <div>
+      <h4 style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Пользовательские отчёты</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+        ${customCards || '<div style="text-align:center;padding:40px;color:var(--text-muted);grid-column:1/-1">Нет пользовательских отчётов. Нажмите «Добавить новый отчёт».</div>'}
+      </div>
+    </div>
   `;
+}
+
+function renderReportView(app) {
+  const report = adminReportView;
+  const filters = parseReportJson(report.filters);
+  const fields = parseReportJson(report.fields);
+  const groupOptions = REPORT_GROUP_OPTIONS.map(g =>
+    `<option value="${g.value}"${report.group_by === g.value ? ' selected' : ''}>${g.label}</option>`
+  ).join('');
+
+  return `
+    <div class="admin-action-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn btn-ghost btn-sm" id="report-view-back" title="Назад к списку">
+          <i data-lucide="arrow-left" style="width:16px;height:16px"></i> Назад
+        </button>
+        <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--text-primary)">${report.name}</h3>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" id="report-execute-btn" data-report-id="${report.id}">
+          <i data-lucide="play" style="width:14px;height:14px"></i> Выполнить
+        </button>
+      </div>
+    </div>
+    ${report.description ? `<p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0">${report.description}</p>` : ''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div class="card" style="padding:12px">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Фильтры</div>
+        <div style="font-size:13px;color:var(--text-primary)">${filters && filters.length ? filters.map(f => `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;background:var(--bg-tertiary);font-size:12px">${f.field} ${f.operator || '='} ${Array.isArray(f.value) ? f.value.join(', ') : f.value}</span>`).join('') : '<span style="color:var(--text-muted)">Нет фильтров</span>'}</div>
+      </div>
+      <div class="card" style="padding:12px">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Группировка / Сортировка</div>
+        <div style="font-size:13px;color:var(--text-primary)">
+          Группировка: ${report.group_by || 'нет'} · Сортировка: ${report.sort_by || 'нет'} ${report.sort_by ? `(${report.sort_order || 'asc'})` : ''}
+        </div>
+      </div>
+    </div>
+    <div id="report-execution-result">
+      <div style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px">
+        <i data-lucide="play-circle" style="width:32px;height:32px;color:var(--text-muted);margin-bottom:8px;display:block;margin-left:auto;margin-right:auto"></i>
+        Нажмите «Выполнить» для запуска отчёта
+      </div>
+    </div>
+  `;
+}
+
+function renderReportForm(data) {
+  const isEdit = adminModal.mode === 'edit';
+  const existingFields = parseReportJson(data.fields) || [];
+  const existingFilters = parseReportJson(data.filters) || [];
+
+  const fieldCheckboxes = REPORT_FIELDS.map(f => {
+    const checked = existingFields.includes(f.key) ? ' checked' : '';
+    return `<label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
+      <input type="checkbox" class="report-field-cb" value="${f.key}"${checked} style="width:14px;height:14px">
+      ${f.label}
+    </label>`;
+  }).join('');
+
+  const filterRows = existingFilters.map((f, i) => renderFilterRow(f, i)).join('');
+
+  const groupOpts = REPORT_GROUP_OPTIONS.map(g =>
+    `<option value="${g.value}"${data.group_by === g.value ? ' selected' : ''}>${g.label}</option>`
+  ).join('');
+
+  const sortOpts = REPORT_SORT_FIELDS.map(s =>
+    `<option value="${s.value}"${data.sort_by === s.value ? ' selected' : ''}>${s.label}</option>`
+  ).join('');
+
+  return `
+    <div class="form-group">
+      <label class="form-label">Название отчёта <span class="required">*</span></label>
+      <input class="input modal-field" id="report-name" value="${data.name || ''}" placeholder="Например: Задачи команды">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Описание</label>
+      <textarea class="input modal-field" id="report-description" rows="2" placeholder="Описание назначения отчёта">${data.description || ''}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Видимость</label>
+      <select class="input modal-field" id="report-is-public">
+        <option value="false"${data.is_public !== true ? ' selected' : ''}>Только я</option>
+        <option value="true"${data.is_public === true ? ' selected' : ''}>Все пользователи</option>
+      </select>
+    </div>
+
+    <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
+      <strong style="font-size:13px">Поля для отображения</strong>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Отметьте галочками колонки, которые будут видны в отчёте</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;max-height:200px;overflow-y:auto;padding:4px 0">
+      ${fieldCheckboxes}
+    </div>
+
+    <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
+      <strong style="font-size:13px">Фильтры</strong>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Настройте условия фильтрации задач</div>
+    </div>
+    <div id="report-filters-container">
+      ${filterRows}
+    </div>
+    <button class="btn btn-secondary btn-sm" id="report-add-filter" style="margin-top:8px">
+      <i data-lucide="plus" style="width:12px;height:12px"></i> Добавить фильтр
+    </button>
+
+    <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
+      <strong style="font-size:13px">Группировка и сортировка</strong>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Группировка</label>
+        <select class="input modal-field" id="report-group-by">${groupOpts}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Сортировка по</label>
+        <select class="input modal-field" id="report-sort-by">${sortOpts}</select>
+      </div>
+    </div>
+    <div class="form-group" id="report-sort-order-group" style="${data.sort_by ? '' : 'display:none'}">
+      <label class="form-label">Направление сортировки</label>
+      <select class="input modal-field" id="report-sort-order">
+        <option value="asc"${data.sort_order !== 'desc' ? ' selected' : ''}>По возрастанию (А→Я)</option>
+        <option value="desc"${data.sort_order === 'desc' ? ' selected' : ''}>По убыванию (Я→А)</option>
+      </select>
+    </div>
+  `;
+}
+
+function renderFilterRow(filter, index) {
+  const fieldOpts = REPORT_FIELDS.map(f =>
+    `<option value="${f.key}"${filter.field === f.key ? ' selected' : ''}>${f.label}</option>`
+  ).join('');
+  const opOpts = [
+    { value: 'equals', label: 'Равно' },
+    { value: 'not_equals', label: 'Не равно' },
+    { value: 'contains', label: 'Содержит' },
+    { value: 'gt', label: 'Больше' },
+    { value: 'lt', label: 'Меньше' },
+    { value: 'in', label: 'В списке' },
+  ].map(o => `<option value="${o.value}"${filter.operator === o.value ? ' selected' : ''}>${o.label}</option>`).join('');
+
+  const value = Array.isArray(filter.value) ? filter.value.join(', ') : (filter.value || '');
+
+  return `
+    <div class="report-filter-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px" data-filter-index="${index}">
+      <select class="input report-filter-field" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px">${fieldOpts}</select>
+      <select class="input report-filter-op" style="width:100px;font-size:12px;padding:5px 8px">${opOpts}</select>
+      <input class="input report-filter-value" value="${value.replace(/"/g, '&quot;')}" placeholder="Значение" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px">
+      <button class="report-filter-remove" style="padding:4px;border:none;background:transparent;cursor:pointer;color:#f43f5e;border-radius:4px" title="Удалить фильтр">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+  `;
+}
+
+function getReportPayload() {
+  const selectedFields = Array.from(document.querySelectorAll('.report-field-cb:checked')).map(cb => cb.value);
+  const filterRows = document.querySelectorAll('.report-filter-row');
+  const filters = Array.from(filterRows).map(row => {
+    const field = row.querySelector('.report-filter-field')?.value;
+    const operator = row.querySelector('.report-filter-op')?.value || 'equals';
+    const rawValue = row.querySelector('.report-filter-value')?.value || '';
+    let value = rawValue;
+    if (operator === 'in') {
+      value = rawValue.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (operator === 'gt' || operator === 'lt') {
+      value = parseFloat(rawValue) || rawValue;
+    }
+    return { field, operator, value };
+  }).filter(f => f.field);
+
+  return {
+    name: document.getElementById('report-name')?.value || '',
+    description: document.getElementById('report-description')?.value || null,
+    is_public: document.getElementById('report-is-public')?.value === 'true',
+    fields: selectedFields.length ? JSON.stringify(selectedFields) : null,
+    filters: filters.length ? JSON.stringify(filters) : null,
+    group_by: document.getElementById('report-group-by')?.value || null,
+    sort_by: document.getElementById('report-sort-by')?.value || null,
+    sort_order: document.getElementById('report-sort-order')?.value || 'asc',
+  };
+}
+
+async function executeAdminReport(reportId, app) {
+  const resultEl = document.getElementById('report-execution-result');
+  if (!resultEl) return;
+  resultEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)"><i data-lucide="loader" style="width:24px;height:24px;animation:spin 1s linear infinite;display:block;margin:0 auto 8px"></i>Выполнение отчёта...</div>';
+  if (window.lucide) lucide.createIcons();
+
+  try {
+    const data = await app.api.get(`/reports/${reportId}/execute`);
+    const items = data.items || [];
+    const grouped = data.grouped;
+
+    if (!items.length) {
+      resultEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Нет задач, соответствующих фильтрам</div>';
+      return;
+    }
+
+    const report = adminReportView;
+    const displayFields = parseReportJson(report.fields) || REPORT_FIELDS.slice(0, 8).map(f => f.key);
+
+    const headers = displayFields.map(f => {
+      const def = REPORT_FIELDS.find(rf => rf.key === f);
+      return `<th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);border-bottom:2px solid var(--border-color);background:var(--bg-tertiary);white-space:nowrap">${def ? def.label : f}</th>`;
+    }).join('');
+
+    const rows = items.map(item => {
+      const cells = displayFields.map(f => {
+        let val = item[f];
+        if (val === null || val === undefined) val = '—';
+        if (typeof val === 'boolean') val = val ? 'Да' : 'Нет';
+        if (f === 'progress') val = `<div style="display:flex;align-items:center;gap:6px"><div style="width:60px;height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden"><div style="width:${val}%;height:100%;background:${val >= 100 ? 'var(--success)' : val > 0 ? 'var(--warning)' : 'var(--border-color)'}"></div></div><span style="font-size:11px">${val}%</span></div>`;
+        else if (f === 'cv' && val !== '—') val = `<span style="font-weight:600;color:${val >= 2 ? 'var(--success)' : val >= 1 ? 'var(--warning)' : 'var(--danger)'}">${val}</span>`;
+        else if (f === 'financial_effect' && val !== '—') val = `${val} млн ₽`;
+        else if (f === 'effort_rub' && val !== '—') val = `${val} тыс ₽`;
+        else if (f === 'priority_name') {
+          const cls = val === 'ВЫСОКИЙ' ? 'badge-high' : val === 'НИЗКИЙ' ? 'badge-low' : 'badge-medium';
+          val = `<span class="badge ${cls}" style="font-size:11px">${val}</span>`;
+        }
+        else if (f === 'key_project') val = val === 'Да' ? '<span style="color:var(--accent);font-weight:600">★</span>' : '';
+        return `<td style="padding:8px 10px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-primary);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${val}</td>`;
+      }).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+
+    let html = '';
+
+    if (grouped && data.groups) {
+      html = `<div style="padding:8px 0;font-size:12px;color:var(--text-muted)">${items.length} задач · ${data.groups.length} групп · Группировка по «${data.group_field}»</div>`;
+      data.groups.forEach(grp => {
+        html += `
+          <div class="card" style="margin-bottom:12px;overflow:hidden">
+            <div style="padding:10px 14px;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-color)">
+              <strong style="font-size:13px;color:var(--text-primary)">${grp.name}</strong>
+              <span class="badge badge-info" style="font-size:11px">${grp.count}</span>
+            </div>
+            <div style="overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse">
+                <thead><tr>${headers}</tr></thead>
+                <tbody>${grp.items.map(item => {
+                  const cells = displayFields.map(f => {
+                    let val = item[f];
+                    if (val === null || val === undefined) val = '—';
+                    if (typeof val === 'boolean') val = val ? 'Да' : 'Нет';
+                    return `<td style="padding:8px 10px;border-bottom:1px solid var(--border-color);font-size:12px">${val}</td>`;
+                  }).join('');
+                  return `<tr>${cells}</tr>`;
+                }).join('')}</tbody>
+              </table>
+            </div>
+          </div>`;
+      });
+    } else {
+      html = `
+        <div style="padding:8px 0;font-size:12px;color:var(--text-muted)">${items.length} задач</div>
+        <div class="card" style="overflow:hidden">
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr>${headers}</tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    resultEl.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+  } catch (e) {
+    resultEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--danger)">Ошибка выполнения отчёта: ${e.message || 'Неизвестная ошибка'}</div>`;
+  }
 }
 
 // ==================== NOTIFICATIONS TAB ====================
@@ -983,120 +1374,6 @@ function initDisplayDragDrop() {
 
 // ==================== NOTIFICATIONS TAB ====================
 
-function renderNotificationsTab(app) {
-  const templates = adminData.notifications || [];
-  const roles = adminData.roles || [];
-
-  const rows = templates.length
-    ? templates.map(t => {
-        const freqLabels = { daily: 'Ежедневно', weekly: 'Еженедельно', monthly: 'Ежемесячно', quarterly: 'Ежеквартально' };
-        const freqText = t.repeat_frequency ? freqLabels[t.repeat_frequency] || t.repeat_frequency : '—';
-        const deadlineText = t.deadline_days ? `За ${t.deadline_days} дн.` : '—';
-        return `
-          <tr>
-            <td style="padding:10px 12px;border-bottom:1px solid var(--border-color)">
-              <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${t.name}</div>
-            </td>
-            <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.text || ''}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary)">${t.recipients || '—'}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary);text-align:center">${deadlineText}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary);text-align:center">${freqText}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);text-align:center">${t.is_active !== false ? '<span class="badge badge-success" style="font-size:11px">Активен</span>' : '<span class="badge badge-muted" style="font-size:11px">Неактивен</span>'}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);text-align:right">
-              <div style="display:flex;gap:4px;justify-content:flex-end">
-                <button class="admin-edit-btn" data-type="notif" data-id="${t.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
-                  <i data-lucide="pen-line" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:var(--text-muted)"></i>
-                </button>
-                <button class="admin-delete-btn" data-type="notif" data-id="${t.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
-                  <i data-lucide="trash-2" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:#f43f5e"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('')
-    : '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">Нет шаблонов уведомлений</td></tr>';
-
-  return `
-    <div class="admin-action-row" style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-      <button class="btn btn-primary btn-sm admin-add-btn" data-type="notif">
-        <i data-lucide="plus" style="width:14px;height:14px"></i> Новый шаблон
-      </button>
-    </div>
-    <div class="admin-section" style="padding:0;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead>
-          <tr style="background:var(--bg-tertiary)">
-            <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Название</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Текст</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Адресаты</th>
-            <th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Срок</th>
-            <th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Регулярность</th>
-            <th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Статус</th>
-            <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px"></th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
-}
-
-function renderNotifForm(data) {
-  const roles = adminData.roles || [];
-  const selectedRecipients = (data.recipients || '').split(',').map(s => s.trim()).filter(Boolean);
-  const roleOpts = roles.map(r =>
-    `<option value="${r.name}"${selectedRecipients.includes(r.name) ? ' selected' : ''}>${r.name}</option>`
-  ).join('');
-  const freqHidden = data.repeat_frequency ? '' : 'style="display:none"';
-  return `
-    <div class="form-group">
-      <label class="form-label">Название <span class="required">*</span></label>
-      <input class="input modal-field" id="modal-name" value="${data.name || ''}" placeholder="Например: Напоминание о дедлайне">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Текст уведомления <span class="required">*</span></label>
-      <textarea class="input modal-field" id="modal-text" rows="4" placeholder="Текст уведомления..." style="min-height:80px">${data.text || ''}</textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Адресаты (роли)</label>
-      <select class="input modal-field" id="modal-recipients" multiple style="min-height:90px">${roleOpts}</select>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Ctrl+клик для выбора нескольких ролей</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Срок (дней до дедлайна)</label>
-      <input class="input modal-field" id="modal-deadline-days" type="number" value="${data.deadline_days ?? ''}" placeholder="Например: 7" style="width:120px">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Регулярность повторения</label>
-      <select class="input modal-field" id="modal-repeat-frequency" onchange="toggleRepeatDay(this.value)">
-        <option value="">Не повторять</option>
-        <option value="daily"${data.repeat_frequency === 'daily' ? ' selected' : ''}>Ежедневно</option>
-        <option value="weekly"${data.repeat_frequency === 'weekly' ? ' selected' : ''}>Еженедельно</option>
-        <option value="monthly"${data.repeat_frequency === 'monthly' ? ' selected' : ''}>Ежемесячно</option>
-        <option value="quarterly"${data.repeat_frequency === 'quarterly' ? ' selected' : ''}>Ежеквартально</option>
-      </select>
-    </div>
-    <div class="form-group" id="repeat-day-group" ${freqHidden}>
-      <label class="form-label">День повтора</label>
-      <input class="input modal-field" id="modal-repeat-day" type="number" value="${data.repeat_day ?? ''}" placeholder="1-7 (день недели) или 1-31" style="width:120px">
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Для еженедельно: 1=Пн..7=Вс. Для ежемесячно: число месяца</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Статус</label>
-      <select class="input modal-field" id="modal-is-active">
-        <option value="1"${data.is_active !== false ? ' selected' : ''}>Активен</option>
-        <option value="0"${data.is_active === false ? ' selected' : ''}>Неактивен</option>
-      </select>
-    </div>
-  `;
-}
-
-window.toggleRepeatDay = function(value) {
-  const group = document.getElementById('repeat-day-group');
-  if (group) group.style.display = value ? '' : 'none';
-};
-
 // ==================== MODALS ====================
 
 function renderModal() {
@@ -1104,7 +1381,7 @@ function renderModal() {
   const { mode, type, data } = adminModal;
   const isEdit = mode === 'edit';
   const isView = mode === 'view';
-  const titleLabels = { team: 'команды', user: 'пользователя', role: 'роли', dict: 'справочника', notif: 'шаблона уведомления', project: 'проекта', bc: 'бизнес-заказчика' };
+  const titleLabels = { team: 'команды', user: 'пользователя', role: 'роли', dict: 'справочника', project: 'проекта', bc: 'бизнес-заказчика', report: 'отчёта' };
   const title = isEdit ? `Редактирование ${titleLabels[type] || type}` : (isView ? `Просмотр ${titleLabels[type] || type}` : `Добавление ${titleLabels[type] || type}`);
 
   let body = '';
@@ -1112,13 +1389,13 @@ function renderModal() {
   else if (type === 'user') body = renderUserForm(data);
   else if (type === 'role') body = renderRoleForm(data);
   else if (type === 'dict') body = renderDictForm(data);
-  else if (type === 'notif') body = renderNotifForm(data);
   else if (type === 'project') body = renderProjectForm(data);
   else if (type === 'bc') body = renderBusinessCustomerForm(data);
+  else if (type === 'report') body = renderReportForm(data);
 
   return `
     <div class="admin-modal-overlay" id="admin-modal-overlay" style="z-index:1000">
-      <div class="admin-modal" style="max-width:${type === 'role' ? '700' : (type === 'notif' || type === 'project' || type === 'bc') ? '600' : '520'}px">
+      <div class="admin-modal" style="max-width:${type === 'role' ? '700' : (type === 'project' || type === 'bc') ? '600' : type === 'report' ? '720' : '520'}px">
         <div class="modal-header-sticky">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
             <h3 style="margin:0;font-size:16px;font-weight:600">${title}</h3>
@@ -1382,6 +1659,7 @@ function handleAdminClick(e, app) {
   }
 
   if (target.classList.contains('modal-close-x') || target.classList.contains('modal-cancel-btn')) {
+    releaseDictLockIfHeld(app);
     adminModal.show = false;
     const overlay = document.getElementById('admin-modal-overlay');
     if (overlay) overlay.remove();
@@ -1422,7 +1700,7 @@ function handleAdminClick(e, app) {
   if (target.classList.contains('admin-edit-btn')) {
     const type = target.dataset.type;
     const id = parseInt(target.dataset.id);
-    const keyMap = { team: 'teams', user: 'users', role: 'roles', notif: 'notifications', project: 'projects', bc: 'businessCustomers' };
+    const keyMap = { team: 'teams', user: 'users', role: 'roles', project: 'projects', bc: 'businessCustomers', report: 'reports' };
     const item = (adminData[keyMap[type]] || []).find(d => d.id === id);
     if (!item) return;
     adminModal = { show: true, mode: 'edit', type, data: { ...item } };
@@ -1436,13 +1714,66 @@ function handleAdminClick(e, app) {
   }
 
   if (target.classList.contains('admin-dict-card')) {
-    openDictModal(target.dataset.dict, app);
+    const dictKey = target.dataset.dict;
+    const dictTypeMap = { priorities: 'priority', statuses: 'status', taskTypes: 'task_type', channels: 'channel', deadlines: 'deadline', departments: 'department', teamTypes: 'team_type', projectStatuses: 'project_status' };
+    const lock = dictLocks[dictTypeMap[dictKey]];
+    if (lock && lock.locked && !lock.is_mine) {
+      toast(`Справочник редактируется: ${lock.lock_owner_name || 'Администратор'}`, 'error');
+      return;
+    }
+    openDictModal(dictKey, app);
     return;
   }
 
-  if (target.hasAttribute('data-report')) {
-    const code = target.getAttribute('data-report');
-    toast(`Настройка отчёта "${code}" — в разработке`, 'info');
+  if (target.id === 'report-view-back') {
+    adminReportView = null;
+    const content = document.getElementById('admin-content');
+    if (content) {
+      content.innerHTML = renderTabContent(adminTab, app);
+      pullStickyBars();
+      if (window.lucide) lucide.createIcons();
+      bindAdminEvents(app);
+    }
+    return;
+  }
+
+  if (target.id === 'report-execute-btn' || target.closest('#report-execute-btn')) {
+    const btn = target.closest('#report-execute-btn') || target;
+    const reportId = btn.dataset.reportId;
+    if (reportId) executeAdminReport(parseInt(reportId), app);
+    return;
+  }
+
+  if (target.id === 'report-add-filter' || target.closest('#report-add-filter')) {
+    const container = document.getElementById('report-filters-container');
+    if (container) {
+      const index = container.querySelectorAll('.report-filter-row').length;
+      container.insertAdjacentHTML('beforeend', renderFilterRow({}, index));
+      if (window.lucide) lucide.createIcons();
+    }
+    return;
+  }
+
+  if (target.classList.contains('report-filter-remove') || target.closest('.report-filter-remove')) {
+    const row = target.closest('.report-filter-row');
+    if (row) row.remove();
+    return;
+  }
+
+  const reportCard = target.closest('[data-admin-report-id]');
+  if (reportCard) {
+    const id = parseInt(reportCard.dataset.adminReportId);
+    const report = (adminData.reports || []).find(r => r.id === id);
+    if (report) {
+      adminReportView = report;
+      const content = document.getElementById('admin-content');
+      if (content) {
+        content.innerHTML = renderTabContent(adminTab, app);
+        pullStickyBars();
+        if (window.lucide) lucide.createIcons();
+        bindAdminEvents(app);
+      }
+    }
     return;
   }
 }
@@ -1487,6 +1818,7 @@ function handleAdminTabClick(e, app) {
   document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   adminTab = btn.dataset.tab;
+  adminReportView = null;
   const content = document.getElementById('admin-content');
   if (content) {
     content.innerHTML = renderTabContent(adminTab, app);
@@ -1558,21 +1890,7 @@ function saveModalData(app) {
     };
     if (!payload.name) { toast('Введите название роли', 'error'); return; }
     saveEntity('role', { ...data, ...payload }, app);
-  } else if (type === 'notif') {
-    const sel = document.getElementById('modal-recipients');
-    const selectedRoles = sel ? Array.from(sel.selectedOptions).map(o => o.value) : [];
-    const payload = {
-      name: getFieldVal('modal-name'),
-      text: getFieldVal('modal-text'),
-      recipients: selectedRoles.join(', '),
-      deadline_days: parseInt(getFieldVal('modal-deadline-days')) || null,
-      repeat_frequency: getFieldVal('modal-repeat-frequency') || null,
-      repeat_day: parseInt(getFieldVal('modal-repeat-day')) || null,
-      is_active: getFieldVal('modal-is-active') === '1',
-    };
-    if (!payload.name || !payload.text) { toast('Заполните название и текст уведомления', 'error'); return; }
-    saveEntity('notif', { ...data, ...payload }, app);
-} else if (type === 'project') {
+  } else if (type === 'project') {
     const payload = getProjectPayload();
     if (!payload.code) { toast('Код проекта обязателен', 'error'); return; }
     if (!payload.name) { toast('Название проекта обязательно', 'error'); return; }
@@ -1581,6 +1899,10 @@ function saveModalData(app) {
     const payload = getBusinessCustomerPayload();
     if (!payload.name) { toast('ФИО бизнес-заказчика обязательно', 'error'); return; }
     saveEntity('bc', { ...data, ...payload }, app);
+  } else if (type === 'report') {
+    const payload = getReportPayload();
+    if (!payload.name) { toast('Введите название отчёта', 'error'); return; }
+    saveEntity('report', { ...data, ...payload }, app);
   } else if (type === 'dict') {
     saveDictData(app);
   }
@@ -1634,6 +1956,7 @@ async function saveDictData(app) {
     }
     adminModal.show = false;
     document.getElementById('admin-modal-root').innerHTML = '';
+    await releaseDictLockIfHeld(app);
     toast('Справочник сохранён', 'success');
     await initAdmin(app);
   } catch (e) {
@@ -1646,9 +1969,9 @@ async function saveEntity(type, data, app) {
     team: '/admin/teams',
     user: '/admin/users',
     role: '/admin/roles',
-    notif: '/admin/notification-templates',
     project: '/admin/projects',
     bc: '/admin/business-customers',
+    report: '/reports',
   };
   const endpoint = endpointMap[type];
   if (!endpoint) return;
@@ -1669,15 +1992,15 @@ async function saveEntity(type, data, app) {
 }
 
 async function confirmDelete(type, id, app) {
-  const typeLabel = { team: 'команду', user: 'пользователя', role: 'роль', notif: 'шаблон уведомления', project: 'проект', bc: 'бизнес-заказчика' };
+  const typeLabel = { team: 'команду', user: 'пользователя', role: 'роль', project: 'проект', bc: 'бизнес-заказчика', report: 'отчёт' };
   if (!confirm(`Вы уверены? ${(typeLabel[type] || type)} будет полностью удален из системы.`)) return;
   const endpointMap = {
     team: '/admin/teams',
     user: '/admin/users',
     role: '/admin/roles',
-    notif: '/admin/notification-templates',
     project: '/admin/projects',
     bc: '/admin/business-customers',
+    report: '/reports',
   };
   const endpoint = endpointMap[type];
   if (!endpoint) return;
@@ -1691,9 +2014,34 @@ async function confirmDelete(type, id, app) {
   }
 }
 
-function openDictModal(dictKey, app) {
+async function releaseDictLockIfHeld(app) {
+  if (!currentDictLockType) return;
+  try {
+    await app.api.delete(`/admin/${currentDictLockType}/lock`);
+  } catch (e) { /* ignore */ }
+  currentDictLockType = null;
+}
+
+const DICT_KEY_TO_TYPE = { priorities: 'priority', statuses: 'status', taskTypes: 'task_type', channels: 'channel', deadlines: 'deadline', departments: 'department', teamTypes: 'team_type', projectStatuses: 'project_status' };
+
+async function openDictModal(dictKey, app) {
   const keyMap = { priorities: 'priorities', statuses: 'statuses', taskTypes: 'taskTypes', channels: 'channels', deadlines: 'deadlines', departments: 'departments', teamTypes: 'teamTypes', projectStatuses: 'projectStatuses' };
   const labelMap = { priorities: 'Приоритеты', statuses: 'Статусы задачи', taskTypes: 'Типы задач', channels: 'Каналы', deadlines: 'Сроки', departments: 'Подразделения', teamTypes: 'Типы команд', projectStatuses: 'Статусы проектов' };
+  const dictType = DICT_KEY_TO_TYPE[dictKey];
+
+  try {
+    await app.api.post(`/admin/${dictType}/lock`);
+    currentDictLockType = dictType;
+  } catch (e) {
+    if (e.status === 423) {
+      const lock = dictLocks[dictType];
+      toast(`Справочник заблокирован: ${lock ? (lock.lock_owner_name || 'Администратор') : 'другой администратор'}`, 'error');
+      return;
+    }
+    toast('Ошибка при открытии справочника', 'error');
+    return;
+  }
+
   adminModal = {
     show: true,
     mode: 'view',
@@ -1831,6 +2179,14 @@ function bindAdminEvents(app) {
   if (adminTab === 'display') {
     bindDisplayEvents(app);
   }
+
+  const sortByEl = document.getElementById('report-sort-by');
+  if (sortByEl) {
+    sortByEl.addEventListener('change', function() {
+      const sortGroup = document.getElementById('report-sort-order-group');
+      if (sortGroup) sortGroup.style.display = this.value ? '' : 'none';
+    });
+  }
 }
 
 // ==================== INIT ====================
@@ -1838,7 +2194,7 @@ function bindAdminEvents(app) {
 export async function initAdmin(app) {
   try {
     currentAdminUser = app.store.get('currentUser');
-    const [teams, users, roles, businessCustomers, priorities, statuses, taskTypes, channels, deadlines, departments, teamTypes, projectStatuses, projects, notifications, teamTypeRefs, displaySettings, columnLabels] = await Promise.all([
+    const [teams, users, roles, businessCustomers, priorities, statuses, taskTypes, channels, deadlines, departments, teamTypes, projectStatuses, projects, teamTypeRefs, displaySettings, columnLabels, reports, locksResp] = await Promise.all([
       app.api.get('/admin/teams').catch(() => []),
       app.api.get('/admin/users').catch(() => []),
       app.api.get('/admin/roles').catch(() => []),
@@ -1852,11 +2208,14 @@ export async function initAdmin(app) {
       app.api.get('/admin/team-types').catch(() => []),
       app.api.get('/admin/project-statuses').catch(() => []),
       app.api.get('/admin/projects').catch(() => []),
-      app.api.get('/admin/notification-templates').catch(() => []),
       app.api.get('/admin/team-types-ref').catch(() => []),
       app.api.get('/admin/display-settings').catch(() => []),
       app.api.get('/admin/column-labels').catch(() => ({})),
+      app.api.get('/reports').catch(() => []),
+      app.api.get('/admin/dict-locks').catch(() => ({})),
     ]);
+
+    dictLocks = (locksResp && typeof locksResp === 'object') ? locksResp : {};
 
     adminData.teams = Array.isArray(teams) ? teams : (teams.items || []);
     adminData.users = Array.isArray(users) ? users : (users.items || []);
@@ -1871,8 +2230,8 @@ export async function initAdmin(app) {
     adminData.teamTypes = Array.isArray(teamTypes) ? teamTypes : (teamTypes.items || []);
     adminData.projectStatuses = Array.isArray(projectStatuses) ? projectStatuses : (projectStatuses.items || []);
     adminData.projects = Array.isArray(projects) ? projects : (projects.items || []);
-    adminData.notifications = Array.isArray(notifications) ? notifications : (notifications.items || []);
     adminData.teamTypeRefs = Array.isArray(teamTypeRefs) ? teamTypeRefs : [];
+    adminData.reports = Array.isArray(reports) ? reports : (reports.items || []);
 
     const dsList = Array.isArray(displaySettings) ? displaySettings : (displaySettings.items || []);
     displaySettingsData = {};

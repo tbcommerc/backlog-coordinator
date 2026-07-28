@@ -2,7 +2,7 @@
  * DMB Backlog - Main Application
  * Entry point, initializes router and store
  */
-console.log('[DMB] app.js v20260626.12 loaded');
+console.log('[DMB] app.js v20260727 notif-v2 loaded');
 
 import { Router } from './router.js';
 import { Store } from './store.js';
@@ -18,10 +18,7 @@ const AVATAR_COLORS = [
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_MIN_LENGTH = 2;
 const SEARCH_MAX_RESULTS = 10;
-const STALE_TASK_DAYS = 5;
-const NOTIFICATION_PAGE_SIZE = 1000;
-const SYSTEM_NOTIFICATION_COUNT = 4;
-const MS_PER_DAY = 86400000;
+const SEARCH_PAGE_SIZE = 1000;
 
 window.getUserInitials = function(name) {
   if (!name) return '?';
@@ -41,82 +38,21 @@ window.getAvatarColor = function(name) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
-let notifCount = 0;
+const NOTIF_CAT_ICONS = {
+  risk: 'alert-triangle', deadline: 'clock', status_change: 'refresh-cw',
+  assignment: 'user-plus', mention: 'at-sign', comment: 'message-circle',
+  express: 'zap', stale: 'timer', attrs: 'file-text', system: 'info',
+};
 
-function isRiskStatus(s) {
-    return s === 'ХОЛД' || s === 'ЭСКАЛАЦИЯ НА ЛТ';
-}
-
-function isActiveStatus(s) {
-    return ['СБОР ТРЕБОВАНИЙ', 'ПРОВЕРКА ТРЕБОВАНИЙ', 'УТОЧНЕНИЕ ТРЕБОВАНИЙ', 'ЭКСПРЕСС-ОЦЕНКА', 'ПРИНЯТИЕ РЕШЕНИЯ', 'ПРИНЯТА В РАБОТУ'].includes(s);
-}
-
-function getQuarter(date) {
-    return Math.floor(date.getMonth() / 3) + 1;
-}
+const NOTIF_CAT_COLORS = {
+  risk: '#f43f5e', deadline: '#f59e0b', status_change: '#6366f1',
+  assignment: '#10b981', mention: '#a855f7', comment: '#3b82f6',
+  express: '#f59e0b', stale: '#64748b', attrs: '#64748b', system: '#64748b',
+};
 
 export async function checkNotifications() {
   try {
-    if (typeof window.__getNotifUnreadCount === 'function') {
-      const unread = window.__getNotifUnreadCount();
-      notifCount = unread;
-      const badge = document.getElementById('notif-badge');
-      const sideBadge = document.getElementById('notification-count');
-      const val = unread > 99 ? '99+' : unread;
-      if (badge) {
-        if (unread > 0) { badge.textContent = val; badge.classList.remove('hidden'); }
-        else { badge.classList.add('hidden'); }
-      }
-      if (sideBadge) sideBadge.textContent = val;
-      return;
-    }
-
-    const store = window.app?.store;
-    const user = store?.get('currentUser');
-    let teamId = user?.team_id;
-    if (!teamId && user?.team) {
-      const cached = store?.get('_teams');
-      if (cached && Array.isArray(cached)) {
-        const ut = cached.find(t => t.name === user.team);
-        if (ut) teamId = ut.id;
-      }
-      if (!teamId) {
-        try {
-          const resp = await window.app.api.get('/teams');
-          const teams = resp.items || [];
-          store?.set('_teams', teams);
-          const ut = teams.find(t => t.name === user.team);
-          if (ut) teamId = ut.id;
-        } catch {}
-      }
-    }
-    const now = new Date();
-    const currentQuarter = getQuarter(now);
-    const currentYear = now.getFullYear();
-    const data = await window.app.api.get(`/tasks?per_page=${NOTIFICATION_PAGE_SIZE}`);
-    const items = data.items || data.tasks || [];
-    const counted = new Set();
-    items.forEach(task => {
-      if (!task || !task.id) return;
-      const isMyTeam = teamId && task.team_id === teamId;
-      if (!isMyTeam) return;
-      let matched = false;
-      if (isRiskStatus(task.status)) matched = true;
-      else if (isActiveStatus(task.status) && task.effort_days == null && task.effort_rub == null) matched = true;
-      else if (isActiveStatus(task.status) && (!task.description || task.description.length < STALE_TASK_DAYS * 4)) matched = true;
-      else if (task.status === 'ПРИНЯТА В РАБОТУ' && task.updated_at) {
-        const updated = new Date(task.updated_at);
-        const daysDiff = Math.floor((now - updated) / MS_PER_DAY);
-        if (daysDiff > STALE_TASK_DAYS) matched = true;
-      }
-      if (!matched && task.deadline) {
-        const deadline = new Date(task.deadline);
-        if (getQuarter(deadline) === currentQuarter && deadline.getFullYear() === currentYear && isActiveStatus(task.status)) matched = true;
-      }
-      if (matched) counted.add(task.id);
-    });
-    let count = counted.size + SYSTEM_NOTIFICATION_COUNT;
-    notifCount = count;
+    const { count } = await window.app.api.get('/notifications/unread-count');
     const badge = document.getElementById('notif-badge');
     const sideBadge = document.getElementById('notification-count');
     const val = count > 99 ? '99+' : count;
@@ -124,13 +60,56 @@ export async function checkNotifications() {
       if (count > 0) { badge.textContent = val; badge.classList.remove('hidden'); }
       else { badge.classList.add('hidden'); }
     }
-    if (sideBadge) {
-      sideBadge.textContent = val;
-    }
+    if (sideBadge) sideBadge.textContent = val;
   } catch {
     const badge = document.getElementById('notif-badge');
     if (badge) badge.classList.add('hidden');
   }
+}
+
+async function loadNotifDropdown(app) {
+  try {
+    const data = await app.api.get('/notifications?per_page=5');
+    const body = document.getElementById('notif-dropdown-body');
+    if (!body) return;
+    if (!data.items || data.items.length === 0) {
+      body.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">Нет уведомлений</div>';
+      return;
+    }
+    body.innerHTML = data.items.map(n => {
+      const icon = NOTIF_CAT_ICONS[n.category] || 'bell';
+      const color = NOTIF_CAT_COLORS[n.category] || '#64748b';
+      const time = formatShortTime(n.created_at);
+      const unread = !n.is_read ? 'font-weight:600;' : '';
+      return `
+        <div class="notif-dropdown-item" data-task-id="${n.task_id || ''}" style="display:flex;align-items:start;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border-color);${unread}">
+          <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${color}18;color:${color};">
+            <i data-lucide="${icon}" style="width:14px;height:14px;"></i>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${n.title}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${time}</div>
+          </div>
+        </div>`;
+    }).join('');
+    body.innerHTML += `<a href="#/notifications" style="display:block;padding:10px;text-align:center;font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;">Все уведомления →</a>`;
+    if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+  } catch {}
+}
+
+function formatShortTime(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = now - d;
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return 'Только что';
+  if (mins < 60) return `${mins} мин.`;
+  if (hours < 24) return `${hours} ч.`;
+  if (days < 7) return `${days} д.`;
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
 let searchTasksCache = null;
@@ -197,7 +176,7 @@ async function handleSearch(query, app) {
   }
   try {
     if (!searchTasksCache) {
-      const res = await app.api.get(`/tasks?per_page=${NOTIFICATION_PAGE_SIZE}`);
+      const res = await app.api.get(`/tasks?per_page=${SEARCH_PAGE_SIZE}`);
       searchTasksCache = res.items || res.tasks || [];
     }
     const tasks = searchTasksCache;
@@ -291,10 +270,18 @@ export function renderAppShell(content) {
           <div id="search-results" class="search-dropdown hidden"></div>
         </div>
         <div class="navbar-right" style="display: flex; align-items: center; gap: 4px;">
-          <button onclick="app.router.navigate('/notifications')" style="position: relative; padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer;">
-            <i data-lucide="bell" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"></i>
-            <span id="notif-badge" class="notif-badge hidden">0</span>
-          </button>
+          <div style="position:relative;" id="notif-bell-wrap">
+            <button id="notif-bell-btn" style="position: relative; padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer;">
+              <i data-lucide="bell" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"></i>
+              <span id="notif-badge" class="notif-badge hidden">0</span>
+            </button>
+            <div id="notif-dropdown" class="dropdown-menu hidden" style="position:absolute;top:100%;right:0;width:380px;max-height:420px;overflow-y:auto;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);z-index:1000;">
+              <div style="padding:12px;border-bottom:1px solid var(--border-color);font-weight:600;font-size:14px;">Уведомления</div>
+              <div id="notif-dropdown-body" style="min-height:60px;">
+                <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Загрузка...</div>
+              </div>
+            </div>
+          </div>
           <div style="width:1px;height:24px;background:var(--border-color);margin:0 4px;"></div>
           <button id="theme-toggle" style="padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer; color: var(--text-muted);" title="Переключить тему">
             <i data-lucide="${isDark ? 'sun' : 'moon'}" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"></i>
@@ -325,6 +312,30 @@ export async function initApp(app) {
   app.refreshNotifications = checkNotifications;
   checkNotifications();
   initSidebar();
+
+  // Bell dropdown
+  const bellBtn = document.getElementById('notif-bell-btn');
+  const bellDropdown = document.getElementById('notif-dropdown');
+  const bellWrap = document.getElementById('notif-bell-wrap');
+  if (bellBtn && bellDropdown) {
+    bellBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = bellDropdown.classList.toggle('hidden') === false;
+      if (isOpen) loadNotifDropdown(app);
+    });
+    document.addEventListener('click', (e) => {
+      if (bellWrap && !bellWrap.contains(e.target)) {
+        bellDropdown.classList.add('hidden');
+      }
+    });
+    bellDropdown.addEventListener('click', (e) => {
+      const item = e.target.closest('.notif-dropdown-item[data-task-id]');
+      if (item && item.dataset.taskId) {
+        document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: parseInt(item.dataset.taskId) } }));
+        bellDropdown.classList.add('hidden');
+      }
+    });
+  }
 
   const searchInput = document.getElementById('global-search');
   let searchTimer;
@@ -607,10 +618,15 @@ window.toast = function (msg, type = 'success') {
   const toast = document.createElement('div');
   const icons = { success: '✓', error: '✕', info: 'ℹ', warning: '⚠' };
   toast.className = 'toast toast-' + type;
-  toast.innerHTML = `<span class="toast-icon">${icons[type] || '✓'}</span><span class="toast-message">${escapeHtml(msg)}</span>`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type] || '✓'}</span><span class="toast-message">${escapeHtml(msg)}</span><button class="toast-close" aria-label="Закрыть">&times;</button>`;
   container.appendChild(toast);
   const timeout = type === 'error' ? 5000 : 3000;
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, timeout);
+  const timer = setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, timeout);
+  toast.querySelector('.toast-close').addEventListener('click', () => {
+    clearTimeout(timer);
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  });
 };
 
 document.addEventListener('DOMContentLoaded', () => {
