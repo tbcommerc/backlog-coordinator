@@ -22,8 +22,8 @@ export function renderCustomerChat(app) {
   const userName = user?.name?.split(' ')[0] || 'Заказчик';
 
   return `
-    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <div>
+    <div class="page-header animate-fade-in" style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:var(--space-3);">
+      <div style="flex:1;min-width:0;">
         <h1>Создать задачу</h1>
         <p>Опишите задачу своими словами — бот поможет оформить запрос</p>
       </div>

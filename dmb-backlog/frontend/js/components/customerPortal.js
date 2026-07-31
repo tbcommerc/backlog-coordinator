@@ -8,7 +8,7 @@ export function renderCustomerPortal(app) {
   const userName = user?.name || 'Заказчик';
 
   return `
-    <div class="page-header">
+    <div class="page-header animate-fade-in">
       <h1>Мои задачи</h1>
       <p>Добро пожаловать, ${userName}</p>
     </div>

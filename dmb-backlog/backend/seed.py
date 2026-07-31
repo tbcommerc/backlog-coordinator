@@ -236,11 +236,11 @@ def seed_initial_data():
     roles = {}
     role_data = [
         ("Администратор", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_all", "reports_access": "read_write", "analytics_access": "read_write", "customer_access": "read_write", "settings_access": "available", "admin_access": "full", "can_edit_tasks": True, "can_delete_tasks": True, "can_export": True}),
-        ("PO", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "write_own", "reports_access": "read", "analytics_access": "read", "customer_access": "read", "settings_access": "available", "admin_access": "none", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
-        ("BA", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "read_own", "reports_access": "read", "analytics_access": "read", "customer_access": "read", "settings_access": "none", "admin_access": "none", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
+        ("PO/PL/CL", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "write_own", "reports_access": "read", "analytics_access": "read", "customer_access": "read", "settings_access": "available", "admin_access": "none", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
+        ("BA/Участник команды", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "read_own", "reports_access": "read", "analytics_access": "read", "customer_access": "read", "settings_access": "none", "admin_access": "none", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
         ("IT PL", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_own", "reports_access": "read", "analytics_access": "read_write", "customer_access": "read", "settings_access": "available", "admin_access": "none", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
         ("Бизнес-заказчик", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "read_own", "reports_access": "read", "analytics_access": "none", "customer_access": "read_write", "settings_access": "none", "admin_access": "none", "can_edit_tasks": False, "can_delete_tasks": False, "can_export": False}),
-        ("ЛТ", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_all", "reports_access": "read_write", "analytics_access": "read_write", "customer_access": "read", "settings_access": "available", "admin_access": "partial", "can_edit_tasks": True, "can_delete_tasks": True, "can_export": True}),
+        ("Лидер трайба", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_all", "reports_access": "read_write", "analytics_access": "read_write", "customer_access": "read", "settings_access": "available", "admin_access": "partial", "can_edit_tasks": True, "can_delete_tasks": True, "can_export": True}),
     ]
     for name, attrs in role_data:
         r = get_or_create(Role, [Role.name == name], attrs)
@@ -266,24 +266,24 @@ def seed_initial_data():
 
     # --- Users ---
     users_data = [
-        ("t.babiak@dmb.ru", "Т. Бабяк", "ЛТ · Проектный офис", "ИТ ЛТ", "ЛТ"),
+        ("t.babiak@dmb.ru", "Т. Бабяк", "Лидер трайба · Проектный офис", "ИТ ЛТ", "Лидер трайба"),
         ("a@dmb.ru", "Администратор", "System Admin", None, "Администратор"),
-        ("a.koptelev@dmb.ru", "А. Коптелов", "ЛТ", "ИТ ЛТ", "ЛТ"),
+        ("a.koptelev@dmb.ru", "А. Коптелов", "Лидер трайба", "ИТ ЛТ", "Лидер трайба"),
         ("m.pervak@dmb.ru", "М. Первак", "PL Pre-Trade", "Pre-Trade", "IT PL"),
-        ("d.fomin@dmb.ru", "Д. Фомин", "PO Pre-Trade", "Pre-Trade", "PO"),
+        ("d.fomin@dmb.ru", "Д. Фомин", "PO Pre-Trade", "Pre-Trade", "PO/PL/CL"),
         ("d.markus@dmb.ru", "Д. Маркус", "PL Post-Trade", "Post-Trade (Products & Service)", "IT PL"),
-        ("d.kozlov@dmb.ru", "Д. Козлов", "PO Post-Trade", "Post-Trade (Products & Service)", "PO"),
+        ("d.kozlov@dmb.ru", "Д. Козлов", "PO Post-Trade", "Post-Trade (Products & Service)", "PO/PL/CL"),
         ("v.baklushin@dmb.ru", "В. Баклушин", "PL Core", "Core", "IT PL"),
-        ("r.khachatryan@dmb.ru", "Р. Хачатрян", "PO Core", "Core", "PO"),
+        ("r.khachatryan@dmb.ru", "Р. Хачатрян", "PO Core", "Core", "PO/PL/CL"),
         ("a.mazunin@dmb.ru", "А. Мазунин", "PL IB", "IB", "IT PL"),
-        ("u.shilov@dmb.ru", "Ю. Шилов", "PO IB", "IB", "PO"),
-        ("d.andreev@dmb.ru", "Д. Андреев", "PO Finance", "Post-Trade (Finance)", "PO"),
+        ("u.shilov@dmb.ru", "Ю. Шилов", "PO IB", "IB", "PO/PL/CL"),
+        ("d.andreev@dmb.ru", "Д. Андреев", "PO Finance", "Post-Trade (Finance)", "PO/PL/CL"),
         ("l.kulikov@dmb.ru", "Л. Куликов", "CL Delivery", "Delivery", "IT PL"),
         ("i.yakovlev@dmb.ru", "И. Яковлев", "CL Methodology", "Methodology", "IT PL"),
         ("i.mishutin@dmb.ru", "И. Мишутин", "CL AI", "AI", "IT PL"),
         ("v.stodolsky@dmb.ru", "В. Стодольский", "CL Проектный офис", "Проектный офис", "IT PL"),
-        ("a.smirnov@dmb.ru", "А. Смирнов", "Senior Developer", "Core", "BA"),
-        ("d.volkov@dmb.ru", "Д. Волков", "Developer", "AI", "BA"),
+        ("a.smirnov@dmb.ru", "А. Смирнов", "Senior Developer", "Core", "BA/Участник команды"),
+        ("d.volkov@dmb.ru", "Д. Волков", "Developer", "AI", "BA/Участник команды"),
     ]
 
     users_by_email = {}

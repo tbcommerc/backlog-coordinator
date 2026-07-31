@@ -1,3 +1,9 @@
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 let adminTab = 'teams';
 let adminData = { teams: [], users: [], roles: [], priorities: [], statuses: [], taskTypes: [], businessCustomers: [], channels: [], deadlines: [], departments: [], teamTypes: [], projectStatuses: [], projects: [], reports: [], teamTypeRefs: [] };
 let adminModal = { show: false, mode: 'add', type: 'team', data: {} };
@@ -7,6 +13,35 @@ let userSearch = '';
 let userFilters = { role: '', team: '', status: '' };
 let dictLocks = {};
 let currentDictLockType = null;
+
+function getRoleDisplayName(role) {
+    if (!role) return '';
+    return role.name;
+}
+
+function showConfirmModal(message, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+        <div class="modal" style="max-width:420px;text-align:center;">
+            <div style="margin-bottom:var(--space-6);">
+                <div style="width:48px;height:48px;border-radius:50%;background:var(--danger-light, rgba(244,63,94,0.12));display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-4);">
+                    <i data-lucide="alert-triangle" style="width:24px;height:24px;color:var(--danger);"></i>
+                </div>
+                <div style="font-size:15px;font-weight:500;color:var(--text-primary);line-height:1.5;">${escapeHtml(message)}</div>
+            </div>
+            <div style="display:flex;gap:var(--space-3);justify-content:center;">
+                <button class="btn btn-ghost modal-cancel-btn" style="min-width:100px;">Отмена</button>
+                <button class="btn btn-danger modal-confirm-btn" style="min-width:100px;">Подтвердить</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' });
+    const close = () => overlay.remove();
+    overlay.querySelector('.modal-cancel-btn').addEventListener('click', close);
+    overlay.querySelector('.modal-confirm-btn').addEventListener('click', () => { close(); onConfirm(); });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+}
 
 const TEAM_ABBR = {
   'Pre-Trade': 'Pre',
@@ -176,9 +211,9 @@ function getRoleStatusBadge(status) {
 
 export function renderAdmin(app) {
   adminTab = 'teams';
-  const tabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'dictionaries', 'display', 'reports'];
-  const tabLabels = { teams: 'Команды', projects: 'Проекты', businessCustomers: 'Бизнес-заказчики', users: 'Пользователи', roles: 'Роли', dictionaries: 'Справочники', display: 'Отображение', reports: 'Отчёты' };
-  const tabIcons = { teams: 'users', projects: 'briefcase', businessCustomers: 'user-cog', users: 'user', roles: 'shield', dictionaries: 'book-open', display: 'eye', reports: 'bar-chart-3' };
+  const tabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'home', 'dictionaries', 'display', 'reports'];
+  const tabLabels = { teams: 'Команды', projects: 'Проекты', businessCustomers: 'Бизнес-заказчики', users: 'Пользователи', roles: 'Роли', home: 'Таймлайн', dictionaries: 'Справочники', display: 'Отображение', reports: 'Отчёты' };
+  const tabIcons = { teams: 'users', projects: 'briefcase', businessCustomers: 'user-cog', users: 'user', roles: 'shield', home: 'calendar', dictionaries: 'book-open', display: 'eye', reports: 'bar-chart-3' };
 
   const tabBar = tabs.map(t =>
     `<button class="admin-tab${adminTab === t ? ' active' : ''}" data-tab="${t}">
@@ -190,10 +225,10 @@ export function renderAdmin(app) {
   const content = renderTabContent(adminTab, app);
 
   return `
-    <div class="page-header animate-fade-in" style="position:relative;z-index:40">
+    <div class="page-header animate-fade-in">
       <div>
         <h1>Администрирование</h1>
-        <p class="text-muted text-sm mt-1">Настройки системы, справочники и управление доступами</p>
+        <p>Настройки системы, справочники и управление доступами</p>
       </div>
     </div>
     <div style="position:sticky;top:var(--navbar-height);z-index:30;background:var(--bg-primary);padding-bottom:var(--space-2)">
@@ -285,6 +320,7 @@ function renderTabContent(tab, app) {
       case 'businessCustomers': return renderBusinessCustomersTab(app);
     case 'users': return renderUsersTab(app);
     case 'roles': return renderRolesTab(app);
+    case 'home': return renderHomeTab(app);
     case 'dictionaries': return renderDictionariesTab(app);
     case 'display': return renderDisplayTab(app);
     case 'reports': return renderReportsTab(app);
@@ -548,7 +584,7 @@ function renderUsersTab(app) {
 
   const selStyle = 'font-size:12px;padding:3px 6px;border:1px solid var(--border-color);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);width:100%';
   const fOpt = (val, label) => `<option value="${val}"${userFilters[label] === val ? ' selected' : ''}>`;
-  const roleFilter = `<select onchange="window._adminFilterChange(this)" id="admin-filter-role" style="${selStyle}"><option value="">Все</option>${roles.map(r => `<option value="${r.id}"${userFilters.role == r.id ? ' selected' : ''}>${r.name}</option>`).join('')}</select>`;
+  const roleFilter = `<select onchange="window._adminFilterChange(this)" id="admin-filter-role" style="${selStyle}"><option value="">Все</option>${roles.map(r => `<option value="${r.id}"${userFilters.role == r.id ? ' selected' : ''}>${getRoleDisplayName(r)}</option>`).join('')}</select>`;
   const teamFilter = `<select onchange="window._adminFilterChange(this)" id="admin-filter-team" style="${selStyle}"><option value="">Все</option>${teams.map(t => `<option value="${t.id}"${userFilters.team == t.id ? ' selected' : ''}>${t.name}</option>`).join('')}</select>`;
   const statusFilter = `<select onchange="window._adminFilterChange(this)" id="admin-filter-status" style="${selStyle}"><option value="">Все</option><option value="1"${userFilters.status == '1' ? ' selected' : ''}>Активен</option><option value="0"${userFilters.status == '0' ? ' selected' : ''}>Неактивен</option></select>`;
 
@@ -570,7 +606,7 @@ function renderUsersTab(app) {
               </div>
             </td>
             <td style="padding:12px 16px;border-bottom:1px solid var(--border-color)">
-              ${role ? `<span class="badge badge-info" style="font-size:11px">${role.name}</span>` : '<span class="text-muted" style="font-size:12px">—</span>'}
+              ${role ? `<span class="badge badge-info" style="font-size:11px">${getRoleDisplayName(role)}</span>` : '<span class="text-muted" style="font-size:12px">—</span>'}
             </td>
             <td style="padding:12px 16px;border-bottom:1px solid var(--border-color);color:var(--text-secondary);font-size:13px">${teamName}</td>
             <td style="padding:12px 16px;border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:12px">${u.email || '—'}</td>
@@ -651,7 +687,7 @@ function renderRolesTab(app) {
         return `
           <tr>
             <td style="padding:10px 12px;border-bottom:1px solid var(--border-color)">
-              <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${r.name}</div>
+              <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${getRoleDisplayName(r)}</div>
               ${r.description ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${r.description}</div>` : ''}
             </td>
             ${perms}
@@ -805,6 +841,264 @@ const REPORT_SORT_FIELDS = [
   { value: 'ice_score', label: 'По ICE Score' },
   { value: 'created_at', label: 'По дате создания' },
 ];
+
+// ==================== HOME / TIMELINE TAB ====================
+
+let tlAdminData = { events: [], year: new Date().getFullYear() };
+
+const MONTH_NAMES = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+
+function formatDateRu(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.getDate() + ' ' + MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+const RECUR_LABELS = {
+  daily: 'Ежедневно', weekly: 'Еженедельно', monthly: 'Ежемесячно',
+  quarterly: 'Ежеквартально', yearly: 'Ежегодно',
+};
+
+const VIS_LABELS = { all: 'Все уровни', quarter: 'Только квартал', month: 'Только месяц' };
+
+function renderHomeTab(app) {
+  return `
+    <div class="admin-section">
+      <div class="admin-section-header">
+        <h2>События таймлайна</h2>
+        <button class="btn btn-primary btn-sm add-btn" data-action="add-tl-event">
+          <i data-lucide="plus" style="width:16px;height:16px;"></i> Добавить событие
+        </button>
+      </div>
+      <div id="tl-admin-list">${renderTimelineEventList(app)}</div>
+    </div>`;
+}
+
+function renderTimelineEventList(app) {
+  const events = tlAdminData.events;
+  const rows = events.length === 0
+    ? '<tr><td colspan="6" class="text-muted" style="text-align:center;padding:var(--space-6)">Нет событий</td></tr>'
+    : events.map(ev => {
+        const recurLabel = ev.is_recurring && ev.recurring_interval ? (RECUR_LABELS[ev.recurring_interval] || ev.recurring_interval) : 'Нет';
+        const visLabel = VIS_LABELS[ev.visibility_level] || ev.visibility_level || 'Все уровни';
+        return `
+        <tr>
+          <td style="white-space:nowrap">${formatDateRu(ev.date)}</td>
+          <td><span class="tl-admin-dot" style="background:${ev.color};"></span>${escapeHtml(ev.title)}</td>
+          <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.description ? escapeHtml(ev.description.substring(0, 60)) : '—'}</td>
+          <td>${recurLabel}</td>
+          <td>${visLabel}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" data-action="edit-tl-event" data-id="${ev.id}"><i data-lucide="pencil" style="width:14px;height:14px;"></i></button>
+            <button class="btn btn-ghost btn-sm" data-action="delete-tl-event" data-id="${ev.id}"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+          </td>
+        </tr>`;
+      }).join('');
+
+  return `
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Название</th>
+          <th>Описание</th>
+          <th>Повторение</th>
+          <th>Уровень</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>`;
+}
+
+function renderTimelineEventModal(data, app) {
+  const isEdit = !!data.id;
+
+  const recurOpts = [
+    { value: '', label: 'Нет' },
+    { value: 'daily', label: 'Ежедневно' },
+    { value: 'weekly', label: 'Еженедельно' },
+    { value: 'monthly', label: 'Ежемесячно' },
+    { value: 'quarterly', label: 'Ежеквартально' },
+    { value: 'yearly', label: 'Ежегодно' },
+  ];
+
+  const visOpts = [
+    { value: 'all', label: 'Все уровни' },
+    { value: 'quarter', label: 'Только квартал' },
+    { value: 'month', label: 'Только месяц' },
+  ];
+
+  return `
+    <div class="modal-backdrop" id="tl-modal-backdrop">
+      <div class="modal" style="max-width:480px;">
+        <div class="modal-header">
+          <h3>${isEdit ? 'Редактировать событие' : 'Новое событие'}</h3>
+          <button class="modal-close" id="tl-modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Название <span class="required">*</span></label>
+            <input class="input" id="tl-field-title" value="${escapeHtml(data.title || '')}" placeholder="Название события">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Описание</label>
+            <textarea class="input" id="tl-field-desc" placeholder="Описание события" style="min-height:60px">${escapeHtml(data.description || '')}</textarea>
+          </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group">
+                <label class="form-label">Дата <span class="required">*</span></label>
+                <input class="input" type="date" id="tl-field-date" value="${data.date || ''}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Цвет</label>
+                <input type="hidden" id="tl-field-color" value="${data.color || '#6366f1'}">
+                <div id="tl-color-palette" style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;">${COLOR_PALETTE.map(c => `<span class="color-swatch ${(data.color || '#6366f1') === c ? 'active' : ''}" data-color="${c}" style="background:${c};"></span>`).join('')}</div>
+              </div>
+            </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Повторение</label>
+              <select class="input" id="tl-field-interval">
+                ${recurOpts.map(o => `<option value="${o.value}"${(data.is_recurring ? (data.recurring_interval || '') : '') === o.value ? ' selected' : ''}>${o.label}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Показывать на уровне</label>
+              <select class="input" id="tl-field-visibility">
+                ${visOpts.map(o => `<option value="${o.value}"${(data.visibility_level || 'all') === o.value ? ' selected' : ''}>${o.label}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:12px" id="tl-modal-save" data-edit-id="${data.id || ''}">${isEdit ? 'Сохранить' : 'Создать'}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function loadTimelineAdminEvents(app) {
+  try {
+    const url = `/timeline?year=${tlAdminData.year}`;
+    const resp = await app.api.get(url);
+    tlAdminData.events = resp.items || [];
+    const container = document.getElementById('tl-admin-list');
+    if (container) {
+      container.innerHTML = renderTimelineEventList(app);
+      try { if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' }); } catch (_) {}
+    }
+  } catch (e) {
+    console.error('TL admin load error:', e);
+    const statusInfo = e.status ? ` (HTTP ${e.status})` : '';
+    toast('Ошибка загрузки событий: ' + (e.message || '') + statusInfo, 'error');
+  }
+}
+
+function bindHomeTabEvents(app) {
+  const page = document.getElementById('page-content');
+  if (!page) return;
+
+  page.removeEventListener('click', window._tlAdminClick);
+  window._tlAdminClick = (e) => handleHomeTabClick(e, app);
+  page.addEventListener('click', window._tlAdminClick);
+}
+
+function handleHomeTabClick(e, app) {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action = btn.dataset.action;
+
+  if (action === 'add-tl-event') {
+    const root = document.getElementById('admin-modal-root');
+    root.innerHTML = renderTimelineEventModal({}, app);
+    bindTimelineEventModal(app);
+  } else if (action === 'edit-tl-event') {
+    const id = parseInt(btn.dataset.id);
+    const ev = tlAdminData.events.find(e => e.id === id);
+    if (ev) {
+      const root = document.getElementById('admin-modal-root');
+      root.innerHTML = renderTimelineEventModal(ev, app);
+      bindTimelineEventModal(app);
+    }
+  } else if (action === 'delete-tl-event') {
+    deleteTimelineEvent(btn.dataset.id, app);
+  }
+}
+
+function bindTimelineEventModal(app) {
+  const backdrop = document.getElementById('tl-modal-backdrop');
+  if (backdrop) {
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    });
+  }
+  const close = document.getElementById('tl-modal-close');
+  if (close) close.addEventListener('click', () => backdrop?.remove());
+
+  const saveBtn = document.getElementById('tl-modal-save');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => saveTimelineEvent(saveBtn.dataset.editId, app));
+  }
+
+  const palette = document.getElementById('tl-color-palette');
+  if (palette) {
+    palette.addEventListener('click', (e) => {
+      const swatch = e.target.closest('.color-swatch');
+      if (!swatch) return;
+      palette.querySelectorAll('.color-swatch').forEach(s => s.style.borderColor = 'transparent');
+      swatch.style.borderColor = 'var(--accent)';
+      const input = document.getElementById('tl-field-color');
+      if (input) input.value = swatch.dataset.color;
+    });
+  }
+}
+
+async function saveTimelineEvent(editId, app) {
+  const title = document.getElementById('tl-field-title')?.value?.trim();
+  if (!title) { toast('Название обязательно', 'error'); return; }
+
+  const date = document.getElementById('tl-field-date')?.value;
+  if (!date) { toast('Дата обязательна', 'error'); return; }
+
+  const interval = document.getElementById('tl-field-interval')?.value || '';
+
+  const payload = {
+    title,
+    description: document.getElementById('tl-field-desc')?.value?.trim() || null,
+    date,
+    color: document.getElementById('tl-field-color')?.value || '#6366f1',
+    is_recurring: interval !== '',
+    recurring_interval: interval || null,
+    visibility_level: document.getElementById('tl-field-visibility')?.value || 'all',
+  };
+
+  try {
+    if (editId) {
+      await app.api.put(`/timeline/admin/${editId}`, payload);
+      toast('Событие обновлено', 'success');
+    } else {
+      await app.api.post('/timeline/admin', payload);
+      toast('Событие создано', 'success');
+    }
+    document.getElementById('admin-modal-root').innerHTML = '';
+    await loadTimelineAdminEvents(app);
+  } catch (e) {
+    toast('Ошибка: ' + (e.message || ''), 'error');
+  }
+}
+
+async function deleteTimelineEvent(id, app) {
+  showConfirmModal('Удалить событие?', async () => {
+    try {
+      await app.api.delete(`/timeline/admin/${id}`);
+      toast('Событие удалено', 'success');
+      await loadTimelineAdminEvents(app);
+    } catch (e) {
+      toast('Ошибка: ' + (e.message || ''), 'error');
+    }
+  });
+}
 
 let adminReportView = null;
 
@@ -1504,7 +1798,7 @@ function renderUserForm(data) {
   const teams = adminData.teams || [];
   const roles = adminData.roles || [];
   const teamOpts = teams.map(t => `<option value="${t.id}"${data.team_id == t.id ? ' selected' : ''}>${t.name}</option>`).join('');
-  const roleOpts = roles.map(r => `<option value="${r.id}"${data.role_id == r.id ? ' selected' : ''}>${r.name}</option>`).join('');
+  const roleOpts = roles.map(r => `<option value="${r.id}"${data.role_id == r.id ? ' selected' : ''}>${getRoleDisplayName(r)}</option>`).join('');
   const initials = window.getUserInitials(data.name);
   const avatarColor = window.getAvatarColor(data.name);
   return `
@@ -1568,7 +1862,7 @@ function renderRoleForm(data) {
   return `
     <div class="form-group">
       <label class="form-label">Название роли <span class="required">*</span></label>
-      <input class="input modal-field" id="modal-name" value="${data.name || ''}" placeholder="Название">
+      <input class="input modal-field" id="modal-name" value="${getRoleDisplayName(data) || data.name || ''}" placeholder="Название">
     </div>
     <div class="form-group">
       <label class="form-label">Описание</label>
@@ -1670,7 +1964,8 @@ function handleAdminClick(e, app) {
     const swatch = target.closest('.color-swatch');
     document.querySelectorAll('.color-swatch').forEach(s => { s.style.borderColor = 'transparent'; });
     swatch.style.borderColor = 'var(--accent)';
-    document.getElementById('modal-color').value = swatch.dataset.color;
+    const modalColor = document.getElementById('modal-color');
+    if (modalColor) modalColor.value = swatch.dataset.color;
     return;
   }
 
@@ -1825,6 +2120,9 @@ function handleAdminTabClick(e, app) {
     pullStickyBars();
     if (window.lucide) lucide.createIcons();
     bindAdminEvents(app);
+    if (adminTab === 'home') {
+      loadTimelineAdminEvents(app);
+    }
   }
 }
 
@@ -1942,25 +2240,33 @@ async function saveDictData(app) {
   const newIds = new Set(validItems.filter(i => i.id).map(i => i.id));
   const toDelete = [...existingIds].filter(id => !newIds.has(id));
 
-  try {
-    for (const item of validItems) {
-      const payload = { dict_type: config.type, name: item.name, code: item.code, color: item.color || '#6366f1', sort_order: 1 };
-      if (item.id) {
-        await app.api.put(`/admin/${config.endpoint}/${item.id}`, payload);
-      } else {
-        await app.api.post(`/admin/${config.endpoint}`, payload);
+  const doSave = async () => {
+    try {
+      for (const item of validItems) {
+        const payload = { dict_type: config.type, name: item.name, code: item.code, color: item.color || '#6366f1', sort_order: 1 };
+        if (item.id) {
+          await app.api.put(`/admin/${config.endpoint}/${item.id}`, payload);
+        } else {
+          await app.api.post(`/admin/${config.endpoint}`, payload);
+        }
       }
+      for (const id of toDelete) {
+        await app.api.delete(`/admin/${config.endpoint}/${id}`);
+      }
+      adminModal.show = false;
+      document.getElementById('admin-modal-root').innerHTML = '';
+      await releaseDictLockIfHeld(app);
+      toast('Справочник сохранён', 'success');
+      await initAdmin(app);
+    } catch (e) {
+      toast('Ошибка сохранения: ' + e.message, 'error');
     }
-    for (const id of toDelete) {
-      await app.api.delete(`/admin/${config.endpoint}/${id}`);
-    }
-    adminModal.show = false;
-    document.getElementById('admin-modal-root').innerHTML = '';
-    await releaseDictLockIfHeld(app);
-    toast('Справочник сохранён', 'success');
-    await initAdmin(app);
-  } catch (e) {
-    toast('Ошибка сохранения: ' + e.message, 'error');
+  };
+
+  if (toDelete.length > 0) {
+    showConfirmModal(`Будут удалены элементы справочника (${toDelete.length} шт.). Продолжить?`, doSave);
+  } else {
+    await doSave();
   }
 }
 
@@ -1992,26 +2298,29 @@ async function saveEntity(type, data, app) {
 }
 
 async function confirmDelete(type, id, app) {
-  const typeLabel = { team: 'команду', user: 'пользователя', role: 'роль', project: 'проект', bc: 'бизнес-заказчика', report: 'отчёт' };
-  if (!confirm(`Вы уверены? ${(typeLabel[type] || type)} будет полностью удален из системы.`)) return;
-  const endpointMap = {
-    team: '/admin/teams',
-    user: '/admin/users',
-    role: '/admin/roles',
-    project: '/admin/projects',
-    bc: '/admin/business-customers',
-    report: '/reports',
-  };
-  const endpoint = endpointMap[type];
-  if (!endpoint) return;
+  const typeLabel = { team: 'команда', user: 'пользователь', role: 'роль', project: 'проект', bc: 'бизнес-заказчик', report: 'отчёт' };
+  const gender = { team: 'f', user: 'm', role: 'f', project: 'm', bc: 'm', report: 'm' };
+  const suffix = gender[type] === 'f' ? 'а' : '';
+  showConfirmModal(`Вы уверены? ${typeLabel[type].charAt(0).toUpperCase() + typeLabel[type].slice(1)} будет удален${suffix} из системы.`, async () => {
+    const endpointMap = {
+      team: '/admin/teams',
+      user: '/admin/users',
+      role: '/admin/roles',
+      project: '/admin/projects',
+      bc: '/admin/business-customers',
+      report: '/reports',
+    };
+    const endpoint = endpointMap[type];
+    if (!endpoint) return;
 
-  try {
-    await app.api.delete(`${endpoint}/${id}`);
-    toast('Удалено', 'success');
-    await initAdmin(app);
-  } catch (e) {
-    toast('Ошибка: ' + (e.message || 'Неизвестная ошибка'), 'error');
-  }
+    try {
+      await app.api.delete(`${endpoint}/${id}`);
+      toast('Удалено', 'success');
+      await initAdmin(app);
+    } catch (e) {
+      toast('Ошибка: ' + (e.message || 'Неизвестная ошибка'), 'error');
+    }
+  });
 }
 
 async function releaseDictLockIfHeld(app) {
@@ -2180,6 +2489,10 @@ function bindAdminEvents(app) {
     bindDisplayEvents(app);
   }
 
+  if (adminTab === 'home') {
+    bindHomeTabEvents(app);
+  }
+
   const sortByEl = document.getElementById('report-sort-by');
   if (sortByEl) {
     sortByEl.addEventListener('change', function() {
@@ -2248,6 +2561,9 @@ export async function initAdmin(app) {
       pullStickyBars();
       if (window.lucide) lucide.createIcons();
       bindAdminEvents(app);
+      if (adminTab === 'home') {
+        await loadTimelineAdminEvents(app);
+      }
     }
   } catch (e) {
     console.error('Admin init error:', e);

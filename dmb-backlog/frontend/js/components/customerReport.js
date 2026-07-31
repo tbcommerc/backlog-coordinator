@@ -8,7 +8,7 @@ export function renderCustomerReport(app) {
   const userName = user?.name || 'Заказчик';
 
   return `
-    <div class="page-header">
+    <div class="page-header animate-fade-in">
       <h1>Отчёт по задачам</h1>
       <p>Статусы задач, инициированных вами</p>
     </div>

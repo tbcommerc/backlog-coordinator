@@ -32,7 +32,7 @@ let dataGeneration = 0; // Монотонный счётчик: увеличив
 
 export function renderKanban(app) {
     return `
-    <div class="page-header">
+    <div class="page-header animate-fade-in">
         <h1>Канбан-доска</h1>
         <p>Визуальное управление потоком задач</p>
     </div>

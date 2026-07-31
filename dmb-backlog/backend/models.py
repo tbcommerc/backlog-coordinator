@@ -274,6 +274,7 @@ class Task(Base):
     directorate_status_updated_at = Column(DateTime(timezone=True), nullable=True)
     did_status = Column(Text, nullable=True)
     did_status_updated_at = Column(DateTime(timezone=True), nullable=True)
+    did_demo = Column(Boolean, default=False, comment='Демо для ДИД')
     is_from_leadership = Column(Boolean, default=False)
     is_regular = Column(Boolean, default=False)
     last_updated = Column(Date, nullable=True)
@@ -554,3 +555,27 @@ class TeamCompetencyResource(Base):
     working_days = Column(Integer, default=66, comment='Рабочие дни в квартале')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class TimelineEvent(Base):
+    __tablename__ = "timeline_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(300), nullable=False)
+    description = Column(Text, nullable=True)
+    event_type = Column(String(50), default="event")
+    color = Column(String(20), default="#6366f1")
+    date = Column(Date, nullable=False)
+    quarter = Column(Integer, nullable=True)
+    month = Column(Integer, nullable=True)
+    year = Column(Integer, nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    is_recurring = Column(Boolean, default=False)
+    recurring_interval = Column(String(20), nullable=True)
+    visibility_level = Column(String(20), default="team")
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    project = relationship("Project")
+    creator = relationship("User", foreign_keys=[creator_id])

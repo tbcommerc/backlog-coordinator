@@ -218,6 +218,7 @@ class TaskBase(BaseModel):
     did_status_updated_at: Optional[datetime] = None
     is_from_leadership: bool = False
     is_regular: bool = False
+    did_demo: bool = False
 
 
 class TaskCreate(TaskBase):
@@ -279,6 +280,7 @@ class TaskUpdate(BaseModel):
     did_status: Optional[str] = Field(None, max_length=1000)
     is_from_leadership: Optional[bool] = None
     is_regular: Optional[bool] = None
+    did_demo: Optional[bool] = None
     version: Optional[int] = Field(None, description='Версия задачи для optimistic lock')
 
 
@@ -310,6 +312,7 @@ class TaskResponse(TaskBase):
     business_analyst_name: Optional[str] = None
     it_product_lead_name: Optional[str] = None
     business_customer_name: Optional[str] = None
+    did_demo: bool = False
 
     class Config:
         from_attributes = True
@@ -933,4 +936,57 @@ class QuickEstimateTaskResponse(TaskResponse):
 
 class QuickEstimateResponse(BaseModel):
     tasks: List[QuickEstimateTaskResponse]
+    total: int
+
+
+# ==================== TIMELINE ====================
+
+class TimelineEventBase(BaseModel):
+    title: str = Field(max_length=300)
+    description: Optional[str] = Field(None, max_length=5000)
+    event_type: str = "event"
+    color: str = "#6366f1"
+    date: date
+    quarter: Optional[int] = None
+    month: Optional[int] = None
+    year: int
+    project_id: Optional[int] = None
+    is_recurring: bool = False
+    recurring_interval: Optional[str] = None
+    visibility_level: str = "team"
+
+
+class TimelineEventCreate(TimelineEventBase):
+    pass
+
+
+class TimelineEventUpdate(BaseModel):
+    title: Optional[str] = Field(None, max_length=300)
+    description: Optional[str] = Field(None, max_length=5000)
+    event_type: Optional[str] = None
+    color: Optional[str] = None
+    date: Optional[date] = None
+    quarter: Optional[int] = None
+    month: Optional[int] = None
+    year: Optional[int] = None
+    project_id: Optional[int] = None
+    is_recurring: Optional[bool] = None
+    recurring_interval: Optional[str] = None
+    visibility_level: Optional[str] = None
+
+
+class TimelineEventResponse(TimelineEventBase):
+    id: int
+    creator_id: int
+    creator_name: Optional[str] = None
+    project_name: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TimelineEventListResponse(BaseModel):
+    items: List[TimelineEventResponse]
     total: int

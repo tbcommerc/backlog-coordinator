@@ -198,7 +198,7 @@
 }
 .dash-quarter-marker {
     position: absolute;
-    top: 0;
+    top: 23px;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
@@ -2004,6 +2004,21 @@ input[type=number].effort-input::-webkit-outer-spin-button {
 }
 input[type=number].effort-input {
     -moz-appearance: textfield;
+}
+.report-group-body {
+    overflow-x: auto;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    max-height: 2000px;
+    opacity: 1;
+}
+.report-group-body.collapsed {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0 !important;
+}
+.report-group-body table {
+    min-width: 900px;
 }
 #express-tasks-table th {
     position: sticky;

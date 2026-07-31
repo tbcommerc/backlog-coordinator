@@ -106,6 +106,7 @@ def task_to_response(task: Task) -> TaskResponse:
         business_analyst_name=task.business_analyst.name if task.business_analyst else None,
         it_product_lead_name=task.it_product_lead.name if task.it_product_lead else None,
         business_customer_name=task.business_customer_rel.name if task.business_customer_rel else None,
+        did_demo=task.did_demo if task.did_demo else False,
         version=task.version or 0,
         lock_owner_id=task.lock_owner_id,
         lock_owner_name=task.lock_owner.name if task.lock_owner else None,

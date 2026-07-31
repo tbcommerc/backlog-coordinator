@@ -7,6 +7,36 @@ const allTasksCache = { backlog: [], team: [] };
 const columnSettingsRefs = { backlog: null, team: null };
 const columnOrderRefs = { backlog: null, team: null };
 
+const directoryCache = {};
+const directoryLoading = {};
+
+const columnDirectoryMap = {
+  status_name: { url: '/admin/statuses', labelField: 'name' },
+  priority_name: { url: '/admin/priorities', labelField: 'name' },
+  task_type_name: { url: '/admin/task-types', labelField: 'name' },
+  channel_name: { url: '/admin/channels', labelField: 'name' },
+  deadline_name: { url: '/admin/deadlines', labelField: 'name' },
+  department_name: { url: '/admin/departments', labelField: 'name' },
+  team_name: { url: '/admin/teams', labelField: 'name' },
+  project_name: { url: '/admin/projects', labelField: 'name' },
+  owner_name: { url: '/admin/users', labelField: 'name' },
+  business_customer: { url: '/admin/business-customers', labelField: 'name' },
+};
+
+async function loadDirectories() {
+  const entries = Object.entries(columnDirectoryMap);
+  const results = await Promise.allSettled(entries.map(async ([colKey, info]) => {
+    if (directoryCache[colKey]) return;
+    const resp = await fetch(`/api/v1${info.url}`);
+    if (!resp.ok) throw new Error(`Failed to load ${info.url}`);
+    const data = await resp.json();
+    const items = data.map(item => ({ value: String(item[info.labelField]), label: String(item[info.labelField]) }));
+    directoryCache[colKey] = items;
+  }));
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') console.warn(`[DMB] Failed to load directory for ${entries[i][0]}:`, r.reason);
+  });
+}
 
 const filterableColumns = [
   { key: 'status_name', label: 'Статус', columnKey: 'status_name' },
@@ -30,21 +60,60 @@ const filterableColumns = [
 
 const priorityWeight = { 'ВЫСОКИЙ': 3, 'СРЕДНИЙ': 2, 'НИЗКИЙ': 1 };
 
+function isDeadlinePast(deadlineName) {
+  if (!deadlineName) return false;
+  const m = deadlineName.match(/^(\d)Q\s*(\d{4})$/i);
+  if (!m) return false;
+  const q = parseInt(m[1]);
+  const y = parseInt(m[2]);
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curQuarter = Math.floor(now.getMonth() / 3) + 1;
+  return y < curYear || (y === curYear && q < curQuarter);
+}
+
+function isCurrentTask(task) {
+  if (!task || !task.deadline_name) return false;
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curQuarter = Math.floor(now.getMonth() / 3) + 1;
+  if (task.deadline_name === `${curQuarter}Q ${curYear}`) return true;
+  if (curQuarter === 4 && task.deadline_name === `Y${curYear}`) return true;
+  return false;
+}
+
 function $(id) {
   const el = document.getElementById(id);
   return el;
 }
 
 function getUniqueValues(scope, key, allTasks) {
+  if (directoryCache[key]) {
+    return directoryCache[key];
+  }
+
   let list = allTasks;
 
   const cf = columnFilters[scope];
+  const terminalStatuses = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
   if (cf) {
     Object.keys(cf).forEach(fk => {
       if (fk === key) return;
       const vals = cf[fk];
       if (vals && vals.size > 0) {
+        if (fk === '_overdue') {
+          list = list.filter(t => t.deadline_id != null && !terminalStatuses.includes(t.status_name) && isDeadlinePast(t.deadline_name));
+          return;
+        }
+        if (fk === '_urgent') {
+          list = list.filter(t => t.priority_name === 'ВЫСОКИЙ');
+          return;
+        }
+        if (fk === '_current') {
+          list = list.filter(isCurrentTask);
+          return;
+        }
         list = list.filter(t => {
           let v = t[fk];
           if (fk === 'progress') {
@@ -198,6 +267,7 @@ export function renderToolbar(scope, opts = {}) {
             <div id="f-${scope}-ext-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;"></div>
           </div>
         </div>
+        <div id="f-${scope}-active-filters" class="active-filters-row"></div>
       </div>
     </div>
   `;
@@ -350,6 +420,8 @@ export function initToolbar(scope, allTasks, onFilterChange) {
   filterChangeCallbacks[scope] = onFilterChange;
   allTasksCache[scope] = allTasks;
 
+  loadDirectories().then(() => { renderFilterButtons(scope, allTasks); });
+
   function renderAll() {
     renderFilterButtons(scope, allTasks);
     onFilterChange();
@@ -438,10 +510,23 @@ export function getFilteredList(scope, allTasks) {
   }
 
   const cf = columnFilters[scope];
+  const terminalStatuses = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
   if (cf) {
     Object.keys(cf).forEach(key => {
       const vals = cf[key];
       if (vals && vals.size > 0) {
+        if (key === '_overdue') {
+          list = list.filter(t => t.deadline_id != null && !terminalStatuses.includes(t.status_name) && isDeadlinePast(t.deadline_name));
+          return;
+        }
+        if (key === '_urgent') {
+          list = list.filter(t => t.priority_name === 'ВЫСОКИЙ');
+          return;
+        }
+        if (key === '_current') {
+          list = list.filter(isCurrentTask);
+          return;
+        }
         list = list.filter(t => {
           let v = t[key];
           if (key === 'progress') {
@@ -511,6 +596,7 @@ function getSortedFilterColumns(scope) {
 }
 
 function renderFilterButtons(scope, allTasks) {
+  allTasksCache[scope] = allTasks || [];
   const mainC = $(`f-${scope}-main-filters`);
   const extC = $(`f-${scope}-ext-row`);
   if (!mainC) return;
@@ -586,6 +672,46 @@ function renderFilterButtons(scope, allTasks) {
       if (btnTxt) btnTxt.textContent = extActive > 0 ? `Ещё (${extActive})` : 'Ещё';
     });
   }
+  updateActiveFiltersRow(scope);
+}
+
+function updateActiveFiltersRow(scope) {
+  const container = $(`f-${scope}-active-filters`);
+  if (!container) return;
+  const cf = columnFilters[scope];
+  const labels = {};
+  filterableColumns.forEach(c => { labels[c.key] = c.label; });
+  const chips = [];
+  Object.keys(cf).forEach(key => {
+    const vals = cf[key];
+    if (!vals || vals.size === 0) return;
+    if (key === '_overdue') { chips.push({ key, label: 'Просрочено', value: 'да' }); return; }
+    if (key === '_urgent') { chips.push({ key, label: 'Срочные', value: 'да' }); return; }
+    if (key === '_current') { chips.push({ key, label: 'Текущие', value: 'да' }); return; }
+    const colLabel = labels[key] || key;
+    const valueText = vals.size === 1 ? [...vals][0] : `${vals.size} выбрано`;
+    chips.push({ key, label: colLabel, value: valueText });
+  });
+  if (chips.length === 0) { container.innerHTML = ''; return; }
+  container.innerHTML = chips.map(ch => `
+    <span class="active-filter-chip" data-key="${ch.key}">
+      <span class="chip-label">${ch.label}:</span>
+      <span class="chip-value">${ch.value}</span>
+      <button class="chip-clear" data-clear="${ch.key}" title="Очистить фильтр">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </span>
+  `).join('');
+  container.querySelectorAll('.chip-clear').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const key = el.dataset.clear;
+      delete columnFilters[scope][key];
+      renderFilterButtons(scope, allTasksCache[scope] || []);
+      const cb = filterChangeCallbacks[scope];
+      if (cb) cb();
+    });
+  });
 }
 
 function toggleDropdown(event, scope, key, allTasks) {
@@ -823,5 +949,7 @@ export function resetToolbarFilters(scope) {
   if (searchInput) searchInput.value = '';
   if (sortSelect) sortSelect.value = 'id-desc';
 }
+
+export { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask };
 
 

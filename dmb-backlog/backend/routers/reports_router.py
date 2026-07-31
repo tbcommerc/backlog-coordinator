@@ -10,7 +10,7 @@ from collections import defaultdict
 import json
 
 from database import get_db
-from models import Report, Task, User, Team, Priority, TaskStatus, Project, Department
+from models import Report, Task, User, Team, Priority, TaskStatus, Project, Department, TaskType, Deadline
 from schemas import ReportCreate, ReportResponse, TaskResponse
 from auth import get_current_user, require_permission
 
@@ -47,6 +47,241 @@ async def get_reports(
     ).order_by(Report.created_at.desc()).all()
 
     return [_report_to_response(r) for r in reports]
+
+
+@router.get("/meeting-status")
+async def get_meeting_status(
+    report_type: Optional[str] = Query(None, description="directorate | did | projects | reg-directors"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get aggregated meeting status data with charts-ready format"""
+
+    query = db.query(Task).filter(Task.is_deleted == False)
+
+    tasks = query.all()
+    total = len(tasks)
+
+    if report_type == "directorate":
+        tasks = [t for t in tasks if t.priority == "Высокий" or t.directorate_status in ("Риск", "На контроле")]
+    elif report_type == "did":
+        tasks = [t for t in tasks if t.did_status in ("В работе", "Требует решения", "Блокировано")]
+    elif report_type == "projects":
+        tasks = [t for t in tasks if t.key_project]
+    elif report_type == "reg-directors":
+        tasks = [t for t in tasks if t.priority == "Высокий"]
+
+    filtered = len(tasks)
+
+    by_status = defaultdict(int)
+    by_priority = defaultdict(int)
+    by_team = defaultdict(int)
+    by_owner = defaultdict(int)
+
+    for t in tasks:
+        status_name = t.status.name if t.status else "Не указан"
+        priority_name = t.priority.name if t.priority else "Средний"
+        team_name = t.team.name if t.team else "Без команды"
+        owner_name = t.owner.name if t.owner else "Не назначен"
+        by_status[status_name] += 1
+        by_priority[priority_name] += 1
+        by_team[team_name] += 1
+        by_owner[owner_name] += 1
+
+    status_colors = {
+        "Сбор требований": "#6366f1",
+        "Экспресс-оценка": "#8b5cf6",
+        "Принятие решения": "#f59e0b",
+        "В работе": "#10b981",
+        "Отклонена": "#ef4444",
+        "Не актуальна": "#94a3b8",
+        "Холд": "#f43f5e",
+        "Выполнена": "#22c55e",
+    }
+    priority_colors = {
+        "Высокий": "#f43f5e",
+        "Средний": "#f59e0b",
+        "Низкий": "#94a3b8",
+    }
+
+    def sort_by_value(d):
+        return sorted(d.items(), key=lambda x: x[1], reverse=True)
+
+    return {
+        "total": total,
+        "filtered": filtered,
+        "high_priority": sum(1 for t in tasks if t.priority and t.priority.name == "Высокий"),
+        "at_risk": sum(1 for t in tasks if t.status and t.status.name in ("Холд", "Отклонена")),
+        "avg_progress": round(sum(t.progress or 0 for t in tasks) / filtered, 1) if filtered else 0,
+        "status_distribution": [{"label": k, "value": v, "color": status_colors.get(k, "#94a3b8")} for k, v in sort_by_value(by_status)],
+        "priority_distribution": [{"label": k, "value": v, "color": priority_colors.get(k, "#94a3b8")} for k, v in sort_by_value(by_priority)],
+        "team_distribution": [{"label": k, "value": v} for k, v in sort_by_value(by_team)],
+        "owner_distribution": [{"label": k, "value": v} for k, v in sort_by_value(by_owner)],
+        "total_financial_effect": round(sum(t.financial_effect or 0 for t in tasks), 2),
+    }
+
+
+@router.get("/did-operational-report")
+async def did_operational_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Отчёт «Статус для оперативки ДИД» — задачи с заполненным did_status,
+    дедлайном в текущем квартале (или году — для Q4), без «МЕТРИЧЕСКИЕ KR»,
+    с группировкой по командам."""
+    today = date.today()
+    current_year = today.year
+    current_quarter = (today.month - 1) // 3 + 1
+
+    if current_quarter == 4:
+        deadline_names = [f"{i}Q {current_year}" for i in range(1, 5)]
+        deadline_names.append(f"Y{current_year}")
+    else:
+        deadline_names = [f"{current_quarter}Q {current_year}"]
+
+    deadline_ids = db.query(Deadline.id).filter(Deadline.name.in_(deadline_names)).all()
+    deadline_ids = [d[0] for d in deadline_ids]
+
+    query = db.query(Task).filter(
+        Task.is_deleted == False,
+        Task.did_status.isnot(None),
+        Task.did_status != "",
+        Task.deadline_id.in_(deadline_ids),
+    )
+
+    query = query.join(TaskType, Task.task_type_id == TaskType.id, isouter=True).filter(
+        (Task.task_type_id == None) | (TaskType.name != "МЕТРИЧЕСКИЕ KR")
+    )
+
+    tasks = query.all()
+
+    teams_data = {}
+    for task in tasks:
+        team_name = task.team.name if task.team else "Без команды"
+        if team_name not in teams_data:
+            teams_data[team_name] = {
+                "team_name": team_name,
+                "total": 0,
+                "with_demo": 0,
+                "without_demo": 0,
+                "tasks": []
+            }
+
+        teams_data[team_name]["total"] += 1
+        has_demo = bool(task.did_demo)
+        if has_demo:
+            teams_data[team_name]["with_demo"] += 1
+        else:
+            teams_data[team_name]["without_demo"] += 1
+
+        progress = task.progress or 0
+        if task.status:
+            status_norm = task.status.name.strip().lower()
+            if status_norm in ("выполнена",):
+                progress = 100
+            elif status_norm in ("отклонена", "не актуальна", "холд"):
+                progress = -1
+
+        teams_data[team_name]["tasks"].append({
+            "id": task.id,
+            "title": task.title,
+            "team_name": team_name,
+            "involved_teams": task.involved_teams or "",
+            "business_customer_name": task.business_customer_rel.name if task.business_customer_rel else "",
+            "project_name": task.project.name if task.project else "",
+            "deadline_name": task.deadline.name if task.deadline else "",
+            "task_type_name": task.task_type.name if task.task_type else "",
+            "progress": progress,
+            "did_demo": has_demo,
+            "did_status": task.did_status or "",
+        })
+
+    sorted_teams = sorted(teams_data.values(), key=lambda x: x["total"], reverse=True)
+
+    return {
+        "total_tasks": len(tasks),
+        "total_teams": len(sorted_teams),
+        "teams": sorted_teams
+    }
+
+
+@router.get("/directorate-report")
+async def directorate_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Отчёт «Статус для Директорской оперативки» — High Priority / Риск / На контроле,
+    с дедлайном в текущем квартале (или году — для Q4), группировка по командам."""
+    today = date.today()
+    current_year = today.year
+    current_quarter = (today.month - 1) // 3 + 1
+
+    if current_quarter == 4:
+        deadline_names = [f"{i}Q {current_year}" for i in range(1, 5)]
+        deadline_names.append(f"Y{current_year}")
+    else:
+        deadline_names = [f"{current_quarter}Q {current_year}"]
+
+    deadline_ids = db.query(Deadline.id).filter(Deadline.name.in_(deadline_names)).all()
+    deadline_ids = [d[0] for d in deadline_ids]
+
+    high_priority_ids = db.query(Priority.id).filter(Priority.name == "Высокий").all()
+    high_priority_ids = [p[0] for p in high_priority_ids]
+
+    query = db.query(Task).filter(
+        Task.is_deleted == False,
+        Task.deadline_id.in_(deadline_ids),
+        (Task.priority_id.in_(high_priority_ids)) |
+        (Task.directorate_status.in_(["Риск", "На контроле"]))
+    )
+
+    tasks = query.all()
+
+    teams_data = {}
+    for task in tasks:
+        team_name = task.team.name if task.team else "Без команды"
+        if team_name not in teams_data:
+            teams_data[team_name] = {
+                "team_name": team_name,
+                "total": 0,
+                "tasks": []
+            }
+
+        teams_data[team_name]["total"] += 1
+
+        progress = task.progress or 0
+        if task.status:
+            status_norm = task.status.name.strip().lower()
+            if status_norm in ("выполнена",):
+                progress = 100
+            elif status_norm in ("отклонена", "не актуальна", "холд"):
+                progress = -1
+
+        teams_data[team_name]["tasks"].append({
+            "id": task.id,
+            "title": task.title,
+            "directorate_status": task.directorate_status or "",
+            "directorate_status_updated_at": task.directorate_status_updated_at.isoformat() if task.directorate_status_updated_at else None,
+            "progress": progress,
+            "status_name": task.status.name if task.status else "",
+            "priority_name": task.priority.name if task.priority else "",
+            "financial_effect": task.financial_effect,
+            "team_name": team_name,
+            "business_customer_name": task.business_customer_rel.name if task.business_customer_rel else "",
+            "department_name": task.department.name if task.department else "",
+            "project_name": task.project.name if task.project else "",
+            "task_type_name": task.task_type.name if task.task_type else "",
+            "owner_name": task.owner.name if task.owner else "",
+            "description": task.description or "",
+        })
+
+    sorted_teams = sorted(teams_data.values(), key=lambda x: x["total"], reverse=True)
+
+    return {
+        "total_tasks": len(tasks),
+        "total_teams": len(sorted_teams),
+        "teams": sorted_teams
+    }
 
 
 @router.get("/{report_id}", response_model=ReportResponse)
@@ -148,78 +383,6 @@ async def delete_report(
     db.commit()
 
     return {"message": "Report deleted"}
-
-
-@router.get("/meeting-status")
-async def get_meeting_status(
-    report_type: Optional[str] = Query(None, description="directorate | did | projects | reg-directors"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get aggregated meeting status data with charts-ready format"""
-
-    query = db.query(Task).filter(Task.is_deleted == False)
-
-    tasks = query.all()
-    total = len(tasks)
-
-    if report_type == "directorate":
-        tasks = [t for t in tasks if t.priority == "Высокий" or t.directorate_status in ("Риск", "На контроле")]
-    elif report_type == "did":
-        tasks = [t for t in tasks if t.did_status in ("В работе", "Требует решения", "Блокировано")]
-    elif report_type == "projects":
-        tasks = [t for t in tasks if t.key_project]
-    elif report_type == "reg-directors":
-        tasks = [t for t in tasks if t.priority == "Высокий"]
-
-    filtered = len(tasks)
-
-    by_status = defaultdict(int)
-    by_priority = defaultdict(int)
-    by_team = defaultdict(int)
-    by_owner = defaultdict(int)
-
-    for t in tasks:
-        status_name = t.status.name if t.status else "Не указан"
-        priority_name = t.priority.name if t.priority else "Средний"
-        team_name = t.team.name if t.team else "Без команды"
-        owner_name = t.owner.name if t.owner else "Не назначен"
-        by_status[status_name] += 1
-        by_priority[priority_name] += 1
-        by_team[team_name] += 1
-        by_owner[owner_name] += 1
-
-    status_colors = {
-        "Сбор требований": "#6366f1",
-        "Экспресс-оценка": "#8b5cf6",
-        "Принятие решения": "#f59e0b",
-        "В работе": "#10b981",
-        "Отклонена": "#ef4444",
-        "Не актуальна": "#94a3b8",
-        "Холд": "#f43f5e",
-        "Выполнена": "#22c55e",
-    }
-    priority_colors = {
-        "Высокий": "#f43f5e",
-        "Средний": "#f59e0b",
-        "Низкий": "#94a3b8",
-    }
-
-    def sort_by_value(d):
-        return sorted(d.items(), key=lambda x: x[1], reverse=True)
-
-    return {
-        "total": total,
-        "filtered": filtered,
-        "high_priority": sum(1 for t in tasks if t.priority and t.priority.name == "Высокий"),
-        "at_risk": sum(1 for t in tasks if t.status and t.status.name in ("Холд", "Отклонена")),
-        "avg_progress": round(sum(t.progress or 0 for t in tasks) / filtered, 1) if filtered else 0,
-        "status_distribution": [{"label": k, "value": v, "color": status_colors.get(k, "#94a3b8")} for k, v in sort_by_value(by_status)],
-        "priority_distribution": [{"label": k, "value": v, "color": priority_colors.get(k, "#94a3b8")} for k, v in sort_by_value(by_priority)],
-        "team_distribution": [{"label": k, "value": v} for k, v in sort_by_value(by_team)],
-        "owner_distribution": [{"label": k, "value": v} for k, v in sort_by_value(by_owner)],
-        "total_financial_effect": round(sum(t.financial_effect or 0 for t in tasks), 2),
-    }
 
 
 @router.get("/{report_id}/execute")

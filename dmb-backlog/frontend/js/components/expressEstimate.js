@@ -23,12 +23,10 @@ export function renderExpressEstimate(app) {
     const user = app.store.get('currentUser');
     const teamName = user?.team_name || '—';
     return `
-    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6);flex-wrap:wrap;gap:12px;">
-        <div>
-            <h1 style="font-size:20px;font-weight:700;margin:0;">Экспресс-оценка</h1>
-            <p style="margin:4px 0 0;color:var(--text-secondary);font-size:14px;">
-                Команда: <strong>${escHtml(teamName)}</strong>
-            </p>
+    <div class="page-header animate-fade-in" style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:var(--space-3);">
+        <div style="flex:1;min-width:0;">
+            <h1>Экспресс-оценка</h1>
+            <p>Команда: <strong>${escHtml(teamName)}</strong></p>
         </div>
         <div style="display:flex;gap:8px;">
             <button id="express-export-btn" class="btn btn-secondary btn-sm" title="Экспорт в Excel">

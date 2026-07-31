@@ -6,25 +6,24 @@ const reportConfig = {
   directorate: {
     name: 'Статус для Директорской оперативки',
     desc: 'Сводка по задачам для директората',
-    icon: 'crown',
+    icon: 'briefcase',
     gradient: 'grad-rose',
-    filters: [
-      { field: 'priority', op: 'eq', value: 'ВЫСОКИЙ', logic: 'or' },
-      { field: 'directorate_status', op: 'in', value: ['Риск','На контроле'], logic: 'or' }
-    ],
+    customEndpoint: '/reports/directorate-report',
+    isCustom: true,
+    filters: [],
     fields: ['team_name','business_customer','department_name','project_name','title','task_type_name','owner_name','directorate_status'],
     group: null,
     sort: null
   },
-  did: {
+  'did-operational': {
     name: 'Статус для оперативки ДИД',
-    desc: 'Все активные задачи платформы',
-    icon: 'building-2',
+    desc: 'Группировка по командам, квартальная фильтрация, задачи с заполненным статусом ДИД',
+    icon: 'layers',
     gradient: 'grad-indigo',
-    filters: [
-      { field: 'did_status', op: 'in', value: ['В работе','Требует решения','Блокировано'], logic: 'and' }
-    ],
-    fields: ['team_name','business_customer','customer_department','project','title','task_type','owner','did_status'],
+    customEndpoint: '/reports/did-operational-report',
+    isCustom: true,
+    filters: [],
+    fields: ['team_name','id','involved_teams','business_customer','project_name','deadline_name','task_type_name','title','progress','did_demo','did_status'],
     group: null,
     sort: null
   },
@@ -56,6 +55,7 @@ const reportConfig = {
 
 let currentReport = null;
 let tasksCache = [];
+let cachedReportData = null;
 let reportSortField = null;
 let reportSortDir = 'asc';
 let reportColumnFilters = {};
@@ -135,9 +135,19 @@ function renderCell(task, field) {
     case 'owner_name': return task.owner_name || task.owner || '—';
     case 'directorate_status': return renderDirectorateStatus(task.directorate_status);
     case 'did_status': return renderDidStatus(task.did_status);
+    case 'did_demo': return task.did_demo ? '<span class="badge badge-success">Да</span>' : '<span class="badge badge-low">Нет</span>';
+    case 'involved_teams': return task.involved_teams || '—';
     case 'key_project_status': return renderDirectorateStatus(task.key_project_status);
     default: return task[field] || '—';
   }
+}
+
+function smartCap(str) {
+  if (!str) return str;
+  return str.split(/(\s+)/).map(word => {
+    if (word.length <= 2) return word.toUpperCase();
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join('');
 }
 
 function renderDirectorateStatus(status) {
@@ -166,13 +176,17 @@ function renderDidStatus(status) {
 }
 
 const fieldLabels = {
-  id: 'ID', title: 'Наименование задачи', team_name: 'Команда', project: 'Проект',
+  id: 'ID', title: 'Задача', team_name: 'Команда',
+  project: 'Проект', project_name: 'Проект',
   status: 'Статус', priority: 'Приоритет', deadline: 'Срок',
-  progress: 'Прогресс', status_comment: 'Комментарий', financial_effect: 'Фин. эффект',
-  business_customer: 'Бизнес-заказчик', department_name: 'Подразделение заказчика',
-  channel_name: 'Канал поступления', task_type_name: 'Тип задачи',
-  owner: 'Исполнитель', directorate_status: 'Статус для директорской оперативки',
-  did_status: 'Статус для оперативки ДИД', key_project_status: 'Статус ключевых проектов'
+  progress: '%', status_comment: 'Комментарий', financial_effect: 'Фин. эффект',
+  business_customer: 'Бизнес-заказчик', department_name: 'Подразделение',
+  channel_name: 'Канал', task_type_name: 'Тип задачи',
+  owner: 'Исполнитель', directorate_status: 'Статус',
+  did_status: 'Статус', key_project_status: 'Статус',
+  did_demo: 'Демо', date_received: 'Дата поступления',
+  involved_teams: 'Вовлечённые команды',
+  deadline_name: 'Срок', owner_name: 'Владелец'
 };
 
 function applyFilterValue(task, field, op, value) {
@@ -300,8 +314,12 @@ function applyFilterFromDropdown(field, dd) {
     totalSpan.textContent = checked.length + '/' + valCbs.length;
   }
   const config = reportConfig[currentReport];
-  const filtered = applyReportFilters(currentReport, tasksCache);
-  renderReportContent(config, currentReport, filtered);
+  if (config.isCustom && cachedReportData) {
+    renderReportContent(config, currentReport, cachedReportData);
+  } else {
+    const filtered = applyReportFilters(currentReport, tasksCache);
+    renderReportContent(config, currentReport, filtered);
+  }
 }
 
 function reportFilterOutsideClick(e) {
@@ -407,7 +425,7 @@ function exportReportExcel(kind, tasks, app) {
 
 function openMeetingReport(kind, app) {
   currentReport = kind;
-  app.router.navigate('/reports/detail');
+  app.router.navigate('/reports/detail?r=' + kind);
 }
 
 async function loadReportData(app) {
@@ -415,20 +433,67 @@ async function loadReportData(app) {
   if (!config) return;
   try {
     Object.keys(reportChartInstances).forEach(k => { reportChartInstances[k]?.destroy(); delete reportChartInstances[k]; });
-    const data = await app.api.get('/tasks?per_page=1000');
-    tasksCache = data.items || [];
-    reportSortField = null;
-    reportSortDir = 'asc';
-    reportColumnFilters = {};
-    const filtered = applyReportFilters(currentReport, tasksCache);
-    renderReportContent(config, currentReport, filtered);
+    if (config.customEndpoint) {
+      const data = await app.api.get(config.customEndpoint);
+      cachedReportData = data;
+      renderReportContent(config, currentReport, data);
+    } else {
+      const data = await app.api.get('/tasks?per_page=1000');
+      tasksCache = data.items || [];
+      reportSortField = null;
+      reportSortDir = 'asc';
+      reportColumnFilters = {};
+      const filtered = applyReportFilters(currentReport, tasksCache);
+      renderReportContent(config, currentReport, filtered);
+    }
   } catch (e) {
     const body = document.getElementById('report-body');
     if (body) body.innerHTML = `<p class="text-muted" style="padding:var(--space-8);">Ошибка загрузки: ${e.message}</p>`;
   }
 }
 
-function renderReportContent(config, reportKey, tasks) {
+function renderReportContent(config, reportKey, data) {
+  const body = document.getElementById('report-body');
+  if (!body) return;
+
+  if (config.isCustom && data && data.teams) {
+    body.innerHTML = data.teams.map(team => {
+      const storageKey = 'did-team-collapsed-' + team.team_name;
+      const isCollapsed = localStorage.getItem(storageKey) === 'true';
+      return `
+        <div class="card" style="margin-bottom:var(--space-4);">
+          <div class="card-header did-team-header" data-team="${team.team_name}" style="cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <i data-lucide="chevron-${isCollapsed ? 'right' : 'down'}" class="did-chevron" style="width:16px;height:16px;transition:transform 0.2s;flex-shrink:0;"></i>
+              <h3 class="card-title">${smartCap(team.team_name)}</h3>
+            </div>
+            <span class="badge badge-info">${team.total} ${formatCount(team.total)}</span>
+          </div>
+          <div class="report-group-body ${isCollapsed ? 'collapsed' : ''}">
+            ${renderReportTable(team.tasks, config.fields)}
+          </div>
+        </div>`;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+
+    body.querySelectorAll('.did-team-header').forEach(header => {
+      header.addEventListener('click', function (e) {
+        if (e.target.closest('.filter-trigger')) return;
+        const teamName = this.dataset.team;
+        const card = this.closest('.card');
+        const groupBody = card.querySelector('.report-group-body');
+        const chevron = card.querySelector('.did-chevron');
+        const isCollapsed = groupBody.classList.toggle('collapsed');
+        localStorage.setItem('did-team-collapsed-' + teamName, isCollapsed);
+        chevron.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-down');
+        if (window.lucide) lucide.createIcons();
+      });
+    });
+    return;
+  }
+
+  const tasks = Array.isArray(data) ? data : (data && data.items ? data.items : []);
   const total = tasks.length;
   const high = tasks.filter(t => (t.priority_name || t.priority) === 'ВЫСОКИЙ').length;
   const statusField = reportKey === 'directorate' ? 'directorate_status' : reportKey === 'did' ? 'did_status' : 'status';
@@ -436,7 +501,7 @@ function renderReportContent(config, reportKey, tasks) {
   const risk = tasks.filter(t => riskStatuses.includes(t[statusField])).length;
   const avg = total ? Math.round(tasks.reduce((s, t) => s + (t.progress || 0), 0) / total) : 0;
 
-  renderReportCharts(tasks);
+  if (!config.isCustom) renderReportCharts(tasks);
 
   const totalEl = document.getElementById('report-total');
   const highEl = document.getElementById('report-high');
@@ -446,9 +511,6 @@ function renderReportContent(config, reportKey, tasks) {
   if (highEl) highEl.textContent = high;
   if (riskEl) riskEl.textContent = risk;
   if (avgEl) avgEl.textContent = avg + '%';
-
-  const body = document.getElementById('report-body');
-  if (!body) return;
 
   if (!tasks.length) {
     body.innerHTML = '<div class="empty-state"><p class="text-muted">Нет данных для отображения</p></div>';
@@ -485,23 +547,27 @@ function formatCount(n) {
 }
 
 export function renderReports(app) {
-  const standardKeys = ['directorate', 'did', 'projects'];
+  const standardKeys = ['directorate', 'did-operational', 'projects'];
   const customKeys = ['reg-directors'];
 
   function renderCard(key, cfg, subtitle) {
     return `
-      <div class="cursor-pointer ${cfg.gradient} report-card" data-report="${key}" style="border-radius:16px;padding:24px;color:white;">
+      <div class="cursor-pointer ${cfg.gradient} report-card" data-report="${key}" style="border-radius:16px;padding:24px;color:white;display:flex;flex-direction:column;min-height:240px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;">
           <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
             <i data-lucide="${cfg.icon}" style="width:20px;height:20px;"></i>
           </div>
           <i data-lucide="arrow-up-right" style="width:20px;height:20px;opacity:0.6;"></i>
         </div>
-        <div style="font-size:12px;opacity:0.8;margin-bottom:4px;">${subtitle}</div>
-        <div style="font-size:20px;font-weight:700;">${cfg.name}</div>
-        <div style="font-size:12px;opacity:0.75;margin-top:8px;">${cfg.desc}</div>
-        <div style="font-size:24px;font-weight:700;margin-top:16px;" id="count-${key}">0</div>
-        <div style="font-size:12px;opacity:0.8;">задач</div>
+        <div style="flex:1;">
+          <div style="font-size:12px;opacity:0.8;margin-bottom:4px;">${subtitle}</div>
+          <div style="font-size:20px;font-weight:700;">${cfg.name}</div>
+          <div style="font-size:12px;opacity:0.75;margin-top:8px;">${cfg.desc}</div>
+        </div>
+        <div style="margin-top:auto;">
+          <div style="font-size:24px;font-weight:700;" id="count-${key}">0</div>
+          <div style="font-size:12px;opacity:0.8;">задач</div>
+        </div>
       </div>`;
   }
 
@@ -754,7 +820,13 @@ function renderReportCharts(tasks) {
   });
 }
 
+function getReportKeyFromUrl() {
+  const m = window.location.hash.match(/[?&]r=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 export function renderReportPage(app) {
+  currentReport = currentReport || getReportKeyFromUrl();
   const config = reportConfig[currentReport];
   if (!config) return '<p class="text-muted">Отчёт не выбран</p>';
 
@@ -784,6 +856,7 @@ export function renderReportPage(app) {
         </div>
       </div>
 
+      ${!config.isCustom ? `
       <div class="dashboard-stats" style="margin-bottom:var(--space-6);">
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--info-light);color:var(--info);">
@@ -826,6 +899,7 @@ export function renderReportPage(app) {
           <div style="height:200px;"><canvas id="chart-report-team"></canvas></div>
         </div>
       </div>
+      ` : ''}
 
       <div id="report-body">
         <div class="text-center text-muted" style="padding:var(--space-8);">Загрузка...</div>
@@ -834,6 +908,8 @@ export function renderReportPage(app) {
 }
 
 export function initReportPage(app) {
+  currentReport = currentReport || getReportKeyFromUrl();
+  if (!currentReport) return;
   loadReportData(app);
 
   // Update breadcrumb with actual report name
@@ -852,6 +928,7 @@ export function initReportPage(app) {
 
   document.getElementById('report-back-btn')?.addEventListener('click', () => {
     Object.keys(reportChartInstances).forEach(k => { reportChartInstances[k]?.destroy(); delete reportChartInstances[k]; });
+    currentReport = null;
     app.router.navigate('/reports');
   });
 
@@ -888,17 +965,25 @@ export function initReportPage(app) {
       return;
     }
 
+    const config = reportConfig[currentReport];
+
     if (e.target.closest('#report-clear-filters')) {
       closeFilterDropdown();
       reportColumnFilters = {};
-      const config = reportConfig[currentReport];
-      const filtered = applyReportFilters(currentReport, tasksCache);
-      renderReportContent(config, currentReport, filtered);
+      if (config.isCustom && cachedReportData) {
+        renderReportContent(config, currentReport, cachedReportData);
+      } else {
+        const filtered = applyReportFilters(currentReport, tasksCache);
+        renderReportContent(config, currentReport, filtered);
+      }
       return;
     }
 
     const th = e.target.closest('th[data-sort]');
     if (!th) return;
+
+    if (config.isCustom) return;
+
     const field = th.dataset.sort;
     if (reportSortField === field) {
       reportSortDir = reportSortDir === 'asc' ? 'desc' : 'asc';
@@ -906,7 +991,6 @@ export function initReportPage(app) {
       reportSortField = field;
       reportSortDir = 'asc';
     }
-    const config = reportConfig[currentReport];
     const filtered = applyReportFilters(currentReport, tasksCache);
     renderReportContent(config, currentReport, filtered);
   });

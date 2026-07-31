@@ -46,7 +46,8 @@ export class Router {
 
     handleRoute() {
         const hash = window.location.hash.slice(1) || this.defaultRoute;
-        const route = this.routes[hash];
+        const [path] = hash.split('?');
+        const route = this.routes[path];
 
         if (route) {
             const container = document.getElementById('page-content');

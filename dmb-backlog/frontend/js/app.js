@@ -249,6 +249,9 @@ export function renderAppShell(content) {
   const initials = window.getUserInitials(user?.name);
   const avatarColor = window.getAvatarColor(user?.name);
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const userName = user?.name || 'User';
+  const nameParts = userName.split(' ');
+  const shortName = nameParts.length > 1 ? nameParts[0].charAt(0) + '.' + nameParts[1] : userName;
   return `
     ${renderSidebar()}
     <div class="sidebar-backdrop"></div>
@@ -293,7 +296,7 @@ export function renderAppShell(content) {
           <div style="position: relative;">
             <button id="user-avatar-btn" style="display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: 8px; border: none; background: transparent; cursor: pointer;">
               <div style="width: 28px; height: 28px; border-radius: 50%; background: ${avatarColor}; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0;">${initials}</div>
-              <span style="font-size: 14px; font-weight: 500; color: var(--text-primary);">${user?.name || 'User'}</span>
+              <span style="font-size: 14px; font-weight: 500; color: var(--text-primary);">${shortName}</span>
             </button>
             <div id="user-dropdown" class="dropdown-menu hidden">
               <button onclick="app.router.navigate('/settings')" class="dropdown-item"><i data-lucide="settings" style="width: 16px; height: 16px;"></i> Настройки</button>
@@ -392,6 +395,18 @@ export async function initApp(app) {
     const dd = document.getElementById('user-dropdown');
     if (dd && !dd.contains(e.target) && !e.target.closest('#user-avatar-btn')) {
       dd.classList.add('hidden');
+    }
+  });
+
+  document.addEventListener('open-task', async (e) => {
+    const taskId = e.detail?.taskId;
+    if (!taskId) return;
+    try {
+      const task = await app.api.get(`/tasks/${taskId}`);
+      const { openTaskModal } = await import('./components/modal.js');
+      openTaskModal(task);
+    } catch (err) {
+      console.error('Failed to open task', err);
     }
   });
 

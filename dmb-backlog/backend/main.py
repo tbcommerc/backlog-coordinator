@@ -19,6 +19,7 @@ from routers import auth_router, tasks_router, teams_router, users_router, repor
 from routers import admin_router, customer_router
 from routers import express_router
 from routers import notifications_router
+from routers import timeline_router
 
 
 async def _notification_scheduler():
@@ -126,6 +127,7 @@ app.include_router(admin_router.router, prefix="/api/v1/admin")
 app.include_router(customer_router, prefix="/api/v1/customer", tags=["Customer Portal"])
 app.include_router(express_router, prefix="/api/v1", tags=["Express Estimate"])
 app.include_router(notifications_router.router, prefix="/api/v1", tags=["Notifications"])
+app.include_router(timeline_router, prefix="/api/v1/timeline", tags=["Timeline"])
 
 
 # Health check

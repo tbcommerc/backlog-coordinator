@@ -200,7 +200,7 @@ export function renderAuditLog(app) {
     <div class="page-header animate-fade-in">
       <div>
         <h1>Аудит действий</h1>
-        <p class="text-muted text-sm mt-1">Журнал всех изменений в системе с фильтрацией и поиском</p>
+        <p>Журнал всех изменений в системе с фильтрацией и поиском</p>
       </div>
     </div>
     <div style="padding:0 var(--space-3) var(--space-3)">

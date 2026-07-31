@@ -3,6 +3,24 @@
  * Personalized by role: Team mode (PO/PL/IT PL) vs Tribe mode (ЛТ)
  */
 
+const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const MONTH_NAMES_SHORT = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+const EVENT_TYPE_ICONS = { milestone: 'flag', planned_event: 'calendar-check', cyclic: 'refresh-cw', event: 'circle' };
+
+function greetingByTime() {
+    const h = new Date().getHours();
+    if (h >= 6 && h < 12) return 'Доброе утро';
+    if (h >= 12 && h < 18) return 'Добрый день';
+    if (h >= 18 && h < 24) return 'Добрый вечер';
+    return 'Доброй ночи';
+}
+
+function roleLabel(user) {
+    return user?.role_name || '';
+}
+
+window._tlState = { view: 'quarter', year: new Date().getFullYear(), quarter: Math.floor(new Date().getMonth() / 3) + 1, month: new Date().getMonth() + 1, events: [] };
+
 function getStatus(t) {
     return t.status_name || t.status || '';
 }
@@ -117,7 +135,7 @@ function formatMoney(val) {
 }
 
 function isTribeRole(user) {
-    return ['ЛТ', 'Администратор'].includes(user?.role_name);
+    return ['Лидер трайба', 'Администратор'].includes(user?.role_name);
 }
 
 function isMyTask(task, user) {
@@ -135,75 +153,355 @@ function statCard(id, icon, gradient, label, animDelay) {
         </div>`;
 }
 
-// ==================== QUARTER BAR (shared) ====================
+// ==================== TIMELINE ====================
 
-function renderQuarterBar() {
+function getTimelineState() { return window._tlState; }
+
+function setTimelineState(partial) {
+    window._tlState = { ...window._tlState, ...partial };
+}
+
+function normalizeDate(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function getQuarterStart(q, year) {
+    return new Date(year, (q - 1) * 3, 1);
+}
+
+function getQuarterEnd(q, year) {
+    return new Date(year, q * 3, 0);
+}
+
+function dayOffset(start, end) {
+    return Math.round((end - start) / 86400000);
+}
+
+function daysInQuarter(q, year) {
+    return dayOffset(getQuarterStart(q, year), getQuarterEnd(q, year)) + 1;
+}
+
+function daysIntoQuarter(d) {
+    const q = getQuarter(d);
+    const start = getQuarterStart(q, d.getFullYear());
+    return dayOffset(start, d);
+}
+
+function dayPct(d, q, year) {
+    const total = daysInQuarter(q, year);
+    const offset = daysIntoQuarter(d);
+    return Math.min(100, Math.max(0, (offset / total) * 100));
+}
+
+function getMonthStart(m, year) {
+    return new Date(year, m - 1, 1);
+}
+
+function getMonthEnd(m, year) {
+    return new Date(year, m, 0);
+}
+
+function daysInMonth(m, year) {
+    return getMonthEnd(m, year).getDate();
+}
+
+function monthDayPct(d, m, year) {
+    const total = daysInMonth(m, year);
+    const dayNum = d.getDate();
+    return Math.min(100, Math.max(0, ((dayNum - 1) / total) * 100));
+}
+
+function getMonthLabel(m, year) {
+    return MONTH_NAMES[m - 1] + ' ' + year;
+}
+
+function renderTimeline() {
+    const st = getTimelineState();
     const now = new Date();
-    const q = getQuarter(now);
-    const year = now.getFullYear();
-    const qStart = new Date(year, (q - 1) * 3, 1);
-    const qEnd = new Date(year, q * 3, 0);
-    const totalDays = Math.round((qEnd - qStart) / 86400000) + 1;
-    const elapsed = Math.round((now - qStart) / 86400000);
+    const realToday = normalizeDate(now);
+    let today = realToday;
+
+    if (st.view === 'month') {
+        const mStart = getMonthStart(st.month, st.year);
+        const mEnd = getMonthEnd(st.month, st.year);
+        if (today > mEnd) today = normalizeDate(mEnd);
+        else if (today < mStart) today = normalizeDate(mStart);
+        return renderMonthTimeline(st, today, realToday);
+    }
+    const qStart = getQuarterStart(st.quarter, st.year);
+    const qEnd = getQuarterEnd(st.quarter, st.year);
+    if (today > qEnd) today = normalizeDate(qEnd);
+    else if (today < qStart) today = normalizeDate(qStart);
+    return renderQuarterTimeline(st, today, realToday);
+}
+
+function renderQuarterTimeline(st, today, realToday) {
+    const qLabel = getQuarterLabel(st.quarter, st.year);
+    const qStart = getQuarterStart(st.quarter, st.year);
+    const qEnd = getQuarterEnd(st.quarter, st.year);
+    const totalDays = daysInQuarter(st.quarter, st.year);
+    const elapsed = Math.min(totalDays, Math.max(0, daysIntoQuarter(today) + (today >= qStart && today <= qEnd ? 1 : 0)));
     const pct = Math.min(100, Math.round((elapsed / totalDays) * 100));
-    const qLabel = getQuarterLabel(q, year);
+    const inQuarter = realToday >= qStart && realToday <= qEnd;
 
-    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-    const qMonthIndex = (q - 1) * 3;
-    const qMonths = monthNames.slice(qMonthIndex, qMonthIndex + 3);
+    const curYear = new Date().getFullYear();
+    const minYear = curYear;
+    const maxYear = curYear + 1;
+    const prevDisabled = st.year === minYear && st.quarter === 1;
+    const nextDisabled = st.year === maxYear && st.quarter === 4;
 
-    const expressDate = new Date(qEnd);
-    expressDate.setDate(expressDate.getDate() - 40);
-    const expressPos = Math.min(100, Math.max(0, Math.round((Math.round((expressDate - qStart) / 86400000) / totalDays) * 100)));
+    const monthIndex = (st.quarter - 1) * 3;
+    const qMonths = MONTH_NAMES_SHORT.slice(monthIndex, monthIndex + 3);
+    const filteredEvents = st.events.filter(e => e.quarter === st.quarter && e.year === st.year);
 
-    const pipDate = new Date(qEnd);
-    pipDate.setDate(pipDate.getDate() - 7);
-    const pipPos = Math.min(100, Math.max(0, Math.round((Math.round((pipDate - qStart) / 86400000) / totalDays) * 100)));
+    function monthLines() {
+        return [1, 2].map(i => {
+            const pos = (i / qMonths.length) * 100;
+            return `<div class="dash-month-line" style="left:${pos}%;height:8px;bottom:auto;top:0;"></div>`;
+        }).join('');
+    }
+
+    function monthLabels() {
+        return qMonths.map((m, i) => {
+            const pos = ((i + 0.5) / qMonths.length) * 100;
+            return `<div class="dash-month-label" style="left:${pos}%;">${m}</div>`;
+        }).join('');
+    }
+
+    function dotStyle(color, isPip) {
+        const pipRule = isPip ? 'width:10px;height:10px;border-radius:3px;transform:rotate(45deg);' : '';
+        const shadow = isPip ? '' : `box-shadow:0 0 0 2px ${color}44, 0 1px 3px rgba(0,0,0,0.15);`;
+        return `background:${color};${pipRule}${shadow}`;
+    }
+
+    function markersContent() {
+        let html = '';
+        if (inQuarter) {
+            html += `
+            <div class="dash-quarter-marker" style="left:${pct}%;z-index:5;">
+                <div class="dash-marker-dot" style="background:var(--danger);box-shadow:0 0 0 3px rgba(244,63,94,0.45);width:14px;height:14px;"></div>
+                <div class="dash-marker-label" style="color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent);font-weight:700;">Сегодня</div>
+            </div>`;
+        }
+        filteredEvents.forEach(ev => {
+            const evDate = new Date(ev.date + 'T00:00:00');
+            const pos = dayPct(evDate, st.quarter, st.year);
+            const isPip = ev.event_type === 'pip';
+            html += `
+            <div class="dash-quarter-marker ${isPip ? 'dash-quarter-marker-pip' : ''}" style="left:${pos}%;" title="${escapeHtml(ev.title)}">
+                <div class="dash-marker-dot ${isPip ? 'dash-marker-dot-pip' : ''}" style="${dotStyle(ev.color, isPip)}"></div>
+                <div class="dash-marker-label ${isPip ? 'dash-marker-label-pip' : ''}" style="color:${ev.color};background:color-mix(in srgb,${ev.color} 10%,transparent);">${escapeHtml(ev.title)}</div>
+            </div>`;
+        });
+        return html;
+    }
+
+    function navBtnStyle(disabled) {
+        const base = 'flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1px solid var(--border-color);background:var(--bg-primary);display:flex;align-items:center;justify-content:center;';
+        if (disabled) return base + 'opacity:0.4;cursor:not-allowed;color:var(--text-muted);';
+        return base + 'box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;color:var(--text-secondary);';
+    }
 
     return `
     <div class="dash-top-row">
         <div class="dash-quarter-bar">
             <div class="dash-quarter-bar-header">
-                <div class="dash-quarter-bar-info">
-                    <i data-lucide="calendar" style="width:14px;height:14px;"></i>
-                    <span>${qLabel}</span>
-                    <span class="dash-quarter-bar-sep">·</span>
-                    <span class="dash-quarter-bar-days">${elapsed} / ${totalDays} дн.</span>
-                    <span class="dash-quarter-bar-sep">·</span>
-                    <span class="dash-quarter-bar-pct">${pct}%</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div class="dash-quarter-bar-info" data-tl-action="today" title="Перейти к текущему периоду" style="cursor:pointer;">
+                        <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+                        <span>${qLabel}</span>
+                        <span class="dash-quarter-bar-sep">·</span>
+                        <span class="dash-quarter-bar-days">${elapsed} / ${totalDays} дн.</span>
+                        <span class="dash-quarter-bar-sep">·</span>
+                        <span class="dash-quarter-bar-pct">${pct}%</span>
+                    </div>
+                    <div style="display:flex;gap:2px;background:var(--bg-tertiary);border-radius:var(--radius-md,8px);padding:2px;">
+                        <button type="button" data-tl-action="view-quarter" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'quarter' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'quarter' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'quarter' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
+                        <button type="button" data-tl-action="view-month" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'month' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'month' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'month' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'month' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Месяц</button>
+                    </div>
                 </div>
             </div>
-            <div class="dash-quarter-bar-track-wrap">
-                <div class="dash-quarter-bar-markers-top">
-                    <div class="dash-quarter-marker" style="left:${expressPos}%;">
-                        <span class="dash-marker-dot"></span>
-                        <span class="dash-marker-label">Начало экспресс-оценки</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button type="button" data-tl-action="prev-quarter" title="Предыдущий квартал" style="${navBtnStyle(prevDisabled)}" ${prevDisabled ? 'disabled' : ''}><i data-lucide="chevron-left" style="width:20px;height:20px;"></i></button>
+                <div class="dash-quarter-bar-track-wrap" style="flex:1;min-width:0;">
+                    <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;">
+                        ${markersContent()}
                     </div>
-                    <div class="dash-quarter-marker dash-quarter-marker-pip" style="left:${pipPos}%;">
-                        <span class="dash-marker-dot dash-marker-dot-pip"></span>
-                        <span class="dash-marker-label dash-marker-label-pip">PIP</span>
+                    <div class="dash-quarter-bar-track">
+                        <div class="dash-quarter-bar-fill" style="width:${pct}%"></div>
                     </div>
-                </div>
-                <div class="dash-quarter-bar-track">
-                    <div class="dash-quarter-bar-fill" style="width:${pct}%"></div>
-                </div>
-                <div class="dash-quarter-bar-months">
-                    <div class="dash-month-lines">
-                        ${qMonths.slice(0, -1).map((_, i) => {
-                            const pos = ((i + 1) / qMonths.length) * 100;
-                            return `<span class="dash-month-line" style="left:${pos}%;"></span>`;
-                        }).join('')}
-                    </div>
-                    <div class="dash-month-labels">
-                        ${qMonths.map((m, i) => {
-                            const pos = ((i + 0.5) / qMonths.length) * 100;
-                            return `<span class="dash-month-label" style="left:${pos}%;">${m}</span>`;
-                        }).join('')}
+                    <div class="dash-quarter-bar-months">
+                        <div class="dash-month-lines">
+                            ${monthLines()}
+                        </div>
+                        <div class="dash-month-labels">
+                            ${monthLabels()}
+                        </div>
                     </div>
                 </div>
+                <button type="button" data-tl-action="next-quarter" title="Следующий квартал" style="${navBtnStyle(nextDisabled)}" ${nextDisabled ? 'disabled' : ''}><i data-lucide="chevron-right" style="width:20px;height:20px;"></i></button>
             </div>
         </div>
     </div>`;
+}
+
+function renderMonthTimeline(st, today, realToday) {
+    const m = st.month;
+    const y = st.year;
+    const mStart = getMonthStart(m, y);
+    const mEnd = getMonthEnd(m, y);
+    const totalDays = daysInMonth(m, y);
+    const elapsed = Math.min(totalDays, Math.max(0, today.getDate()));
+    const pct = Math.min(100, Math.round((elapsed / totalDays) * 100));
+    const inMonth = realToday >= mStart && realToday <= mEnd;
+
+    const curYear = new Date().getFullYear();
+    const minYear = curYear;
+    const maxYear = curYear + 1;
+    const prevDisabled = st.year === minYear && st.month === 1;
+    const nextDisabled = st.year === maxYear && st.month === 12;
+
+    const mLabel = getMonthLabel(m, y);
+    const filteredEvents = st.events.filter(e => {
+        const evDate = new Date(e.date + 'T00:00:00');
+        return evDate.getMonth() + 1 === m && evDate.getFullYear() === y;
+    });
+
+    function dotStyle(color, isPip) {
+        const pipRule = isPip ? 'width:10px;height:10px;border-radius:3px;transform:rotate(45deg);' : '';
+        const shadow = isPip ? '' : `box-shadow:0 0 0 2px ${color}44, 0 1px 3px rgba(0,0,0,0.15);`;
+        return `background:${color};${pipRule}${shadow}`;
+    }
+
+    function markersContent() {
+        let html = '';
+        if (inMonth) {
+            html += `
+            <div class="dash-quarter-marker" style="left:${pct}%;z-index:5;">
+                <div class="dash-marker-dot" style="background:var(--danger);box-shadow:0 0 0 3px rgba(244,63,94,0.45);width:14px;height:14px;"></div>
+                <div class="dash-marker-label" style="color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent);font-weight:700;">Сегодня</div>
+            </div>`;
+        }
+        filteredEvents.forEach(ev => {
+            const evDate = new Date(ev.date + 'T00:00:00');
+            const pos = monthDayPct(evDate, m, y);
+            const isPip = ev.event_type === 'pip';
+            html += `
+            <div class="dash-quarter-marker ${isPip ? 'dash-quarter-marker-pip' : ''}" style="left:${pos}%;" title="${escapeHtml(ev.title)}">
+                <div class="dash-marker-dot ${isPip ? 'dash-marker-dot-pip' : ''}" style="${dotStyle(ev.color, isPip)}"></div>
+                <div class="dash-marker-label ${isPip ? 'dash-marker-label-pip' : ''}" style="color:${ev.color};background:color-mix(in srgb,${ev.color} 10%,transparent);">${escapeHtml(ev.title)}</div>
+            </div>`;
+        });
+        return html;
+    }
+
+    function navBtnStyle(disabled) {
+        const base = 'flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1px solid var(--border-color);background:var(--bg-primary);display:flex;align-items:center;justify-content:center;';
+        if (disabled) return base + 'opacity:0.4;cursor:not-allowed;color:var(--text-muted);';
+        return base + 'box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;color:var(--text-secondary);';
+    }
+
+    return `
+    <div class="dash-top-row">
+        <div class="dash-quarter-bar">
+            <div class="dash-quarter-bar-header">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div class="dash-quarter-bar-info" data-tl-action="today" title="Перейти к текущему периоду" style="cursor:pointer;">
+                        <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+                        <span>${mLabel}</span>
+                        <span class="dash-quarter-bar-sep">·</span>
+                        <span class="dash-quarter-bar-days">${elapsed} / ${totalDays} дн.</span>
+                        <span class="dash-quarter-bar-sep">·</span>
+                        <span class="dash-quarter-bar-pct">${pct}%</span>
+                    </div>
+                    <div style="display:flex;gap:2px;background:var(--bg-tertiary);border-radius:var(--radius-md,8px);padding:2px;">
+                        <button type="button" data-tl-action="view-quarter" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'quarter' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'quarter' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'quarter' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
+                        <button type="button" data-tl-action="view-month" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'month' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'month' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'month' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'month' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Месяц</button>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button type="button" data-tl-action="prev-month" title="Предыдущий месяц" style="${navBtnStyle(prevDisabled)}" ${prevDisabled ? 'disabled' : ''}><i data-lucide="chevron-left" style="width:20px;height:20px;"></i></button>
+                <div class="dash-quarter-bar-track-wrap" style="flex:1;min-width:0;">
+                    <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;">
+                        ${markersContent()}
+                    </div>
+                    <div class="dash-quarter-bar-track">
+                        <div class="dash-quarter-bar-fill" style="width:${pct}%"></div>
+                    </div>
+                </div>
+                <button type="button" data-tl-action="next-month" title="Следующий месяц" style="${navBtnStyle(nextDisabled)}" ${nextDisabled ? 'disabled' : ''}><i data-lucide="chevron-right" style="width:20px;height:20px;"></i></button>
+            </div>
+        </div>
+    </div>`;
+}
+
+function bindTimelineEvents(app) {
+    const container = document.getElementById('timeline-container');
+    if (!container) return;
+
+    container.removeEventListener('click', window._tlClick);
+    window._tlClick = (e) => {
+        const btn = e.target.closest('[data-tl-action]');
+        if (!btn) return;
+        if (btn.disabled) return;
+        e.preventDefault();
+        const action = btn.dataset.tlAction;
+        const st = getTimelineState();
+
+        if (action === 'prev-quarter') {
+            if (st.quarter === 1) { st.year--; st.quarter = 4; }
+            else { st.quarter--; }
+            setTimelineState({ quarter: st.quarter, year: st.year });
+        } else if (action === 'next-quarter') {
+            if (st.quarter === 4) { st.year++; st.quarter = 1; }
+            else { st.quarter++; }
+            setTimelineState({ quarter: st.quarter, year: st.year });
+        } else if (action === 'prev-month') {
+            if (st.month === 1) { st.year--; st.month = 12; }
+            else { st.month--; }
+            setTimelineState({ month: st.month, year: st.year });
+        } else if (action === 'next-month') {
+            if (st.month === 12) { st.year++; st.month = 1; }
+            else { st.month++; }
+            setTimelineState({ month: st.month, year: st.year });
+        } else if (action === 'today') {
+            const now = new Date();
+            setTimelineState({ quarter: getQuarter(now), month: now.getMonth() + 1, year: now.getFullYear() });
+        } else if (action === 'view-quarter') {
+            setTimelineState({ view: 'quarter' });
+        } else if (action === 'view-month') {
+            setTimelineState({ view: 'month' });
+        }
+
+        loadTimelineData(window.app || app);
+    };
+    container.addEventListener('click', window._tlClick);
+}
+
+async function loadTimelineData(app) {
+    const st = getTimelineState();
+    const api = (app || window.app).api;
+    try {
+        let url = `/timeline?year=${st.year}`;
+        if (st.view === 'quarter') url += '&quarter=' + st.quarter;
+        if (st.view === 'month') url += '&month=' + st.month;
+        const resp = await api.get(url);
+        st.events = resp.items || [];
+    } catch (e) {
+        console.error('Timeline load error:', e.status ? `${e.message} (HTTP ${e.status})` : e.message);
+    } finally {
+        refreshTimeline(app || window.app);
+    }
+}
+
+function refreshTimeline(app) {
+    const container = document.getElementById('timeline-container');
+    if (container) {
+        container.innerHTML = renderTimeline();
+        try { if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' }); } catch (_) {}
+        bindTimelineEvents(app);
+    }
 }
 
 // ==================== NOTIFICATIONS WIDGET ====================
@@ -215,7 +513,7 @@ function renderNotificationsWidget() {
             <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--accent-light);color:var(--accent);">
                 <i data-lucide="bell" style="width:20px;height:20px;"></i>
             </div>
-            <h3>Уведомления</h3>
+            <h3>Важные уведомления <span class="dash-notif-count" id="dash-notif-count"></span></h3>
             <a href="#/notifications" class="btn btn-ghost btn-sm">Все →</a>
         </div>
         <div class="widget-body" id="dash-notif-body" style="padding:var(--space-2);">
@@ -247,75 +545,18 @@ function renderTeamDashboard(app) {
 
     return `
     <div class="page-header animate-fade-in">
-        <h1>Добрый день, ${user?.name?.split(' ')[0] || 'Гость'}</h1>
-        <p>${teamName ? 'Команда: ' + teamName : 'Обзор ваших задач'}</p>
+        <h1>${greetingByTime()}, ${user?.name?.split(' ')[0] || 'Гость'}</h1>
+        <p>${roleLabel(user)}</p>
     </div>
 
-    ${renderQuarterBar()}
+    <div id="timeline-container">${renderTimeline()}</div>
 
-    <div class="dashboard-stats">
-        ${statCard('stat-total', 'inbox', 'dash-gradient-blue', 'Всего задач', 0.1)}
-        ${statCard('stat-active', 'play-circle', 'dash-gradient-green', 'В работе', 0.15)}
-        ${statCard('stat-risk', 'alert-triangle', 'dash-gradient-red', 'Под риском', 0.2)}
-        ${statCard('stat-no-est', 'help-circle', 'dash-gradient-amber', 'Без оценки', 0.25)}
-    </div>
-
-    <div class="dash-two-col">
-        <div class="dash-col-main">
-            <div class="widget">
-                <div class="widget-header">
-                    <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--warning-light);color:var(--warning);">
-                        <i data-lucide="zap" style="width:20px;height:20px;"></i>
-                    </div>
-                    <h3>Требуют внимания</h3>
-                    <span class="dash-attention-count" id="dash-attention-count"></span>
-                </div>
-                <div class="widget-body" id="dash-attention-body" style="padding:var(--space-2);">
-                    <p class="text-muted text-center" style="padding:var(--space-6);">Загрузка...</p>
-                </div>
-            </div>
-
-            <div class="widget" style="margin-top:var(--space-5);">
-                <div class="widget-header">
-                    <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--info-light);color:var(--info);">
-                        <i data-lucide="bar-chart-2" style="width:20px;height:20px;"></i>
-                    </div>
-                    <h3>Статусы команды</h3>
-                </div>
-                <div class="widget-body" id="dash-status-bar-body">
-                    <p class="text-muted text-center" style="padding:var(--space-4);">Загрузка...</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="dash-col-side">
-            ${renderNotificationsWidget()}
-            ${renderRisksWidget()}
-        </div>
-    </div>`;
+    ${renderNotificationsWidget()}`;
 }
 
 async function initTeamDashboard(app) {
-    const user = app.store.get('currentUser');
-    const teamId = user?.team_id;
-
-    const tasksResp = await app.api.get(`/tasks?per_page=1000${teamId ? '&team_id=' + teamId : ''}`);
-    const tasks = tasksResp.items || [];
-
-    const total = tasks.length;
-    const active = tasks.filter(t => isActiveStatus(getStatus(t))).length;
-    const risk = tasks.filter(t => isRiskStatus(getStatus(t)) || (getStatus(t) === 'ПРИНЯТА В РАБОТУ' && (t.progress || 0) < 50)).length;
-    const noEst = tasks.filter(t => !['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'].includes(getStatus(t)) && t.effort_days == null && t.effort_rub == null).length;
-
-    animateCounter(document.getElementById('stat-total'), total);
-    animateCounter(document.getElementById('stat-active'), active);
-    animateCounter(document.getElementById('stat-risk'), risk);
-    animateCounter(document.getElementById('stat-no-est'), noEst);
-
-    renderAttentionList(tasks, user);
-    renderStatusBar(tasks);
+    await loadTimelineData(app);
     await renderNotifications();
-    renderRisks(tasks, teamId);
 }
 
 function renderAttentionList(tasks, user) {
@@ -403,132 +644,17 @@ function renderTribeDashboard(app) {
 
     return `
     <div class="page-header animate-fade-in">
-        <h1>Добрый день, ${user?.name?.split(' ')[0] || 'Гость'}</h1>
-        <p>Лидер трайба · Обзор всех команд</p>
+        <h1>${greetingByTime()}, ${user?.name?.split(' ')[0] || 'Гость'}</h1>
+        <p>${roleLabel(user)}</p>
     </div>
 
-    ${renderQuarterBar()}
+    <div id="timeline-container">${renderTimeline()}</div>
 
-    <div class="dashboard-stats dash-stats-6">
-        ${statCard('stat-total', 'inbox', 'dash-gradient-blue', 'Всего задач', 0.1)}
-        ${statCard('stat-active', 'play-circle', 'dash-gradient-green', 'В работе', 0.15)}
-        ${statCard('stat-risk', 'alert-triangle', 'dash-gradient-red', 'Под риском', 0.2)}
-        ${statCard('stat-key', 'star', 'dash-gradient-violet', 'Ключевые', 0.25)}
-        ${statCard('stat-money', 'banknote', 'dash-gradient-amber', 'Фин. эффект', 0.3)}
-        ${statCard('stat-progress', 'trending-up', 'dash-gradient-teal', 'Ср. прогресс', 0.35)}
-    </div>
-
-    <div class="dash-two-col">
-        <div class="dash-col-main">
-            <div class="dash-grid-2">
-                <div class="widget">
-                    <div class="widget-header">
-                        <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--accent-light);color:var(--accent);">
-                            <i data-lucide="pie-chart" style="width:20px;height:20px;"></i>
-                        </div>
-                        <h3>Здоровье портфеля</h3>
-                    </div>
-                    <div class="widget-body">
-                        <div class="dash-donut-wrap">
-                            <canvas id="dash-donut-chart" height="220"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="widget">
-                    <div class="widget-header">
-                        <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--success-light);color:var(--success);">
-                            <i data-lucide="trending-up" style="width:20px;height:20px;"></i>
-                        </div>
-                        <h3>Топ по C/V</h3>
-                    </div>
-                    <div class="widget-body" id="dash-cv-top" style="padding:var(--space-2);">
-                        <p class="text-muted text-center" style="padding:var(--space-4);">Загрузка...</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="widget" style="margin-top:var(--space-5);">
-                <div class="widget-header">
-                    <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--info-light);color:var(--info);">
-                        <i data-lucide="users" style="width:20px;height:20px;"></i>
-                    </div>
-                    <h3>Прогресс по командам</h3>
-                </div>
-                <div class="widget-body" id="dash-team-progress">
-                    <p class="text-muted text-center" style="padding:var(--space-4);">Загрузка...</p>
-                </div>
-            </div>
-
-            <div class="dash-grid-2" style="margin-top:var(--space-5);">
-                <div class="widget">
-                    <div class="widget-header">
-                        <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--danger-light);color:var(--danger);">
-                            <i data-lucide="alert-triangle" style="width:20px;height:20px;"></i>
-                        </div>
-                        <h3>Топ рисков</h3>
-                    </div>
-                    <div class="widget-body" id="top-risks" style="padding:var(--space-2);">
-                        <p class="text-muted text-center" style="padding:var(--space-4);">Загрузка...</p>
-                    </div>
-                </div>
-
-                <div class="widget">
-                    <div class="widget-header">
-                        <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--warning-light);color:var(--warning);">
-                            <i data-lucide="zap" style="width:20px;height:20px;"></i>
-                        </div>
-                        <h3>Требуют внимания</h3>
-                        <span class="dash-attention-count" id="dash-attention-count"></span>
-                    </div>
-                    <div class="widget-body" id="dash-attention-body" style="padding:var(--space-2);">
-                        <p class="text-muted text-center" style="padding:var(--space-4);">Загрузка...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="dash-col-side">
-            ${renderNotificationsWidget()}
-        </div>
-    </div>`;
+    ${renderNotificationsWidget()}`;
 }
 
 async function initTribeDashboard(app) {
-    const [tasksResp, stats, teamsResp] = await Promise.all([
-        app.api.get('/tasks?per_page=1000'),
-        app.api.get('/tasks/stats'),
-        app.api.get('/teams'),
-    ]);
-
-    const tasks = tasksResp.items || [];
-    const teams = teamsResp.items || [];
-    app.store?.set('_teams', teams);
-
-    animateCounter(document.getElementById('stat-total'), stats.total);
-    animateCounter(document.getElementById('stat-active'), stats.active);
-    animateCounter(document.getElementById('stat-risk'), stats.risk);
-    animateCounter(document.getElementById('stat-key'), stats.key_projects);
-    animateCounter(document.getElementById('stat-progress'), Math.round(stats.avg_progress));
-
-    const moneyEl = document.getElementById('stat-money');
-    if (moneyEl) {
-        const target = Math.round(stats.total_financial_effect);
-        const start = performance.now();
-        function tick(now) {
-            const progress = Math.min((now - start) / 800, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            moneyEl.textContent = formatMoney(target * eased);
-            if (progress < 1) requestAnimationFrame(tick);
-        }
-        requestAnimationFrame(tick);
-    }
-
-    renderDonutChart(stats.by_status);
-    renderCvTop(tasks);
-    renderTeamProgress(stats.by_team);
-    renderAttentionList(tasks, app.store.get('currentUser'));
-    renderRisks(tasks, null);
+    await loadTimelineData(app);
     await renderNotifications();
 }
 
@@ -700,10 +826,13 @@ function renderTeamProgress(byTeam) {
 
 async function renderNotifications() {
     const notifBody = document.getElementById('dash-notif-body');
+    const notifCount = document.getElementById('dash-notif-count');
     if (!notifBody) return;
     try {
-        const notifData = await window.app?.api?.get('/notifications?per_page=5');
-        const items = notifData?.items || [];
+        const notifData = await window.app?.api?.get('/notifications');
+        const allItems = notifData?.items || [];
+        if (notifCount) notifCount.textContent = allItems.length;
+        const items = allItems.slice(0, 5);
         if (items.length === 0) {
             notifBody.innerHTML = '<p class="text-muted text-center" style="padding:var(--space-4);">Нет уведомлений</p>';
             return;

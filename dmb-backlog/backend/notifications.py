@@ -90,7 +90,7 @@ def _get_task_recipients(db: Session, task: Task) -> list[int]:
 
 
 def _get_all_lt_user_ids(db: Session) -> list[int]:
-    lt_role = db.query(Role).filter(Role.name == "ЛТ").first()
+    lt_role = db.query(Role).filter(Role.name == "Лидер трайба").first()
     if not lt_role:
         return []
     return [

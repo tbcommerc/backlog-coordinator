@@ -1,5 +1,5 @@
 console.log('[DMB] teamBacklog.js v20260626.5 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader } from './filterToolbar.js';
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask } from './filterToolbar.js';
 import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved } from './modal.js';
 
 const DEFAULT_COLUMN_LABELS = {
@@ -50,6 +50,36 @@ export function renderTeamBacklog(app) {
       columnLabels: COLUMN_LABELS,
       addTask: true,
     })}
+
+    <div id="team-quick-filters" class="flex gap-2" style="margin-bottom:var(--space-4);flex-wrap:wrap;">
+      <button class="quick-filter-btn" data-filter="overdue">
+        <span class="quick-filter-icon" style="background:var(--danger-light);color:var(--danger);">
+          <i data-lucide="alert-circle" style="width:16px;height:16px;"></i>
+        </span>
+        <span class="quick-filter-info">
+          <span class="quick-filter-label">Просрочено</span>
+          <span class="quick-filter-count" id="qf-overdue-count">0</span>
+        </span>
+      </button>
+      <button class="quick-filter-btn" data-filter="urgent">
+        <span class="quick-filter-icon" style="background:var(--warning-light);color:var(--warning);">
+          <i data-lucide="flame" style="width:16px;height:16px;"></i>
+        </span>
+        <span class="quick-filter-info">
+          <span class="quick-filter-label">Срочные задачи</span>
+          <span class="quick-filter-count" id="qf-urgent-count">0</span>
+        </span>
+      </button>
+      <button class="quick-filter-btn" data-filter="current">
+        <span class="quick-filter-icon" style="background:var(--info-light);color:var(--info);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M9 16l2 2 4-4"></path></svg>
+        </span>
+        <span class="quick-filter-info">
+          <span class="quick-filter-label">Текущие задачи</span>
+          <span class="quick-filter-count" id="qf-current-count">0</span>
+        </span>
+      </button>
+    </div>
 
     <div id="bulk-actions" class="flex items-center gap-3" style="margin-bottom: var(--space-4); display: none;">
         <span class="text-secondary">Выбрано: <strong id="selected-count">0</strong></span>
@@ -160,7 +190,58 @@ export async function initTeamBacklog(app) {
         onRefresh: () => loadTeamTasks(app),
     });
 
+    initTeamQuickFilters(app);
     setOnTaskSaved(() => loadTeamTasks(app));
+}
+
+function initTeamQuickFilters(app) {
+  const terminalStatuses = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
+  let activeQuickFilter = null;
+
+  function updateCounts() {
+    const tasks = teamTasksCache?.items || [];
+    const overdue = tasks.filter(t => t.deadline_id != null && !terminalStatuses.includes(t.status_name) && isDeadlinePast(t.deadline_name));
+    const urgent = tasks.filter(t => t.priority_name === 'ВЫСОКИЙ');
+    const current = tasks.filter(isCurrentTask);
+    const overdueEl = document.getElementById('qf-overdue-count');
+    const urgentEl = document.getElementById('qf-urgent-count');
+    const currentEl = document.getElementById('qf-current-count');
+    if (overdueEl) overdueEl.textContent = overdue.length;
+    if (urgentEl) urgentEl.textContent = urgent.length;
+    if (currentEl) currentEl.textContent = current.length;
+  }
+
+  function applyFilter(key) {
+    if (activeQuickFilter === key) {
+      delete columnFilters['team'][`_${key}`];
+      activeQuickFilter = null;
+    } else {
+      delete columnFilters['team']['_overdue'];
+      delete columnFilters['team']['_urgent'];
+      delete columnFilters['team']['_current'];
+      columnFilters['team'][`_${key}`] = new Set(['yes']);
+      activeQuickFilter = key;
+    }
+  }
+
+  function refreshView() {
+    const tasks = teamTasksCache?.items || [];
+    renderFilterButtons('team', tasks);
+    const cb = filterChangeCallbacks?.team;
+    if (cb) cb();
+  }
+
+  document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const filter = btn.dataset.filter;
+      applyFilter(filter);
+      refreshView();
+      document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
+      if (activeQuickFilter === filter) btn.classList.add('active');
+    });
+  });
+
+  updateCounts();
 }
 
 async function loadTeamTasks(app) {
