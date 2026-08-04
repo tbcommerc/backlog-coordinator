@@ -89,23 +89,12 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         actual_effort_test_auto=task.actual_effort_test_auto,
         financial_effect=task.financial_effect,
         financial_effect_justification=task.financial_effect_justification,
-        ice_score=task.ice_score,
-        ice_impact=task.ice_impact,
-        ice_confidence=task.ice_confidence,
-        ice_ease=task.ice_ease,
         progress=task.progress,
-        what_if=task.what_if,
-        dod=task.dod,
         link_mockups=task.link_mockups,
         link_jira=task.link_jira,
         rejection_reason=task.rejection_reason,
         comment=task.comment,
-        status_comment=task.status_comment,
         owner_id=task.owner_id,
-        responsible_po_id=task.responsible_po_id,
-        business_analyst_id=task.business_analyst_id,
-        it_product_lead_id=task.it_product_lead_id,
-        key_project=task.key_project,
         key_project_status=task.key_project_status,
         key_project_status_updated_at=task.key_project_status_updated_at,
         directorate_status=task.directorate_status,
@@ -114,8 +103,6 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         did_status_updated_at=task.did_status_updated_at,
         metric_kr_plan=task.metric_kr_plan,
         metric_kr_fact=task.metric_kr_fact,
-        is_from_leadership=task.is_from_leadership,
-        is_regular=task.is_regular,
         cv=cv,
         last_updated=task.last_updated,
         created_by=task.created_by,
@@ -131,9 +118,6 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         status_name=task.status.name if task.status else None,
         deadline_name=task.deadline.name if task.deadline else None,
         owner_name=task.owner.name if task.owner else None,
-        responsible_po_name=task.responsible_po.name if task.responsible_po else None,
-        business_analyst_name=task.business_analyst.name if task.business_analyst else None,
-        it_product_lead_name=task.it_product_lead.name if task.it_product_lead else None,
         business_customer_name=task.business_customer_rel.name if task.business_customer_rel else None,
         did_demo=task.did_demo if task.did_demo else False,
         version=task.version or 0,
@@ -193,7 +177,6 @@ async def get_tasks(
     team_id: Optional[int] = None,
     status: Optional[str] = None,
     priority: Optional[str] = None,
-    key_project: Optional[bool] = None,
     search: Optional[str] = Query(None, max_length=200),
     sort_by: str = Query("id", max_length=50),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
@@ -218,8 +201,6 @@ async def get_tasks(
         query = query.join(TaskStatus, Task.status_id == TaskStatus.id).filter(TaskStatus.name == status)
     if priority:
         query = query.join(Priority, Task.priority_id == Priority.id).filter(Priority.name == priority)
-    if key_project is not None:
-        query = query.filter(Task.key_project == key_project)
     if search:
         query = query.filter(Task.title.ilike(f"%{search}%"))
 
@@ -291,7 +272,6 @@ async def get_task_stats(
         Deadline.name.in_(at_risk_deadlines)
     ).count()
 
-    key_projects = base_query.filter(Task.key_project == True).count()
     no_estimate = base_query.filter(
         Task.effort_days == None,
         Task.effort_rub == None
@@ -343,7 +323,6 @@ async def get_task_stats(
         "total": total,
         "active": active,
         "risk": risk,
-        "key_projects": key_projects,
         "no_estimate": no_estimate,
         "by_status": by_status,
         "by_priority": by_priority,
@@ -572,15 +551,6 @@ async def get_analytics(
         ).count()
         deadline_pct = round(on_track / total_tasks * 100, 1) if total_tasks else 0
 
-        key_rows = db.query(Task).filter(
-            Task.is_deleted == False, Task.key_project == True
-        ).all()
-        key_projects_progress = [
-            {"id": t.id, "title": t.title, "team": teams.get(t.team_id, ""), "progress": t.progress,
-             "status": t.status.name if t.status else None}
-            for t in key_rows
-        ]
-
         missing_attrs = {
             "no_effort_days": db.query(Task).filter(Task.is_deleted == False, Task.effort_days == None).count(),
             "no_effort_rub": db.query(Task).filter(Task.is_deleted == False, Task.effort_rub == None).count(),
@@ -592,7 +562,6 @@ async def get_analytics(
         return {
             "workload_by_team": workload_by_team,
             "deadline_compliance": {"on_track": on_track, "overdue": overdue, "no_deadline": no_deadline, "compliance_pct": deadline_pct},
-            "key_projects_progress": key_projects_progress,
             "missing_attributes": missing_attrs
         }
 
@@ -960,12 +929,7 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
     if task_data.financial_effect is not None and task_data.effort_rub is not None and task_data.effort_rub > 0:
         cv = round(task_data.financial_effect / task_data.effort_rub, 2)
 
-    # 2. Calculate ICE Score if Impact, Confidence, Ease are provided
-    ice_score = task_data.ice_score
-    if task_data.ice_impact is not None and task_data.ice_confidence is not None and task_data.ice_ease is not None:
-        ice_score = round((task_data.ice_impact * task_data.ice_confidence * task_data.ice_ease) / 10, 1)
-
-    # 3. Default status = НОВАЯ ЗАДАЧА (status_id = 1)
+    # 2. Default status = НОВАЯ ЗАДАЧА (status_id = 1)
     status_id = task_data.status_id
     if status_id is None:
         status_id = 1
@@ -1007,31 +971,18 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
         actual_effort_test_auto=task_data.actual_effort_test_auto,
         financial_effect=task_data.financial_effect,
         financial_effect_justification=task_data.financial_effect_justification,
-        ice_score=ice_score,
-        ice_impact=task_data.ice_impact,
-        ice_confidence=task_data.ice_confidence,
-        ice_ease=task_data.ice_ease,
         cv=cv,
         progress=task_data.progress,
-        what_if=task_data.what_if,
-        dod=task_data.dod,
         link_mockups=task_data.link_mockups,
         link_jira=task_data.link_jira,
         rejection_reason=task_data.rejection_reason,
         comment=task_data.comment,
-        status_comment=task_data.status_comment,
         owner_id=task_data.owner_id,
-        responsible_po_id=task_data.responsible_po_id,
-        business_analyst_id=task_data.business_analyst_id,
-        it_product_lead_id=task_data.it_product_lead_id,
-        key_project=task_data.key_project,
         key_project_status=task_data.key_project_status,
         directorate_status=task_data.directorate_status,
         did_status=task_data.did_status,
         metric_kr_plan=task_data.metric_kr_plan,
         metric_kr_fact=task_data.metric_kr_fact,
-        is_from_leadership=task_data.is_from_leadership,
-        is_regular=task_data.is_regular,
         did_demo=task_data.did_demo,
         last_updated=date.today(),
         created_by=current_user.id
@@ -1098,103 +1049,119 @@ async def update_task(
     current_user: User = Depends(get_current_user)
 ):
     """Update existing task"""
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    import traceback
+    import logging
+    logger = logging.getLogger(__name__)
 
-    if _is_lock_active(task) and task.lock_owner_id != current_user.id:
-        owner = db.query(User).filter(User.id == task.lock_owner_id).first()
-        raise HTTPException(
-            status_code=423,
-            detail=f"Задача в данный момент редактируется пользователем {owner.name if owner else 'Неизвестный'}. Доступен режим 'только чтение'"
-        )
+    try:
+        task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
 
-    # Capture old values before changes
-    old_status_id = task.status_id
-    old_owner_id = task.owner_id
-
-    update_data = task_data.model_dump(exclude_unset=True)
-
-    # Optimistic lock: extract and check version before applying changes
-    submitted_version = update_data.pop('version', None)
-    if submitted_version is not None and submitted_version != (task.version or 0):
-        current = task_to_response(task, db)
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "Задача была изменена другим пользователем. Пожалуйста, обновите страницу и повторите изменения.",
-                "current_version": task.version or 0,
-                "submitted_version": submitted_version,
-                "task": current.model_dump()
-            }
-        )
-
-    for field, new_value in update_data.items():
-        old_value = getattr(task, field, None)
-        if str(old_value) != str(new_value):
-            history = TaskHistory(
-                task_id=task.id,
-                changed_by=current_user.id,
-                field_name=field,
-                old_value=str(old_value) if old_value else None,
-                new_value=str(new_value) if new_value else None
+        if _is_lock_active(task) and task.lock_owner_id != current_user.id:
+            owner = db.query(User).filter(User.id == task.lock_owner_id).first()
+            raise HTTPException(
+                status_code=423,
+                detail=f"Задача в данный момент редактируется пользователем {owner.name if owner else 'Неизвестный'}. Доступен режим 'только чтение'"
             )
-            db.add(history)
-        setattr(task, field, new_value)
 
-    task.last_updated = date.today()
+        # Capture old values before changes
+        old_status_id = task.status_id
+        old_owner_id = task.owner_id
 
-    # Auto-calculate effort cost from role estimates x competency rates
-    if any(f in update_data for f, _ in COMPETENCY_EFFORT_FIELDS):
-        vals = {f: getattr(task, f) for f, _ in COMPETENCY_EFFORT_FIELDS}
-        task.effort_rub = compute_effort_rub(db, vals, task.effort_rub)
+        update_data = task_data.model_dump(exclude_unset=True)
+        logger.info(f"[update_task] task_id={task_id}, update_data={update_data}")
 
-    # Auto-calculate C/V if financial_effect or effort_rub changed
-    if 'financial_effect' in update_data or 'effort_rub' in update_data:
-        if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
-            task.cv = round(task.financial_effect / task.effort_rub, 2)
-        else:
-            task.cv = None
+        # Optimistic lock: extract and check version before applying changes
+        submitted_version = update_data.pop('version', None)
+        if submitted_version is not None and submitted_version != (task.version or 0):
+            current = task_to_response(task, db)
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Задача была изменена другим пользователем. Пожалуйста, обновите страницу и повторите изменения.",
+                    "current_version": task.version or 0,
+                    "submitted_version": submitted_version,
+                    "task": current.model_dump()
+                }
+            )
 
-    # Auto-calculate ICE Score if ICE components changed
-    if any(f in update_data for f in ('ice_impact', 'ice_confidence', 'ice_ease')):
-        if task.ice_impact is not None and task.ice_confidence is not None and task.ice_ease is not None:
-            task.ice_score = round((task.ice_impact * task.ice_confidence * task.ice_ease) / 10, 1)
-        else:
-            task.ice_score = None
+        for field, new_value in update_data.items():
+            if not hasattr(task, field):
+                logger.warning(f"[update_task] Unknown field '{field}' for task {task_id}, skipping")
+                continue
+            old_value = getattr(task, field, None)
+            if str(old_value) != str(new_value):
+                history = TaskHistory(
+                    task_id=task.id,
+                    changed_by=current_user.id,
+                    field_name=field,
+                    old_value=str(old_value) if old_value else None,
+                    new_value=str(new_value) if new_value else None
+                )
+                db.add(history)
+            setattr(task, field, new_value)
 
-    # Auto-set timestamps when status fields change
-    from datetime import datetime, timezone
-    if 'directorate_status' in update_data:
-        task.directorate_status_updated_at = datetime.now(timezone.utc)
-    if 'did_status' in update_data:
-        task.did_status_updated_at = datetime.now(timezone.utc)
-    if 'key_project_status' in update_data:
-        task.key_project_status_updated_at = datetime.now(timezone.utc)
+        task.last_updated = date.today()
 
-    # Notifications: status change
-    new_status_id = task.status_id
-    if old_status_id != new_status_id:
-        old_status = db.query(TaskStatus).filter(TaskStatus.id == old_status_id).first()
-        new_status = db.query(TaskStatus).filter(TaskStatus.id == new_status_id).first()
-        old_name = old_status.name if old_status else str(old_status_id)
-        new_name = new_status.name if new_status else str(new_status_id)
-        notify_status_change(db, task, old_name, new_name, current_user.id)
+        # Auto-calculate effort cost from role estimates x competency rates
+        if any(f in update_data for f, _ in COMPETENCY_EFFORT_FIELDS):
+            vals = {f: getattr(task, f) for f, _ in COMPETENCY_EFFORT_FIELDS}
+            task.effort_rub = compute_effort_rub(db, vals, task.effort_rub)
 
-    # Notifications: assignment change
-    new_owner_id = task.owner_id
-    if old_owner_id != new_owner_id and new_owner_id:
-        notify_assignment(db, task, new_owner_id)
+        # Auto-calculate C/V if financial_effect or effort_rub changed
+        if 'financial_effect' in update_data or 'effort_rub' in update_data:
+            if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
+                task.cv = round(task.financial_effect / task.effort_rub, 2)
+            else:
+                task.cv = None
 
-    db.commit()
-    db.refresh(task)
+        # Auto-set timestamps when status fields change
+        from datetime import datetime, timezone
+        if 'directorate_status' in update_data:
+            task.directorate_status_updated_at = datetime.now(timezone.utc)
+        if 'did_status' in update_data:
+            task.did_status_updated_at = datetime.now(timezone.utc)
+        if 'key_project_status' in update_data:
+            task.key_project_status_updated_at = datetime.now(timezone.utc)
 
-    # Increment version after successful save
-    task.version = (task.version or 0) + 1
-    db.commit()
-    db.refresh(task)
+        # Notifications: status change
+        new_status_id = task.status_id
+        if old_status_id != new_status_id:
+            if old_status_id:
+                old_status = db.query(TaskStatus).filter(TaskStatus.id == old_status_id).first()
+                old_name = old_status.name if old_status else str(old_status_id)
+            else:
+                old_name = "Не установлен"
+            if new_status_id:
+                new_status = db.query(TaskStatus).filter(TaskStatus.id == new_status_id).first()
+                new_name = new_status.name if new_status else str(new_status_id)
+            else:
+                new_name = "Не установлен"
+            notify_status_change(db, task, old_name, new_name, current_user.id)
 
-    return task_to_response(task, db)
+        # Notifications: assignment change
+        new_owner_id = task.owner_id
+        if old_owner_id != new_owner_id and new_owner_id:
+            notify_assignment(db, task, new_owner_id)
+
+        db.commit()
+        db.refresh(task)
+
+        # Increment version after successful save
+        task.version = (task.version or 0) + 1
+        db.commit()
+        db.refresh(task)
+
+        return task_to_response(task, db)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[update_task] ERROR task_id={task_id}: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.get("/{task_id}/history", response_model=List[TaskHistoryResponse])
@@ -1245,10 +1212,6 @@ async def get_task_documents(task_id: int, db: Session = Depends(get_db), curren
                     docs.append({"type": "jira", "title": "Jira Task", "url": url})
         else:
             docs.append({"type": "jira", "title": "Jira Task", "url": task.link_jira})
-    if task.dod:
-        docs.append({"type": "note", "title": "Definition of Done", "content": task.dod})
-    if task.what_if:
-        docs.append({"type": "note", "title": "What-If анализ", "content": task.what_if})
 
     return {"documents": docs}
 
@@ -1574,18 +1537,17 @@ async def update_task_links(
 
 ALLOWED_BULK_FIELDS = {
     'status_id', 'priority_id', 'progress', 'deadline_id', 'owner_id',
-    'responsible_po_id', 'business_analyst_id', 'it_product_lead_id',
     'team_id', 'project_id', 'task_type_id', 'channel_id', 'department_id',
-    'business_customer_id', 'key_project', 'key_project_status',
-    'directorate_status', 'did_status', 'is_from_leadership', 'is_regular',
-    'effort_days', 'effort_rub', 'financial_effect', 'ice_impact',
-    'ice_confidence', 'ice_ease', 'status_comment', 'rejection_reason',
-    'comment', 'what_if', 'dod', 'link_jira', 'link_mockups', 'date_received'
+    'business_customer_id', 'key_project_status',
+    'directorate_status', 'did_status',
+    'effort_days', 'effort_rub', 'financial_effect',
+    'rejection_reason',
+    'comment', 'link_jira', 'link_mockups', 'date_received'
 }
 
 FORBIDDEN_BULK_FIELDS = {
     'id', 'title', 'description', 'is_deleted', 'version', 'created_at',
-    'updated_at', 'created_by', 'cv', 'ice_score', 'effort_designee',
+    'updated_at', 'created_by', 'cv', 'effort_designee',
     'effort_analytics', 'effort_be', 'effort_fe', 'effort_test',
     'effort_test_auto', 'effort_delivery', 'effort_python_be',
     'actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics',
@@ -1714,30 +1676,18 @@ async def import_tasks(
         'actual_effort_test_auto': 'actual_effort_test_auto',
         'financial_effect': 'financial_effect',
         'financial_effect_justification': 'financial_effect_justification',
-        'ice_impact': 'ice_impact',
-        'ice_confidence': 'ice_confidence',
-        'ice_ease': 'ice_ease',
         'progress': 'progress',
-        'what_if': 'what_if',
-        'dod': 'dod',
         'link_mockups': 'link_mockups',
         'link_jira': 'link_jira',
         'rejection_reason': 'rejection_reason',
         'comment': 'comment',
-        'status_comment': 'status_comment',
         'owner_id': 'owner_id',
-        'responsible_po_id': 'responsible_po_id',
-        'business_analyst_id': 'business_analyst_id',
-        'it_product_lead_id': 'it_product_lead_id',
-        'key_project': 'key_project',
         'key_project_status': 'key_project_status',
         'directorate_status': 'directorate_status',
         'did_status': 'did_status',
         'did_demo': 'did_demo',
         'metric_kr_plan': 'metric_kr_plan',
         'metric_kr_fact': 'metric_kr_fact',
-        'is_from_leadership': 'is_from_leadership',
-        'is_regular': 'is_regular',
         'involved_teams': 'involved_teams',
         'created_by': 'created_by',
     }
@@ -1775,7 +1725,6 @@ async def import_tasks(
                                   'actual_effort_analytics', 'actual_effort_be',
                                   'actual_effort_fe', 'actual_effort_test',
                                   'actual_effort_test_auto',
-                                  'ice_impact', 'ice_confidence', 'ice_ease',
                                   'metric_kr_plan', 'metric_kr_fact'):
                     try:
                         val = float(val) if val and val != '' else None
@@ -1784,15 +1733,13 @@ async def import_tasks(
 
                 elif model_col in ('priority_id', 'status_id', 'team_id', 'channel_id',
                                     'department_id', 'project_id', 'task_type_id',
-                                    'deadline_id', 'owner_id', 'responsible_po_id',
-                                    'business_analyst_id', 'it_product_lead_id', 'created_by'):
+                                    'deadline_id', 'owner_id', 'created_by'):
                     try:
                         val = int(val) if val and val != '' else None
                     except (ValueError, TypeError):
                         val = None
 
-                elif model_col in ('progress', 'key_project', 'did_demo',
-                                    'is_from_leadership', 'is_regular'):
+                elif model_col in ('progress', 'did_demo'):
                     val = str(val).lower() in ('true', '1', 'yes', 'да') if val else False
 
                 elif model_col == 'date_received':

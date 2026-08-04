@@ -32,16 +32,6 @@ const reportConfig = {
     group: null,
     sort: null
   },
-  projects: {
-    name: 'Статус по ключевым проектам',
-    desc: 'Ежемесячный статус по ключевым проектам для Лидера трайба',
-    icon: 'target',
-    gradient: 'grad-emerald',
-    inDevelopment: true,
-    isDb: true,
-    key: 'projects',
-    fields: ['id','title','project_name','team_name','status_name','priority_name','deadline_name','progress','key_project_status']
-  },
   'reg-directors': {
     name: 'Отчет для Рег. директоров',
     desc: 'Статус по задачам для региональных директоров - пользователей IBP',
@@ -191,7 +181,6 @@ function renderCell(task, field) {
     case 'project_name': return task.project_name || task.project || '—';
     case 'deadline': return task.deadline_name || task.deadline || '—';
     case 'deadline_name': return task.deadline_name || task.deadline || '—';
-    case 'status_comment': return task.status_comment || '—';
     case 'financial_effect': return task.financial_effect ? `${task.financial_effect} млн ₽` : '—';
     case 'business_customer': return task.business_customer_name || task.business_customer || '—';
     case 'department_name': return task.department_name || '—';
@@ -245,7 +234,7 @@ const fieldLabels = {
   id: 'ID', title: 'Задача', team_name: 'Команда',
   project: 'Проект', project_name: 'Проект',
   status: 'Статус', priority: 'Приоритет', deadline: 'Срок',
-  progress: '%', status_comment: 'Комментарий', financial_effect: 'Фин. эффект',
+  progress: '%', financial_effect: 'Фин. эффект',
   business_customer: 'Бизнес-заказчик', department_name: 'Подразделение',
   business_customer_name: 'Бизнес-заказчик',
   channel_name: 'Канал', task_type_name: 'Тип задачи',
@@ -673,7 +662,7 @@ function formatCount(n) {
 }
 
 export function renderReports(app) {
-  const standardKeys = ['directorate', 'did-operational', 'projects', 'pip', 'did-backlog', 'progress'];
+  const standardKeys = ['directorate', 'did-operational', 'pip', 'did-backlog', 'progress'];
   const customKeys = ['reg-directors'];
 
   function renderCard(key, cfg) {

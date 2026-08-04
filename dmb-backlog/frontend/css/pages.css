@@ -915,6 +915,76 @@
     .chart-title { font-size: 12px; }
 }
 
+/* ==================== ANALYTICS — ТРУДОЗАТРАТЫ ПО ТИПАМ ЗАДАЧ ==================== */
+.effort-controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-3);
+}
+.effort-controls-row .chart-title {
+    margin-bottom: 0;
+}
+.effort-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.effort-select {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    padding: 6px 10px;
+    cursor: pointer;
+    max-width: 200px;
+}
+.effort-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+.effort-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    align-items: center;
+}
+.effort-table-wrap {
+    overflow-x: auto;
+}
+.effort-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+.effort-table th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+.effort-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+.effort-table tr.effort-total td {
+    font-weight: 600;
+    border-bottom: none;
+    border-top: 1px solid var(--border-color);
+}
+@media (max-width: 768px) {
+    .effort-layout { grid-template-columns: 1fr; }
+    .effort-controls-row { flex-direction: column; align-items: flex-start; }
+    .effort-select { max-width: 100%; }
+}
+
 .chart-widget {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -2025,4 +2095,178 @@ input[type=number].effort-input {
     top: 0;
     background: var(--bg-elevated);
     z-index: 1;
+}
+
+/* ==================== АНАЛИТИКА LT — KPI ПЛИТКИ ==================== */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-3);
+    margin: var(--space-4) 0;
+}
+.kpi-tile {
+    border-radius: 12px;
+    padding: var(--space-3) var(--space-4);
+}
+.kpi-tile--warn {
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    background: linear-gradient(135deg, rgba(244, 63, 94, 0.08), transparent);
+}
+.kpi-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-2);
+}
+.kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+/* ==================== АНАЛИТИКА LT — ТЕПЛОВЫЕ КАРТЫ ==================== */
+.heatmap-wrap {
+    overflow-x: auto;
+    max-height: 320px;
+    overflow-y: auto;
+}
+.heatmap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+.heatmap-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-elevated);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+    text-align: center;
+    z-index: 1;
+}
+.heatmap-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    text-align: center;
+    white-space: nowrap;
+}
+.heatmap-table td.hm-team {
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    background: var(--bg-secondary);
+}
+.heatmap-table td.hm-total {
+    font-weight: 700;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-color);
+}
+.heatmap-table td.hm-cell {
+    min-width: 44px;
+}
+
+/* ==================== АНАЛИТИКА LT — КЛЮЧЕВЫЕ ПРОЕКТЫ И СПИСКИ ==================== */
+.kp-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+.kp-card {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-secondary);
+}
+.kp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+.kp-title {
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+}
+.kp-status {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    border-radius: 20px;
+    padding: 2px 10px;
+    white-space: nowrap;
+}
+.kp-status--good {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+}
+.kp-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: var(--space-1);
+}
+.kp-age {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.kp-age--risk {
+    color: var(--danger-color, #f43f5e);
+}
+.kp-progress-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+.kp-progress-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-elevated);
+    border-radius: 20px;
+    overflow: hidden;
+}
+.kp-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #0ea5e9);
+    border-radius: 20px;
+    transition: width 0.6s ease;
+}
+.kp-progress-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 34px;
+    text-align: right;
+}
+.esc-reasons {
+    white-space: nowrap;
+}
+.esc-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 20px;
+    padding: 2px 8px;
+    margin-left: 4px;
+    background: rgba(244, 63, 94, 0.12);
+    color: var(--danger-color, #f43f5e);
+}
+.hm-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+.hm-link:hover {
+    text-decoration: underline;
 }

@@ -134,25 +134,15 @@ Table tasks {
   effort_rub float
   financial_effect float
   cv float
-  ice_score float
   progress int [default: 0]
-  what_if text
-  dod text
   link_mockups varchar(500)
   link_jira varchar(500)
   rejection_reason text
   comment text
-  status_comment text
   owner_id int [ref: > users.id]
-  responsible_po_id int [ref: > users.id]
-  business_analyst_id int [ref: > users.id]
-  it_product_lead_id int [ref: > users.id]
-  key_project boolean [default: false]
   key_project_status varchar(50)
   directorate_status varchar(50)
   did_status varchar(50)
-  is_from_leadership boolean [default: false]
-  is_regular boolean [default: false]
   last_updated date
   created_by int [ref: > users.id]
   created_at timestamp [default: `now()`]

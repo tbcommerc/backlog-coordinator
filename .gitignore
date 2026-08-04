@@ -4,3 +4,14 @@ __pycache__/
 *.log
 uploads/
 .vscode/settings.json
+
+# Local opencode config and dependencies
+.opencode/
+
+# Temporary test data / credentials (never commit)
+fl.json
+login.json
+login_body.json
+tasks.json
+tasks_all.json
+

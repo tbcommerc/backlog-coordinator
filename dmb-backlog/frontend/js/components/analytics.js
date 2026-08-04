@@ -435,29 +435,6 @@ function renderPoPlCharts(tasks) {
     }
   });
 
-  const keyProjects = groupBy(
-    tasks.filter(t => t.key_project === true && t.progress != null),
-    t => t.project_name || 'Без проекта'
-  );
-  const avgProgress = Object.entries(keyProjects)
-    .map(([proj, items]) => {
-      const avg = items.reduce((s, t) => s + (t.progress || 0), 0) / items.length;
-      return [proj, Math.round(avg)];
-    })
-    .sort((a, b) => b[1] - a[1]);
-
-  createChart('chart-po-key-projects', {
-    type: 'bar',
-    data: {
-      labels: avgProgress.map(d => d[0]),
-      datasets: [{
-        label: 'Прогресс %', data: avgProgress.map(d => d[1]),
-        backgroundColor: '#0ea5e9', borderRadius: 4
-      }]
-    },
-    options: { ...opts, scales: { ...opts.scales, y: { min: 0, max: 100 } } }
-  });
-
   const hasEffort = t => t.effort_days != null && t.effort_rub != null;
   const hasNoEval = t => (t.effort_days == null || t.effort_days === '') && (t.effort_rub == null || t.effort_rub === '');
   const hasNoDesc = t => {
@@ -723,10 +700,6 @@ export function renderAnalytics(type, app) {
         <div class="card chart-card-analytics">
           <h3 class="chart-title">Соблюдение сроков</h3>
           <div class="chart-wrap"><canvas id="chart-po-deadline"></canvas></div>
-        </div>
-        <div class="card chart-card-analytics">
-          <h3 class="chart-title">Прогресс ключевых проектов</h3>
-          <div class="chart-wrap"><canvas id="chart-po-key-projects"></canvas></div>
         </div>
         <div class="card chart-card-analytics">
           <h3 class="chart-title">Качество данных</h3>

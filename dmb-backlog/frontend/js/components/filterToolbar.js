@@ -64,10 +64,8 @@ const filterableColumns = [
   { key: 'key_project_status', label: 'Статус ключ. проектов', columnKey: 'key_project_status' },
   { key: 'directorate_status', label: 'Статус для директорской' },
   { key: 'did_status', label: 'Статус для ДИД' },
-  { key: 'key_project', label: 'Ключевой проект' },
   { key: 'date_received', label: 'Дата получения' },
   { key: 'involved_teams', label: 'Вовлечённые команды' },
-  { key: 'ice_score', label: 'ICE Score', columnKey: 'ice_score' },
 ];
 
 const priorityWeight = { 'ВЫСОКИЙ': 3, 'СРЕДНИЙ': 2, 'НИЗКИЙ': 1 };
@@ -166,9 +164,6 @@ function getUniqueValues(scope, key, allTasks) {
             const teams = v.split(',').map(s => s.trim());
             return teams.some(tm => vals.has(tm));
           }
-          if (fk === 'key_project') {
-            return vals.has(v ? 'true' : 'false');
-          }
           return v != null && vals.has(String(v));
         });
       }
@@ -183,19 +178,10 @@ function getUniqueValues(scope, key, allTasks) {
       v.split(',').map(s => s.trim()).filter(Boolean).forEach(tag => unique.add(tag));
     } else if (key === 'involved_teams' && typeof v === 'string') {
       v.split(',').map(s => s.trim()).filter(Boolean).forEach(tm => unique.add(tm));
-    } else if (key === 'key_project') {
-      unique.add(v ? 'true' : 'false');
     } else {
       unique.add(key === 'team_name' ? v : String(v));
     }
   });
-
-  if (key === 'key_project') {
-    const result = [];
-    if (unique.has('true')) result.push({ value: 'true', label: 'Да' });
-    if (unique.has('false')) result.push({ value: 'false', label: 'Нет' });
-    return result;
-  }
 
   return [...unique].sort().map(v => ({ value: v, label: v }));
 }
@@ -274,6 +260,7 @@ export function renderToolbar(scope, opts = {}) {
 
   const actionsHtml = hasActions ? `
     <div class="toolbar-actions">
+      ${addTaskHtml}
       ${bulkOpsBtn}
       ${quickEditBtn}
       ${opts.viewToggle !== false ? viewToggleHtml : ''}
@@ -681,9 +668,6 @@ export function getFilteredList(scope, allTasks) {
             const teams = v.split(',').map(s => s.trim());
             return teams.some(tm => vals.has(tm));
           }
-          if (key === 'key_project') {
-            return vals.has(v ? 'true' : 'false');
-          }
           return v != null && vals.has(String(v));
         });
       }
@@ -950,7 +934,9 @@ export function updateStickyOffsets() {
     if (!toolbar) return;
     const style = getComputedStyle(document.documentElement);
     const navbarHeight = parseFloat(style.getPropertyValue('--navbar-height'));
-    const offset = navbarHeight + toolbar.offsetHeight;
+    const qe = document.querySelector('.qe-toolbar');
+    const qeH = (qe && getComputedStyle(qe).display !== 'none') ? qe.offsetHeight : 0;
+    const offset = navbarHeight + toolbar.offsetHeight + qeH;
     document.documentElement.style.setProperty('--sticky-thead-offset', offset + 'px');
   });
 }
@@ -996,7 +982,9 @@ export function initStickyTableHeader(tableId) {
     const navbarHeight = parseFloat(style.getPropertyValue('--navbar-height')) || 64;
     const toolbar = document.querySelector('.sticky-toolbar');
     const toolbarHeight = toolbar ? toolbar.offsetHeight : 0;
-    return navbarHeight + toolbarHeight;
+    const qe = document.querySelector('.qe-toolbar');
+    const qeH = (qe && getComputedStyle(qe).display !== 'none') ? qe.offsetHeight : 0;
+    return navbarHeight + toolbarHeight + qeH;
   }
 
   function update() {

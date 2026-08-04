@@ -45,10 +45,9 @@ def _report_to_response(report: Report) -> ReportResponse:
 # Прямые колонки Task, доступные для фильтрации.
 REPORT_DIRECT_FIELDS = {
     "id", "title", "description", "business_customer", "involved_teams",
-    "key_project", "key_project_status", "directorate_status", "did_status",
+    "key_project_status", "directorate_status", "did_status",
     "did_demo", "effort_days", "effort_rub", "financial_effect", "cv",
-    "ice_score", "progress", "date_received", "created_at", "updated_at",
-    "is_from_leadership", "is_regular", "what_if", "dod",
+    "progress", "date_received", "created_at", "updated_at",
 }
 
 # Логические «*_name»-поля -> (relationship Task, модель справочника, колонка).
@@ -67,7 +66,7 @@ REPORT_JOINED_FIELDS = {
 
 # Поля, которые сортируются как числа, а не строки.
 REPORT_NUMERIC_FIELDS = {
-    "id", "progress", "effort_days", "effort_rub", "financial_effect", "cv", "ice_score",
+    "id", "progress", "effort_days", "effort_rub", "financial_effect", "cv",
 }
 
 # Ранг приоритета для корректной сортировки по важности (не по алфавиту).
@@ -237,17 +236,6 @@ DEFAULT_STANDARD_REPORTS = [
         "fields": None,
         "group_by": None,
         "sort_by": None,
-        "sort_order": "asc",
-    },
-    {
-        "key": "projects",
-        "name": "Статус по ключевым проектам",
-        "description": "Ежемесячный статус по ключевым проектам для Лидера трайба",
-        "legacy_names": ["Статус по ключевым проектам"],
-        "filters": '[{"field":"key_project","operator":"equals","value":true}]',
-        "fields": '["id","title","project_name","team_name","status_name","priority_name","deadline_name","progress","key_project_status"]',
-        "group_by": "project_name",
-        "sort_by": "priority_name",
         "sort_order": "asc",
     },
     {
@@ -700,17 +688,11 @@ async def execute_report(
             "effort_rub": task.effort_rub,
             "financial_effect": task.financial_effect,
             "cv": cv,
-            "ice_score": task.ice_score,
-            "key_project": task.key_project,
             "key_project_status": task.key_project_status,
             "directorate_status": task.directorate_status,
             "did_status": task.did_status,
             "involved_teams": task.involved_teams or "",
             "did_demo": bool(task.did_demo),
-            "what_if": task.what_if,
-            "dod": task.dod,
-            "is_from_leadership": task.is_from_leadership,
-            "is_regular": task.is_regular,
             "date_received": str(task.date_received) if task.date_received else None,
             "created_at": task.created_at.isoformat() if task.created_at else None,
             "updated_at": task.updated_at.isoformat() if task.updated_at else None,

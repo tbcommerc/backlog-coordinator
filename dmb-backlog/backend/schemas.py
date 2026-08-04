@@ -201,23 +201,12 @@ class TaskBase(BaseModel):
     actual_effort_test_auto: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
-    ice_score: Optional[float] = Field(None)
-    ice_impact: Optional[float] = Field(None, ge=1, le=10)
-    ice_confidence: Optional[float] = Field(None, ge=1, le=10)
-    ice_ease: Optional[float] = Field(None, ge=1, le=10)
     progress: int = Field(default=0, ge=0, le=100)
-    what_if: Optional[str] = Field(None, max_length=10000)
-    dod: Optional[str] = Field(None, max_length=10000)
     link_mockups: Optional[str] = Field(None, max_length=500)
     link_jira: Optional[List[str]] = Field(None, description='Ссылки на Jira (массив)')
     rejection_reason: Optional[str] = Field(None, max_length=5000)
     comment: Optional[str] = Field(None, max_length=5000)
-    status_comment: Optional[str] = Field(None, max_length=5000)
     owner_id: Optional[int] = None
-    responsible_po_id: Optional[int] = None
-    business_analyst_id: Optional[int] = None
-    it_product_lead_id: Optional[int] = None
-    key_project: bool = False
     key_project_status: Optional[str] = Field(None, max_length=50)
     key_project_status_updated_at: Optional[datetime] = None
     directorate_status: Optional[str] = Field(None, max_length=1000)
@@ -226,8 +215,6 @@ class TaskBase(BaseModel):
     did_status_updated_at: Optional[datetime] = None
     metric_kr_plan: Optional[float] = None
     metric_kr_fact: Optional[float] = None
-    is_from_leadership: bool = False
-    is_regular: bool = False
     did_demo: bool = False
 
     @field_validator('link_jira', mode='before')
@@ -246,9 +233,6 @@ class TaskCreate(TaskBase):
     team_id: int
     priority_id: int
     description: Optional[str] = Field(None, max_length=10000)
-    ice_impact: Optional[float] = Field(None, ge=1, le=10)
-    ice_confidence: Optional[float] = Field(None, ge=1, le=10)
-    ice_ease: Optional[float] = Field(None, ge=1, le=10)
 
 
 class TaskUpdate(BaseModel):
@@ -285,31 +269,18 @@ class TaskUpdate(BaseModel):
     actual_effort_test_auto: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
-    ice_score: Optional[float] = Field(None)
-    ice_impact: Optional[float] = Field(None, ge=1, le=10)
-    ice_confidence: Optional[float] = Field(None, ge=1, le=10)
-    ice_ease: Optional[float] = Field(None, ge=1, le=10)
     progress: Optional[int] = Field(None, ge=0, le=100)
-    what_if: Optional[str] = Field(None, max_length=10000)
-    dod: Optional[str] = Field(None, max_length=10000)
     link_mockups: Optional[str] = Field(None, max_length=500)
     link_jira: Optional[List[str]] = Field(None, description='Ссылки на Jira (массив)')
     rejection_reason: Optional[str] = Field(None, max_length=5000)
     comment: Optional[str] = Field(None, max_length=5000)
-    status_comment: Optional[str] = Field(None, max_length=5000)
     owner_id: Optional[int] = None
-    responsible_po_id: Optional[int] = None
-    business_analyst_id: Optional[int] = None
-    it_product_lead_id: Optional[int] = None
-    key_project: Optional[bool] = None
     key_project_status: Optional[str] = Field(None, max_length=50)
     key_project_status_updated_at: Optional[datetime] = None
     directorate_status: Optional[str] = Field(None, max_length=1000)
     did_status: Optional[str] = Field(None, max_length=1000)
     metric_kr_plan: Optional[float] = None
     metric_kr_fact: Optional[float] = None
-    is_from_leadership: Optional[bool] = None
-    is_regular: Optional[bool] = None
     did_demo: Optional[bool] = None
     version: Optional[int] = Field(None, description='Версия задачи для optimistic lock')
 
@@ -327,10 +298,6 @@ class TaskUpdate(BaseModel):
 class TaskResponse(TaskBase):
     id: int
     cv: Optional[float] = None
-    ice_score: Optional[float] = None
-    ice_impact: Optional[float] = None
-    ice_confidence: Optional[float] = None
-    ice_ease: Optional[float] = None
     last_updated: Optional[date] = None
     created_by: Optional[int] = None
     created_by_name: Optional[str] = None
@@ -349,9 +316,6 @@ class TaskResponse(TaskBase):
     status_name: Optional[str] = None
     deadline_name: Optional[str] = None
     owner_name: Optional[str] = None
-    responsible_po_name: Optional[str] = None
-    business_analyst_name: Optional[str] = None
-    it_product_lead_name: Optional[str] = None
     business_customer_name: Optional[str] = None
     did_demo: bool = False
 
@@ -543,7 +507,6 @@ class DashboardStats(BaseModel):
     total_tasks: int
     active_tasks: int
     at_risk_tasks: int
-    key_projects: int
     team_progress: List[dict]
 
 
@@ -993,7 +956,7 @@ class TimelineEventBase(BaseModel):
     date: date
     quarter: Optional[int] = None
     month: Optional[int] = None
-    year: int
+    year: Optional[int] = None
     project_id: Optional[int] = None
     is_recurring: bool = False
     recurring_interval: Optional[str] = None
@@ -1021,7 +984,7 @@ class TimelineEventUpdate(BaseModel):
 
 class TimelineEventResponse(TimelineEventBase):
     id: int
-    creator_id: int
+    creator_id: Optional[int] = None
     creator_name: Optional[str] = None
     project_name: Optional[str] = None
     created_at: datetime

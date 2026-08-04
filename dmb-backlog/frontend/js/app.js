@@ -251,7 +251,11 @@ async function handleSearch(query, app) {
   }
 }
 
-function handleLogout() {
+async function handleLogout() {
+  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js');
+  const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
+  if (!ok) return;
+  clearQuickEditState();
   localStorage.removeItem('dmb_tokens');
   localStorage.removeItem('dmb_user');
   const app = window.app;
@@ -499,6 +503,12 @@ class App {
       await this.loadFieldLabels();
       await this.loadReferenceData();
       this.renderAppLayout();
+      this.router.onBeforeNavigate = async (toPath, fromHash) => {
+        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js');
+        const ok = await confirmDiscardChanges('Продолжить', 'Есть несохранённые изменения в режиме массового редактирования. Перейти и потерять их?');
+        if (ok) clearQuickEditState();
+        return ok;
+      };
       this.router.init();
     } else {
       this.renderLoginPage();

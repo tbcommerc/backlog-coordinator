@@ -7,18 +7,13 @@
  * Custom error class for API errors
  */
 export class APIError extends Error {
-    /**
-     * @param {string} message - Error message
-     * @param {number} status - HTTP status code
-     * @param {string} [code] - Error code from backend
-     * @param {*} [data] - Additional error data
-     */
-    constructor(message, status, code = null, data = null) {
+    constructor(message, status, code = null, data = null, rawText = null) {
         super(message);
         this.name = 'APIError';
         this.status = status;
         this.code = code;
         this.data = data;
+        this.rawText = rawText;
     }
 
     isAuthError() {
@@ -39,6 +34,10 @@ export class APIError extends Error {
 
     isRateLimited() {
         return this.status === 429;
+    }
+
+    isServerError() {
+        return this.status >= 500;
     }
 }
 
@@ -111,16 +110,19 @@ export class API {
     async handleResponse(response) {
         if (!response.ok) {
             let errorData = null;
+            let rawText = null;
             try {
-                errorData = await response.json();
+                rawText = await response.text();
+                errorData = JSON.parse(rawText);
             } catch {
-                errorData = { detail: 'Request failed' };
+                errorData = { detail: `HTTP ${response.status}` };
             }
             throw new APIError(
                 errorData.detail || `HTTP ${response.status}`,
                 response.status,
                 errorData.code || null,
-                errorData
+                errorData,
+                rawText
             );
         }
         

@@ -1440,6 +1440,9 @@ select.input {
 .grad-slate {
   background: linear-gradient(135deg, #64748b 0%, #475569 100%);
 }
+.grad-cyan {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
 
 .report-card {
   transition: all 0.2s ease;
@@ -1457,6 +1460,41 @@ select.input {
   inset: 0;
   background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
   pointer-events: none;
+}
+/* Фиксированные области текста карточки — выравнивание заголовков и подписей */
+.report-card .rc-subtitle,
+.report-card .rc-name,
+.report-card .rc-desc {
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.report-card .rc-subtitle {
+  font-size: 12px;
+  line-height: 16px;
+  height: 16px;
+  opacity: 0.8;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.report-card .rc-name {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  min-height: 75px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.report-card .rc-desc {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 6px;
+  line-height: 1.5;
+  min-height: 36px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* ==================== KPI STATS ROW ==================== */
@@ -2314,17 +2352,6 @@ select.input {
 .kpi-card-value { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
 .kpi-card-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .kpi-card-trend { font-size: 12px; color: var(--success); margin-top: 4px; font-weight: 500; }
-
-.task-detail-dod-box {
-    background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);
-    border-radius: 8px; padding: 16px; margin-bottom: 12px;
-}
-.dod-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
-.dod-list { padding-left: 20px; }
-.dod-list li {
-    font-size: 13px; color: var(--text-secondary); line-height: 1.6;
-    list-style: disc; margin-bottom: 2px;
-}
 
 .task-detail-callout {
     background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2);
@@ -3447,6 +3474,4 @@ textarea.task-detail-input { resize: vertical; min-height: 60px; }
 .modal-body-scroll { overflow-y: auto; padding: 0; }
 
 /* ==================== QUICK EDIT MODE ==================== */
-.ie-editing { border: 1px solid var(--accent); border-radius: 8px; }
-#inline-edit-bar { display: none; }
-#inline-edit-banner { display: none; }
+.qe-toolbar { position: sticky; z-index: 22; }

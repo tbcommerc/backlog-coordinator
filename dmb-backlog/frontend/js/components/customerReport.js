@@ -86,7 +86,6 @@ export function renderCustomerReport(app) {
                 <th>Команда</th>
                 <th>Прогресс</th>
                 <th>Срок</th>
-                <th>Комментарий</th>
               </tr>
             </thead>
             <tbody id="customer-tasks-tbody">
@@ -130,7 +129,7 @@ async function loadTasks(app) {
     renderTasksTable(items, filter);
   } catch (e) {
     document.getElementById('customer-tasks-tbody').innerHTML =
-      `<tr><td colspan="8" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${e.message}</td></tr>`;
+      `<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${e.message}</td></tr>`;
   }
 }
 
@@ -145,7 +144,7 @@ function renderTasksTable(tasks, statusFilter) {
   }
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted" style="padding:40px;">
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">
       <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
         <i data-lucide="inbox" style="width:32px;height:32px;color:var(--text-muted);"></i>
         <span>Задач пока нет</span>
@@ -164,7 +163,6 @@ function renderTasksTable(tasks, statusFilter) {
       <td><span class="badge badge-info">${task.team_name || '—'}</span></td>
       <td>${renderProgress(task.progress)}</td>
       <td>${task.deadline || '—'}</td>
-      <td><span class="text-muted" style="font-size:11px;">${escapeHtml((task.status_comment || '').substring(0, 50)) || '—'}</span></td>
     </tr>
   `).join('');
 

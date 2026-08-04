@@ -265,17 +265,14 @@ const FIELDS_TO_DIFF = {
   title: 'Название', status_id: 'Статус', priority_id: 'Приоритет',
   team_id: 'Команда', project_id: 'Проект', task_type_id: 'Тип',
   channel_id: 'Канал', department_id: 'Подразделение',
-  owner_id: 'Исполнитель', responsible_po_id: 'Отв. PO',
-  business_analyst_id: 'Бизнес-аналитик', it_product_lead_id: 'IT Product Lead',
+  owner_id: 'Исполнитель',
   deadline_id: 'Дедлайн',
   effort_days: 'Трудозатраты (дни)', effort_rub: 'Трудозатраты (руб)',
-  financial_effect: 'Фин. эффект', ice_score: 'ICE Score',
-  progress: 'Прогресс', description: 'Описание', dod: 'DoD',
-  what_if: 'What-If', comment: 'Комментарий', status_comment: 'Комментарий статуса',
+  financial_effect: 'Фин. эффект',
+  progress: 'Прогресс', description: 'Описание',
+  comment: 'Комментарий',
   rejection_reason: 'Причина отклонения', link_mockups: 'Макеты', link_jira: 'Jira',
   tags: 'Теги', date_received: 'Дата получения',
-  key_project: 'Ключевой проект', is_from_leadership: 'От руководства',
-  is_regular: 'Регулярная'
 };
 
 function showConflictModal(errorData, app) {
@@ -422,31 +419,21 @@ async function conflictSaveSelected(serverTask) {
     team_id: getInt('edit-team'), project_id: getInt('edit-project'),
     task_type_id: getInt('edit-task-type'), channel_id: getInt('edit-channel'),
     department_id: getInt('edit-department'), owner_id: getInt('edit-owner'),
-    responsible_po_id: getInt('edit-responsible-po'),
-    business_analyst_id: getInt('edit-business-analyst'),
-    it_product_lead_id: getInt('edit-it-product-lead'),
     business_customer_id: getInt('edit-business-customer'),
     deadline_id: getInt('edit-deadline'),
     effort_days: getInt('edit-effort-days'), effort_rub: getFloat('edit-effort-rub'),
     financial_effect: getFloat('edit-financial-effect'),
-    ice_score: getFloat('edit-ice-score'),
     progress: parseInt(document.getElementById('edit-progress')?.value) || 0,
     description: document.getElementById('edit-description')?.value || '',
-    dod: document.getElementById('edit-dod')?.value || null,
-    what_if: document.getElementById('edit-what-if')?.value || null,
     comment: document.getElementById('edit-comment')?.value || null,
-    status_comment: document.getElementById('edit-status-comment')?.value || '',
     rejection_reason: document.getElementById('edit-rejection-reason')?.value || null,
     link_mockups: document.getElementById('edit-link-mockups')?.value || null,
     link_jira: document.getElementById('edit-link-jira')?.value || null,
     tags: document.getElementById('edit-tags')?.value || '',
     date_received: document.getElementById('edit-date-received')?.value || null,
-    key_project: document.getElementById('edit-key-project')?.checked || false,
     key_project_status: document.getElementById('edit-key-project-status')?.value || null,
     directorate_status: document.getElementById('edit-directorate-status')?.value || null,
     did_status: document.getElementById('edit-did-status')?.value || null,
-    is_from_leadership: document.getElementById('edit-is-from-leadership')?.checked || false,
-    is_regular: document.getElementById('edit-is-regular')?.checked || false,
     version: serverVersion,
   };
 
@@ -503,31 +490,21 @@ async function conflictForceSave() {
     team_id: getInt('edit-team'), project_id: getInt('edit-project'),
     task_type_id: getInt('edit-task-type'), channel_id: getInt('edit-channel'),
     department_id: getInt('edit-department'), owner_id: getInt('edit-owner'),
-    responsible_po_id: getInt('edit-responsible-po'),
-    business_analyst_id: getInt('edit-business-analyst'),
-    it_product_lead_id: getInt('edit-it-product-lead'),
     business_customer_id: getInt('edit-business-customer'),
     deadline_id: getInt('edit-deadline'),
     effort_days: getInt('edit-effort-days'), effort_rub: getFloat('edit-effort-rub'),
     financial_effect: getFloat('edit-financial-effect'),
-    ice_score: getFloat('edit-ice-score'),
     progress: parseInt(document.getElementById('edit-progress')?.value) || 0,
     description: document.getElementById('edit-description')?.value || '',
-    dod: document.getElementById('edit-dod')?.value || null,
-    what_if: document.getElementById('edit-what-if')?.value || null,
     comment: document.getElementById('edit-comment')?.value || null,
-    status_comment: document.getElementById('edit-status-comment')?.value || '',
     rejection_reason: document.getElementById('edit-rejection-reason')?.value || null,
     link_mockups: document.getElementById('edit-link-mockups')?.value || null,
     link_jira: document.getElementById('edit-link-jira')?.value || null,
     tags: document.getElementById('edit-tags')?.value || '',
     date_received: document.getElementById('edit-date-received')?.value || null,
-    key_project: document.getElementById('edit-key-project')?.checked || false,
     key_project_status: document.getElementById('edit-key-project-status')?.value || null,
     directorate_status: document.getElementById('edit-directorate-status')?.value || null,
     did_status: document.getElementById('edit-did-status')?.value || null,
-    is_from_leadership: document.getElementById('edit-is-from-leadership')?.checked || false,
-    is_regular: document.getElementById('edit-is-regular')?.checked || false,
     version: serverVersion,
   };
   Object.keys(data).forEach(key => {
@@ -619,7 +596,6 @@ function renderBKpiRow(task) {
     ? (task.financial_effect / task.effort_rub).toFixed(2) : '—';
   const cvNum = parseFloat(cv);
   const cvCls = cvNum >= 1.5 ? 'b-cv-good' : cvNum < 1 ? 'b-cv-bad' : cvNum ? 'b-cv-mid' : 'b-cv-na';
-  const iceScore = task.ice_score != null ? Number(task.ice_score).toFixed(1) : '—';
 
   return `<div class="b-kpi-row">
     <div class="b-kpi-tile">
@@ -634,7 +610,6 @@ function renderBKpiRow(task) {
       </div>
       <div class="b-kpi-sub">
         ${task.priority_name || task.priority ? `<span style="color:${priorityColor(task.priority_name || task.priority)}">${escapeHtml(task.priority_name || task.priority)}</span>` : ''}
-        ${task.key_project ? '<span style="color:#d97706">⭐ Ключевой</span>' : ''}
       </div>
     </div>
     <div class="b-kpi-tile">
@@ -677,22 +652,6 @@ function renderBKpiRow(task) {
         ${task.effort_rub != null ? `<span>Затраты: ${metricFormat(task.effort_rub)} ₽</span>` : ''}
       </div>
     </div>
-    <div class="b-kpi-tile">
-      <div class="b-kpi-top">
-        <div class="b-kpi-icon indigo">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </div>
-        <div>
-          <span class="b-kpi-label">ICE Score</span>
-          <div class="b-kpi-value sm">${iceScore}</div>
-        </div>
-      </div>
-      <div class="b-kpi-sub">
-        ${task.impact != null ? `<span>Impact: ${task.impact}</span>` : ''}
-        ${task.confidence != null ? `<span>Confidence: ${task.confidence}</span>` : ''}
-        ${task.ease != null ? `<span>Ease: ${task.ease}</span>` : ''}
-      </div>
-    </div>
   </div>`;
 }
 
@@ -709,7 +668,6 @@ function renderOverviewDashboard(task) {
   const cvNum = parseFloat(cv);
   const tags = t.tags ? (Array.isArray(t.tags) ? t.tags : String(t.tags).split(',').map(x => x.trim()).filter(Boolean)) : [];
   const ownerName = t.owner_name || t.owner || '—';
-  const poName = t.responsible_po_name || '—';
   const teamName = t.team_name || t.team || '—';
   const dirDate = t.directorate_status_updated_at ? new Date(t.directorate_status_updated_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
   const didDate = t.did_status_updated_at ? new Date(t.did_status_updated_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
@@ -751,14 +709,6 @@ function renderOverviewDashboard(task) {
         <div class="b-prop-label">Дата поступления</div>
         <div class="b-prop-value">${t.date_received || '—'}</div>
       </div>
-      <div class="b-prop-row">
-        <div class="b-prop-label">От руководства</div>
-        <div class="b-prop-value">${t.is_from_leadership ? '✅ Да' : 'Нет'}</div>
-      </div>
-      <div class="b-prop-row">
-        <div class="b-prop-label">Регулярная</div>
-        <div class="b-prop-value">${t.is_regular ? '✅ Да' : 'Нет'}</div>
-      </div>
     </div>
   </div>`;
 
@@ -776,27 +726,6 @@ function renderOverviewDashboard(task) {
           ${escapeHtml(ownerName)}
         </div>
       </div>
-      <div class="b-prop-row">
-        <div class="b-prop-label">Ответ. PO</div>
-        <div class="b-prop-value" style="display:flex;align-items:center;gap:6px">
-          ${poName !== '—' ? avatarEl(poName, 20) : ''}
-          ${escapeHtml(poName)}
-        </div>
-      </div>
-      ${t.business_analyst_name ? `<div class="b-prop-row">
-        <div class="b-prop-label">Бизнес-аналитик</div>
-        <div class="b-prop-value" style="display:flex;align-items:center;gap:6px">
-          ${avatarEl(t.business_analyst_name, 20)}
-          ${escapeHtml(t.business_analyst_name)}
-        </div>
-      </div>` : ''}
-      ${t.it_product_lead_name ? `<div class="b-prop-row">
-        <div class="b-prop-label">IT Product Lead</div>
-        <div class="b-prop-value" style="display:flex;align-items:center;gap:6px">
-          ${avatarEl(t.it_product_lead_name, 20)}
-          ${escapeHtml(t.it_product_lead_name)}
-        </div>
-      </div>` : ''}
       ${t.business_customer_name ? `<div class="b-prop-row">
         <div class="b-prop-label">Бизнес-заказчик</div>
         <div class="b-prop-value" style="display:flex;align-items:center;gap:6px">
@@ -829,7 +758,7 @@ function renderOverviewDashboard(task) {
   }
 
   // --- Tile: Notes / Comments (span 12) ---
-  const hasNotes = t.comment || t.status_comment || (t.status_name === 'ОТКЛОНЕНА' && t.rejection_reason);
+  const hasNotes = t.comment || (t.status_name === 'ОТКЛОНЕНА' && t.rejection_reason);
   if (hasNotes) {
     html += `<div class="b-tile b-t12">
       <div class="b-tile-title">
@@ -837,7 +766,6 @@ function renderOverviewDashboard(task) {
         <h3>Комментарии</h3>
       </div>
       ${t.comment ? `<div style="margin-bottom:10px"><div class="b-prop-label" style="margin-bottom:4px">Общий комментарий</div><div style="font-size:13px;line-height:1.6;color:var(--text-primary);white-space:pre-wrap">${escapeHtml(t.comment)}</div></div>` : ''}
-      ${t.status_comment ? `<div style="margin-bottom:10px"><div class="b-prop-label" style="margin-bottom:4px">Комментарий по статусу</div><div style="font-size:13px;line-height:1.6;color:var(--text-primary);white-space:pre-wrap">${escapeHtml(t.status_comment)}</div></div>` : ''}
       ${(t.status_name === 'ОТКЛОНЕНА' && t.rejection_reason) ? `<div><div class="b-prop-label" style="margin-bottom:4px;color:#ef4444">Причина отклонения</div><div style="font-size:13px;line-height:1.6;color:#ef4444;white-space:pre-wrap">${escapeHtml(t.rejection_reason)}</div></div>` : ''}
     </div>`;
   }
@@ -910,28 +838,7 @@ function renderOverviewDashboard(task) {
     </div>`;
   }
 
-  // --- Tile: DoD (span 12) ---
-  if (t.dod) {
-    html += `<div class="b-tile b-t12">
-      <div class="b-tile-title">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <h3>Definition of Done</h3>
-      </div>
-      <div style="font-size:13px;line-height:1.6;color:var(--text-primary);white-space:pre-wrap">${escapeHtml(t.dod)}</div>
-    </div>`;
-  }
-
   // --- Tile: What-If (span 12) ---
-  if (t.what_if) {
-    html += `<div class="b-tile b-t12">
-      <div class="b-tile-title">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <h3>What-If анализ</h3>
-      </div>
-      <div style="font-size:13px;line-height:1.6;color:var(--text-primary);white-space:pre-wrap">${escapeHtml(t.what_if)}</div>
-    </div>`;
-  }
-
   html += `</div>`;
   return html;
 }
@@ -1632,35 +1539,18 @@ function renderEditForm(task) {
     </div>
     <div class="b-edit-row-2" style="margin-top:10px">
       ${field(FL('owner_id'), apiSelect('edit-owner', t.owner_id, t.owner_name || t.owner))}
-      ${field('Ответ. PO', apiSelect('edit-responsible-po', t.responsible_po_id, t.responsible_po_name))}
-    </div>
-    <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('Бизнес-аналитик', apiSelect('edit-business-analyst', t.business_analyst_id, t.business_analyst_name))}
-      ${field('IT Product Lead', apiSelect('edit-it-product-lead', t.it_product_lead_id, t.it_product_lead_name))}
-    </div>
-    <div class="b-edit-row-2" style="margin-top:10px">
       ${field(FL('business_customer_id'), apiSelect('edit-business-customer', t.business_customer_id, t.business_customer_name || t.business_customer))}
+    </div>
+    <div class="b-edit-row-2" style="margin-top:10px">
       ${field(FL('department_id'), apiSelect('edit-department', t.department_id, t.department_name || t.customer_department))}
-    </div>
-    <div class="b-edit-row-2" style="margin-top:10px">
       ${field(FL('deadline_id'), bsel('edit-deadline', deadlines, t.deadline_id || t.deadline_name || t.deadline))}
-      ${field('Дата поступления', binput('edit-date-received', 'date', t.date_received || ''))}
     </div>
     <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('ICE Score', bnum('edit-ice-score', t.ice_score ?? '', '0.0–10.0'))}
-    </div>
-    <div style="margin-top:10px">
+      ${field('Дата поступления', binput('edit-date-received', 'date', t.date_received || ''))}
       ${field('Прогресс', `
         <input type="range" min="0" max="100" value="${t.progress || 0}" class="b-edit-range" id="edit-progress">
         <div class="b-edit-range-label"><span>0%</span><b id="progress-label">${t.progress || 0}%</b><span>100%</span></div>
       `)}
-    </div>
-    <div class="b-edit-row-2" style="margin-top:10px">
-      <label class="td-edit-checkbox"><input type="checkbox" id="edit-key-project" ${t.key_project ? 'checked' : ''}> Ключевой проект</label>
-      <label class="td-edit-checkbox"><input type="checkbox" id="edit-is-from-leadership" ${t.is_from_leadership ? 'checked' : ''}> От руководства</label>
-    </div>
-    <div style="margin-top:10px">
-      <label class="td-edit-checkbox"><input type="checkbox" id="edit-is-regular" ${t.is_regular ? 'checked' : ''}> Регулярная</label>
     </div>
   </div>`;
 
@@ -1704,13 +1594,8 @@ function renderEditForm(task) {
       <h3>Описание</h3>
     </div>
     ${field(FL('description'), btextarea('edit-description', t.description, 'Описание задачи', 4))}
-    <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('DoD', btextarea('edit-dod', t.dod, 'Критерии готовности', 3))}
-      ${field('What-If', btextarea('edit-what-if', t.what_if, 'What-If анализ', 3))}
-    </div>
-    <div class="b-edit-row-2" style="margin-top:10px">
+    <div style="margin-top:10px">
       ${field(FL('comment'), btextarea('edit-comment', t.comment, 'Общий комментарий', 2))}
-      ${field('Статус-комментарий', btextarea('edit-status-comment', t.status_comment, 'Комментарий по статусу', 2))}
     </div>
     <div id="edit-rejection-wrapper" style="margin-top:10px;display:${(t.status_name || t.status) === 'ОТКЛОНЕНА' ? '' : 'none'}">
       ${field(FL('rejection_reason'), btextarea('edit-rejection-reason', t.rejection_reason, 'Причина', 2))}
@@ -1794,9 +1679,6 @@ async function populateSelects(app) {
   populateSelect('/departments', 'edit-department', t.department_id, t.department_name || t.customer_department);
   populateSelect('/admin/business-customers', 'edit-business-customer', t.business_customer_id, t.business_customer_name || t.business_customer);
   populateSelect('/users', 'edit-owner', t.owner_id, t.owner_name || t.owner);
-  populateSelect('/users', 'edit-responsible-po', t.responsible_po_id, t.responsible_po_name);
-  populateSelect('/users', 'edit-business-analyst', t.business_analyst_id, t.business_analyst_name);
-  populateSelect('/users', 'edit-it-product-lead', t.it_product_lead_id, t.it_product_lead_name);
 }
 
 // ============================================================
@@ -1845,32 +1727,22 @@ async function saveTaskDetail(app) {
     channel_id: getInt('edit-channel'),
     department_id: getInt('edit-department'),
     owner_id: getInt('edit-owner'),
-    responsible_po_id: getInt('edit-responsible-po'),
-    business_analyst_id: getInt('edit-business-analyst'),
-    it_product_lead_id: getInt('edit-it-product-lead'),
     business_customer_id: getInt('edit-business-customer'),
     deadline_id: getInt('edit-deadline'),
     effort_days: getInt('edit-effort-days'),
     effort_rub: getFloat('edit-effort-rub'),
     financial_effect: getFloat('edit-financial-effect'),
-    ice_score: getFloat('edit-ice-score'),
     progress: parseInt(document.getElementById('edit-progress')?.value) || 0,
     description: document.getElementById('edit-description')?.value || '',
-    dod: document.getElementById('edit-dod')?.value || null,
-    what_if: document.getElementById('edit-what-if')?.value || null,
     comment: document.getElementById('edit-comment')?.value || null,
-    status_comment: document.getElementById('edit-status-comment')?.value || '',
     rejection_reason: document.getElementById('edit-rejection-reason')?.value || null,
     link_mockups: document.getElementById('edit-link-mockups')?.value || null,
     link_jira: document.getElementById('edit-link-jira')?.value || null,
     tags: document.getElementById('edit-tags')?.value || '',
     date_received: document.getElementById('edit-date-received')?.value || null,
-    key_project: document.getElementById('edit-key-project')?.checked || false,
     key_project_status: document.getElementById('edit-key-project-status')?.value || null,
     directorate_status: document.getElementById('edit-directorate-status')?.value || null,
     did_status: document.getElementById('edit-did-status')?.value || null,
-    is_from_leadership: document.getElementById('edit-is-from-leadership')?.checked || false,
-    is_regular: document.getElementById('edit-is-regular')?.checked || false,
     version: currentTask?.version,
   };
 
@@ -2175,20 +2047,6 @@ function renderCreateTaskFormFields() {
   html += field(FL('financial_effect'), input('create-financial-effect', 'number', '', '₽'));
   html += `</div>`;
 
-  // ICE Score fields
-  html += `<div class="td-edit-row-3">`;
-  html += field('ICE: Impact (1-10)', input('create-ice-impact', 'number', '', '1-10'));
-  html += field('ICE: Confidence (1-10)', input('create-ice-confidence', 'number', '', '1-10'));
-  html += field('ICE: Ease (1-10)', input('create-ice-ease', 'number', '', '1-10'));
-  html += `</div>`;
-
-  // Checkboxes
-  html += `<div class="td-edit-row-3 td-edit-checkboxes">`;
-  html += `<label class="td-edit-checkbox"><input type="checkbox" id="create-key-project"> Ключевой проект</label>`;
-  html += `<label class="td-edit-checkbox"><input type="checkbox" id="create-is-from-leadership"> От руководства</label>`;
-  html += `<label class="td-edit-checkbox"><input type="checkbox" id="create-is-regular"> Регулярная</label>`;
-  html += `</div>`;
-
   // Links
   html += `<div class="td-edit-row-2">`;
   html += field(FL('link_mockups'), input('create-link-mockups', 'text', '', 'https://...'));
@@ -2352,12 +2210,6 @@ async function saveCreateTask(app) {
     effort_days: getInt('create-effort-days'),
     effort_rub: getFloat('create-effort-rub'),
     financial_effect: getFloat('create-financial-effect'),
-    ice_impact: getFloat('create-ice-impact'),
-    ice_confidence: getFloat('create-ice-confidence'),
-    ice_ease: getFloat('create-ice-ease'),
-    key_project: document.getElementById('create-key-project')?.checked || false,
-    is_from_leadership: document.getElementById('create-is-from-leadership')?.checked || false,
-    is_regular: document.getElementById('create-is-regular')?.checked || false,
     link_mockups: document.getElementById('create-link-mockups')?.value || null,
     link_jira: document.getElementById('create-link-jira')?.value || null,
     comment: document.getElementById('create-comment')?.value || null,
@@ -2732,36 +2584,179 @@ export function showConfirmModal(message, title = 'Подтверждение', 
   });
 }
 
+const ERROR_CODE_MAP = {
+  400: { label: 'Неверный запрос', desc: 'Сервер не смог обработать запрос из-за некорректных данных' },
+  401: { label: 'Сессия истекла', desc: 'Авторизация истекла — войдите в систему заново' },
+  403: { label: 'Нет прав', desc: 'У вас недостаточно прав для изменения этой задачи' },
+  404: { label: 'Не найдено', desc: 'Задача не найдена — возможно, она была удалена' },
+  409: { label: 'Конфликт версий', desc: 'Задача была изменена другим пользователем — обновите страницу' },
+  422: { label: 'Ошибка валидации', desc: 'Одно или несколько полей содержат недопустимые данные' },
+  423: { label: 'Заблокировано', desc: 'Задача редактируется другим пользователем' },
+  429: { label: 'Слишком много запросов', desc: 'Подождите немного и попробуйте снова' },
+  500: { label: 'Ошибка сервера', desc: 'Внутренняя ошибка — обратитесь к администратору' },
+  502: { label: 'Сервер недоступен', desc: 'Бэкенд временно не отвечает — попробуйте позже' },
+  503: { label: 'Сервер перегружен', desc: 'Сервер временно не обрабатывает запросы' },
+};
+
+function getErrorInfo(httpStatus, rawError) {
+  const code = parseInt(httpStatus) || 0;
+  const map = ERROR_CODE_MAP[code];
+  if (!map) return { label: `HTTP ${httpStatus}`, desc: rawError || 'Неизвестная ошибка' };
+
+  let desc = map.desc;
+  const err = (rawError || '').toLowerCase();
+  if (code === 500) {
+    if (err.includes('notifications')) desc = 'Ошибка системы уведомлений — обратитесь к администратору';
+    else if (err.includes('constraint') || err.includes('not null')) desc = 'Ошибка целостности данных — обратитесь к администратору';
+    else if (err.includes('unique')) desc = 'Нарушение уникальности — обратитесь к администратору';
+    else if (err.includes('foreign key')) desc = 'Ошибка связи с другой таблицей — обратитесь к администратору';
+  }
+  if (code === 422) {
+    if (err.includes('string too long')) desc = 'Превышена максимальная длина поля';
+    else if (err.includes('greater than') || err.includes('less than')) desc = 'Значение поля выходит за допустимые пределы';
+    else if (err.includes('not a valid')) desc = 'Недопустимое значение поля';
+  }
+  return { label: map.label, desc };
+}
+
+export function showErrorModal(saved, errors, errorDetails) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('error-modal-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'error-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '1200';
+
+    const isDetailed = errorDetails.length > 0 && typeof errorDetails[0] === 'object';
+
+    let detailsHtml = '';
+    if (isDetailed) {
+      detailsHtml = `
+        <div style="margin-top:16px;max-height:400px;overflow-y:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border-color);">
+                <th style="text-align:left;padding:8px 8px;color:var(--text-secondary);font-weight:600;white-space:nowrap;">ID задачи</th>
+                <th style="text-align:left;padding:8px 8px;color:var(--text-secondary);font-weight:600;">Атрибут</th>
+                <th style="text-align:center;padding:8px 8px;color:var(--text-secondary);font-weight:600;white-space:nowrap;">Код</th>
+                <th style="text-align:left;padding:8px 8px;color:var(--text-secondary);font-weight:600;">Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${errorDetails.map(d => {
+                const info = getErrorInfo(d.httpStatus, d.error);
+                const statusCode = parseInt(d.httpStatus) || 0;
+                const badgeColor = statusCode >= 500 ? 'var(--danger)' : statusCode >= 400 ? 'var(--warning)' : 'var(--text-secondary)';
+                const badgeBg = statusCode >= 500 ? 'var(--danger-light)' : statusCode >= 400 ? 'var(--warning-light)' : 'var(--bg-tertiary)';
+                return `
+                  <tr style="border-bottom:1px solid var(--border-color);">
+                    <td style="padding:8px 8px;vertical-align:top;">
+                      <strong style="font-family:monospace;">#${d.taskId}</strong>
+                    </td>
+                    <td style="padding:8px 8px;vertical-align:top;">
+                      <span style="font-size:13px;">${escapeHtml(d.fields || '—')}</span>
+                    </td>
+                    <td style="padding:8px 8px;text-align:center;vertical-align:top;">
+                      <span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;color:${badgeColor};background:${badgeBg};">
+                        ${d.httpStatus}
+                      </span>
+                      <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${escapeHtml(info.label)}</div>
+                    </td>
+                    <td style="padding:8px 8px;vertical-align:top;">
+                      <span style="font-size:13px;color:var(--text-primary);">${escapeHtml(info.desc)}</span>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      detailsHtml = errorDetails.length > 0
+        ? `<div style="margin-top:16px;max-height:300px;overflow-y:auto;">
+            ${errorDetails.map(d => `<div style="padding:8px 12px;margin-bottom:6px;background:var(--danger-light);border-radius:6px;font-size:13px;color:var(--danger);border-left:3px solid var(--danger);">${escapeHtml(d)}</div>`).join('')}
+           </div>`
+        : '';
+    }
+
+    overlay.innerHTML = `
+      <div style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:${isDetailed ? '750px' : '500px'};width:90%;position:relative;">
+        <h3 style="margin:0 0 12px 0;font-size:16px;color:var(--text-primary);">Результат сохранения</h3>
+        <div style="display:flex;gap:16px;margin-bottom:16px;">
+          <div style="flex:1;padding:12px;background:var(--success-light);border-radius:8px;text-align:center;">
+            <div style="font-size:24px;font-weight:700;color:var(--success);">${saved}</div>
+            <div style="font-size:12px;color:var(--text-secondary);">Сохранено</div>
+          </div>
+          <div style="flex:1;padding:12px;background:var(--danger-light);border-radius:8px;text-align:center;">
+            <div style="font-size:24px;font-weight:700;color:var(--danger);">${errors}</div>
+            <div style="font-size:12px;color:var(--text-secondary);">Ошибок</div>
+          </div>
+        </div>
+        ${detailsHtml}
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
+          <button class="btn btn-primary btn-sm" id="error-ok">Понятно</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const okBtn = overlay.querySelector('#error-ok');
+    okBtn?.focus();
+
+    function handleClose() {
+      overlay.remove();
+      resolve();
+    }
+
+    okBtn?.addEventListener('click', handleClose);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) handleClose();
+    });
+
+    function handleKeydown(e) {
+      if (e.key === 'Escape') {
+        handleClose();
+        document.removeEventListener('keydown', handleKeydown);
+      }
+    }
+    document.addEventListener('keydown', handleKeydown);
+  });
+}
+
 const FIELD_GROUPS = {
   'status_priority': { label: 'Статус и приоритет', fields: ['status_id', 'priority_id', 'progress'] },
   'deadlines': { label: 'Сроки', fields: ['deadline_id', 'date_received'] },
-  'responsible': { label: 'Ответственные', fields: ['owner_id', 'responsible_po_id', 'business_analyst_id', 'it_product_lead_id'] },
+  'responsible': { label: 'Ответственные', fields: ['owner_id'] },
   'ownership': { label: 'Принадлежность', fields: ['team_id', 'project_id', 'task_type_id', 'channel_id', 'department_id', 'business_customer_id'] },
-  'meetings': { label: 'Для встреч', fields: ['key_project', 'key_project_status', 'directorate_status', 'did_status', 'is_from_leadership', 'is_regular'] },
-  'estimation': { label: 'Оценка', fields: ['effort_days', 'effort_rub', 'financial_effect', 'ice_impact', 'ice_confidence', 'ice_ease'] },
-  'text_links': { label: 'Тексты и ссылки', fields: ['status_comment', 'rejection_reason', 'comment', 'what_if', 'dod', 'link_jira', 'link_mockups'] },
+  'meetings': { label: 'Для встреч', fields: ['key_project_status', 'directorate_status', 'did_status'] },
+  'estimation': { label: 'Оценка', fields: ['effort_days', 'effort_rub', 'financial_effect'] },
+  'text_links': { label: 'Тексты и ссылки', fields: ['rejection_reason', 'comment', 'link_jira', 'link_mockups'] },
   'tags': { label: 'Метки', fields: ['tags'] }
 };
 
 const FIELD_LABELS_BULK = {
   status_id: 'Статус', priority_id: 'Приоритет', progress: 'Прогресс %',
   deadline_id: 'Дедлайн', date_received: 'Дата получения',
-  owner_id: 'Владелец', responsible_po_id: 'Ответственный PO', business_analyst_id: 'Бизнес-аналитик', it_product_lead_id: 'IT Product Lead',
+  owner_id: 'Владелец',
   team_id: 'Команда', project_id: 'Проект', task_type_id: 'Тип задачи', channel_id: 'Канал', department_id: 'Подразделение', business_customer_id: 'Бизнес-заказчик',
-  key_project: 'Ключевой проект', key_project_status: 'Статус ключ. проекта', directorate_status: 'Статус для директорской', did_status: 'Статус для ДИД', is_from_leadership: 'От руководства', is_regular: 'Регулярная',
-  effort_days: 'Трудозатраты дни', effort_rub: 'Трудозатраты руб', financial_effect: 'Фин. эффект', ice_impact: 'ICE Impact', ice_confidence: 'ICE Confidence', ice_ease: 'ICE Ease',
-  status_comment: 'Статус-комментарий', rejection_reason: 'Причина отклонения', comment: 'Комментарий', what_if: 'What-If', dod: 'Definition of Done', link_jira: 'Ссылка на Jira', link_mockups: 'Ссылка на макеты',
+  key_project_status: 'Статус ключ. проекта', directorate_status: 'Статус для директорской', did_status: 'Статус для ДИД',
+  effort_days: 'Трудозатраты дни', effort_rub: 'Трудозатраты руб', financial_effect: 'Фин. эффект',
+  rejection_reason: 'Причина отклонения', comment: 'Комментарий', link_jira: 'Ссылка на Jira', link_mockups: 'Ссылка на макеты',
   tags: 'Теги'
 };
 
 const FIELD_TYPES_BULK = {
   status_id: 'select', priority_id: 'select', progress: 'number',
   deadline_id: 'select', date_received: 'date',
-  owner_id: 'select', responsible_po_id: 'select', business_analyst_id: 'select', it_product_lead_id: 'select',
+  owner_id: 'select',
   team_id: 'select', project_id: 'select', task_type_id: 'select', channel_id: 'select', department_id: 'select', business_customer_id: 'select',
-  key_project: 'select_yesno', key_project_status: 'select', directorate_status: 'text', did_status: 'text', is_from_leadership: 'select_yesno', is_regular: 'select_yesno',
-  effort_days: 'number', effort_rub: 'number', financial_effect: 'number', ice_impact: 'number', ice_confidence: 'number', ice_ease: 'number',
-  status_comment: 'textarea', rejection_reason: 'textarea', comment: 'textarea', what_if: 'textarea', dod: 'textarea', link_jira: 'text', link_mockups: 'text',
+  key_project_status: 'select', directorate_status: 'text', did_status: 'text',
+  effort_days: 'number', effort_rub: 'number', financial_effect: 'number',
+  rejection_reason: 'textarea', comment: 'textarea', link_jira: 'text', link_mockups: 'text',
   tags: 'tags'
 };
 
@@ -2784,6 +2779,21 @@ export function showBulkOpsModal(app, scope, tasks) {
     overlay.id = 'bulk-modal-overlay';
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '1100';
+
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyPaddingRight = document.body.style.paddingRight;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) document.body.style.paddingRight = scrollbarWidth + 'px';
+
+    function closeBulkModal() {
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.paddingRight = prevBodyPaddingRight;
+      overlay.remove();
+    }
 
     const totalTasks = tasks.length;
     const totalPages = Math.ceil(totalTasks / PAGE_SIZE);
@@ -2966,10 +2976,7 @@ export function showBulkOpsModal(app, scope, tasks) {
         case 'department_id': (window.app?.departments || []).forEach(d => { opts += `<option value="${d.id}">${escapeHtml(d.name)}</option>`; }); break;
         case 'business_customer_id': (window.app?.businessCustomers || []).forEach(b => { opts += `<option value="${b.id}">${escapeHtml(b.name)}</option>`; }); break;
         case 'deadline_id': (window.app?.deadlines || []).forEach(d => { opts += `<option value="${d.id}">${escapeHtml(d.name)}</option>`; }); break;
-        case 'owner_id':
-        case 'responsible_po_id':
-        case 'business_analyst_id':
-        case 'it_product_lead_id': (window.app?.users || []).forEach(u => { opts += `<option value="${u.id}">${escapeHtml(u.name)}</option>`; }); break;
+        case 'owner_id': (window.app?.users || []).forEach(u => { opts += `<option value="${u.id}">${escapeHtml(u.name)}</option>`; }); break;
         case 'key_project_status': opts = '<option value="">—</option><option value="В работе">В работе</option><option value="На уточнении">На уточнении</option><option value="Выполнено">Выполнено</option>'; break;
       }
       return opts;
@@ -3212,12 +3219,12 @@ export function showBulkOpsModal(app, scope, tasks) {
               task_ids: tasks.filter(t => !excluded.has(t.id)).map(t => t.id),
               fields: fieldsPayload
             });
-            overlay.remove();
+            closeBulkModal();
             resolve({ success: true, count: selected });
             window.toast?.(`Изменено ${selected} ${pluralize(selected, 'задача', 'задачи', 'задач')}`, 'success');
           } catch (e) {
             window.toast?.('Ошибка: ' + (e.message || 'Не удалось выполнить массовое изменение'), 'error');
-            overlay.remove();
+            closeBulkModal();
             resolve({ success: false, error: e });
           }
         });
@@ -3245,7 +3252,7 @@ export function showBulkOpsModal(app, scope, tasks) {
         );
         if (!confirmed) return;
       }
-      overlay.remove();
+      closeBulkModal();
       resolve({ success: false });
     }
 
@@ -3265,12 +3272,11 @@ export function importTasksFromExcel(app, onSuccess) {
     'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery',
     'actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics', 'actual_effort_be',
     'actual_effort_fe', 'actual_effort_test', 'actual_effort_test_auto',
-    'financial_effect', 'financial_effect_justification', 'ice_impact', 'ice_confidence', 'ice_ease',
-    'progress', 'what_if', 'dod', 'link_mockups', 'link_jira', 'rejection_reason',
-    'comment', 'status_comment', 'owner_id', 'responsible_po_id', 'business_analyst_id',
-    'it_product_lead_id', 'key_project', 'key_project_status', 'directorate_status',
+    'financial_effect', 'financial_effect_justification',
+    'progress', 'link_mockups', 'link_jira', 'rejection_reason',
+    'comment', 'owner_id', 'key_project_status', 'directorate_status',
     'did_status', 'did_demo', 'metric_kr_plan', 'metric_kr_fact',
-    'is_from_leadership', 'is_regular', 'involved_teams', 'created_by'
+    'involved_teams', 'created_by'
   ];
 
   function downloadTemplate() {
@@ -3309,30 +3315,18 @@ export function importTasksFromExcel(app, onSuccess) {
       actual_effort_test_auto: '',
       financial_effect: '1.5',
       financial_effect_justification: '',
-      ice_impact: '',
-      ice_confidence: '',
-      ice_ease: '',
       progress: '0',
-      what_if: '',
-      dod: '',
       link_mockups: '',
       link_jira: '',
       rejection_reason: '',
       comment: '',
-      status_comment: '',
       owner_id: '',
-      responsible_po_id: '',
-      business_analyst_id: '',
-      it_product_lead_id: '',
-      key_project: 'false',
       key_project_status: '',
       directorate_status: '',
       did_status: '',
       did_demo: 'false',
       metric_kr_plan: '',
       metric_kr_fact: '',
-      is_from_leadership: 'false',
-      is_regular: 'false',
       involved_teams: '',
       created_by: ''
     };

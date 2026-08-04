@@ -139,7 +139,7 @@ function isTribeRole(user) {
 }
 
 function isMyTask(task, user) {
-    return task.owner_id === user?.id || task.responsible_po_id === user?.id;
+    return task.owner_id === user?.id;
 }
 
 function statCard(id, icon, gradient, label, animDelay) {
@@ -240,7 +240,7 @@ function renderQuarterTimeline(st, today, realToday) {
     const qStart = getQuarterStart(st.quarter, st.year);
     const qEnd = getQuarterEnd(st.quarter, st.year);
     const totalDays = daysInQuarter(st.quarter, st.year);
-    const elapsed = Math.min(totalDays, Math.max(0, daysIntoQuarter(today) + (today >= qStart && today <= qEnd ? 1 : 0)));
+    const elapsed = realToday < qStart ? 0 : Math.min(totalDays, Math.max(0, daysIntoQuarter(today) + (today >= qStart && today <= qEnd ? 1 : 0)));
     const pct = Math.min(100, Math.round((elapsed / totalDays) * 100));
     const inQuarter = realToday >= qStart && realToday <= qEnd;
 
@@ -351,7 +351,7 @@ function renderMonthTimeline(st, today, realToday) {
     const mStart = getMonthStart(m, y);
     const mEnd = getMonthEnd(m, y);
     const totalDays = daysInMonth(m, y);
-    const elapsed = Math.min(totalDays, Math.max(0, today.getDate()));
+    const elapsed = realToday < mStart ? 0 : Math.min(totalDays, Math.max(0, today.getDate()));
     const pct = Math.min(100, Math.round((elapsed / totalDays) * 100));
     const inMonth = realToday >= mStart && realToday <= mEnd;
 

@@ -127,6 +127,8 @@ def _create_notification(
             existing.group_count = (existing.group_count or 1) + 1
             existing.title = title
             existing.body = body
+            existing.type = category
+            existing.message = title[:500]
             existing.created_at = datetime.utcnow()
             db.flush()
             return
@@ -134,6 +136,8 @@ def _create_notification(
     notif = Notification(
         user_id=user_id,
         task_id=task_id,
+        type=category,
+        message=title[:500],
         category=category,
         title=title,
         body=body,

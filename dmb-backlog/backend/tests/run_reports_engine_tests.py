@@ -73,15 +73,15 @@ def seed(db):
              status_id=s_req.id, deadline_id=dl_q3.id, project_id=proj.id,
              owner_id=owner.id, task_type_id=tt_kr.id,
              business_customer_id=bc.id, department_id=dept.id, channel_id=chan.id,
-             did_status="В работе", key_project=True, progress=100,
+             did_status="В работе", progress=100,
              financial_effect=10.5),
         Task(team_id=team_a.id, title="Задача 2", priority_id=p_low.id,
              status_id=s_done.id, deadline_id=dl_q4.id, task_type_id=tt_reg.id,
-             did_status="", key_project=False, progress=0,
+             did_status="", progress=0,
              financial_effect=0),
         Task(team_id=team_b.id, title="Задача 3", priority_id=p_mid.id,
              status_id=s_req.id, deadline_id=dl_q3.id,
-             did_status="Требует решения", key_project=True, progress=50),
+             did_status="Требует решения", progress=50),
         Task(team_id=team_b.id, title="Задача 4 (без статуса)", priority_id=p_mid.id,
              deadline_id=dl_q3.id, progress=20),
     ]
@@ -113,7 +113,6 @@ def build_items(db):
             "department_name": t.department.name if t.department else "",
             "channel_name": t.channel.name if t.channel else "",
             "did_status": t.did_status or "",
-            "key_project": t.key_project,
             "progress": t.progress or 0,
             "financial_effect": t.financial_effect,
         })
@@ -150,8 +149,6 @@ def main():
     check("pip: status_name != Выполнена (регистр не важен, NULL включается)",
           titles(F("status_name", "not_equals", "выполнена")) == ["Задача 1", "Задача 3", "Задача 4 (без статуса)"],
           str(titles(F("status_name", "not_equals", "выполнена"))))
-    check("projects: key_project == true (bool)",
-          titles(F("key_project", "equals", True)) == ["Задача 1", "Задача 3"])
     check("did-backlog: did_status != '' (не пусто)",
           titles(F("did_status", "not_equals", "")) == ["Задача 1", "Задача 3"])
     check("reg-directors: priority_name == 'высокий' (регистронезависимо)",

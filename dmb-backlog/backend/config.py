@@ -8,13 +8,17 @@ from typing import Optional
 
 
 class Settings(BaseSettings):
+    # Paths
+    BASE_DIR: Path = Path(__file__).resolve().parent
+    LOGS_DIR: Path = BASE_DIR / "logs"
+    
     # Application
     APP_NAME: str = "DMB Backlog"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     
     # Database
-    DATABASE_URL: str = "sqlite:///./dmb_backlog.db"
+    DATABASE_URL: str = f"sqlite:///{BASE_DIR / 'dmb_backlog.db'}"
     
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production-dmb2026"
@@ -24,10 +28,6 @@ class Settings(BaseSettings):
     
     # CORS
     CORS_ORIGINS: list = ["http://localhost:5500", "http://127.0.0.1:5500", "http://localhost:8080"]
-    
-    # Paths
-    BASE_DIR: Path = Path(__file__).resolve().parent
-    LOGS_DIR: Path = BASE_DIR / "logs"
     
     class Config:
         env_file = ".env"

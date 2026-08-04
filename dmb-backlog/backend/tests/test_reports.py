@@ -39,19 +39,19 @@ def _seed(db):
             status_id=s_req.id, deadline_id=dl_q3.id, project_id=proj.id,
             owner_id=owner.id, task_type_id=tt_kr.id,
             business_customer_id=bc.id, department_id=dept.id, channel_id=chan.id,
-            did_status="В работе", key_project=True, progress=100,
+            did_status="В работе", progress=100,
             financial_effect=10.5,
         ),
         Task(
             team_id=team_a.id, title="Задача 2", priority_id=p_low.id,
             status_id=s_done.id, deadline_id=dl_q4.id, task_type_id=tt_reg.id,
-            did_status="", key_project=False, progress=0,
+            did_status="", progress=0,
             financial_effect=0,
         ),
         Task(
             team_id=team_b.id, title="Задача 3", priority_id=p_mid.id,
             status_id=s_req.id, deadline_id=dl_q3.id,
-            did_status="Требует решения", key_project=True, progress=50,
+            did_status="Требует решения", progress=50,
         ),
         Task(
             team_id=team_b.id, title="Задача 4 (без статуса)", priority_id=p_mid.id,
@@ -94,12 +94,6 @@ def test_standard_filters(client, auth_headers, db):
     data = _exec(client, h, pip)
     assert data["total"] == 3
     assert all(i["status_name"] != "Выполнена" for i in data["items"])
-
-    # Ключевые проекты: key_project == true (bool)
-    proj = _create_report(client, h, "Проекты", [{"field": "key_project", "operator": "equals", "value": True}])
-    data = _exec(client, h, proj)
-    assert data["total"] == 2
-    assert all(i["key_project"] for i in data["items"])
 
     # Бэклог ДИД: did_status != "" (не пусто)
     did = _create_report(client, h, "ДИД", [{"field": "did_status", "operator": "not_equals", "value": ""}])

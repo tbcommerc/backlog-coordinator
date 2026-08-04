@@ -814,15 +814,11 @@ function getReportFields() {
   { key: 'effort_rub', label: fl.effort_rub || 'Трудозатраты (руб)' },
   { key: 'financial_effect', label: fl.financial_effect || 'Фин. эффект' },
   { key: 'cv', label: fl.cv || 'C/V' },
-  { key: 'ice_score', label: 'ICE Score' },
-  { key: 'key_project', label: 'Ключевой проект' },
   { key: 'key_project_status', label: fl.key_project_status || 'Статус ключ. проекта' },
   { key: 'directorate_status', label: fl.directorate_status || 'Статус для директорской' },
   { key: 'did_status', label: fl.did_status || 'Статус для ДИД' },
   { key: 'involved_teams', label: fl.involved_teams || 'Вовлечённые команды' },
   { key: 'did_demo', label: fl.did_demo || 'Демо на оперативке' },
-  { key: 'what_if', label: 'Что если не сделаем?' },
-  { key: 'dod', label: 'Definition of Done' },
   { key: 'date_received', label: 'Дата получения' },
   { key: 'created_at', label: fl.created_at || 'Дата создания' },
   { key: 'updated_at', label: fl.last_updated || 'Дата обновления' },
@@ -848,12 +844,11 @@ const REPORT_SORT_FIELDS = [
   { value: 'progress', label: 'По прогрессу' },
   { value: 'financial_effect', label: 'По фин. эффекту' },
   { value: 'cv', label: 'По C/V' },
-  { value: 'ice_score', label: 'По ICE Score' },
   { value: 'created_at', label: 'По дате создания' },
 ];
 
 const scriptManagedReportKeys = ['directorate', 'did-operational'];
-const BOOLEAN_REPORT_FIELDS = ['key_project', 'did_demo', 'is_from_leadership', 'is_regular'];
+const BOOLEAN_REPORT_FIELDS = ['did_demo'];
 
 // ==================== HOME / TIMELINE TAB ====================
 
@@ -1450,7 +1445,6 @@ function adminReportCell(f, item) {
   else if (f === 'effort_rub' && val !== '—') val = `${val} тыс ₽`;
   else if (f === 'priority_name') val = val === '—' ? '—' : renderPriority(val);
   else if (f === 'status_name') val = val === '—' ? '—' : renderStatus(val);
-  else if (f === 'key_project') val = val === 'Да' ? '<span style="color:var(--accent);font-weight:600">★</span>' : '';
   return val;
 }
 

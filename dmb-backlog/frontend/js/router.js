@@ -33,6 +33,8 @@ export class Router {
             '/customer/create': { render: renderCustomerChat, init: initCustomerChat },
         };
         this.defaultRoute = '/dashboard';
+        this.onBeforeNavigate = null;
+        this.lastHash = null;
     }
 
     init() {
@@ -44,9 +46,22 @@ export class Router {
         window.location.hash = path;
     }
 
-    handleRoute() {
+    async handleRoute() {
         const hash = window.location.hash.slice(1) || this.defaultRoute;
         const [path] = hash.split('?');
+        const from = this.lastHash;
+
+        if (this.onBeforeNavigate && from !== null && path !== from.split('?')[0]) {
+            const ok = await this.onBeforeNavigate(path, from);
+            if (!ok) {
+                if (from !== hash && from !== null) {
+                    history.replaceState(null, '', '#' + from);
+                }
+                return;
+            }
+        }
+        this.lastHash = hash;
+
         const route = this.routes[path];
 
         if (route) {
