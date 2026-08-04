@@ -10,7 +10,7 @@ import uuid
 import shutil
 
 from database import get_db
-from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, TaskComment, TaskAttachment, Notification, TaskViewer
+from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, TaskComment, TaskAttachment, Notification, TaskViewer, TeamCompetencyResource, DictionaryItem, FieldLabel
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
     BulkActionRequest, SuccessResponse, TaskHistoryResponse,
@@ -38,11 +38,21 @@ SORT_FIELD_MAP = {
 }
 
 
-def task_to_response(task: Task) -> TaskResponse:
+def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
     """Convert Task ORM object to TaskResponse schema"""
     cv = None
     if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
         cv = round(task.financial_effect / task.effort_rub, 2)
+
+    involved_team_names = None
+    if task.involved_teams:
+        team_ids = [t for t in task.involved_teams if isinstance(t, int)]
+        if team_ids:
+            if db is not None:
+                team_names = {t.id: t.name for t in db.query(Team).filter(Team.id.in_(team_ids)).all()}
+                involved_team_names = [team_names.get(i) or str(i) for i in team_ids]
+            else:
+                involved_team_names = [str(i) for i in team_ids]
 
     return TaskResponse(
         id=task.id,
@@ -60,10 +70,25 @@ def task_to_response(task: Task) -> TaskResponse:
         priority_id=task.priority_id,
         status_id=task.status_id,
         deadline_id=task.deadline_id,
-        deadline_po_id=task.deadline_po_id,
         effort_days=task.effort_days,
         effort_rub=task.effort_rub,
+        effort_designee=task.effort_designee,
+        effort_analytics=task.effort_analytics,
+        effort_be=task.effort_be,
+        effort_python_be=task.effort_python_be,
+        effort_fe=task.effort_fe,
+        effort_test=task.effort_test,
+        effort_test_auto=task.effort_test_auto,
+        effort_delivery=task.effort_delivery,
+        actual_effort_days=task.actual_effort_days,
+        actual_effort_designee=task.actual_effort_designee,
+        actual_effort_analytics=task.actual_effort_analytics,
+        actual_effort_be=task.actual_effort_be,
+        actual_effort_fe=task.actual_effort_fe,
+        actual_effort_test=task.actual_effort_test,
+        actual_effort_test_auto=task.actual_effort_test_auto,
         financial_effect=task.financial_effect,
+        financial_effect_justification=task.financial_effect_justification,
         ice_score=task.ice_score,
         ice_impact=task.ice_impact,
         ice_confidence=task.ice_confidence,
@@ -82,15 +107,20 @@ def task_to_response(task: Task) -> TaskResponse:
         it_product_lead_id=task.it_product_lead_id,
         key_project=task.key_project,
         key_project_status=task.key_project_status,
+        key_project_status_updated_at=task.key_project_status_updated_at,
         directorate_status=task.directorate_status,
         directorate_status_updated_at=task.directorate_status_updated_at,
         did_status=task.did_status,
         did_status_updated_at=task.did_status_updated_at,
+        metric_kr_plan=task.metric_kr_plan,
+        metric_kr_fact=task.metric_kr_fact,
         is_from_leadership=task.is_from_leadership,
         is_regular=task.is_regular,
         cv=cv,
         last_updated=task.last_updated,
         created_by=task.created_by,
+        created_by_name=task.creator.name if task.creator else None,
+        involved_team_names=involved_team_names,
         created_at=task.created_at,
         updated_at=task.updated_at,
         team_name=task.team.name if task.team else None,
@@ -100,7 +130,6 @@ def task_to_response(task: Task) -> TaskResponse:
         priority_name=task.priority.name if task.priority else None,
         status_name=task.status.name if task.status else None,
         deadline_name=task.deadline.name if task.deadline else None,
-        deadline_po_name=task.deadline_po.name if task.deadline_po else None,
         owner_name=task.owner.name if task.owner else None,
         responsible_po_name=task.responsible_po.name if task.responsible_po else None,
         business_analyst_name=task.business_analyst.name if task.business_analyst else None,
@@ -112,6 +141,51 @@ def task_to_response(task: Task) -> TaskResponse:
         lock_owner_name=task.lock_owner.name if task.lock_owner else None,
         lock_until=task.lock_until,
     )
+
+
+# Компетенции и соответствующие поля ЭО (для авторасчёта стоимости по ЭО)
+COMPETENCY_EFFORT_FIELDS = [
+    ("effort_designee", "Designee"),
+    ("effort_analytics", "Аналитика"),
+    ("effort_be", "Разработка BE"),
+    ("effort_python_be", "Разработка python BE"),
+    ("effort_fe", "Разработка FE"),
+    ("effort_test", "Tester"),
+    ("effort_test_auto", "Tester Auto"),
+    ("effort_delivery", "Delivery"),
+]
+
+
+def _competency_costs(db: Session) -> dict:
+    """Стоимость чел-дня по компетенциям из справочника competency_cost."""
+    items = db.query(DictionaryItem).filter(DictionaryItem.dict_type == 'competency_cost').all()
+    costs = {}
+    for it in items:
+        try:
+            costs[it.name] = float(it.code) if it.code else 0
+        except (TypeError, ValueError):
+            costs[it.name] = 0
+    return costs
+
+
+def compute_effort_rub(db: Session, values: dict, fallback: Optional[float]) -> Optional[float]:
+    """Авторасчёт стоимости по ЭО: Σ(ЭО по ролям × ставка роли). С 2 знаками.
+
+    Если ни одно из полей ЭО по ролям не заполнено — возвращает сохранённое значение (fallback).
+    """
+    costs = _competency_costs(db)
+    total = 0.0
+    any_value = False
+    for field, comp in COMPETENCY_EFFORT_FIELDS:
+        val = values.get(field)
+        if val is None:
+            val = 0
+        if val:
+            any_value = True
+        total += float(val or 0) * costs.get(comp, 0)
+    if any_value:
+        return round(total, 2)
+    return fallback
 
 
 @router.get("/", response_model=TaskListResponse)
@@ -160,7 +234,7 @@ async def get_tasks(
     offset = (page - 1) * per_page
     tasks = query.offset(offset).limit(per_page).all()
 
-    items = [task_to_response(task) for task in tasks]
+    items = [task_to_response(task, db) for task in tasks]
 
     return TaskListResponse(
         items=items,
@@ -191,7 +265,7 @@ async def search_tasks(
 
     tasks = query.limit(10).all()
 
-    return [task_to_response(task) for task in tasks]
+    return [task_to_response(task, db) for task in tasks]
 
 
 @router.get("/stats")
@@ -276,6 +350,39 @@ async def get_task_stats(
         "by_team": by_team,
         "total_financial_effect": float(total_financial_effect),
         "avg_progress": round(float(avg_progress), 1)
+    }
+
+
+@router.get("/reference")
+async def get_task_reference(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Return reference data for task editing (statuses, priorities, etc.)"""
+    statuses = db.query(TaskStatus).order_by(TaskStatus.sort_order).all()
+    priorities = db.query(Priority).order_by(Priority.name).all()
+    deadlines = db.query(Deadline).order_by(Deadline.name).all()
+    teams = db.query(Team).order_by(Team.name).all()
+    projects = db.query(Project).order_by(Project.name).all()
+    task_types = db.query(TaskType).order_by(TaskType.name).all()
+    channels = db.query(Channel).order_by(Channel.name).all()
+    departments = db.query(Department).order_by(Department.name).all()
+    business_customers = db.query(BusinessCustomer).order_by(BusinessCustomer.name).all()
+
+    users = db.query(User).filter(User.is_active == True).order_by(User.name).all()
+
+    return {
+        "statuses": [{"id": s.id, "name": s.name} for s in statuses],
+        "priorities": [{"id": p.id, "name": p.name} for p in priorities],
+        "deadlines": [{"id": d.id, "name": d.name} for d in deadlines],
+        "teams": [{"id": t.id, "name": t.name} for t in teams],
+        "projects": [{"id": p.id, "name": p.name} for p in projects],
+        "task_types": [{"id": t.id, "name": t.name} for t in task_types],
+        "channels": [{"id": c.id, "name": c.name} for c in channels],
+        "departments": [{"id": d.id, "name": d.name} for d in departments],
+        "business_customers": [{"id": b.id, "name": b.name} for b in business_customers],
+        "users": [{"id": u.id, "name": u.name} for u in users],
+        "tags": []
     }
 
 
@@ -490,6 +597,159 @@ async def get_analytics(
         }
 
 
+@router.get("/analytics/effort-by-type")
+async def get_effort_by_type(
+    period: str = Query("quarter", pattern="^(quarter|ytd)$"),
+    team_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Соотношение трудозатрат (экспресс-оценка, effort_days) по типам задач.
+    Период определяется по плановому дедлайну:
+      - quarter — текущий квартал;
+      - ytd — накопленный итог с начала года (все кварталы + годовой дедлайн)."""
+    today = date.today()
+    current_year = today.year
+    current_quarter = (today.month - 1) // 3 + 1
+
+    if period == "quarter":
+        deadline_names = [f"{current_quarter}Q {current_year}"]
+        period_label = f"{current_quarter}Q {current_year}"
+    else:
+        deadline_names = [f"{q}Q {current_year}" for q in range(1, 5)]
+        deadline_names.append(f"Y{current_year}")
+        period_label = str(current_year)
+
+    deadline_ids = db.query(Deadline.id).filter(Deadline.name.in_(deadline_names)).all()
+    deadline_ids = [d[0] for d in deadline_ids]
+
+    query = db.query(Task).filter(
+        Task.is_deleted == False,
+        Task.deadline_id.in_(deadline_ids),
+    )
+
+    scope = "tribe"
+    if not check_permission(current_user, "backlog_dmb", "read"):
+        user_team_id = current_user.team_id
+        if user_team_id:
+            query = query.filter(Task.team_id == user_team_id)
+            scope = "team"
+        else:
+            query = query.filter(False)
+
+    if team_id is not None:
+        query = query.filter(Task.team_id == team_id)
+        scope = "team"
+
+    tasks = query.all()
+
+    by_type = {}
+    for t in tasks:
+        type_name = t.task_type.name if t.task_type else "Без типа"
+        agg = by_type.setdefault(type_name, {"tasks": 0, "effort_days": 0.0})
+        agg["tasks"] += 1
+        agg["effort_days"] += t.effort_days or 0
+
+    total_effort = sum(v["effort_days"] for v in by_type.values())
+
+    result = []
+    for name, agg in sorted(by_type.items(), key=lambda x: x[1]["effort_days"], reverse=True):
+        share = round(agg["effort_days"] / total_effort * 100, 1) if total_effort else 0
+        result.append({
+            "task_type": name,
+            "tasks": agg["tasks"],
+            "effort_days": round(agg["effort_days"], 1),
+            "share": share,
+        })
+
+    return {
+        "period": period,
+        "period_label": period_label,
+        "scope": scope,
+        "team_id": team_id,
+        "total_tasks": len(tasks),
+        "total_effort_days": round(total_effort, 1),
+        "by_type": result,
+    }
+
+
+@router.get("/analytics/tribe-dashboard")
+async def get_tribe_dashboard(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Сводные агрегации для дашборда Лидера Трайба:
+    Загрузка команд vs ёмкость, матрица приоритет×срок,
+    ROI по командам."""
+    terminal = ("ВЫПОЛНЕНА", "ОТКЛОНЕНА", "НЕ АКТУАЛЬНА")
+
+    tasks = db.query(Task).filter(Task.is_deleted == False).all()
+    teams = {t.id: t.name for t in db.query(Team).all()}
+    deadline_order = {d.id: d.name for d in db.query(Deadline).all()}
+
+    # --- Загрузка команд vs ёмкость ---
+    cap_rows = db.query(TeamCompetencyResource).all()
+    capacity = {}
+    for r in cap_rows:
+        people = (r.senior_count or 0) + (r.middle_count or 0) + (r.junior_count or 0)
+        a = capacity.setdefault(r.team_id, {"capacity": 0.0, "headcount": 0})
+        a["capacity"] += people * (r.working_days or 66)
+        a["headcount"] += people
+
+    capacity_by_team = []
+    for tid, name in teams.items():
+        load = sum(
+            t.effort_days or 0 for t in tasks
+            if t.team_id == tid and t.status is not None and t.status.name not in terminal
+        )
+        cap = capacity.get(tid, {}).get("capacity", 0.0)
+        capacity_by_team.append({
+            "team": name,
+            "load": round(load, 1),
+            "capacity": round(cap, 1),
+            "headcount": capacity.get(tid, {}).get("headcount", 0),
+            "utilisation": round(load / cap * 100, 1) if cap else None,
+        })
+    capacity_by_team.sort(key=lambda x: x["team"])
+
+    # --- Матрица Приоритет × Срок (effort_days) ---
+    pd = {}
+    for t in tasks:
+        p = t.priority.name if t.priority else "БЕЗ ПРИОРИТЕТА"
+        dl = t.deadline.name if t.deadline else "БЕЗ СРОКА"
+        pd.setdefault(p, {}).setdefault(dl, 0.0)
+        pd[p][dl] += t.effort_days or 0
+    priority_deadline = [
+        {"priority": p, "values": [
+            {"deadline": dl, "effort_days": round(v, 1)}
+            for dl, v in cells.items()
+        ]}
+        for p, cells in pd.items()
+    ]
+
+    # --- ROI по командам ---
+    roi = {}
+    for t in tasks:
+        a = roi.setdefault(teams.get(t.team_id, "БЕЗ КОМАНДЫ"), {"financial_effect": 0.0, "effort_rub": 0.0})
+        a["financial_effect"] += t.financial_effect or 0
+        a["effort_rub"] += t.effort_rub or 0
+    roi_by_team = [
+        {
+            "team": k,
+            "financial_effect": round(v["financial_effect"], 1),
+            "effort_rub": round(v["effort_rub"], 1),
+            "roi": round(v["financial_effect"] / v["effort_rub"], 2) if v["effort_rub"] else None,
+        }
+        for k, v in sorted(roi.items())
+    ]
+
+    return {
+        "capacity_by_team": capacity_by_team,
+        "priority_deadline": priority_deadline,
+        "roi_by_team": roi_by_team,
+    }
+
+
 # ==================== TASK LOCK ====================
 
 LOCK_DURATION_MINUTES = 15
@@ -686,7 +946,7 @@ async def get_task(task_id: int, db: Session = Depends(get_db), current_user: Us
         if user_team_id and task.team_id != user_team_id:
             raise HTTPException(status_code=403, detail="Permission denied")
 
-    return task_to_response(task)
+    return task_to_response(task, db)
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
@@ -710,6 +970,9 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
     if status_id is None:
         status_id = 1
 
+    # Auto-calculate effort cost from role estimates x competency rates
+    effort_rub = compute_effort_rub(db, task_data.model_dump(), task_data.effort_rub)
+
     task = Task(
         team_id=task_data.team_id,
         title=task_data.title,
@@ -725,10 +988,25 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
         priority_id=task_data.priority_id,
         status_id=status_id,
         deadline_id=task_data.deadline_id,
-        deadline_po_id=task_data.deadline_po_id,
         effort_days=task_data.effort_days,
-        effort_rub=task_data.effort_rub,
+        effort_rub=effort_rub,
+        effort_designee=task_data.effort_designee,
+        effort_analytics=task_data.effort_analytics,
+        effort_be=task_data.effort_be,
+        effort_python_be=task_data.effort_python_be,
+        effort_fe=task_data.effort_fe,
+        effort_test=task_data.effort_test,
+        effort_test_auto=task_data.effort_test_auto,
+        effort_delivery=task_data.effort_delivery,
+        actual_effort_days=task_data.actual_effort_days,
+        actual_effort_designee=task_data.actual_effort_designee,
+        actual_effort_analytics=task_data.actual_effort_analytics,
+        actual_effort_be=task_data.actual_effort_be,
+        actual_effort_fe=task_data.actual_effort_fe,
+        actual_effort_test=task_data.actual_effort_test,
+        actual_effort_test_auto=task_data.actual_effort_test_auto,
         financial_effect=task_data.financial_effect,
+        financial_effect_justification=task_data.financial_effect_justification,
         ice_score=ice_score,
         ice_impact=task_data.ice_impact,
         ice_confidence=task_data.ice_confidence,
@@ -750,8 +1028,11 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
         key_project_status=task_data.key_project_status,
         directorate_status=task_data.directorate_status,
         did_status=task_data.did_status,
+        metric_kr_plan=task_data.metric_kr_plan,
+        metric_kr_fact=task_data.metric_kr_fact,
         is_from_leadership=task_data.is_from_leadership,
         is_regular=task_data.is_regular,
+        did_demo=task_data.did_demo,
         last_updated=date.today(),
         created_by=current_user.id
     )
@@ -806,7 +1087,7 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
         notify_assignment(db, task, task.owner_id)
         db.commit()
 
-    return task_to_response(task)
+    return task_to_response(task, db)
 
 
 @router.put("/{task_id}", response_model=TaskResponse)
@@ -837,7 +1118,7 @@ async def update_task(
     # Optimistic lock: extract and check version before applying changes
     submitted_version = update_data.pop('version', None)
     if submitted_version is not None and submitted_version != (task.version or 0):
-        current = task_to_response(task)
+        current = task_to_response(task, db)
         raise HTTPException(
             status_code=409,
             detail={
@@ -863,6 +1144,11 @@ async def update_task(
 
     task.last_updated = date.today()
 
+    # Auto-calculate effort cost from role estimates x competency rates
+    if any(f in update_data for f, _ in COMPETENCY_EFFORT_FIELDS):
+        vals = {f: getattr(task, f) for f, _ in COMPETENCY_EFFORT_FIELDS}
+        task.effort_rub = compute_effort_rub(db, vals, task.effort_rub)
+
     # Auto-calculate C/V if financial_effect or effort_rub changed
     if 'financial_effect' in update_data or 'effort_rub' in update_data:
         if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
@@ -883,6 +1169,8 @@ async def update_task(
         task.directorate_status_updated_at = datetime.now(timezone.utc)
     if 'did_status' in update_data:
         task.did_status_updated_at = datetime.now(timezone.utc)
+    if 'key_project_status' in update_data:
+        task.key_project_status_updated_at = datetime.now(timezone.utc)
 
     # Notifications: status change
     new_status_id = task.status_id
@@ -906,7 +1194,7 @@ async def update_task(
     db.commit()
     db.refresh(task)
 
-    return task_to_response(task)
+    return task_to_response(task, db)
 
 
 @router.get("/{task_id}/history", response_model=List[TaskHistoryResponse])
@@ -920,25 +1208,8 @@ async def get_task_history(task_id: int, db: Session = Depends(get_db), current_
         TaskHistory.task_id == task_id
     ).order_by(TaskHistory.changed_at.desc()).limit(50).all()
 
-    FIELD_LABELS = {
-        "title": "Название", "description": "Описание", "status_id": "Статус",
-        "priority_id": "Приоритет", "team_id": "Команда", "project_id": "Проект",
-        "task_type_id": "Тип задачи", "channel_id": "Канал поступления",
-        "department_id": "Подразделение", "business_customer_id": "Бизнес-заказчик",
-        "owner_id": "Владелец", "responsible_po_id": "Ответственный PO",
-        "business_analyst_id": "Бизнес-аналитик", "it_product_lead_id": "IT Product Lead",
-        "deadline_id": "Дедлайн", "deadline_po_id": "PO-дедлайн",
-        "effort_days": "Трудозатраты (дни)", "effort_rub": "Трудозатраты (руб)",
-        "financial_effect": "Фин. эффект", "progress": "Прогресс",
-        "ice_impact": "ICE Impact", "ice_confidence": "ICE Confidence",
-        "ice_ease": "ICE Ease", "ice_score": "ICE Score", "cv": "C/V",
-        "directorate_status": "Статус для директорской",
-        "did_status": "Статус для ДИД", "key_project_status": "Статус ключ. проекта",
-        "key_project": "Ключевой проект", "is_from_leadership": "От руководства",
-        "is_regular": "Регулярная", "comment": "Комментарий",
-        "status_comment": "Статус-комментарий", "link_mockups": "Макеты",
-        "link_jira": "Jira ссылка", "dod": "DoD", "what_if": "What-If",
-    }
+    # Названия полей берутся из реестра field_labels (источник истины)
+    FIELD_LABELS = {fl.key: fl.label for fl in db.query(FieldLabel).all()}
 
     result = []
     for h in history:
@@ -968,7 +1239,12 @@ async def get_task_documents(task_id: int, db: Session = Depends(get_db), curren
     if task.link_mockups:
         docs.append({"type": "mockups", "title": "Макеты / БТ", "url": task.link_mockups})
     if task.link_jira:
-        docs.append({"type": "jira", "title": "Jira Task", "url": task.link_jira})
+        if isinstance(task.link_jira, list):
+            for url in task.link_jira:
+                if url:
+                    docs.append({"type": "jira", "title": "Jira Task", "url": url})
+        else:
+            docs.append({"type": "jira", "title": "Jira Task", "url": task.link_jira})
     if task.dod:
         docs.append({"type": "note", "title": "Definition of Done", "content": task.dod})
     if task.what_if:
@@ -1271,12 +1547,16 @@ async def update_task_links(
         old = task.link_mockups or ""
         task.link_mockups = data.link_mockups
         changes["link_mockups"] = (old, data.link_mockups)
-    if data.link_jira is not None and data.link_jira != (task.link_jira or ""):
-        old = task.link_jira or ""
-        task.link_jira = data.link_jira
-        changes["link_jira"] = (old, data.link_jira)
+    if data.link_jira is not None:
+        new_jira = [data.link_jira] if isinstance(data.link_jira, str) else data.link_jira
+        old_jira = task.link_jira or []
+        if new_jira != old_jira:
+            task.link_jira = new_jira
+            changes["link_jira"] = (old_jira, new_jira)
 
     for field_name, (old_val, new_val) in changes.items():
+        old_val = old_val if isinstance(old_val, str) else json.dumps(old_val, ensure_ascii=False) if old_val else None
+        new_val = new_val if isinstance(new_val, str) else json.dumps(new_val, ensure_ascii=False) if new_val else None
         history = TaskHistory(
             task_id=task_id,
             changed_by=current_user.id,
@@ -1289,13 +1569,58 @@ async def update_task_links(
     db.commit()
     db.refresh(task)
 
-    return task_to_response(task)
+    return task_to_response(task, db)
 
+
+ALLOWED_BULK_FIELDS = {
+    'status_id', 'priority_id', 'progress', 'deadline_id', 'owner_id',
+    'responsible_po_id', 'business_analyst_id', 'it_product_lead_id',
+    'team_id', 'project_id', 'task_type_id', 'channel_id', 'department_id',
+    'business_customer_id', 'key_project', 'key_project_status',
+    'directorate_status', 'did_status', 'is_from_leadership', 'is_regular',
+    'effort_days', 'effort_rub', 'financial_effect', 'ice_impact',
+    'ice_confidence', 'ice_ease', 'status_comment', 'rejection_reason',
+    'comment', 'what_if', 'dod', 'link_jira', 'link_mockups', 'date_received'
+}
+
+FORBIDDEN_BULK_FIELDS = {
+    'id', 'title', 'description', 'is_deleted', 'version', 'created_at',
+    'updated_at', 'created_by', 'cv', 'ice_score', 'effort_designee',
+    'effort_analytics', 'effort_be', 'effort_fe', 'effort_test',
+    'effort_test_auto', 'effort_delivery', 'effort_python_be',
+    'actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics',
+    'actual_effort_be', 'actual_effort_fe', 'actual_effort_test',
+    'actual_effort_test_auto', 'metric_kr_plan', 'metric_kr_fact',
+    'financial_effect_justification', 'did_demo', 'involved_teams'
+}
+
+REQUIRES_REASON_STATUSES = {'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА', 'ХОЛД', 'ЭСКАЛАЦИЯ НА ЛТ'}
 
 @router.post("/bulk", response_model=SuccessResponse)
 async def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Perform bulk actions on multiple tasks"""
+    if len(request.task_ids) > 500:
+        raise HTTPException(status_code=400, detail="Лимит 500 задач за запрос")
+
     tasks = db.query(Task).filter(Task.id.in_(request.task_ids), Task.is_deleted == False).all()
+
+    if not tasks:
+        return SuccessResponse(message="No tasks found")
+
+    fields_to_update = request.fields or request.updates or {}
+
+    for field in fields_to_update.keys():
+        if field in FORBIDDEN_BULK_FIELDS:
+            raise HTTPException(status_code=400, detail=f"Поле '{field}' нельзя менять массово")
+        if field not in ALLOWED_BULK_FIELDS:
+            raise HTTPException(status_code=400, detail=f"Поле '{field}' не поддерживается для массового изменения")
+
+    status_id = fields_to_update.get('status_id')
+    if status_id:
+        status_obj = db.query(TaskStatus).filter(TaskStatus.id == status_id).first()
+        if status_obj and status_obj.name in REQUIRES_REASON_STATUSES:
+            if not fields_to_update.get('rejection_reason'):
+                raise HTTPException(status_code=400, detail=f"Для статуса '{status_obj.name}' требуется указать причину")
 
     for task in tasks:
         old_status_name = task.status.name if task.status else str(task.status_id)
@@ -1313,9 +1638,221 @@ async def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db),
         elif request.action == "delete":
             task.is_deleted = True
             new_status_name = None
+        elif request.action == "update" and fields_to_update:
+            for field, value in fields_to_update.items():
+                if hasattr(task, field):
+                    setattr(task, field, value)
+            new_status_name = None
 
         if new_status_name:
             notify_status_change(db, task, old_status_name, new_status_name, current_user.id)
 
     db.commit()
     return SuccessResponse(message=f"Action '{request.action}' applied to {len(tasks)} tasks")
+
+
+@router.post("/import")
+async def import_tasks(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Import tasks from CSV file"""
+    import csv
+    import io
+
+    if not file.filename or not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Только CSV файлы поддерживаются")
+
+    content = await file.read()
+    try:
+        decoded_content = content.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        try:
+            decoded_content = content.decode('cp1251')
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=400, detail="Не удалось декодировать файл. Убедитесь, что файл в формате UTF-8 или Windows-1251")
+
+    reader = csv.DictReader(io.StringIO(decoded_content), delimiter=';')
+    headers = reader.fieldnames or []
+
+    rows = list(reader)
+
+    created = 0
+    updated = 0
+    errors = []
+
+    FIELD_MAP = {
+        'id': 'id',
+        'title': 'title',
+        'description': 'description',
+        'date_received': 'date_received',
+        'channel_id': 'channel_id',
+        'business_customer_id': 'business_customer_id',
+        'department_id': 'department_id',
+        'project_id': 'project_id',
+        'task_type_id': 'task_type_id',
+        'priority_id': 'priority_id',
+        'status_id': 'status_id',
+        'deadline_id': 'deadline_id',
+        'effort_days': 'effort_days',
+        'effort_rub': 'effort_rub',
+        'effort_designee': 'effort_designee',
+        'effort_analytics': 'effort_analytics',
+        'effort_be': 'effort_be',
+        'effort_python_be': 'effort_python_be',
+        'effort_fe': 'effort_fe',
+        'effort_test': 'effort_test',
+        'effort_test_auto': 'effort_test_auto',
+        'effort_delivery': 'effort_delivery',
+        'actual_effort_days': 'actual_effort_days',
+        'actual_effort_designee': 'actual_effort_designee',
+        'actual_effort_analytics': 'actual_effort_analytics',
+        'actual_effort_be': 'actual_effort_be',
+        'actual_effort_fe': 'actual_effort_fe',
+        'actual_effort_test': 'actual_effort_test',
+        'actual_effort_test_auto': 'actual_effort_test_auto',
+        'financial_effect': 'financial_effect',
+        'financial_effect_justification': 'financial_effect_justification',
+        'ice_impact': 'ice_impact',
+        'ice_confidence': 'ice_confidence',
+        'ice_ease': 'ice_ease',
+        'progress': 'progress',
+        'what_if': 'what_if',
+        'dod': 'dod',
+        'link_mockups': 'link_mockups',
+        'link_jira': 'link_jira',
+        'rejection_reason': 'rejection_reason',
+        'comment': 'comment',
+        'status_comment': 'status_comment',
+        'owner_id': 'owner_id',
+        'responsible_po_id': 'responsible_po_id',
+        'business_analyst_id': 'business_analyst_id',
+        'it_product_lead_id': 'it_product_lead_id',
+        'key_project': 'key_project',
+        'key_project_status': 'key_project_status',
+        'directorate_status': 'directorate_status',
+        'did_status': 'did_status',
+        'did_demo': 'did_demo',
+        'metric_kr_plan': 'metric_kr_plan',
+        'metric_kr_fact': 'metric_kr_fact',
+        'is_from_leadership': 'is_from_leadership',
+        'is_regular': 'is_regular',
+        'involved_teams': 'involved_teams',
+        'created_by': 'created_by',
+    }
+
+    for row_num, row in enumerate(rows, start=2):
+        try:
+            task_id = row.get('id') or None
+            if task_id:
+                try:
+                    task_id = int(task_id)
+                except (ValueError, TypeError):
+                    task_id = None
+
+            if task_id:
+                existing_task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
+                if existing_task:
+                    errors.append({
+                        "row": row_num,
+                        "id": task_id,
+                        "message": f"Задача с ID {task_id} уже существует"
+                    })
+                    continue
+
+            task_data = {}
+            for csv_col, model_col in FIELD_MAP.items():
+                val = row.get(csv_col)
+                if val is None or val == '':
+                    continue
+
+                if model_col in ('effort_days', 'effort_rub', 'financial_effect',
+                                  'effort_designee', 'effort_analytics', 'effort_be',
+                                  'effort_python_be', 'effort_fe', 'effort_test',
+                                  'effort_test_auto', 'effort_delivery',
+                                  'actual_effort_days', 'actual_effort_designee',
+                                  'actual_effort_analytics', 'actual_effort_be',
+                                  'actual_effort_fe', 'actual_effort_test',
+                                  'actual_effort_test_auto',
+                                  'ice_impact', 'ice_confidence', 'ice_ease',
+                                  'metric_kr_plan', 'metric_kr_fact'):
+                    try:
+                        val = float(val) if val and val != '' else None
+                    except (ValueError, TypeError):
+                        val = None
+
+                elif model_col in ('priority_id', 'status_id', 'team_id', 'channel_id',
+                                    'department_id', 'project_id', 'task_type_id',
+                                    'deadline_id', 'owner_id', 'responsible_po_id',
+                                    'business_analyst_id', 'it_product_lead_id', 'created_by'):
+                    try:
+                        val = int(val) if val and val != '' else None
+                    except (ValueError, TypeError):
+                        val = None
+
+                elif model_col in ('progress', 'key_project', 'did_demo',
+                                    'is_from_leadership', 'is_regular'):
+                    val = str(val).lower() in ('true', '1', 'yes', 'да') if val else False
+
+                elif model_col == 'date_received':
+                    if val:
+                        for fmt in ('%Y-%m-%d', '%d.%m.%Y', '%d/%m/%Y'):
+                            try:
+                                val = datetime.strptime(val, fmt).date()
+                                break
+                            except ValueError:
+                                continue
+                        else:
+                            val = None
+
+                elif model_col == 'link_jira':
+                    if val:
+                        val = [v.strip() for v in str(val).split(',') if v.strip()]
+
+                elif model_col == 'involved_teams':
+                    if val:
+                        teams = []
+                        for v in str(val).split(','):
+                            try:
+                                teams.append(int(v.strip()))
+                            except (ValueError, TypeError):
+                                pass
+                        val = teams if teams else None
+
+                task_data[model_col] = val
+
+            if not task_data.get('title'):
+                errors.append({
+                    "row": row_num,
+                    "id": task_id,
+                    "message": "Отсутствует обязательное поле 'title'"
+                })
+                continue
+
+            if not task_data.get('team_id'):
+                errors.append({
+                    "row": row_num,
+                    "id": task_id,
+                    "message": "Отсутствует обязательное поле 'team_id'"
+                })
+                continue
+
+            task = Task(**task_data)
+            db.add(task)
+            created += 1
+
+        except Exception as e:
+            errors.append({
+                "row": row_num,
+                "id": row.get('id'),
+                "message": str(e)
+            })
+
+    db.commit()
+
+    return {
+        "created": created,
+        "updated": updated,
+        "errors": errors
+    }

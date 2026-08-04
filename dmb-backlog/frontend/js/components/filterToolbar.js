@@ -1,4 +1,4 @@
-console.log('[DMB] filterToolbar.js v20260626.5 loaded');
+console.log('[DMB] filterToolbar.js v20260804.2 loaded');
 const columnFilters = { backlog: {}, team: {} };
 const sortValues = { backlog: 'id-desc', team: 'id-desc' };
 const searchValues = { backlog: '', team: '' };
@@ -6,9 +6,21 @@ const filterChangeCallbacks = {};
 const allTasksCache = { backlog: [], team: [] };
 const columnSettingsRefs = { backlog: null, team: null };
 const columnOrderRefs = { backlog: null, team: null };
+const defaultColumnSettingsRefs = { backlog: null, team: null };
 
 const directoryCache = {};
 const directoryLoading = {};
+
+const PERMISSION_LEVELS = { 'none': 0, 'read': 1, 'read_own': 1, 'write_own': 2, 'read_write': 2, 'write_all': 3 };
+
+function hasWritePermission(scope) {
+  return true; // TODO: enable permission check when backend returns permissions
+  // const perms = window.app?.store?.get('currentUser')?.permissions || {};
+  // const backlogLevel = PERMISSION_LEVELS[perms.backlog_dmb] || 0;
+  // const teamLevel = PERMISSION_LEVELS[perms.backlog_team] || 0;
+  // if (scope === 'backlog') { return backlogLevel >= 2; }
+  // return teamLevel >= 2;
+}
 
 const columnDirectoryMap = {
   status_name: { url: '/admin/statuses', labelField: 'name' },
@@ -82,6 +94,25 @@ function isCurrentTask(task) {
   return false;
 }
 
+function isLastQuarterTask(task) {
+  if (!task || !task.deadline_name) return false;
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curQuarter = Math.floor(now.getMonth() / 3) + 1;
+
+  if (curQuarter === 1) {
+    const prevYear = curYear - 1;
+    const lastQ = `4Q ${prevYear}`;
+    const yearDeadline = `Y${curYear}`;
+    return task.deadline_name === lastQ || task.deadline_name === yearDeadline;
+  } else {
+    const prevQuarter = curQuarter - 1;
+    const prevYear = curYear;
+    const expected = `${prevQuarter}Q ${prevYear}`;
+    return task.deadline_name === expected;
+  }
+}
+
 function $(id) {
   const el = document.getElementById(id);
   return el;
@@ -112,6 +143,10 @@ function getUniqueValues(scope, key, allTasks) {
         }
         if (fk === '_current') {
           list = list.filter(isCurrentTask);
+          return;
+        }
+        if (fk === '_last_quarter') {
+          list = list.filter(isLastQuarterTask);
           return;
         }
         list = list.filter(t => {
@@ -198,18 +233,25 @@ export function renderToolbar(scope, opts = {}) {
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         Столбцы
       </button>
-      <div class="column-settings-dropdown" id="${scope}-column-settings-dropdown" style="display:none;position:absolute;right:0;top:100%;z-index:100;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:10px;padding:10px;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,0.25);margin-top:6px;">
-        <div class="text-sm font-semibold mb-2" style="color:var(--text-primary);padding:4px 6px;">Колонки</div>
-        <div class="column-settings-list" id="${scope}-column-settings-list">
+      <div class="column-settings-dropdown" id="${scope}-column-settings-dropdown" style="display:none;position:absolute;right:0;top:100%;z-index:100;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:10px;padding:0;min-width:380px;max-height:420px;box-shadow:0 8px 24px rgba(0,0,0,0.25);margin-top:6px;">
+        <div style="padding:10px 10px 6px 10px;background:var(--bg-primary);position:sticky;top:0;z-index:1;border-radius:10px 10px 0 0;">
+          <div class="text-sm font-semibold mb-2" style="color:var(--text-primary);padding:4px 6px;">Колонки</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost btn-sm" id="${scope}-col-select-all" style="flex:1;font-size:11px;padding:4px 8px;">Выбрать все</button>
+            <button class="btn btn-ghost btn-sm" id="${scope}-col-default" style="flex:1;font-size:11px;padding:4px 8px;">Стандартный вид</button>
+            <button class="btn btn-ghost btn-sm" id="${scope}-col-clear-all" style="flex:1;font-size:11px;padding:4px 8px;">Очистить все</button>
+          </div>
+        </div>
+        <div class="column-settings-list" id="${scope}-column-settings-list" style="display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px 10px 10px;overflow-y:auto;max-height:340px;">
           ${colOrder.map(key => {
             const val = colOpts[key];
             if (val === undefined) return '';
-            return `<div class="col-drag-item" draggable="true" data-col="${key}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:grab;font-size:13px;color:var(--text-primary);user-select:none;border:1px solid transparent;">
-              <span style="cursor:grab;color:var(--text-muted);display:flex;align-items:center;" class="col-drag-handle">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg>
+            return `<div class="col-drag-item" draggable="true" data-col="${key}" style="display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:4px;cursor:grab;font-size:12px;color:var(--text-primary);user-select:none;border:1px solid transparent;width:calc(50% - 2px);box-sizing:border-box;">
+              <span style="cursor:grab;color:var(--text-muted);display:flex;align-items:center;opacity:0.5;" class="col-drag-handle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg>
               </span>
-              <input type="checkbox" data-col="${key}" ${val ? 'checked' : ''} style="margin:0;">
-              <span style="flex:1;">${getLabel(key)}</span>
+              <input type="checkbox" data-col="${key}" ${val ? 'checked' : ''} style="margin:0;flex-shrink:0;">
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${getLabel(key)}</span>
             </div>`;
           }).join('')}
         </div>
@@ -220,16 +262,25 @@ export function renderToolbar(scope, opts = {}) {
 
   const title = opts.title || '';
   const subtitle = opts.subtitle || '';
+  const canWrite = hasWritePermission(scope);
 
-  const hasActions = !!(addTaskHtml || opts.viewToggle !== false || opts.columnSettings || opts.excel !== false || opts.refresh !== false);
+  const bulkOpsBtn = (canWrite && opts.onBulkOps) ? `<button class="btn btn-secondary btn-sm square-icon qe-toggle" id="${scope}-bulk-open" title="Массовые операции" style="white-space:nowrap;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg></button>` : '';
+
+  const quickEditBtn = (canWrite && opts.onQuickEdit) ? `<button class="btn btn-secondary btn-sm square-icon qe-toggle" id="${scope}-inline-edit" title="Быстрое редактирование" style="white-space:nowrap;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>` : '';
+
+  const importBtn = (canWrite && opts.onImport) ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-import-excel" title="Импорт из Excel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button>` : '';
+
+  const hasActions = !!(addTaskHtml || bulkOpsBtn || quickEditBtn || importBtn || opts.viewToggle !== false || opts.columnSettings || opts.excel !== false || opts.refresh !== false);
 
   const actionsHtml = hasActions ? `
     <div class="toolbar-actions">
-      ${addTaskHtml}
+      ${bulkOpsBtn}
+      ${quickEditBtn}
       ${opts.viewToggle !== false ? viewToggleHtml : ''}
       ${opts.columnSettings ? columnSettingsHtml : ''}
-      ${opts.excel !== false ? `<button class="btn btn-secondary btn-sm" id="${scope}-export-excel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Excel</button>` : ''}
-      ${opts.refresh !== false ? `<button class="btn btn-ghost btn-sm" id="${scope}-btn-refresh"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i></button>` : ''}
+      ${opts.excel !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-export-excel" title="Экспорт в Excel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>` : ''}
+      ${importBtn}
+      ${opts.refresh !== false ? `<button class="btn btn-ghost btn-sm" id="${scope}-btn-refresh"><i data-lucide="refresh-ccw" style="width:14px;height:14px;"></i></button>` : ''}
     </div>` : '';
 
   return `
@@ -278,16 +329,21 @@ export function initToolbarControls(scope, opts = {}) {
     columnSettings,
     columnLabels = {},
     columnOrder,
+    defaultColumnSettings,
     onViewChange,
     onExport,
+    onImport,
     onRefresh,
     onAddTask,
     onColumnChange,
     onColumnOrderChange,
+    onQuickEdit,
+    onBulkOps,
   } = opts;
 
   columnSettingsRefs[scope] = columnSettings;
   columnOrderRefs[scope] = columnOrder;
+  defaultColumnSettingsRefs[scope] = defaultColumnSettings || null;
 
   const getLabel = (k) => columnLabels[k] || k;
 
@@ -311,26 +367,72 @@ export function initToolbarControls(scope, opts = {}) {
       colDropdown.style.display = colDropdown.style.display === 'none' ? 'block' : 'none';
     });
 
-    function onColCheckChange() {
-      colDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        const col = cb.dataset.col;
-        if (columnSettings) columnSettings[col] = cb.checked;
-      });
+    function onColCheckChange(e) {
+      const cb = e.target;
+      const col = cb.dataset.col;
+      if (columnSettings && col) columnSettings[col] = cb.checked;
       renderFilterButtons(scope, allTasksCache[scope]);
       if (onColumnChange) onColumnChange();
     }
 
     colDropdown.addEventListener('change', (e) => {
       if (e.target.matches('input[type="checkbox"]')) {
-        onColCheckChange();
+        onColCheckChange(e);
       }
     });
+
+    if (colList && columnSettings) {
+      colList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.checked = !!columnSettings[cb.dataset.col];
+      });
+    }
 
     document.addEventListener('click', (e) => {
       if (!colBtn.contains(e.target) && !colDropdown.contains(e.target)) {
         colDropdown.style.display = 'none';
       }
     });
+
+    const selectAllBtn = document.getElementById(`${scope}-col-select-all`);
+    const clearAllBtn = document.getElementById(`${scope}-col-clear-all`);
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener('click', () => {
+        colDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          cb.checked = true;
+          const col = cb.dataset.col;
+          if (columnSettings) columnSettings[col] = true;
+        });
+        renderFilterButtons(scope, allTasksCache[scope]);
+        if (onColumnChange) onColumnChange();
+      });
+    }
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener('click', () => {
+        colDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          cb.checked = false;
+          const col = cb.dataset.col;
+          if (columnSettings) columnSettings[col] = false;
+        });
+        renderFilterButtons(scope, allTasksCache[scope]);
+        if (onColumnChange) onColumnChange();
+      });
+    }
+
+    const defaultBtn = document.getElementById(`${scope}-col-default`);
+    if (defaultBtn) {
+      defaultBtn.addEventListener('click', () => {
+        const defaults = defaultColumnSettingsRefs[scope];
+        if (!defaults) return;
+        colDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          const col = cb.dataset.col;
+          const isDefault = defaults[col] === true;
+          cb.checked = isDefault;
+          if (columnSettings) columnSettings[col] = isDefault;
+        });
+        renderFilterButtons(scope, allTasksCache[scope]);
+        if (onColumnChange) onColumnChange();
+      });
+    }
 
     if (colList && columnOrder) {
       let dragSrc = null;
@@ -407,6 +509,10 @@ export function initToolbarControls(scope, opts = {}) {
     if (onExport) onExport();
   });
 
+  document.getElementById(`${scope}-import-excel`)?.addEventListener('click', () => {
+    if (onImport) onImport();
+  });
+
   document.getElementById(`${scope}-btn-refresh`)?.addEventListener('click', () => {
     if (onRefresh) onRefresh();
   });
@@ -414,6 +520,33 @@ export function initToolbarControls(scope, opts = {}) {
   document.getElementById(`${scope}-add-task-btn`)?.addEventListener('click', () => {
     if (onAddTask) onAddTask();
   });
+
+  document.getElementById(`${scope}-inline-edit`)?.addEventListener('click', () => {
+    if (onQuickEdit) onQuickEdit();
+  });
+
+  document.getElementById(`${scope}-bulk-open`)?.addEventListener('click', () => {
+    if (onBulkOps) onBulkOps();
+  });
+
+  const qeToggles = document.querySelectorAll(`.qe-toggle`);
+  const activeTableBtn = viewGroup?.querySelector('.toggle-btn.active[data-view="table"]');
+  const isTableView = !!(activeTableBtn);
+
+  if (qeToggles.length > 0) {
+    qeToggles.forEach(btn => {
+      btn.style.display = isTableView ? '' : 'none';
+    });
+  }
+
+  if (viewGroup) {
+    viewGroup.querySelectorAll('.toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const isTable = btn.dataset.view === 'table';
+        qeToggles.forEach(b => b.style.display = isTable ? '' : 'none');
+      });
+    });
+  }
 }
 
 export function initToolbar(scope, allTasks, onFilterChange) {
@@ -525,6 +658,10 @@ export function getFilteredList(scope, allTasks) {
         }
         if (key === '_current') {
           list = list.filter(isCurrentTask);
+          return;
+        }
+        if (key === '_last_quarter') {
+          list = list.filter(isLastQuarterTask);
           return;
         }
         list = list.filter(t => {
@@ -686,8 +823,9 @@ function updateActiveFiltersRow(scope) {
     const vals = cf[key];
     if (!vals || vals.size === 0) return;
     if (key === '_overdue') { chips.push({ key, label: 'Просрочено', value: 'да' }); return; }
-    if (key === '_urgent') { chips.push({ key, label: 'Срочные', value: 'да' }); return; }
-    if (key === '_current') { chips.push({ key, label: 'Текущие', value: 'да' }); return; }
+    if (key === '_urgent') { chips.push({ key, label: 'Важные задачи', value: 'да' }); return; }
+    if (key === '_current') { chips.push({ key, label: 'Текущие задачи', value: 'да' }); return; }
+    if (key === '_last_quarter') { chips.push({ key, label: 'Прошлый квартал', value: 'да' }); return; }
     const colLabel = labels[key] || key;
     const valueText = vals.size === 1 ? [...vals][0] : `${vals.size} выбрано`;
     chips.push({ key, label: colLabel, value: valueText });
@@ -950,6 +1088,6 @@ export function resetToolbarFilters(scope) {
   if (sortSelect) sortSelect.value = 'id-desc';
 }
 
-export { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask };
+export { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask };
 
 

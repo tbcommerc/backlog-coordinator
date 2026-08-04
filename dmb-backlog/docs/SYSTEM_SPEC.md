@@ -233,7 +233,7 @@ DMB Backlog — корпоративная система управления �
 - `progress` — прогресс выполнения (0-100%)
 
 **Сроки и оценки:**
-- `deadline_id`, `deadline_po_id` → `deadlines` — срок и оценка PO
+- `deadline_id` → `deadlines` — срок выполнения
 - `effort_days`, `effort_rub` — трудозатраты в днях и рублях
 - `financial_effect` — финансовый эффект (руб.)
 - `cv` — Cost/Value (авторасчёт: financial_effect / effort_rub)

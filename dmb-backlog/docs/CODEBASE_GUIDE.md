@@ -576,7 +576,7 @@ db.add(audit_entry)
 | **CSS переменные** | --kebab-case | `--bg-primary`, `--text-secondary` |
 | **API эндпоинты** | /api/v1/resource | `/api/v1/tasks`, `/api/v1/auth/login` |
 | **Таблицы БД** | snake_case, plural | `tasks`, `statuses`, `audit_log` |
-| **Колонки БД** | snake_case | `is_deleted`, `created_at`, `deadline_po_id` |
+| **Колонки БД** | snake_case | `is_deleted`, `created_at`, `effort_days` |
 
 ### 10.3 Специфическая терминология
 

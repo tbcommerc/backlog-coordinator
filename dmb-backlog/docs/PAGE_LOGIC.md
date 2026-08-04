@@ -145,7 +145,7 @@
 - **Статус и приоритет**: is_from_leadership, is_regular, rejection_reason
 - **Основная информация**: команда, канал, подразделение, проект, тип, владелец, дедлайн, дедлайн PO, прогресс
 - **Ответственные**: owner, responsible_po, business_analyst, it_product_lead
-- **Сроки и оценки**: deadline, deadline_po, ICE Score, effort_days, effort_rub, financial_effect, C/V
+- **Сроки и оценки**: deadline, ICE Score, effort_days, effort_rub, financial_effect, C/V
 - **Описание**: description, DoD, What-If, комментарий, status_comment
 - **Ссылки**: link_mockups, link_jira
 - **Вкладка «Комментарии»**: лента комментариев + форма ввода с @-упоминаниями

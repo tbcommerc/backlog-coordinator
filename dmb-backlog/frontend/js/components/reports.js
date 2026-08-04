@@ -2,10 +2,15 @@
  * DMB Backlog - Reports Page
  */
 
+function renderInvolvedTeams(teams) {
+  if (!teams || !teams.length) return '—';
+  return Array.isArray(teams) ? teams.join(', ') : teams;
+}
+
 const reportConfig = {
   directorate: {
     name: 'Статус для Директорской оперативки',
-    desc: 'Сводка по задачам для директората',
+    desc: 'Еженедельный статус для доклада Лидеру трайба',
     icon: 'briefcase',
     gradient: 'grad-rose',
     customEndpoint: '/reports/directorate-report',
@@ -17,7 +22,7 @@ const reportConfig = {
   },
   'did-operational': {
     name: 'Статус для оперативки ДИД',
-    desc: 'Группировка по командам, квартальная фильтрация, задачи с заполненным статусом ДИД',
+    desc: 'Статус по задачам ЦИ и трайба для руководства ДИД',
     icon: 'layers',
     gradient: 'grad-indigo',
     customEndpoint: '/reports/did-operational-report',
@@ -29,27 +34,62 @@ const reportConfig = {
   },
   projects: {
     name: 'Статус по ключевым проектам',
-    desc: 'Задачи с признаком ключевого проекта',
+    desc: 'Ежемесячный статус по ключевым проектам для Лидера трайба',
     icon: 'target',
     gradient: 'grad-emerald',
-    filters: [
-      { field: 'key_project', op: 'eq', value: true, logic: 'and' }
-    ],
-    fields: ['id','title','project_name','team_name','status_name','priority_name','deadline_name','progress','key_project_status'],
-    group: 'project',
-    sort: 'priority-desc'
+    inDevelopment: true,
+    isDb: true,
+    key: 'projects',
+    fields: ['id','title','project_name','team_name','status_name','priority_name','deadline_name','progress','key_project_status']
   },
   'reg-directors': {
     name: 'Отчет для Рег. директоров',
-    desc: 'Сводка по ключевым инициативам, высоким рискам и финансовым эффектам',
+    desc: 'Статус по задачам для региональных директоров - пользователей IBP',
     icon: 'users',
     gradient: 'grad-violet',
-    filters: [
-      { field: 'priority', op: 'eq', value: 'ВЫСОКИЙ', logic: 'and' }
-    ],
-    fields: ['id','title','team_name','project','status','priority','financial_effect','progress'],
-    group: 'team_name',
-    sort: 'priority-desc'
+    inDevelopment: true,
+    isDb: true,
+    key: 'reg-directors',
+    fields: ['id','title','team_name','project_name','status_name','priority_name','financial_effect','progress']
+  },
+  pip: {
+    name: 'PI-планирование трайба',
+    desc: 'Отчет для проведения церемонии Product Increment Planning (PIP)',
+    icon: 'milestone',
+    gradient: 'grad-amber',
+    inDevelopment: true,
+    isDb: true,
+    key: 'pip',
+    filters: [],
+    fields: ['id','title','team_name','status_name','priority_name','progress','deadline_name','owner_name'],
+    group: null,
+    sort: null
+  },
+  'did-backlog': {
+    name: 'Бэклог для отправки на бизнес-заказчиков ДИД',
+    desc: 'Задачи, запланированные к реализации в следующем квартале с фин. эффектом по ним',
+    icon: 'send',
+    gradient: 'grad-slate',
+    inDevelopment: true,
+    isDb: true,
+    key: 'did-backlog',
+    filters: [],
+    fields: ['id','title','business_customer_name','project_name','team_name','did_status','progress','deadline_name'],
+    group: null,
+    sort: null
+  },
+  progress: {
+    name: 'Прогресс по задачам',
+    desc: 'Текущий прогресс по выполнению задач текущего квартала, отклонения, риски',
+    icon: 'trending-up',
+    gradient: 'grad-cyan',
+    inDevelopment: true,
+    isDb: true,
+    key: 'progress',
+    filters: [],
+    fields: ['id','title','team_name','status_name','priority_name','progress','deadline_name','owner_name'],
+    group: null,
+    sort: null
   }
 };
 
@@ -59,6 +99,30 @@ let cachedReportData = null;
 let reportSortField = null;
 let reportSortDir = 'asc';
 let reportColumnFilters = {};
+
+let dbReportsCache = {};
+let cachedDbReport = null;
+
+function resolveReportFields(config) {
+  if (config.isDb && cachedDbReport && cachedDbReport.fields) {
+    try {
+      const parsed = JSON.parse(cachedDbReport.fields);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch (e) {}
+  }
+  return config.fields || [];
+}
+
+async function fetchDbReports(app) {
+  try {
+    const reports = await app.api.get('/reports');
+    (Array.isArray(reports) ? reports : (reports.items || [])).forEach(rep => {
+      if (rep.key) dbReportsCache[rep.key] = rep;
+    });
+  } catch (e) {
+    console.warn('Reports API unavailable:', e);
+  }
+}
 
 let reportFilterDropdown = null;
 let reportFilterDropdownField = null;
@@ -71,14 +135,16 @@ function isActiveStatus(s) {
   return ['СБОР ТРЕБОВАНИЙ','ПРОВЕРКА ТРЕБОВАНИЙ','УТОЧНЕНИЕ ТРЕБОВАНИЙ','ЭКСПРЕСС-ОЦЕНКА','ПРИНЯТИЕ РЕШЕНИЯ','ПРИНЯТА В РАБОТУ'].includes(s);
 }
 
-function renderPriority(priority) {
+export function renderPriority(priority) {
   const map = { 'ВЫСОКИЙ': 'high', 'СРЕДНИЙ': 'medium', 'НИЗКИЙ': 'low' };
-  const cls = map[priority] || 'medium';
+  const norm = String(priority || '').toUpperCase();
+  const cls = map[norm] || 'medium';
   return `<span class="badge badge-${cls}">${priority || 'СРЕДНИЙ'}</span>`;
 }
 
-function renderStatus(status) {
-  const statusClass = status ? status.replace(/\s+/g, '_') : 'backlog';
+export function renderStatus(status) {
+  const raw = status || '';
+  const statusClass = raw.toUpperCase().replace(/\s+/g, '_');
   const colors = {
     'НОВАЯ_ЗАДАЧА': 'badge-status-backlog',
     'НАЗНАЧЕНА_КОМАНДА': 'badge-status-backlog',
@@ -94,7 +160,7 @@ function renderStatus(status) {
     'НЕ_АКТУАЛЬНА': 'badge-low',
     'ВЫПОЛНЕНА': 'badge-status-done'
   };
-  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${status || 'СБОР ТРЕБОВАНИЙ'}</span>`;
+  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${raw || 'СБОР ТРЕБОВАНИЙ'}</span>`;
 }
 
 function renderProgress(progress) {
@@ -136,7 +202,7 @@ function renderCell(task, field) {
     case 'directorate_status': return renderDirectorateStatus(task.directorate_status);
     case 'did_status': return renderDidStatus(task.did_status);
     case 'did_demo': return task.did_demo ? '<span class="badge badge-success">Да</span>' : '<span class="badge badge-low">Нет</span>';
-    case 'involved_teams': return task.involved_teams || '—';
+    case 'involved_teams': return renderInvolvedTeams(task.involved_teams);
     case 'key_project_status': return renderDirectorateStatus(task.key_project_status);
     default: return task[field] || '—';
   }
@@ -181,6 +247,7 @@ const fieldLabels = {
   status: 'Статус', priority: 'Приоритет', deadline: 'Срок',
   progress: '%', status_comment: 'Комментарий', financial_effect: 'Фин. эффект',
   business_customer: 'Бизнес-заказчик', department_name: 'Подразделение',
+  business_customer_name: 'Бизнес-заказчик',
   channel_name: 'Канал', task_type_name: 'Тип задачи',
   owner: 'Исполнитель', directorate_status: 'Статус',
   did_status: 'Статус', key_project_status: 'Статус',
@@ -189,9 +256,20 @@ const fieldLabels = {
   deadline_name: 'Срок', owner_name: 'Владелец'
 };
 
+function getFieldLabel(field) {
+  const fl = window.app?.fieldLabels || {};
+  const base = field.replace(/_name$/, '_id');
+  return fl[field] || fl[base] || fieldLabels[field] || field;
+}
+
 function applyFilterValue(task, field, op, value) {
   switch (op) {
-    case 'eq': return task[field] === value;
+    case 'eq': {
+      if (typeof value === 'string' && typeof task[field] === 'string') {
+        return task[field].toLowerCase() === value.toLowerCase();
+      }
+      return task[field] === value;
+    }
     case 'neq': return task[field] !== value;
     case 'in': return Array.isArray(value) && value.includes(task[field]);
     case 'gt': return parseFloat(task[field]) > value;
@@ -356,7 +434,7 @@ function renderReportTable(list, fields) {
   const hasAnyFilter = Object.keys(reportColumnFilters).some(k => reportColumnFilters[k] && reportColumnFilters[k].length);
 
   const headers = fields.map(f => {
-    const label = fieldLabels[f] || f;
+    const label = getFieldLabel(f);
     const sorted = reportSortField === f;
     const arrow = sorted ? (reportSortDir === 'asc' ? ' ▲' : ' ▼') : '';
     const activeVals = reportColumnFilters[f] || [];
@@ -401,8 +479,8 @@ function renderReportTable(list, fields) {
 function exportReportExcel(kind, tasks, app) {
   const config = reportConfig[kind];
   if (!config || !tasks.length) return;
-  const fields = config.fields;
-  const headers = fields.map(f => fieldLabels[f] || f);
+  const fields = resolveReportFields(config);
+  const headers = fields.map(f => getFieldLabel(f));
   const rows = tasks.map(task => fields.map(f => {
     const val = task[f];
     return val !== null && val !== undefined ? String(val) : '';
@@ -433,6 +511,27 @@ async function loadReportData(app) {
   if (!config) return;
   try {
     Object.keys(reportChartInstances).forEach(k => { reportChartInstances[k]?.destroy(); delete reportChartInstances[k]; });
+    if (config.isPlaceholder) {
+      renderPlaceholderReport(config, currentReport);
+      return;
+    }
+    if (config.isDb) {
+      await fetchDbReports(app);
+      const rep = dbReportsCache[config.key];
+      if (!rep) {
+        renderPlaceholderReport(config, currentReport);
+        return;
+      }
+      cachedDbReport = rep;
+      const execData = await app.api.get(`/reports/${rep.id}/execute`);
+      cachedReportData = execData;
+      tasksCache = execData.items || [];
+      reportSortField = null;
+      reportSortDir = 'asc';
+      reportColumnFilters = {};
+      renderReportContent(config, currentReport, execData);
+      return;
+    }
     if (config.customEndpoint) {
       const data = await app.api.get(config.customEndpoint);
       cachedReportData = data;
@@ -495,10 +594,10 @@ function renderReportContent(config, reportKey, data) {
 
   const tasks = Array.isArray(data) ? data : (data && data.items ? data.items : []);
   const total = tasks.length;
-  const high = tasks.filter(t => (t.priority_name || t.priority) === 'ВЫСОКИЙ').length;
-  const statusField = reportKey === 'directorate' ? 'directorate_status' : reportKey === 'did' ? 'did_status' : 'status';
-  const riskStatuses = reportKey === 'directorate' ? ['Риск','На контроле'] : reportKey === 'did' ? ['Блокировано','Требует решения'] : ['ХОЛД','ЭСКАЛАЦИЯ НА ЛТ','ОТКЛОНЕНА'];
-  const risk = tasks.filter(t => riskStatuses.includes(t[statusField])).length;
+  const high = tasks.filter(t => String(t.priority_name || t.priority || '').toUpperCase() === 'ВЫСОКИЙ').length;
+  const statusField = config.isDb ? 'status_name' : (reportKey === 'directorate' ? 'directorate_status' : reportKey === 'did' ? 'did_status' : 'status');
+  const riskStatuses = reportKey === 'directorate' ? ['Риск','На контроле'] : reportKey === 'did' ? ['Блокировано','Требует решения'] : ['Холд','Эскалация на ЛТ','Отклонена','Не актуальна'];
+  const risk = tasks.filter(t => riskStatuses.some(s => String(t[statusField] || '').toUpperCase() === s.toUpperCase())).length;
   const avg = total ? Math.round(tasks.reduce((s, t) => s + (t.progress || 0), 0) / total) : 0;
 
   if (!config.isCustom) renderReportCharts(tasks);
@@ -512,8 +611,23 @@ function renderReportContent(config, reportKey, data) {
   if (riskEl) riskEl.textContent = risk;
   if (avgEl) avgEl.textContent = avg + '%';
 
+  const fields = resolveReportFields(config);
+
   if (!tasks.length) {
     body.innerHTML = '<div class="empty-state"><p class="text-muted">Нет данных для отображения</p></div>';
+    return;
+  }
+
+  if (data && data.grouped && data.groups) {
+    body.innerHTML = data.groups.map(group => `
+      <div class="card" style="margin-bottom:var(--space-4);">
+        <div class="card-header">
+          <h3 class="card-title">${group.name}</h3>
+          <span class="badge badge-info">${group.count} ${formatCount(group.count)}</span>
+        </div>
+        ${renderReportTable(group.items, fields)}
+      </div>
+    `).join('');
     return;
   }
 
@@ -532,12 +646,24 @@ function renderReportContent(config, reportKey, data) {
           <h3 class="card-title">${groupName}</h3>
           <span class="badge badge-info">${groupTasks.length} ${formatCount(groupTasks.length)}</span>
         </div>
-        ${renderReportTable(groupTasks, config.fields)}
+        ${renderReportTable(groupTasks, fields)}
       </div>
     `).join('');
   } else {
-    body.innerHTML = renderReportTable(tasks, config.fields);
+    body.innerHTML = renderReportTable(tasks, fields);
   }
+}
+
+function renderPlaceholderReport(config, reportKey) {
+  const body = document.getElementById('report-body');
+  if (!body) return;
+  body.innerHTML = `
+    <div class="empty-state" style="text-align:center;padding:var(--space-8);">
+      <i data-lucide="${config.icon}" style="width:48px;height:48px;color:var(--text-muted);margin:0 auto 12px;display:block;"></i>
+      <h3 style="font-size:var(--text-lg);font-weight:600;color:var(--text-primary);margin-bottom:8px;">${config.name}</h3>
+      <p class="text-muted" style="max-width:420px;margin:0 auto;">Отчёт в разработке. Здесь появится содержимое страницы.</p>
+    </div>`;
+  if (window.lucide) lucide.createIcons();
 }
 
 function formatCount(n) {
@@ -547,32 +673,38 @@ function formatCount(n) {
 }
 
 export function renderReports(app) {
-  const standardKeys = ['directorate', 'did-operational', 'projects'];
+  const standardKeys = ['directorate', 'did-operational', 'projects', 'pip', 'did-backlog', 'progress'];
   const customKeys = ['reg-directors'];
 
-  function renderCard(key, cfg, subtitle) {
+  function renderCard(key, cfg) {
     return `
-      <div class="cursor-pointer ${cfg.gradient} report-card" data-report="${key}" style="border-radius:16px;padding:24px;color:white;display:flex;flex-direction:column;min-height:240px;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;">
-          <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
+      <div class="cursor-pointer ${cfg.gradient} report-card" data-report="${key}" style="border-radius:16px;padding:24px;color:white;display:flex;flex-direction:column;min-height:282px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-shrink:0;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <i data-lucide="${cfg.icon}" style="width:20px;height:20px;"></i>
           </div>
-          <i data-lucide="arrow-up-right" style="width:20px;height:20px;opacity:0.6;"></i>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            ${cfg.inDevelopment ? '<span style="font-size:10px;font-weight:600;background:rgba(250,204,21,0.22);color:#fde047;border:1px solid rgba(250,204,21,0.5);padding:3px 9px;border-radius:999px;white-space:nowrap;">В разработке</span>' : ''}
+            <i data-lucide="arrow-up-right" style="width:20px;height:20px;opacity:0.6;flex-shrink:0;"></i>
+          </div>
         </div>
-        <div style="flex:1;">
-          <div style="font-size:12px;opacity:0.8;margin-bottom:4px;">${subtitle}</div>
-          <div style="font-size:20px;font-weight:700;">${cfg.name}</div>
-          <div style="font-size:12px;opacity:0.75;margin-top:8px;">${cfg.desc}</div>
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+          <div class="rc-name">${cfg.name}</div>
+          <div class="rc-desc">${cfg.desc}</div>
         </div>
-        <div style="margin-top:auto;">
-          <div style="font-size:24px;font-weight:700;" id="count-${key}">0</div>
-          <div style="font-size:12px;opacity:0.8;">задач</div>
+        <div style="margin-top:auto;flex-shrink:0;">
+          ${cfg.isPlaceholder ? `
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:999px;">В разработке</span>
+          ` : `
+            <div style="font-size:24px;font-weight:700;line-height:29px;height:29px;" id="count-${key}">0</div>
+            <div style="font-size:12px;opacity:0.8;line-height:18px;height:18px;">задач</div>
+          `}
         </div>
       </div>`;
   }
 
-  const standardCards = standardKeys.map(k => renderCard(k, reportConfig[k], 'Статус-отчёт')).join('');
-  const customCards = customKeys.map(k => renderCard(k, reportConfig[k], 'Пользовательский отчёт')).join('');
+  const standardCards = standardKeys.map(k => renderCard(k, reportConfig[k])).join('');
+  const customCards = customKeys.map(k => renderCard(k, reportConfig[k])).join('');
 
   return `
     <div class="page-header animate-fade-in">
@@ -605,11 +737,31 @@ export async function initReports(app) {
     const data = await app.api.get('/tasks?per_page=1000');
     tasksCache = data.items || [];
 
-    Object.keys(reportConfig).forEach(key => {
-      const filtered = applyReportFilters(key, tasksCache);
+    await fetchDbReports(app);
+
+    await Promise.all(Object.keys(reportConfig).map(async key => {
+      const config = reportConfig[key];
       const el = document.getElementById(`count-${key}`);
-      if (el) el.textContent = filtered.length;
-    });
+      if (!el || config.isPlaceholder) return;
+      if (config.isDb) {
+        const rep = dbReportsCache[config.key];
+        if (!rep) { el.textContent = '—'; return; }
+        try {
+          const execData = await app.api.get(`/reports/${rep.id}/execute`);
+          el.textContent = (execData && execData.total != null) ? execData.total : 0;
+        } catch (e) { el.textContent = '—'; }
+        return;
+      }
+      if (config.customEndpoint) {
+        try {
+          const d = await app.api.get(config.customEndpoint);
+          el.textContent = (d && d.total_tasks != null) ? d.total_tasks : 0;
+        } catch (e) { el.textContent = '—'; }
+        return;
+      }
+      const filtered = applyReportFilters(key, tasksCache);
+      el.textContent = filtered.length;
+    }));
 
     document.querySelectorAll('.report-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -687,7 +839,8 @@ function renderReportCharts(tasks) {
   const byTeam = {};
 
   tasks.forEach(t => {
-    byStatus[t.status || 'Не указан'] = (byStatus[t.status || 'Не указан'] || 0) + 1;
+    const st = t.status_name || t.status || 'Не указан';
+    byStatus[st] = (byStatus[st] || 0) + 1;
     byPriority[t.priority_name || t.priority || 'СРЕДНИЙ'] = (byPriority[t.priority_name || t.priority || 'СРЕДНИЙ'] || 0) + 1;
     const team = t.team_name || 'Без команды';
     byTeam[team] = (byTeam[team] || 0) + 1;
@@ -705,7 +858,7 @@ function renderReportCharts(tasks) {
 
   const statusLabels = Object.keys(byStatus);
   const statusValues = Object.values(byStatus);
-  const statusColorsArr = statusLabels.map(l => statusColors[l] || '#94a3b8');
+  const statusColorsArr = statusLabels.map(l => statusColors[String(l || '').toUpperCase()] || '#94a3b8');
 
   createReportChart('chart-report-status', {
     type: 'bar',
@@ -843,12 +996,13 @@ export function renderReportPage(app) {
       </div>
 
       <div class="action-bar action-bar--end" style="justify-content:space-between;">
-        <span class="badge badge-info" style="font-size:var(--text-xs);">Статус-отчёт</span>
+        <span class="badge badge-info" style="font-size:var(--text-xs);">${config.isPlaceholder ? 'В разработке' : 'Статус-отчёт'}</span>
         <div class="flex gap-2" style="flex-wrap:wrap;">
+          ${!config.isPlaceholder ? `
           <button class="btn btn-secondary btn-sm" id="report-excel">
             <i data-lucide="file-spreadsheet" style="width:14px;height:14px;"></i>
             Excel
-          </button>
+          </button>` : ''}
           <button class="btn btn-secondary btn-sm" id="report-refresh">
             <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
             Обновить
@@ -856,7 +1010,7 @@ export function renderReportPage(app) {
         </div>
       </div>
 
-      ${!config.isCustom ? `
+      ${!config.isCustom && !config.isPlaceholder ? `
       <div class="dashboard-stats" style="margin-bottom:var(--space-6);">
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--info-light);color:var(--info);">
@@ -938,26 +1092,33 @@ export function initReportPage(app) {
 
   document.getElementById('report-excel')?.addEventListener('click', () => {
     if (currentReport && tasksCache.length) {
-      let visible = applyReportFilters(currentReport, tasksCache);
-      const hasFilters = Object.keys(reportColumnFilters).some(k => reportColumnFilters[k] && reportColumnFilters[k].length);
-      if (hasFilters) {
-        visible = visible.filter(task =>
-          Object.entries(reportColumnFilters).every(([field, vals]) => !vals || !vals.length || vals.includes(String(task[field] || '').trim()))
-        );
-      }
-      if (reportSortField) {
-        visible = [...visible].sort((a, b) => {
-          const va = String(a[reportSortField] || '').toLowerCase();
-          const vb = String(b[reportSortField] || '').toLowerCase();
-          return reportSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-        });
+      const config = reportConfig[currentReport];
+      let visible = tasksCache;
+      if (!config.isDb) {
+        visible = applyReportFilters(currentReport, tasksCache);
+        const hasFilters = Object.keys(reportColumnFilters).some(k => reportColumnFilters[k] && reportColumnFilters[k].length);
+        if (hasFilters) {
+          visible = visible.filter(task =>
+            Object.entries(reportColumnFilters).every(([field, vals]) => !vals || !vals.length || vals.includes(String(task[field] || '').trim()))
+          );
+        }
+        if (reportSortField) {
+          visible = [...visible].sort((a, b) => {
+            const va = String(a[reportSortField] || '').toLowerCase();
+            const vb = String(b[reportSortField] || '').toLowerCase();
+            return reportSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+          });
+        }
       }
       exportReportExcel(currentReport, visible, app);
     }
   });
 
   document.getElementById('report-body')?.addEventListener('click', (e) => {
+    const config = reportConfig[currentReport];
+
     if (e.target.closest('.filter-trigger')) {
+      if (config.isCustom || config.isDb) return;
       e.stopPropagation();
       const trigger = e.target.closest('.filter-trigger');
       const field = trigger.dataset.field;
@@ -965,12 +1126,10 @@ export function initReportPage(app) {
       return;
     }
 
-    const config = reportConfig[currentReport];
-
     if (e.target.closest('#report-clear-filters')) {
       closeFilterDropdown();
       reportColumnFilters = {};
-      if (config.isCustom && cachedReportData) {
+      if ((config.isCustom || config.isDb) && cachedReportData) {
         renderReportContent(config, currentReport, cachedReportData);
       } else {
         const filtered = applyReportFilters(currentReport, tasksCache);
@@ -982,7 +1141,7 @@ export function initReportPage(app) {
     const th = e.target.closest('th[data-sort]');
     if (!th) return;
 
-    if (config.isCustom) return;
+    if (config.isCustom || config.isDb) return;
 
     const field = th.dataset.sort;
     if (reportSortField === field) {

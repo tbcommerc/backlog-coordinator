@@ -47,6 +47,11 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, m => map[m]);
 }
 
+function renderInvolvedTeams(teams) {
+  if (!teams || !teams.length) return '—';
+  return Array.isArray(teams) ? teams.join(', ') : teams;
+}
+
 function getInitials(name) {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);
@@ -262,7 +267,7 @@ const FIELDS_TO_DIFF = {
   channel_id: 'Канал', department_id: 'Подразделение',
   owner_id: 'Исполнитель', responsible_po_id: 'Отв. PO',
   business_analyst_id: 'Бизнес-аналитик', it_product_lead_id: 'IT Product Lead',
-  deadline_id: 'Дедлайн', deadline_po_id: 'Дедлайн PO',
+  deadline_id: 'Дедлайн',
   effort_days: 'Трудозатраты (дни)', effort_rub: 'Трудозатраты (руб)',
   financial_effect: 'Фин. эффект', ice_score: 'ICE Score',
   progress: 'Прогресс', description: 'Описание', dod: 'DoD',
@@ -421,7 +426,7 @@ async function conflictSaveSelected(serverTask) {
     business_analyst_id: getInt('edit-business-analyst'),
     it_product_lead_id: getInt('edit-it-product-lead'),
     business_customer_id: getInt('edit-business-customer'),
-    deadline_id: getInt('edit-deadline'), deadline_po_id: getInt('edit-deadline-po'),
+    deadline_id: getInt('edit-deadline'),
     effort_days: getInt('edit-effort-days'), effort_rub: getFloat('edit-effort-rub'),
     financial_effect: getFloat('edit-financial-effect'),
     ice_score: getFloat('edit-ice-score'),
@@ -502,7 +507,7 @@ async function conflictForceSave() {
     business_analyst_id: getInt('edit-business-analyst'),
     it_product_lead_id: getInt('edit-it-product-lead'),
     business_customer_id: getInt('edit-business-customer'),
-    deadline_id: getInt('edit-deadline'), deadline_po_id: getInt('edit-deadline-po'),
+    deadline_id: getInt('edit-deadline'),
     effort_days: getInt('edit-effort-days'), effort_rub: getFloat('edit-effort-rub'),
     financial_effect: getFloat('edit-financial-effect'),
     ice_score: getFloat('edit-ice-score'),
@@ -641,9 +646,6 @@ function renderBKpiRow(task) {
           <span class="b-kpi-label">Срок</span>
           <div class="b-kpi-value sm">${escapeHtml(deadlineName)}</div>
         </div>
-      </div>
-      <div class="b-kpi-sub">
-        ${task.deadline_po_name ? `<span>PO: ${escapeHtml(task.deadline_po_name)}</span>` : ''}
       </div>
     </div>
     <div class="b-kpi-tile">
@@ -802,9 +804,9 @@ function renderOverviewDashboard(task) {
           ${escapeHtml(t.business_customer_name)}
         </div>
       </div>` : ''}
-      ${t.involved_teams ? `<div class="b-prop-row">
+      ${t.involved_teams && t.involved_teams.length ? `<div class="b-prop-row">
         <div class="b-prop-label">Вовлечённые команды</div>
-        <div class="b-prop-value">${escapeHtml(t.involved_teams)}</div>
+        <div class="b-prop-value">${escapeHtml(renderInvolvedTeams(t.involved_teams))}</div>
       </div>` : ''}
     </div>
     ${t.effort_days != null ? `
@@ -894,7 +896,7 @@ function renderOverviewDashboard(task) {
   }
 
   // --- Tile: Tags & Epics (span 12) ---
-  if (tags.length || t.link_mockups || t.link_jira) {
+  if (tags.length || t.link_mockups || (t.link_jira && t.link_jira.length)) {
     html += `<div class="b-tile b-t12">
       <div class="b-tile-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
@@ -903,7 +905,7 @@ function renderOverviewDashboard(task) {
       <div class="b-tags">
         ${tags.map(tag => `<span class="b-tag">${escapeHtml(tag)}</span>`).join('')}
         ${t.link_mockups ? `<a class="b-tag" href="${escapeHtml(t.link_mockups)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2)">📎 Макеты</a>` : ''}
-        ${t.link_jira ? `<a class="b-tag" href="${escapeHtml(t.link_jira)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>` : ''}
+        ${renderLinkJiraTags(t.link_jira)}
       </div>
     </div>`;
   }
@@ -1603,6 +1605,10 @@ function renderEditForm(task) {
     </div>`;
   }
 
+  function FL(key, fallback) {
+    return (window.app?.fieldLabels && window.app.fieldLabels[key]) || fallback || key;
+  }
+
   let html = `<div class="b-tiles">`;
 
   // --- Edit: Properties tile (span 7) ---
@@ -1611,21 +1617,21 @@ function renderEditForm(task) {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       <h3>Редактирование</h3>
     </div>
-    ${field('Название', binput('edit-title', 'text', t.title, 'Название задачи'))}
+    ${field(FL('title'), binput('edit-title', 'text', t.title, 'Название задачи'))}
     <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('Статус', bsel('edit-status', statuses, t.status_id || t.status_name || t.status))}
-      ${field('Приоритет', bsel('edit-priority', priorities, t.priority_id || t.priority_name || t.priority))}
+      ${field(FL('status_id'), bsel('edit-status', statuses, t.status_id || t.status_name || t.status))}
+      ${field(FL('priority_id'), bsel('edit-priority', priorities, t.priority_id || t.priority_name || t.priority))}
     </div>
     <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('Тип задачи', bsel('edit-task-type', taskTypes, t.task_type_id || t.task_type_name || t.task_type))}
-      ${field('Канал', bsel('edit-channel', channels, t.channel_id || t.channel_name || t.source_channel))}
+      ${field(FL('task_type_id'), bsel('edit-task-type', taskTypes, t.task_type_id || t.task_type_name || t.task_type))}
+      ${field(FL('channel_id'), bsel('edit-channel', channels, t.channel_id || t.channel_name || t.source_channel))}
     </div>
     <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('Команда', apiSelect('edit-team', t.team_id, t.team_name || t.team))}
-      ${field('Проект', apiSelect('edit-project', t.project_id, t.project_name || t.project))}
+      ${field(FL('team_id'), apiSelect('edit-team', t.team_id, t.team_name || t.team))}
+      ${field(FL('project_id'), apiSelect('edit-project', t.project_id, t.project_name || t.project))}
     </div>
     <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('Владелец', apiSelect('edit-owner', t.owner_id, t.owner_name || t.owner))}
+      ${field(FL('owner_id'), apiSelect('edit-owner', t.owner_id, t.owner_name || t.owner))}
       ${field('Ответ. PO', apiSelect('edit-responsible-po', t.responsible_po_id, t.responsible_po_name))}
     </div>
     <div class="b-edit-row-2" style="margin-top:10px">
@@ -1633,15 +1639,14 @@ function renderEditForm(task) {
       ${field('IT Product Lead', apiSelect('edit-it-product-lead', t.it_product_lead_id, t.it_product_lead_name))}
     </div>
     <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('Бизнес-заказчик', apiSelect('edit-business-customer', t.business_customer_id, t.business_customer_name || t.business_customer))}
-      ${field('Подразделение', apiSelect('edit-department', t.department_id, t.department_name || t.customer_department))}
+      ${field(FL('business_customer_id'), apiSelect('edit-business-customer', t.business_customer_id, t.business_customer_name || t.business_customer))}
+      ${field(FL('department_id'), apiSelect('edit-department', t.department_id, t.department_name || t.customer_department))}
     </div>
     <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('Дедлайн', bsel('edit-deadline', deadlines, t.deadline_id || t.deadline_name || t.deadline))}
-      ${field('PO-дедлайн', bsel('edit-deadline-po', deadlines, t.deadline_po_id || t.deadline_po_name || t.deadline_po))}
-    </div>
-    <div class="b-edit-row-2" style="margin-top:10px">
+      ${field(FL('deadline_id'), bsel('edit-deadline', deadlines, t.deadline_id || t.deadline_name || t.deadline))}
       ${field('Дата поступления', binput('edit-date-received', 'date', t.date_received || ''))}
+    </div>
+    <div class="b-edit-row-2" style="margin-top:10px">
       ${field('ICE Score', bnum('edit-ice-score', t.ice_score ?? '', '0.0–10.0'))}
     </div>
     <div style="margin-top:10px">
@@ -1666,11 +1671,11 @@ function renderEditForm(task) {
       <h3>Финансы</h3>
     </div>
     <div class="b-edit-row-2">
-      ${field('Трудозатраты (дни)', bnum('edit-effort-days', t.effort_days ?? '', 'ч/д'))}
-      ${field('Трудозатраты (₽)', bnum('edit-effort-rub', t.effort_rub ?? '', '₽'))}
+      ${field(FL('effort_days'), bnum('edit-effort-days', t.effort_days ?? '', 'ч/д'))}
+      ${field(FL('effort_rub'), bnum('edit-effort-rub', t.effort_rub ?? '', '₽'))}
     </div>
     <div style="margin-top:10px">
-      ${field('Фин. эффект (₽)', bnum('edit-financial-effect', t.financial_effect ?? '', '₽'))}
+      ${field(FL('financial_effect'), bnum('edit-financial-effect', t.financial_effect ?? '', '₽'))}
     </div>
     <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
       <div class="b-tile-title" style="margin-bottom:8px">
@@ -1698,17 +1703,17 @@ function renderEditForm(task) {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       <h3>Описание</h3>
     </div>
-    ${field('Описание задачи', btextarea('edit-description', t.description, 'Описание задачи', 4))}
+    ${field(FL('description'), btextarea('edit-description', t.description, 'Описание задачи', 4))}
     <div class="b-edit-row-2" style="margin-top:10px">
       ${field('DoD', btextarea('edit-dod', t.dod, 'Критерии готовности', 3))}
       ${field('What-If', btextarea('edit-what-if', t.what_if, 'What-If анализ', 3))}
     </div>
     <div class="b-edit-row-2" style="margin-top:10px">
-      ${field('Комментарий', btextarea('edit-comment', t.comment, 'Общий комментарий', 2))}
+      ${field(FL('comment'), btextarea('edit-comment', t.comment, 'Общий комментарий', 2))}
       ${field('Статус-комментарий', btextarea('edit-status-comment', t.status_comment, 'Комментарий по статусу', 2))}
     </div>
     <div id="edit-rejection-wrapper" style="margin-top:10px;display:${(t.status_name || t.status) === 'ОТКЛОНЕНА' ? '' : 'none'}">
-      ${field('Причина отклонения', btextarea('edit-rejection-reason', t.rejection_reason, 'Причина', 2))}
+      ${field(FL('rejection_reason'), btextarea('edit-rejection-reason', t.rejection_reason, 'Причина', 2))}
     </div>
   </div>`;
 
@@ -1719,11 +1724,11 @@ function renderEditForm(task) {
       <h3>Ссылки и теги</h3>
     </div>
     <div class="b-edit-row-2">
-      ${field('Ссылка на макеты', binput('edit-link-mockups', 'text', t.link_mockups, 'https://...'))}
-      ${field('Ссылка на Jira', binput('edit-link-jira', 'text', t.link_jira, 'https://...'))}
+      ${field(FL('link_mockups'), binput('edit-link-mockups', 'text', t.link_mockups, 'https://...'))}
+      ${field(FL('link_jira'), binput('edit-link-jira', 'text', Array.isArray(t.link_jira) ? t.link_jira.join(', ') : t.link_jira, 'https://...'))}
     </div>
     <div style="margin-top:10px">
-      ${field('Теги (через запятую)', binput('edit-tags', 'text', tags, 'regulatory, backend, security'))}
+      ${field(FL('tags'), binput('edit-tags', 'text', tags, 'regulatory, backend, security'))}
     </div>
   </div>`;
 
@@ -1845,7 +1850,6 @@ async function saveTaskDetail(app) {
     it_product_lead_id: getInt('edit-it-product-lead'),
     business_customer_id: getInt('edit-business-customer'),
     deadline_id: getInt('edit-deadline'),
-    deadline_po_id: getInt('edit-deadline-po'),
     effort_days: getInt('edit-effort-days'),
     effort_rub: getFloat('edit-effort-rub'),
     financial_effect: getFloat('edit-financial-effect'),
@@ -2099,11 +2103,15 @@ function renderCreateTaskFormFields() {
     </div>`;
   }
 
+  function FL(key, fallback) {
+    return (window.app?.fieldLabels && window.app.fieldLabels[key]) || fallback || key;
+  }
+
   let html = `<div class="td-edit-form">`;
 
   // Title (required)
   html += `<div class="td-edit-field td-edit-field-full">
-    <label class="td-edit-label">Название задачи <span style="color:var(--danger,#ef4444);">*</span></label>
+    <label class="td-edit-label">${FL('title')} <span style="color:var(--danger,#ef4444);">*</span></label>
     <input type="text" class="task-detail-input" id="create-title" placeholder="Введите название задачи" autofocus>
     <div class="create-field-error" id="create-title-error" style="display:none;color:var(--danger,#ef4444);font-size:12px;margin-top:4px;">Поле обязательно для заполнения</div>
   </div>`;
@@ -2111,16 +2119,16 @@ function renderCreateTaskFormFields() {
   // Team & Priority row (required)
   html += `<div class="td-edit-row-2">`;
   html += `<div class="td-edit-field">
-    <label class="td-edit-label">Команда <span style="color:var(--danger,#ef4444);">*</span></label>
+    <label class="td-edit-label">${FL('team_id')} <span style="color:var(--danger,#ef4444);">*</span></label>
     ${apiSelect('create-team')}
     <div class="create-field-error" id="create-team-error" style="display:none;color:var(--danger,#ef4444);font-size:12px;margin-top:4px;">Выберите команду</div>
   </div>`;
-  html += field('Приоритет', select('create-priority', priorities, 2));
+  html += field(FL('priority_id'), select('create-priority', priorities, 2));
   html += `</div>`;
 
   // Description (required)
   html += `<div class="td-edit-field td-edit-field-full">
-    <label class="td-edit-label">Описание <span style="color:var(--danger,#ef4444);">*</span></label>
+    <label class="td-edit-label">${FL('description')} <span style="color:var(--danger,#ef4444);">*</span></label>
     <textarea class="task-detail-input" id="create-description" rows="4" placeholder="Опишите задачу..."></textarea>
     <div class="create-field-error" id="create-description-error" style="display:none;color:var(--danger,#ef4444);font-size:12px;margin-top:4px;">Поле обязательно для заполнения</div>
   </div>`;
@@ -2131,12 +2139,12 @@ function renderCreateTaskFormFields() {
 
   // Type & Channel
   html += `<div class="td-edit-row-2">`;
-  html += field('Тип задачи', select('create-task-type', [
+  html += field(FL('task_type_id'), select('create-task-type', [
     { value: 1, label: 'Функциональность' }, { value: 2, label: 'Bug' },
     { value: 3, label: 'Техдолг' }, { value: 4, label: 'Исследование' },
     { value: 5, label: 'Интеграция' }, { value: 6, label: 'UI/UX' }, { value: 7, label: 'DevOps' }
   ], ''));
-  html += field('Канал поступления', select('create-channel', [
+  html += field(FL('channel_id'), select('create-channel', [
     { value: 1, label: 'Поручение ДИД' }, { value: 2, label: 'Поручение ДРП' },
     { value: 3, label: 'Заявка на портале' }, { value: 4, label: 'Письмо' },
     { value: 5, label: 'Совещание' }, { value: 6, label: 'Другое' }
@@ -2145,13 +2153,13 @@ function renderCreateTaskFormFields() {
 
   // Project & Business Customer
   html += `<div class="td-edit-row-2">`;
-  html += field('Проект', apiSelect('create-project'));
-  html += field('Бизнес-заказчик', apiSelect('create-business-customer'));
+  html += field(FL('project_id'), apiSelect('create-project'));
+  html += field(FL('business_customer_id'), apiSelect('create-business-customer'));
   html += `</div>`;
 
   // Deadline & Date
   html += `<div class="td-edit-row-2">`;
-  html += field('Дедлайн', select('create-deadline', [
+  html += field(FL('deadline_id'), select('create-deadline', [
     { value: 1, label: '1Q 2026' }, { value: 2, label: '2Q 2026' },
     { value: 3, label: '3Q 2026' }, { value: 4, label: '4Q 2026' },
     { value: 5, label: 'Y2026' }, { value: 6, label: 'Y2027' },
@@ -2162,9 +2170,9 @@ function renderCreateTaskFormFields() {
 
   // Financial & Effort
   html += `<div class="td-edit-row-3">`;
-  html += field('Трудозатраты (дни)', input('create-effort-days', 'number', '', 'ч/д'));
-  html += field('Трудозатраты (₽)', input('create-effort-rub', 'number', '', '₽'));
-  html += field('Фин. эффект (₽)', input('create-financial-effect', 'number', '', '₽'));
+  html += field(FL('effort_days'), input('create-effort-days', 'number', '', 'ч/д'));
+  html += field(FL('effort_rub'), input('create-effort-rub', 'number', '', '₽'));
+  html += field(FL('financial_effect'), input('create-financial-effect', 'number', '', '₽'));
   html += `</div>`;
 
   // ICE Score fields
@@ -2183,12 +2191,12 @@ function renderCreateTaskFormFields() {
 
   // Links
   html += `<div class="td-edit-row-2">`;
-  html += field('Ссылка на макеты', input('create-link-mockups', 'text', '', 'https://...'));
-  html += field('Ссылка на Jira', input('create-link-jira', 'text', '', 'https://...'));
+  html += field(FL('link_mockups'), input('create-link-mockups', 'text', '', 'https://...'));
+  html += field(FL('link_jira'), input('create-link-jira', 'text', '', 'https://...'));
   html += `</div>`;
 
   // Comment
-  html += field('Комментарий', textarea('create-comment', '', 'Общий комментарий', 2), { fullWidth: true });
+  html += field(FL('comment'), textarea('create-comment', '', 'Общий комментарий', 2), { fullWidth: true });
 
   html += `</div>`; // end optional section
   html += `</div>`; // end form
@@ -2663,3 +2671,970 @@ function closeCreateTaskModal() {
 // Legacy API
 export function closeModal() { closeTaskDetailModal(); }
 export function openConfirmModal(message, onConfirm) { /* not needed in new version */ }
+
+export function showConfirmModal(message, title = 'Подтверждение', okText = 'ОК', cancelText = 'Отмена', danger = false) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('confirm-modal-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'confirm-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '1200';
+
+    const okBtnStyle = danger
+      ? 'background:var(--danger);color:white;border:none;'
+      : '';
+
+    overlay.innerHTML = `
+      <div style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:400px;width:90%;position:relative;">
+        <h3 style="margin:0 0 16px 0;font-size:16px;color:var(--text-primary);">${escapeHtml(title)}</h3>
+        <p style="margin:0 0 20px 0;font-size:14px;color:var(--text-secondary);">${escapeHtml(message)}</p>
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" id="confirm-cancel">${escapeHtml(cancelText)}</button>
+          <button class="btn btn-primary btn-sm" id="confirm-ok" style="${okBtnStyle}">${escapeHtml(okText)}</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const okBtn = overlay.querySelector('#confirm-ok');
+    const cancelBtn = overlay.querySelector('#confirm-cancel');
+
+    okBtn?.focus();
+
+    function handleOk() {
+      overlay.remove();
+      resolve(true);
+    }
+
+    function handleCancel() {
+      overlay.remove();
+      resolve(false);
+    }
+
+    okBtn?.addEventListener('click', handleOk);
+    cancelBtn?.addEventListener('click', handleCancel);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        handleCancel();
+      }
+    });
+
+    function handleKeydown(e) {
+      if (e.key === 'Escape') {
+        handleCancel();
+        document.removeEventListener('keydown', handleKeydown);
+      }
+    }
+    document.addEventListener('keydown', handleKeydown);
+  });
+}
+
+const FIELD_GROUPS = {
+  'status_priority': { label: 'Статус и приоритет', fields: ['status_id', 'priority_id', 'progress'] },
+  'deadlines': { label: 'Сроки', fields: ['deadline_id', 'date_received'] },
+  'responsible': { label: 'Ответственные', fields: ['owner_id', 'responsible_po_id', 'business_analyst_id', 'it_product_lead_id'] },
+  'ownership': { label: 'Принадлежность', fields: ['team_id', 'project_id', 'task_type_id', 'channel_id', 'department_id', 'business_customer_id'] },
+  'meetings': { label: 'Для встреч', fields: ['key_project', 'key_project_status', 'directorate_status', 'did_status', 'is_from_leadership', 'is_regular'] },
+  'estimation': { label: 'Оценка', fields: ['effort_days', 'effort_rub', 'financial_effect', 'ice_impact', 'ice_confidence', 'ice_ease'] },
+  'text_links': { label: 'Тексты и ссылки', fields: ['status_comment', 'rejection_reason', 'comment', 'what_if', 'dod', 'link_jira', 'link_mockups'] },
+  'tags': { label: 'Метки', fields: ['tags'] }
+};
+
+const FIELD_LABELS_BULK = {
+  status_id: 'Статус', priority_id: 'Приоритет', progress: 'Прогресс %',
+  deadline_id: 'Дедлайн', date_received: 'Дата получения',
+  owner_id: 'Владелец', responsible_po_id: 'Ответственный PO', business_analyst_id: 'Бизнес-аналитик', it_product_lead_id: 'IT Product Lead',
+  team_id: 'Команда', project_id: 'Проект', task_type_id: 'Тип задачи', channel_id: 'Канал', department_id: 'Подразделение', business_customer_id: 'Бизнес-заказчик',
+  key_project: 'Ключевой проект', key_project_status: 'Статус ключ. проекта', directorate_status: 'Статус для директорской', did_status: 'Статус для ДИД', is_from_leadership: 'От руководства', is_regular: 'Регулярная',
+  effort_days: 'Трудозатраты дни', effort_rub: 'Трудозатраты руб', financial_effect: 'Фин. эффект', ice_impact: 'ICE Impact', ice_confidence: 'ICE Confidence', ice_ease: 'ICE Ease',
+  status_comment: 'Статус-комментарий', rejection_reason: 'Причина отклонения', comment: 'Комментарий', what_if: 'What-If', dod: 'Definition of Done', link_jira: 'Ссылка на Jira', link_mockups: 'Ссылка на макеты',
+  tags: 'Теги'
+};
+
+const FIELD_TYPES_BULK = {
+  status_id: 'select', priority_id: 'select', progress: 'number',
+  deadline_id: 'select', date_received: 'date',
+  owner_id: 'select', responsible_po_id: 'select', business_analyst_id: 'select', it_product_lead_id: 'select',
+  team_id: 'select', project_id: 'select', task_type_id: 'select', channel_id: 'select', department_id: 'select', business_customer_id: 'select',
+  key_project: 'select_yesno', key_project_status: 'select', directorate_status: 'text', did_status: 'text', is_from_leadership: 'select_yesno', is_regular: 'select_yesno',
+  effort_days: 'number', effort_rub: 'number', financial_effect: 'number', ice_impact: 'number', ice_confidence: 'number', ice_ease: 'number',
+  status_comment: 'textarea', rejection_reason: 'textarea', comment: 'textarea', what_if: 'textarea', dod: 'textarea', link_jira: 'text', link_mockups: 'text',
+  tags: 'tags'
+};
+
+const REQUIRES_REASON_STATUSES_BULK = ['ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА', 'ХОЛД', 'ЭСКАЛАЦИЯ НА ЛТ'];
+
+export function showBulkOpsModal(app, scope, tasks) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('bulk-modal-overlay');
+    if (existing) return;
+
+    let step = 1;
+    let excluded = new Set();
+    let selectedFields = [];
+    let fieldValues = {};
+    let userModified = false;
+    let currentPage = 1;
+    const PAGE_SIZE = 100;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'bulk-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '1100';
+
+    const totalTasks = tasks.length;
+    const totalPages = Math.ceil(totalTasks / PAGE_SIZE);
+
+    function getSelectedCount() {
+      return totalTasks - excluded.size;
+    }
+
+    function getPageTasks() {
+      const start = (currentPage - 1) * PAGE_SIZE;
+      return tasks.slice(start, start + PAGE_SIZE);
+    }
+
+    function getPageTaskIds() {
+      return getPageTasks().map(t => t.id);
+    }
+
+    function renderStep() {
+      const subtitle = step === 1 ? 'Шаг 1 из 2 — выбор задач' : 'Шаг 2 из 2 — изменение полей';
+      let bodyContent = '';
+
+      if (step === 1) {
+        const selected = getSelectedCount();
+        const pageTaskIds = getPageTaskIds();
+        const pageSelectedCount = pageTaskIds.filter(id => !excluded.has(id)).length;
+        const selectAllDisabled = pageSelectedCount === pageTaskIds.length;
+        const clearAllDisabled = pageSelectedCount === 0;
+
+        let rowsHtml = '';
+        const tasksToShow = getPageTasks();
+        for (const t of tasksToShow) {
+          const isOff = excluded.has(t.id);
+          rowsHtml += `
+            <div class="bc-row ${isOff ? 'bc-row-off' : ''}" data-task-id="${t.id}" style="display:grid;grid-template-columns:22px 46px 1fr 150px 120px;gap:0;border-bottom:1px solid var(--border-color);cursor:pointer;">
+              <div style="display:flex;align-items:center;justify-content:center;padding:8px;">
+                <input type="checkbox" class="bc-cb" value="${t.id}" ${isOff ? '' : 'checked'} style="margin:0;accent-color:var(--accent);">
+              </div>
+              <div style="padding:8px;font-family:monospace;font-size:12px;color:var(--text-muted);">#${t.id}</div>
+              <div style="padding:8px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.title || '—')}</div>
+              <div style="padding:8px;font-size:12px;color:var(--text-secondary);">${escapeHtml(t.status_name || t.status || '—')}</div>
+              <div style="padding:8px;font-size:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums;">${escapeHtml(t.deadline_name || t.deadline || '—')}</div>
+            </div>
+          `;
+        }
+
+        const paginationHtml = `
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;flex-shrink:0;background:var(--bg-tertiary);">
+            <button id="bc-page-prev" class="bc-link-btn" ${currentPage === 1 ? 'disabled style="opacity:.4;cursor:default;"' : ''}>←</button>
+            <span style="font-size:12px;color:var(--text-secondary);">Страница <strong>${currentPage}</strong> из <strong>${totalPages}</strong></span>
+            <button id="bc-page-next" class="bc-link-btn" ${currentPage === totalPages ? 'disabled style="opacity:.4;cursor:default;"' : ''}>→</button>
+          </div>
+        `;
+
+        const emptyMsg = totalTasks === 0 ? `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">В текущем фильтре нет задач. Закройте окно и измените фильтр в реестре.</div>` : '';
+
+        bodyContent = `
+          <div style="display:flex;flex-direction:column;flex:1;min-height:0;padding:12px 16px 16px 16px;">
+            <p style="margin:0 0 12px 0;font-size:13px;color:var(--text-secondary);line-height:1.5;">В список попали задачи с учетом примененных на странице фильтров. Выберите из них те, по которым хотите сделать массовую корректировку атрибутов.</p>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
+              <span style="font-size:14px;">Выбрано <strong id="bc-count" style="color:var(--accent);">${selected}</strong> из ${totalTasks}</span>
+              <div style="display:flex;gap:12px;font-size:13px;">
+                <button id="bc-select-all" class="bc-link-btn" ${selectAllDisabled ? 'disabled style="opacity:.5;cursor:default;"' : ''}>Выбрать все</button>
+                <span style="color:var(--text-muted);">·</span>
+                <button id="bc-clear-all" class="bc-link-btn" ${clearAllDisabled ? 'disabled style="opacity:.5;cursor:default;"' : ''}>Снять все</button>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;flex:1;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;min-height:0;">
+              <div class="bc-table-head" style="display:grid;grid-template-columns:22px 46px 1fr 150px 120px;gap:0;background:var(--bg-tertiary);border-radius:8px 8px 0 0;flex-shrink:0;">
+                <div style="padding:8px;"></div>
+                <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">ID</div>
+                <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">ЗАДАЧА</div>
+                <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">СТАТУС</div>
+                <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">СРОК</div>
+              </div>
+              <div class="bc-rows-container" style="flex:1;overflow-y:auto;min-height:0;padding-left:4px;">
+                ${emptyMsg || rowsHtml}
+              </div>
+              ${paginationHtml}
+            </div>
+          </div>
+        `;
+      } else {
+        const selected = getSelectedCount();
+        let fieldsRowsHtml = '';
+        for (const item of selectedFields) {
+          const fl = FIELD_LABELS_BULK[item.field] || item.field;
+          let controlHtml = '';
+          const ftype = FIELD_TYPES_BULK[item.field] || 'text';
+
+          if (ftype === 'select') {
+            const opts = getSelectOptions(item.field);
+            controlHtml = `<select class="bc-field-val" data-field="${item.field}" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">${opts}</select>`;
+          } else if (ftype === 'select_yesno') {
+            controlHtml = `<select class="bc-field-val" data-field="${item.field}" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;"><option value="">—</option><option value="true">Да</option><option value="false">Нет</option></select>`;
+          } else if (ftype === 'number') {
+            controlHtml = `<input type="number" class="bc-field-val" data-field="${item.field}" value="${item.value ?? ''}" placeholder="0" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
+          } else if (ftype === 'date') {
+            controlHtml = `<input type="date" class="bc-field-val" data-field="${item.field}" value="${item.value ?? ''}" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
+          } else if (ftype === 'textarea') {
+            controlHtml = `<textarea class="bc-field-val" data-field="${item.field}" rows="2" placeholder="Введите значение" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;resize:none;">${escapeHtml(item.value || '')}</textarea>`;
+          } else {
+            controlHtml = `<input type="text" class="bc-field-val" data-field="${item.field}" value="${escapeHtml(item.value || '')}" placeholder="Введите значение" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
+          }
+
+          fieldsRowsHtml += `
+            <div class="bc-field-row" data-field="${item.field}" style="display:grid;grid-template-columns:190px 1fr 28px;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-color);align-items:center;">
+              <div style="font-size:13px;color:var(--text-secondary);padding:0 8px;">${fl}</div>
+              <div>${controlHtml}</div>
+              <button class="bc-field-remove" data-field="${item.field}" style="width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center;border-radius:4px;">✕</button>
+            </div>
+          `;
+        }
+
+        const addFieldBtn = `
+          <button id="bc-add-field" style="width:100%;padding:10px;border:1px dashed var(--border-color);border-radius:8px;background:none;cursor:pointer;color:var(--text-secondary);font-size:13px;margin-top:12px;">+ Добавить поле</button>
+        `;
+
+        const fieldPickerHtml = `
+          <div id="bc-field-picker" class="hidden" style="margin-top:12px;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);">
+            <input type="text" id="bc-field-search" placeholder="Найти поле по названию…" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;margin-bottom:10px;">
+            <div id="bc-field-list" style="max-height:240px;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;"></div>
+          </div>
+        `;
+
+        const summaryText = selectedFields.length === 0
+          ? '<span style="color:var(--text-muted);font-size:13px;">Пока нечего применять — добавьте хотя бы одно поле со значением</span>'
+          : `<span style="font-size:13px;">Будет изменено ${selectedFields.length} ${pluralize(selectedFields.length, 'поле', 'поля', 'полей')} у <strong>${selected}</strong> ${pluralize(selected, 'задачи', 'задач', 'задач')}: ${selectedFields.map(f => FIELD_LABELS_BULK[f.field] || f.field).join(', ')}</span>`;
+
+        bodyContent = `
+          <div style="display:flex;flex-direction:column;padding:12px 16px 16px 16px;flex:1;min-height:0;">
+            <p style="margin:0 0 12px 0;font-size:13px;color:var(--text-secondary);line-height:1.5;">Изменения применятся к <strong>${selected}</strong> ${pluralize(selected, 'задаче', 'задачам', 'задачам')}. Добавьте поля, которые нужно изменить — значение будет одинаковым у всех выбранных задач.</p>
+            <div style="flex:1;overflow-y:auto;min-height:0;">
+              <div id="bc-fields-list" style="border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);padding:4px 8px;margin-bottom:12px;">
+                ${fieldsRowsHtml || '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">Поля не выбраны</div>'}
+              </div>
+              ${addFieldBtn}
+              ${fieldPickerHtml}
+            </div>
+            <div id="bc-summary" style="margin-top:12px;padding:12px;background:var(--bg-tertiary);border-radius:8px;font-size:13px;color:var(--text-secondary);flex-shrink:0;">${summaryText}</div>
+          </div>
+        `;
+      }
+
+      overlay.innerHTML = `
+        <div class="modal" style="background:var(--bg-primary);border-radius:12px;max-width:720px;width:95%;position:relative;max-height:90vh;display:flex;flex-direction:column;">
+          <div style="padding:8px 16px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:12px;">
+            <div style="display:flex;gap:8px;">
+              <span style="width:24px;height:24px;border-radius:50%;background:${step >= 1 ? 'var(--accent)' : 'var(--bg-secondary)'};color:${step >= 1 ? 'white' : 'var(--text-muted)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">1</span>
+              <span style="width:24px;height:24px;border-radius:50%;background:${step >= 2 ? 'var(--accent)' : 'var(--bg-secondary)'};color:${step >= 2 ? 'white' : 'var(--text-muted)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">2</span>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:14px;font-weight:600;color:var(--text-primary);">Массовые операции</div>
+              <div id="bc-subtitle" style="font-size:11px;color:var(--text-muted);">${subtitle}</div>
+            </div>
+            <button id="bc-modal-close" style="width:32px;height:32px;border:none;background:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:18px;">✕</button>
+          </div>
+          <div class="modal-body-scroll" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;">${bodyContent}</div>
+          <div style="padding:4px 16px 2px 16px;display:flex;justify-content:space-between;gap:12px;">
+            <button id="bc-cancel" class="btn btn-secondary btn-sm">Отмена</button>
+            <div style="display:flex;gap:8px;">
+              ${step === 2 ? '<button id="bc-back" class="btn btn-secondary btn-sm">← Назад к выбору задач</button>' : ''}
+              <button id="bc-next" class="btn btn-primary btn-sm" ${step === 1 && getSelectedCount() === 0 ? 'disabled' : ''}>${step === 1 ? 'Далее - что изменить' : `Применить к ${getSelectedCount()} ${pluralize(getSelectedCount(), 'задаче', 'задачам', 'задачам')}`}</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      bindStepEvents();
+    }
+
+    function getSelectOptions(field) {
+      let opts = '<option value="">—</option>';
+      switch (field) {
+        case 'status_id': (window.app?.statuses || []).forEach(s => { opts += `<option value="${s.id}">${escapeHtml(s.name)}</option>`; }); break;
+        case 'priority_id': (window.app?.priorities || []).forEach(p => { opts += `<option value="${p.id}">${escapeHtml(p.name)}</option>`; }); break;
+        case 'team_id': (window.app?.teams || []).forEach(t => { opts += `<option value="${t.id}">${escapeHtml(t.name)}</option>`; }); break;
+        case 'project_id': (window.app?.projects || []).forEach(p => { opts += `<option value="${p.id}">${escapeHtml(p.name)}</option>`; }); break;
+        case 'task_type_id': (window.app?.taskTypes || []).forEach(t => { opts += `<option value="${t.id}">${escapeHtml(t.name)}</option>`; }); break;
+        case 'channel_id': (window.app?.channels || []).forEach(c => { opts += `<option value="${c.id}">${escapeHtml(c.name)}</option>`; }); break;
+        case 'department_id': (window.app?.departments || []).forEach(d => { opts += `<option value="${d.id}">${escapeHtml(d.name)}</option>`; }); break;
+        case 'business_customer_id': (window.app?.businessCustomers || []).forEach(b => { opts += `<option value="${b.id}">${escapeHtml(b.name)}</option>`; }); break;
+        case 'deadline_id': (window.app?.deadlines || []).forEach(d => { opts += `<option value="${d.id}">${escapeHtml(d.name)}</option>`; }); break;
+        case 'owner_id':
+        case 'responsible_po_id':
+        case 'business_analyst_id':
+        case 'it_product_lead_id': (window.app?.users || []).forEach(u => { opts += `<option value="${u.id}">${escapeHtml(u.name)}</option>`; }); break;
+        case 'key_project_status': opts = '<option value="">—</option><option value="В работе">В работе</option><option value="На уточнении">На уточнении</option><option value="Выполнено">Выполнено</option>'; break;
+      }
+      return opts;
+    }
+
+    function pluralize(n, one, few, many) {
+      const m = Math.abs(n);
+      const mod10 = m % 10;
+      const mod100 = m % 100;
+      if (mod10 === 1 && mod100 !== 11) return one;
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+      return many;
+    }
+
+    function bindStepEvents() {
+      const nextBtn = overlay.querySelector('#bc-next');
+      const cancelBtn = overlay.querySelector('#bc-cancel');
+      const closeBtn = overlay.querySelector('#bc-modal-close');
+      const backBtn = overlay.querySelector('#bc-back');
+
+      cancelBtn?.addEventListener('click', handleClose);
+      closeBtn?.addEventListener('click', handleClose);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) handleClose(); });
+
+      if (step === 1) {
+        const selectAllBtn = overlay.querySelector('#bc-select-all');
+        const clearAllBtn = overlay.querySelector('#bc-clear-all');
+        const countEl = overlay.querySelector('#bc-count');
+        const prevBtn = overlay.querySelector('#bc-page-prev');
+        const nextPageBtn = overlay.querySelector('#bc-page-next');
+
+        function updatePageButtons() {
+          if (prevBtn) prevBtn.disabled = currentPage === 1;
+          if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages;
+          if (prevBtn) prevBtn.style.opacity = currentPage === 1 ? '0.4' : '1';
+          if (nextPageBtn) nextPageBtn.style.opacity = currentPage === totalPages ? '0.4' : '1';
+        }
+
+        function updateSelectClearButtons() {
+          const pageTaskIds = getPageTaskIds();
+          const pageSelectedCount = pageTaskIds.filter(id => !excluded.has(id)).length;
+          if (selectAllBtn) {
+            selectAllBtn.disabled = false;
+            selectAllBtn.style.opacity = '';
+            selectAllBtn.style.cursor = '';
+          }
+          if (clearAllBtn) {
+            clearAllBtn.disabled = pageSelectedCount === 0;
+            if (clearAllBtn.disabled) {
+              clearAllBtn.style.opacity = '0.5';
+              clearAllBtn.style.cursor = 'default';
+            } else {
+              clearAllBtn.style.opacity = '';
+              clearAllBtn.style.cursor = '';
+            }
+          }
+        }
+
+        selectAllBtn?.addEventListener('click', () => {
+          if (selectAllBtn.disabled) return;
+          userModified = true;
+          getPageTaskIds().forEach(id => excluded.delete(id));
+          document.querySelectorAll('.bc-cb').forEach(cb => { cb.checked = true; });
+          document.querySelectorAll('.bc-row').forEach(row => row.classList.remove('bc-row-off'));
+          if (countEl) countEl.textContent = getSelectedCount();
+          nextBtn && (nextBtn.disabled = getSelectedCount() === 0);
+          updateSelectClearButtons();
+        });
+
+        clearAllBtn?.addEventListener('click', () => {
+          if (clearAllBtn.disabled) return;
+          userModified = true;
+          getPageTaskIds().forEach(id => excluded.add(id));
+          document.querySelectorAll('.bc-cb').forEach(cb => { cb.checked = false; });
+          document.querySelectorAll('.bc-row').forEach(row => row.classList.add('bc-row-off'));
+          if (countEl) countEl.textContent = getSelectedCount();
+          nextBtn && (nextBtn.disabled = getSelectedCount() === 0);
+          updateSelectClearButtons();
+        });
+
+        prevBtn?.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            renderStep();
+          }
+        });
+
+        nextPageBtn?.addEventListener('click', () => {
+          if (currentPage < totalPages) {
+            currentPage++;
+            renderStep();
+          }
+        });
+
+        document.querySelectorAll('.bc-row').forEach(row => {
+          row.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            const cb = row.querySelector('.bc-cb');
+            if (cb) {
+              cb.checked = !cb.checked;
+              cb.dispatchEvent(new Event('change'));
+            }
+          });
+        });
+
+        document.querySelectorAll('.bc-cb').forEach(cb => {
+          cb.addEventListener('change', () => {
+            const taskId = parseInt(cb.value);
+            const row = cb.closest('.bc-row');
+            if (cb.checked) {
+              excluded.delete(taskId);
+              row?.classList.remove('bc-row-off');
+            } else {
+              excluded.add(taskId);
+              row?.classList.add('bc-row-off');
+              userModified = true;
+            }
+            if (countEl) countEl.textContent = getSelectedCount();
+            nextBtn && (nextBtn.disabled = getSelectedCount() === 0);
+            updateSelectClearButtons();
+          });
+        });
+
+        nextBtn?.addEventListener('click', () => {
+          step = 2;
+          renderStep();
+        });
+      } else {
+        backBtn?.addEventListener('click', () => {
+          step = 1;
+          currentPage = 1;
+          renderStep();
+        });
+
+        document.querySelectorAll('.bc-field-remove').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const field = btn.dataset.field;
+            selectedFields = selectedFields.filter(f => f.field !== field);
+            delete fieldValues[field];
+            renderStep();
+          });
+        });
+
+        document.querySelectorAll('.bc-field-val').forEach(input => {
+          input.addEventListener('input', () => {
+            const field = input.dataset.field;
+            const val = input.type === 'checkbox' ? input.checked : input.value;
+            const item = selectedFields.find(f => f.field === field);
+            if (item) item.value = val;
+            fieldValues[field] = val;
+            updateSummary();
+          });
+        });
+
+        const addFieldBtn = overlay.querySelector('#bc-add-field');
+        const fieldPicker = overlay.querySelector('#bc-field-picker');
+        const fieldSearch = overlay.querySelector('#bc-field-search');
+        const fieldList = overlay.querySelector('#bc-field-list');
+
+        addFieldBtn?.addEventListener('click', () => {
+          fieldPicker?.classList.toggle('hidden');
+          if (!fieldPicker?.classList.contains('hidden')) {
+            renderFieldList('');
+            fieldSearch?.focus();
+          }
+        });
+
+        fieldSearch?.addEventListener('input', () => {
+          renderFieldList(fieldSearch.value);
+        });
+
+        function renderFieldList(query) {
+          if (!fieldList) return;
+          const q = query.toLowerCase();
+          let html = '';
+          for (const [groupKey, group] of Object.entries(FIELD_GROUPS)) {
+            const groupLabel = group.label;
+            const filteredFields = group.fields.filter(f => {
+              if (selectedFields.some(sf => sf.field === f)) return false;
+              if (q && !FIELD_LABELS_BULK[f].toLowerCase().includes(q)) return false;
+              return true;
+            });
+            if (filteredFields.length === 0) continue;
+            html += `<div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;padding:4px 0 2px 0;border-bottom:1px solid var(--border-color);margin-bottom:2px;">${groupLabel}</div>`;
+            for (const f of filteredFields) {
+              html += `<button class="bc-field-option" data-field="${f}" style="padding:6px 8px;font-size:12px;border:1px solid var(--border-color);border-radius:4px;background:var(--bg-primary);color:var(--text-secondary);cursor:pointer;text-align:left;">${FIELD_LABELS_BULK[f] || f}</button>`;
+            }
+          }
+          fieldList.innerHTML = html || '<div style="grid-column:1/-1;padding:12px;text-align:center;color:var(--text-muted);font-size:12px;">Ничего не найдено</div>';
+          fieldList.querySelectorAll('.bc-field-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+              const field = opt.dataset.field;
+              if (!selectedFields.some(f => f.field === field)) {
+                selectedFields.push({ field, value: '' });
+                fieldValues[field] = '';
+              }
+              fieldPicker?.classList.add('hidden');
+              renderStep();
+            });
+          });
+        }
+
+        nextBtn?.addEventListener('click', async () => {
+          const fieldsPayload = {};
+          let hasReason = true;
+          for (const item of selectedFields) {
+            if (item.value === '' || item.value === null || item.value === undefined) continue;
+            fieldsPayload[item.field] = item.value;
+            if (item.field === 'status_id') {
+              const statusOpt = (window.app?.statuses || []).find(s => s.id == item.value);
+              if (statusOpt && REQUIRES_REASON_STATUSES_BULK.includes(statusOpt.name) && !fieldsPayload.rejection_reason) {
+                hasReason = false;
+              }
+            }
+          }
+          if (!hasReason) {
+            if (!selectedFields.some(f => f.field === 'rejection_reason')) {
+              selectedFields.push({ field: 'rejection_reason', value: '' });
+              fieldValues['rejection_reason'] = '';
+            }
+            window.toast?.('Для выбранного статуса требуется указать причину отклонения', 'warning');
+            renderStep();
+            return;
+          }
+          if (Object.keys(fieldsPayload).length === 0) {
+            window.toast?.('Добавьте хотя бы одно поле со значением', 'warning');
+            return;
+          }
+          const selected = getSelectedCount();
+          const confirmed = await showConfirmModal(
+            `Применить изменения? У ${selected} ${pluralize(selected, 'задачи', 'задач', 'задач')} будет изменено: ${selectedFields.map(f => FIELD_LABELS_BULK[f.field]).join(', ')}.`,
+            'Подтверждение',
+            `Применить к ${selected} ${pluralize(selected, 'задаче', 'задачам', 'задачам')}`,
+            'Отмена'
+          );
+          if (!confirmed) return;
+          try {
+            const result = await app.api.post('/tasks/bulk', {
+              action: 'update',
+              task_ids: tasks.filter(t => !excluded.has(t.id)).map(t => t.id),
+              fields: fieldsPayload
+            });
+            overlay.remove();
+            resolve({ success: true, count: selected });
+            window.toast?.(`Изменено ${selected} ${pluralize(selected, 'задача', 'задачи', 'задач')}`, 'success');
+          } catch (e) {
+            window.toast?.('Ошибка: ' + (e.message || 'Не удалось выполнить массовое изменение'), 'error');
+            overlay.remove();
+            resolve({ success: false, error: e });
+          }
+        });
+      }
+    }
+
+    function updateSummary() {
+      const summaryEl = overlay.querySelector('#bc-summary');
+      if (!summaryEl) return;
+      const count = getSelectedCount();
+      if (selectedFields.length === 0) {
+        summaryEl.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">Пока нечего применять — добавьте хотя бы одно поле со значением</span>';
+      } else {
+        summaryEl.innerHTML = `<span style="font-size:13px;">Будет изменено ${selectedFields.length} ${pluralize(selectedFields.length, 'поле', 'поля', 'полей')} у <strong>${count}</strong> ${pluralize(count, 'задачи', 'задач', 'задач')}: ${selectedFields.map(f => FIELD_LABELS_BULK[f.field] || f.field).join(', ')}</span>`;
+      }
+    }
+
+    async function handleClose() {
+      if (userModified || selectedFields.length > 0) {
+        const confirmed = await showConfirmModal(
+          'Закрыть без применения? Настройки массовой операции не сохранятся - выбор задач и добавленные поля будут сброшены.',
+          'Закрыть без применения?',
+          'Закрыть и сбросить',
+          'Вернуться'
+        );
+        if (!confirmed) return;
+      }
+      overlay.remove();
+      resolve({ success: false });
+    }
+
+    document.body.appendChild(overlay);
+    renderStep();
+  });
+}
+
+export function importTasksFromExcel(app, onSuccess) {
+  const existing = document.getElementById('import-tasks-overlay');
+  if (existing) existing.remove();
+
+  const DB_KEYS = [
+    'id', 'title', 'description', 'date_received', 'channel_id', 'business_customer_id',
+    'department_id', 'project_id', 'task_type_id', 'priority_id', 'status_id', 'deadline_id',
+    'effort_days', 'effort_rub', 'effort_designee', 'effort_analytics', 'effort_be',
+    'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery',
+    'actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics', 'actual_effort_be',
+    'actual_effort_fe', 'actual_effort_test', 'actual_effort_test_auto',
+    'financial_effect', 'financial_effect_justification', 'ice_impact', 'ice_confidence', 'ice_ease',
+    'progress', 'what_if', 'dod', 'link_mockups', 'link_jira', 'rejection_reason',
+    'comment', 'status_comment', 'owner_id', 'responsible_po_id', 'business_analyst_id',
+    'it_product_lead_id', 'key_project', 'key_project_status', 'directorate_status',
+    'did_status', 'did_demo', 'metric_kr_plan', 'metric_kr_fact',
+    'is_from_leadership', 'is_regular', 'involved_teams', 'created_by'
+  ];
+
+  function downloadTemplate() {
+    const fieldLabels = window.app?.fieldLabels || {};
+    const headerLabels = DB_KEYS.map(key => fieldLabels[key] || key);
+
+    const exampleValues = {
+      id: '',
+      title: 'Пример задачи',
+      description: 'Описание задачи',
+      date_received: '2026-01-01',
+      channel_id: '',
+      business_customer_id: '',
+      department_id: '',
+      project_id: '',
+      task_type_id: '',
+      priority_id: '1',
+      status_id: '1',
+      deadline_id: '1',
+      effort_days: '5',
+      effort_rub: '100000',
+      effort_designee: '',
+      effort_analytics: '',
+      effort_be: '',
+      effort_python_be: '',
+      effort_fe: '',
+      effort_test: '',
+      effort_test_auto: '',
+      effort_delivery: '',
+      actual_effort_days: '',
+      actual_effort_designee: '',
+      actual_effort_analytics: '',
+      actual_effort_be: '',
+      actual_effort_fe: '',
+      actual_effort_test: '',
+      actual_effort_test_auto: '',
+      financial_effect: '1.5',
+      financial_effect_justification: '',
+      ice_impact: '',
+      ice_confidence: '',
+      ice_ease: '',
+      progress: '0',
+      what_if: '',
+      dod: '',
+      link_mockups: '',
+      link_jira: '',
+      rejection_reason: '',
+      comment: '',
+      status_comment: '',
+      owner_id: '',
+      responsible_po_id: '',
+      business_analyst_id: '',
+      it_product_lead_id: '',
+      key_project: 'false',
+      key_project_status: '',
+      directorate_status: '',
+      did_status: '',
+      did_demo: 'false',
+      metric_kr_plan: '',
+      metric_kr_fact: '',
+      is_from_leadership: 'false',
+      is_regular: 'false',
+      involved_teams: '',
+      created_by: ''
+    };
+
+    const header = headerLabels.join(';');
+    const exampleRow = DB_KEYS.map(key => exampleValues[key] !== undefined ? exampleValues[key] : '').join(';');
+    const csv = '\uFEFF' + header + '\n' + exampleRow + '\n';
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'task_import_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'import-tasks-overlay';
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="import-tasks-modal" style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:90vh;overflow-y:auto;position:relative;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h2 style="margin:0;font-size:18px;color:var(--text-primary);">Импорт задач из Excel</h2>
+        <button class="btn btn-ghost btn-sm" id="import-close-btn" style="padding:4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <a href="#" id="download-template-link" style="font-size:13px;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:6px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Скачать шаблон CSV
+        </a>
+      </div>
+
+      <div id="import-drop-zone" style="border:2px dashed var(--border-color);border-radius:8px;padding:32px;text-align:center;cursor:pointer;margin-bottom:16px;transition:all 0.2s;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p style="margin:0 0 8px 0;color:var(--text-primary);font-size:14px;">Перетащите CSV файл сюда или нажмите для выбора</p>
+        <p style="margin:0;color:var(--text-muted);font-size:12px;">Поддерживается только формат CSV</p>
+        <input type="file" id="import-file-input" accept=".csv" style="display:none;">
+      </div>
+
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
+        <input type="checkbox" id="import-first-row-header" checked style="margin:0;">
+        Первая строка содержит заголовки
+      </label>
+
+      <div id="import-preview-section" style="display:none;margin-bottom:16px;">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Preview (первые 5 строк):</div>
+        <div style="overflow-x:auto;border:1px solid var(--border-color);border-radius:8px;max-height:200px;overflow-y:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead id="import-preview-thead" style="position:sticky;top:0;background:var(--bg-tertiary);"></thead>
+            <tbody id="import-preview-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="import-error-summary" style="display:none;margin-bottom:16px;padding:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;">
+        <div style="font-size:13px;color:var(--danger);font-weight:600;margin-bottom:8px;">Ошибки при проверке:</div>
+        <ul id="import-error-list" style="margin:0;padding-left:20px;font-size:12px;color:var(--danger);"></ul>
+      </div>
+
+      <div id="import-result" style="display:none;margin-bottom:16px;padding:16px;border-radius:8px;">
+        <div id="import-result-content" style="font-size:14px;"></div>
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:flex-end;">
+        <button class="btn btn-secondary btn-sm" id="import-cancel-btn" style="padding:8px 16px;">Отмена</button>
+        <button class="btn btn-primary btn-sm" id="import-submit-btn" disabled style="padding:8px 16px;">Импортировать</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  let selectedFile = null;
+  let previewData = null;
+  let errors = [];
+
+  const closeImportModal = () => {
+    overlay.classList.add('modal-closing');
+    setTimeout(() => overlay.remove(), 200);
+  };
+
+  overlay.querySelector('#import-close-btn').addEventListener('click', closeImportModal);
+  overlay.querySelector('#import-cancel-btn').addEventListener('click', closeImportModal);
+  overlay.querySelector('#download-template-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    downloadTemplate();
+  });
+
+  const dropZone = overlay.querySelector('#import-drop-zone');
+  const fileInput = overlay.querySelector('#import-file-input');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--accent)';
+    dropZone.style.background = 'color-mix(in srgb, var(--accent) 5%, transparent)';
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.borderColor = 'var(--border-color)';
+    dropZone.style.background = 'transparent';
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--border-color)';
+    dropZone.style.background = 'transparent';
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.csv')) {
+      handleFile(file);
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) {
+      handleFile(fileInput.files[0]);
+    }
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      parseAndPreview(content);
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function parseAndPreview(content) {
+    const lines = content.split('\n').filter(l => l.trim());
+    if (lines.length === 0) return;
+
+    const firstRowHeader = overlay.querySelector('#import-first-row-header').checked;
+    const delimiter = content.includes(';') ? ';' : ',';
+
+    const rows = [];
+    for (const line of lines) {
+      const cells = [];
+      let inQuotes = false;
+      let current = '';
+      for (const char of line) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+          cells.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      cells.push(current.trim());
+      rows.push(cells);
+    }
+
+    const headers = firstRowHeader ? rows[0] : rows[0].map((_, i) => `Колонка ${i + 1}`);
+    const dataRows = firstRowHeader ? rows.slice(1) : rows;
+
+    previewData = { headers, rows: dataRows, delimiter };
+    errors = validateData(dataRows, headers);
+
+    renderPreview();
+    renderErrors();
+
+    overlay.querySelector('#import-submit-btn').disabled = errors.length > 0;
+  }
+
+  function validateData(dataRows, headers) {
+    const errs = [];
+    const titleIdx = headers.findIndex(h => h.toLowerCase() === 'title');
+    const teamIdIdx = headers.findIndex(h => h.toLowerCase() === 'team_id');
+    const idIdx = headers.findIndex(h => h.toLowerCase() === 'id');
+
+    if (titleIdx === -1) {
+      errs.push('Отсутствует обязательная колонка "title"');
+    }
+    if (teamIdIdx === -1) {
+      errs.push('Отсутствует обязательная колонка "team_id"');
+    }
+
+    dataRows.slice(0, 20).forEach((row, i) => {
+      const rowNum = i + 2;
+      if (idIdx !== -1 && row[idIdx]) {
+        const id = parseInt(row[idIdx]);
+        if (!isNaN(id) && id > 0) {
+          errs.push({ row: rowNum, id, message: `Задача с ID ${id} уже существует` });
+        }
+      }
+    });
+
+    return errs;
+  }
+
+  function renderPreview() {
+    const previewSection = overlay.querySelector('#import-preview-section');
+    const thead = overlay.querySelector('#import-preview-thead');
+    const tbody = overlay.querySelector('#import-preview-tbody');
+
+    if (!previewData) {
+      previewSection.style.display = 'none';
+      return;
+    }
+
+    previewSection.style.display = 'block';
+    thead.innerHTML = `<tr>${previewData.headers.map(h => `<th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border-color);white-space:nowrap;">${escapeHtml(h)}</th>`).join('')}</tr>`;
+
+    const previewRows = previewData.rows.slice(0, 5);
+    tbody.innerHTML = previewRows.map(row => {
+      const idIdx = previewData.headers.findIndex(h => h.toLowerCase() === 'id');
+      const isConflict = idIdx !== -1 && row[idIdx] && parseInt(row[idIdx]) > 0;
+      return `<tr style="background:${isConflict ? 'rgba(245,158,11,0.1)' : 'transparent'};">
+        ${row.map((cell, i) => `<td style="padding:6px 12px;border-bottom:1px solid var(--border-color);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cell || '')}</td>`).join('')}
+      </tr>`;
+    }).join('');
+  }
+
+  function renderErrors() {
+    const errorSummary = overlay.querySelector('#import-error-summary');
+    const errorList = overlay.querySelector('#import-error-list');
+
+    if (errors.length === 0) {
+      errorSummary.style.display = 'none';
+      return;
+    }
+
+    errorSummary.style.display = 'block';
+    const generalErrors = errors.filter(e => typeof e === 'string');
+    const rowErrors = errors.filter(e => typeof e === 'object');
+
+    let html = '';
+    if (generalErrors.length > 0) {
+      html += generalErrors.map(e => `<li>${escapeHtml(e)}</li>`).join('');
+    }
+    if (rowErrors.length > 0) {
+      rowErrors.slice(0, 10).forEach(e => {
+        html += `<li>Строка ${e.row}: ${escapeHtml(e.message)}</li>`;
+      });
+      if (rowErrors.length > 10) {
+        html += `<li>... и ещё ${rowErrors.length - 10} ошибок</li>`;
+      }
+    }
+    errorList.innerHTML = html;
+  }
+
+  overlay.querySelector('#import-first-row-header').addEventListener('change', () => {
+    if (selectedFile) {
+      const reader = new FileReader();
+      reader.onload = (e) => parseAndPreview(e.target.result);
+      reader.readAsText(selectedFile, 'UTF-8');
+    }
+  });
+
+  overlay.querySelector('#import-submit-btn').addEventListener('click', async () => {
+    if (!selectedFile || !previewData) return;
+
+    const btn = overlay.querySelector('#import-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Импорт...';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const result = await app.api.post('/tasks/import', formData, true);
+
+      const resultDiv = overlay.querySelector('#import-result');
+      resultDiv.style.display = 'block';
+
+      let html = `<div style="color:var(--success);font-weight:600;">Импорт завершён!</div>`;
+      html += `<div style="margin-top:8px;">Создано задач: <strong>${result.created}</strong></div>`;
+      if (result.updated > 0) {
+        html += `<div>Обновлено: <strong>${result.updated}</strong></div>`;
+      }
+      if (result.errors && result.errors.length > 0) {
+        html += `<div style="margin-top:8px;color:var(--danger);">Ошибок: <strong>${result.errors.length}</strong></div>`;
+        html += `<ul style="margin:8px 0 0 0;padding-left:20px;font-size:12px;max-height:100px;overflow-y:auto;">`;
+        result.errors.slice(0, 5).forEach(e => {
+          html += `<li>Строка ${e.row}: ${escapeHtml(e.message)}</li>`;
+        });
+        if (result.errors.length > 5) {
+          html += `<li>... и ещё ${result.errors.length - 5} ошибок</li>`;
+        }
+        html += `</ul>`;
+      }
+
+      overlay.querySelector('#import-result-content').innerHTML = html;
+
+      if (result.errors && result.errors.length === 0) {
+        setTimeout(() => {
+          closeImportModal();
+          if (onSuccess) onSuccess();
+        }, 1500);
+      }
+    } catch (e) {
+      window.toast?.('Ошибка импорта: ' + (e.message || 'Неизвестная ошибка'), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Импортировать';
+    }
+  });
+}

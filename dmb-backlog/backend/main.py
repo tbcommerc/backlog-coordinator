@@ -39,11 +39,24 @@ async def _notification_scheduler():
 async def lifespan(app: FastAPI):
     """Application startup/shutdown events"""
     init_db()
-    from seed import seed_dict_always, seed_initial_data, seed_team_resources, migrate_team_fk_ids
+    from seed import seed_dict_always, seed_initial_data, seed_team_resources, migrate_team_fk_ids, seed_field_labels
     seed_dict_always()
+    seed_field_labels()
     seed_initial_data()
     seed_team_resources()
     migrate_team_fk_ids()
+
+    # Sync standard reports registry with DB (idempotent, additive)
+    try:
+        from database import SessionLocal
+        from routers.reports_router import ensure_standard_reports
+        db = SessionLocal()
+        try:
+            ensure_standard_reports(db)
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[startup] Standard reports sync failed: {e}")
 
     # Startup verification: log user count for safety
     try:

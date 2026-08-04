@@ -1,3 +1,6 @@
+import { renderStatus, renderPriority } from './reports.js';
+import { TASK_COLUMNS, buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
+
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
@@ -789,35 +792,42 @@ function renderDictionariesTab(app) {
 
 // ==================== REPORTS TAB ====================
 
-const REPORT_FIELDS = [
-  { key: 'id', label: 'ID' },
-  { key: 'title', label: 'Название задачи' },
-  { key: 'description', label: 'Описание' },
-  { key: 'team_name', label: 'Команда' },
-  { key: 'priority_name', label: 'Приоритет' },
-  { key: 'status_name', label: 'Статус' },
-  { key: 'project_name', label: 'Проект' },
-  { key: 'business_customer', label: 'Бизнес-заказчик' },
-  { key: 'business_customer_name', label: 'Бизнес-заказчик (имя)' },
-  { key: 'department_name', label: 'Подразделение' },
-  { key: 'channel_name', label: 'Канал поступления' },
-  { key: 'task_type_name', label: 'Тип задачи' },
-  { key: 'deadline_name', label: 'Дедлайн' },
-  { key: 'owner_name', label: 'Исполнитель' },
-  { key: 'progress', label: 'Прогресс' },
-  { key: 'effort_days', label: 'Трудозатраты (дни)' },
-  { key: 'effort_rub', label: 'Трудозатраты (руб)' },
-  { key: 'financial_effect', label: 'Фин. эффект' },
-  { key: 'cv', label: 'C/V' },
+function getReportFields() {
+  const fl = window.app?.fieldLabels || {};
+  return [
+  { key: 'id', label: fl.id || 'ID' },
+  { key: 'title', label: fl.title || 'Название задачи' },
+  { key: 'description', label: fl.description || 'Описание' },
+  { key: 'team_name', label: fl.team_id || 'Команда' },
+  { key: 'priority_name', label: fl.priority_id || 'Приоритет' },
+  { key: 'status_name', label: fl.status_id || 'Статус' },
+  { key: 'project_name', label: fl.project_id || 'Проект' },
+  { key: 'business_customer', label: fl.business_customer_id || 'Бизнес-заказчик' },
+  { key: 'business_customer_name', label: fl.business_customer_id || 'Бизнес-заказчик (имя)' },
+  { key: 'department_name', label: fl.department_id || 'Подразделение' },
+  { key: 'channel_name', label: fl.channel_id || 'Канал поступления' },
+  { key: 'task_type_name', label: fl.task_type_id || 'Тип задачи' },
+  { key: 'deadline_name', label: fl.deadline_id || 'Дедлайн' },
+  { key: 'owner_name', label: fl.owner_id || 'Исполнитель' },
+  { key: 'progress', label: fl.progress || 'Прогресс' },
+  { key: 'effort_days', label: fl.effort_days || 'Трудозатраты (дни)' },
+  { key: 'effort_rub', label: fl.effort_rub || 'Трудозатраты (руб)' },
+  { key: 'financial_effect', label: fl.financial_effect || 'Фин. эффект' },
+  { key: 'cv', label: fl.cv || 'C/V' },
   { key: 'ice_score', label: 'ICE Score' },
   { key: 'key_project', label: 'Ключевой проект' },
-  { key: 'key_project_status', label: 'Статус ключ. проекта' },
-  { key: 'directorate_status', label: 'Статус для директорской' },
-  { key: 'did_status', label: 'Статус для ДИД' },
+  { key: 'key_project_status', label: fl.key_project_status || 'Статус ключ. проекта' },
+  { key: 'directorate_status', label: fl.directorate_status || 'Статус для директорской' },
+  { key: 'did_status', label: fl.did_status || 'Статус для ДИД' },
+  { key: 'involved_teams', label: fl.involved_teams || 'Вовлечённые команды' },
+  { key: 'did_demo', label: fl.did_demo || 'Демо на оперативке' },
+  { key: 'what_if', label: 'Что если не сделаем?' },
+  { key: 'dod', label: 'Definition of Done' },
   { key: 'date_received', label: 'Дата получения' },
-  { key: 'created_at', label: 'Дата создания' },
-  { key: 'updated_at', label: 'Дата обновления' },
-];
+  { key: 'created_at', label: fl.created_at || 'Дата создания' },
+  { key: 'updated_at', label: fl.last_updated || 'Дата обновления' },
+  ];
+}
 
 const REPORT_GROUP_OPTIONS = [
   { value: '', label: 'Без группировки' },
@@ -841,6 +851,9 @@ const REPORT_SORT_FIELDS = [
   { value: 'ice_score', label: 'По ICE Score' },
   { value: 'created_at', label: 'По дате создания' },
 ];
+
+const scriptManagedReportKeys = ['directorate', 'did-operational'];
+const BOOLEAN_REPORT_FIELDS = ['key_project', 'did_demo', 'is_from_leadership', 'is_regular'];
 
 // ==================== HOME / TIMELINE TAB ====================
 
@@ -1109,25 +1122,35 @@ function parseReportJson(str) {
 
 function renderReportsTab(app) {
   const dbReports = adminData.reports || [];
-  const standardReports = [
-    { id: 0, name: 'Директорат', description: 'Приоритет Высокий + риски для директорской оперативки', type: 'standard' },
-    { id: 0, name: 'DID', description: 'Активные задачи для оперативки ДИД', type: 'standard' },
-    { id: 0, name: 'Проекты', description: 'Статус по ключевым проектным инициативам', type: 'standard' },
-    { id: 0, name: 'Рег-директора', description: 'Сводка для региональных директоров', type: 'standard' },
-  ];
+  const standardOrder = ['directorate', 'did-operational', 'projects', 'reg-directors', 'pip', 'did-backlog', 'progress'];
+  const standardReports = dbReports
+    .filter(r => r.type === 'standard')
+    .sort((a, b) => {
+      const ia = a.key ? standardOrder.indexOf(a.key) : -1;
+      const ib = b.key ? standardOrder.indexOf(b.key) : -1;
+      return ia - ib;
+    });
 
   if (adminReportView) {
     return renderReportView(app);
   }
 
   const standardCards = standardReports.map(r => `
-    <div class="card rounded-xl" style="padding:20px;min-height:140px;display:flex;flex-direction:column;background:linear-gradient(135deg,#64748b,#475569);color:white;opacity:0.7">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <i data-lucide="file-text" style="width:18px;height:18px;opacity:0.8"></i>
-        <h4 style="margin:0;font-size:13px;font-weight:600;color:white">${r.name}</h4>
-        <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px">Стандартный</span>
+    <div class="card rounded-xl" style="padding:20px;min-height:150px;display:flex;flex-direction:column;background:linear-gradient(135deg,#64748b,#475569);color:white;cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''" data-admin-report-id="${r.id}">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;min-height:40px">
+        <i data-lucide="file-text" style="width:18px;height:18px;opacity:0.8;flex-shrink:0;margin-top:1px"></i>
+        <h4 style="margin:0;font-size:13px;font-weight:600;color:white;line-height:1.3;flex:1;min-height:34px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${r.name}</h4>
+        <div style="display:flex;gap:2px;flex-shrink:0">
+          <button class="admin-edit-btn" data-type="report" data-id="${r.id}" style="padding:4px;border:none;background:rgba(255,255,255,0.15);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Настроить отчёт">
+            <i data-lucide="settings" style="width:14px;height:14px;color:white"></i>
+          </button>
+        </div>
       </div>
-      <div style="font-size:12px;opacity:0.8;flex:1">${r.description}</div>
+      <div style="font-size:12px;opacity:0.8;flex:1">${r.description || ''}</div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;flex-shrink:0">Стандартный</span>
+        ${r.key ? `<span style="font-size:10px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px">${r.key}</span>` : ''}
+      </div>
     </div>
   `).join('');
 
@@ -1147,7 +1170,7 @@ function renderReportsTab(app) {
             <h4 style="margin:0;font-size:13px;font-weight:600;color:var(--text-primary)">${r.name}</h4>
             ${r.is_public ? '<span style="font-size:10px;background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Публичный</span>' : ''}
           </div>
-          <div style="display:flex;gap:2px" onclick="event.stopPropagation()">
+          <div style="display:flex;gap:2px">
             <button class="admin-edit-btn" data-type="report" data-id="${r.id}" style="padding:4px;border:none;background:transparent;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
               <i data-lucide="pen-line" style="width:14px;height:14px;color:var(--text-muted)"></i>
             </button>
@@ -1193,6 +1216,7 @@ function renderReportView(app) {
   const groupOptions = REPORT_GROUP_OPTIONS.map(g =>
     `<option value="${g.value}"${report.group_by === g.value ? ' selected' : ''}>${g.label}</option>`
   ).join('');
+  const opLabels = { equals: '=', not_equals: '≠', contains: 'содержит', in: 'в списке', gt: '>', lt: '<' };
 
   return `
     <div class="admin-action-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
@@ -1203,16 +1227,20 @@ function renderReportView(app) {
         <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--text-primary)">${report.name}</h3>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-primary btn-sm" id="report-execute-btn" data-report-id="${report.id}">
-          <i data-lucide="play" style="width:14px;height:14px"></i> Выполнить
-        </button>
+        ${scriptManagedReportKeys.includes(report.key) ? `
+          <span class="badge badge-info" style="font-size:11px;padding:6px 10px;line-height:1.4;white-space:normal;text-align:left">Управляется сценарием страницы «Статусы для встреч»</span>
+        ` : `
+          <button class="btn btn-primary btn-sm" id="report-execute-btn" data-report-id="${report.id}">
+            <i data-lucide="play" style="width:14px;height:14px"></i> Выполнить
+          </button>
+        `}
       </div>
     </div>
     ${report.description ? `<p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0">${report.description}</p>` : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
       <div class="card" style="padding:12px">
         <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Фильтры</div>
-        <div style="font-size:13px;color:var(--text-primary)">${filters && filters.length ? filters.map(f => `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;background:var(--bg-tertiary);font-size:12px">${f.field} ${f.operator || '='} ${Array.isArray(f.value) ? f.value.join(', ') : f.value}</span>`).join('') : '<span style="color:var(--text-muted)">Нет фильтров</span>'}</div>
+        <div style="font-size:13px;color:var(--text-primary)">${filters && filters.length ? filters.map(f => `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;background:var(--bg-tertiary);font-size:12px">${f.field} ${opLabels[f.operator] || f.operator || '='} ${Array.isArray(f.value) ? f.value.join(', ') : f.value}</span>`).join('') : '<span style="color:var(--text-muted)">Нет фильтров</span>'}</div>
       </div>
       <div class="card" style="padding:12px">
         <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Группировка / Сортировка</div>
@@ -1235,7 +1263,7 @@ function renderReportForm(data) {
   const existingFields = parseReportJson(data.fields) || [];
   const existingFilters = parseReportJson(data.filters) || [];
 
-  const fieldCheckboxes = REPORT_FIELDS.map(f => {
+  const fieldCheckboxes = getReportFields().map(f => {
     const checked = existingFields.includes(f.key) ? ' checked' : '';
     return `<label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
       <input type="checkbox" class="report-field-cb" value="${f.key}"${checked} style="width:14px;height:14px">
@@ -1253,7 +1281,22 @@ function renderReportForm(data) {
     `<option value="${s.value}"${data.sort_by === s.value ? ' selected' : ''}>${s.label}</option>`
   ).join('');
 
+  const standardBadge = data.type === 'standard' ? `
+    <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:11px;background:var(--bg-tertiary);color:var(--text-muted);padding:3px 8px;border-radius:6px">Стандартный отчёт</span>
+      ${data.key ? `<span style="font-size:11px;background:var(--accent-dim);color:var(--accent);padding:3px 8px;border-radius:6px;font-family:monospace">key: ${data.key}</span>` : ''}
+    </div>` : '';
+
+  const isScriptManaged = scriptManagedReportKeys.includes(data.key);
+  const scriptNotice = isScriptManaged ? `
+    <div style="margin-bottom:16px;padding:10px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-muted);font-size:12px;line-height:1.5">
+      Отчёт выполняется по сценарию страницы «Статусы для встреч» — со своей квартальной фильтрацией и группировкой.
+      Поля, фильтры и группировка заданы этим сценарием и вручную не настраиваются. Доступно изменение названия и описания.
+    </div>` : '';
+
   return `
+    ${standardBadge}
+    ${scriptNotice}
     <div class="form-group">
       <label class="form-label">Название отчёта <span class="required">*</span></label>
       <input class="input modal-field" id="report-name" value="${data.name || ''}" placeholder="Например: Задачи команды">
@@ -1270,6 +1313,10 @@ function renderReportForm(data) {
       </select>
     </div>
 
+    ${isScriptManaged ? `
+    <div style="margin-top:16px;padding:14px;background:var(--bg-tertiary);border:1px dashed var(--border-color);border-radius:8px;color:var(--text-muted);font-size:12px;text-align:center">
+      Настройка полей, фильтров и группировки для этого отчёта недоступна.
+    </div>` : `
     <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
       <strong style="font-size:13px">Поля для отображения</strong>
       <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Отметьте галочками колонки, которые будут видны в отчёте</div>
@@ -1280,7 +1327,7 @@ function renderReportForm(data) {
 
     <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
       <strong style="font-size:13px">Фильтры</strong>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Настройте условия фильтрации задач</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Настройте условия фильтрации задач. Для оператора «В списке» значения указываются через запятую</div>
     </div>
     <div id="report-filters-container">
       ${filterRows}
@@ -1308,12 +1355,12 @@ function renderReportForm(data) {
         <option value="asc"${data.sort_order !== 'desc' ? ' selected' : ''}>По возрастанию (А→Я)</option>
         <option value="desc"${data.sort_order === 'desc' ? ' selected' : ''}>По убыванию (Я→А)</option>
       </select>
-    </div>
+    </div>`}
   `;
 }
 
 function renderFilterRow(filter, index) {
-  const fieldOpts = REPORT_FIELDS.map(f =>
+  const fieldOpts = getReportFields().map(f =>
     `<option value="${f.key}"${filter.field === f.key ? ' selected' : ''}>${f.label}</option>`
   ).join('');
   const opOpts = [
@@ -1340,6 +1387,7 @@ function renderFilterRow(filter, index) {
 }
 
 function getReportPayload() {
+  const isScriptManaged = scriptManagedReportKeys.includes(adminModal.data && adminModal.data.key);
   const selectedFields = Array.from(document.querySelectorAll('.report-field-cb:checked')).map(cb => cb.value);
   const filterRows = document.querySelectorAll('.report-filter-row');
   const filters = Array.from(filterRows).map(row => {
@@ -1350,10 +1398,33 @@ function getReportPayload() {
     if (operator === 'in') {
       value = rawValue.split(',').map(s => s.trim()).filter(Boolean);
     } else if (operator === 'gt' || operator === 'lt') {
-      value = parseFloat(rawValue) || rawValue;
+      const num = parseFloat(rawValue);
+      value = Number.isNaN(num) ? rawValue : num;
+    } else if (BOOLEAN_REPORT_FIELDS.includes(field) && typeof rawValue === 'string') {
+      const t = rawValue.trim().toLowerCase();
+      if (t === 'true' || t === '1') value = true;
+      else if (t === 'false' || t === '0') value = false;
     }
     return { field, operator, value };
-  }).filter(f => f.field);
+  }).filter(f => {
+    if (!f.field) return false;
+    if (f.operator === 'not_equals') return true;
+    if (Array.isArray(f.value)) return f.value.length > 0;
+    return f.value !== '' && f.value !== null && f.value !== undefined;
+  });
+
+  if (isScriptManaged) {
+    return {
+      name: document.getElementById('report-name')?.value || '',
+      description: document.getElementById('report-description')?.value || null,
+      is_public: document.getElementById('report-is-public')?.value === 'true',
+      fields: (adminModal.data && adminModal.data.fields) || null,
+      filters: (adminModal.data && adminModal.data.filters) || null,
+      group_by: (adminModal.data && adminModal.data.group_by) || null,
+      sort_by: (adminModal.data && adminModal.data.sort_by) || null,
+      sort_order: (adminModal.data && adminModal.data.sort_order) || 'asc',
+    };
+  }
 
   return {
     name: document.getElementById('report-name')?.value || '',
@@ -1365,6 +1436,22 @@ function getReportPayload() {
     sort_by: document.getElementById('report-sort-by')?.value || null,
     sort_order: document.getElementById('report-sort-order')?.value || 'asc',
   };
+}
+
+function adminReportCell(f, item) {
+  let val = item[f];
+  if (val === null || val === undefined) val = '—';
+  if (typeof val === 'boolean') val = val ? 'Да' : 'Нет';
+  if (f === 'progress' && val !== '—') {
+    const p = Number(val) || 0;
+    val = `<div style="display:flex;align-items:center;gap:6px"><div style="width:60px;height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden"><div style="width:${p}%;height:100%;background:${p >= 100 ? 'var(--success)' : p > 0 ? 'var(--warning)' : 'var(--border-color)'}"></div></div><span style="font-size:11px">${p}%</span></div>`;
+  } else if (f === 'cv' && val !== '—') val = `<span style="font-weight:600;color:${val >= 2 ? 'var(--success)' : val >= 1 ? 'var(--warning)' : 'var(--danger)'}">${val}</span>`;
+  else if (f === 'financial_effect' && val !== '—') val = `${val} млн ₽`;
+  else if (f === 'effort_rub' && val !== '—') val = `${val} тыс ₽`;
+  else if (f === 'priority_name') val = val === '—' ? '—' : renderPriority(val);
+  else if (f === 'status_name') val = val === '—' ? '—' : renderStatus(val);
+  else if (f === 'key_project') val = val === 'Да' ? '<span style="color:var(--accent);font-weight:600">★</span>' : '';
+  return val;
 }
 
 async function executeAdminReport(reportId, app) {
@@ -1384,29 +1471,15 @@ async function executeAdminReport(reportId, app) {
     }
 
     const report = adminReportView;
-    const displayFields = parseReportJson(report.fields) || REPORT_FIELDS.slice(0, 8).map(f => f.key);
+    const displayFields = parseReportJson(report.fields) || getReportFields().slice(0, 8).map(f => f.key);
 
     const headers = displayFields.map(f => {
-      const def = REPORT_FIELDS.find(rf => rf.key === f);
+      const def = getReportFields().find(rf => rf.key === f);
       return `<th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);border-bottom:2px solid var(--border-color);background:var(--bg-tertiary);white-space:nowrap">${def ? def.label : f}</th>`;
     }).join('');
 
     const rows = items.map(item => {
-      const cells = displayFields.map(f => {
-        let val = item[f];
-        if (val === null || val === undefined) val = '—';
-        if (typeof val === 'boolean') val = val ? 'Да' : 'Нет';
-        if (f === 'progress') val = `<div style="display:flex;align-items:center;gap:6px"><div style="width:60px;height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden"><div style="width:${val}%;height:100%;background:${val >= 100 ? 'var(--success)' : val > 0 ? 'var(--warning)' : 'var(--border-color)'}"></div></div><span style="font-size:11px">${val}%</span></div>`;
-        else if (f === 'cv' && val !== '—') val = `<span style="font-weight:600;color:${val >= 2 ? 'var(--success)' : val >= 1 ? 'var(--warning)' : 'var(--danger)'}">${val}</span>`;
-        else if (f === 'financial_effect' && val !== '—') val = `${val} млн ₽`;
-        else if (f === 'effort_rub' && val !== '—') val = `${val} тыс ₽`;
-        else if (f === 'priority_name') {
-          const cls = val === 'ВЫСОКИЙ' ? 'badge-high' : val === 'НИЗКИЙ' ? 'badge-low' : 'badge-medium';
-          val = `<span class="badge ${cls}" style="font-size:11px">${val}</span>`;
-        }
-        else if (f === 'key_project') val = val === 'Да' ? '<span style="color:var(--accent);font-weight:600">★</span>' : '';
-        return `<td style="padding:8px 10px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-primary);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${val}</td>`;
-      }).join('');
+      const cells = displayFields.map(f => `<td style="padding:8px 10px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-primary);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${adminReportCell(f, item)}</td>`).join('');
       return `<tr>${cells}</tr>`;
     }).join('');
 
@@ -1425,12 +1498,7 @@ async function executeAdminReport(reportId, app) {
               <table style="width:100%;border-collapse:collapse">
                 <thead><tr>${headers}</tr></thead>
                 <tbody>${grp.items.map(item => {
-                  const cells = displayFields.map(f => {
-                    let val = item[f];
-                    if (val === null || val === undefined) val = '—';
-                    if (typeof val === 'boolean') val = val ? 'Да' : 'Нет';
-                    return `<td style="padding:8px 10px;border-bottom:1px solid var(--border-color);font-size:12px">${val}</td>`;
-                  }).join('');
+                  const cells = displayFields.map(f => `<td style="padding:8px 10px;border-bottom:1px solid var(--border-color);font-size:12px">${adminReportCell(f, item)}</td>`).join('');
                   return `<tr>${cells}</tr>`;
                 }).join('')}</tbody>
               </table>
@@ -1461,58 +1529,8 @@ async function executeAdminReport(reportId, app) {
 
 // ==================== DISPLAY TAB ====================
 
-const DISPLAY_COLUMNS = [
-  { key: 'id', label: 'ID' },
-  { key: 'title', label: 'Задача' },
-  { key: 'description', label: 'Описание' },
-  { key: 'date_received', label: 'Дата получения' },
-  { key: 'status', label: 'Статус' },
-  { key: 'priority', label: 'Приоритет' },
-  { key: 'team', label: 'Команда' },
-  { key: 'channel', label: 'Канал' },
-  { key: 'business_customer', label: 'Бизнес-заказчик' },
-  { key: 'department', label: 'Подразделение' },
-  { key: 'project', label: 'Проект' },
-  { key: 'task_type', label: 'Тип задачи' },
-  { key: 'involved_teams', label: 'Вовлечённые команды' },
-  { key: 'deadline', label: 'Дедлайн' },
-  { key: 'deadline_po', label: 'PO-дедлайн' },
-  { key: 'effort_days', label: 'Трудозатраты (дни)' },
-  { key: 'effort_rub', label: 'Трудозатраты (руб)' },
-  { key: 'financial_effect', label: 'Фин. эффект' },
-  { key: 'cv', label: 'C/V' },
-  { key: 'ice_score', label: 'ICE' },
-  { key: 'progress', label: 'Прогресс' },
-  { key: 'owner', label: 'Владелец' },
-  { key: 'responsible_po', label: 'Ответственный PO' },
-  { key: 'business_analyst', label: 'Бизнес-аналитик' },
-  { key: 'it_product_lead', label: 'IT Product Lead' },
-  { key: 'key_project', label: 'Ключевой проект' },
-  { key: 'key_project_status', label: 'Статус ключ. проекта' },
-  { key: 'directorate_status', label: 'Статус для директорской' },
-  { key: 'did_status', label: 'Статус для ДИД' },
-  { key: 'is_from_leadership', label: 'От руководства' },
-  { key: 'is_regular', label: 'Регулярная задача' },
-  { key: 'what_if', label: 'What-If' },
-  { key: 'dod', label: 'Definition of Done' },
-  { key: 'link_mockups', label: 'Ссылка на макеты' },
-  { key: 'link_jira', label: 'Ссылка на Jira' },
-  { key: 'rejection_reason', label: 'Причина отклонения' },
-  { key: 'comment', label: 'Комментарий' },
-  { key: 'status_comment', label: 'Статус-комментарий' },
-  { key: 'last_updated', label: 'Последнее обновление' },
-  { key: 'created_at', label: 'Дата создания' },
-  { key: 'updated_at', label: 'Дата изменения' },
-
-];
-
-const DISPLAY_DEFAULTS = {
-  id: true, title: true, status: true, priority: true, team: true,
-  progress: true, financial_effect: true, effort_days: true, cv: true,
-  deadline: true, owner: false, channel: false,
-  department: false, task_type: false,
-  key_project_status: false, ice_score: false
-};
+const DISPLAY_COLUMNS = TASK_COLUMNS.map(c => ({ key: c.key, labelKey: c.labelKey, label: buildColumnLabels(window.app?.fieldLabels || {})[c.key] || c.key }));
+const DISPLAY_DEFAULTS = buildColumnSettings();
 
 let displaySettingsData = {};
 let columnLabelsData = {};
@@ -1520,7 +1538,7 @@ let columnLabelsData = {};
 function renderDisplayTab(app) {
   const KEY_MAP = { financial: 'financial_effect', effort: 'effort_days' };
   const raw = displaySettingsData.shared || displaySettingsData.backlog_dmb || {};
-  const defaultOrder = DISPLAY_COLUMNS.map(c => c.key);
+  const defaultOrder = getAllColumnKeys();
   const validKeys = new Set(defaultOrder);
   const cleaned = {};
   Object.keys(raw).forEach(k => {
@@ -1530,9 +1548,10 @@ function renderDisplayTab(app) {
   const visibility = Object.keys(cleaned).length > 0 ? cleaned : DISPLAY_DEFAULTS;
   defaultOrder.forEach(k => { if (!(k in visibility)) visibility[k] = DISPLAY_DEFAULTS[k] || false; });
 
+  const fieldLabels = buildColumnLabels(window.app?.fieldLabels || {});
   const items = defaultOrder.map(key => {
-    const colDef = DISPLAY_COLUMNS.find(c => c.key === key);
-    const label = columnLabelsData[key] || colDef.label;
+    const colDef = DISPLAY_COLUMNS.find(c => c.key === key) || {};
+    const label = columnLabelsData[key] || fieldLabels[key] || colDef.label || key;
     const checked = visibility[key];
     return `
       <div class="display-col-item" data-col="${key}" draggable="true" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;font-size:13px;color:var(--text-primary);background:var(--bg-secondary);border:1px solid var(--border-color);cursor:grab;user-select:none;transition:background 0.15s, border-color 0.15s;" onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.borderColor='var(--border-color)';this.style.background=this.dataset.dragging === 'true' ? 'var(--accent-dim)' : 'var(--bg-secondary)'">
@@ -1540,7 +1559,7 @@ function renderDisplayTab(app) {
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg>
         </span>
         <input type="checkbox" class="display-col-cb" data-col="${key}" ${checked ? 'checked' : ''} style="width:16px;height:16px;margin:0;flex-shrink:0;">
-        <input type="text" class="display-col-label-input" value="${label}" style="flex:1;min-width:100px;font-size:13px;padding:2px 6px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text-primary);" onfocus="this.style.borderColor='var(--accent)';this.style.background='var(--bg-input)'" onblur="this.style.borderColor='transparent';this.style.background='transparent'">
+        <input type="text" class="display-col-label-input" value="${escapeHtml(label)}" style="flex:1;min-width:100px;font-size:13px;padding:2px 6px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text-primary);" onfocus="this.style.borderColor='var(--accent)';this.style.background='var(--bg-input)'" onblur="this.style.borderColor='transparent';this.style.background='transparent'">
         <span style="font-size:10px;color:var(--text-muted);font-family:monospace">${key}</span>
       </div>
     `;
@@ -1556,7 +1575,11 @@ function renderDisplayTab(app) {
       <div class="card" style="padding:20px;margin-bottom:20px">
         <h3 style="font-size:15px;font-weight:600;margin:0 0 4px 0;color:var(--text-primary)">Колонки бэклогов</h3>
         <p style="font-size:12px;color:var(--text-muted);margin:0 0 16px 0">Настройка применяется к обеим страницам (Бэклог DMB и Бэклог команды). Перетаскивайте колонки для изменения порядка. Отмечайте галочками видимые по умолчанию. Редактируйте названия колонок — изменения сохранятся в БД.</p>
-        <div class="display-col-list" style="display:flex;flex-direction:column;gap:4px">${items}</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="btn btn-sm btn-ghost" id="display-select-all" style="font-size:11px;">Выбрать всё</button>
+          <button class="btn btn-sm btn-ghost" id="display-deselect-all" style="font-size:11px;">Снять всё</button>
+        </div>
+        <div class="display-col-list" style="display:flex;flex-direction:column;gap:4px;max-height:520px;overflow-y:auto;padding-right:4px;">${items}</div>
       </div>
     </div>
   `;
@@ -1564,9 +1587,15 @@ function renderDisplayTab(app) {
 
 function bindDisplayEvents(app) {
   initDisplayDragDrop();
+  document.getElementById('display-select-all')?.addEventListener('click', () => {
+    document.querySelectorAll('.display-col-cb').forEach(cb => { cb.checked = true; });
+  });
+  document.getElementById('display-deselect-all')?.addEventListener('click', () => {
+    document.querySelectorAll('.display-col-cb').forEach(cb => { cb.checked = false; });
+  });
   document.getElementById('save-display-settings')?.addEventListener('click', async () => {
     const items = document.querySelectorAll('.display-col-item');
-    const validKeys = new Set(DISPLAY_COLUMNS.map(c => c.key));
+    const validKeys = new Set(getAllColumnKeys());
     const settings = {};
     const labels = {};
     items.forEach(item => {
@@ -1580,9 +1609,10 @@ function bindDisplayEvents(app) {
     });
     try {
       await app.api.put('/admin/display-settings/shared', { settings });
-      await app.api.put('/admin/column-labels', { labels });
-      columnLabelsData = labels;
+      await app.api.put('/admin/field-labels', { labels });
+      columnLabelsData = {};
       displaySettingsData.shared = { ...settings };
+      if (window.app) window.app.fieldLabels = { ...(window.app.fieldLabels || {}), ...labels };
       toast('Настройки отображения и названия колонок сохранены', 'success');
     } catch (e) {
       toast('Ошибка сохранения: ' + (e.message || 'Неизвестная ошибка'), 'error');
@@ -1934,7 +1964,7 @@ window.openDictColorPalette = function(swatch) {
 // ==================== EVENT HANDLERS ====================
 
 function handleAdminClick(e, app) {
-  const target = e.target.closest('button, .modal-close-x, .admin-dict-card, [data-report], .color-swatch, .admin-sort-th');
+  const target = e.target.closest('button, .modal-close-x, .admin-dict-card, [data-report], [data-admin-report-id], .color-swatch, .admin-sort-th');
   if (!target) return;
 
   if (target.classList.contains('admin-sort-th')) {

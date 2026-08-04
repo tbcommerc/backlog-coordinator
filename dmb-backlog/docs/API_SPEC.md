@@ -312,7 +312,7 @@ API версионируется через префикс пути: `/api/v1/`.
 
 **Обязательные поля:** `title` (min_length=1), `team_id`, `priority_id`
 
-**Опциональные поля:** `description`, `date_received`, `business_customer`, `project_id`, `task_type_id`, `channel_id`, `department_id`, `deadline_id`, `deadline_po_id`, `effort_days`, `effort_rub`, `financial_effect`, `progress` (default: 0), `key_project`, `is_from_leadership`, `is_regular`, `ice_impact`, `ice_confidence`, `ice_ease`, `link_mockups`, `link_jira`, `comment`
+**Опциональные поля:** `description`, `date_received`, `business_customer`, `project_id`, `task_type_id`, `channel_id`, `department_id`, `deadline_id`, `effort_days`, `effort_rub`, `financial_effect`, `progress` (default: 0), `key_project`, `is_from_leadership`, `is_regular`, `ice_impact`, `ice_confidence`, `ice_ease`, `link_mockups`, `link_jira`, `comment`
 
 **Бизнес-логика:**
 - `status_id` устанавливается в 1 (НОВАЯ ЗАДАЧА) по умолчанию

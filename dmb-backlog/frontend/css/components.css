@@ -345,6 +345,7 @@
 .btn-lg { padding: 14px 28px; font-size: var(--text-base); }
 .btn-icon { padding: 8px; border-radius: var(--radius-md); }
 .btn-icon svg { width: 18px; height: 18px; }
+.square-icon { width: 32px; height: 32px; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
 
 .btn:disabled {
     opacity: 0.5;
@@ -3428,3 +3429,24 @@ textarea.task-detail-input { resize: vertical; min-height: 60px; }
     flex-direction: row; flex-wrap: wrap; gap: 8px;
 }
 .conflict-actions--row .conflict-btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
+
+/* ==================== BULK OPERATIONS MODAL ==================== */
+.bc-link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: inherit;
+    padding: 0;
+}
+.bc-link-btn:hover { text-decoration: underline; }
+.bc-link-btn:disabled { color: var(--text-muted); cursor: default; text-decoration: none; }
+.bc-row-off { opacity: 0.45; }
+.bc-field-row .bc-field-val { width: 100%; }
+.bc-field-option:hover { background: var(--bg-secondary); border-color: var(--accent); }
+.modal-body-scroll { overflow-y: auto; padding: 0; }
+
+/* ==================== QUICK EDIT MODE ==================== */
+.ie-editing { border: 1px solid var(--accent); border-radius: 8px; }
+#inline-edit-bar { display: none; }
+#inline-edit-banner { display: none; }

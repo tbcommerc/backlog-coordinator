@@ -134,7 +134,6 @@ erDiagram
         int priority_id FK
         int status_id FK
         int deadline_id FK
-        int deadline_po_id FK
         int effort_days
         float effort_rub
         float effort_ba
@@ -329,7 +328,6 @@ erDiagram
     priorities ||--o{ tasks : ""
     statuses ||--o{ tasks : ""
     deadlines ||--o{ tasks : "deadline"
-    deadlines ||--o{ tasks : "deadline_po"
     users ||--o{ tasks : "owner/responsible_po/ba/itpl/created_by"
     project_statuses ||--o{ projects : ""
     users ||--o{ projects : "responsible_pl"
@@ -511,7 +509,6 @@ erDiagram
 | priority_id | int | → priorities.id | Приоритет |
 | status_id | int | → statuses.id | Статус |
 | deadline_id | int | → deadlines.id | Срок выполнения |
-| deadline_po_id | int | → deadlines.id | Срок (оценка PO) |
 | effort_days | int | — | Трудозатраты (дни) |
 | effort_rub | float | — | Трудозатраты (руб) |
 | effort_ba | float | — | Бизнес-аналитика (дни) |

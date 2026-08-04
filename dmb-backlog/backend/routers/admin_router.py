@@ -10,7 +10,7 @@ from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 
 from database import get_db
-from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, Project, BusinessCustomer, Department, AuditLog
+from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, FieldLabel, Project, BusinessCustomer, Department, AuditLog
 from schemas import (
     RoleCreate, RoleUpdate, RoleResponse,
     TeamCreate, TeamUpdate, TeamResponse,
@@ -1228,6 +1228,16 @@ async def update_display_setting(
 
 # ==================== COLUMN LABELS ====================
 
+@router.get("/field-labels")
+async def get_field_labels(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Точные русские названия полей задачи из реестра field_labels (для отображения на фронте)."""
+    labels = db.query(FieldLabel).order_by(FieldLabel.sort_order).all()
+    return {item.key: item.label for item in labels}
+
+
 @router.get("/column-labels")
 async def get_column_labels(
     db: Session = Depends(get_db),
@@ -1251,6 +1261,24 @@ async def update_column_labels(
             db.add(ColumnLabel(key=key, label=label))
     db.commit()
     labels = db.query(ColumnLabel).all()
+    return {item.key: item.label for item in labels}
+
+
+@router.put("/field-labels")
+async def update_field_labels(
+    data: ColumnLabelUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial"))
+):
+    """Обновляет русские названия полей задачи в реестре field_labels (используется таблицами)."""
+    for key, label in data.labels.items():
+        existing = db.query(FieldLabel).filter(FieldLabel.key == key).first()
+        if existing:
+            existing.label = label
+        else:
+            db.add(FieldLabel(key=key, label=label, group="основные", sort_order=0))
+    db.commit()
+    labels = db.query(FieldLabel).order_by(FieldLabel.sort_order).all()
     return {item.key: item.label for item in labels}
 
 

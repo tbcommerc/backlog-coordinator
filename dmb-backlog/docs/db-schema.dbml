@@ -127,8 +127,9 @@ Table tasks {
   involved_teams text
   priority_id int [ref: > priorities.id]
   status_id int [ref: > statuses.id]
-  deadline_id int [ref: > deadlines.id]
-  deadline_po_id int [ref: > deadlines.id]
+    deadline_id int [ref: > deadlines.id]
+
+
   effort_days int
   effort_rub float
   financial_effect float

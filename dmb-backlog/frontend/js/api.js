@@ -77,7 +77,12 @@ export class API {
         };
         
         if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-            options.body = JSON.stringify(data);
+            if (data instanceof FormData) {
+                delete options.headers['Content-Type'];
+                options.body = data;
+            } else {
+                options.body = JSON.stringify(data);
+            }
         }
         
         const response = await fetch(url, options);

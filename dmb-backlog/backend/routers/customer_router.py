@@ -83,7 +83,7 @@ async def get_customer_tasks(
     total = query.count()
     tasks = query.order_by(desc(Task.created_at)).offset((page - 1) * per_page).limit(per_page).all()
 
-    items = [task_to_response(task) for task in tasks]
+    items = [task_to_response(task, db) for task in tasks]
 
     return TaskListResponse(
         items=items,

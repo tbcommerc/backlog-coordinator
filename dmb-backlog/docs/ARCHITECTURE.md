@@ -188,7 +188,6 @@ tasks.task_type_id      → task_types.id
 tasks.priority_id       → priorities.id
 tasks.status_id         → statuses.id
 tasks.deadline_id       → deadlines.id
-tasks.deadline_po_id    → deadlines.id
 tasks.owner_id          → users.id
 tasks.responsible_po_id → users.id
 tasks.business_analyst_id → users.id

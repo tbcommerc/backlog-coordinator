@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from database import Base, get_db
@@ -10,6 +10,17 @@ from main import app
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+
+
+def _sqlite_lower_unicode(value):
+    return value.lower() if isinstance(value, str) else value
+
+
+@event.listens_for(engine, "connect")
+def _register_sqlite_lower_unicode(dbapi_conn, connection_record):
+    dbapi_conn.create_function("lower_unicode", 1, _sqlite_lower_unicode)
+
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

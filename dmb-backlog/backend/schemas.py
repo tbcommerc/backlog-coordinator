@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 
 
@@ -178,11 +178,10 @@ class TaskBase(BaseModel):
     department_id: Optional[int] = None
     project_id: Optional[int] = None
     task_type_id: Optional[int] = None
-    involved_teams: Optional[str] = Field(None, max_length=1000)
+    involved_teams: Optional[List[int]] = Field(None, description='Другие вовлечённые команды (массив id команд)')
     priority_id: Optional[int] = None
     status_id: Optional[int] = None
     deadline_id: Optional[int] = None
-    deadline_po_id: Optional[int] = None
     effort_days: Optional[int] = Field(None, ge=0, le=10000)
     effort_rub: Optional[float] = Field(None, ge=0)
     effort_designee: Optional[float] = None
@@ -193,7 +192,15 @@ class TaskBase(BaseModel):
     effort_test: Optional[float] = None
     effort_test_auto: Optional[float] = None
     effort_delivery: Optional[float] = None
+    actual_effort_days: Optional[float] = None
+    actual_effort_designee: Optional[float] = None
+    actual_effort_analytics: Optional[float] = None
+    actual_effort_be: Optional[float] = None
+    actual_effort_fe: Optional[float] = None
+    actual_effort_test: Optional[float] = None
+    actual_effort_test_auto: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
+    financial_effect_justification: Optional[str] = Field(None, max_length=10000)
     ice_score: Optional[float] = Field(None)
     ice_impact: Optional[float] = Field(None, ge=1, le=10)
     ice_confidence: Optional[float] = Field(None, ge=1, le=10)
@@ -202,7 +209,7 @@ class TaskBase(BaseModel):
     what_if: Optional[str] = Field(None, max_length=10000)
     dod: Optional[str] = Field(None, max_length=10000)
     link_mockups: Optional[str] = Field(None, max_length=500)
-    link_jira: Optional[str] = Field(None, max_length=500)
+    link_jira: Optional[List[str]] = Field(None, description='Ссылки на Jira (массив)')
     rejection_reason: Optional[str] = Field(None, max_length=5000)
     comment: Optional[str] = Field(None, max_length=5000)
     status_comment: Optional[str] = Field(None, max_length=5000)
@@ -212,13 +219,26 @@ class TaskBase(BaseModel):
     it_product_lead_id: Optional[int] = None
     key_project: bool = False
     key_project_status: Optional[str] = Field(None, max_length=50)
+    key_project_status_updated_at: Optional[datetime] = None
     directorate_status: Optional[str] = Field(None, max_length=1000)
     directorate_status_updated_at: Optional[datetime] = None
     did_status: Optional[str] = Field(None, max_length=1000)
     did_status_updated_at: Optional[datetime] = None
+    metric_kr_plan: Optional[float] = None
+    metric_kr_fact: Optional[float] = None
     is_from_leadership: bool = False
     is_regular: bool = False
     did_demo: bool = False
+
+    @field_validator('link_jira', mode='before')
+    @classmethod
+    def _normalize_link_jira(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            parts = [p.strip() for p in v.replace('\n', ',').split(',') if p.strip()]
+            return parts or None
+        return v
 
 
 class TaskCreate(TaskBase):
@@ -242,11 +262,10 @@ class TaskUpdate(BaseModel):
     department_id: Optional[int] = None
     project_id: Optional[int] = None
     task_type_id: Optional[int] = None
-    involved_teams: Optional[str] = Field(None, max_length=1000)
+    involved_teams: Optional[List[int]] = Field(None, description='Другие вовлечённые команды (массив id команд)')
     priority_id: Optional[int] = None
     status_id: Optional[int] = None
     deadline_id: Optional[int] = None
-    deadline_po_id: Optional[int] = None
     effort_days: Optional[int] = Field(None, ge=0, le=10000)
     effort_rub: Optional[float] = Field(None, ge=0)
     effort_designee: Optional[float] = None
@@ -257,7 +276,15 @@ class TaskUpdate(BaseModel):
     effort_test: Optional[float] = None
     effort_test_auto: Optional[float] = None
     effort_delivery: Optional[float] = None
+    actual_effort_days: Optional[float] = None
+    actual_effort_designee: Optional[float] = None
+    actual_effort_analytics: Optional[float] = None
+    actual_effort_be: Optional[float] = None
+    actual_effort_fe: Optional[float] = None
+    actual_effort_test: Optional[float] = None
+    actual_effort_test_auto: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
+    financial_effect_justification: Optional[str] = Field(None, max_length=10000)
     ice_score: Optional[float] = Field(None)
     ice_impact: Optional[float] = Field(None, ge=1, le=10)
     ice_confidence: Optional[float] = Field(None, ge=1, le=10)
@@ -266,7 +293,7 @@ class TaskUpdate(BaseModel):
     what_if: Optional[str] = Field(None, max_length=10000)
     dod: Optional[str] = Field(None, max_length=10000)
     link_mockups: Optional[str] = Field(None, max_length=500)
-    link_jira: Optional[str] = Field(None, max_length=500)
+    link_jira: Optional[List[str]] = Field(None, description='Ссылки на Jira (массив)')
     rejection_reason: Optional[str] = Field(None, max_length=5000)
     comment: Optional[str] = Field(None, max_length=5000)
     status_comment: Optional[str] = Field(None, max_length=5000)
@@ -276,12 +303,25 @@ class TaskUpdate(BaseModel):
     it_product_lead_id: Optional[int] = None
     key_project: Optional[bool] = None
     key_project_status: Optional[str] = Field(None, max_length=50)
+    key_project_status_updated_at: Optional[datetime] = None
     directorate_status: Optional[str] = Field(None, max_length=1000)
     did_status: Optional[str] = Field(None, max_length=1000)
+    metric_kr_plan: Optional[float] = None
+    metric_kr_fact: Optional[float] = None
     is_from_leadership: Optional[bool] = None
     is_regular: Optional[bool] = None
     did_demo: Optional[bool] = None
     version: Optional[int] = Field(None, description='Версия задачи для optimistic lock')
+
+    @field_validator('link_jira', mode='before')
+    @classmethod
+    def _normalize_link_jira(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            parts = [p.strip() for p in v.replace('\n', ',').split(',') if p.strip()]
+            return parts or None
+        return v
 
 
 class TaskResponse(TaskBase):
@@ -293,6 +333,8 @@ class TaskResponse(TaskBase):
     ice_ease: Optional[float] = None
     last_updated: Optional[date] = None
     created_by: Optional[int] = None
+    created_by_name: Optional[str] = None
+    involved_team_names: Optional[List[str]] = None
     created_at: datetime
     updated_at: datetime
     version: int = 0
@@ -306,7 +348,6 @@ class TaskResponse(TaskBase):
     priority_name: Optional[str] = None
     status_name: Optional[str] = None
     deadline_name: Optional[str] = None
-    deadline_po_name: Optional[str] = None
     owner_name: Optional[str] = None
     responsible_po_name: Optional[str] = None
     business_analyst_name: Optional[str] = None
@@ -383,6 +424,8 @@ class TaskLinkUpdate(BaseModel):
 class BulkActionRequest(BaseModel):
     action: str = Field(max_length=50)
     task_ids: List[int] = Field(max_length=500)
+    fields: Optional[Dict[str, Any]] = None
+    updates: Optional[Dict[str, Any]] = None  # deprecated, use fields instead
 
 
 class TaskHistoryResponse(BaseModel):
@@ -431,6 +474,7 @@ class TaskViewersListResponse(BaseModel):
 class ReportBase(BaseModel):
     name: str = Field(max_length=200)
     description: Optional[str] = Field(None, max_length=2000)
+    key: Optional[str] = Field(None, max_length=100)
     filters: Optional[str] = Field(None, max_length=5000)
     fields: Optional[str] = Field(None, max_length=2000)
     group_by: Optional[str] = Field(None, max_length=50)

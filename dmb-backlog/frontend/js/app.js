@@ -128,8 +128,26 @@ function highlightText(text, query) {
   return escaped.replace(regex, '<mark>$1</mark>');
 }
 
+function renderLinkJiraList(links) {
+  if (!links || !links.length) return '—';
+  if (typeof links === 'string') links = [links];
+  return links.filter(Boolean).map(url => `<a href="${escapeHtml(url)}" target="_blank" style="color:var(--accent)">Jira</a>`).join(', ');
+}
+
+function renderLinkJiraTags(links) {
+  if (!links || !links.length) return '';
+  if (typeof links === 'string') links = [links];
+  return links.filter(Boolean).map(url => `<a class="b-tag" href="${escapeHtml(url)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>`).join('');
+}
+
+function renderInvolvedTeams(teams) {
+  if (!teams || !teams.length) return '—';
+  return Array.isArray(teams) ? teams.join(', ') : teams;
+}
+
 function fieldLabel(field) {
-  const labels = {
+  const labels = window.app?.fieldLabels || {};
+  const fallback = {
     title: 'Задача',
     owner: 'Владелец',
     project: 'Проект',
@@ -138,7 +156,7 @@ function fieldLabel(field) {
     business_customer: 'Заказчик',
     description: 'Описание',
   };
-  return labels[field] || field;
+  return labels[field] || fallback[field] || field;
 }
 
 function scoreTask(task, query) {
@@ -478,6 +496,8 @@ class App {
 
     if (isAuthenticated) {
       await this.loadUser();
+      await this.loadFieldLabels();
+      await this.loadReferenceData();
       this.renderAppLayout();
       this.router.init();
     } else {
@@ -502,6 +522,36 @@ class App {
     } catch (e) {
       this.auth.logout();
       this.renderLoginPage();
+    }
+  }
+
+  async loadFieldLabels() {
+    try {
+      const labels = await this.api.get('/admin/field-labels');
+      this.fieldLabels = labels || {};
+    } catch (e) {
+      this.fieldLabels = {};
+    }
+  }
+
+  async loadReferenceData() {
+    try {
+      const ref = await this.api.get('/tasks/reference');
+      console.log('[DEBUG] loadReferenceData response:', ref);
+      this.statuses = ref.statuses || [];
+      this.priorities = ref.priorities || [];
+      this.deadlines = ref.deadlines || [];
+      this.teams = ref.teams || [];
+      this.projects = ref.projects || [];
+      this.taskTypes = ref.task_types || [];
+      this.channels = ref.channels || [];
+      this.departments = ref.departments || [];
+      this.businessCustomers = ref.business_customers || [];
+      this.tags = ref.tags || [];
+      this.users = ref.users || [];
+      console.log('[DEBUG] window.app.statuses:', this.statuses);
+    } catch (e) {
+      console.error('[DMB] Failed to load reference data:', e);
     }
   }
 

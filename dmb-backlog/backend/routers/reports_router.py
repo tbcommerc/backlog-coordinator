@@ -1,18 +1,21 @@
 """
 DMB Backlog - Reports Router
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, cast, Date
-from typing import Optional, List
-from datetime import date, timedelta
-from collections import defaultdict
+from sqlalchemy import func
+from sqlalchemy.types import String, Text, Unicode
+from typing import List
+from datetime import date
 import json
 
 from database import get_db
-from models import Report, Task, User, Team, Priority, TaskStatus, Project, Department, TaskType, Deadline
-from schemas import ReportCreate, ReportResponse, TaskResponse
-from auth import get_current_user, require_permission
+from models import (
+    Report, Task, User, Team, Priority, TaskStatus, Project, Department,
+    TaskType, Deadline, BusinessCustomer, Channel,
+)
+from schemas import ReportCreate, ReportResponse
+from auth import get_current_user
 
 router = APIRouter()
 
@@ -23,6 +26,7 @@ def _report_to_response(report: Report) -> ReportResponse:
         name=report.name,
         description=report.description,
         type=report.type,
+        key=report.key,
         filters=report.filters,
         fields=report.fields,
         group_by=report.group_by,
@@ -32,6 +36,314 @@ def _report_to_response(report: Report) -> ReportResponse:
         created_by=report.created_by,
         created_at=report.created_at
     )
+
+
+# ==================== ДВИЖОК ФИЛЬТРОВ И СОРТИРОВКИ ====================
+# Поля согласованы с REPORT_FIELDS в админке, чтобы настройки отчётов
+# применялись по тем же правилам, что и у стандартных отчётов.
+
+# Прямые колонки Task, доступные для фильтрации.
+REPORT_DIRECT_FIELDS = {
+    "id", "title", "description", "business_customer", "involved_teams",
+    "key_project", "key_project_status", "directorate_status", "did_status",
+    "did_demo", "effort_days", "effort_rub", "financial_effect", "cv",
+    "ice_score", "progress", "date_received", "created_at", "updated_at",
+    "is_from_leadership", "is_regular", "what_if", "dod",
+}
+
+# Логические «*_name»-поля -> (relationship Task, модель справочника, колонка).
+REPORT_JOINED_FIELDS = {
+    "team_name": (Task.team, Team, "name"),
+    "priority_name": (Task.priority, Priority, "name"),
+    "status_name": (Task.status, TaskStatus, "name"),
+    "project_name": (Task.project, Project, "name"),
+    "business_customer_name": (Task.business_customer_rel, BusinessCustomer, "name"),
+    "department_name": (Task.department, Department, "name"),
+    "channel_name": (Task.channel, Channel, "name"),
+    "task_type_name": (Task.task_type, TaskType, "name"),
+    "deadline_name": (Task.deadline, Deadline, "name"),
+    "owner_name": (Task.owner, User, "name"),
+}
+
+# Поля, которые сортируются как числа, а не строки.
+REPORT_NUMERIC_FIELDS = {
+    "id", "progress", "effort_days", "effort_rub", "financial_effect", "cv", "ice_score",
+}
+
+# Ранг приоритета для корректной сортировки по важности (не по алфавиту).
+PRIORITY_RANK = {"ВЫСОКИЙ": 3, "СРЕДНИЙ": 2, "НИЗКИЙ": 1}
+
+
+def _is_text_column(column):
+    return isinstance(getattr(column, "type", None), (String, Text, Unicode))
+
+
+def _ci(value):
+    return value.lower() if isinstance(value, str) else value
+
+
+def _apply_value_filter(query, column, operator, value):
+    """Применить оператор к конкретной колонке (прямой или через join).
+
+    - Строки сравниваются регистронезависимо (SQLite lower() не знает кириллицу,
+      поэтому используется функция lower_unicode, зарегистрированная в database.py).
+    - equals "" / not_equals "" трактуются как «пусто или NULL» / «не пусто».
+    - not_equals с непустым значением включает NULL (задачи без значения).
+    """
+    text_col = isinstance(value, str) and _is_text_column(column)
+    expr = func.lower_unicode(column) if text_col else column
+    cval = _ci(value) if text_col else value
+
+    if operator == "equals":
+        if value == "":
+            return query.filter((expr == "") | (column.is_(None)))
+        return query.filter(expr == cval)
+    if operator == "not_equals":
+        if value == "":
+            return query.filter(column.isnot(None), expr != "")
+        return query.filter((expr != cval) | (column.is_(None)))
+    if operator == "contains":
+        return query.filter(expr.like(f"%{cval}%"))
+    if operator == "in" and isinstance(value, list):
+        if text_col:
+            vals = [_ci(v) for v in value if isinstance(v, str)]
+            return query.filter(expr.in_(vals))
+        return query.filter(column.in_(value))
+    if operator == "gt":
+        return query.filter(expr > cval)
+    if operator == "lt":
+        return query.filter(expr < cval)
+    return query
+
+
+def _apply_report_filters(query, filters):
+    """Применить фильтры отчёта к запросу.
+
+    Каждый «*_name»-джойн выполняется один раз (внешний), чтобы:
+    - фильтры not_equals/equals на справочниках не теряли задачи без значения;
+    - повторные фильтры по одному полю не дублировали join.
+    """
+    for f in filters:
+        field = f.get("field")
+        if field in REPORT_JOINED_FIELDS:
+            rel_attr, _model, _col = REPORT_JOINED_FIELDS[field]
+            query = query.join(rel_attr, isouter=True)
+
+    for f in filters:
+        field = f.get("field")
+        operator = f.get("operator", "equals")
+        value = f.get("value")
+
+        if not field or value is None:
+            continue
+        if isinstance(value, (list, tuple)) and len(value) == 0:
+            continue
+        if value == "" and operator != "not_equals":
+            continue
+
+        if field in REPORT_JOINED_FIELDS:
+            rel_attr, model, col_name = REPORT_JOINED_FIELDS[field]
+            query = _apply_value_filter(query, getattr(model, col_name), operator, value)
+        elif field in REPORT_DIRECT_FIELDS:
+            query = _apply_value_filter(query, getattr(Task, field), operator, value)
+
+    return query
+
+
+def _report_sort_key(item, field):
+    """Ключ сортировки: числа — числом, приоритет — по важности, остальное — строкой."""
+    value = item.get(field)
+    if field in REPORT_NUMERIC_FIELDS:
+        try:
+            return float(value) if value is not None else 0.0
+        except (TypeError, ValueError):
+            return 0.0
+    if field == "priority_name":
+        return PRIORITY_RANK.get((value or "").upper(), 0)
+    return str(value).lower() if value is not None else ""
+
+
+REPORT_ALLOWED_OPERATORS = {"equals", "not_equals", "contains", "in", "gt", "lt"}
+REPORT_ALLOWED_GROUP_BY = {"team_name", "project_name", "status_name", "priority_name", "department_name"}
+REPORT_ALLOWED_FILTER_FIELDS = REPORT_DIRECT_FIELDS | set(REPORT_JOINED_FIELDS.keys())
+
+
+def _validate_report_config(filters, fields, group_by, sort_by):
+    """Проверить конфиг отчёта перед сохранением.
+
+    Неизвестные поля/операторы отклоняются 400 — иначе отчёт выполнялся бы
+    молча по неверным условиям (движок игнорирует неизвестные поля).
+    filters/fields приходят JSON-строками из фронтенда.
+    """
+    def _loads(raw):
+        if raw is None:
+            return None
+        if isinstance(raw, str):
+            try:
+                return json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                raise HTTPException(status_code=400, detail="Конфиг отчёта содержит некорректный JSON")
+        return raw
+
+    parsed_filters = _loads(filters)
+    if parsed_filters:
+        if not isinstance(parsed_filters, list):
+            raise HTTPException(status_code=400, detail="Фильтры отчёта должны быть списком")
+        for f in parsed_filters:
+            if not isinstance(f, dict):
+                raise HTTPException(status_code=400, detail="Фильтр должен быть объектом")
+            field = f.get("field")
+            operator = f.get("operator", "equals")
+            if field not in REPORT_ALLOWED_FILTER_FIELDS:
+                raise HTTPException(status_code=400, detail=f"Неизвестное поле фильтра: {field}")
+            if operator not in REPORT_ALLOWED_OPERATORS:
+                raise HTTPException(status_code=400, detail=f"Неизвестный оператор фильтра: {operator}")
+
+    parsed_fields = _loads(fields)
+    if parsed_fields:
+        if not isinstance(parsed_fields, list):
+            raise HTTPException(status_code=400, detail="Поля отчёта должны быть списком")
+        for field in parsed_fields:
+            if field not in REPORT_ALLOWED_FILTER_FIELDS:
+                raise HTTPException(status_code=400, detail=f"Неизвестное поле отчёта: {field}")
+
+    if group_by and group_by not in REPORT_ALLOWED_GROUP_BY:
+        raise HTTPException(status_code=400, detail=f"Неизвестная группировка: {group_by}")
+    if sort_by and sort_by not in REPORT_ALLOWED_FILTER_FIELDS:
+        raise HTTPException(status_code=400, detail=f"Неизвестная сортировка: {sort_by}")
+
+
+# Стандартные отчёты — единый реестр, синхронизированный со страницей «Статусы для встреч».
+# Существующие стандартные отчёты в БД получают `key` один раз (миграция).
+# После этого админ может свободно править конфиг — повторные перезапуски не перезаписывают его.
+DEFAULT_STANDARD_REPORTS = [
+    {
+        "key": "directorate",
+        "name": "Статус для Директорской оперативки",
+        "description": "Еженедельный статус для доклада Лидеру трайба",
+        "legacy_names": ["Статус для оперативки DMB"],
+        "filters": None,
+        "fields": None,
+        "group_by": None,
+        "sort_by": None,
+        "sort_order": "asc",
+    },
+    {
+        "key": "did-operational",
+        "name": "Статус для оперативки ДИД",
+        "description": "Статус по задачам ЦИ и трайба для руководства ДИД",
+        "legacy_names": ["Статус для оперативки ДИД"],
+        "filters": None,
+        "fields": None,
+        "group_by": None,
+        "sort_by": None,
+        "sort_order": "asc",
+    },
+    {
+        "key": "projects",
+        "name": "Статус по ключевым проектам",
+        "description": "Ежемесячный статус по ключевым проектам для Лидера трайба",
+        "legacy_names": ["Статус по ключевым проектам"],
+        "filters": '[{"field":"key_project","operator":"equals","value":true}]',
+        "fields": '["id","title","project_name","team_name","status_name","priority_name","deadline_name","progress","key_project_status"]',
+        "group_by": "project_name",
+        "sort_by": "priority_name",
+        "sort_order": "asc",
+    },
+    {
+        "key": "reg-directors",
+        "name": "Отчет для Рег. директоров",
+        "description": "Статус по задачам для региональных директоров - пользователей IBP",
+        "legacy_names": ["Отчет для Рег. директоров"],
+        "filters": '[{"field":"priority_name","operator":"equals","value":"Высокий"}]',
+        "fields": '["id","title","team_name","project_name","status_name","priority_name","financial_effect","progress"]',
+        "group_by": None,
+        "sort_by": "priority_name",
+        "sort_order": "desc",
+    },
+    {
+        "key": "pip",
+        "name": "PI-планирование трайба",
+        "description": "Отчет для проведения церемонии Product Increment Planning (PIP)",
+        "legacy_names": [],
+        "filters": '[{"field":"status_name","operator":"not_equals","value":"Выполнена"}]',
+        "fields": '["id","title","team_name","status_name","priority_name","progress","deadline_name","owner_name"]',
+        "group_by": None,
+        "sort_by": "progress",
+        "sort_order": "desc",
+    },
+    {
+        "key": "did-backlog",
+        "name": "Бэклог для отправки на бизнес-заказчиков ДИД",
+        "description": "Задачи, запланированные к реализации в следующем квартале с фин. эффектом по ним",
+        "legacy_names": [],
+        "filters": '[{"field":"did_status","operator":"not_equals","value":""}]',
+        "fields": '["id","title","business_customer_name","project_name","team_name","did_status","progress","deadline_name"]',
+        "group_by": None,
+        "sort_by": "deadline_name",
+        "sort_order": "asc",
+    },
+    {
+        "key": "progress",
+        "name": "Прогресс по задачам",
+        "description": "Текущий прогресс по выполнению задач текущего квартала, отклонения, риски",
+        "legacy_names": [],
+        "filters": None,
+        "fields": '["id","title","team_name","status_name","priority_name","progress","deadline_name","owner_name"]',
+        "group_by": None,
+        "sort_by": "progress",
+        "sort_order": "desc",
+    },
+]
+
+
+def ensure_standard_reports(db):
+    """Идемпотентная синхронизация стандартных отчётов с реестром.
+
+    - Вставляет недостающие стандартные отчёты (по key или legacy-имени).
+    - Для уже существующих отчётов один раз (при первом проходе, пока key пуст)
+      выставляет key и приводит name/description/конфиг в соответствие с реестром.
+    - После этого конфиг НЕ перезаписывается — правки из админки сохраняются.
+    """
+    for cfg in DEFAULT_STANDARD_REPORTS:
+        report = db.query(Report).filter(Report.key == cfg["key"]).first()
+
+        if report is None:
+            for legacy in cfg.get("legacy_names", []):
+                legacy_report = db.query(Report).filter(Report.name == legacy).first()
+                if legacy_report:
+                    report = legacy_report
+                    break
+
+        if report is None:
+            report = Report(
+                key=cfg["key"],
+                name=cfg["name"],
+                description=cfg["description"],
+                type="standard",
+                filters=cfg.get("filters"),
+                fields=cfg.get("fields"),
+                group_by=cfg.get("group_by"),
+                sort_by=cfg.get("sort_by"),
+                sort_order=cfg.get("sort_order", "asc"),
+                is_public=True,
+            )
+            db.add(report)
+            continue
+
+        first_sync = report.key is None
+        report.key = cfg["key"]
+        if first_sync:
+            report.name = cfg["name"]
+            report.description = cfg["description"]
+            report.filters = cfg.get("filters")
+            report.fields = cfg.get("fields")
+            report.group_by = cfg.get("group_by")
+            report.sort_by = cfg.get("sort_by")
+            report.sort_order = cfg.get("sort_order", "asc")
+            report.is_public = True
+
+    db.commit()
 
 
 @router.get("/", response_model=List[ReportResponse])
@@ -47,78 +359,6 @@ async def get_reports(
     ).order_by(Report.created_at.desc()).all()
 
     return [_report_to_response(r) for r in reports]
-
-
-@router.get("/meeting-status")
-async def get_meeting_status(
-    report_type: Optional[str] = Query(None, description="directorate | did | projects | reg-directors"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get aggregated meeting status data with charts-ready format"""
-
-    query = db.query(Task).filter(Task.is_deleted == False)
-
-    tasks = query.all()
-    total = len(tasks)
-
-    if report_type == "directorate":
-        tasks = [t for t in tasks if t.priority == "Высокий" or t.directorate_status in ("Риск", "На контроле")]
-    elif report_type == "did":
-        tasks = [t for t in tasks if t.did_status in ("В работе", "Требует решения", "Блокировано")]
-    elif report_type == "projects":
-        tasks = [t for t in tasks if t.key_project]
-    elif report_type == "reg-directors":
-        tasks = [t for t in tasks if t.priority == "Высокий"]
-
-    filtered = len(tasks)
-
-    by_status = defaultdict(int)
-    by_priority = defaultdict(int)
-    by_team = defaultdict(int)
-    by_owner = defaultdict(int)
-
-    for t in tasks:
-        status_name = t.status.name if t.status else "Не указан"
-        priority_name = t.priority.name if t.priority else "Средний"
-        team_name = t.team.name if t.team else "Без команды"
-        owner_name = t.owner.name if t.owner else "Не назначен"
-        by_status[status_name] += 1
-        by_priority[priority_name] += 1
-        by_team[team_name] += 1
-        by_owner[owner_name] += 1
-
-    status_colors = {
-        "Сбор требований": "#6366f1",
-        "Экспресс-оценка": "#8b5cf6",
-        "Принятие решения": "#f59e0b",
-        "В работе": "#10b981",
-        "Отклонена": "#ef4444",
-        "Не актуальна": "#94a3b8",
-        "Холд": "#f43f5e",
-        "Выполнена": "#22c55e",
-    }
-    priority_colors = {
-        "Высокий": "#f43f5e",
-        "Средний": "#f59e0b",
-        "Низкий": "#94a3b8",
-    }
-
-    def sort_by_value(d):
-        return sorted(d.items(), key=lambda x: x[1], reverse=True)
-
-    return {
-        "total": total,
-        "filtered": filtered,
-        "high_priority": sum(1 for t in tasks if t.priority and t.priority.name == "Высокий"),
-        "at_risk": sum(1 for t in tasks if t.status and t.status.name in ("Холд", "Отклонена")),
-        "avg_progress": round(sum(t.progress or 0 for t in tasks) / filtered, 1) if filtered else 0,
-        "status_distribution": [{"label": k, "value": v, "color": status_colors.get(k, "#94a3b8")} for k, v in sort_by_value(by_status)],
-        "priority_distribution": [{"label": k, "value": v, "color": priority_colors.get(k, "#94a3b8")} for k, v in sort_by_value(by_priority)],
-        "team_distribution": [{"label": k, "value": v} for k, v in sort_by_value(by_team)],
-        "owner_distribution": [{"label": k, "value": v} for k, v in sort_by_value(by_owner)],
-        "total_financial_effect": round(sum(t.financial_effect or 0 for t in tasks), 2),
-    }
 
 
 @router.get("/did-operational-report")
@@ -308,6 +548,12 @@ async def create_report(
     current_user: User = Depends(get_current_user)
 ):
     """Create custom report"""
+    _validate_report_config(
+        report_data.filters,
+        report_data.fields,
+        report_data.group_by,
+        report_data.sort_by,
+    )
     report = Report(
         name=report_data.name,
         description=report_data.description,
@@ -334,17 +580,24 @@ async def update_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update custom report (only owner or admin)"""
+    """Update report (owner, or admin — including standard reports)"""
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
 
     if report.type == "standard":
-        raise HTTPException(status_code=403, detail="Cannot edit standard reports")
-
-    if report.created_by != current_user.id:
         if not (current_user.role and current_user.role.admin_access in ("partial", "full")):
             raise HTTPException(status_code=403, detail="Access denied")
+    elif report.created_by != current_user.id:
+        if not (current_user.role and current_user.role.admin_access in ("partial", "full")):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    _validate_report_config(
+        report_data.filters,
+        report_data.fields,
+        report_data.group_by,
+        report_data.sort_by,
+    )
 
     report.name = report_data.name
     report.description = report_data.description
@@ -399,6 +652,12 @@ async def execute_report(
     if report.type != "standard" and report.created_by != current_user.id and not report.is_public:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    if report.type == "standard" and report.key in ("directorate", "did-operational"):
+        raise HTTPException(
+            status_code=400,
+            detail="Отчёт выполняется по сценарию страницы «Статусы для встреч» и недоступен через execute",
+        )
+
     query = db.query(Task).filter(Task.is_deleted == False)
 
     if report.filters:
@@ -407,57 +666,7 @@ async def execute_report(
         except (json.JSONDecodeError, TypeError):
             filters = []
 
-        for f in filters:
-            field = f.get("field")
-            operator = f.get("operator", "equals")
-            value = f.get("value")
-
-            if not field or value is None:
-                continue
-
-            column = getattr(Task, field, None)
-            if column is None:
-                if field == "team_name":
-                    query = query.join(Team, Task.team_id == Team.id)
-                    if operator == "equals":
-                        query = query.filter(Team.name == value)
-                    elif operator == "contains":
-                        query = query.filter(Team.name.ilike(f"%{value}%"))
-                elif field == "priority_name":
-                    query = query.join(Priority, Task.priority_id == Priority.id)
-                    if operator == "equals":
-                        query = query.filter(Priority.name == value)
-                    elif operator == "in" and isinstance(value, list):
-                        query = query.filter(Priority.name.in_(value))
-                elif field == "status_name":
-                    query = query.join(TaskStatus, Task.status_id == TaskStatus.id)
-                    if operator == "equals":
-                        query = query.filter(TaskStatus.name == value)
-                    elif operator == "in" and isinstance(value, list):
-                        query = query.filter(TaskStatus.name.in_(value))
-                elif field == "project_name":
-                    query = query.join(Project, Task.project_id == Project.id)
-                    if operator == "equals":
-                        query = query.filter(Project.name == value)
-                    elif operator == "contains":
-                        query = query.filter(Project.name.ilike(f"%{value}%"))
-                continue
-
-            if operator == "equals":
-                if isinstance(value, bool):
-                    query = query.filter(column == value)
-                else:
-                    query = query.filter(column == value)
-            elif operator == "not_equals":
-                query = query.filter(column != value)
-            elif operator == "contains":
-                query = query.filter(column.ilike(f"%{value}%"))
-            elif operator == "in" and isinstance(value, list):
-                query = query.filter(column.in_(value))
-            elif operator == "gt":
-                query = query.filter(column > value)
-            elif operator == "lt":
-                query = query.filter(column < value)
+        query = _apply_report_filters(query, filters)
 
     tasks = query.all()
 
@@ -496,6 +705,12 @@ async def execute_report(
             "key_project_status": task.key_project_status,
             "directorate_status": task.directorate_status,
             "did_status": task.did_status,
+            "involved_teams": task.involved_teams or "",
+            "did_demo": bool(task.did_demo),
+            "what_if": task.what_if,
+            "dod": task.dod,
+            "is_from_leadership": task.is_from_leadership,
+            "is_regular": task.is_regular,
             "date_received": str(task.date_received) if task.date_received else None,
             "created_at": task.created_at.isoformat() if task.created_at else None,
             "updated_at": task.updated_at.isoformat() if task.updated_at else None,
@@ -503,7 +718,8 @@ async def execute_report(
 
     if report.sort_by:
         reverse = (report.sort_order or "asc") == "desc"
-        items.sort(key=lambda x: str(x.get(report.sort_by, "") or "").lower(), reverse=reverse)
+        items.sort(key=lambda x: _report_sort_key(x, report.sort_by), reverse=reverse)
+        items.sort(key=lambda x: 1 if x.get(report.sort_by) is None else 0)
 
     if report.group_by:
         groups = {}
