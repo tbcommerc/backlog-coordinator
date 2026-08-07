@@ -4,7 +4,6 @@ DMB Backlog - Express Estimate Router (Экспресс-оценка)
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
-from datetime import date
 
 from database import get_db
 from models import Task, Epic, Story, TaskStatus, User
@@ -79,7 +78,6 @@ def task_to_quick_estimate_response(task: Task, epics: list[Epic]) -> QuickEstim
         description=task.description,
         date_received=task.date_received,
         channel_id=task.channel_id,
-        business_customer=task.business_customer,
         business_customer_id=task.business_customer_id,
         department_id=task.department_id,
         project_id=task.project_id,
@@ -109,7 +107,6 @@ def task_to_quick_estimate_response(task: Task, epics: list[Epic]) -> QuickEstim
         directorate_status=task.directorate_status,
         did_status=task.did_status,
         cv=cv,
-        last_updated=task.last_updated,
         created_by=task.created_by,
         created_at=task.created_at,
         updated_at=task.updated_at,
@@ -389,7 +386,6 @@ def _task_to_response(task: Task) -> TaskResponse:
         description=task.description,
         date_received=task.date_received,
         channel_id=task.channel_id,
-        business_customer=task.business_customer,
         business_customer_id=task.business_customer_id,
         department_id=task.department_id,
         project_id=task.project_id,
@@ -419,7 +415,6 @@ def _task_to_response(task: Task) -> TaskResponse:
         effort_test_auto=task.effort_test_auto,
         effort_delivery=task.effort_delivery,
         cv=cv,
-        last_updated=task.last_updated,
         created_by=task.created_by,
         created_at=task.created_at,
         updated_at=task.updated_at,
@@ -478,7 +473,6 @@ async def import_task_to_estimate(
         raise HTTPException(status_code=500, detail="Status ЭКСПРЕСС-ОЦЕНКА not found")
 
     task.status_id = qe_status.id
-    task.last_updated = date.today()
     db.commit()
     db.refresh(task)
 

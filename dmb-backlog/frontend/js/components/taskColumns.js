@@ -18,7 +18,6 @@ export const TASK_COLUMNS = [
   { key: 'owner', labelKey: 'owner_id', group: 'основные', def: false },
   { key: 'created_by', labelKey: 'created_by', group: 'основные', def: false },
   { key: 'created_at', labelKey: 'created_at', group: 'основные', def: false },
-  { key: 'last_updated', labelKey: 'last_updated', group: 'основные', def: false },
   { key: 'updated_at', labelKey: 'updated_at', group: 'основные', def: false },
 
   { key: 'effort_days', labelKey: 'effort_days', group: 'трудозатраты', def: true },
@@ -38,12 +37,15 @@ export const TASK_COLUMNS = [
   { key: 'actual_effort_fe', labelKey: 'actual_effort_fe', group: 'трудозатраты', def: false },
   { key: 'actual_effort_test', labelKey: 'actual_effort_test', group: 'трудозатраты', def: false },
   { key: 'actual_effort_test_auto', labelKey: 'actual_effort_test_auto', group: 'трудозатраты', def: false },
+  { key: 'actual_effort_python_be', labelKey: 'actual_effort_python_be', group: 'трудозатраты', def: false },
+  { key: 'actual_effort_delivery', labelKey: 'actual_effort_delivery', group: 'трудозатраты', def: false },
 
   { key: 'financial_effect', labelKey: 'financial_effect', group: 'ценность', def: true },
   { key: 'financial_effect_justification', labelKey: 'financial_effect_justification', group: 'ценность', def: false },
   { key: 'cv', labelKey: 'cv', group: 'ценность', def: true },
   { key: 'metric_kr_plan', labelKey: 'metric_kr_plan', group: 'ценность', def: false },
   { key: 'metric_kr_fact', labelKey: 'metric_kr_fact', group: 'ценность', def: false },
+  { key: 'metric_kr_unit', labelKey: 'metric_kr_unit', group: 'ценность', def: false },
 
   { key: 'progress', labelKey: 'progress', group: 'основные', def: true },
   { key: 'key_project_status', labelKey: 'key_project_status', group: 'статусы', def: false },
@@ -56,6 +58,7 @@ export const TASK_COLUMNS = [
 
   { key: 'link_mockups', labelKey: 'link_mockups', group: 'прочее', def: false },
   { key: 'link_jira', labelKey: 'link_jira', group: 'прочее', def: false },
+  { key: 'tags', labelKey: 'tags', group: 'прочее', def: false },
   { key: 'rejection_reason', labelKey: 'rejection_reason', group: 'прочее', def: false },
   { key: 'comment', labelKey: 'comment', group: 'прочее', def: false },
 ];
@@ -68,7 +71,7 @@ const FALLBACK_LABELS = {
   deadline: 'Дедлайн',
   owner: 'Владелец',
   created_by: 'Автор задачи', created_at: 'Дата создания',
-  last_updated: 'Последнее обновление', updated_at: 'Дата изменения',
+  updated_at: 'Дата последнего изменения',
   effort_days: 'Трудозатраты (дни)', effort_rub: 'Трудозатраты (руб)',
   effort_designee: 'Designee (ЭО)', effort_analytics: 'Аналитика (ЭО)',
   effort_be: 'Разработка BE (ЭО)', effort_python_be: 'Разработка python BE (ЭО)',
@@ -78,6 +81,7 @@ const FALLBACK_LABELS = {
   actual_effort_designee: 'Designee (ФТЗ)', actual_effort_analytics: 'Аналитика (ФТЗ)',
   actual_effort_be: 'Разработка BE (ФТЗ)', actual_effort_fe: 'Разработка FE (ФТЗ)',
   actual_effort_test: 'Test (ФТЗ)', actual_effort_test_auto: 'Test Auto (ФТЗ)',
+  actual_effort_python_be: 'Разработка python BE (ФТЗ)', actual_effort_delivery: 'Delivery (ФТЗ)',
   financial_effect: 'Фин. эффект', financial_effect_justification: 'Обоснование фин. эффекта',
   cv: 'C/V',
   progress: 'Прогресс',
@@ -88,7 +92,9 @@ const FALLBACK_LABELS = {
   did_status: 'Статус для ДИД', did_status_updated_at: 'Дата статуса (ДИД)',
   did_demo: 'Демо для ДИД',
   metric_kr_plan: 'Метрический KR (план)', metric_kr_fact: 'Метрический KR (факт)',
+  metric_kr_unit: 'Единица измерения (метрический KR)',
   link_mockups: 'Ссылка на макеты', link_jira: 'Ссылка на Jira',
+  tags: 'Метки (теги)',
   rejection_reason: 'Причина отклонения', comment: 'Комментарий',
 };
 

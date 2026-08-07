@@ -147,6 +147,22 @@ function getUniqueValues(scope, key, allTasks) {
           list = list.filter(isLastQuarterTask);
           return;
         }
+        if (fk === '_active') {
+          list = list.filter(t => !!t.status_name && !terminalStatuses.includes(t.status_name) && t.status_name !== 'ХОЛД');
+          return;
+        }
+        if (fk === '_hold') {
+          list = list.filter(t => t.status_name === 'ХОЛД');
+          return;
+        }
+        if (fk === '_rejected') {
+          list = list.filter(t => t.status_name === 'ОТКЛОНЕНА');
+          return;
+        }
+        if (fk === '_high_cv') {
+          list = list.filter(t => t.financial_effect != null && t.effort_rub > 0 && (t.financial_effect / t.effort_rub) > 1);
+          return;
+        }
         list = list.filter(t => {
           let v = t[fk];
           if (fk === 'progress') {
@@ -156,8 +172,10 @@ function getUniqueValues(scope, key, allTasks) {
             if (vals.has('75-100')) return (v || 0) > 75;
             return true;
           }
-          if (fk === 'tags' && typeof v === 'string') {
-            const taskTags = v.split(',').map(s => s.trim());
+          if (fk === 'tags') {
+            const taskTags = Array.isArray(v)
+              ? v.map(x => typeof x === 'object' && x !== null ? String(x.name || '') : String(x)).filter(Boolean)
+              : String(v).split(',').map(s => s.trim());
             return taskTags.some(tag => vals.has(tag));
           }
           if (fk === 'involved_teams' && typeof v === 'string') {
@@ -174,8 +192,11 @@ function getUniqueValues(scope, key, allTasks) {
   list.forEach(t => {
     let v = t[key];
     if (v == null || v === '') return;
-    if (key === 'tags' && typeof v === 'string') {
-      v.split(',').map(s => s.trim()).filter(Boolean).forEach(tag => unique.add(tag));
+    if (key === 'tags') {
+      const arr = Array.isArray(v)
+        ? v.map(x => typeof x === 'object' && x !== null ? String(x.name || '') : String(x)).filter(Boolean)
+        : String(v).split(',').map(s => s.trim()).filter(Boolean);
+      arr.forEach(tag => unique.add(tag));
     } else if (key === 'involved_teams' && typeof v === 'string') {
       v.split(',').map(s => s.trim()).filter(Boolean).forEach(tm => unique.add(tm));
     } else {
@@ -187,17 +208,6 @@ function getUniqueValues(scope, key, allTasks) {
 }
 
 export function renderToolbar(scope, opts = {}) {
-  const sortOptions = [
-    { value: 'id-desc', label: 'ID ↓' },
-    { value: 'id-asc', label: 'ID ↑' },
-    { value: 'priority-desc', label: 'Приоритет ↓' },
-    { value: 'priority-asc', label: 'Приоритет ↑' },
-    { value: 'deadline-asc', label: 'Срок ↑' },
-    { value: 'deadline-desc', label: 'Срок ↓' },
-    { value: 'prog-desc', label: 'Прогресс ↓' },
-    { value: 'prog-asc', label: 'Прогресс ↑' },
-  ];
-  const currentSort = sortValues[scope];
   const colOpts = opts.columnSettings || {};
   const colLabels = opts.columnLabels || {};
   const colOrder = opts.columnOrder || Object.keys(colOpts);
@@ -244,7 +254,7 @@ export function renderToolbar(scope, opts = {}) {
       </div>
     </div>`;
 
-  const addTaskHtml = opts.addTask ? `<button class="btn btn-primary btn-sm" id="${scope}-add-task-btn"><i data-lucide="plus" style="width:14px;height:14px;flex-shrink:0;"></i> Добавить задачу</button>` : '';
+  const addTaskHtml = opts.addTask ? `<button class="btn btn-primary btn-sm" id="${scope}-add-task-btn"><i data-lucide="plus" style="width:15px;height:15px;flex-shrink:0;"></i> Добавить задачу</button>` : '';
 
   const title = opts.title || '';
   const subtitle = opts.subtitle || '';
@@ -267,7 +277,7 @@ export function renderToolbar(scope, opts = {}) {
       ${opts.columnSettings ? columnSettingsHtml : ''}
       ${opts.excel !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-export-excel" title="Экспорт в Excel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>` : ''}
       ${importBtn}
-      ${opts.refresh !== false ? `<button class="btn btn-ghost btn-sm" id="${scope}-btn-refresh"><i data-lucide="refresh-ccw" style="width:14px;height:14px;"></i></button>` : ''}
+      ${opts.refresh !== false ? `<button class="btn btn-secondary btn-sm" id="${scope}-btn-refresh"><i data-lucide="refresh-ccw" style="width:15px;height:15px;"></i></button>` : ''}
     </div>` : '';
 
   return `
@@ -283,13 +293,10 @@ export function renderToolbar(scope, opts = {}) {
         </div>
         <div class="filter-panel">
           <div class="flex items-center gap-2 filter-toolbar-row">
-            <div class="relative filter-search-wrap">
+            <div class="relative filter-search-wrap" style="flex:1;min-width:0;">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-muted);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
               <input id="f-${scope}-search" placeholder="Поиск..." style="width:100%;padding:6px 8px 6px 28px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-color);border-radius:8px;font-size:12px;">
             </div>
-            <select id="f-${scope}-sort" style="font-size:12px;padding:6px 10px;border-radius:8px;background:var(--bg-input);color:var(--text-secondary);border:1px solid var(--border-color);cursor:pointer;width:auto;flex-shrink:0;">
-              ${sortOptions.map(o => `<option value="${o.value}" ${o.value === currentSort ? 'selected' : ''}>${o.label}</option>`).join('')}
-            </select>
             <div id="f-${scope}-main-filters" class="flex items-center gap-2" style="flex:1;min-width:0;"></div>
             <button id="btn-ext-${scope}" class="btn btn-secondary btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
@@ -555,7 +562,6 @@ export function initToolbar(scope, allTasks, onFilterChange) {
   }
 
   const searchInput = $(`f-${scope}-search`);
-  const sortSelect = $(`f-${scope}-sort`);
 
   let searchTimer;
   searchInput?.addEventListener('input', () => {
@@ -566,17 +572,11 @@ export function initToolbar(scope, allTasks, onFilterChange) {
     }, 250);
   });
 
-  sortSelect?.addEventListener('change', () => {
-    sortValues[scope] = sortSelect.value;
-    applySearchSort();
-  });
-
   $(`f-${scope}-reset`)?.addEventListener('click', () => {
     columnFilters[scope] = {};
     searchValues[scope] = '';
     sortValues[scope] = 'id-desc';
     if (searchInput) searchInput.value = '';
-    if (sortSelect) sortSelect.value = 'id-desc';
     renderAll();
   });
 
@@ -651,6 +651,22 @@ export function getFilteredList(scope, allTasks) {
           list = list.filter(isLastQuarterTask);
           return;
         }
+        if (key === '_active') {
+          list = list.filter(t => !!t.status_name && !terminalStatuses.includes(t.status_name) && t.status_name !== 'ХОЛД');
+          return;
+        }
+        if (key === '_hold') {
+          list = list.filter(t => t.status_name === 'ХОЛД');
+          return;
+        }
+        if (key === '_rejected') {
+          list = list.filter(t => t.status_name === 'ОТКЛОНЕНА');
+          return;
+        }
+        if (key === '_high_cv') {
+          list = list.filter(t => t.financial_effect != null && t.effort_rub > 0 && (t.financial_effect / t.effort_rub) > 1);
+          return;
+        }
         list = list.filter(t => {
           let v = t[key];
           if (key === 'progress') {
@@ -660,8 +676,10 @@ export function getFilteredList(scope, allTasks) {
             if (vals.has('75-100')) return (v || 0) > 75;
             return true;
           }
-          if (key === 'tags' && typeof v === 'string') {
-            const taskTags = v.split(',').map(s => s.trim());
+          if (key === 'tags') {
+            const taskTags = Array.isArray(v)
+              ? v.map(x => typeof x === 'object' && x !== null ? String(x.name || '') : String(x)).filter(Boolean)
+              : String(v).split(',').map(s => s.trim());
             return taskTags.some(tag => vals.has(tag));
           }
           if (key === 'involved_teams' && typeof v === 'string') {
@@ -810,6 +828,10 @@ function updateActiveFiltersRow(scope) {
     if (key === '_urgent') { chips.push({ key, label: 'Важные задачи', value: 'да' }); return; }
     if (key === '_current') { chips.push({ key, label: 'Текущие задачи', value: 'да' }); return; }
     if (key === '_last_quarter') { chips.push({ key, label: 'Прошлый квартал', value: 'да' }); return; }
+    if (key === '_active') { chips.push({ key, label: 'В работе', value: 'да' }); return; }
+    if (key === '_hold') { chips.push({ key, label: 'Холд', value: 'да' }); return; }
+    if (key === '_rejected') { chips.push({ key, label: 'Отклонённые', value: 'да' }); return; }
+    if (key === '_high_cv') { chips.push({ key, label: 'C/V > 1', value: 'да' }); return; }
     const colLabel = labels[key] || key;
     const valueText = vals.size === 1 ? [...vals][0] : `${vals.size} выбрано`;
     chips.push({ key, label: colLabel, value: valueText });
@@ -1008,6 +1030,7 @@ export function initStickyTableHeader(tableId) {
         
         const clonedTable = document.createElement('table');
         clonedTable.className = table.className;
+        clonedTable.dataset.sourceTable = tableId;
         clonedTable.style.cssText = 'margin: 0; border-collapse: collapse;';
         
         const clonedThead = thead.cloneNode(true);
@@ -1066,14 +1089,16 @@ export function initStickyTableHeader(tableId) {
   update();
 }
 
+export function setToolbarSortValue(scope, value) {
+  sortValues[scope] = value;
+}
+
 export function resetToolbarFilters(scope) {
   columnFilters[scope] = {};
   searchValues[scope] = '';
   sortValues[scope] = 'id-desc';
   const searchInput = $(`f-${scope}-search`);
-  const sortSelect = $(`f-${scope}-sort`);
   if (searchInput) searchInput.value = '';
-  if (sortSelect) sortSelect.value = 'id-desc';
 }
 
 export { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask };

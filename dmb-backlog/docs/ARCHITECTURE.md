@@ -161,9 +161,9 @@
 
 ## 5. База данных — нормализованная схема
 
-### 5.1 Все таблицы (22 шт.)
+### 5.1 Все таблицы (23 шт.)
 
-**Справочники (8):** channels, deadlines, departments, priorities, statuses, task_types, team_types, project_statuses
+**Справочники (10):** channels, deadlines, departments, priorities, statuses, task_types, team_types, project_statuses, competency_cost (в `dictionary_items`, для блокировки), competency_cost_history
 
 **Основные (5):** teams, roles, users, projects, tasks
 
@@ -228,8 +228,10 @@ project_tags.tag_id     → tags.id
 - 4 стандартных отчёта
 
 При повторных запусках:
-- `seed_dict_always()` — добавляет отсутствующие записи справочников (upsert по dict_type+code)
+- `seed_dict_always()` — добавляет отсутствующие записи справочников (upsert по dict_type+code; для competency_cost — по dict_type+name, т.к. в `code` хранится ставка)
+- `seed_competency_cost_history()` — upsert по (competency, year) для ставок 2026/2027 (никогда не перезаписывает)
 - `seed_initial_data()` — пропускается (User.count > 0)
+- `recalculate_actual_effort_days_for_all()` — при старте пересчитывает `actual_effort_days` = сумма полей ФТЗ (8 компетенций) для всех задач (идемпотентно)
 
 ---
 

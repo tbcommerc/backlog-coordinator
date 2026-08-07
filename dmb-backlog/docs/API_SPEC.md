@@ -229,7 +229,6 @@ API версионируется через префикс пути: `/api/v1/`.
       "owner": "Фомин Д.",
       "key_project": true,
       "key_project_status": "В работе",
-      "last_updated": "2026-06-20",
       "created_by": 1,
       "created_at": "2026-06-01T10:00:00Z",
       "updated_at": "2026-06-20T14:30:00Z",
@@ -318,6 +317,7 @@ API версионируется через префикс пути: `/api/v1/`.
 - `status_id` устанавливается в 1 (НОВАЯ ЗАДАЧА) по умолчанию
 - `cv` = `financial_effect / effort_rub` (если оба заполнены и effort_rub > 0)
 - `ice_score` = `(ice_impact × ice_confidence × ice_ease) / 10` (если все три заполнены)
+- `actual_effort_days` = сумма полей ФТЗ (`actual_effort_designee`, `actual_effort_analytics`, `actual_effort_be`, `actual_effort_python_be`, `actual_effort_fe`, `actual_effort_test`, `actual_effort_test_auto`, `actual_effort_delivery`); входящее значение игнорируется
 - Создаётся запись в `task_history` для обязательных + заполненных полей
 - Создаётся запись в `audit_log` (action=create, entity_type=task)
 - `created_by` устанавливается из JWT-токена текущего пользователя
@@ -360,6 +360,7 @@ API версионируется через префикс пути: `/api/v1/`.
 **Бизнес-логика при обновлении:**
 - Если изменены `financial_effect` или `effort_rub` — пересчитывается `cv`
 - Если изменены `ice_impact`, `ice_confidence` или `ice_ease` — пересчитывается `ice_score`
+- Если изменено любое поле ФТЗ (`actual_effort_*` по 8 компетенциям) — пересчитывается `actual_effort_days` = их сумма; входящее значение `actual_effort_days` игнорируется
 - Все изменения записываются в `task_history` (field_name, old_value, new_value)
 
 **Response 200:** обновлённый объект задачи
@@ -880,24 +881,38 @@ API версионируется через префикс пути: `/api/v1/`.
 ### GET /admin/statuses
 ### GET /admin/task-types
 ### GET /admin/business-customers
+### GET /admin/competency-costs
+
+Историчный справочник стоимости компетенций (таблица `competency_cost_history`): каждая запись — пара «компетенция × год» со ставкой в руб/день. При расчёте стоимости задачи берётся ставка года её дедлайна; при отсутствии дедлайна/года — ставка последнего (актуального) года.
 
 **Response 200:**
 ```json
 [
   {
     "id": 1,
-    "dict_type": "priority",
-    "name": "Высокий",
-    "code": "high",
-    "color": "#f43f5e",
-    "sort_order": 1,
+    "competency": "Разработка FE",
+    "year": 2026,
+    "rate": 13000,
     "is_active": true,
-    "created_at": "2026-01-15T10:00:00Z"
+    "created_at": "2026-01-15T10:00:00Z",
+    "updated_at": "2026-01-15T10:00:00Z"
   }
 ]
 ```
 
-POST/PUT/DELETE для каждого справочника (требуют `admin: partial`). PUT/POST/DELETE проверяют блокировку — HTTP 423 если справочник заблокирован другим пользователем.
+PUT/POST/DELETE требуют `admin: partial` и проверяют блокировку — HTTP 423 если справочник заблокирован другим пользователем.
+
+### POST /admin/competency-costs
+
+Создание записи ставки: `{ "competency": "Разработка FE", "year": 2027, "rate": 14000 }`. Если пара компетенция×год уже существует — запись реактивируется и ставка обновляется.
+
+### PUT /admin/competency-costs/{competency}/{year}
+
+Обновление ставки (upsert): `{ "rate": 14000 }`. После изменения автоматически пересчитываются `effort_rub` (и `cv`) всех задач с заполненными ЭО по ролям — ставки берутся по году дедлайна каждой задачи.
+
+### DELETE /admin/competency-costs/{competency}/{year}
+
+Soft-delete записи (`is_active=false`) с последующим пересчётом `effort_rub`/`cv` задач.
 
 ### GET /admin/dict-locks
 Статус блокировки всех справочников (для отображения индикаторов на карточках).

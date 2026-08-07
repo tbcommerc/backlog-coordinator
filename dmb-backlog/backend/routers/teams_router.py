@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from database import get_db
-from models import Team, User, TeamCompetencyResource, DictionaryItem
+from models import Team, User, TeamCompetencyResource, DictionaryItem, CompetencyCostHistory
 from schemas import TeamCreate, TeamUpdate, TeamResponse, TeamCompetencyResourceResponse, CompetencyCostResponse
 from auth import get_current_user, require_permission
 
@@ -98,13 +98,15 @@ async def get_competency_costs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get competency costs per day from dictionary."""
-    items = db.query(DictionaryItem).filter(
-        DictionaryItem.dict_type == 'competency_cost',
-        DictionaryItem.is_active == True
+    """Get current (latest-year) competency costs per day from history table."""
+    items = db.query(CompetencyCostHistory).filter(
+        CompetencyCostHistory.is_active == True
     ).all()
-    costs = {item.name: float(item.code) if item.code else 0 for item in items}
-    return [CompetencyCostResponse(competency=comp, cost_per_day=costs.get(comp, 0)) for comp in COMPETENCIES]
+    costs = {}
+    for item in items:
+        costs.setdefault(item.competency, {})[item.year] = float(item.rate or 0)
+    current = {comp: rates[max(rates)] for comp, rates in costs.items() if rates}
+    return [CompetencyCostResponse(competency=comp, cost_per_day=current.get(comp, 0)) for comp in COMPETENCIES]
 
 
 @router.get("/{team_id}", response_model=TeamResponse)

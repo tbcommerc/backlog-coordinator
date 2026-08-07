@@ -4,7 +4,7 @@
  */
 console.log('[DMB] app.js v20260727 notif-v2 loaded');
 
-import { Router } from './router.js';
+import { Router } from './router.js?v=45';
 import { Store } from './store.js';
 import { API } from './api.js';
 import { Auth } from './auth.js';
@@ -252,7 +252,7 @@ async function handleSearch(query, app) {
 }
 
 async function handleLogout() {
-  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js');
+  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=45');
   const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
   if (!ok) return;
   clearQuickEditState();
@@ -504,7 +504,7 @@ class App {
       await this.loadReferenceData();
       this.renderAppLayout();
       this.router.onBeforeNavigate = async (toPath, fromHash) => {
-        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js');
+        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=45');
         const ok = await confirmDiscardChanges('Продолжить', 'Есть несохранённые изменения в режиме массового редактирования. Перейти и потерять их?');
         if (ok) clearQuickEditState();
         return ok;

@@ -423,13 +423,21 @@ async function conflictSaveSelected(serverTask) {
     deadline_id: getInt('edit-deadline'),
     effort_days: getInt('edit-effort-days'), effort_rub: getFloat('edit-effort-rub'),
     financial_effect: getFloat('edit-financial-effect'),
+    metric_kr_plan: getFloat('edit-metric-kr-plan'),
+    metric_kr_fact: getFloat('edit-metric-kr-fact'),
+    metric_kr_unit: document.getElementById('edit-metric-kr-unit')?.value || null,
     progress: parseInt(document.getElementById('edit-progress')?.value) || 0,
     description: document.getElementById('edit-description')?.value || '',
     comment: document.getElementById('edit-comment')?.value || null,
     rejection_reason: document.getElementById('edit-rejection-reason')?.value || null,
     link_mockups: document.getElementById('edit-link-mockups')?.value || null,
     link_jira: document.getElementById('edit-link-jira')?.value || null,
-    tags: document.getElementById('edit-tags')?.value || '',
+    tags: (() => {
+      const sel = document.getElementById('edit-tags');
+      const selected = sel ? [...sel.selectedOptions].map(o => o.value) : [];
+      const extra = (document.getElementById('edit-tags-new')?.value || '').split(',').map(x => x.trim()).filter(Boolean);
+      return [...selected, ...extra].filter((v, i, a) => a.indexOf(v) === i);
+    })(),
     date_received: document.getElementById('edit-date-received')?.value || null,
     key_project_status: document.getElementById('edit-key-project-status')?.value || null,
     directorate_status: document.getElementById('edit-directorate-status')?.value || null,
@@ -494,13 +502,21 @@ async function conflictForceSave() {
     deadline_id: getInt('edit-deadline'),
     effort_days: getInt('edit-effort-days'), effort_rub: getFloat('edit-effort-rub'),
     financial_effect: getFloat('edit-financial-effect'),
+    metric_kr_plan: getFloat('edit-metric-kr-plan'),
+    metric_kr_fact: getFloat('edit-metric-kr-fact'),
+    metric_kr_unit: document.getElementById('edit-metric-kr-unit')?.value || null,
     progress: parseInt(document.getElementById('edit-progress')?.value) || 0,
     description: document.getElementById('edit-description')?.value || '',
     comment: document.getElementById('edit-comment')?.value || null,
     rejection_reason: document.getElementById('edit-rejection-reason')?.value || null,
     link_mockups: document.getElementById('edit-link-mockups')?.value || null,
     link_jira: document.getElementById('edit-link-jira')?.value || null,
-    tags: document.getElementById('edit-tags')?.value || '',
+    tags: (() => {
+      const sel = document.getElementById('edit-tags');
+      const selected = sel ? [...sel.selectedOptions].map(o => o.value) : [];
+      const extra = (document.getElementById('edit-tags-new')?.value || '').split(',').map(x => x.trim()).filter(Boolean);
+      return [...selected, ...extra].filter((v, i, a) => a.indexOf(v) === i);
+    })(),
     date_received: document.getElementById('edit-date-received')?.value || null,
     key_project_status: document.getElementById('edit-key-project-status')?.value || null,
     directorate_status: document.getElementById('edit-directorate-status')?.value || null,
@@ -791,6 +807,14 @@ function renderOverviewDashboard(task) {
         </span>
         <span class="b-fin-sub">Соотношение</span>
       </div>
+      <div class="b-fin-cell">
+        <div class="b-fin-value">${t.metric_kr_plan != null ? metricFormat(t.metric_kr_plan) + (t.metric_kr_unit ? ' <span class="vs">' + escapeHtml(t.metric_kr_unit) + '</span>' : '') : '—'}</div>
+        <span class="b-fin-sub">Метрический KR (план)</span>
+      </div>
+      <div class="b-fin-cell">
+        <div class="b-fin-value">${t.metric_kr_fact != null ? metricFormat(t.metric_kr_fact) + (t.metric_kr_unit ? ' <span class="vs">' + escapeHtml(t.metric_kr_unit) + '</span>' : '') : '—'}</div>
+        <span class="b-fin-sub">Метрический KR (факт)</span>
+      </div>
     </div>
   </div>`;
 
@@ -831,7 +855,12 @@ function renderOverviewDashboard(task) {
         <h3>Теги и ссылки</h3>
       </div>
       <div class="b-tags">
-        ${tags.map(tag => `<span class="b-tag">${escapeHtml(tag)}</span>`).join('')}
+        ${tags.map(tag => {
+          const name = typeof tag === 'object' && tag !== null ? String(tag.name || '') : String(tag);
+          const color = typeof tag === 'object' && tag !== null ? (tag.color || '') : '';
+          const style = color ? `background:${color}22;color:${color};border-color:${color}55;` : '';
+          return name ? `<span class="b-tag" style="${style}">${escapeHtml(name)}</span>` : '';
+        }).join('')}
         ${t.link_mockups ? `<a class="b-tag" href="${escapeHtml(t.link_mockups)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2)">📎 Макеты</a>` : ''}
         ${renderLinkJiraTags(t.link_jira)}
       </div>
@@ -1442,7 +1471,7 @@ function toggleToEditMode(app) {
 // ============================================================
 function renderEditForm(task) {
   const t = task || {};
-  const tags = t.tags ? (Array.isArray(t.tags) ? t.tags.join(', ') : String(t.tags)) : '';
+  const tags = t.tags ? (Array.isArray(t.tags) ? t.tags.map(x => typeof x === 'object' && x !== null ? String(x.name || '') : String(x)).filter(Boolean) : String(t.tags).split(',').map(x => x.trim()).filter(Boolean)) : [];
   const statuses = [
     { value: 1, label: 'НОВАЯ ЗАДАЧА' }, { value: 2, label: 'НАЗНАЧЕНА КОМАНДА' },
     { value: 3, label: 'СБОР ТРЕБОВАНИЙ' }, { value: 4, label: 'ПРОВЕРКА ТРЕБОВАНИЙ' },
@@ -1567,6 +1596,13 @@ function renderEditForm(task) {
     <div style="margin-top:10px">
       ${field(FL('financial_effect'), bnum('edit-financial-effect', t.financial_effect ?? '', '₽'))}
     </div>
+    <div class="b-edit-row-2" style="margin-top:10px">
+      ${field(FL('metric_kr_plan'), bnum('edit-metric-kr-plan', t.metric_kr_plan ?? '', 'план'))}
+      ${field(FL('metric_kr_fact'), bnum('edit-metric-kr-fact', t.metric_kr_fact ?? '', 'факт'))}
+    </div>
+    <div style="margin-top:10px">
+      ${field(FL('metric_kr_unit'), binput('edit-metric-kr-unit', 'text', t.metric_kr_unit || '', 'шт, %, руб...'))}
+    </div>
     <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
       <div class="b-tile-title" style="margin-bottom:8px">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -1613,7 +1649,16 @@ function renderEditForm(task) {
       ${field(FL('link_jira'), binput('edit-link-jira', 'text', Array.isArray(t.link_jira) ? t.link_jira.join(', ') : t.link_jira, 'https://...'))}
     </div>
     <div style="margin-top:10px">
-      ${field(FL('tags'), binput('edit-tags', 'text', tags, 'regulatory, backend, security'))}
+      ${field(FL('tags'), `
+        <select class="b-edit-select" id="edit-tags" multiple style="min-height:96px;width:100%">
+          ${(window.app?.tags || []).map(tg => {
+            const name = String(tg.name || '');
+            return `<option value="${escapeHtml(name)}" ${tags.includes(name) ? 'selected' : ''}>${escapeHtml(name)}</option>`;
+          }).join('')}
+        </select>
+        <input type="text" class="b-edit-input" id="edit-tags-new" placeholder="Новые теги через запятую" style="margin-top:6px">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Выберите из списка или введите новые — они создадутся автоматически</div>
+      `)}
     </div>
   </div>`;
 
@@ -1676,9 +1721,21 @@ async function populateSelects(app) {
 
   populateSelect('/teams', 'edit-team', t.team_id, t.team_name || t.team);
   populateSelect('/projects', 'edit-project', t.project_id, t.project_name || t.project);
-  populateSelect('/departments', 'edit-department', t.department_id, t.department_name || t.customer_department);
+  populateSelect('/admin/departments', 'edit-department', t.department_id, t.department_name || t.customer_department);
   populateSelect('/admin/business-customers', 'edit-business-customer', t.business_customer_id, t.business_customer_name || t.business_customer);
   populateSelect('/users', 'edit-owner', t.owner_id, t.owner_name || t.owner);
+
+  const customerSelect = document.getElementById('edit-business-customer');
+  if (customerSelect) {
+    customerSelect.addEventListener('change', function() {
+      const deptSelect = document.getElementById('edit-department');
+      if (!deptSelect) return;
+      const customer = (window.app?.businessCustomers || []).find(b => String(b.id) === this.value);
+      if (customer && customer.department_id != null) {
+        deptSelect.value = String(customer.department_id);
+      }
+    });
+  }
 }
 
 // ============================================================
@@ -1732,13 +1789,21 @@ async function saveTaskDetail(app) {
     effort_days: getInt('edit-effort-days'),
     effort_rub: getFloat('edit-effort-rub'),
     financial_effect: getFloat('edit-financial-effect'),
+    metric_kr_plan: getFloat('edit-metric-kr-plan'),
+    metric_kr_fact: getFloat('edit-metric-kr-fact'),
+    metric_kr_unit: document.getElementById('edit-metric-kr-unit')?.value || null,
     progress: parseInt(document.getElementById('edit-progress')?.value) || 0,
     description: document.getElementById('edit-description')?.value || '',
     comment: document.getElementById('edit-comment')?.value || null,
     rejection_reason: document.getElementById('edit-rejection-reason')?.value || null,
     link_mockups: document.getElementById('edit-link-mockups')?.value || null,
     link_jira: document.getElementById('edit-link-jira')?.value || null,
-    tags: document.getElementById('edit-tags')?.value || '',
+    tags: (() => {
+      const sel = document.getElementById('edit-tags');
+      const selected = sel ? [...sel.selectedOptions].map(o => o.value) : [];
+      const extra = (document.getElementById('edit-tags-new')?.value || '').split(',').map(x => x.trim()).filter(Boolean);
+      return [...selected, ...extra].filter((v, i, a) => a.indexOf(v) === i);
+    })(),
     date_received: document.getElementById('edit-date-received')?.value || null,
     key_project_status: document.getElementById('edit-key-project-status')?.value || null,
     directorate_status: document.getElementById('edit-directorate-status')?.value || null,
@@ -3275,7 +3340,7 @@ export function importTasksFromExcel(app, onSuccess) {
     'financial_effect', 'financial_effect_justification',
     'progress', 'link_mockups', 'link_jira', 'rejection_reason',
     'comment', 'owner_id', 'key_project_status', 'directorate_status',
-    'did_status', 'did_demo', 'metric_kr_plan', 'metric_kr_fact',
+    'did_status', 'did_demo', 'metric_kr_plan', 'metric_kr_fact', 'metric_kr_unit',
     'involved_teams', 'created_by'
   ];
 
@@ -3327,6 +3392,7 @@ export function importTasksFromExcel(app, onSuccess) {
       did_demo: 'false',
       metric_kr_plan: '',
       metric_kr_fact: '',
+      metric_kr_unit: '',
       involved_teams: '',
       created_by: ''
     };

@@ -32,7 +32,6 @@ def parse_chat_message(message: str, user: User) -> dict:
         "title": "",
         "description": "",
         "priority": "Средний",
-        "business_customer": user.name,
         "status": "Сбор требований",
         "task_type": "Функциональность"
     }
@@ -129,7 +128,6 @@ async def create_task_from_chat(
         priority=parsed["priority"],
         status=parsed["status"],
         task_type=parsed["task_type"],
-        business_customer=parsed["business_customer"],
         created_by=current_user.id
     )
 

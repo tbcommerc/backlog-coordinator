@@ -8,7 +8,7 @@ function escapeHtml(str) {
 }
 
 let adminTab = 'teams';
-let adminData = { teams: [], users: [], roles: [], priorities: [], statuses: [], taskTypes: [], businessCustomers: [], channels: [], deadlines: [], departments: [], teamTypes: [], projectStatuses: [], projects: [], reports: [], teamTypeRefs: [] };
+let adminData = { teams: [], users: [], roles: [], priorities: [], statuses: [], taskTypes: [], businessCustomers: [], channels: [], deadlines: [], departments: [], teamTypes: [], projectStatuses: [], competencyCosts: [], projects: [], reports: [], teamTypeRefs: [], tags: [] };
 let adminModal = { show: false, mode: 'add', type: 'team', data: {} };
 let currentAdminUser = null;
 let userSort = { field: 'role', dir: 'asc' };
@@ -175,6 +175,7 @@ function autoDictColor(name) {
 }
 
 window.autoFillDictRow = function(input) {
+  if ((adminModal.data || {}).dictKey === 'competencyCosts') return;
   const row = input.closest('div[style]');
   if (!row) return;
   const name = input.value.trim();
@@ -194,6 +195,10 @@ window.autoFillDictRow = function(input) {
 window.markDictEdited = function(input) {
   input.dataset.userEdited = '1';
 };
+
+function dictCodePlaceholder(dictKey) {
+  return dictKey === 'competencyCosts' ? 'Ставка (руб/день)' : 'Код';
+}
 
 function getStatusBadge(active) {
   return active
@@ -738,9 +743,26 @@ function renderRolesTab(app) {
   `;
 }
 
+function competencyCostCardData() {
+  const items = adminData.competencyCosts || [];
+  const byComp = {};
+  items.forEach(i => {
+    if (!byComp[i.competency]) byComp[i.competency] = {};
+    byComp[i.competency][i.year] = i.rate;
+  });
+  const competencies = Object.keys(byComp).sort();
+  const preview = competencies.slice(0, 3).map(comp => {
+    const rates = byComp[comp];
+    const latestYear = Math.max(...Object.keys(rates).map(Number));
+    return { name: comp, code: String(rates[latestYear]) };
+  });
+  return { count: competencies.length, preview };
+}
+
 // ==================== DICTIONARIES TAB ====================
 
 function renderDictionariesTab(app) {
+  const ccCard = competencyCostCardData();
   const dicts = [
     { key: 'priorities', dictType: 'priority', label: 'Приоритеты', icon: 'flag', count: (adminData.priorities || []).length, preview: (adminData.priorities || []).slice(0, 3) },
     { key: 'statuses', dictType: 'status', label: 'Статусы задачи', icon: 'circle', count: (adminData.statuses || []).length, preview: (adminData.statuses || []).slice(0, 3) },
@@ -750,6 +772,8 @@ function renderDictionariesTab(app) {
     { key: 'departments', dictType: 'department', label: 'Подразделения', icon: 'building', count: (adminData.departments || []).length, preview: (adminData.departments || []).slice(0, 3) },
     { key: 'teamTypes', dictType: 'team_type', label: 'Типы команд', icon: 'layers', count: (adminData.teamTypes || []).length, preview: (adminData.teamTypes || []).slice(0, 3) },
     { key: 'projectStatuses', dictType: 'project_status', label: 'Статусы проектов', icon: 'git-branch', count: (adminData.projectStatuses || []).length, preview: (adminData.projectStatuses || []).slice(0, 3) },
+    { key: 'competencyCosts', dictType: 'competency_cost', label: 'Стоимость компетенций', icon: 'coins', count: ccCard.count, preview: ccCard.preview, showRate: true },
+    { key: 'tags', dictType: 'tag', label: 'Теги', icon: 'tags', count: (adminData.tags || []).length, preview: (adminData.tags || []).slice(0, 3) },
   ];
 
   const cards = dicts.map(d => {
@@ -762,11 +786,12 @@ function renderDictionariesTab(app) {
           Редактируется: ${lock.lock_owner_name || 'Администратор'}
         </div>`
       : '';
-    const previewItems = d.preview.map(v =>
-      v.color
-        ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:${v.color}20;color:${v.color};margin:2px">${v.name}</span>`
-        : `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:var(--bg-tertiary);color:var(--text-muted);margin:2px">${v.name}</span>`
-    ).join('');
+    const previewItems = d.preview.map(v => {
+      const label = d.showRate && v.code ? `${v.name}: ${v.code}` : v.name;
+      return v.color
+        ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:${v.color}20;color:${v.color};margin:2px">${label}</span>`
+        : `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:var(--bg-tertiary);color:var(--text-muted);margin:2px">${label}</span>`;
+    }).join('');
     return `
       <div class="card rounded-xl p-5 card-hover admin-dict-card${isLocked ? ' dict-locked' : ''}" data-dict="${d.key}" style="cursor:${isLocked ? 'default' : 'pointer'};height:${isLocked ? '220' : '200'}px;position:relative;${isLocked ? 'opacity:0.85' : ''}">
         ${lockBanner}
@@ -821,7 +846,7 @@ function getReportFields() {
   { key: 'did_demo', label: fl.did_demo || 'Демо на оперативке' },
   { key: 'date_received', label: 'Дата получения' },
   { key: 'created_at', label: fl.created_at || 'Дата создания' },
-  { key: 'updated_at', label: fl.last_updated || 'Дата обновления' },
+  { key: 'updated_at', label: fl.updated_at || 'Дата обновления' },
   ];
 }
 
@@ -1900,13 +1925,15 @@ function renderRoleForm(data) {
 }
 
 function renderDictForm(data) {
+  if (data.dictKey === 'competencyCosts') return renderCompetencyCostForm(data);
+
   const items = data.items || [];
   const list = items.map((item, i) => `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" data-item-id="${item.id || ''}">
       <input type="hidden" class="dict-color-input" value="${item.color || autoDictColor(item.name)}">
       <span class="dict-color-swatch" style="display:inline-block;width:28px;height:28px;border-radius:6px;background:${item.color || autoDictColor(item.name)};cursor:pointer;border:1px solid var(--border-color);flex-shrink:0;" onclick="openDictColorPalette(this)"></span>
       <input class="input dict-value-input" value="${item.name}" placeholder="Значение" style="flex:1" oninput="autoFillDictRow(this)">
-      <input class="input dict-code-input" value="${item.code || ''}" placeholder="Код" style="width:100px" oninput="markDictEdited(this)">
+      <input class="input dict-code-input" value="${item.code || ''}" placeholder="${dictCodePlaceholder(data.dictKey)}" style="width:100px" oninput="markDictEdited(this)">
       <button class="dict-remove-btn" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;color:#f43f5e" title="Удалить">
         <i data-lucide="x" style="width:14px;height:14px"></i>
       </button>
@@ -1920,6 +1947,127 @@ function renderDictForm(data) {
       <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить значение
     </button>
   `;
+}
+
+function renderCompetencyCostForm(data) {
+  const items = data.items || [];
+  const competencies = [...new Set(items.map(i => i.competency))].sort();
+  const years = [...new Set(items.map(i => i.year))].sort((a, b) => a - b);
+
+  const cellFor = (comp, year) => items.find(i => i.competency === comp && i.year === year);
+
+  const header = `<th style="padding:8px;text-align:left;font-size:12px">Компетенция</th>` +
+    years.map(y => `<th data-year="${y}" style="padding:8px;text-align:center;font-size:12px">${y}</th>`).join('');
+
+  const rows = competencies.map(comp => {
+    const cells = years.map(y => {
+      const it = cellFor(comp, y);
+      return `<td style="padding:4px"><input class="input comp-cost-input" data-comp="${comp}" data-year="${y}" data-id="${it ? it.id : ''}" value="${it ? it.rate : ''}" placeholder="0" style="width:90px" oninput="markDictEdited(this)"></td>`;
+    }).join('');
+    return `<tr><td style="padding:8px;font-weight:500;font-size:13px">${comp}</td>${cells}</tr>`;
+  }).join('');
+
+  return `
+    <h4 style="font-size:14px;font-weight:600;margin-bottom:8px">${data.dictLabel}</h4>
+    <p class="text-muted" style="font-size:12px;margin-bottom:12px">Ставки (руб/день) по годам. Для задачи берётся ставка года её дедлайна; без дедлайна — ставка последнего (актуального) года. Очистка ячейки удаляет ставку, сохранённые effort_rub задач пересчитаются.</p>
+    <div style="overflow-x:auto">
+      <table id="comp-cost-table" style="border-collapse:collapse;min-width:100%">
+        <thead><tr style="border-bottom:1px solid var(--border-color)">${header}</tr></thead>
+        <tbody>${rows || '<tr><td style="padding:8px" class="text-muted">Нет значений</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-secondary btn-sm" id="cc-add-year">
+        <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить год
+      </button>
+      <button class="btn btn-secondary btn-sm" id="cc-add-competency">
+        <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить компетенцию
+      </button>
+    </div>
+  `;
+}
+
+function addCompetencyCostYear() {
+  const input = prompt('Введите год (например, 2028):');
+  if (!input) return;
+  const year = parseInt(input);
+  if (!year || year < 2000 || year > 2100) { toast('Некорректный год', 'error'); return; }
+  const table = document.querySelector('#comp-cost-table');
+  if (!table) return;
+  if (table.querySelector(`th[data-year="${year}"]`)) { toast('Год уже есть в таблице', 'error'); return; }
+  table.querySelector('thead tr').insertAdjacentHTML('beforeend', `<th data-year="${year}" style="padding:8px;text-align:center;font-size:12px">${year}</th>`);
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const first = tr.querySelector('.comp-cost-input');
+    const comp = first ? first.dataset.comp : '';
+    tr.insertAdjacentHTML('beforeend', `<td style="padding:4px"><input class="input comp-cost-input" data-comp="${comp}" data-year="${year}" data-id="" value="" placeholder="0" style="width:90px" oninput="markDictEdited(this)"></td>`);
+  });
+}
+
+function addCompetencyCostCompetency() {
+  const input = prompt('Введите название компетенции:');
+  if (!input || !input.trim()) return;
+  const comp = input.trim();
+  const table = document.querySelector('#comp-cost-table');
+  if (!table) return;
+  if (table.querySelector(`.comp-cost-input[data-comp="${comp}"]`)) { toast('Компетенция уже есть в таблице', 'error'); return; }
+  const yearCells = Array.from(table.querySelectorAll('thead th[data-year]'));
+  const tbody = table.querySelector('tbody');
+  const tr = document.createElement('tr');
+  tr.insertAdjacentHTML('beforeend', `<td style="padding:8px;font-weight:500;font-size:13px">${comp}</td>`);
+  yearCells.forEach(th => {
+    const year = th.dataset.year;
+    tr.insertAdjacentHTML('beforeend', `<td style="padding:4px"><input class="input comp-cost-input" data-comp="${comp}" data-year="${year}" data-id="" value="" placeholder="0" style="width:90px" oninput="markDictEdited(this)"></td>`);
+  });
+  tbody.appendChild(tr);
+}
+
+async function saveCompetencyCosts(app) {
+  const cells = Array.from(document.querySelectorAll('.comp-cost-input')).map(input => ({
+    competency: input.dataset.comp,
+    year: parseInt(input.dataset.year),
+    id: input.dataset.id || '',
+    rate: input.value.trim(),
+  })).filter(c => c.competency && c.year);
+
+  if (cells.length === 0) { toast('Нет данных для сохранения', 'error'); return; }
+
+  const changes = cells.filter(c => {
+    if (!c.id) return c.rate !== '';
+    const original = adminData.competencyCosts.find(x => String(x.id) === String(c.id));
+    return !original || String(original.rate) !== c.rate;
+  });
+  if (changes.length === 0) { toast('Нет изменений', 'info'); return; }
+
+  const doSave = async () => {
+    try {
+      for (const c of cells) {
+        const url = `/admin/competency-costs/${encodeURIComponent(c.competency)}/${c.year}`;
+        if (!c.id) {
+          if (c.rate !== '') {
+            await app.api.post('/admin/competency-costs', { competency: c.competency, year: c.year, rate: parseFloat(c.rate) });
+          }
+        } else if (c.rate === '') {
+          await app.api.delete(url);
+        } else {
+          await app.api.put(url, { rate: parseFloat(c.rate) });
+        }
+      }
+      adminModal.show = false;
+      document.getElementById('admin-modal-root').innerHTML = '';
+      await releaseDictLockIfHeld(app);
+      toast('Стоимость компетенций сохранена', 'success');
+      await initAdmin(app);
+    } catch (e) {
+      toast('Ошибка сохранения: ' + e.message, 'error');
+    }
+  };
+
+  const deletions = cells.filter(c => c.id && c.rate === '').length;
+  if (deletions > 0) {
+    showConfirmModal(`Будут удалены ставки (${deletions} шт.), сохранённые effort_rub задач пересчитаются. Продолжить?`, doSave);
+  } else {
+    await doSave();
+  }
 }
 
 window.openDictColorPalette = function(swatch) {
@@ -1998,6 +2146,18 @@ function handleAdminClick(e, app) {
     return;
   }
 
+  if (target.id === 'cc-add-year') {
+    addCompetencyCostYear();
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  if (target.id === 'cc-add-competency') {
+    addCompetencyCostCompetency();
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
   if (target.id === 'project-add-btn') {
     adminModal = { show: true, mode: 'add', type: 'project', data: {} };
     refreshModal();
@@ -2034,7 +2194,7 @@ function handleAdminClick(e, app) {
 
   if (target.classList.contains('admin-dict-card')) {
     const dictKey = target.dataset.dict;
-    const dictTypeMap = { priorities: 'priority', statuses: 'status', taskTypes: 'task_type', channels: 'channel', deadlines: 'deadline', departments: 'department', teamTypes: 'team_type', projectStatuses: 'project_status' };
+    const dictTypeMap = { priorities: 'priority', statuses: 'status', taskTypes: 'task_type', channels: 'channel', deadlines: 'deadline', departments: 'department', teamTypes: 'team_type', projectStatuses: 'project_status', competencyCosts: 'competency_cost' };
     const lock = dictLocks[dictTypeMap[dictKey]];
     if (lock && lock.locked && !lock.is_mine) {
       toast(`Справочник редактируется: ${lock.lock_owner_name || 'Администратор'}`, 'error');
@@ -2110,7 +2270,7 @@ function handleDictEvents(e, app) {
       <input type="hidden" class="dict-color-input" value="${defaultColor}">
       <span class="dict-color-swatch" style="display:inline-block;width:28px;height:28px;border-radius:6px;background:${defaultColor};cursor:pointer;border:1px solid var(--border-color);flex-shrink:0;" onclick="openDictColorPalette(this)"></span>
       <input class="input dict-value-input" value="" placeholder="Значение" style="flex:1" oninput="autoFillDictRow(this)">
-      <input class="input dict-code-input" value="" placeholder="Код" style="width:100px" oninput="markDictEdited(this)">
+      <input class="input dict-code-input" value="" placeholder="${dictCodePlaceholder((adminModal.data || {}).dictKey)}" style="width:100px" oninput="markDictEdited(this)">
       <button class="dict-remove-btn" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;color:#f43f5e" title="Удалить">
         <i data-lucide="x" style="width:14px;height:14px"></i>
       </button>
@@ -2232,6 +2392,10 @@ function saveModalData(app) {
 
 async function saveDictData(app) {
   const { data } = adminModal;
+  if (data.dictKey === 'competencyCosts') {
+    await saveCompetencyCosts(app);
+    return;
+  }
   const rows = document.querySelectorAll('#dict-items-container > div');
   const items = Array.from(rows).map(row => {
     const colorInput = row.querySelector('.dict-color-input');
@@ -2256,6 +2420,8 @@ async function saveDictData(app) {
     departments: { type: 'department', endpoint: 'departments' },
     teamTypes: { type: 'team_type', endpoint: 'team-types' },
     projectStatuses: { type: 'project_status', endpoint: 'project-statuses' },
+    competencyCosts: { type: 'competency_cost', endpoint: 'competency-costs' },
+    tags: { type: 'tag', endpoint: 'tags' },
   };
   const config = dictTypeMap[data.dictKey];
   if (!config) return;
@@ -2355,11 +2521,11 @@ async function releaseDictLockIfHeld(app) {
   currentDictLockType = null;
 }
 
-const DICT_KEY_TO_TYPE = { priorities: 'priority', statuses: 'status', taskTypes: 'task_type', channels: 'channel', deadlines: 'deadline', departments: 'department', teamTypes: 'team_type', projectStatuses: 'project_status' };
+const DICT_KEY_TO_TYPE = { priorities: 'priority', statuses: 'status', taskTypes: 'task_type', channels: 'channel', deadlines: 'deadline', departments: 'department', teamTypes: 'team_type', projectStatuses: 'project_status', competencyCosts: 'competency_cost' };
 
 async function openDictModal(dictKey, app) {
-  const keyMap = { priorities: 'priorities', statuses: 'statuses', taskTypes: 'taskTypes', channels: 'channels', deadlines: 'deadlines', departments: 'departments', teamTypes: 'teamTypes', projectStatuses: 'projectStatuses' };
-  const labelMap = { priorities: 'Приоритеты', statuses: 'Статусы задачи', taskTypes: 'Типы задач', channels: 'Каналы', deadlines: 'Сроки', departments: 'Подразделения', teamTypes: 'Типы команд', projectStatuses: 'Статусы проектов' };
+  const keyMap = { priorities: 'priorities', statuses: 'statuses', taskTypes: 'taskTypes', channels: 'channels', deadlines: 'deadlines', departments: 'departments', teamTypes: 'teamTypes', projectStatuses: 'projectStatuses', competencyCosts: 'competencyCosts' };
+  const labelMap = { priorities: 'Приоритеты', statuses: 'Статусы задачи', taskTypes: 'Типы задач', channels: 'Каналы', deadlines: 'Сроки', departments: 'Подразделения', teamTypes: 'Типы команд', projectStatuses: 'Статусы проектов', competencyCosts: 'Стоимость компетенций' };
   const dictType = DICT_KEY_TO_TYPE[dictKey];
 
   try {
@@ -2383,7 +2549,9 @@ async function openDictModal(dictKey, app) {
       dictKey,
       dictLabel: labelMap[dictKey] || dictKey,
       dictType: dictKey,
-      items: (adminData[keyMap[dictKey]] || []).map(i => ({ id: i.id, name: i.name, code: i.code, color: i.color })),
+      items: dictKey === 'competencyCosts'
+        ? (adminData.competencyCosts || []).map(i => ({ id: i.id, competency: i.competency, year: i.year, rate: i.rate }))
+        : (adminData[keyMap[dictKey]] || []).map(i => ({ id: i.id, name: i.name, code: i.code, color: i.color })),
     },
   };
   refreshModal();
@@ -2531,7 +2699,7 @@ function bindAdminEvents(app) {
 export async function initAdmin(app) {
   try {
     currentAdminUser = app.store.get('currentUser');
-    const [teams, users, roles, businessCustomers, priorities, statuses, taskTypes, channels, deadlines, departments, teamTypes, projectStatuses, projects, teamTypeRefs, displaySettings, columnLabels, reports, locksResp] = await Promise.all([
+    const [teams, users, roles, businessCustomers, priorities, statuses, taskTypes, channels, deadlines, departments, teamTypes, projectStatuses, competencyCosts, projects, teamTypeRefs, displaySettings, columnLabels, reports, locksResp, tagsResp] = await Promise.all([
       app.api.get('/admin/teams').catch(() => []),
       app.api.get('/admin/users').catch(() => []),
       app.api.get('/admin/roles').catch(() => []),
@@ -2544,12 +2712,14 @@ export async function initAdmin(app) {
       app.api.get('/admin/departments').catch(() => []),
       app.api.get('/admin/team-types').catch(() => []),
       app.api.get('/admin/project-statuses').catch(() => []),
+      app.api.get('/admin/competency-costs').catch(() => []),
       app.api.get('/admin/projects').catch(() => []),
       app.api.get('/admin/team-types-ref').catch(() => []),
       app.api.get('/admin/display-settings').catch(() => []),
       app.api.get('/admin/column-labels').catch(() => ({})),
       app.api.get('/reports').catch(() => []),
       app.api.get('/admin/dict-locks').catch(() => ({})),
+      app.api.get('/admin/tags').catch(() => []),
     ]);
 
     dictLocks = (locksResp && typeof locksResp === 'object') ? locksResp : {};
@@ -2566,9 +2736,11 @@ export async function initAdmin(app) {
     adminData.departments = Array.isArray(departments) ? departments : (departments.items || []);
     adminData.teamTypes = Array.isArray(teamTypes) ? teamTypes : (teamTypes.items || []);
     adminData.projectStatuses = Array.isArray(projectStatuses) ? projectStatuses : (projectStatuses.items || []);
+    adminData.competencyCosts = Array.isArray(competencyCosts) ? competencyCosts : (competencyCosts.items || []);
     adminData.projects = Array.isArray(projects) ? projects : (projects.items || []);
     adminData.teamTypeRefs = Array.isArray(teamTypeRefs) ? teamTypeRefs : [];
     adminData.reports = Array.isArray(reports) ? reports : (reports.items || []);
+    adminData.tags = Array.isArray(tagsResp) ? tagsResp : (tagsResp?.items || []);
 
     const dsList = Array.isArray(displaySettings) ? displaySettings : (displaySettings.items || []);
     displaySettingsData = {};

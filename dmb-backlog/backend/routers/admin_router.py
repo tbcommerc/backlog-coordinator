@@ -10,19 +10,22 @@ from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 
 from database import get_db
-from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, FieldLabel, Project, BusinessCustomer, Department, AuditLog
+from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, FieldLabel, Project, BusinessCustomer, Department, AuditLog, CompetencyCostHistory, Tag, IssueTag, ProjectTag
 from schemas import (
     RoleCreate, RoleUpdate, RoleResponse,
     TeamCreate, TeamUpdate, TeamResponse,
     UserCreate, UserUpdate, UserResponse,
     DictionaryItemCreate, DictionaryItemUpdate, DictionaryItemResponse,
     DictLockResponse,
+    CompetencyCostHistoryCreate, CompetencyCostHistoryUpdate, CompetencyCostHistoryResponse,
     DisplaySettingUpdate, DisplaySettingResponse,
     ColumnLabelUpdate, ColumnLabelResponse,
     ProjectCreate, ProjectUpdate, ProjectResponse,
     BusinessCustomerCreate, BusinessCustomerUpdate, BusinessCustomerResponse,
+    TagCreate, TagResponse,
 )
 from auth import get_current_user, require_permission, get_password_hash
+from routers.tasks_router import recalculate_effort_rub_for_all
 
 router = APIRouter(tags=["admin"])
 
@@ -394,22 +397,31 @@ DICT_LOCK_MINUTES = 15
 
 VALID_DICT_TYPES = [
     "priority", "status", "task_type", "channel", "deadline",
-    "department", "team_type", "project_status",
+    "department", "team_type", "project_status", "competency_cost",
 ]
 
 
-def _is_dict_lock_active(item: DictionaryItem) -> bool:
-    if not item.lock_owner_id or not item.lock_until:
+def _dict_items_for_lock(dict_type: str, db: Session):
+    """Return active items for a dictionary type. Department is stored in the
+    dedicated `departments` table, other dictionaries in `dictionary_items`."""
+    if dict_type == "department":
+        return db.query(Department).filter(Department.is_active == True).all()
+    return db.query(DictionaryItem).filter(
+        DictionaryItem.dict_type == dict_type,
+        DictionaryItem.is_active == True,
+    ).all()
+
+
+def _is_dict_lock_active(item) -> bool:
+    if not getattr(item, "lock_owner_id", None) or not getattr(item, "lock_until", None):
         return False
     return item.lock_until.replace(tzinfo=None) > datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _get_dict_lock_info(dict_type: str, db: Session) -> dict:
     """Get lock status for a dictionary type from its first active item."""
-    item = db.query(DictionaryItem).filter(
-        DictionaryItem.dict_type == dict_type,
-        DictionaryItem.is_active == True,
-    ).first()
+    items = _dict_items_for_lock(dict_type, db)
+    item = items[0] if items else None
     if item and _is_dict_lock_active(item):
         owner = db.query(User).filter(User.id == item.lock_owner_id).first()
         return {
@@ -424,10 +436,7 @@ def _get_dict_lock_info(dict_type: str, db: Session) -> dict:
 
 def _acquire_dict_lock(dict_type: str, user: User, db: Session) -> DictLockResponse:
     """Acquire or extend a lock on a dictionary type for all its active items."""
-    items = db.query(DictionaryItem).filter(
-        DictionaryItem.dict_type == dict_type,
-        DictionaryItem.is_active == True,
-    ).all()
+    items = _dict_items_for_lock(dict_type, db)
     if not items:
         raise HTTPException(status_code=404, detail="Dictionary not found")
 
@@ -464,10 +473,7 @@ def _acquire_dict_lock(dict_type: str, user: User, db: Session) -> DictLockRespo
 
 def _release_dict_lock(dict_type: str, user: User, db: Session) -> DictLockResponse:
     """Release lock on a dictionary type for all its active items."""
-    items = db.query(DictionaryItem).filter(
-        DictionaryItem.dict_type == dict_type,
-        DictionaryItem.is_active == True,
-    ).all()
+    items = _dict_items_for_lock(dict_type, db)
     for item in items:
         if item.lock_owner_id == user.id or not _is_dict_lock_active(item):
             item.lock_owner_id = None
@@ -885,12 +891,34 @@ async def delete_deadline(
     return {"message": "Deadline deleted"}
 
 
+def _department_to_response(dept: Department, db: Session) -> dict:
+    owner_name = None
+    if dept.lock_owner_id:
+        owner = db.query(User).filter(User.id == dept.lock_owner_id).first()
+        owner_name = owner.name if owner else None
+    return {
+        "dict_type": "department",
+        "id": dept.id,
+        "name": dept.name,
+        "code": dept.code,
+        "color": dept.color,
+        "sort_order": dept.sort_order,
+        "is_active": dept.is_active,
+        "created_at": dept.created_at,
+        "version": dept.version or 0,
+        "lock_owner_id": dept.lock_owner_id,
+        "lock_owner_name": owner_name,
+        "lock_until": dept.lock_until,
+    }
+
+
 @router.get("/departments", response_model=List[DictionaryItemResponse])
 async def get_departments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return get_dict_items("department", db)
+    depts = db.query(Department).filter(Department.is_active == True).order_by(Department.sort_order, Department.name).all()
+    return [_department_to_response(d, db) for d in depts]
 
 
 @router.post("/departments", response_model=DictionaryItemResponse, status_code=status.HTTP_201_CREATED)
@@ -900,11 +928,21 @@ async def create_department(
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
     _check_dict_lock("department", current_user, db)
-    item = DictionaryItem(dict_type="department", **data.model_dump(exclude={"dict_type"}))
+    code = (data.code or "").strip()
+    if not code:
+        existing = db.query(Department).order_by(Department.id.desc()).first()
+        code = f"DEPT_{existing.id + 1 if existing else 1}"
+    item = Department(
+        name=data.name,
+        code=code,
+        color=data.color or "#6366f1",
+        sort_order=data.sort_order,
+        is_active=data.is_active,
+    )
     db.add(item)
     db.commit()
     db.refresh(item)
-    return item
+    return _department_to_response(item, db)
 
 
 @router.put("/departments/{item_id}", response_model=DictionaryItemResponse)
@@ -914,16 +952,20 @@ async def update_department(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "department").first()
+    item = db.query(Department).filter(Department.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Department not found")
     _check_dict_lock("department", current_user, db)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    update = data.model_dump(exclude_unset=True)
+    if update.get("code") is not None and not str(update["code"]).strip():
+        existing = db.query(Department).order_by(Department.id.desc()).first()
+        update["code"] = f"DEPT_{existing.id + 1 if existing else 1}"
+    for field, value in update.items():
         setattr(item, field, value)
     item.version = (item.version or 0) + 1
     db.commit()
     db.refresh(item)
-    return item
+    return _department_to_response(item, db)
 
 
 @router.delete("/departments/{item_id}")
@@ -932,7 +974,7 @@ async def delete_department(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
+    item = db.query(Department).filter(Department.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Department not found")
     _check_dict_lock("department", current_user, db)
@@ -1051,6 +1093,94 @@ async def delete_project_status(
     item.is_active = False
     db.commit()
     return {"message": "Project status deleted"}
+
+
+# ==================== COMPETENCY COSTS (history: competency x year) ====================
+
+@router.get("/competency-costs", response_model=List[CompetencyCostHistoryResponse])
+async def get_competency_costs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Все активные записи ставок компетенций (компетенция x год)."""
+    return db.query(CompetencyCostHistory).filter(
+        CompetencyCostHistory.is_active == True
+    ).order_by(
+        CompetencyCostHistory.competency, CompetencyCostHistory.year
+    ).all()
+
+
+@router.post("/competency-costs", response_model=CompetencyCostHistoryResponse, status_code=status.HTTP_201_CREATED)
+async def create_competency_cost(
+    data: CompetencyCostHistoryCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial"))
+):
+    _check_dict_lock("competency_cost", current_user, db)
+    existing = db.query(CompetencyCostHistory).filter(
+        CompetencyCostHistory.competency == data.competency,
+        CompetencyCostHistory.year == data.year,
+    ).first()
+    if existing:
+        existing.is_active = True
+        existing.rate = data.rate
+        db.commit()
+        db.refresh(existing)
+        return existing
+    item = CompetencyCostHistory(**data.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/competency-costs/{competency}/{year}", response_model=CompetencyCostHistoryResponse)
+async def update_competency_cost(
+    competency: str,
+    year: int,
+    data: CompetencyCostHistoryUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial"))
+):
+    _check_dict_lock("competency_cost", current_user, db)
+    item = db.query(CompetencyCostHistory).filter(
+        CompetencyCostHistory.competency == competency,
+        CompetencyCostHistory.year == year,
+    ).first()
+    if not item:
+        item = CompetencyCostHistory(competency=competency, year=year, rate=0)
+        db.add(item)
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(item, field, value)
+    item.is_active = True
+    db.commit()
+    db.refresh(item)
+    changed = recalculate_effort_rub_for_all(db)
+    if changed:
+        print(f"[admin] Competency costs changed -> effort_rub recalculated for {changed} tasks")
+    return item
+
+
+@router.delete("/competency-costs/{competency}/{year}")
+async def delete_competency_cost(
+    competency: str,
+    year: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial"))
+):
+    item = db.query(CompetencyCostHistory).filter(
+        CompetencyCostHistory.competency == competency,
+        CompetencyCostHistory.year == year,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Competency cost not found")
+    _check_dict_lock("competency_cost", current_user, db)
+    item.is_active = False
+    db.commit()
+    changed = recalculate_effort_rub_for_all(db)
+    if changed:
+        print(f"[admin] Competency costs changed -> effort_rub recalculated for {changed} tasks")
+    return {"message": "Competency cost deleted"}
 
 
 # ==================== PROJECTS CRUD ====================
@@ -1395,3 +1525,65 @@ async def delete_project(
     db.delete(project)
     db.commit()
     return {"message": "Project deleted"}
+
+
+# ==================== TAGS ====================
+
+@router.get("/tags", response_model=List[TagResponse])
+async def get_tags(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return db.query(Tag).order_by(Tag.name).all()
+
+
+@router.post("/tags", response_model=TagResponse, status_code=status.HTTP_201_CREATED)
+async def create_tag(
+    data: TagCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial"))
+):
+    tag = Tag(
+        name=data.name,
+        color=data.color or "#6366f1",
+        description=data.description,
+        creator=current_user.id,
+    )
+    db.add(tag)
+    db.commit()
+    db.refresh(tag)
+    return tag
+
+
+@router.put("/tags/{tag_id}", response_model=TagResponse)
+async def update_tag(
+    tag_id: int,
+    data: TagCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial"))
+):
+    tag = db.query(Tag).filter(Tag.id == tag_id).first()
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    tag.name = data.name
+    tag.color = data.color or "#6366f1"
+    tag.description = data.description
+    db.commit()
+    db.refresh(tag)
+    return tag
+
+
+@router.delete("/tags/{tag_id}")
+async def delete_tag(
+    tag_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial"))
+):
+    tag = db.query(Tag).filter(Tag.id == tag_id).first()
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    db.query(IssueTag).filter(IssueTag.tag_id == tag_id).delete()
+    db.query(ProjectTag).filter(ProjectTag.tag_id == tag_id).delete()
+    db.delete(tag)
+    db.commit()
+    return {"message": "Tag deleted"}

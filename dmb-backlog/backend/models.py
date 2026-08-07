@@ -3,7 +3,7 @@ DMB Backlog - SQLAlchemy Models (normalized)
 """
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, Date,
-    ForeignKey, Enum, DECIMAL, JSON, Float
+    ForeignKey, Enum, DECIMAL, JSON, Float, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -63,6 +63,15 @@ class Department(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, nullable=False)
     name = Column(String(255), nullable=False)
+    color = Column(String(20), nullable=True)
+    sort_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    version = Column(Integer, default=0, comment='Версия справочника (optimistic lock)')
+    lock_owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    lock_until = Column(DateTime(timezone=True), nullable=True)
+
+    lock_owner = relationship("User", foreign_keys=[lock_owner_id])
 
 
 class Priority(Base):
@@ -70,7 +79,6 @@ class Priority(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), nullable=False)
-    sla_multiplier = Column(Float, nullable=True)
 
 
 class TaskType(Base):
@@ -79,8 +87,6 @@ class TaskType(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, nullable=False)
     name = Column(String(100), nullable=False)
-    dod_required = Column(Boolean, default=False)
-    financial_value_required = Column(Boolean, default=False)
 
 
 class TeamType(Base):
@@ -116,8 +122,6 @@ class TaskStatus(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, nullable=False)
     name = Column(String(100), nullable=False)
-    group = Column(String(50), nullable=True)
-    sla_hours = Column(Integer, nullable=True)
     sort_order = Column(Integer, default=0)
     color = Column(String(20), nullable=True)
 
@@ -230,7 +234,6 @@ class Task(Base):
     description = Column(Text, nullable=True)
     date_received = Column(Date, nullable=True)
     channel_id = Column(Integer, ForeignKey("channels.id"), nullable=True)
-    business_customer = Column(String(200), nullable=True)
     business_customer_id = Column(Integer, ForeignKey("business_customers.id"), nullable=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
@@ -240,7 +243,7 @@ class Task(Base):
     status_id = Column(Integer, ForeignKey("statuses.id"), nullable=True)
     deadline_id = Column(Integer, ForeignKey("deadlines.id"), nullable=True)
     effort_days = Column(Integer, nullable=True)
-    effort_rub = Column(Float, nullable=True)
+    effort_rub = Column(DECIMAL(18, 2), nullable=True, comment='Стоимость по ЭО (руб)')
     effort_designee = Column(Float, nullable=True, comment='Designee (дни)')
     effort_analytics = Column(Float, nullable=True, comment='Аналитика (дни)')
     effort_be = Column(Float, nullable=True, comment='Разработка BE (дни)')
@@ -256,8 +259,10 @@ class Task(Base):
     actual_effort_fe = Column(Float, nullable=True, comment='Разработка FE (ФТЗ)')
     actual_effort_test = Column(Float, nullable=True, comment='Test (ФТЗ)')
     actual_effort_test_auto = Column(Float, nullable=True, comment='Test Auto (ФТЗ)')
+    actual_effort_python_be = Column(Float, nullable=True, comment='Разработка python BE (ФТЗ)')
+    actual_effort_delivery = Column(Float, nullable=True, comment='Delivery (ФТЗ)')
     financial_effect_justification = Column(Text, nullable=True, comment='Обоснование по расчету финансового эффекта')
-    financial_effect = Column(Float, nullable=True)
+    financial_effect = Column(DECIMAL(18, 2), nullable=True)
     cv = Column(Float, nullable=True)
     progress = Column(Integer, default=0)
     link_mockups = Column(String(500), nullable=True)
@@ -265,7 +270,7 @@ class Task(Base):
     rejection_reason = Column(Text, nullable=True)
     comment = Column(Text, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    key_project_status = Column(String(50), nullable=True)
+    key_project_status = Column(Text, nullable=True)
     key_project_status_updated_at = Column(DateTime(timezone=True), nullable=True, comment='Дата изменения статуса для встречи по ключевым проектам')
     directorate_status = Column(Text, nullable=True)
     directorate_status_updated_at = Column(DateTime(timezone=True), nullable=True)
@@ -274,7 +279,7 @@ class Task(Base):
     did_demo = Column(Boolean, default=False, comment='Демо для ДИД')
     metric_kr_plan = Column(Float, nullable=True, comment='Значение для метрического KR (план)')
     metric_kr_fact = Column(Float, nullable=True, comment='Значение для метрического KR (факт)')
-    last_updated = Column(Date, nullable=True)
+    metric_kr_unit = Column(String(50), nullable=True, comment='Единица измерения Метрического KR')
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -296,6 +301,7 @@ class Task(Base):
     lock_owner = relationship("User", foreign_keys=[lock_owner_id])
     creator = relationship("User", foreign_keys=[created_by])
     history = relationship("TaskHistory", back_populates="task")
+    tags = relationship("Tag", secondary="issue_tags", backref="tasks")
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")
     attachments = relationship("TaskAttachment", back_populates="task", cascade="all, delete-orphan")
     epics = relationship("Epic", back_populates="task", cascade="all, delete-orphan")
@@ -464,6 +470,28 @@ class DictionaryItem(Base):
     lock_until = Column(DateTime(timezone=True), nullable=True)
 
     lock_owner = relationship("User", foreign_keys=[lock_owner_id])
+
+
+class CompetencyCostHistory(Base):
+    """Историчные ставки компетенций: компетенция x год.
+
+    Расчёт effort_rub берёт ставку года дедлайна задачи; при отсутствии года —
+    ставку максимального (актуального) года. dictionary_items с dict_type
+    'competency_cost' остаётся в БД только для блокировки справочника.
+    """
+    __tablename__ = "competency_cost_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    competency = Column(String(100), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    rate = Column(Float, nullable=False, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("competency", "year", name="uq_competency_cost_history_competency_year"),
+    )
 
 
 class UserNotificationPreference(Base):

@@ -1,5 +1,5 @@
 import { showConfirmModal, showErrorModal } from './modal.js';
-import { updateStickyOffsets } from './filterToolbar.js';
+import { updateStickyOffsets } from './filterToolbar.js?v=45';
 
 console.log('[DMB] quickEdit.js v20260804 loaded');
 
@@ -17,13 +17,15 @@ const DISPLAY_TO_FIELD = {
 };
 
 const EDITABLE_FIELDS = {
-  text: ['title', 'description', 'comment', 'link_mockups', 'rejection_reason'],
+  text: ['title', 'description', 'comment', 'link_mockups', 'rejection_reason', 'metric_kr_unit'],
   number: ['effort_days', 'effort_rub', 'effort_designee', 'effort_analytics', 'effort_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery', 'effort_python_be',
     'actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics', 'actual_effort_be', 'actual_effort_fe', 'actual_effort_test', 'actual_effort_test_auto',
+    'actual_effort_python_be', 'actual_effort_delivery',
     'financial_effect', 'metric_kr_plan', 'metric_kr_fact'],
   select: ['status_id', 'priority_id', 'team_id', 'deadline_id', 'task_type_id', 'channel_id', 'department_id', 'project_id', 'owner_id'],
   checkbox: ['did_demo'],
-  date: ['date_received']
+  date: ['date_received'],
+  tags: ['tags']
 };
 
 const states = {};
@@ -224,6 +226,9 @@ function handleCellChange(scope, el) {
   } else if (el.tagName === 'SELECT') {
     newValue = newValue !== '' ? parseInt(newValue) : null;
     oldValue = original !== '' ? parseInt(original) : null;
+  } else if (field === 'tags') {
+    newValue = String(newValue || '').split(',').map(x => x.trim()).filter(Boolean);
+    oldValue = String(original || '').split(',').map(x => x.trim()).filter(Boolean);
   }
 
   const st = getState(scope);
@@ -375,7 +380,8 @@ export function isEditableField(col) {
          EDITABLE_FIELDS.number.includes(field) ||
          EDITABLE_FIELDS.select.includes(field) ||
          EDITABLE_FIELDS.checkbox.includes(field) ||
-         EDITABLE_FIELDS.date.includes(field);
+         EDITABLE_FIELDS.date.includes(field) ||
+         EDITABLE_FIELDS.tags.includes(field);
 }
 
 export function renderQuickEditCell(scope, col, task) {
@@ -386,6 +392,14 @@ export function renderQuickEditCell(scope, col, task) {
   const change = st.changes[taskId]?.[field];
   const value = change ? change.newValue : currentValue;
 
+  if (EDITABLE_FIELDS.tags.includes(field)) {
+    const toNames = v => Array.isArray(v)
+      ? v.map(x => typeof x === 'object' && x !== null ? String(x.name || '') : String(x)).filter(Boolean).join(', ')
+      : String(v || '');
+    const curNames = toNames(currentValue);
+    const valNames = toNames(value);
+    return `<input type="text" value="${escapeHtml(valNames)}" data-task="${taskId}" data-field="${field}" data-original="${escapeHtml(curNames)}" style="width:100%;padding:4px 6px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;box-sizing:border-box;" placeholder="теги через запятую">`;
+  }
   if (EDITABLE_FIELDS.text.includes(field)) {
     return `<input type="text" value="${escapeHtml(value || '')}" data-task="${taskId}" data-field="${field}" data-original="${escapeHtml(currentValue || '')}" style="width:100%;padding:4px 6px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;box-sizing:border-box;">`;
   }

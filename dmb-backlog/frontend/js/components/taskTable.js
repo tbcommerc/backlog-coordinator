@@ -1,9 +1,10 @@
-console.log('[DMB] taskTable.js v20260703 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader } from './filterToolbar.js';
+console.log('[DMB] taskTable.js v20260806 loaded');
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue } from './filterToolbar.js?v=45';
 import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=45';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=45';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions } from './tableUtils.js?v=45';
 
 let tasksCache = null;
 let currentView = 'table';
@@ -20,6 +21,9 @@ let columnOrder = getAllColumnKeys();
 
 let currentApp = null;
 let columnWidths = {};
+let columnMinWidths = {};
+const columnFixed = {};
+const columnSort = { key: null, dir: 'asc' };
 
 export function renderTasksPage(app) {
   currentApp = app;
@@ -124,6 +128,19 @@ export async function initTasksPage(app) {
     afterSave: () => loadTasks(currentApp),
     tableContainer: '#tasks-container .table-container',
   });
+
+  registerTableInteractions('tasks-table', {
+    getWidths: () => columnWidths,
+    getMinWidths: () => columnMinWidths,
+    getLayout: () => ({ cols: columnOrder.filter(k => columnSettings[k]), offset: 0 }),
+    getFixed: () => columnFixed,
+    onUnfix: () => renderCurrentView(),
+    onSort: (key) => {
+      toggleSortState(columnSort, key);
+      setToolbarSortValue('backlog', 'id-desc');
+      renderCurrentView();
+    },
+  });
 }
 
 function getColumnLabel(key) {
@@ -162,7 +179,9 @@ async function loadTasks(app) {
 
 function getFilteredList() {
   if (!tasksCache) return [];
-  return ftFilteredList('backlog', tasksCache.items || []);
+  let list = ftFilteredList('backlog', tasksCache.items || []);
+  if (columnSort.key) list = applyColumnSort(list, columnSort.key, columnSort.dir);
+  return list;
 }
 
 function renderCurrentView() {
@@ -186,12 +205,12 @@ function renderTableView(list) {
 
   const hasWidths = visibleCols.every(c => columnWidths[c]);
 
-  const colgroupHtml = visibleCols.map(col => {
+  const colgroupHtml = visibleCols.map((col, i) => {
     const w = columnWidths[col] ? `width:${columnWidths[col]}px;` : '';
     return `<col style="${w}">`;
   }).join('');
 
-  const tableStyle = (hasWidths && isQuickEdit('backlog')) ? 'table-layout:fixed;' : '';
+  const tableStyle = hasWidths ? 'table-layout:fixed;' : '';
 
   container.innerHTML = `
     <div class="table-container" style="overflow-x:auto;">
@@ -199,11 +218,7 @@ function renderTableView(list) {
         <colgroup>${colgroupHtml}</colgroup>
         <thead>
           <tr>
-            ${visibleCols.map(col => {
-              const sortable = ['id', 'priority', 'deadline', 'progress', 'financial_effect', 'effort_days', 'cv'];
-              const icon = sortable.includes(col) ? ' <span class="sort-icon">↕</span>' : '';
-              return `<th data-sort="${col}">${getColumnLabel(col)}${icon}</th>`;
-            }).join('')}
+            ${visibleCols.map(col => headerCellHtml(getColumnLabel(col), col, columnSort.key, columnSort.dir)).join('')}
           </tr>
         </thead>
         <tbody id="tasks-tbody">
@@ -216,16 +231,11 @@ function renderTableView(list) {
   `;
 
   if (!isQuickEdit('backlog')) {
-    const measureWidths = () => {
-      const ths = document.querySelectorAll('#tasks-table thead th');
-      ths.forEach((th, i) => {
-        if (visibleCols[i]) {
-          columnWidths[visibleCols[i]] = th.offsetWidth;
-        }
-      });
-    };
-    measureWidths();
-    requestAnimationFrame(measureWidths);
+    const table = document.getElementById('tasks-table');
+    if (!hasWidths) {
+      autoSizeColumns(table, visibleCols, columnWidths, columnMinWidths, { offset: 0 });
+    }
+    applyColumnWidths(table, visibleCols, columnWidths, { offset: 0, fixed: columnFixed });
   }
 
   updateStickyOffsets();
@@ -264,6 +274,24 @@ function renderCell(col, task) {
     case 'deadline_po': return `<span>${task.deadline_po_name || '—'}</span>`;
     case 'effort_days': return `<span>${task.effort_days != null ? task.effort_days + ' дн' : '—'}</span>`;
     case 'effort_rub': return `<span class="font-mono">${metricFormat(task.effort_rub)}</span>`;
+    case 'effort_designee':
+    case 'effort_analytics':
+    case 'effort_be':
+    case 'effort_python_be':
+    case 'effort_fe':
+    case 'effort_test':
+    case 'effort_test_auto':
+    case 'effort_delivery':
+    case 'actual_effort_days':
+    case 'actual_effort_designee':
+    case 'actual_effort_analytics':
+    case 'actual_effort_be':
+    case 'actual_effort_python_be':
+    case 'actual_effort_fe':
+    case 'actual_effort_test':
+    case 'actual_effort_test_auto':
+    case 'actual_effort_delivery':
+        return `<span class="font-mono">${task[col] != null && task[col] !== '' ? metricFormat(task[col]) : '—'}</span>`;
     case 'financial_effect': return `<span class="font-mono">${metricFormat(task.financial_effect)}</span>`;
     case 'cv': return `<span>${renderCV(task)}</span>`;
     case 'progress': return `<span>${renderProgress(task.progress)}</span>`;
@@ -275,9 +303,12 @@ function renderCell(col, task) {
     case 'link_jira': return `<span>${task.link_jira ? `<a href="${task.link_jira}" target="_blank" style="color:var(--accent)">Jira</a>` : '—'}</span>`;
     case 'rejection_reason': return `<span>${task.rejection_reason || '—'}</span>`;
     case 'comment': return `<span>${task.comment || '—'}</span>`;
-    case 'last_updated': return `<span>${task.last_updated || '—'}</span>`;
     case 'created_at': return `<span>${task.created_at || '—'}</span>`;
     case 'updated_at': return `<span>${task.updated_at || '—'}</span>`;
+    case 'metric_kr_plan':
+    case 'metric_kr_fact': return `<span class="font-mono">${metricFormat(task[col])}${task.metric_kr_unit ? ' ' + task.metric_kr_unit : ''}</span>`;
+    case 'metric_kr_unit': return `<span>${task.metric_kr_unit || '—'}</span>`;
+    case 'tags': return renderTags(task.tags);
     default: return '';
   }
 }
@@ -370,11 +401,20 @@ function renderCV(task) {
   return `<span class="badge ${cls}">${cv}</span>`;
 }
 
-function renderTags(task) {
-  if (!task.tags) return '—';
-  return task.tags.split(',').map(t => t.trim()).filter(Boolean).map(t =>
-    `<span class="badge badge-info" style="font-size:10px;">${t}</span>`
-  ).join(' ');
+function renderTags(tags) {
+  if (!tags || (Array.isArray(tags) && tags.length === 0) || (typeof tags === 'string' && !tags.trim())) return '—';
+  let list;
+  if (Array.isArray(tags)) {
+    list = tags.map(t => typeof t === 'object' && t !== null
+      ? { name: String(t.name || ''), color: t.color || '' }
+      : { name: String(t), color: '' });
+  } else {
+    list = String(tags).split(',').map(t => t.trim()).filter(Boolean).map(t => ({ name: t, color: '' }));
+  }
+  return list.filter(t => t.name).map(t => {
+    const style = t.color ? `background:${t.color}22;color:${t.color};border:1px solid ${t.color}55;` : '';
+    return `<span class="badge" style="font-size:10px;${style}">${t.name}</span>`;
+  }).join(' ');
 }
 
 function metricFormat(val) {

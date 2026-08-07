@@ -1,6 +1,6 @@
 import { renderDashboard, initDashboard } from './components/dashboard.js';
-import { renderTasksPage, initTasksPage } from './components/taskTable.js';
-import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js';
+import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=45';
+import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=45';
 import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js';
 import { renderKanban, initKanban } from './components/kanbanBoard.js?v=4';
 import { renderReports, initReports, renderReportPage, initReportPage } from './components/reports.js';
@@ -25,6 +25,7 @@ export class Router {
             '/reports/detail': { render: renderReportPage, init: initReportPage },
             '/analytics/tribe': { render: (app) => renderAnalytics('tribe', app), init: (app) => initAnalytics('tribe', app) },
             '/analytics/po-pl': { render: (app) => renderAnalytics('po-pl', app), init: (app) => initAnalytics('po-pl', app) },
+            '/analytics/it': { render: (app) => renderAnalytics('it', app), init: (app) => initAnalytics('it', app) },
             '/notifications': { render: renderNotifications, init: initNotifications },
             '/settings': { render: renderSettings, init: initSettings },
             '/admin': { render: renderAdmin, init: initAdmin },
@@ -86,6 +87,7 @@ export class Router {
                         '/reports/detail': 'Статус-отчёт',
                         '/analytics/tribe': 'Аналитика ЛТ',
                         '/analytics/po-pl': 'Аналитика PO/PL',
+                        '/analytics/it': 'Аналитика для ИТ',
                         '/notifications': 'Мои уведомления',
                         '/settings': 'Настройки',
                         '/admin': 'Администрирование',

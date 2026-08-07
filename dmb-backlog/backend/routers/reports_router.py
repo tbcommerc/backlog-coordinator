@@ -44,7 +44,7 @@ def _report_to_response(report: Report) -> ReportResponse:
 
 # Прямые колонки Task, доступные для фильтрации.
 REPORT_DIRECT_FIELDS = {
-    "id", "title", "description", "business_customer", "involved_teams",
+    "id", "title", "description", "involved_teams",
     "key_project_status", "directorate_status", "did_status",
     "did_demo", "effort_days", "effort_rub", "financial_effect", "cv",
     "progress", "date_received", "created_at", "updated_at",
@@ -676,7 +676,6 @@ async def execute_report(
             "status_name": task.status.name if task.status else "",
             "project_id": task.project_id,
             "project_name": task.project.name if task.project else "",
-            "business_customer": task.business_customer or "",
             "business_customer_name": task.business_customer_rel.name if task.business_customer_rel else "",
             "department_name": task.department.name if task.department else "",
             "channel_name": task.channel.name if task.channel else "",

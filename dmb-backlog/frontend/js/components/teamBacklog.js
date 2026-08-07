@@ -1,16 +1,16 @@
-console.log('[DMB] teamBacklog.js v20260701.1 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader } from './filterToolbar.js';
+console.log('[DMB] teamBacklog.js v20260806.1 loaded');
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue } from './filterToolbar.js?v=45';
 import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=45';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=45';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions } from './tableUtils.js?v=45';
 
 let COLUMN_LABELS = { ...buildColumnLabels(window.app?.fieldLabels || {}) };
 
 let teamTasksCache = null;
 let teamCurrentView = 'table';
-let teamSortKey = null;
-let teamSortDir = 'asc';
+const teamSort = { key: null, dir: 'asc' };
 let teamCurrentApp = null;
 const TEAM_DEFAULT_OVERRIDES = {
     owner: true, team: false, effort_days: false,
@@ -20,6 +20,8 @@ let teamColumnSettings = buildColumnSettings({}, TEAM_DEFAULT_OVERRIDES);
 let teamColumnOrder = getAllColumnKeys();
 
 let teamColumnWidths = {};
+let teamColumnMinWidths = {};
+const teamColumnFixed = {};
 
 
 export function renderTeamBacklog(app) {
@@ -124,7 +126,7 @@ export async function initTeamBacklog(app) {
     onViewChange: (view) => { teamCurrentView = view; renderTeamCurrentView(); },
     onColumnChange: () => renderTeamCurrentView(),
     onColumnOrderChange: () => renderTeamCurrentView(),
-    onExport: () => { const list = ftFilteredList('team', teamTasksCache?.items || []); teamExportExcel(list); },
+    onExport: () => { const list = getTeamFilteredList(); teamExportExcel(list); },
     onImport: () => { importTasksFromExcel(app, loadTeamTasks); },
     onAddTask: () => openCreateTaskModal(app),
     onRefresh: () => loadTeamTasks(app),
@@ -134,7 +136,6 @@ export async function initTeamBacklog(app) {
 
   initToolbar('team', tasks, onFilterChange);
 
-    bindTeamSort();
     bindBulkActions(app);
     initQuickEdit('team', {
       app,
@@ -147,6 +148,22 @@ export async function initTeamBacklog(app) {
 
     initQuickFilters('team', () => teamTasksCache?.items || []);
     setOnTaskSaved(() => loadTeamTasks(app));
+
+    registerTableInteractions('team-tasks-table', {
+      getWidths: () => teamColumnWidths,
+      getMinWidths: () => teamColumnMinWidths,
+      getLayout: () => {
+        const cols = teamColumnOrder.filter(k => teamColumnSettings[k]);
+        return { cols, offset: (!isQuickEdit('team') && colHasCheckbox(cols)) ? 1 : 0 };
+      },
+      getFixed: () => teamColumnFixed,
+      onUnfix: () => renderTeamCurrentView(),
+      onSort: (key) => {
+        toggleSortState(teamSort, key);
+        setToolbarSortValue('team', 'id-desc');
+        renderTeamCurrentView();
+      },
+    });
 }
 
 async function loadTeamTasks(app) {
@@ -171,9 +188,14 @@ async function loadTeamTasks(app) {
     }
 }
 
+function getTeamFilteredList() {
+  let list = ftFilteredList('team', teamTasksCache?.items || []);
+  if (teamSort.key) list = applyColumnSort(list, teamSort.key, teamSort.dir);
+  return list;
+}
+
 function renderTeamCurrentView() {
-    const tasks = teamTasksCache?.items || [];
-    const list = ftFilteredList('team', tasks);
+    const list = getTeamFilteredList();
     const countEl = document.getElementById('team-tasks-count');
     if (countEl) countEl.textContent = `Найдено: ${list.length} задач`;
     const isMobile = window.innerWidth <= 768;
@@ -193,24 +215,17 @@ function renderTeamTableView(list) {
     const showCheckbox = !isQuickEdit('team') && colHasCheckbox(visibleCols);
     const hasWidths = visibleCols.every(c => teamColumnWidths[c]);
 
-    const sortableCols = ['id', 'priority', 'deadline', 'progress'];
+    const headerHtml = visibleCols.map(col =>
+        headerCellHtml(getTeamColumnLabel(col), col, teamSort.key, teamSort.dir)
+    ).join('');
 
-    const headerHtml = visibleCols.map(col => {
-        let icon = sortableCols.includes(col) ? ' <span class="sort-icon">↕</span>' : '';
-        if (teamSortKey === col) {
-            icon = teamSortDir === 'asc' ? ' <span class="sort-icon">↑</span>' : ' <span class="sort-icon">↓</span>';
-        }
-        if (col === 'title' || col === 'owner') icon = '';
-        return `<th data-sort="${col}">${getTeamColumnLabel(col)}${icon}</th>`;
-    }).join('');
-
-    const colgroupHtml = visibleCols.map(col => {
+    const colgroupHtml = visibleCols.map((col, i) => {
         const w = teamColumnWidths[col] ? `width:${teamColumnWidths[col]}px;` : '';
         return `<col style="${w}">`;
     }).join('');
 
     const checkboxCol = showCheckbox ? '<col style="width:40px;">' : '';
-    const tableStyle = (hasWidths && isQuickEdit('team')) ? 'table-layout:fixed;' : '';
+    const tableStyle = hasWidths ? 'table-layout:fixed;' : '';
 
     container.innerHTML = `
         <div class="table-container" style="overflow-x:auto;">
@@ -232,17 +247,12 @@ function renderTeamTableView(list) {
     `;
 
     if (!isQuickEdit('team')) {
-        const measureWidths = () => {
-            const ths = document.querySelectorAll('#team-tasks-table thead th');
-            const offset = showCheckbox ? 1 : 0;
-            ths.forEach((th, i) => {
-                if (i >= offset && visibleCols[i - offset]) {
-                    teamColumnWidths[visibleCols[i - offset]] = th.offsetWidth;
-                }
-            });
-        };
-        measureWidths();
-        requestAnimationFrame(measureWidths);
+        const table = document.getElementById('team-tasks-table');
+        const offset = showCheckbox ? 1 : 0;
+        if (!hasWidths) {
+            autoSizeColumns(table, visibleCols, teamColumnWidths, teamColumnMinWidths, { offset });
+        }
+        applyColumnWidths(table, visibleCols, teamColumnWidths, { offset, fixed: teamColumnFixed });
     }
 
     updateStickyOffsets();
@@ -260,7 +270,6 @@ function renderTeamTableView(list) {
             });
         }
     }
-    bindTeamSort();
 }
 
 function colHasCheckbox(cols) {
@@ -309,9 +318,13 @@ function renderTeamCell(col, task) {
         case 'actual_effort_fe':
         case 'actual_effort_test':
         case 'actual_effort_test_auto':
+        case 'actual_effort_python_be':
+        case 'actual_effort_delivery':
+            return `<span class="font-mono">${task[col] != null && task[col] !== '' ? metricFormat(task[col]) : '—'}</span>`;
         case 'metric_kr_plan':
         case 'metric_kr_fact':
-            return `<span class="font-mono">${task[col] != null ? metricFormat(task[col]) : '—'}</span>`;
+            return `<span class="font-mono">${task[col] != null ? metricFormat(task[col]) + (task.metric_kr_unit ? ' ' + escapeHtml(task.metric_kr_unit) : '') : '—'}</span>`;
+        case 'metric_kr_unit': return `<span>${task.metric_kr_unit || '—'}</span>`;
         case 'financial_effect': return `<span class="font-mono">${metricFormat(task.financial_effect)}</span>`;
         case 'financial_effect_justification': return `<span>${task.financial_effect_justification || '—'}</span>`;
         case 'cv': return `<span>${renderCV(task)}</span>`;
@@ -329,9 +342,9 @@ function renderTeamCell(col, task) {
         case 'link_jira': return `<span>${renderLinkJiraList(task.link_jira)}</span>`;
         case 'rejection_reason': return `<span>${task.rejection_reason || '—'}</span>`;
         case 'comment': return `<span>${task.comment || '—'}</span>`;
-        case 'last_updated': return `<span>${task.last_updated || '—'}</span>`;
         case 'created_at': return `<span>${task.created_at || '—'}</span>`;
         case 'updated_at': return `<span>${task.updated_at || '—'}</span>`;
+        case 'tags': return renderTeamTags(task.tags);
         default: return '';
     }
 }
@@ -373,21 +386,6 @@ function renderTeamCards(list) {
     });
 }
 
-function bindTeamSort() {
-    document.querySelectorAll('#team-tasks-table th[data-sort]').forEach(th => {
-        th.addEventListener('click', () => {
-            const key = th.dataset.sort;
-            if (teamSortKey === key) {
-                teamSortDir = teamSortDir === 'asc' ? 'desc' : 'asc';
-            } else {
-                teamSortKey = key;
-                teamSortDir = 'asc';
-            }
-            renderTeamCurrentView();
-        });
-    });
-}
-
 async function populateTeamSelect(selectedTeamId) {
     const select = document.getElementById('task-team');
     if (!select) return;
@@ -419,7 +417,10 @@ function setupTaskFormSave(modal, task, app) {
             key_project_status: document.getElementById('task-key-project-status')?.value || null,
             progress: parseInt(document.getElementById('task-progress')?.value) || 0,
             owner: document.getElementById('task-owner')?.value || '',
-            tags: document.getElementById('task-tags')?.value || '',
+            tags: (document.getElementById('task-tags')?.value || '').split(',').map(x => x.trim()).filter(Boolean),
+            metric_kr_plan: parseFloat(document.getElementById('task-metric-kr-plan')?.value) || null,
+            metric_kr_fact: parseFloat(document.getElementById('task-metric-kr-fact')?.value) || null,
+            metric_kr_unit: document.getElementById('task-metric-kr-unit')?.value || null,
         };
         try {
             if (task) {
@@ -474,6 +475,22 @@ function updateBulkBar() {
 function metricFormat(val) {
   if (val === null || val === undefined) return '—';
   return new Intl.NumberFormat('ru-RU').format(val);
+}
+
+function renderTeamTags(tags) {
+  if (!tags || (Array.isArray(tags) && tags.length === 0)) return '—';
+  let list;
+  if (Array.isArray(tags)) {
+    list = tags.map(t => typeof t === 'object' && t !== null
+      ? { name: String(t.name || ''), color: t.color || '' }
+      : { name: String(t), color: '' });
+  } else {
+    list = String(tags).split(',').map(t => t.trim()).filter(Boolean).map(t => ({ name: t, color: '' }));
+  }
+  return list.filter(t => t.name).map(t => {
+    const style = t.color ? `background:${t.color}22;color:${t.color};border:1px solid ${t.color}55;` : '';
+    return `<span class="badge" style="font-size:10px;${style}">${t.name}</span>`;
+  }).join(' ');
 }
 
 function fmtDate(val) {

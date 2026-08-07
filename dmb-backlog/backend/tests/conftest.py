@@ -55,7 +55,19 @@ def auth_headers(client):
     from auth import get_password_hash
 
     db = TestingSessionLocal()
-    role = Role(name="Администратор", admin_access="full")
+    role = Role(
+        name="Администратор",
+        admin_access="full",
+        backlog_team_access="write_all",
+        backlog_dmb_access="read_write",
+        reports_access="read_write",
+        analytics_access="read_write",
+        customer_access="read_write",
+        settings_access="available",
+        can_edit_tasks=True,
+        can_delete_tasks=True,
+        can_export=True,
+    )
     db.add(role)
     db.commit()
     db.refresh(role)
@@ -69,8 +81,9 @@ def auth_headers(client):
     )
     db.add(user)
     db.commit()
+    db.refresh(user)
 
-    response = client.post("/api/v1/auth/login", json={"email": "test@dmb.ru", "password": "testpass"})
-    token = response.json()["access_token"]
+    from auth import create_access_token
+    token = create_access_token({"sub": str(user.id), "email": user.email})
     db.close()
     return {"Authorization": f"Bearer {token}"}

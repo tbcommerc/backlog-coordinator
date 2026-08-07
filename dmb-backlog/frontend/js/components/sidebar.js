@@ -50,6 +50,13 @@ export function renderSidebar() {
                     <i data-lucide="bar-chart-2"></i>
                     <span>Аналитика PO/PL</span>
                 </a>
+                <a href="#/analytics/it" class="sidebar-item" aria-label="Аналитика для ИТ">
+                    <i data-lucide="loader2"></i>
+                    <span>Аналитика для ИТ</span>
+                    <span class="item-badge" title="В разработке" style="background:var(--warning-light);color:var(--warning);display:inline-flex;align-items:center;justify-content:center;padding:3px;min-width:20px;">
+                        <i data-lucide="loader2" style="width:12px;height:12px;"></i>
+                    </span>
+                </a>
             </div>
             
             <div class="sidebar-section">
@@ -115,6 +122,7 @@ export function initSidebar() {
             'Статусы для встреч': 'reports',
             'Аналитика ЛТ': 'analytics',
             'Аналитика PO/PL': 'analytics',
+            'Аналитика для ИТ': 'analytics',
             'Мои задачи': 'customer',
             'Создать задачу': 'customer',
             'Настройки': 'settings',

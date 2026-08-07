@@ -21,15 +21,12 @@ Table departments {
 Table priorities {
   id int [pk, increment]
   name varchar(50) [not null]
-  sla_multiplier float
 }
 
 Table task_types {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(100) [not null]
-  dod_required boolean [default: false]
-  financial_value_required boolean [default: false]
 }
 
 Table team_types {
@@ -48,8 +45,6 @@ Table statuses {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(100) [not null]
-  group varchar(50)
-  sla_hours int
   sort_order int [default: 0]
   color varchar(20)
 }
@@ -143,7 +138,6 @@ Table tasks {
   key_project_status varchar(50)
   directorate_status varchar(50)
   did_status varchar(50)
-  last_updated date
   created_by int [ref: > users.id]
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]

@@ -40,7 +40,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             f"{request.method} {request.url.path} - "
             f"Status: {response.status_code} - "
             f"Duration: {duration}ms - "
-            f"IP: {request.client.host}"
+            f"IP: {request.client.host if request.client else '-'}"
         )
         
         return response

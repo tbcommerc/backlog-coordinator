@@ -27,14 +27,11 @@ erDiagram
     priorities {
         int id PK
         varchar name
-        float sla_multiplier
     }
     task_types {
         int id PK
         varchar code
         varchar name
-        boolean dod_required
-        boolean financial_value_required
     }
     team_types {
         int id PK
@@ -56,8 +53,6 @@ erDiagram
         int id PK
         varchar code
         varchar name
-        varchar group
-        int sla_hours
         int sort_order
         varchar color
     }
@@ -165,7 +160,6 @@ erDiagram
         timestamp did_status_updated_at
         boolean is_from_leadership
         boolean is_regular
-        date last_updated
         int created_by FK
         timestamp created_at
         timestamp updated_at
@@ -378,7 +372,6 @@ erDiagram
 |---------|-----|----------|
 | id | int PK | Автоинкремент |
 | name | varchar(50) | Наименование |
-| sla_multiplier | float | Множитель SLA |
 
 ### statuses — Статусы задач (13)
 | Колонка | Тип | Описание |
@@ -386,8 +379,6 @@ erDiagram
 | id | int PK | Автоинкремент |
 | code | varchar(50) UNIQUE | Код статуса |
 | name | varchar(100) | Наименование |
-| group | varchar(50) | Группа (backlog/active/closed/frozen) |
-| sla_hours | int | SLA в часах |
 | sort_order | int | Порядок сортировки |
 | color | varchar(20) | Цвет |
 
@@ -397,8 +388,6 @@ erDiagram
 | id | int PK | Автоинкремент |
 | code | varchar(50) UNIQUE | Код типа |
 | name | varchar(100) | Наименование |
-| dod_required | boolean | DoD обязателен |
-| financial_value_required | boolean | Фин. эффект обязателен |
 
 ### team_types — Типы команд
 | Колонка | Тип | Описание |
@@ -540,7 +529,6 @@ erDiagram
 | did_status_updated_at | timestamp | — | Дата обновления статуса для ДИД |
 | is_from_leadership | boolean | — | От руководства |
 | is_regular | boolean | — | Регулярная задача |
-| last_updated | date | — | Дата последнего изменения |
 | created_by | int | → users.id | Автор |
 | created_at | timestamp | — | Дата создания |
 | updated_at | timestamp | — | Дата обновления |
@@ -754,7 +742,7 @@ erDiagram
 | Колонка | Тип | Описание |
 |---------|-----|----------|
 | id | int PK | — |
-| dict_type | varchar(50) | Тип справочника |
+| dict_type | varchar(50) | Тип справочника (в т.ч. `competency_cost` — ставка компетенции в руб/день хранится в `code`) |
 | name | varchar(100) | Наименование |
 | code | varchar(50) | Код |
 | color | varchar(20) | Цвет |
@@ -766,6 +754,25 @@ erDiagram
 | lock_until | timestamp | Время окончания блокировки (UTC) |
 
 Типы справочников: priority, status, task_type, business_customer, channel, deadline, department, team_type, project_status.
+
+### competency_cost_history — Историчные ставки компетенций
+| Колонка | Тип | Описание |
+|---------|-----|----------|
+| id | int PK | — |
+| competency | varchar(100) | Название компетенции |
+| year | int | Год действия ставки |
+| rate | float | Ставка руб/день |
+| is_active | boolean | Активна |
+| created_at | timestamp | — |
+| updated_at | timestamp | — |
+
+Уникальный ключ: (competency, year). Расчёт `effort_rub` берёт ставку года дедлайна задачи; без дедлайна/года — ставку максимального (актуального) года. Справочник `dictionary_items` с `dict_type='competency_cost'` сохранён в БД только для блокировки справочника в админке; из расчётов и админ-карточки он выведен.
+
+### tasks — вычисляемые поля ФТЗ
+
+Поля `actual_effort_designee`, `actual_effort_analytics`, `actual_effort_be`, `actual_effort_python_be`, `actual_effort_fe`, `actual_effort_test`, `actual_effort_test_auto`, `actual_effort_delivery` — фактические трудозатраты по 8 компетенциям (значения тянутся из внешней БД, связанной с Jira).
+
+Поле `actual_effort_days` — **вычисляемое**: сумма перечисленных 8 полей ФТЗ (если ни одно не заполнено — `NULL`). Автоматически пересчитывается при создании/обновлении задачи (значение из запроса игнорируется) и при старте сервера для всех задач (`recalculate_actual_effort_days_for_all`).
 
 **Блокировка справочников:**
 - Аналогична блокировке задач (поле `tasks.lock_owner_id` / `tasks.lock_until`)

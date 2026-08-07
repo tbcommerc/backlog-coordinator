@@ -46,6 +46,20 @@ async def lifespan(app: FastAPI):
     seed_team_resources()
     migrate_team_fk_ids()
 
+    # Recalculate computed task fields (idempotent)
+    try:
+        from database import SessionLocal
+        from routers.tasks_router import recalculate_actual_effort_days_for_all
+        db = SessionLocal()
+        try:
+            n = recalculate_actual_effort_days_for_all(db)
+            if n:
+                print(f"[startup] Recalculated actual_effort_days for {n} tasks")
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[startup] actual_effort_days recalc failed: {e}")
+
     # Sync standard reports registry with DB (idempotent, additive)
     try:
         from database import SessionLocal

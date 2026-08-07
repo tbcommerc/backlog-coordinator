@@ -52,11 +52,22 @@ def ensure_schema():
                 col_type = str(col.type).upper()
                 nullable = 'NULL' if col.nullable else 'NOT NULL'
                 default = ''
-                if col.default and hasattr(col.default, 'arg'):
-                    default = f" DEFAULT '{col.default.arg}'"
+                arg = None
+                if col.server_default is not None:
+                    arg = getattr(col.server_default, 'arg', None)
+                elif col.default is not None and hasattr(col.default, 'arg'):
+                    arg = col.default.arg
+                if arg is True:
+                    default = " DEFAULT 1"
+                elif arg is False:
+                    default = " DEFAULT 0"
+                elif isinstance(arg, str):
+                    default = f" DEFAULT '{arg}'"
+                elif arg is not None:
+                    default = f" DEFAULT {arg}"
                 with engine.connect() as conn:
                     try:
-                        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}"))
+                        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type} {default}"))
                         conn.commit()
                         print(f"[db] Added column: {table_name}.{col.name} ({col_type})")
                     except Exception as e:

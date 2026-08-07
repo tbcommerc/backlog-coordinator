@@ -6,11 +6,12 @@ from typing import Optional, List
 from datetime import date, datetime, timezone, timedelta
 import json
 import os
+import re
 import uuid
 import shutil
 
 from database import get_db
-from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, TaskComment, TaskAttachment, Notification, TaskViewer, TeamCompetencyResource, DictionaryItem, FieldLabel
+from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, TaskComment, TaskAttachment, Notification, TaskViewer, TeamCompetencyResource, DictionaryItem, CompetencyCostHistory, FieldLabel, Tag, IssueTag
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
     BulkActionRequest, SuccessResponse, TaskHistoryResponse,
@@ -61,7 +62,6 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         description=task.description,
         date_received=task.date_received,
         channel_id=task.channel_id,
-        business_customer=task.business_customer,
         business_customer_id=task.business_customer_id,
         department_id=task.department_id,
         project_id=task.project_id,
@@ -84,9 +84,11 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         actual_effort_designee=task.actual_effort_designee,
         actual_effort_analytics=task.actual_effort_analytics,
         actual_effort_be=task.actual_effort_be,
+        actual_effort_python_be=task.actual_effort_python_be,
         actual_effort_fe=task.actual_effort_fe,
         actual_effort_test=task.actual_effort_test,
         actual_effort_test_auto=task.actual_effort_test_auto,
+        actual_effort_delivery=task.actual_effort_delivery,
         financial_effect=task.financial_effect,
         financial_effect_justification=task.financial_effect_justification,
         progress=task.progress,
@@ -103,11 +105,15 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         did_status_updated_at=task.did_status_updated_at,
         metric_kr_plan=task.metric_kr_plan,
         metric_kr_fact=task.metric_kr_fact,
+        metric_kr_unit=task.metric_kr_unit,
         cv=cv,
-        last_updated=task.last_updated,
         created_by=task.created_by,
         created_by_name=task.creator.name if task.creator else None,
         involved_team_names=involved_team_names,
+        tags=[
+            {"id": t.id, "name": t.name, "color": t.color, "description": t.description}
+            for t in (task.tags or [])
+        ],
         created_at=task.created_at,
         updated_at=task.updated_at,
         team_name=task.team.name if task.team else None,
@@ -139,25 +145,96 @@ COMPETENCY_EFFORT_FIELDS = [
     ("effort_delivery", "Delivery"),
 ]
 
+ACTUAL_EFFORT_FIELDS = [
+    "actual_effort_designee",
+    "actual_effort_analytics",
+    "actual_effort_be",
+    "actual_effort_python_be",
+    "actual_effort_fe",
+    "actual_effort_test",
+    "actual_effort_test_auto",
+    "actual_effort_delivery",
+]
 
-def _competency_costs(db: Session) -> dict:
-    """Стоимость чел-дня по компетенциям из справочника competency_cost."""
-    items = db.query(DictionaryItem).filter(DictionaryItem.dict_type == 'competency_cost').all()
-    costs = {}
+
+def _apply_tags(db: Session, task: Task, tag_names: Optional[List[str]], user_id: Optional[int] = None) -> None:
+    """Синхронизирует теги задачи (по именам) с таблицей issue_tags.
+
+    Отсутствующие теги автоматически создаются в справочнике tags.
+    """
+    db.query(IssueTag).filter(IssueTag.issue_id == task.id).delete()
+
+    seen = set()
+    for raw in tag_names or []:
+        name = (raw or "").strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        tag = db.query(Tag).filter(func.lower(Tag.name) == key).first()
+        if tag is None:
+            tag = Tag(name=name, color="#6366f1", creator=user_id)
+            db.add(tag)
+            db.flush()
+        db.add(IssueTag(issue_id=task.id, tag_id=tag.id))
+    db.commit()
+
+
+def _year_from_deadline(db: Session, deadline_id: Optional[int]) -> Optional[int]:
+    """Год из кода дедлайна (последние 4 цифры: Q1_2026 -> 2026, Y2026 -> 2026).
+
+    Возвращает None, если дедлайн не задан или в коде нет года (no_deadline).
+    """
+    if deadline_id is None:
+        return None
+    deadline = db.query(Deadline).filter(Deadline.id == deadline_id).first()
+    if not deadline or not deadline.code:
+        return None
+    match = re.search(r"(\d{4})$", deadline.code.strip())
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except (TypeError, ValueError):
+        return None
+
+
+def _competency_costs(db: Session, year: Optional[int] = None) -> dict:
+    """Стоимость чел-дня по компетенциям из competency_cost_history.
+
+    Для каждой компетенции берётся ставка года `year`; если год не задан или
+    для него нет записи — ставка максимального (актуального) года.
+    """
+    items = db.query(CompetencyCostHistory).filter(
+        CompetencyCostHistory.is_active == True
+    ).all()
+    by_competency: dict[str, dict[int, float]] = {}
     for it in items:
-        try:
-            costs[it.name] = float(it.code) if it.code else 0
-        except (TypeError, ValueError):
-            costs[it.name] = 0
+        by_competency.setdefault(it.competency, {})[it.year] = float(it.rate or 0)
+
+    costs = {}
+    for comp, rates in by_competency.items():
+        rate = rates.get(year) if year is not None else None
+        if rate is None and rates:
+            rate = rates[max(rates)]
+        costs[comp] = rate or 0
     return costs
 
 
-def compute_effort_rub(db: Session, values: dict, fallback: Optional[float]) -> Optional[float]:
+def compute_effort_rub(db: Session, values: dict, fallback: Optional[float], year: Optional[int] = None) -> Optional[float]:
     """Авторасчёт стоимости по ЭО: Σ(ЭО по ролям × ставка роли). С 2 знаками.
+
+    Ставки берутся по году дедлайна задачи (`year`); если он не передан,
+    год извлекается из `values['deadline_id']`. Если год не определён —
+    используются актуальные ставки (максимальный год).
 
     Если ни одно из полей ЭО по ролям не заполнено — возвращает сохранённое значение (fallback).
     """
-    costs = _competency_costs(db)
+    if year is None:
+        year = _year_from_deadline(db, values.get("deadline_id"))
+    costs = _competency_costs(db, year)
     total = 0.0
     any_value = False
     for field, comp in COMPETENCY_EFFORT_FIELDS:
@@ -170,6 +247,68 @@ def compute_effort_rub(db: Session, values: dict, fallback: Optional[float]) -> 
     if any_value:
         return round(total, 2)
     return fallback
+
+
+def recalculate_effort_rub_for_all(db: Session) -> int:
+    """Пересчитывает effort_rub и cv всех задач с заполненными ЭО по ролям.
+
+    Ставки берутся по году дедлайна каждой задачи (fallback — актуальный год).
+    Возвращает количество пересчитанных задач.
+    """
+    tasks = db.query(Task).filter(Task.is_deleted == False).all()
+    changed = 0
+    for task in tasks:
+        if not any(getattr(task, f) for f, _ in COMPETENCY_EFFORT_FIELDS):
+            continue
+        vals = {f: getattr(task, f) for f, _ in COMPETENCY_EFFORT_FIELDS}
+        year = _year_from_deadline(db, task.deadline_id)
+        new_rub = compute_effort_rub(db, vals, task.effort_rub, year)
+        if new_rub is not None and new_rub != task.effort_rub:
+            task.effort_rub = new_rub
+            if task.financial_effect is not None and new_rub > 0:
+                task.cv = round(task.financial_effect / new_rub, 2)
+            else:
+                task.cv = None
+            changed += 1
+    if changed:
+        db.commit()
+    return changed
+
+
+def compute_actual_effort_days(values: dict) -> Optional[float]:
+    """Авторасчёт фактических трудозатрат: сумма полей ФТЗ по 8 компетенциям.
+
+    Если ни одно из полей не заполнено (None/0) — возвращает None.
+    """
+    total = 0.0
+    any_value = False
+    for field in ACTUAL_EFFORT_FIELDS:
+        val = values.get(field)
+        if val:
+            any_value = True
+            total += float(val)
+    if not any_value:
+        return None
+    return round(total, 2)
+
+
+def recalculate_actual_effort_days_for_all(db: Session) -> int:
+    """Пересчитывает actual_effort_days всех задач из суммы полей ФТЗ.
+
+    Возвращает количество пересчитанных задач.
+    """
+    tasks = db.query(Task).filter(Task.is_deleted == False).all()
+    changed = 0
+    for task in tasks:
+        if not any(getattr(task, f) for f in ACTUAL_EFFORT_FIELDS):
+            continue
+        new_days = compute_actual_effort_days({f: getattr(task, f) for f in ACTUAL_EFFORT_FIELDS})
+        if new_days != task.actual_effort_days:
+            task.actual_effort_days = new_days
+            changed += 1
+    if changed:
+        db.commit()
+    return changed
 
 
 @router.get("/", response_model=TaskListResponse)
@@ -359,9 +498,9 @@ async def get_task_reference(
         "task_types": [{"id": t.id, "name": t.name} for t in task_types],
         "channels": [{"id": c.id, "name": c.name} for c in channels],
         "departments": [{"id": d.id, "name": d.name} for d in departments],
-        "business_customers": [{"id": b.id, "name": b.name} for b in business_customers],
+        "business_customers": [{"id": b.id, "name": b.name, "department_id": b.department_id} for b in business_customers],
         "users": [{"id": u.id, "name": u.name} for u in users],
-        "tags": []
+        "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in db.query(Tag).order_by(Tag.name).all()]
     }
 
 
@@ -396,13 +535,15 @@ async def get_report(
 
     elif kind == "did":
         rows = db.query(
-            func.coalesce(Task.business_customer, "Без заказчика"),
+            func.coalesce(BusinessCustomer.name, "Без заказчика"),
             func.count(Task.id),
             func.sum(case((TaskStatus.name.notin_(terminal), 1), else_=0)),
             func.coalesce(func.sum(Task.financial_effect), 0.0)
-        ).join(TaskStatus, Task.status_id == TaskStatus.id).filter(
+        ).join(TaskStatus, Task.status_id == TaskStatus.id).join(
+            BusinessCustomer, Task.business_customer_id == BusinessCustomer.id, isouter=True
+        ).filter(
             Task.is_deleted == False
-        ).group_by(Task.business_customer).all()
+        ).group_by(BusinessCustomer.name).all()
         groups = [
             {"customer": r[0], "total": r[1], "active": r[2], "total_financial_effect": float(r[3])}
             for r in rows
@@ -937,15 +1078,21 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
     # Auto-calculate effort cost from role estimates x competency rates
     effort_rub = compute_effort_rub(db, task_data.model_dump(), task_data.effort_rub)
 
+    # Auto-fill department from the selected business customer when not provided
+    department_id = task_data.department_id
+    if department_id is None and task_data.business_customer_id is not None:
+        customer = db.query(BusinessCustomer).filter(BusinessCustomer.id == task_data.business_customer_id).first()
+        if customer and customer.department_id is not None:
+            department_id = customer.department_id
+
     task = Task(
         team_id=task_data.team_id,
         title=task_data.title,
         description=task_data.description,
         date_received=task_data.date_received or date.today(),
         channel_id=task_data.channel_id,
-        business_customer=task_data.business_customer,
         business_customer_id=task_data.business_customer_id,
-        department_id=task_data.department_id,
+        department_id=department_id,
         project_id=task_data.project_id,
         task_type_id=task_data.task_type_id,
         involved_teams=task_data.involved_teams,
@@ -962,13 +1109,15 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
         effort_test=task_data.effort_test,
         effort_test_auto=task_data.effort_test_auto,
         effort_delivery=task_data.effort_delivery,
-        actual_effort_days=task_data.actual_effort_days,
+        actual_effort_days=compute_actual_effort_days(task_data.model_dump()),
         actual_effort_designee=task_data.actual_effort_designee,
         actual_effort_analytics=task_data.actual_effort_analytics,
         actual_effort_be=task_data.actual_effort_be,
+        actual_effort_python_be=task_data.actual_effort_python_be,
         actual_effort_fe=task_data.actual_effort_fe,
         actual_effort_test=task_data.actual_effort_test,
         actual_effort_test_auto=task_data.actual_effort_test_auto,
+        actual_effort_delivery=task_data.actual_effort_delivery,
         financial_effect=task_data.financial_effect,
         financial_effect_justification=task_data.financial_effect_justification,
         cv=cv,
@@ -983,14 +1132,16 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
         did_status=task_data.did_status,
         metric_kr_plan=task_data.metric_kr_plan,
         metric_kr_fact=task_data.metric_kr_fact,
+        metric_kr_unit=task_data.metric_kr_unit,
         did_demo=task_data.did_demo,
-        last_updated=date.today(),
         created_by=current_user.id
     )
 
     db.add(task)
     db.commit()
     db.refresh(task)
+
+    _apply_tags(db, task, task_data.tags, current_user.id)
 
     # 4. Record creation in task_history
     history_fields = [
@@ -1074,6 +1225,10 @@ async def update_task(
 
         # Optimistic lock: extract and check version before applying changes
         submitted_version = update_data.pop('version', None)
+        # actual_effort_days is always computed from actual effort fields
+        update_data.pop('actual_effort_days', None)
+        # tags — обрабатываются отдельно через issue_tags (не колонка ORM)
+        tag_names = update_data.pop('tags', None)
         if submitted_version is not None and submitted_version != (task.version or 0):
             current = task_to_response(task, db)
             raise HTTPException(
@@ -1085,6 +1240,13 @@ async def update_task(
                     "task": current.model_dump()
                 }
             )
+
+        # Auto-fill department from the selected business customer when not provided
+        if 'business_customer_id' in update_data and 'department_id' not in update_data:
+            if update_data['business_customer_id'] is not None:
+                customer = db.query(BusinessCustomer).filter(BusinessCustomer.id == update_data['business_customer_id']).first()
+                if customer and customer.department_id is not None:
+                    update_data['department_id'] = customer.department_id
 
         for field, new_value in update_data.items():
             if not hasattr(task, field):
@@ -1102,12 +1264,18 @@ async def update_task(
                 db.add(history)
             setattr(task, field, new_value)
 
-        task.last_updated = date.today()
+        # Apply tags (m2m) after direct field updates
+        if tag_names is not None:
+            _apply_tags(db, task, tag_names, current_user.id)
+
+        # Auto-calculate actual effort days from actual effort fields (ФТЗ)
+        if any(f in update_data for f in ACTUAL_EFFORT_FIELDS):
+            task.actual_effort_days = compute_actual_effort_days({f: getattr(task, f) for f in ACTUAL_EFFORT_FIELDS})
 
         # Auto-calculate effort cost from role estimates x competency rates
         if any(f in update_data for f, _ in COMPETENCY_EFFORT_FIELDS):
             vals = {f: getattr(task, f) for f, _ in COMPETENCY_EFFORT_FIELDS}
-            task.effort_rub = compute_effort_rub(db, vals, task.effort_rub)
+            task.effort_rub = compute_effort_rub(db, vals, task.effort_rub, _year_from_deadline(db, task.deadline_id))
 
         # Auto-calculate C/V if financial_effect or effort_rub changed
         if 'financial_effect' in update_data or 'effort_rub' in update_data:
@@ -1552,7 +1720,7 @@ FORBIDDEN_BULK_FIELDS = {
     'effort_test_auto', 'effort_delivery', 'effort_python_be',
     'actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics',
     'actual_effort_be', 'actual_effort_fe', 'actual_effort_test',
-    'actual_effort_test_auto', 'metric_kr_plan', 'metric_kr_fact',
+    'actual_effort_test_auto', 'actual_effort_python_be', 'actual_effort_delivery', 'metric_kr_plan', 'metric_kr_fact',
     'financial_effect_justification', 'did_demo', 'involved_teams'
 }
 
@@ -1671,9 +1839,11 @@ async def import_tasks(
         'actual_effort_designee': 'actual_effort_designee',
         'actual_effort_analytics': 'actual_effort_analytics',
         'actual_effort_be': 'actual_effort_be',
+        'actual_effort_python_be': 'actual_effort_python_be',
         'actual_effort_fe': 'actual_effort_fe',
         'actual_effort_test': 'actual_effort_test',
         'actual_effort_test_auto': 'actual_effort_test_auto',
+        'actual_effort_delivery': 'actual_effort_delivery',
         'financial_effect': 'financial_effect',
         'financial_effect_justification': 'financial_effect_justification',
         'progress': 'progress',
@@ -1723,8 +1893,9 @@ async def import_tasks(
                                   'effort_test_auto', 'effort_delivery',
                                   'actual_effort_days', 'actual_effort_designee',
                                   'actual_effort_analytics', 'actual_effort_be',
-                                  'actual_effort_fe', 'actual_effort_test',
-                                  'actual_effort_test_auto',
+                                  'actual_effort_python_be', 'actual_effort_fe',
+                                  'actual_effort_test',
+                                  'actual_effort_test_auto', 'actual_effort_delivery',
                                   'metric_kr_plan', 'metric_kr_fact'):
                     try:
                         val = float(val) if val and val != '' else None
@@ -1786,6 +1957,7 @@ async def import_tasks(
                 continue
 
             task = Task(**task_data)
+            task.actual_effort_days = compute_actual_effort_days({f: getattr(task, f) for f in ACTUAL_EFFORT_FIELDS})
             db.add(task)
             created += 1
 

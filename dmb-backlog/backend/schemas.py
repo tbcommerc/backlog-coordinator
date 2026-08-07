@@ -173,7 +173,6 @@ class TaskBase(BaseModel):
     description: Optional[str] = Field(None, max_length=10000)
     date_received: Optional[date] = None
     channel_id: Optional[int] = None
-    business_customer: Optional[str] = Field(None, max_length=200)
     business_customer_id: Optional[int] = None
     department_id: Optional[int] = None
     project_id: Optional[int] = None
@@ -196,9 +195,11 @@ class TaskBase(BaseModel):
     actual_effort_designee: Optional[float] = None
     actual_effort_analytics: Optional[float] = None
     actual_effort_be: Optional[float] = None
+    actual_effort_python_be: Optional[float] = None
     actual_effort_fe: Optional[float] = None
     actual_effort_test: Optional[float] = None
     actual_effort_test_auto: Optional[float] = None
+    actual_effort_delivery: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
     progress: int = Field(default=0, ge=0, le=100)
@@ -207,7 +208,7 @@ class TaskBase(BaseModel):
     rejection_reason: Optional[str] = Field(None, max_length=5000)
     comment: Optional[str] = Field(None, max_length=5000)
     owner_id: Optional[int] = None
-    key_project_status: Optional[str] = Field(None, max_length=50)
+    key_project_status: Optional[str] = None
     key_project_status_updated_at: Optional[datetime] = None
     directorate_status: Optional[str] = Field(None, max_length=1000)
     directorate_status_updated_at: Optional[datetime] = None
@@ -215,7 +216,9 @@ class TaskBase(BaseModel):
     did_status_updated_at: Optional[datetime] = None
     metric_kr_plan: Optional[float] = None
     metric_kr_fact: Optional[float] = None
+    metric_kr_unit: Optional[str] = Field(None, max_length=50, description='Единица измерения Метрического KR')
     did_demo: bool = False
+    tags: Optional[List[str]] = Field(None, description='Метки (теги) — имена тегов')
 
     @field_validator('link_jira', mode='before')
     @classmethod
@@ -241,7 +244,6 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=10000)
     date_received: Optional[date] = None
     channel_id: Optional[int] = None
-    business_customer: Optional[str] = Field(None, max_length=200)
     business_customer_id: Optional[int] = None
     department_id: Optional[int] = None
     project_id: Optional[int] = None
@@ -264,9 +266,11 @@ class TaskUpdate(BaseModel):
     actual_effort_designee: Optional[float] = None
     actual_effort_analytics: Optional[float] = None
     actual_effort_be: Optional[float] = None
+    actual_effort_python_be: Optional[float] = None
     actual_effort_fe: Optional[float] = None
     actual_effort_test: Optional[float] = None
     actual_effort_test_auto: Optional[float] = None
+    actual_effort_delivery: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
     progress: Optional[int] = Field(None, ge=0, le=100)
@@ -275,13 +279,15 @@ class TaskUpdate(BaseModel):
     rejection_reason: Optional[str] = Field(None, max_length=5000)
     comment: Optional[str] = Field(None, max_length=5000)
     owner_id: Optional[int] = None
-    key_project_status: Optional[str] = Field(None, max_length=50)
+    key_project_status: Optional[str] = None
     key_project_status_updated_at: Optional[datetime] = None
     directorate_status: Optional[str] = Field(None, max_length=1000)
     did_status: Optional[str] = Field(None, max_length=1000)
     metric_kr_plan: Optional[float] = None
     metric_kr_fact: Optional[float] = None
+    metric_kr_unit: Optional[str] = Field(None, max_length=50, description='Единица измерения Метрического KR')
     did_demo: Optional[bool] = None
+    tags: Optional[List[str]] = Field(None, description='Метки (теги) — имена тегов')
     version: Optional[int] = Field(None, description='Версия задачи для optimistic lock')
 
     @field_validator('link_jira', mode='before')
@@ -298,7 +304,6 @@ class TaskUpdate(BaseModel):
 class TaskResponse(TaskBase):
     id: int
     cv: Optional[float] = None
-    last_updated: Optional[date] = None
     created_by: Optional[int] = None
     created_by_name: Optional[str] = None
     involved_team_names: Optional[List[str]] = None
@@ -318,6 +323,7 @@ class TaskResponse(TaskBase):
     owner_name: Optional[str] = None
     business_customer_name: Optional[str] = None
     did_demo: bool = False
+    tags: Optional[List['TagResponse']] = None
 
     class Config:
         from_attributes = True
@@ -545,10 +551,37 @@ class DictionaryItemUpdate(BaseModel):
 class DictionaryItemResponse(DictionaryItemBase):
     id: int
     created_at: Optional[datetime] = None
-    version: int = 0
+    version: Optional[int] = 0
     lock_owner_id: Optional[int] = None
     lock_owner_name: Optional[str] = None
     lock_until: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ==================== COMPETENCY COST HISTORY ====================
+
+class CompetencyCostHistoryBase(BaseModel):
+    competency: str = Field(max_length=100)
+    year: int
+    rate: float = Field(default=0, ge=0)
+
+
+class CompetencyCostHistoryCreate(CompetencyCostHistoryBase):
+    pass
+
+
+class CompetencyCostHistoryUpdate(BaseModel):
+    rate: Optional[float] = Field(None, ge=0)
+    is_active: Optional[bool] = None
+
+
+class CompetencyCostHistoryResponse(CompetencyCostHistoryBase):
+    id: int
+    is_active: bool = True
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -617,7 +650,6 @@ class DepartmentResponse(DepartmentBase):
 
 class PriorityBase(BaseModel):
     name: str = Field(max_length=50)
-    sla_multiplier: Optional[float] = None
 
 
 class PriorityCreate(PriorityBase):
@@ -634,8 +666,6 @@ class PriorityResponse(PriorityBase):
 class TaskTypeBase(BaseModel):
     code: str = Field(max_length=50)
     name: str = Field(max_length=100)
-    dod_required: bool = False
-    financial_value_required: bool = False
 
 
 class TaskTypeCreate(TaskTypeBase):
@@ -684,8 +714,6 @@ class ProjectStatusResponse(ProjectStatusBase):
 class TaskStatusBase(BaseModel):
     code: str = Field(max_length=50)
     name: str = Field(max_length=100)
-    group: Optional[str] = Field(None, max_length=50)
-    sla_hours: Optional[int] = None
     sort_order: int = 0
     color: Optional[str] = Field(None, max_length=20)
 
@@ -997,3 +1025,7 @@ class TimelineEventResponse(TimelineEventBase):
 class TimelineEventListResponse(BaseModel):
     items: List[TimelineEventResponse]
     total: int
+
+
+# Resolve forward reference: TaskResponse.tags -> TagResponse (defined after)
+TaskResponse.model_rebuild()

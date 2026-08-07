@@ -586,6 +586,22 @@ async function initEffortControls(app) {
 export function renderAnalytics(type, app) {
   window.__app = app;
 
+  if (type === 'it') {
+    return `
+      <div class="animate-fade-in">
+        <div class="page-header">
+          <h1>Аналитика для ИТ</h1>
+          <p>Аналитика задач по направлениям ИТ</p>
+        </div>
+        <div class="card" style="position:relative;display:flex;align-items:center;justify-content:center;border:2px dashed var(--border-color);border-radius:16px;padding:64px 24px;text-align:center;">
+          <span class="badge badge-warning" title="В разработке" style="position:absolute;top:12px;right:12px;display:inline-flex;align-items:center;justify-content:center;padding:5px;border-radius:var(--radius-full);">
+            <i data-lucide="loader2" style="width:14px;height:14px;"></i>
+          </span>
+          <p class="text-muted" style="max-width:420px;margin:0 auto;">Здесь появится содержимое страницы.</p>
+        </div>
+      </div>`;
+  }
+
   if (type === 'tribe') {
     return `
       <div class="animate-fade-in">
@@ -715,6 +731,11 @@ export async function initAnalytics(type, app) {
   for (const key of Object.keys(chartInstances)) {
     chartInstances[key].destroy();
     delete chartInstances[key];
+  }
+
+  if (type === 'it') {
+    if (window.lucide) window.lucide.createIcons();
+    return;
   }
 
   let tasks = [];

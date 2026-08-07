@@ -4,10 +4,23 @@ from models import (
     User, Team, Role, Task, Report,
     Channel, Deadline, Department, Priority, TaskType, TeamType,
     ProjectStatus, TaskStatus, Project, BusinessCustomer,
-    DictionaryItem, TeamCompetencyResource, FieldLabel
+    DictionaryItem, TeamCompetencyResource, FieldLabel, CompetencyCostHistory
 )
 from auth import get_password_hash
 from datetime import date, timedelta
+
+# Историчные ставки компетенций: (компетенция, год, ставка руб/день).
+# Заполняется только при отсутствии записи (upsert по компетенция+год).
+COMPETENCY_COST_HISTORY_SEED = [
+    ("Designee", 2026, 15000), ("Designee", 2027, 15000),
+    ("Аналитика", 2026, 12000), ("Аналитика", 2027, 12000),
+    ("Разработка BE", 2026, 14000), ("Разработка BE", 2027, 14000),
+    ("Разработка python BE", 2026, 16000), ("Разработка python BE", 2027, 16000),
+    ("Разработка FE", 2026, 13000), ("Разработка FE", 2027, 13000),
+    ("Tester", 2026, 10000), ("Tester", 2027, 10000),
+    ("Tester Auto", 2026, 12000), ("Tester Auto", 2027, 12000),
+    ("Delivery", 2026, 15000), ("Delivery", 2027, 15000),
+]
 
 ALL_DICT_ITEMS = [
     # priorities
@@ -48,18 +61,6 @@ ALL_DICT_ITEMS = [
     ("deadline", "1Q 2027", "Q1_2027", "#0ea5e9", 6),
     ("deadline", "2Q 2027", "Q2_2027", "#14b8a6", 7),
     ("deadline", "БЕЗ СРОКА", "no_deadline", "#94a3b8", 8),
-    # departments
-    ("department", "УСИ", "USI", "#6366f1", 1),
-    ("department", "IB", "IB", "#10b981", 2),
-    ("department", "M&A", "MA", "#f59e0b", 3),
-    ("department", "УРК", "URK", "#f43f5e", 4),
-    ("department", "ЦУП", "CUP", "#8b5cf6", 5),
-    ("department", "ФИНАНСЫ", "FINANCE", "#0ea5e9", 6),
-    ("department", "РИСКИ", "RISKS", "#e11d48", 7),
-    ("department", "ЦР", "CR", "#14b8a6", 8),
-    ("department", "L2P", "L2P", "#a855f7", 9),
-    ("department", "ЦИ", "CI", "#64748b", 10),
-    ("department", "РЕГ. ДИРЕКТОРЫ", "REG_DIRECTORS", "#dc2626", 11),
     # team_types
     ("team_type", "С разработкой", "with_dev", "#6366f1", 1),
     ("team_type", "Без разработки", "without_dev", "#94a3b8", 2),
@@ -128,13 +129,15 @@ ALL_FIELD_LABELS = [
     ("did_demo", "Демо для оперативного статуса ДИД", "статусы", 46),
     ("metric_kr_plan", "Значение для метрического KR (план)", "ценность", 47),
     ("metric_kr_fact", "Значение для метрического KR (факт)", "ценность", 48),
+    ("metric_kr_unit", "Единица измерения (метрический KR)", "ценность", 49),
     ("link_jira", "Ссылки на Jira", "прочее", 49),
     ("rejection_reason", "Обоснование решения (при отклонении)", "прочее", 50),
-    ("last_updated", "Дата последнего изменения", "основные", 51),
     ("date_received", "Дата получения", "основные", 52),
     ("effort_python_be", "Разработка python BE (ЭО)", "трудозатраты", 53),
     ("effort_delivery", "Delivery (ЭО)", "трудозатраты", 54),
     ("updated_at", "Дата последнего изменения", "основные", 55),
+    ("actual_effort_python_be", "Разработка python BE (ФТЗ)", "трудозатраты", 56),
+    ("actual_effort_delivery", "Delivery (ФТЗ)", "трудозатраты", 57),
 ]
 
 
@@ -163,10 +166,14 @@ def seed_dict_always():
     try:
         added = 0
         for dt, name, code, color, sort in ALL_DICT_ITEMS:
-            existing = db.query(DictionaryItem).filter(
-                DictionaryItem.dict_type == dt,
-                DictionaryItem.code == code,
-            ).first()
+            filters = [DictionaryItem.dict_type == dt]
+            if dt == "competency_cost":
+                # Ставка компетенции живёт в `code`; upsert по имени, чтобы
+                # изменённая админом ставка не дублировалась при перезапуске.
+                filters.append(DictionaryItem.name == name)
+            else:
+                filters.append(DictionaryItem.code == code)
+            existing = db.query(DictionaryItem).filter(*filters).first()
             if existing:
                 pass
             else:
@@ -175,6 +182,28 @@ def seed_dict_always():
         if added:
             db.commit()
             print(f"[seed] Dictionary items upserted: {added}")
+    finally:
+        db.close()
+    seed_competency_cost_history()
+
+
+def seed_competency_cost_history():
+    """Always ensure competency cost history rows exist (upsert by competency+year). NEVER overwrites."""
+    db: Session = SessionLocal()
+    try:
+        added = 0
+        for competency, year, rate in COMPETENCY_COST_HISTORY_SEED:
+            existing = db.query(CompetencyCostHistory).filter(
+                CompetencyCostHistory.competency == competency,
+                CompetencyCostHistory.year == year,
+            ).first()
+            if existing:
+                continue
+            db.add(CompetencyCostHistory(competency=competency, year=year, rate=rate))
+            added += 1
+        if added:
+            db.commit()
+            print(f"[seed] Competency cost history upserted: {added}")
     finally:
         db.close()
 
@@ -224,14 +253,14 @@ def seed_initial_data():
 
     # --- Priorities ---
     priorities = {}
-    for name, sla in [("НИЗКИЙ", 2.0), ("СРЕДНИЙ", 1.5), ("ВЫСОКИЙ", 1.0)]:
-        p = get_or_create(Priority, [Priority.name == name], {"sla_multiplier": sla})
+    for name in ["НИЗКИЙ", "СРЕДНИЙ", "ВЫСОКИЙ"]:
+        p = get_or_create(Priority, [Priority.name == name], {})
         priorities[name] = p
 
     # --- Task Types ---
     task_types = {}
-    for code, name, dod, fin in [("quarterly_goal", "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ", True, True), ("adhoc", "AD-HOC", False, False), ("tech_debt", "ТЕХДОЛГ", False, False), ("research", "ИССЛЕДОВАНИЕ", False, False), ("metric_kr", "МЕТРИЧЕСКИЕ KR", True, False)]:
-        tt = get_or_create(TaskType, [TaskType.code == code], {"name": name, "dod_required": dod, "financial_value_required": fin})
+    for code, name in [("quarterly_goal", "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ"), ("adhoc", "AD-HOC"), ("tech_debt", "ТЕХДОЛГ"), ("research", "ИССЛЕДОВАНИЕ"), ("metric_kr", "МЕТРИЧЕСКИЕ KR")]:
+        tt = get_or_create(TaskType, [TaskType.code == code], {"name": name})
         task_types[code] = tt
 
     # --- Team Types ---
@@ -249,22 +278,22 @@ def seed_initial_data():
     # --- Task Statuses ---
     task_statuses = {}
     status_data = [
-        ("new", "НОВАЯ ЗАДАЧА", "backlog", 48, 1, "#3b82f6"),
-        ("team_assigned", "НАЗНАЧЕНА КОМАНДА", "backlog", 48, 2, "#6366f1"),
-        ("requirements", "СБОР ТРЕБОВАНИЙ", "backlog", 40, 3, "#8b5cf6"),
-        ("check_requirements", "ПРОВЕРКА ТРЕБОВАНИЙ", "backlog", 40, 4, "#7c3aed"),
-        ("clarify_requirements", "УТОЧНЕНИЕ ТРЕБОВАНИЙ", "backlog", 40, 5, "#a78bfa"),
-        ("quick_estimate", "ЭКСПРЕСС-ОЦЕНКА", "backlog", 40, 6, "#6d28d9"),
-        ("decision", "ПРИНЯТИЕ РЕШЕНИЯ", "backlog", 32, 7, "#f59e0b"),
-        ("in_progress", "ПРИНЯТА В РАБОТУ", "active", 40, 8, "#10b981"),
-        ("rejected", "ОТКЛОНЕНА", "closed", None, 9, "#ef4444"),
-        ("irrelevant", "НЕ АКТУАЛЬНА", "closed", None, 10, "#94a3b8"),
-        ("done", "ВЫПОЛНЕНА", "closed", 40, 11, "#22c55e"),
-        ("escalation", "ЭСКАЛАЦИЯ НА ЛТ", "frozen", 24, 12, "#f97316"),
-        ("hold", "ХОЛД", "frozen", 40, 13, "#e11d48"),
+        ("new", "НОВАЯ ЗАДАЧА", 1, "#3b82f6"),
+        ("team_assigned", "НАЗНАЧЕНА КОМАНДА", 2, "#6366f1"),
+        ("requirements", "СБОР ТРЕБОВАНИЙ", 3, "#8b5cf6"),
+        ("check_requirements", "ПРОВЕРКА ТРЕБОВАНИЙ", 4, "#7c3aed"),
+        ("clarify_requirements", "УТОЧНЕНИЕ ТРЕБОВАНИЙ", 5, "#a78bfa"),
+        ("quick_estimate", "ЭКСПРЕСС-ОЦЕНКА", 6, "#6d28d9"),
+        ("decision", "ПРИНЯТИЕ РЕШЕНИЯ", 7, "#f59e0b"),
+        ("in_progress", "ПРИНЯТА В РАБОТУ", 8, "#10b981"),
+        ("rejected", "ОТКЛОНЕНА", 9, "#ef4444"),
+        ("irrelevant", "НЕ АКТУАЛЬНА", 10, "#94a3b8"),
+        ("done", "ВЫПОЛНЕНА", 11, "#22c55e"),
+        ("escalation", "ЭСКАЛАЦИЯ НА ЛТ", 12, "#f97316"),
+        ("hold", "ХОЛД", 13, "#e11d48"),
     ]
-    for code, name, group, sla, sort, color in status_data:
-        ts = get_or_create(TaskStatus, [TaskStatus.code == code], {"name": name, "group": group, "sla_hours": sla, "sort_order": sort, "color": color})
+    for code, name, sort, color in status_data:
+        ts = get_or_create(TaskStatus, [TaskStatus.code == code], {"name": name, "sort_order": sort, "color": color})
         task_statuses[code] = ts
 
     # --- Projects ---
@@ -449,7 +478,6 @@ def seed_initial_data():
             description=desc,
             date_received=date.today() - timedelta(days=(44 - idx) * 3),
             channel_id=channels[ch_code].id if ch_code in channels and channels[ch_code] else None,
-            business_customer=business_customers_pool[idx % len(business_customers_pool)],
             business_customer_id=business_customers[business_customers_pool[idx % len(business_customers_pool)]].id if business_customers_pool[idx % len(business_customers_pool)] in business_customers and business_customers[business_customers_pool[idx % len(business_customers_pool)]] else None,
             department_id=departments[dept_code].id if dept_code in departments and departments[dept_code] else None,
             project_id=projects[project_code].id if project_code in projects and projects[project_code] else None,
@@ -466,7 +494,6 @@ def seed_initial_data():
             did_status=did_statuses[idx % len(did_statuses)],
             owner_id=users_by_email[owner_email].id if owner_email and owner_email in users_by_email else None,
             key_project_status="На контроле" if idx < 10 else ("Выполнен" if idx < 15 else None),
-            last_updated=date.today() - timedelta(days=idx % 14),
             created_by=users_by_email.get("a@dmb.ru").id,
         )
         db.add(task)

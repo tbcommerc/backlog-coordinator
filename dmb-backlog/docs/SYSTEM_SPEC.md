@@ -240,6 +240,10 @@ DMB Backlog — корпоративная система управления �
 - `ice_impact`, `ice_confidence`, `ice_ease` — компоненты ICE (1-10)
 - `ice_score` — ICE Score (авторасчёт: impact × confidence × ease / 10)
 
+**Фактические трудозатраты (ФТЗ):**
+- `actual_effort_designee`, `actual_effort_analytics`, `actual_effort_be`, `actual_effort_python_be`, `actual_effort_fe`, `actual_effort_test`, `actual_effort_test_auto`, `actual_effort_delivery` — фактические ч/д по 8 компетенциям (тянутся из внешней БД, связанной с Jira)
+- `actual_effort_days` — **авторасчёт**: сумма полей ФТЗ (8 компетенций); пересчитывается при создании/обновлении задачи и при старте сервера; входящее значение игнорируется
+
 **Организационные:**
 - `channel_id` → `channels` — канал поступления (Почта, СберЧат, Встреча/Звонок, Бизнес-план)
 - `department_id` → `departments` — подразделение заказчика
@@ -330,6 +334,8 @@ DMB Backlog — корпоративная система управления �
 | `task_types` | Типы задач | КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ, AD-HOC, ТЕХДОЛГ и др. |
 | `team_types` | Типы команд | С разработкой, Без разработки |
 | `project_statuses` | Статусы проектов | Активен, Завершен, Архивный |
+| `competency_cost` | Стоимость компетенций (руб/день, legacy в dictionary_items — для блокировки) | Designee, Аналитика, Разработка BE, Разработка python BE, Разработка FE, Tester, Tester Auto, Delivery |
+| `competency_cost_history` | Историчные ставки компетенций (компетенция × год) | По 2 года (2026, 2027) на компетенцию; ставка года дедлайна задачи, fallback — последний год |
 | `tags` | Теги (many-to-many) | Гибкая классификация задач и проектов |
 
 **Блокировка справочников (dictionary_items):**
