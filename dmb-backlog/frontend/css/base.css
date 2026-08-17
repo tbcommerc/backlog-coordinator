@@ -283,6 +283,9 @@ textarea:focus-visible {
 .sidebar.collapsed ~ .main-wrapper {
     margin-left: var(--sidebar-collapsed-width);
 }
+.sidebar.collapsed ~ .main-wrapper .sticky-toolbar {
+    left: var(--sidebar-collapsed-width);
+}
 
 .main-content {
     flex: 1;

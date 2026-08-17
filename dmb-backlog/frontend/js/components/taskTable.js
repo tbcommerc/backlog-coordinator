@@ -44,9 +44,8 @@ export function renderTasksPage(app) {
       excel: true,
       onQuickEdit: true,
       onBulkOps: true,
+      quickFilters: renderQuickFilters(),
     })}
-
-    ${renderQuickFilters()}
 
     ${renderQuickEditToolbar('backlog')}
 

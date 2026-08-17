@@ -280,14 +280,16 @@ export function renderToolbar(scope, opts = {}) {
     </div>` : '';
 
   return `
-    ${title ? `
-    <div class="page-header animate-fade-in">
-      <h1>${title}</h1>
-      ${subtitle ? `<p>${subtitle}</p>` : ''}
-    </div>` : ''}
     <div class="sticky-toolbar" data-version="3">
       <div style="display:flex;flex-direction:column;gap:var(--space-2);">
-        ${actionsHtml}
+        <div class="toolbar-title-row">
+          ${title ? `
+          <div class="toolbar-title-wrap">
+            <h2 class="toolbar-title">${title}</h2>
+            ${subtitle ? `<p class="toolbar-subtitle">${subtitle}</p>` : ''}
+          </div>` : ''}
+          ${actionsHtml}
+        </div>
         <div class="filter-panel">
           <div class="flex items-center gap-2 filter-toolbar-row">
             <div class="relative filter-search-wrap" style="flex:1;min-width:0;">
@@ -310,6 +312,7 @@ export function renderToolbar(scope, opts = {}) {
           </div>
         </div>
         <div id="f-${scope}-active-filters" class="active-filters-row"></div>
+        ${opts.quickFilters || ''}
       </div>
     </div>
   `;
@@ -930,10 +933,12 @@ export function updateStickyOffsets() {
     if (!toolbar) return;
     const style = getComputedStyle(document.documentElement);
     const navbarHeight = parseFloat(style.getPropertyValue('--navbar-height'));
-    const qe = document.querySelector('.qe-toolbar');
-    const qeH = (qe && getComputedStyle(qe).display !== 'none') ? qe.offsetHeight : 0;
-    const offset = navbarHeight + toolbar.offsetHeight + qeH;
+    const offset = navbarHeight + toolbar.offsetHeight;
     document.documentElement.style.setProperty('--sticky-thead-offset', offset + 'px');
+    const contentContainers = document.querySelectorAll('#tasks-container, #team-tasks-container');
+    contentContainers.forEach(el => {
+      el.style.marginTop = toolbar.offsetHeight + 'px';
+    });
   });
 }
 
@@ -977,10 +982,8 @@ export function initStickyTableHeader(tableId) {
     const style = getComputedStyle(document.documentElement);
     const navbarHeight = parseFloat(style.getPropertyValue('--navbar-height')) || 64;
     const toolbar = document.querySelector('.sticky-toolbar');
-    const toolbarHeight = toolbar ? toolbar.offsetHeight : 0;
-    const qe = document.querySelector('.qe-toolbar');
-    const qeH = (qe && getComputedStyle(qe).display !== 'none') ? qe.offsetHeight : 0;
-    return navbarHeight + toolbarHeight + qeH;
+    const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 0;
+    return navbarHeight + toolbarHeight;
   }
 
   function update() {
@@ -996,7 +999,7 @@ export function initStickyTableHeader(tableId) {
         stickyHeaderWrapper.id = 'sticky-header-wrapper';
         stickyHeaderWrapper.style.cssText = `
           position: fixed;
-          z-index: 20;
+          z-index: 26;
           overflow: hidden;
           background: var(--bg-tertiary);
           box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -1047,9 +1050,11 @@ export function initStickyTableHeader(tableId) {
   scrollHandler = () => update();
   resizeHandler = () => update();
   
+  const mainContent = document.querySelector('.main-content');
   window.addEventListener('scroll', scrollHandler, { passive: true });
   window.addEventListener('resize', resizeHandler, { passive: true });
   container.addEventListener('scroll', scrollHandler, { passive: true });
+  if (mainContent) mainContent.addEventListener('scroll', scrollHandler, { passive: true });
 
   stickyHeaderObserver = new ResizeObserver(() => {
     if (stickyHeaderWrapper) {

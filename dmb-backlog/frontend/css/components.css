@@ -5,11 +5,39 @@
 
 /* Sticky toolbar for filter/sort */
 .sticky-toolbar {
-  position: sticky;
+  position: fixed;
   top: var(--navbar-height);
   z-index: 25;
-  margin-bottom: var(--space-4);
   background: var(--bg-primary);
+  left: var(--sidebar-width);
+  right: 0;
+  box-sizing: border-box;
+  padding: var(--space-8) var(--space-8) 0 var(--space-8);
+}
+
+.toolbar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toolbar-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolbar-title {
+  font-size: var(--text-2xl);
+  margin: 0;
+  padding: 0;
+}
+
+.toolbar-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 2px 0 0 0;
+  padding: 0;
 }
 
 .active-filters-row {

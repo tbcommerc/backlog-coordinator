@@ -47,9 +47,8 @@ export function renderTeamBacklog(app) {
       excel: true,
       onQuickEdit: true,
       onBulkOps: true,
+      quickFilters: renderQuickFilters(),
     })}
-
-    ${renderQuickFilters()}
 
     <div id="bulk-actions" class="flex items-center gap-3" style="margin-bottom: var(--space-4); display: none;">
         <span class="text-secondary">Выбрано: <strong id="selected-count">0</strong></span>
