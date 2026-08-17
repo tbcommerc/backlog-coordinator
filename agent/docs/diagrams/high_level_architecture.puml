@@ -1,0 +1,237 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+skinparam defaultFontSize 12
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam roundCorner 10
+
+title AI Business Analyst Agent — High-Level Architecture
+
+skinparam package {
+  BackgroundColor<<external>> #F5F5F5
+  BorderColor<<external>> #999999
+}
+
+skinparam component {
+  BackgroundColor<<core>> #E3F2FD
+  BorderColor<<core>> #1565C0
+  BackgroundColor<<kb>> #E8F5E9
+  BorderColor<<kb>> #2E7D32
+  BackgroundColor<<llm>> #FFF3E0
+  BorderColor<<llm>> #E65100
+  BackgroundColor<<guard>> #FCE4EC
+  BorderColor<<guard>> #C62828
+  BackgroundColor<<tool>> #F3E5F5
+  BorderColor<<tool>> #6A1B9A
+  BackgroundColor<<data>> #FFFDE7
+  BorderColor<<data>> #F9A825
+}
+
+' ═══════════════════════════════════════════════════════════════
+' EXTERNAL ACTORS
+' ═══════════════════════════════════════════════════════════════
+
+actor "Пользователь\n(Бизнес-заказчик / BA / PO)" as User
+actor "PO / BA\n(Ревьюер)" as Reviewer
+
+' ═══════════════════════════════════════════════════════════════
+' DMB BACKEND
+' ═══════════════════════════════════════════════════════════════
+
+package "DMB Backlog (Frontend + Backend)" <<external>> {
+  component "Frontend UI\n(чат-виджет)" as UI
+  component "Backend API\n(прокси + авторизация)" as Backend
+}
+
+' ═══════════════════════════════════════════════════════════════
+' AGENT SERVICE — CORE
+' ═══════════════════════════════════════════════════════════════
+
+package "Agent Service (:9000)" {
+
+  ' ─── API ────────────────────────────────────────────────────
+  package "API Layer" {
+    component "HTTP Router\n/api/agent/*" as API <<core>>
+  }
+
+  ' ─── ORCHESTRATOR — ЦЕНТР СИСТЕМЫ ──────────────────────────
+  component "**Оркестратор**\n(Dialogue Orchestrator)\n\n• Управление диалогом\n• Выбор следующего шага\n• Баланс строгости и гибкости" as Orch <<core>>
+
+  ' ─── DIALOGUE SUBSYSTEM ────────────────────────────────────
+  package "Dialogue Subsystem" {
+    component "Policy Engine\n(решения: спросить /\nрезюме / эскалировать)" as Policy <<core>>
+    component "Question Planner\n(приоритет вопросов)" as Planner <<core>>
+    component "Slot Extractor\n(извлечение сущностей\n+ confidence)" as Extractor <<core>>
+    component "Mode Selector\n(guided / hybrid /\nfree_form / expert)" as Mode <<core>>
+    component "Q&A Handler\n(вопросы по платформе)" as QA <<core>>
+    component "Repair Handler\n(исправление слотов)" as Repair <<core>>
+    component "Fatigue Detector\n(усталость пользователя)" as Fatigue <<core>>
+    component "Escalation Handler\n(передача человеку)" as EscHandler <<core>>
+  }
+
+  ' ─── GUARDRAILS ────────────────────────────────────────────
+  package "Guardrails" {
+    component "Input Harness\n(domain / injection / PII)" as InputH <<guard>>
+    component "Output Harness\n(валидация ответа)" as OutputH <<guard>>
+    component "Policies\n(роли / домен / отказы)" as Policies <<guard>>
+  }
+
+  ' ─── COMPOSER ──────────────────────────────────────────────
+  package "Composer" {
+    component "Draft Builder\n(сборка RequirementDraft)" as Builder <<core>>
+    component "Scoring\n(completeness / confidence)" as Scoring <<core>>
+  }
+
+  ' ─── SESSION ───────────────────────────────────────────────
+  database "Session Store\n(SQLite)" as Session <<data>>
+
+  ' ─── AUDIT ─────────────────────────────────────────────────
+  database "Audit Logger\n(JSON lines)" as Audit <<data>>
+}
+
+' ═══════════════════════════════════════════════════════════════
+' KNOWLEDGE BASE
+' ═══════════════════════════════════════════════════════════════
+
+package "Knowledge Base" <<kb>> {
+  component "Ontology\n(продукты / модули /\nпроцессы / роли)" as Ontology <<kb>>
+  component "Search Engine\n(BM25 + embeddings)" as Search <<kb>>
+  component "Retrieval Service\n(grounded answers)" as Retrieval <<kb>>
+  component "Requirements History\n(duplicate detection)" as History <<kb>>
+
+  database "kb_seed/\n(markdown + JSON)" as KBFiles <<kb>>
+}
+
+' ═══════════════════════════════════════════════════════════════
+' LLM
+' ═══════════════════════════════════════════════════════════════
+
+package "LLM Integration" {
+  component "Rephrase Service\n(естественный язык)" as Rephrase <<llm>>
+  component "LLM Factory\n(mock / openai_compat)" as Factory <<llm>>
+}
+
+cloud "LLM Provider\n(OpenAI / Azure / vLLM)" as LLM <<llm>>
+
+' ═══════════════════════════════════════════════════════════════
+' MCP AGENTS
+' ═══════════════════════════════════════════════════════════════
+
+package "MCP Agents" <<tool>> {
+  component "MCP Registry\n(built-in skills +\ndiscovered tools)" as MCPReg <<tool>>
+  component "MCP Client\n(stdio protocol)" as MCPClient <<tool>>
+}
+
+cloud "MCP Server 1\n(kb-tools)" as MCP1 <<tool>>
+cloud "MCP Server 2\n(...)" as MCP2 <<tool>>
+
+' ═══════════════════════════════════════════════════════════════
+' EXTERNAL TOOLS
+' ═══════════════════════════════════════════════════════════════
+
+package "External Tools" <<tool>> {
+  component "Tool Registry\n(stub framework)" as ToolReg <<tool>>
+  component "HTTP Tool\n(GET-only)" as HttpTool <<tool>>
+}
+
+cloud "Banking Systems\n(trade registry / CRM / ...)" as BankSys <<tool>>
+
+' ═══════════════════════════════════════════════════════════════
+' WORKFLOW
+' ═══════════════════════════════════════════════════════════════
+
+package "Workflow" {
+  component "Review Workflow\n(PO / BA / Комплаенс /\nАрхитектор)" as Review <<core>>
+  component "Integrations\n(Jira / Confluence)" as Integrations <<tool>>
+}
+
+' ═══════════════════════════════════════════════════════════════
+' CONNECTIONS — Main Flow
+' ═══════════════════════════════════════════════════════════════
+
+User --> UI : чат
+UI --> Backend : HTTP
+Backend --> API : POST /chat\n(X-Agent-Secret)
+API --> Orch : handle_message()
+
+' ═══════════════════════════════════════════════════════════════
+' CONNECTIONS — Orchestrator Core
+' ═══════════════════════════════════════════════════════════════
+
+Orch --> Session : get / save state
+Orch --> InputH : 1. classify_domain()
+Orch --> Extractor : 2. extract slots\n(value + confidence)
+Orch --> Policy : 3. decide action
+Policy --> Planner : 4. next question\n(priority-based)
+Orch --> Builder : 5. build_draft()
+Orch --> OutputH : 6. validate response
+Orch --> Audit : 7. log_event()
+Orch --> Rephrase : 8. rephrase(text)
+
+' Orchestrator internal
+Orch --> Mode : select mode
+Orch --> QA : handle Q&A
+Orch --> Repair : handle corrections
+Orch --> Fatigue : detect fatigue
+Orch --> EscHandler : check escalation
+Orch --> Policies : check role/domain
+
+' ═══════════════════════════════════════════════════════════════
+' CONNECTIONS — Knowledge Base
+' ═══════════════════════════════════════════════════════════════
+
+Extractor --> Ontology : match entities
+QA --> Retrieval : answer question
+Retrieval --> Search : retrieve_context()
+Search --> Ontology : boost by entity
+Search --> KBFiles : approved chunks
+Builder --> History : find duplicates
+Builder --> Scoring : completeness /\nconfidence
+
+' ═══════════════════════════════════════════════════════════════
+' CONNECTIONS — LLM
+' ═══════════════════════════════════════════════════════════════
+
+Rephrase --> Factory : get_llm()
+Factory --> LLM : chat() / embed()
+
+' ═══════════════════════════════════════════════════════════════
+' CONNECTIONS — MCP
+' ═══════════════════════════════════════════════════════════════
+
+MCPReg --> MCPClient : connect()
+MCPClient --> MCP1 : stdio
+MCPClient --> MCP2 : stdio
+
+' ═══════════════════════════════════════════════════════════════
+' CONNECTIONS — External Tools
+' ═══════════════════════════════════════════════════════════════
+
+ToolReg --> HttpTool : call()
+HttpTool --> BankSys : GET
+
+' ═══════════════════════════════════════════════════════════════
+' CONNECTIONS — Workflow
+' ═══════════════════════════════════════════════════════════════
+
+Orch --> Review : required_reviewers()
+Orch --> Integrations : create_issue()
+Integrations --> Reviewer : ревью драфта
+Reviewer --> User : обратная связь
+
+' ═══════════════════════════════════════════════════════════════
+' LEGEND
+' ═══════════════════════════════════════════════════════════════
+
+legend right
+  | Цвет | Значение |
+  |<#E3F2FD> Core | Оркестратор и диалоговые компоненты |
+  |<#E8F5E9> KB | Knowledge Base |
+  |<#FFF3E0> LLM | LLM интеграция |
+  |<#FCE4EC> Guard | Guardrails (безопасность) |
+  |<#F3E5F5> Tool | Внешние инструменты / MCP |
+  |<#FFFDE7> Data | Хранилища данных |
+endlegend
+
+@enduml

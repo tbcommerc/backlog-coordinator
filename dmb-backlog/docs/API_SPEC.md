@@ -345,6 +345,71 @@ API версионируется через префикс пути: `/api/v1/`.
 
 **Response 201:** объект задачи с вычисленными `cv`, `ice_score`, `status_id = 1`
 
+### POST /tasks/import
+Импорт задач из CSV-файла (требует `backlog_team: write_own`).
+
+**Content-Type:** `multipart/form-data`
+
+**Параметры:**
+- `file` (UploadFile) — CSV-файл (обязательное)
+
+**Бизнес-логика:**
+- Разделитель определяется автоматически: точка с запятой (`;`) или запятая (`,`)
+- Декодирование: UTF-8-SIG (BOM) → Windows-1251
+- Заголовки CSV сопоставляются с полями БД по русским меткам из `field_labels` (fallback — прямые DB-ключи)
+- Колонка «ID задачи» / `id` трактуется как `external_id` (внешний идентификатор задачи)
+- Обязательные поля: `title`, `team_id` (помечены `is_required=1` в `field_labels`)
+- Справочные поля (team_id, channel_id, business_customer_id, department_id, project_id, task_type_id, priority_id, deadline_id, status_id) — поиск по `name` без учёта регистра; если не найдено — строка пропускается с ошибкой
+- Поле `owner_id` — если исполнитель не найден, строка импортируется, поле пропускается (не fatal)
+- Дубликаты по `external_id` (в файле или в БД) — строка пропускается
+- Множественные ссылки Jira записываются в `task_jira_links` (нормализованная таблица) и синхронизируются с JSON-колонкой `tasks.link_jira` (двойная запись)
+- Для каждой созданной задачи записывается `task_history` (обязательные + заполненные поля) и `audit_log` (action=import, entity_type=task)
+- Ошибочные строки пропускаются, валидные импортируются. Ошибки не прерывают обработку файла.
+
+**Response 200:**
+```json
+{
+  "total": 10,
+  "created": 8,
+  "skipped": 2,
+  "errors": [
+    {
+      "row": 3,
+      "field": "team_id",
+      "field_label": "Ответственная команда",
+      "value": "НетТакойКоманды",
+      "type": "team_not_found",
+      "message": "Команда \"НетТакойКоманды\" не найдена в справочнике команд",
+      "fatal": true
+    },
+    {
+      "row": 5,
+      "field": "title",
+      "field_label": "Название задачи",
+      "value": "",
+      "type": "required_missing",
+      "message": "Поле \"Название задачи\" обязательно для заполнения",
+      "fatal": true
+    }
+  ],
+  "task_ids": [101, 102, 103, 104, 105, 106, 107, 108]
+}
+```
+
+**Типы ошибок (16 типов):**
+- `team_not_found`, `channel_not_found`, `business_customer_not_found`, `department_not_found`, `project_not_found`, `task_type_not_found`, `priority_not_found`, `deadline_not_found`, `status_not_found` — справочник не найден (fatal)
+- `owner_not_found` — исполнитель не найден (не fatal, строка импортируется)
+- `required_missing` — обязательное поле не заполнено (fatal)
+- `invalid_date` — неверный формат даты (fatal)
+- `invalid_number` — неверный числовой формат (fatal)
+- `invalid_progress` — прогресс вне диапазона 0-100 (fatal)
+- `duplicate_external_id` — дубликат внешнего ID (fatal)
+- `unknown_error` — неизвестная ошибка (fatal)
+
+**Response 400:** Файл пуст / не CSV
+**Response 403:** Нет прав
+**Response 500:** Ошибка импорта
+
 ### PUT /tasks/{id}
 Обновить задачу (передаются только изменяемые поля). Автоматически создаётся запись в `task_history` для каждого изменённого поля.
 

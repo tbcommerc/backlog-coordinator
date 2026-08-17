@@ -16,15 +16,15 @@ const NAME_KEYS = {
 };
 
 const COLUMN_MAX = {
-  id: 90, title: 320, description: 220, comment: 220, rejection_reason: 220,
-  financial_effect_justification: 220,
+  id: 90, title: 320, description: 220, comment: 320, rejection_reason: 280,
+  financial_effect_justification: 280,
   status: 210, priority: 125, team: 200, channel: 170, business_customer: 190,
-  department: 200, project: 210, task_type: 170, involved_teams: 210,
+  department: 200, project: 210, task_type: 170, involved_teams: 260,
   deadline: 135, effort_days: 95, effort_rub: 115, financial_effect: 135,
   cv: 75, progress: 180, owner: 210, link_mockups: 105, link_jira: 105,
   date_received: 130, created_at: 155, updated_at: 155, tags: 180,
   metric_kr_plan: 135, metric_kr_fact: 135, metric_kr_unit: 95,
-  key_project_status: 190, directorate_status: 190, did_status: 190,
+  key_project_status: 240, directorate_status: 240, did_status: 240,
   created_by: 210, did_demo: 95,
   key_project_status_updated_at: 155, directorate_status_updated_at: 155, did_status_updated_at: 155,
 };
@@ -229,4 +229,20 @@ function startResize(e, th, table) {
   };
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
+}
+
+export function persistColumnState(storageKey, state) {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch (e) { /* ignore */ }
+}
+
+export function readColumnState(storageKey) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
 }

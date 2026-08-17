@@ -53,8 +53,8 @@ export function renderSidebar() {
                 <a href="#/analytics/it" class="sidebar-item" aria-label="Аналитика для ИТ">
                     <i data-lucide="loader2"></i>
                     <span>Аналитика для ИТ</span>
-                    <span class="item-badge" title="В разработке" style="background:var(--warning-light);color:var(--warning);display:inline-flex;align-items:center;justify-content:center;padding:3px;min-width:20px;">
-                        <i data-lucide="loader2" style="width:12px;height:12px;"></i>
+                    <span class="item-badge" title="В разработке" style="background:var(--bg-tertiary);color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;padding:3px;min-width:20px;">
+                        <i data-lucide="wrench" style="width:12px;height:12px;"></i>
                     </span>
                 </a>
             </div>
@@ -66,8 +66,12 @@ export function renderSidebar() {
                     <span>Мои задачи</span>
                 </a>
                 <a href="#/customer/create" class="sidebar-item sidebar-item-sub" aria-label="Создать задачу">
-                    <i data-lucide="plus-circle"></i>
-                    <span>Создать задачу</span>
+                    <i data-lucide="bot"></i>
+                    <span>ИИ-ассистент</span>
+                </a>
+                <a href="#/review" class="sidebar-item" aria-label="Ревью запросов">
+                    <i data-lucide="clipboard-check"></i>
+                    <span>Ревью запросов</span>
                 </a>
             </div>
 
@@ -113,6 +117,7 @@ export function initSidebar() {
     setTimeout(() => {
         const user = window.app?.store?.get('currentUser');
         const perms = user?.permissions;
+        const roleName = (user?.role_name || '').toLowerCase();
         if (!perms) return; // no permissions data yet — keep everything visible
         const map = {
             'Бэклог DMB': 'backlog_dmb',
@@ -134,6 +139,12 @@ export function initSidebar() {
             const perm = map[label];
             if (perm && (perms[perm] || 'none') === 'none') {
                 el.style.display = 'none';
+            }
+            if (label === 'Ревью запросов') {
+                const canReview = ['po/pl/cl', 'ba/бизнес-аналитик', 'лидер трайба', 'администратор'].includes(roleName);
+                if (!canReview) {
+                    el.style.display = 'none';
+                }
             }
         });
     }, 100);

@@ -1,5 +1,5 @@
 console.log('[DMB] kanbanBoard.js v20260626.7 loaded');
-import { renderTaskCard } from './modal.js';
+import { renderTaskCard } from './modal.js?v=47';
 
 let kanbanCurrentTasks = [];
 let statusNameToId = {};
@@ -218,7 +218,7 @@ export async function initKanban(app) {
         }
         renderKanbanCards(app, items);
 
-        const { openTaskModal, openCreateTaskModal, setOnTaskSaved } = await import('./modal.js');
+        const { openTaskModal, openCreateTaskModal, setOnTaskSaved } = await import('./modal.js?v=47');
         setOnTaskSaved(() => initKanban(app));
 
         document.getElementById('kanban-add-task-btn')?.addEventListener('click', async () => {
@@ -399,7 +399,7 @@ function renderKanbanCards(app, tasks) {
                 if (e.target.closest('.btn-icon, .btn')) return;
                 const t = tasks.find(x => String(x.id) === String(card.dataset.id));
                 if (t) {
-                    import('./modal.js').then(mod => mod.openTaskModal(t));
+                    import('./modal.js?v=47').then(mod => mod.openTaskModal(t));
                 }
             });
             card.addEventListener('dragstart', (e) => {

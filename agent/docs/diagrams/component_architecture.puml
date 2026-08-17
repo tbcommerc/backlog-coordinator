@@ -1,0 +1,137 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+skinparam defaultFontSize 11
+
+title AI Business Analyst Agent — Component Architecture
+
+package "DMB Backend" as DMB {
+  [Frontend UI] as UI
+  [Backend API] as Backend
+}
+
+package "Agent Service (port 9000)" as Agent {
+  
+  package "API Layer" as API {
+    [HTTP Router\n/api/agent/*] as Router
+    [Pydantic Schemas\nRequest/Response] as Schemas
+  }
+  
+  package "Core Engine" as Core {
+    [Orchestrator\nDialogue Manager] as Orch
+    [Session Store\nSQLite] as Session
+    
+    package "Dialogue Subsystem" as Dialogue {
+      [State Machine\nPhase transitions] as Machine
+      [Slot Extractor\nEntity extraction] as Extractor
+      [Question Planner\nPriority-based] as Planner
+      [Policy Engine\nDecision making] as Policy
+      [Mode Selector\nguided/hybrid/expert] as Mode
+      [Q&A Handler\nPlatform questions] as QA
+      [Repair Handler\nSlot corrections] as Repair
+      [Summary Generator\nIntermediate summaries] as Summary
+      [User Profile\nExpertise detection] as Profile
+      [Fatigue Detector\nEngagement tracking] as Fatigue
+      [Metrics Tracker\nQuality metrics] as Metrics
+      [Escalation Handler\nHuman handoff] as Escalation
+    }
+    
+    package "Knowledge Base" as KB {
+      [KB Loader\nMarkdown parser] as Loader
+      [Ontology\nDomain entities] as Ontology
+      [Search Engine\nBM25 + embeddings] as Search
+      [Retrieval Service\nGrounded answers] as Retrieval
+      [Requirements History\nDuplicate detection] as History
+    }
+    
+    package "Guardrails" as Guards {
+      [Input Harness\nDomain/injection/PII] as InputH
+      [Output Harness\nValidation] as OutputH
+      [Policies\nRole/domain rules] as Policies
+    }
+    
+    package "Composer" as Comp {
+      [Draft Builder\nJSON artifact] as Builder
+      [Schema\nPydantic model] as Schema
+      [Scoring\nCompleteness/confidence] as Scoring
+    }
+  }
+  
+  package "LLM Integration" as LLM {
+    [LLM Factory\nProvider selection] as Factory
+    [Mock Provider\nOffline mode] as Mock
+    [OpenAI Compatible\nAPI client] as OpenAI
+    [Rephrase Service\nNatural language] as Rephrase
+  }
+  
+  package "External Tools" as Tools {
+    [Tool Registry\nStub framework] as ToolReg
+    [HTTP Tool\nGET-only external] as HttpTool
+    [MCP Registry\nSkills & tools] as MCPReg
+    [MCP Client\nStdio connection] as MCPClient
+  }
+  
+  package "Workflow" as WF {
+    [Review Workflow\nHuman-in-the-loop] as Review
+    [Integrations\nJira/Confluence stubs] as Integrations
+  }
+  
+  [Audit Logger\nJSON lines] as Audit
+}
+
+package "Knowledge Seed Data" as KBSeed {
+  database "kb_seed/" {
+    [manifest.json] as Manifest
+    [products.md] as Products
+    [modules.md] as Modules
+    [processes.md] as Processes
+    [roles.md] as Roles
+    [regulations.md] as Regs
+    [architecture.md] as Arch
+    [requirements_history.json] as ReqHist
+  }
+}
+
+package "External Systems" as External {
+  [OpenAI API\n(optional)] as OAI
+  [MCP Servers\n(optional)] as MCPS
+  [Banking Systems\n(stub)] as Bank
+}
+
+' Main flow
+UI --> Backend : HTTP
+Backend --> Router : POST /api/agent/chat\nX-Agent-Secret
+Router --> Orch : handle_message()
+Orch --> Session : get/save state
+
+' Dialogue processing
+Orch --> InputH : classify_domain()
+Orch --> Machine : compute_phase()
+Orch --> Extractor : extract slots
+Orch --> Policy : decide action
+Orch --> Planner : next_question()
+Orch --> Builder : build_draft()
+
+' Knowledge
+Extractor --> Ontology : match entities
+Retrieval --> Search : retrieve_context()
+Search --> Loader : approved_chunks()
+Loader --> KBSeed : load markdown
+
+' LLM
+Orch --> Rephrase : rephrase(text)
+Rephrase --> Factory : get_llm()
+Factory --> OpenAI : chat()
+OpenAI --> OAI : HTTPS
+
+' Tools
+ToolReg --> HttpTool : call()
+HttpTool --> Bank : GET (stub)
+MCPReg --> MCPClient : connect()
+MCPClient --> MCPS : stdio
+
+' Output
+Orch --> OutputH : validate_draft()
+Orch --> Audit : log_event()
+
+@enduml

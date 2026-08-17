@@ -41,6 +41,7 @@ def db():
     db = TestingSessionLocal()
     yield db
     Base.metadata.drop_all(bind=engine)
+    db.close()
 
 
 @pytest.fixture(scope="function")

@@ -471,3 +471,76 @@ def dismiss_notification(db: Session, notification_id: int, user_id: int):
         synchronize_session=False,
     )
     db.flush()
+
+
+# ==================== REQUIREMENT REQUEST NOTIFICATIONS ====================
+
+def _get_team_reviewers(db: Session, team_id: int) -> list[int]:
+    """Get PO/PL/CL user IDs for a team."""
+    if not team_id:
+        return []
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        return []
+    ids = set()
+    if team.po_id:
+        ids.add(team.po_id)
+    if team.pl_id:
+        ids.add(team.pl_id)
+    po_pl_role = db.query(Role).filter(Role.name == "PO/PL/CL").first()
+    if po_pl_role:
+        for u in db.query(User).filter(
+            User.team_id == team_id,
+            User.role_id == po_pl_role.id,
+            User.is_active == True,
+        ).all():
+            ids.add(u.id)
+    return list(ids)
+
+
+def notify_new_request(db: Session, request_id: int, team_id: int, title: str, author_name: str):
+    """Notify team PO/PL/CL about a new requirement request."""
+    reviewers = _get_team_reviewers(db, team_id)
+    if not reviewers:
+        return
+    _send_to_users(
+        db,
+        reviewers,
+        task_id=None,
+        category="system",
+        title=f"Новый запрос на ревью: {title}",
+        body=f"Заказчик: {author_name}. Требуется рассмотрение.",
+        importance="high",
+        action_url=f"#/review/{request_id}",
+        group_key=f"req_review_{request_id}",
+    )
+
+
+def notify_request_rejected(db: Session, request_id: int, author_id: int, title: str, reason: str):
+    """Notify author that their request was rejected."""
+    _send_to_users(
+        db,
+        [author_id],
+        task_id=None,
+        category="system",
+        title=f"Запрос отклонён: {title}",
+        body=f"Причина: {reason[:200]}",
+        importance="high",
+        action_url=f"#/customer/request/{request_id}",
+        group_key=f"req_rejected_{request_id}",
+    )
+
+
+def notify_request_assigned(db: Session, request_id: int, assignee_id: int, title: str):
+    """Notify assigned BA about a new task."""
+    _send_to_users(
+        db,
+        [assignee_id],
+        task_id=None,
+        category="assignment",
+        title=f"Назначен на проработку: {title}",
+        body="Требуется дополнительное уточнение требований.",
+        importance="high",
+        action_url=f"#/review/{request_id}",
+        group_key=f"req_assigned_{request_id}",
+    )

@@ -117,6 +117,7 @@ erDiagram
         int id PK
         int team_id FK
         varchar title
+        varchar external_id
         text description
         date date_received
         int channel_id FK
@@ -194,6 +195,12 @@ erDiagram
         timestamp created_at
         timestamp updated_at
     }
+    task_jira_links {
+        int id PK
+        int task_id FK
+        varchar url
+        timestamp created_at
+    }
     display_settings {
         int id PK
         varchar page
@@ -205,6 +212,16 @@ erDiagram
         int id PK
         varchar key
         varchar label
+        timestamp created_at
+        timestamp updated_at
+    }
+    field_labels {
+        int id PK
+        varchar key
+        varchar label
+        varchar group
+        int sort_order
+        boolean is_required
         timestamp created_at
         timestamp updated_at
     }
@@ -595,6 +612,18 @@ erDiagram
 | created_at | timestamp | Дата создания |
 | updated_at | timestamp | Дата обновления |
 
+### field_labels — Метки полей (для маппинга CSV-импорта)
+| Колонка | Тип | Описание |
+|---------|-----|----------|
+| id | int PK | Автоинкремент |
+| key | varchar(50) UNIQUE | Ключ поля в БД (title, team_id, ...) |
+| label | varchar(200) | Русская метка для заголовков CSV |
+| group | varchar(50) | Группа полей (основные, прочее) |
+| sort_order | int | Порядок сортировки |
+| is_required | boolean | Обязательное поле при импорте |
+| created_at | timestamp | Дата создания |
+| updated_at | timestamp | Дата обновления |
+
 ---
 
 ## История, аудит, уведомления
@@ -609,6 +638,16 @@ erDiagram
 | field_name | varchar(50) | — |
 | old_value | text | — |
 | new_value | text | — |
+
+### task_jira_links — Ссылки на Jira (множественные)
+| Колонка | Тип | FK | Описание |
+|---------|-----|-----|----------|
+| id | int PK | — | Автоинкремент |
+| task_id | int | → tasks.id | Задача |
+| url | varchar(500) | — | Ссылка на Jira |
+| created_at | timestamp | — | Дата создания |
+
+Уникальный индекс: `(task_id, url)`. Синхронизируется с JSON-колонкой `tasks.link_jira` (двойная запись).
 
 ### task_comments — Комментарии к задачам
 | Колонка | Тип | FK | Описание |

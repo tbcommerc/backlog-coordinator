@@ -4,11 +4,11 @@
  */
 console.log('[DMB] app.js v20260727 notif-v2 loaded');
 
-import { Router } from './router.js?v=45';
+import { Router } from './router.js?v=47';
 import { Store } from './store.js';
 import { API } from './api.js';
 import { Auth } from './auth.js';
-import { renderSidebar, initSidebar } from './components/sidebar.js';
+import { renderSidebar, initSidebar } from './components/sidebar.js?v=49';
 
 const AVATAR_COLORS = [
   '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e',
@@ -128,16 +128,32 @@ function highlightText(text, query) {
   return escaped.replace(regex, '<mark>$1</mark>');
 }
 
+function parseLinkList(links) {
+  if (!links) return [];
+  if (Array.isArray(links)) return links.filter(Boolean);
+  if (typeof links === 'string') {
+    const s = links.trim();
+    if (s.charAt(0) === '[') {
+      try {
+        const arr = JSON.parse(s);
+        if (Array.isArray(arr)) return arr.filter(Boolean);
+      } catch (e) { /* fall through */ }
+    }
+    return s.split(',').map(x => x.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 function renderLinkJiraList(links) {
-  if (!links || !links.length) return '—';
-  if (typeof links === 'string') links = [links];
-  return links.filter(Boolean).map(url => `<a href="${escapeHtml(url)}" target="_blank" style="color:var(--accent)">Jira</a>`).join(', ');
+  const arr = parseLinkList(links);
+  if (!arr.length) return '—';
+  return arr.map(url => `<a href="${escapeHtml(url)}" target="_blank" style="color:var(--accent)">Jira</a>`).join(', ');
 }
 
 function renderLinkJiraTags(links) {
-  if (!links || !links.length) return '';
-  if (typeof links === 'string') links = [links];
-  return links.filter(Boolean).map(url => `<a class="b-tag" href="${escapeHtml(url)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>`).join('');
+  const arr = parseLinkList(links);
+  if (!arr.length) return '';
+  return arr.map(url => `<a class="b-tag" href="${escapeHtml(url)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>`).join('');
 }
 
 function renderInvolvedTeams(teams) {
@@ -252,7 +268,7 @@ async function handleSearch(query, app) {
 }
 
 async function handleLogout() {
-  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=45');
+  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=47');
   const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
   if (!ok) return;
   clearQuickEditState();
@@ -425,7 +441,7 @@ export async function initApp(app) {
     if (!taskId) return;
     try {
       const task = await app.api.get(`/tasks/${taskId}`);
-      const { openTaskModal } = await import('./components/modal.js');
+        const { openTaskModal } = await import('./components/modal.js?v=47');
       openTaskModal(task);
     } catch (err) {
       console.error('Failed to open task', err);
@@ -504,7 +520,7 @@ class App {
       await this.loadReferenceData();
       this.renderAppLayout();
       this.router.onBeforeNavigate = async (toPath, fromHash) => {
-        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=45');
+        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=47');
         const ok = await confirmDiscardChanges('Продолжить', 'Есть несохранённые изменения в режиме массового редактирования. Перейти и потерять их?');
         if (ok) clearQuickEditState();
         return ok;

@@ -263,19 +263,31 @@ class Task(Base):
     actual_effort_delivery = Column(Float, nullable=True, comment='Delivery (ФТЗ)')
     financial_effect_justification = Column(Text, nullable=True, comment='Обоснование по расчету финансового эффекта')
     financial_effect = Column(DECIMAL(18, 2), nullable=True)
+    financial_effect_ai = Column(DECIMAL(18, 2), nullable=True, comment='AI-расчёт финансового эффекта (руб)')
+    financial_effect_ai_justification = Column(Text, nullable=True, comment='Обоснование AI-расчёта финансового эффекта')
+    priority_score = Column(Integer, nullable=True, comment='Priority Score (рейтинг 0-100)')
+    priority_justification = Column(Text, nullable=True, comment='Обоснование Priority Score')
+    assessment_weight = Column(Float, nullable=True, comment='Вес оценки (%)')
+    completion_forecast = Column(Float, nullable=True, comment='Прогноз выполнения (%)')
+    hard_score = Column(String(1), nullable=True, comment='Оценка за завершенность (Hard): A, B, C, D, E')
+    soft_score = Column(String(1), nullable=True, comment='Оценка за взаимодействие (Soft): A, B, C, D, E')
     cv = Column(Float, nullable=True)
     progress = Column(Integer, default=0)
     link_mockups = Column(String(500), nullable=True)
     link_jira = Column(JSON, nullable=True, comment='Ссылки на Jira (массив ссылок)')
+    link_requirements = Column(JSON, nullable=True, comment='Ссылки на бизнес-требования (массив ссылок)')
     rejection_reason = Column(Text, nullable=True)
     comment = Column(Text, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     key_project_status = Column(Text, nullable=True)
     key_project_status_updated_at = Column(DateTime(timezone=True), nullable=True, comment='Дата изменения статуса для встречи по ключевым проектам')
+    prev_key_project_status = Column(Text, nullable=True, comment='Статус предыдущей встречи по ключевым проектам')
     directorate_status = Column(Text, nullable=True)
     directorate_status_updated_at = Column(DateTime(timezone=True), nullable=True)
+    prev_directorate_status = Column(Text, nullable=True, comment='Статус предыдущей директорской оперативки')
     did_status = Column(Text, nullable=True)
     did_status_updated_at = Column(DateTime(timezone=True), nullable=True)
+    prev_did_status = Column(Text, nullable=True, comment='Статус предыдущей оперативки ДИД')
     did_demo = Column(Boolean, default=False, comment='Демо для ДИД')
     metric_kr_plan = Column(Float, nullable=True, comment='Значение для метрического KR (план)')
     metric_kr_fact = Column(Float, nullable=True, comment='Значение для метрического KR (факт)')
@@ -305,6 +317,7 @@ class Task(Base):
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")
     attachments = relationship("TaskAttachment", back_populates="task", cascade="all, delete-orphan")
     epics = relationship("Epic", back_populates="task", cascade="all, delete-orphan")
+    jira_links = relationship("TaskJiraLink", back_populates="task", cascade="all, delete-orphan")
 
 
 class Epic(Base):
@@ -382,6 +395,7 @@ class FieldLabel(Base):
     label = Column(String(200), nullable=False, comment='Точное русское название поля для отображения на фронте')
     group = Column(String(50), nullable=True, comment='Группа полей (основные/трудозатраты/статусы/прочее)')
     sort_order = Column(Integer, default=0)
+    is_required = Column(Boolean, default=False, comment='Обязательность поля при импорте задач из CSV (Обязательность = Да)')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -504,6 +518,46 @@ class UserNotificationPreference(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class AgentSession(Base):
+    """Mapping DMB user -> AI Business Analyst session in the agent service."""
+    __tablename__ = "agent_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    agent_session_id = Column(String(64), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class RequirementRequest(Base):
+    """Business requirement request collected by the AI Business Analyst assistant.
+
+    A request is a separate entity from a Task: it captures the requirement
+    draft (created during the assistant dialogue) and its review lifecycle.
+    """
+    __tablename__ = "requirement_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    draft = Column(JSON, nullable=True)
+    status = Column(String(20), default="submitted", index=True)
+    agent_session_id = Column(String(64), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True, index=True)
+    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    reject_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    is_deleted = Column(Boolean, default=False, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    team = relationship("Team", foreign_keys=[team_id])
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
+    assignee = relationship("User", foreign_keys=[assignee_id])
+
+
 class TaskComment(Base):
     __tablename__ = "task_comments"
 
@@ -548,6 +602,25 @@ class AuditLog(Base):
     details = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class TaskJiraLink(Base):
+    """Множественные ссылки на Jira задачи (нормализованное хранение).
+
+    Таблица вводится для импорта задач из CSV; JSON-колонка tasks.link_jira
+    продолжает синхронизироваться (двойная запись) для обратной совместимости.
+    """
+    __tablename__ = "task_jira_links"
+    __table_args__ = (
+        UniqueConstraint("task_id", "url", name="uq_task_jira_links_task_url"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    url = Column(String(500), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    task = relationship("Task", back_populates="jira_links")
 
 
 # ==================== JUNCTION TABLES ====================

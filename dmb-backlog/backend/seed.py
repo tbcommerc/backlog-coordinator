@@ -141,21 +141,35 @@ ALL_FIELD_LABELS = [
 ]
 
 
+# Поля, обязательные при импорте задач из CSV (Обязательность = Да в таблице маппинга)
+REQUIRED_IMPORT_FIELDS = {
+    "title",
+    "team_id",
+}
+
+
 def seed_field_labels():
     """Always ensure field labels exist (upsert by key). NEVER deletes."""
+    required = REQUIRED_IMPORT_FIELDS
     db: Session = SessionLocal()
     try:
         added = 0
+        updated = 0
         for key, label, group, sort in ALL_FIELD_LABELS:
             existing = db.query(FieldLabel).filter(FieldLabel.key == key).first()
             if existing:
-                pass
+                if existing.is_required != (key in required):
+                    existing.is_required = key in required
+                    updated += 1
             else:
-                db.add(FieldLabel(key=key, label=label, group=group, sort_order=sort))
+                db.add(FieldLabel(
+                    key=key, label=label, group=group, sort_order=sort,
+                    is_required=key in required,
+                ))
                 added += 1
-        if added:
+        if added or updated:
             db.commit()
-            print(f"[seed] Field labels upserted: {added}")
+            print(f"[seed] Field labels upserted: {added} added, {updated} updated")
     finally:
         db.close()
 

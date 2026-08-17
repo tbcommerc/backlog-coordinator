@@ -202,18 +202,30 @@ class TaskBase(BaseModel):
     actual_effort_delivery: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
+    financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (руб)')
+    financial_effect_ai_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование AI-расчёта финансового эффекта')
+    priority_score: Optional[int] = Field(None, ge=0, le=100, description='Priority Score (рейтинг 0-100)')
+    priority_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование Priority Score')
+    assessment_weight: Optional[float] = Field(None, ge=0, le=100, description='Вес оценки (%)')
+    completion_forecast: Optional[float] = Field(None, ge=0, le=100, description='Прогноз выполнения (%)')
+    hard_score: Optional[str] = Field(None, max_length=1, pattern='^[A-E]$', description='Оценка за завершенность (Hard)')
+    soft_score: Optional[str] = Field(None, max_length=1, pattern='^[A-E]$', description='Оценка за взаимодействие (Soft)')
     progress: int = Field(default=0, ge=0, le=100)
     link_mockups: Optional[str] = Field(None, max_length=500)
     link_jira: Optional[List[str]] = Field(None, description='Ссылки на Jira (массив)')
+    link_requirements: Optional[List[str]] = Field(None, description='Ссылки на бизнес-требования (массив)')
     rejection_reason: Optional[str] = Field(None, max_length=5000)
     comment: Optional[str] = Field(None, max_length=5000)
     owner_id: Optional[int] = None
     key_project_status: Optional[str] = None
     key_project_status_updated_at: Optional[datetime] = None
+    prev_key_project_status: Optional[str] = None
     directorate_status: Optional[str] = Field(None, max_length=1000)
     directorate_status_updated_at: Optional[datetime] = None
+    prev_directorate_status: Optional[str] = None
     did_status: Optional[str] = Field(None, max_length=1000)
     did_status_updated_at: Optional[datetime] = None
+    prev_did_status: Optional[str] = None
     metric_kr_plan: Optional[float] = None
     metric_kr_fact: Optional[float] = None
     metric_kr_unit: Optional[str] = Field(None, max_length=50, description='Единица измерения Метрического KR')
@@ -223,6 +235,16 @@ class TaskBase(BaseModel):
     @field_validator('link_jira', mode='before')
     @classmethod
     def _normalize_link_jira(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            parts = [p.strip() for p in v.replace('\n', ',').split(',') if p.strip()]
+            return parts or None
+        return v
+
+    @field_validator('link_requirements', mode='before')
+    @classmethod
+    def _normalize_link_requirements(cls, v):
         if v is None:
             return None
         if isinstance(v, str):
@@ -273,16 +295,28 @@ class TaskUpdate(BaseModel):
     actual_effort_delivery: Optional[float] = None
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
+    financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (руб)')
+    financial_effect_ai_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование AI-расчёта финансового эффекта')
+    priority_score: Optional[int] = Field(None, ge=0, le=100, description='Priority Score (рейтинг 0-100)')
+    priority_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование Priority Score')
+    assessment_weight: Optional[float] = Field(None, ge=0, le=100, description='Вес оценки (%)')
+    completion_forecast: Optional[float] = Field(None, ge=0, le=100, description='Прогноз выполнения (%)')
+    hard_score: Optional[str] = Field(None, max_length=1, pattern='^[A-E]$', description='Оценка за завершенность (Hard)')
+    soft_score: Optional[str] = Field(None, max_length=1, pattern='^[A-E]$', description='Оценка за взаимодействие (Soft)')
     progress: Optional[int] = Field(None, ge=0, le=100)
     link_mockups: Optional[str] = Field(None, max_length=500)
     link_jira: Optional[List[str]] = Field(None, description='Ссылки на Jira (массив)')
+    link_requirements: Optional[List[str]] = Field(None, description='Ссылки на бизнес-требования (массив)')
     rejection_reason: Optional[str] = Field(None, max_length=5000)
     comment: Optional[str] = Field(None, max_length=5000)
     owner_id: Optional[int] = None
     key_project_status: Optional[str] = None
     key_project_status_updated_at: Optional[datetime] = None
+    prev_key_project_status: Optional[str] = None
     directorate_status: Optional[str] = Field(None, max_length=1000)
+    prev_directorate_status: Optional[str] = None
     did_status: Optional[str] = Field(None, max_length=1000)
+    prev_did_status: Optional[str] = None
     metric_kr_plan: Optional[float] = None
     metric_kr_fact: Optional[float] = None
     metric_kr_unit: Optional[str] = Field(None, max_length=50, description='Единица измерения Метрического KR')
@@ -293,6 +327,16 @@ class TaskUpdate(BaseModel):
     @field_validator('link_jira', mode='before')
     @classmethod
     def _normalize_link_jira(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            parts = [p.strip() for p in v.replace('\n', ',').split(',') if p.strip()]
+            return parts or None
+        return v
+
+    @field_validator('link_requirements', mode='before')
+    @classmethod
+    def _normalize_link_requirements(cls, v):
         if v is None:
             return None
         if isinstance(v, str):
@@ -313,6 +357,7 @@ class TaskResponse(TaskBase):
     lock_owner_id: Optional[int] = None
     lock_owner_name: Optional[str] = None
     lock_until: Optional[datetime] = None
+    task_type_name: Optional[str] = None
     team_name: Optional[str] = None
     channel_name: Optional[str] = None
     department_name: Optional[str] = None

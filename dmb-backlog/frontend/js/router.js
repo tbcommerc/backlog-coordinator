@@ -1,6 +1,6 @@
 import { renderDashboard, initDashboard } from './components/dashboard.js';
-import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=45';
-import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=45';
+import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=47';
+import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=47';
 import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js';
 import { renderKanban, initKanban } from './components/kanbanBoard.js?v=4';
 import { renderReports, initReports, renderReportPage, initReportPage } from './components/reports.js';
@@ -8,9 +8,10 @@ import { renderAnalytics, initAnalytics } from './components/analytics.js';
 import { renderNotifications, initNotifications } from './components/notifications.js';
 import { renderSettings, initSettings } from './components/settings.js';
 import { renderAdmin, initAdmin } from './components/admin.js';
-import { renderCustomerPortal, initCustomerPortal } from './components/customerPortal.js';
-import { renderCustomerChat, initCustomerChat } from './components/customerChat.js';
+import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage } from './components/customerPortal.js';
+import { renderAgentChat, initAgentChat } from './components/agentChat.js';
 import { renderAuditLog, initAuditLog } from './components/auditLog.js';
+import { renderReviewPage, initReviewPage, renderReviewDetailPage, initReviewDetailPage } from './components/reviewPage.js';
 
 export class Router {
     constructor(app) {
@@ -31,7 +32,8 @@ export class Router {
             '/admin': { render: renderAdmin, init: initAdmin },
             '/audit-log': { render: renderAuditLog, init: initAuditLog },
             '/customer': { render: renderCustomerPortal, init: initCustomerPortal },
-            '/customer/create': { render: renderCustomerChat, init: initCustomerChat },
+            '/customer/create': { render: renderAgentChat, init: initAgentChat },
+            '/review': { render: renderReviewPage, init: initReviewPage },
         };
         this.defaultRoute = '/dashboard';
         this.onBeforeNavigate = null;
@@ -65,10 +67,30 @@ export class Router {
 
         const route = this.routes[path];
 
-        if (route) {
+        // dynamic route: /customer/request/{id}
+        let dynamicHandler = null;
+        const requestMatch = path.match(/^\/customer\/request\/(\d+)$/);
+        const reviewMatch = path.match(/^\/review\/(\d+)$/);
+        if (requestMatch) {
+          const requestId = requestMatch[1];
+          dynamicHandler = {
+            render: () => renderRequestPage(this.app, requestId),
+            init: () => initRequestPage(this.app, requestId),
+          };
+        } else if (reviewMatch) {
+          const requestId = reviewMatch[1];
+          dynamicHandler = {
+            render: () => renderReviewDetailPage(this.app, requestId),
+            init: () => initReviewDetailPage(this.app, requestId),
+          };
+        }
+
+        const resolved = dynamicHandler || route;
+
+        if (resolved) {
             const container = document.getElementById('page-content');
             if (container) {
-                container.innerHTML = route.render(this.app);
+                container.innerHTML = await resolved.render(this.app);
 
                 if (window.lucide) {
                     window.lucide.createIcons();
@@ -93,9 +115,10 @@ export class Router {
                         '/admin': 'Администрирование',
                         '/audit-log': 'Аудит действий',
                         '/customer': 'Мои задачи',
-                        '/customer/create': 'Создать задачу',
+                        '/customer/create': 'ИИ-ассистент',
+                        '/review': 'Ревью запросов',
                     };
-                    const pageName = names[hash] || hash;
+                    const pageName = names[hash] || (requestMatch ? 'Запрос' : '') || (reviewMatch ? 'Ревью запроса' : hash);
                     // For multi-segment paths like /analytics/tribe, only show the final name
                     const segments = hash.split('/').filter(Boolean);
                     if (segments.length <= 1 || !names[hash]) {
@@ -123,8 +146,8 @@ export class Router {
                 }
 
                 // Call page-specific init
-                if (route.init) {
-                    setTimeout(() => route.init(this.app), 50);
+                if (resolved.init) {
+                    setTimeout(() => resolved.init(this.app), 50);
                 }
             }
         } else {

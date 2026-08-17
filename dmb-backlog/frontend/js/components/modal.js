@@ -52,6 +52,22 @@ function renderInvolvedTeams(teams) {
   return Array.isArray(teams) ? teams.join(', ') : teams;
 }
 
+function renderLinkJiraTags(links) {
+  if (!links || !links.length) return '';
+  if (typeof links === 'string') {
+    const s = links.trim();
+    if (s.charAt(0) === '[') {
+      try {
+        const arr = JSON.parse(s);
+        if (Array.isArray(arr)) links = arr;
+      } catch (e) { /* keep string */ }
+    } else {
+      links = [links];
+    }
+  }
+  return links.filter(Boolean).map(url => `<a class="b-tag" href="${escapeHtml(url)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>`).join('');
+}
+
 function getInitials(name) {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);
@@ -930,9 +946,9 @@ async function renderHistoryTab(taskId, app) {
 }
 
 // ============================================================
-//  RENDER FULL MODAL (B-VARIANT DASHBOARD)
+//  RENDER FULL MODAL (B-VARIANT DASHBOARD) — LEGACY (заменено v18)
 // ============================================================
-export function renderTaskDetailModal(task, app) {
+function renderTaskDetailModalLegacy(task, app) {
   currentTask = task;
   modalMode = task ? 'view' : 'edit';
 
@@ -1286,9 +1302,9 @@ function initAttachmentForm(taskId, app) {
 }
 
 // ============================================================
-//  MODAL INIT (B-VARIANT)
+//  MODAL INIT (B-VARIANT) — LEGACY (заменено v18)
 // ============================================================
-export function initTaskDetailModal(app) {
+function initTaskDetailModalLegacy(app) {
   const overlay = document.getElementById('task-detail-overlay');
   if (!overlay) return;
 
@@ -2882,10 +2898,8 @@ export function showBulkOpsModal(app, scope, tasks) {
 
       if (step === 1) {
         const selected = getSelectedCount();
-        const pageTaskIds = getPageTaskIds();
-        const pageSelectedCount = pageTaskIds.filter(id => !excluded.has(id)).length;
-        const selectAllDisabled = pageSelectedCount === pageTaskIds.length;
-        const clearAllDisabled = pageSelectedCount === 0;
+        const selectAllDisabled = selected === totalTasks;
+        const clearAllDisabled = selected === 0;
 
         let rowsHtml = '';
         const tasksToShow = getPageTasks();
@@ -3081,29 +3095,23 @@ export function showBulkOpsModal(app, scope, tasks) {
         }
 
         function updateSelectClearButtons() {
-          const pageTaskIds = getPageTaskIds();
-          const pageSelectedCount = pageTaskIds.filter(id => !excluded.has(id)).length;
+          const selectedCount = getSelectedCount();
           if (selectAllBtn) {
-            selectAllBtn.disabled = false;
-            selectAllBtn.style.opacity = '';
-            selectAllBtn.style.cursor = '';
+            selectAllBtn.disabled = selectedCount === totalTasks;
+            selectAllBtn.style.opacity = selectAllBtn.disabled ? '0.5' : '';
+            selectAllBtn.style.cursor = selectAllBtn.disabled ? 'default' : '';
           }
           if (clearAllBtn) {
-            clearAllBtn.disabled = pageSelectedCount === 0;
-            if (clearAllBtn.disabled) {
-              clearAllBtn.style.opacity = '0.5';
-              clearAllBtn.style.cursor = 'default';
-            } else {
-              clearAllBtn.style.opacity = '';
-              clearAllBtn.style.cursor = '';
-            }
+            clearAllBtn.disabled = selectedCount === 0;
+            clearAllBtn.style.opacity = clearAllBtn.disabled ? '0.5' : '';
+            clearAllBtn.style.cursor = clearAllBtn.disabled ? 'default' : '';
           }
         }
 
         selectAllBtn?.addEventListener('click', () => {
           if (selectAllBtn.disabled) return;
           userModified = true;
-          getPageTaskIds().forEach(id => excluded.delete(id));
+          excluded.clear();
           document.querySelectorAll('.bc-cb').forEach(cb => { cb.checked = true; });
           document.querySelectorAll('.bc-row').forEach(row => row.classList.remove('bc-row-off'));
           if (countEl) countEl.textContent = getSelectedCount();
@@ -3114,7 +3122,7 @@ export function showBulkOpsModal(app, scope, tasks) {
         clearAllBtn?.addEventListener('click', () => {
           if (clearAllBtn.disabled) return;
           userModified = true;
-          getPageTaskIds().forEach(id => excluded.add(id));
+          excluded = new Set(tasks.map(t => t.id));
           document.querySelectorAll('.bc-cb').forEach(cb => { cb.checked = false; });
           document.querySelectorAll('.bc-row').forEach(row => row.classList.add('bc-row-off'));
           if (countEl) countEl.textContent = getSelectedCount();
@@ -3330,75 +3338,91 @@ export function importTasksFromExcel(app, onSuccess) {
   const existing = document.getElementById('import-tasks-overlay');
   if (existing) existing.remove();
 
-  const DB_KEYS = [
-    'id', 'title', 'description', 'date_received', 'channel_id', 'business_customer_id',
-    'department_id', 'project_id', 'task_type_id', 'priority_id', 'status_id', 'deadline_id',
-    'effort_days', 'effort_rub', 'effort_designee', 'effort_analytics', 'effort_be',
-    'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery',
-    'actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics', 'actual_effort_be',
+  const REQUIRED_IMPORT_FIELDS = ['title', 'team_id'];
+
+  const ROW_INT_FIELDS = ['effort_days', 'progress'];
+  const ROW_FLOAT_FIELDS = [
+    'effort_rub', 'effort_designee', 'effort_analytics', 'effort_be',
+    'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto',
+    'effort_delivery', 'actual_effort_days', 'actual_effort_designee',
+    'actual_effort_analytics', 'actual_effort_be', 'actual_effort_python_be',
     'actual_effort_fe', 'actual_effort_test', 'actual_effort_test_auto',
-    'financial_effect', 'financial_effect_justification',
-    'progress', 'link_mockups', 'link_jira', 'rejection_reason',
-    'comment', 'owner_id', 'key_project_status', 'directorate_status',
-    'did_status', 'did_demo', 'metric_kr_plan', 'metric_kr_fact', 'metric_kr_unit',
-    'involved_teams', 'created_by'
+    'actual_effort_delivery', 'financial_effect', 'cv',
+    'metric_kr_plan', 'metric_kr_fact'
   ];
 
+  const IMPORT_FIELDS = [
+    { key: 'title' }, { key: 'team_id' }, { key: 'description' }, { key: 'date_received' },
+    { key: 'channel_id' }, { key: 'business_customer_id' }, { key: 'department_id' },
+    { key: 'project_id' }, { key: 'task_type_id' }, { key: 'involved_teams' },
+    { key: 'priority_id' }, { key: 'status_id' }, { key: 'deadline_id' },
+    { key: 'effort_days' }, { key: 'effort_rub' },
+    { key: 'effort_designee' }, { key: 'effort_analytics' },
+    { key: 'effort_be' }, { key: 'effort_python_be' }, { key: 'effort_fe' },
+    { key: 'effort_test' }, { key: 'effort_test_auto' }, { key: 'effort_delivery' },
+    { key: 'actual_effort_days' }, { key: 'actual_effort_designee' }, { key: 'actual_effort_analytics' },
+    { key: 'actual_effort_be' }, { key: 'actual_effort_python_be' }, { key: 'actual_effort_fe' },
+    { key: 'actual_effort_test' }, { key: 'actual_effort_test_auto' }, { key: 'actual_effort_delivery' },
+    { key: 'financial_effect' }, { key: 'financial_effect_justification' }, { key: 'cv' },
+    { key: 'progress' }, { key: 'link_mockups' }, { key: 'link_jira' },
+    { key: 'rejection_reason' }, { key: 'comment' }, { key: 'owner_id' },
+    { key: 'key_project_status' }, { key: 'directorate_status' }, { key: 'did_status' },
+    { key: 'did_demo' }, { key: 'metric_kr_plan' }, { key: 'metric_kr_fact' }, { key: 'metric_kr_unit' }
+  ];
+
+  const FIELD_LABEL_FALLBACK = {
+    title: 'Название задачи', team_id: 'Ответственная команда', description: 'Описание задачи',
+    date_received: 'Дата получения', channel_id: 'Канал поступления',
+    business_customer_id: 'Бизнес-заказчик', department_id: 'Подразделение Бизнес-заказчика',
+    project_id: 'Проект', task_type_id: 'Тип задачи', involved_teams: 'Другие вовлеченные команды',
+    priority_id: 'Приоритет', status_id: 'Статус задачи', deadline_id: 'Срок выполнения',
+    effort_days: 'Оценка трудозатрат (ЭО) (ч/д)', effort_rub: 'Стоимость по ЭО (руб)',
+    effort_designee: 'Designee (ЭО)', effort_analytics: 'Аналитика (ЭО)',
+    effort_be: 'Разработка BE (ЭО)', effort_python_be: 'Разработка python BE (ЭО)',
+    effort_fe: 'Разработка FE (ЭО)', effort_test: 'Test (ЭО)', effort_test_auto: 'Test Auto (ЭО)',
+    effort_delivery: 'Delivery (ЭО)',
+    actual_effort_days: 'Фактические трудозатраты (ч/д)', actual_effort_designee: 'Designee (ФТЗ)',
+    actual_effort_analytics: 'Аналитика (ФТЗ)', actual_effort_be: 'Разработка BE (ФТЗ)',
+    actual_effort_python_be: 'Разработка python BE (ФТЗ)', actual_effort_fe: 'Разработка FE (ФТЗ)',
+    actual_effort_test: 'Test (ФТЗ)', actual_effort_test_auto: 'Test Auto (ФТЗ)',
+    actual_effort_delivery: 'Delivery (ФТЗ)',
+    financial_effect: 'Финансовый эффект (value в млн руб.)',
+    financial_effect_justification: 'Обоснование по расчету финансового эффекта',
+    cv: 'C/V', progress: 'Прогресс', link_mockups: 'Ссылка на макеты',
+    link_jira: 'Ссылки на Jira', rejection_reason: 'Обоснование решения (при отклонении)',
+    comment: 'Комментарий', owner_id: 'Исполнитель',
+    key_project_status: 'Статус для встречи по ключевым проектам',
+    directorate_status: 'Статус для Директорской оперативки',
+    did_status: 'Статус для оперативки ДИД', did_demo: 'Демо для оперативного статуса ДИД',
+    metric_kr_plan: 'Значение для метрического KR (план)',
+    metric_kr_fact: 'Значение для метрического KR (факт)',
+    metric_kr_unit: 'Единица измерения (метрический KR)'
+  };
+
+  function fieldLabel(key) {
+    return (window.app?.fieldLabels && window.app.fieldLabels[key]) || FIELD_LABEL_FALLBACK[key] || key;
+  }
+
   function downloadTemplate() {
-    const fieldLabels = window.app?.fieldLabels || {};
-    const headerLabels = DB_KEYS.map(key => fieldLabels[key] || key);
-
+    const header = IMPORT_FIELDS.map(f => fieldLabel(f.key)).join(';');
     const exampleValues = {
-      id: '',
-      title: 'Пример задачи',
-      description: 'Описание задачи',
-      date_received: '2026-01-01',
-      channel_id: '',
-      business_customer_id: '',
-      department_id: '',
-      project_id: '',
-      task_type_id: '',
-      priority_id: '1',
-      status_id: '1',
-      deadline_id: '1',
-      effort_days: '5',
-      effort_rub: '100000',
-      effort_designee: '',
-      effort_analytics: '',
-      effort_be: '',
-      effort_python_be: '',
-      effort_fe: '',
-      effort_test: '',
-      effort_test_auto: '',
-      effort_delivery: '',
-      actual_effort_days: '',
-      actual_effort_designee: '',
-      actual_effort_analytics: '',
-      actual_effort_be: '',
-      actual_effort_fe: '',
-      actual_effort_test: '',
-      actual_effort_test_auto: '',
-      financial_effect: '1.5',
-      financial_effect_justification: '',
-      progress: '0',
-      link_mockups: '',
-      link_jira: '',
-      rejection_reason: '',
-      comment: '',
-      owner_id: '',
-      key_project_status: '',
-      directorate_status: '',
-      did_status: '',
-      did_demo: 'false',
-      metric_kr_plan: '',
-      metric_kr_fact: '',
-      metric_kr_unit: '',
-      involved_teams: '',
-      created_by: ''
+      title: 'Пример задачи', team_id: 'Пример команды', description: 'Описание задачи',
+      date_received: '2026-01-01', channel_id: 'Почта', business_customer_id: 'ДИД',
+      department_id: 'УСИ', project_id: 'Проект', task_type_id: 'КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ',
+      involved_teams: '1;2', priority_id: 'СРЕДНИЙ', status_id: 'НОВАЯ ЗАДАЧА',
+      deadline_id: '1Q 2026', effort_days: '5', effort_rub: '150000',
+      effort_designee: '', effort_analytics: '', effort_be: '', effort_python_be: '',
+      effort_fe: '', effort_test: '', effort_test_auto: '', effort_delivery: '',
+      actual_effort_days: '', actual_effort_designee: '', actual_effort_analytics: '',
+      actual_effort_be: '', actual_effort_python_be: '', actual_effort_fe: '',
+      actual_effort_test: '', actual_effort_test_auto: '', actual_effort_delivery: '',
+      financial_effect: '1.5', financial_effect_justification: '', cv: '',
+      progress: '0', link_mockups: '', link_jira: 'https://jira.example.com/ABC-1;https://jira.example.com/ABC-2',
+      rejection_reason: '', comment: '', owner_id: 'Иванов Иван',
+      key_project_status: '', directorate_status: '', did_status: '',
+      did_demo: 'false', metric_kr_plan: '', metric_kr_fact: '', metric_kr_unit: ''
     };
-
-    const header = headerLabels.join(';');
-    const exampleRow = DB_KEYS.map(key => exampleValues[key] !== undefined ? exampleValues[key] : '').join(';');
+    const exampleRow = IMPORT_FIELDS.map(f => exampleValues[f.key] !== undefined ? exampleValues[f.key] : '').join(';');
     const csv = '\uFEFF' + header + '\n' + exampleRow + '\n';
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -3413,9 +3437,9 @@ export function importTasksFromExcel(app, onSuccess) {
   overlay.id = 'import-tasks-overlay';
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="import-tasks-modal" style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:90vh;overflow-y:auto;position:relative;">
+    <div class="import-tasks-modal" style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:640px;width:90%;max-height:90vh;overflow-y:auto;position:relative;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <h2 style="margin:0;font-size:18px;color:var(--text-primary);">Импорт задач из Excel</h2>
+        <h2 style="margin:0;font-size:18px;color:var(--text-primary);">Импорт задач из файла</h2>
         <button class="btn btn-ghost btn-sm" id="import-close-btn" style="padding:4px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
@@ -3426,22 +3450,18 @@ export function importTasksFromExcel(app, onSuccess) {
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Скачать шаблон CSV
         </a>
+        <span style="font-size:12px;color:var(--text-muted);">Обязательные: ${REQUIRED_IMPORT_FIELDS.map(k => fieldLabel(k)).join(', ')}</span>
       </div>
 
       <div id="import-drop-zone" style="border:2px dashed var(--border-color);border-radius:8px;padding:32px;text-align:center;cursor:pointer;margin-bottom:16px;transition:all 0.2s;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <p style="margin:0 0 8px 0;color:var(--text-primary);font-size:14px;">Перетащите CSV файл сюда или нажмите для выбора</p>
-        <p style="margin:0;color:var(--text-muted);font-size:12px;">Поддерживается только формат CSV</p>
-        <input type="file" id="import-file-input" accept=".csv" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="display:block;margin:0 auto 12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p style="margin:0 0 8px 0;color:var(--text-primary);font-size:14px;">Перетащите CSV или Excel файл сюда или нажмите для выбора</p>
+        <p style="margin:0;color:var(--text-muted);font-size:12px;">Поддерживаются форматы CSV и Excel (.xlsx, .xls). В CSV разделитель — запятая или точка с запятой</p>
+        <input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" style="display:none;">
       </div>
 
-      <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
-        <input type="checkbox" id="import-first-row-header" checked style="margin:0;">
-        Первая строка содержит заголовки
-      </label>
-
       <div id="import-preview-section" style="display:none;margin-bottom:16px;">
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Preview (первые 5 строк):</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Предпросмотр (первые 5 строк):</div>
         <div style="overflow-x:auto;border:1px solid var(--border-color);border-radius:8px;max-height:200px;overflow-y:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:12px;">
             <thead id="import-preview-thead" style="position:sticky;top:0;background:var(--bg-tertiary);"></thead>
@@ -3451,12 +3471,28 @@ export function importTasksFromExcel(app, onSuccess) {
       </div>
 
       <div id="import-error-summary" style="display:none;margin-bottom:16px;padding:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;">
-        <div style="font-size:13px;color:var(--danger);font-weight:600;margin-bottom:8px;">Ошибки при проверке:</div>
+        <div style="font-size:13px;color:var(--danger);font-weight:600;margin-bottom:8px;">Проверка файла:</div>
         <ul id="import-error-list" style="margin:0;padding-left:20px;font-size:12px;color:var(--danger);"></ul>
+      </div>
+
+      <div id="import-row-errors" style="display:none;margin-bottom:16px;padding:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);border-radius:8px;">
+        <div style="font-size:13px;color:#d97706;font-weight:600;margin-bottom:4px;">Потенциальные ошибки строк: <span id="import-row-errors-count">0</span></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Предварительная проверка: импорт не блокируется, финальный результат определит сервер.</div>
+        <ul id="import-row-errors-list" style="margin:0;padding-left:20px;font-size:12px;color:#b45309;max-height:140px;overflow-y:auto;"></ul>
       </div>
 
       <div id="import-result" style="display:none;margin-bottom:16px;padding:16px;border-radius:8px;">
         <div id="import-result-content" style="font-size:14px;"></div>
+        <div id="import-result-actions" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-color);display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" id="import-copy-report" style="padding:8px 16px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Скопировать отчёт
+          </button>
+          <button class="btn btn-secondary btn-sm" id="import-download-report" style="padding:8px 16px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Скачать отчёт (.txt)
+          </button>
+        </div>
       </div>
 
       <div style="display:flex;gap:12px;justify-content:flex-end;">
@@ -3471,6 +3507,7 @@ export function importTasksFromExcel(app, onSuccess) {
   let selectedFile = null;
   let previewData = null;
   let errors = [];
+  let rowErrors = [];
 
   const closeImportModal = () => {
     overlay.classList.add('modal-closing');
@@ -3505,7 +3542,7 @@ export function importTasksFromExcel(app, onSuccess) {
     dropZone.style.borderColor = 'var(--border-color)';
     dropZone.style.background = 'transparent';
     const file = e.dataTransfer.files[0];
-    if (file && file.name.endsWith('.csv')) {
+    if (file && /\.(csv|xlsx|xls)$/i.test(file.name)) {
       handleFile(file);
     }
   });
@@ -3518,19 +3555,56 @@ export function importTasksFromExcel(app, onSuccess) {
 
   function handleFile(file) {
     selectedFile = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target.result;
-      parseAndPreview(content);
-    };
-    reader.readAsText(file, 'UTF-8');
+    const ext = (file.name || '').toLowerCase().split('.').pop();
+    if (ext === 'xlsx' || ext === 'xls') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true, cellNF: true });
+          const firstSheet = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[firstSheet];
+          const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          if (aoa.length > 0) {
+            const headers = (aoa[0] || []).map((h, i) => (h != null ? String(h).trim() : `Колонка ${i + 1}`));
+            const dataRows = aoa.slice(1).filter(row => row.some(cell => cell != null && cell !== '')).map(row =>
+              row.map(cell => {
+                if (cell instanceof Date) {
+                  const y = cell.getFullYear();
+                  const m = String(cell.getMonth() + 1).padStart(2, '0');
+                  const d = String(cell.getDate()).padStart(2, '0');
+                  return `${y}-${m}-${d}`;
+                }
+                return (cell != null ? String(cell) : '');
+              })
+            );
+            previewData = { headers, rows: dataRows, delimiter: ';' };
+            errors = validateData(headers);
+            rowErrors = validateRows(previewData);
+            renderPreview();
+            renderErrors();
+            renderRowErrors();
+            overlay.querySelector('#import-submit-btn').disabled = errors.length > 0;
+          }
+        } catch (err) {
+          window.toast?.('Ошибка чтения Excel: ' + err.message, 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        parseAndPreview(content);
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
   }
 
   function parseAndPreview(content) {
     const lines = content.split('\n').filter(l => l.trim());
     if (lines.length === 0) return;
 
-    const firstRowHeader = overlay.querySelector('#import-first-row-header').checked;
     const delimiter = content.includes(';') ? ';' : ',';
 
     const rows = [];
@@ -3552,42 +3626,118 @@ export function importTasksFromExcel(app, onSuccess) {
       rows.push(cells);
     }
 
-    const headers = firstRowHeader ? rows[0] : rows[0].map((_, i) => `Колонка ${i + 1}`);
-    const dataRows = firstRowHeader ? rows.slice(1) : rows;
+    const headers = rows[0].map((h, i) => h.trim() || `Колонка ${i + 1}`);
+    const dataRows = rows.slice(1);
 
     previewData = { headers, rows: dataRows, delimiter };
-    errors = validateData(dataRows, headers);
+    errors = validateData(headers);
+    rowErrors = validateRows(previewData);
 
     renderPreview();
     renderErrors();
+    renderRowErrors();
 
     overlay.querySelector('#import-submit-btn').disabled = errors.length > 0;
   }
 
-  function validateData(dataRows, headers) {
+  function validateData(headers) {
     const errs = [];
-    const titleIdx = headers.findIndex(h => h.toLowerCase() === 'title');
-    const teamIdIdx = headers.findIndex(h => h.toLowerCase() === 'team_id');
-    const idIdx = headers.findIndex(h => h.toLowerCase() === 'id');
-
-    if (titleIdx === -1) {
-      errs.push('Отсутствует обязательная колонка "title"');
+    const normalized = headers.map(h => h.toLowerCase().replace(/\s+/g, ' ').trim());
+    const hasTitle = normalized.some(h => h === 'название задачи' || h === 'title');
+    const hasTeam = normalized.some(h => h === 'ответственная команда' || h === 'team_id');
+    if (!hasTitle) {
+      errs.push('Не найдена обязательная колонка "Название задачи" (заголовок CSV)');
     }
-    if (teamIdIdx === -1) {
-      errs.push('Отсутствует обязательная колонка "team_id"');
+    if (!hasTeam) {
+      errs.push('Не найдена обязательная колонка "Ответственная команда" (заголовок CSV)');
+    }
+    return errs;
+  }
+
+  function _normHeader(h) {
+    return String(h != null ? h : '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function _isRealDate(y, m, d) {
+    if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+  }
+
+  function _isValidDateLike(v) {
+    const s = String(v).trim();
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return _isRealDate(+m[1], +m[2], +m[3]);
+    m = s.match(/^(\d{2})[.\/](\d{2})[.\/](\d{2}|\d{4})$/);
+    if (m) return _isRealDate(+m[3], +m[2], +m[1]);
+    return false;
+  }
+
+  function _isValidIntStr(v) {
+    const s = String(v).trim();
+    if (!/^-?\d+(\.\d+)?$/.test(s)) return false;
+    return Number.isInteger(Number(s));
+  }
+
+  function _isValidFloatStr(v) {
+    const s = String(v).trim();
+    if (!/^-?\d+(\.\d+)?$/.test(s)) return false;
+    return Number.isFinite(Number(s));
+  }
+
+  function validateRows(data) {
+    const out = [];
+    if (!data || !data.headers || !data.rows) return out;
+
+    const normalized = data.headers.map(_normHeader);
+    const col = {};
+    for (const f of IMPORT_FIELDS) {
+      const idx = normalized.indexOf(_normHeader(fieldLabel(f.key)));
+      if (idx !== -1) col[f.key] = idx;
     }
 
-    dataRows.slice(0, 20).forEach((row, i) => {
+    data.rows.forEach((row, i) => {
+      if (!row || !row.some(c => c != null && String(c).trim() !== '')) return;
       const rowNum = i + 2;
-      if (idIdx !== -1 && row[idIdx]) {
-        const id = parseInt(row[idIdx]);
-        if (!isNaN(id) && id > 0) {
-          errs.push({ row: rowNum, id, message: `Задача с ID ${id} уже существует` });
+      const cell = k => (col[k] !== undefined ? String(row[col[k]] != null ? row[col[k]] : '').trim() : '');
+
+      for (const k of REQUIRED_IMPORT_FIELDS) {        if (col[k] === undefined) continue;
+        if (cell(k) === '') {
+          const label = fieldLabel(k);
+          out.push({ row: rowNum, message: `Поле "${label}" обязательно для заполнения` });
         }
+      }
+
+      if (col.date_received !== undefined) {
+        const v = cell('date_received');
+        if (v !== '' && !_isValidDateLike(v)) {
+          out.push({ row: rowNum, message: `Неверный формат даты: "${v}"` });
+        }
+      }
+
+      for (const k of ROW_INT_FIELDS) {
+        if (col[k] === undefined) continue;
+        const v = cell(k);
+        if (v === '') continue;
+        if (k === 'progress') {
+          const num = Number(v);
+          if (!_isValidIntStr(v) || num < 0 || num > 100) {
+            out.push({ row: rowNum, message: `Неверный формат прогресса: "${v}"` });
+          }
+        } else if (!_isValidIntStr(v)) {
+          out.push({ row: rowNum, message: `Неверный числовой формат: "${v}"` });
+        }
+      }
+
+      for (const k of ROW_FLOAT_FIELDS) {
+        if (col[k] === undefined) continue;
+        const v = cell(k);
+        if (v === '' || _isValidFloatStr(v)) continue;
+        out.push({ row: rowNum, message: `Неверный числовой формат: "${v}"` });
       }
     });
 
-    return errs;
+    return out;
   }
 
   function renderPreview() {
@@ -3605,9 +3755,7 @@ export function importTasksFromExcel(app, onSuccess) {
 
     const previewRows = previewData.rows.slice(0, 5);
     tbody.innerHTML = previewRows.map(row => {
-      const idIdx = previewData.headers.findIndex(h => h.toLowerCase() === 'id');
-      const isConflict = idIdx !== -1 && row[idIdx] && parseInt(row[idIdx]) > 0;
-      return `<tr style="background:${isConflict ? 'rgba(245,158,11,0.1)' : 'transparent'};">
+      return `<tr>
         ${row.map((cell, i) => `<td style="padding:6px 12px;border-bottom:1px solid var(--border-color);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cell || '')}</td>`).join('')}
       </tr>`;
     }).join('');
@@ -3623,31 +3771,92 @@ export function importTasksFromExcel(app, onSuccess) {
     }
 
     errorSummary.style.display = 'block';
-    const generalErrors = errors.filter(e => typeof e === 'string');
-    const rowErrors = errors.filter(e => typeof e === 'object');
-
-    let html = '';
-    if (generalErrors.length > 0) {
-      html += generalErrors.map(e => `<li>${escapeHtml(e)}</li>`).join('');
-    }
-    if (rowErrors.length > 0) {
-      rowErrors.slice(0, 10).forEach(e => {
-        html += `<li>Строка ${e.row}: ${escapeHtml(e.message)}</li>`;
-      });
-      if (rowErrors.length > 10) {
-        html += `<li>... и ещё ${rowErrors.length - 10} ошибок</li>`;
-      }
-    }
-    errorList.innerHTML = html;
+    errorList.innerHTML = errors.map(e => `<li>${escapeHtml(e)}</li>`).join('');
   }
 
-  overlay.querySelector('#import-first-row-header').addEventListener('change', () => {
-    if (selectedFile) {
-      const reader = new FileReader();
-      reader.onload = (e) => parseAndPreview(e.target.result);
-      reader.readAsText(selectedFile, 'UTF-8');
+  function renderRowErrors() {
+    const block = overlay.querySelector('#import-row-errors');
+    const list = overlay.querySelector('#import-row-errors-list');
+    const countEl = overlay.querySelector('#import-row-errors-count');
+
+    if (rowErrors.length === 0) {
+      block.style.display = 'none';
+      return;
     }
-  });
+
+    block.style.display = 'block';
+    countEl.textContent = rowErrors.length;
+    list.innerHTML = rowErrors.slice(0, 20).map(e => {
+      return `<li>Строка ${e.row}: ${escapeHtml(e.message)}</li>`;
+    }).join('');
+    if (rowErrors.length > 20) {
+      list.insertAdjacentHTML('beforeend', `<li>... и ещё ${rowErrors.length - 20} ошибок</li>`);
+    }
+  }
+
+  function buildReportText(result, fileName) {
+    const lines = [];
+    lines.push('Отчёт об импорте задач из CSV');
+    lines.push(`Дата: ${new Date().toLocaleString('ru-RU')}`);
+    lines.push(`Файл: ${fileName || '—'}`);
+    lines.push('----------------------------------------');
+    const errs = result.errors || [];
+    const total = result.total ?? errs.length + (result.created ?? 0);
+    lines.push(`Всего строк: ${total}`);
+    lines.push(`Импортировано: ${result.created ?? 0}`);
+    lines.push(`Пропущено: ${result.skipped ?? 0}`);
+    lines.push(`Ошибок: ${errs.length}`);
+    lines.push('----------------------------------------');
+    if (errs.length === 0) {
+      lines.push('Ошибок нет.');
+    } else {
+      lines.push('Ошибки:');
+      errs.forEach(e => {
+        const row = e.row ? `Строка ${e.row}` : 'Файл';
+        const field = e.field_label ? `Поле "${e.field_label}"` : '';
+        const value = e.value ? `Значение: "${e.value}"` : '';
+        lines.push(`- [${row}] ${field} ${value} — ${e.message}`);
+      });
+    }
+    return lines.join('\r\n');
+  }
+
+  function copyReport(result, fileName) {
+    const text = buildReportText(result, fileName);
+    const done = () => window.toast?.('Отчёт скопирован в буфер обмена', 'success');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => {
+        fallbackCopy(text);
+        done();
+      });
+    } else {
+      fallbackCopy(text);
+      done();
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) { /* ignore */ }
+    document.body.removeChild(ta);
+  }
+
+  function downloadReport(result, fileName) {
+    const text = buildReportText(result, fileName);
+    const blob = new Blob(['\uFEFF' + text], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    a.href = url;
+    a.download = `import_report_${stamp}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   overlay.querySelector('#import-submit-btn').addEventListener('click', async () => {
     if (!selectedFile || !previewData) return;
@@ -3658,33 +3867,72 @@ export function importTasksFromExcel(app, onSuccess) {
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      const ext = (selectedFile.name || '').toLowerCase().split('.').pop();
+      if (ext === 'xlsx' || ext === 'xls') {
+        const delimiter = previewData.delimiter || ';';
+        const csvContent = [
+          previewData.headers.join(delimiter),
+          ...previewData.rows.map(row => row.map(cell => {
+            const str = String(cell != null ? cell : '');
+            if (str.includes(delimiter) || str.includes('"') || str.includes('\n')) {
+              return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+          }).join(delimiter))
+        ].join('\r\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const csvFile = new File([blob], selectedFile.name.replace(/\.xlsx?$/i, '.csv'), { type: 'text/csv' });
+        formData.append('file', csvFile);
+      } else {
+        formData.append('file', selectedFile);
+      }
 
       const result = await app.api.post('/tasks/import', formData, true);
 
       const resultDiv = overlay.querySelector('#import-result');
       resultDiv.style.display = 'block';
+      const hasErrors = result.errors && result.errors.length > 0;
+      resultDiv.style.border = '1px solid ' + (hasErrors ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)');
+      resultDiv.style.background = hasErrors ? 'rgba(239,68,68,0.06)' : 'rgba(34,197,94,0.06)';
 
-      let html = `<div style="color:var(--success);font-weight:600;">Импорт завершён!</div>`;
-      html += `<div style="margin-top:8px;">Создано задач: <strong>${result.created}</strong></div>`;
-      if (result.updated > 0) {
-        html += `<div>Обновлено: <strong>${result.updated}</strong></div>`;
-      }
-      if (result.errors && result.errors.length > 0) {
-        html += `<div style="margin-top:8px;color:var(--danger);">Ошибок: <strong>${result.errors.length}</strong></div>`;
-        html += `<ul style="margin:8px 0 0 0;padding-left:20px;font-size:12px;max-height:100px;overflow-y:auto;">`;
-        result.errors.slice(0, 5).forEach(e => {
-          html += `<li>Строка ${e.row}: ${escapeHtml(e.message)}</li>`;
+      const errs = result.errors || [];
+      let html = hasErrors
+        ? `<div style="color:var(--danger);font-weight:600;">Импорт завершён с ошибками</div>`
+        : `<div style="color:var(--success);font-weight:600;">Импорт завершён!</div>`;
+      html += `<div style="margin-top:8px;display:flex;gap:24px;flex-wrap:wrap;">
+        <span>Всего строк: <strong>${result.total ?? errs.length + (result.created ?? 0)}</strong></span>
+        <span style="color:var(--success);">Импортировано: <strong>${result.created ?? 0}</strong></span>
+        <span style="color:var(--danger);">Пропущено: <strong>${result.skipped ?? 0}</strong></span>
+        <span>Ошибок: <strong>${errs.length}</strong></span>
+      </div>`;
+      if (errs.length > 0) {
+        html += `<div style="margin-top:10px;font-size:12px;color:var(--text-secondary);">Полный список ошибок — в отчёте (кнопки ниже).</div>`;
+        html += `<ul style="margin:8px 0 0 0;padding-left:20px;font-size:12px;max-height:160px;overflow-y:auto;">`;
+        errs.slice(0, 10).forEach(e => {
+          html += `<li><strong>Строка ${e.row}:</strong> ${escapeHtml(e.message || JSON.stringify(e))}</li>`;
         });
-        if (result.errors.length > 5) {
-          html += `<li>... и ещё ${result.errors.length - 5} ошибок</li>`;
+        if (errs.length > 10) {
+          html += `<li>... и ещё ${errs.length - 10} ошибок</li>`;
         }
         html += `</ul>`;
       }
 
       overlay.querySelector('#import-result-content').innerHTML = html;
 
-      if (result.errors && result.errors.length === 0) {
+      const actions = overlay.querySelector('#import-result-actions');
+      actions.style.display = 'flex';
+      const copyBtn = overlay.querySelector('#import-copy-report');
+      const downloadBtn = overlay.querySelector('#import-download-report');
+      copyBtn.replaceWith(copyBtn.cloneNode(true));
+      downloadBtn.replaceWith(downloadBtn.cloneNode(true));
+      overlay.querySelector('#import-copy-report').addEventListener('click', () => {
+        copyReport(result, selectedFile.name);
+      });
+      overlay.querySelector('#import-download-report').addEventListener('click', () => {
+        downloadReport(result, selectedFile.name);
+      });
+
+      if (!hasErrors) {
         setTimeout(() => {
           closeImportModal();
           if (onSuccess) onSuccess();
@@ -3697,4 +3945,1241 @@ export function importTasksFromExcel(app, onSuccess) {
       btn.textContent = 'Импортировать';
     }
   });
+}
+
+// ============================================================
+//  КАРТОЧКА ЗАДАЧИ v18 (порт референса «Карточка задачи NEW»)
+//  Структура, классы и логика соответствуют референсу v18,
+//  но работают поверх реального API: /tasks/{id}, лок, вьюверы,
+//  409-конфликт, комментарии с @, файлы, история.
+// ============================================================
+
+const CARD_IC = {
+  x: '<path d="M18 6L6 18M6 6l12 12"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7L12 4.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  check: '<path d="M20 6L9 17l-5-5"/>',
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>',
+  trend: '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>',
+  tag: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/>',
+  folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  team: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5c2 .8 3.5 2.6 3.5 5.5"/>',
+  msg: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/>'
+};
+
+function cardIcon(n) {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (CARD_IC[n] || '') + '</svg>';
+}
+
+const CARD_ROLES = [
+  { key: 'designee', field: 'effort_designee', actual: 'actual_effort_designee', name: 'Designee' },
+  { key: 'analytics', field: 'effort_analytics', actual: 'actual_effort_analytics', name: 'Аналитика' },
+  { key: 'be', field: 'effort_be', actual: 'actual_effort_be', name: 'Разработка BE' },
+  { key: 'python', field: 'effort_python_be', actual: 'actual_effort_python_be', name: 'Разработка python BE' },
+  { key: 'fe', field: 'effort_fe', actual: 'actual_effort_fe', name: 'Разработка FE' },
+  { key: 'test', field: 'effort_test', actual: 'actual_effort_test', name: 'Test' },
+  { key: 'testAuto', field: 'effort_test_auto', actual: 'actual_effort_test_auto', name: 'Test Auto' },
+  { key: 'delivery', field: 'effort_delivery', actual: 'actual_effort_delivery', name: 'Delivery' },
+];
+
+const CARD_RATES_MAP = {
+  designee: 'Designee', analytics: 'Аналитика', be: 'Разработка BE', python: 'Разработка python BE',
+  fe: 'Разработка FE', test: 'Tester', testAuto: 'Tester Auto', delivery: 'Delivery',
+};
+
+const CARD_TABS = [
+  ['main', 'Основное', 'file'],
+  ['eco', 'Экономика и трудозатраты', 'trend'],
+  ['rep', 'Отчётные статусы', 'flag'],
+  ['com', 'Комментарии', 'msg'],
+  ['files', 'Файлы', 'folder'],
+  ['sys', 'Ссылки и система', 'link'],
+  ['log', 'Лог изменений', 'clock'],
+];
+
+let cardState = { tab: 'main', editing: false, dirty: false, saving: false, replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
+let cardRates = null;
+let cardDict = null;
+let cardMaps = null;
+let cardAi = null;
+let cardPs = null;
+let _cardEscHandler = null;
+let _cardToastTimer = null;
+
+function cardCur() { return cardState.editing ? cardState.draft : cardState.current; }
+
+function cardNow() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function cardPerson(n) {
+  if (!n) return '—';
+  const p = String(n).trim().split(/\s+/);
+  if (p.length < 2 || !p[0] || !p[1]) return n;
+  if (/^[А-ЯЁA-Zа-яёa-z]\.$/.test(p[0])) return n;
+  return p[0][0] + '. ' + p[1];
+}
+function cardFmtDate(v) { return v ? new Date(v).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'; }
+function cardFmtDT(v) { return v ? new Date(v).toLocaleString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
+function cardFmtMoney(v) { return v == null ? '—' : Number(v).toLocaleString('ru-RU') + ' ₽'; }
+function cardFmtNum(v, d) { return (v == null || v === '') ? '—' : Number(v).toLocaleString('ru-RU', { maximumFractionDigits: (d == null ? 1 : d) }); }
+function cardUrlOk(v) { return /^https?:\/\/\S+\.\S+/.test(v || ''); }
+function cardNl2br(s) { return escapeHtml(s).replace(/\n/g, '<br>'); }
+function cardPretty(v) {
+  if (Array.isArray(v)) return v.join(', ') || '—';
+  if (v === null || v === '' || v === undefined) return '—';
+  if (typeof v === 'boolean') return v ? 'да' : 'нет';
+  return String(v);
+}
+function cardParseLinks(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (s.charAt(0) === '[') {
+      try {
+        const arr = JSON.parse(s);
+        if (Array.isArray(arr)) return arr.filter(Boolean);
+      } catch (e) { /* fall through */ }
+    }
+    return s.split(',').map(x => x.trim()).filter(Boolean);
+  }
+  return [];
+}
+function cardNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
+function cardBuildRates(items) {
+  const byComp = {};
+  (items || []).forEach(it => {
+    if (!it || it.is_active === false) return;
+    const comp = it.competency;
+    (byComp[comp] = byComp[comp] || {})[it.year] = Number(it.rate || 0);
+  });
+  const rates = {};
+  Object.keys(byComp).forEach(c => {
+    const ys = Object.keys(byComp[c]).map(Number).sort((a, b) => a - b);
+    rates[c] = ys.length ? byComp[c][ys[ys.length - 1]] : 0;
+  });
+  return rates;
+}
+function cardRate(key) {
+  if (!cardRates) return 0;
+  const comp = CARD_RATES_MAP[key];
+  return comp ? (cardRates[comp] || 0) : 0;
+}
+function cardCalcCost(o) {
+  if (!o || !cardRates) return null;
+  let s = 0, a = false;
+  CARD_ROLES.forEach(r => { const v = +o[r.key]; if (v) { a = true; s += v * cardRate(r.key); } });
+  return a ? s : null;
+}
+function cardCalcSum(o) {
+  let s = 0, a = false;
+  CARD_ROLES.forEach(r => { const v = +o[r.key]; if (v) { a = true; s += v; } });
+  return a ? Math.round(s * 100) / 100 : null;
+}
+function cardCvCalc(cost, fin) { return (cost > 0 && fin != null && fin > 0) ? Math.round(cost / (fin * 1e6) * 100) / 100 : null; }
+function cardCvCls(v) { if (v == null) return ''; return v < 0.3 ? 'cv-good' : (v <= 1 ? 'cv-warn' : 'cv-bad'); }
+function cardDiffPct(eo, ftz) {
+  if (eo == null || eo === 0 || eo === '') return { txt: '—', cls: 'd-neutral' };
+  if (ftz == null || ftz === '') return { txt: '—', cls: 'd-neutral' };
+  const p = Math.round((ftz - eo) / eo * 100);
+  if (p < 0) return { txt: p + '%', cls: 'd-good' };
+  if (p > 0) return { txt: '+' + p + '%', cls: 'd-bad' };
+  return { txt: '0%', cls: 'd-neutral' };
+}
+function cardStatusCls(s) {
+  if (s === 'ВЫПОЛНЕНА') return 'b-green';
+  if (s === 'ОТКЛОНЕНА' || s === 'НЕ АКТУАЛЬНА' || s === 'ЭСКАЛАЦИЯ НА ЛТ') return 'b-red';
+  if (s === 'ХОЛД' || s === 'ПРИНЯТИЕ РЕШЕНИЯ' || s === 'ЭКСПРЕСС-ОЦЕНКА') return 'b-amber';
+  if (s === 'НОВАЯ ЗАДАЧА') return 'b-gray';
+  return 'b-blue';
+}
+function cardPrioCls(p) { return p === 'ВЫСОКИЙ' ? 'b-red' : (p === 'СРЕДНИЙ' ? 'b-amber' : 'b-green'); }
+function cardSel(k, options, v) {
+  const opts = options.slice();
+  if (v && opts.indexOf(v) === -1) opts.unshift(v);
+  return '<select data-k="' + k + '">' + opts.map(x => '<option ' + ((x === v) ? 'selected' : '') + '>' + escapeHtml(x) + '</option>').join('') + '</select>';
+}
+function cardSelScore(k, v) {
+  const opts = ['A', 'B', 'C', 'D', 'E'];
+  return '<select data-k="' + k + '"><option value="">—</option>' + opts.map(x => '<option ' + ((x === v) ? 'selected' : '') + '>' + x + '</option>').join('') + '</select>';
+}
+function cardNumC(k, v, s) { return '<input type="number" step="' + (s || 1) + '" min="0" data-k="' + k + '" value="' + (v == null ? '' : v) + '">'; }
+function cardTxtC(k, v) { return '<input type="text" data-k="' + k + '" value="' + escapeHtml(v) + '">'; }
+function cardTaC(k, v, r) { return '<textarea rows="' + (r || 4) + '" data-k="' + k + '">' + escapeHtml(v) + '</textarea>'; }
+function cardDateC(k, v) { return '<input type="date" data-k="' + k + '" value="' + (v || '') + '">'; }
+function cardF(l, inner, o) {
+  o = o || {};
+  return '<div class="field ' + (o.span2 ? 'span2 ' : '') + (o.span4 ? 'span4 ' : '') + '"><div class="flabel"><span class="flt">' + escapeHtml(l) + '</span>' + (o.lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="fval">' + inner + '</div></div>';
+}
+function cardV(v) { return '<div>' + v + '</div>'; }
+function cardROv(v) { return '<div style="display:flex;gap:7px;align-items:center;color:#5A6478">' + v + '</div>'; }
+function cardGrid() { return '<div class="grid">' + Array.prototype.slice.call(arguments).join('') + '</div>'; }
+function cardGrid4() { return '<div class="grid4">' + Array.prototype.slice.call(arguments).join('') + '</div>'; }
+function cardChipsStatic(arr) {
+  return arr.length ? '<div class="chips">' + arr.map(x => '<span class="chip static">' + cardIcon('team') + escapeHtml(x) + '</span>').join('') + '</div>' : '—';
+}
+function cardChipsTeams(all, selArr, field) {
+  const ordered = all.slice().sort((a, b) => (selArr.indexOf(b) >= 0 ? 1 : 0) - (selArr.indexOf(a) >= 0 ? 1 : 0));
+  return '<div class="chips">' + ordered.map(x => '<button type="button" class="chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
+}
+function cardChipsTags(all, selArr, field, editable) {
+  if (!editable) return selArr.length ? '<div class="chips">' + selArr.map(x => '<span class="chip static">' + cardIcon('tag') + escapeHtml(x) + '</span>').join('') + '</div>' : '—';
+  return '<div class="chips">' + all.map(x => '<button type="button" class="chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
+}
+function cardSec(t, i) { return '<h3 class="sec"><span class="sic">' + cardIcon(i) + '</span>' + escapeHtml(t) + '</h3>'; }
+function cardLnk(u) { return '<a href="' + escapeHtml(u) + '" target="_blank" rel="noopener">' + cardIcon('link') + escapeHtml(u) + '</a>'; }
+
+function buildCardState(task) {
+  const t = task || {};
+  const eo = {}, ftz = {};
+  CARD_ROLES.forEach(r => {
+    eo[r.key] = cardNum(t[r.field]);
+    ftz[r.key] = cardNum(t[r.actual]);
+  });
+  const involved = Array.isArray(t.involved_team_names)
+    ? t.involved_team_names
+    : (Array.isArray(t.involved_teams) ? t.involved_teams.map(String) : []);
+  const tagNames = Array.isArray(t.tags)
+    ? t.tags.map(x => (typeof x === 'string' ? x : (x && x.name) || '')).filter(Boolean)
+    : [];
+  const num = v => (v == null || v === '') ? null : Number(v);
+  const fin = v => num(v);
+  return {
+    id: t.id,
+    title: t.title || '',
+    description: t.description || '',
+    comment: t.comment || '',
+    receivedAt: t.date_received || '',
+    team: t.team_name || t.team || '',
+    channel: t.channel_name || t.source_channel || '',
+    customer: t.business_customer_name || '',
+    customerDept: t.department_name || t.customer_department || '',
+    project: t.project_name || t.project || '',
+    type: t.task_type_name || t.task_type || '',
+    otherTeams: involved,
+    tags: tagNames,
+    priority: t.priority_name || t.priority || '',
+    status: t.status_name || t.status || '',
+    deadline: t.deadline_name || t.deadline || '',
+    assignee: t.owner_name || t.owner || '',
+    progress: num(t.progress) || 0,
+    eo: eo, ftz: ftz,
+    cv: t.cv,
+    finEffect: fin(t.financial_effect),
+    finJust: t.financial_effect_justification || '',
+    finEffectAi: fin(t.financial_effect_ai),
+    finJustAi: t.financial_effect_ai_justification || '',
+    priorityScore: t.priority_score == null ? null : Number(t.priority_score),
+    priorityJust: t.priority_justification || '',
+    weightPercent: num(t.assessment_weight),
+    forecastPercent: num(t.completion_forecast),
+    hardScore: t.hard_score || '',
+    softScore: t.soft_score || '',
+    statuses: {
+      directorate: { cur: t.directorate_status || '', prev: t.prev_directorate_status || '', at: t.directorate_status_updated_at || '' },
+      did: { cur: t.did_status || '', prev: t.prev_did_status || '', at: t.did_status_updated_at || '' },
+      key: { cur: t.key_project_status || '', prev: t.prev_key_project_status || '', at: t.key_project_status_updated_at || '' },
+    },
+    demoDid: !!t.did_demo,
+    mockupUrl: t.link_mockups || '',
+    jiraLinks: cardParseLinks(t.link_jira),
+    reqLinks: cardParseLinks(t.link_requirements),
+    author: t.created_by_name || '—',
+    createdAt: t.created_at || '',
+    updatedAt: t.updated_at || '',
+  };
+}
+
+async function cardLoadDict(app) {
+  const api = app?.api || window.app?.api;
+  if (!api) return;
+  const norm = r => Array.isArray(r) ? r : ((r && r.items) || []);
+  const [teams, users, projects, statuses, priorities, deadlines, taskTypes, channels, customers, departments, tagsR] = await Promise.all([
+    api.get('/teams').catch(() => []),
+    api.get('/users').catch(() => []),
+    api.get('/projects').catch(() => api.get('/admin/projects').catch(() => [])),
+    api.get('/admin/statuses').catch(() => []),
+    api.get('/admin/priorities').catch(() => []),
+    api.get('/admin/deadlines').catch(() => []),
+    api.get('/admin/task-types').catch(() => []),
+    api.get('/admin/channels').catch(() => []),
+    api.get('/admin/business-customers').catch(() => []),
+    api.get('/admin/departments').catch(() => []),
+    api.get('/admin/tags').catch(() => api.get('/tags').catch(() => [])),
+  ]);
+  cardDict = {
+    teams: norm(teams),
+    users: norm(users).filter(u => u.is_active !== false),
+    projects: norm(projects),
+    statuses: norm(statuses),
+    priorities: norm(priorities),
+    deadlines: norm(deadlines),
+    taskTypes: norm(taskTypes),
+    channels: norm(channels),
+    customers: norm(customers),
+    departments: norm(departments),
+    tags: norm(tagsR),
+  };
+  cardBuildMaps();
+}
+function cardNameList(key) {
+  return (cardDict && cardDict[key] ? cardDict[key] : []).map(x => (x && (x.name || x.login || x.email)) || '').filter(Boolean);
+}
+function cardBuildMaps() {
+  const idMap = key => {
+    const m = {};
+    (cardDict && cardDict[key] ? cardDict[key] : []).forEach(x => {
+      const n = x && (x.name || x.title || x.login || x.email);
+      if (n) m[n] = x.id;
+    });
+    return m;
+  };
+  const statuses = idMap('statuses'), priorities = idMap('priorities'), deadlines = idMap('deadlines'),
+    teams = idMap('teams'), projects = idMap('projects'), taskTypes = idMap('taskTypes'),
+    channels = idMap('channels'), customers = idMap('customers'), users = idMap('users');
+  const idOf = (m, n) => { if (!n) return null; const id = m[n]; return id === undefined ? null : id; };
+  cardMaps = {
+    statusId: n => idOf(statuses, n), priorityId: n => idOf(priorities, n),
+    deadlineId: n => idOf(deadlines, n), teamId: n => idOf(teams, n),
+    projectId: n => idOf(projects, n), typeId: n => idOf(taskTypes, n),
+    channelId: n => idOf(channels, n), customerId: n => idOf(customers, n),
+    userId: n => idOf(users, n),
+  };
+}
+
+function cardRenderHeader() {
+  const el = document.getElementById('mhead');
+  if (!el) return;
+  const t = cardCur();
+  let h = '<div class="row1">';
+  h += '<button class="tid" data-action="copy-id" title="Скопировать ID">#' + t.id + ' ' + cardIcon('copy') + '</button>';
+  h += '<span class="badge nodot b-violet" id="hType">' + escapeHtml(t.type) + '</span>';
+  h += cardState.editing
+    ? '<input class="title-input" data-k="title" maxlength="255" value="' + escapeHtml(t.title) + '" id="titleInput"><span class="tcount" id="titleCount"></span>'
+    : '<h1 class="mtitle">' + escapeHtml(t.title) + '</h1>';
+  h += '<span class="badge ' + cardStatusCls(t.status) + '" id="hStatus">' + escapeHtml(t.status) + '</span>';
+  h += '<span class="badge ' + cardPrioCls(t.priority) + '" id="hPrio">' + escapeHtml(t.priority) + '</span>';
+  if (cardState.editing) h += '<span class="editbadge">Редактирование</span>';
+  h += '<button class="iconbtn close" data-action="close" title="Закрыть (Esc)">' + cardIcon('x') + '</button>';
+  h += '</div><div class="row2">';
+  h += '<span class="mchip"><span class="mi g">' + cardIcon('team') + '</span><span><span class="k">Команда</span><br><b id="hTeam">' + escapeHtml(t.team) + '</b></span></span>';
+  h += '<span class="mchip"><span class="ava24">' + getInitials(t.assignee) + '</span><span><span class="k">Исполнитель</span><br><b id="hAssignee">' + escapeHtml(cardPerson(t.assignee)) + '</b></span></span>';
+  h += '<span class="mchip"><span class="mi a">' + cardIcon('cal') + '</span><span><span class="k">Срок</span><br><b id="hDeadline">' + escapeHtml(t.deadline) + '</b></span></span>';
+  h += '<span class="mchip"><span class="mi v">' + cardIcon('folder') + '</span><span><span class="k">Проект</span><br><b id="hProject">' + escapeHtml(t.project) + '</b></span></span>';
+  h += '<span class="ringwrap"><svg class="ring" viewBox="0 0 36 36"><circle class="rbg" cx="18" cy="18" r="15"/><circle class="rfg" id="ringFg" cx="18" cy="18" r="15" stroke-dasharray="94.25" stroke-dashoffset="94.25"/></svg><span class="ringtxt" id="ringTxt"></span></span>';
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+function cardRenderTabs() {
+  const el = document.getElementById('tabs');
+  if (!el) return;
+  const label = x => {
+    if (x[0] === 'com') return 'Комментарии' + (cardState.commentsCount ? ' · ' + cardState.commentsCount : '');
+    if (x[0] === 'files') return 'Файлы' + (cardState.filesCount ? ' · ' + cardState.filesCount : '');
+    if (x[0] === 'log') return 'Лог изменений' + (cardState.history.length ? ' · ' + cardState.history.length : '');
+    return x[1];
+  };
+  el.innerHTML = CARD_TABS.map(x => '<button class="tab ' + (cardState.tab === x[0] ? 'on' : '') + '" data-tab="' + x[0] + '">' + cardIcon(x[2]) + escapeHtml(label(x)) + '</button>').join('') + '<span id="tabInd"></span>';
+  cardPlaceInd();
+}
+function cardPlaceInd() {
+  const on = document.querySelector('#tabs .tab.on');
+  const ind = document.getElementById('tabInd');
+  if (on && ind) { ind.style.left = on.offsetLeft + 'px'; ind.style.width = on.offsetWidth + 'px'; }
+}
+
+function cardKpiCard(l, v, lock) {
+  return '<div class="kpi"><div class="kl"><span class="flt">' + escapeHtml(l) + '</span>' + (lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="kv">' + v + '</div></div>';
+}
+function cardKpiBlock(t, e) {
+  const cost = cardCalcCost(t.eo), fcost = cardCalcCost(t.ftz);
+  const ftzT = cardCalcSum(t.ftz), eoSum = cardCalcSum(t.eo);
+  const cvE = (t.cv == null || t.cv === '') ? cardCvCalc(cost, t.finEffect) : Number(t.cv);
+  const cvF = cardCvCalc(fcost, t.finEffect);
+  let h = '<div class="kpi2"><div class="kpigroup"><div class="kglabel">План (ЭО)</div><div class="kpirow3">'
+    + cardKpiCard('Оценка трудозатрат (ЭО)', '<span data-dyn="eo">' + cardFmtNum(eoSum) + '</span> <small>ч/д</small>', true)
+    + cardKpiCard('Стоимость по ЭО', '<span data-dyn="cost">' + cardFmtMoney(cost) + '</span>', true)
+    + cardKpiCard('C/V по ЭО', '<span data-dyn="cvE" class="' + cardCvCls(cvE) + '">' + (cvE == null ? '—' : cvE.toLocaleString('ru-RU')) + '</span>', true)
+    + '</div></div><div class="kpigroup"><div class="kglabel">Факт (ФТЗ)</div><div class="kpirow3">'
+    + cardKpiCard('Фактические трудозатраты', '<span data-dyn="ftz">' + cardFmtNum(ftzT) + '</span> <small>ч/д</small>', true)
+    + cardKpiCard('Стоимость по ФТЗ', '<span data-dyn="fcost">' + cardFmtMoney(fcost) + '</span>', true)
+    + cardKpiCard('C/V по ФТЗ', '<span data-dyn="cvF" class="' + cardCvCls(cvF) + '">' + (cvF == null ? '—' : cvF.toLocaleString('ru-RU')) + '</span>', true)
+    + '</div></div></div>';
+  h += '<div class="psrow">';
+  h += '<div class="kpi"><div class="kl"><span class="flt">Priority Score</span><span class="lk">' + cardIcon('lock') + '</span>'
+    + '<button class="btn ai" data-action="ps-calc">' + cardIcon('spark') + 'AI-расчет</button></div>';
+  h += '<div class="kv big"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div>';
+  h += '<div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div>';
+  h += '<div class="just"><div class="flabel"><span class="flt">Обоснование агента</span></div><div class="fval">' + (e ? cardTaC('priorityJust', t.priorityJust, 5) : '<span class="txt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</span>') + '</div></div>';
+  h += '</div>';
+  h += '<div class="kpi"><div class="kl"><span class="flt">Финансовый эффект</span>'
+    + '<button class="btn ai" data-action="ai-calc-fin">' + cardIcon('spark') + 'AI-расчет</button></div>';
+  h += e
+    ? '<div class="fval"><input type="number" step="0.1" min="0" data-k="finEffect" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:140px;display:inline-block"> <small style="color:var(--tfaint)">млн ₽</small></div>'
+    : '<div class="kv big"><span data-dyn="fin">' + cardFmtNum(t.finEffect, 2) + '</span> <small>млн ₽</small></div>';
+  h += '<div class="psbar hide"></div>';
+  h += '<div class="just"><div class="flabel"><span class="flt">Обоснование расчёта</span></div><div class="fval">' + (e ? cardTaC('finJust', t.finJust, 5) : '<span class="txt">' + (t.finJust ? cardNl2br(t.finJust) : '—') + '</span>') + '</div><div class="aipop" id="finPop"></div></div>';
+  h += '</div></div>';
+  return h;
+}
+
+function cardBodyMain(t, e) {
+  const teams = cardNameList('teams');
+  const users = cardNameList('users');
+  const projects = cardNameList('projects');
+  const types = cardNameList('taskTypes');
+  const priorities = cardNameList('priorities');
+  const statuses = cardNameList('statuses');
+  const deadlines = cardNameList('deadlines');
+  const channels = cardNameList('channels');
+  const customers = cardNameList('customers');
+  const tags = cardNameList('tags');
+  let h = '';
+  h += cardSec('Исполнение и команды', 'user');
+  h += cardGrid4(
+    cardF('Статус задачи', e ? cardSel('status', statuses, t.status) : cardV('<span class="badge ' + cardStatusCls(t.status) + '">' + escapeHtml(t.status) + '</span>')),
+    cardF('Приоритет', e ? cardSel('priority', priorities, t.priority) : cardV('<span class="badge ' + cardPrioCls(t.priority) + '">' + escapeHtml(t.priority) + '</span>')),
+    cardF('Срок выполнения', e ? cardSel('deadline', deadlines, t.deadline) : cardV('<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>')),
+    cardF('Прогресс', e ? '<div class="prog-edit"><input type="range" min="0" max="100" data-k="progress" value="' + t.progress + '"><input type="number" class="pnum" min="0" max="100" data-k="progress" value="' + t.progress + '"></div>' : cardV('<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%')),
+    cardF('Ответственная команда', e ? cardSel('team', teams, t.team) : cardV('<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>')),
+    cardF('Исполнитель', e ? cardSel('assignee', users, t.assignee) : cardV('<span class="vchip"><span class="ava24">' + getInitials(t.assignee) + '</span>' + escapeHtml(cardPerson(t.assignee)) + '</span>')),
+    cardF('Проект', e ? cardSel('project', projects, t.project) : cardV('<span class="vchip">' + cardIcon('folder') + escapeHtml(t.project) + '</span>')),
+    cardF('Тип задачи', e ? cardSel('type', types, t.type) : cardV('<span class="badge nodot b-violet">' + escapeHtml(t.type) + '</span>')),
+    cardF('Другие вовлечённые команды · ' + t.otherTeams.length, e ? cardChipsTeams(teams, t.otherTeams, 'otherTeams') : cardChipsStatic(t.otherTeams), { span4: true }),
+    cardF('Метки (теги)', cardChipsTags(tags, t.tags, 'tags', e), { span4: true }),
+  );
+  h += cardSec('Оценка', 'trend');
+  h += cardGrid4(
+    cardF('Вес оценки', e ? cardNumC('weightPercent', t.weightPercent, 1) : cardV(t.weightPercent == null ? '—' : t.weightPercent + '%')),
+    cardF('Прогноз выполнения', e ? cardNumC('forecastPercent', t.forecastPercent, 1) : cardV(t.forecastPercent == null ? '—' : t.forecastPercent + '%')),
+    cardF('Оценка за завершенность (Hard)', e ? cardSelScore('hardScore', t.hardScore) : cardV(t.hardScore ? '<span class="badge nodot">' + escapeHtml(t.hardScore) + '</span>' : '—')),
+    cardF('Оценка за взаимодействие (Soft)', e ? cardSelScore('softScore', t.softScore) : cardV(t.softScore ? '<span class="badge nodot">' + escapeHtml(t.softScore) + '</span>' : '—')),
+  );
+  h += cardSec('Контекст и заказчик', 'folder');
+  h += cardGrid4(
+    cardF('Канал поступления', e ? cardSel('channel', channels, t.channel) : cardV(escapeHtml(t.channel))),
+    cardF('Дата получения', e ? cardDateC('receivedAt', t.receivedAt) : cardV(cardFmtDate(t.receivedAt))),
+    cardF('Бизнес-заказчик', e ? '<div style="display:flex;gap:8px;align-items:center"><span class="ava24" id="custAva">' + getInitials(t.customer) + '</span>' + cardSel('customer', customers, t.customer) + '</div>' : cardV('<span class="vchip"><span class="ava24">' + getInitials(t.customer) + '</span>' + escapeHtml(cardPerson(t.customer)) + '</span>')),
+    cardF('Подразделение бизнес-заказчика', cardROv(escapeHtml(t.customerDept || '—')), { lock: true }),
+  );
+  h += cardSec('Описание задачи', 'file');
+  h += cardGrid(cardF('Описание задачи', e ? cardTaC('description', t.description, 4) : cardV('<span class="txt">' + cardNl2br(t.description) + '</span>'), { span2: true }));
+  h += cardSec('Комментарий', 'msg');
+  h += cardGrid(cardF('Комментарий', e ? cardTaC('comment', t.comment, 4) : cardV('<span class="txt">' + (t.comment ? cardNl2br(t.comment) : '<span class="text-muted">—</span>') + '</span>'), { span2: true }));
+  h += cardSec('Ключевые показатели', 'trend');
+  h += cardKpiBlock(t, e);
+  return h;
+}
+
+function cardEffortTable(t, e) {
+  let rows = '';
+  CARD_ROLES.forEach(r => {
+    const eoV = t.eo[r.key], ftzV = t.ftz[r.key];
+    const eoRub = (+eoV) ? +eoV * cardRate(r.key) : null;
+    const ftzRub = (+ftzV) ? +ftzV * cardRate(r.key) : null;
+    const d = cardDiffPct(+eoV || null, +ftzV || null);
+    rows += '<tr><td><b>' + r.name + '</b></td><td class="num">' + cardRate(r.key).toLocaleString('ru-RU') + '</td><td class="num">' + (e ? cardNumC('eo.' + r.key, eoV, 0.5) : cardFmtNum(eoV)) + '</td><td class="num" title="Тянется из внешней БД (Jira)">' + cardFmtNum(ftzV) + '</td><td class="num" data-costrow="' + r.key + '">' + (eoRub ? cardFmtMoney(eoRub) : '—') + '</td><td class="num" data-ftzrow="' + r.key + '">' + (ftzRub ? cardFmtMoney(ftzRub) : '—') + '</td><td class="num"><span class="diff ' + d.cls + '" data-diffrow="' + r.key + '">' + d.txt + '</span></td></tr>';
+  });
+  const eoSum = cardCalcSum(t.eo), ftzSum = cardCalcSum(t.ftz), dt = cardDiffPct(eoSum, ftzSum);
+  return '<table class="tbl"><colgroup><col style="width:23%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:15%"><col style="width:15%"><col style="width:14%"></colgroup><thead><tr><th>Компетенция</th><th class="num">Ставка, ₽/ч-д</th><th class="num">ЭО, ч/д</th><th class="num">ФТЗ, ч/д</th><th class="num">ЭО, ₽</th><th class="num">ФТЗ, ₽</th><th class="num">Разница</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td>Итого</td><td class="num">—</td><td class="num">' + cardFmtNum(eoSum) + '</td><td class="num">' + cardFmtNum(ftzSum) + '</td><td class="num"><span data-dyn="costTotal">' + cardFmtMoney(cardCalcCost(t.eo)) + '</span></td><td class="num"><span data-dyn="fcostTotal">' + cardFmtMoney(cardCalcCost(t.ftz)) + '</span></td><td class="num"><span class="diff ' + dt.cls + '" data-dyn="diffTotal">' + dt.txt + '</span></td></tr></tfoot></table>';
+}
+function cardBodyEco(t, e) {
+  let h = cardSec('Сводка', 'trend') + cardKpiBlock(t, e);
+  h += cardSec('Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)', 'edit');
+  h += cardEffortTable(t, e);
+  h += '<div class="field" style="margin-top:10px"><div class="flabel"><span class="flt">Источник ФТЗ</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">Фактические трудозатраты тянутся из внешней БД, связанной с Jira. Разница &lt; 0 — факт ниже оценки (хорошо), &gt; 0 — перерасход.</span></div></div>';
+  return h;
+}
+
+function cardRepCard(title, color, icon, group, t, e, extra) {
+  const g = t.statuses[group];
+  let h = '<div class="repcard"><div class="rc-head"><span class="ric" style="background:' + color + '22;color:' + color + '">' + cardIcon(icon) + '</span><h4>' + escapeHtml(title) + '</h4></div><div class="stack">';
+  h += '<div class="field"><div class="flabel"><span class="flt">Статус предыдущей встречи</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">' + (g.prev ? cardNl2br(g.prev) : '—') + '</span></div></div>';
+  h += '<div class="field"><div class="flabel"><span class="flt">Текущий статус</span></div><div class="fval">' + (e ? cardTaC('statuses.' + group + '.cur', g.cur, 6) : '<span class="txt">' + (g.cur ? cardNl2br(g.cur) : '—') + '</span>') + '</div></div>';
+  h += '<div class="field"><div class="flabel"><span class="flt">Дата изменения текущего статуса</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval">' + cardV(cardFmtDT(g.at)) + '</div></div>';
+  if (extra) h += extra;
+  return h + '</div></div>';
+}
+function cardBodyRep(t, e) {
+  const demo = '<div class="field"><div class="flabel"><span class="flt">Демо для ДИД</span></div><div class="fval"><label class="switch' + (e ? '' : ' view') + '"><input type="checkbox" data-k="demoDid" ' + (t.demoDid ? 'checked' : '') + (e ? '' : ' disabled') + '><span class="sl"></span>' + (t.demoDid ? 'да' : 'нет') + '</label></div></div>';
+  return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="repgrid">'
+    + cardRepCard('Директорская оперативка', '#6C4CD4', 'trend', 'directorate', t, e, null)
+    + cardRepCard('Оперативка ДИД', '#1F9D44', 'clock', 'did', t, e, demo)
+    + cardRepCard('Встреча по ключевым проектам', '#2E6BE6', 'flag', 'key', t, e, null)
+    + '</div>';
+}
+
+function cardBodyCom() {
+  const n = cardState.commentsCount;
+  return cardSec('Комментарии' + (n ? ' · ' + n : ''), 'msg')
+    + '<div id="comments-list-container"><div class="text-muted" style="text-align:center;padding:20px">Загрузка комментариев...</div></div>'
+    + '<div id="comment-form-container" style="margin-top:16px;border-top:1px solid var(--tline);padding-top:16px;">'
+    + '<div id="reply-indicator" class="reply-indicator" style="display:none;">'
+    + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>'
+    + '<span class="reply-indicator-text"></span>'
+    + '<button class="reply-indicator-cancel" onclick="window.__cancelReply()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
+    + '<div style="position:relative;"><textarea class="task-detail-input" id="comment-textarea" rows="3" placeholder="Напишите комментарий... Используйте @ для упоминания пользователей"></textarea><div id="mention-dropdown" class="mention-dropdown" style="display:none;"></div></div>'
+    + '<div style="display:flex;justify-content:flex-end;margin-top:8px;"><button class="task-detail-btn task-detail-btn-primary" id="comment-submit-btn" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить</button></div>'
+    + '</div>';
+}
+function cardBodyFiles() {
+  const n = cardState.filesCount;
+  return cardSec('Файлы' + (n ? ' · ' + n : ''), 'folder')
+    + '<div id="attachment-drop-zone" class="attachment-drop-zone"><input type="file" id="attachment-file-input" multiple style="display:none;" />'
+    + '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+    + '<div class="attachment-drop-text">Перетащите файлы сюда или <span class="attachment-drop-browse">выберите</span></div>'
+    + '<div class="attachment-drop-hint">Макс. размер: 50 МБ</div></div>'
+    + '<div id="attachments-list-container" class="attachments-list-container"></div>';
+}
+
+function cardLinksField(label, links, e, addId, delAct, addAct, ph) {
+  let inner = '';
+  if (e) {
+    inner = links.map((u, i) => '<div class="jrow"><a href="' + escapeHtml(u) + '" target="_blank" rel="noopener">' + cardIcon('link') + escapeHtml(u) + '</a><button class="iconbtn" data-action="' + delAct + '" data-idx="' + i + '" title="Удалить">' + cardIcon('x') + '</button></div>').join('')
+      + '<div class="jadd"><input type="url" id="' + addId + '" placeholder="' + escapeHtml(ph) + '"><button class="btn ghost" data-action="' + addAct + '">' + cardIcon('plus') + 'Добавить</button></div>';
+  } else {
+    inner = links.map(u => '<div class="jrow">' + cardLnk(u) + '</div>').join('') || '—';
+  }
+  return cardF(label, inner, { span2: true });
+}
+function cardBodySys(t, e) {
+  let h = cardSec('Ссылки и артефакты', 'link');
+  h += cardGrid(cardF('Ссылка на макеты', e ? cardTxtC('mockupUrl', t.mockupUrl) : cardV(t.mockupUrl ? cardLnk(t.mockupUrl) : '—'), { span2: true }));
+  h += cardGrid(cardLinksField('Ссылки на Jira', t.jiraLinks, e, 'newJira', 'del-jira', 'add-jira', 'https://jira…/ISSUE-123'));
+  h += cardGrid(cardLinksField('Ссылки на бизнес-требования', t.reqLinks, e, 'newReq', 'del-req', 'add-req', 'https://docs…/requirements'));
+  h += cardSec('Системная информация', 'user');
+  h += cardGrid(
+    cardF('Автор задачи', cardROv('<span class="vchip"><span class="ava24">' + getInitials(t.author) + '</span>' + escapeHtml(cardPerson(t.author)) + '</span>'), { lock: true }),
+    cardF('Дата создания задачи', cardROv(cardFmtDT(t.createdAt)), { lock: true }),
+    cardF('Дата последнего изменения', cardROv(cardFmtDT(t.updatedAt)), { lock: true, span2: true }),
+  );
+  return h;
+}
+
+function cardBodyLog() {
+  const items = cardState.history;
+  let rows = '';
+  if (!items.length) {
+    rows = '<tr><td colspan="5" style="text-align:center;color:var(--tfaint);padding:24px">История изменений пуста</td></tr>';
+  } else {
+    items.forEach(r => {
+      rows += '<tr><td>' + cardFmtDT(r.changed_at) + '</td><td><b>' + escapeHtml(r.changed_by_name || 'Система') + '</b></td><td>' + escapeHtml(r.field_label || r.field_name || '') + '</td><td>' + escapeHtml(r.old_value != null ? String(r.old_value) : '—') + '</td><td>' + escapeHtml(r.new_value != null ? String(r.new_value) : '—') + '</td></tr>';
+    });
+  }
+  return cardSec('История изменений (лог) · ' + items.length, 'clock') + '<table class="tbl"><colgroup><col style="width:16%"><col style="width:18%"><col style="width:24%"><col style="width:21%"><col style="width:21%"></colgroup><thead><tr><th>Дата</th><th>Пользователь</th><th>Поле</th><th>Старое значение</th><th>Новое значение</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function cardRenderBody() {
+  const el = document.getElementById('mbody');
+  if (!el) return;
+  const t = cardCur(), e = cardState.editing;
+  let h = '';
+  if (cardState.tab === 'main') h = cardBodyMain(t, e);
+  else if (cardState.tab === 'eco') h = cardBodyEco(t, e);
+  else if (cardState.tab === 'rep') h = cardBodyRep(t, e);
+  else if (cardState.tab === 'com') h = cardBodyCom();
+  else if (cardState.tab === 'files') h = cardBodyFiles();
+  else if (cardState.tab === 'sys') h = cardBodySys(t, e);
+  else h = cardBodyLog();
+  el.innerHTML = '<div id="td-lock-banner" style="display:none;"></div><div id="td-viewer-banner" style="display:none;"></div>' + h;
+  cardRefreshDynamic();
+  renderLockBanner();
+  renderViewerBanner();
+}
+
+function cardRenderFooter() {
+  const el = document.getElementById('mfoot');
+  if (!el) return;
+  const t = cardCur();
+  const lockedByOther = _lockInfo && _lockInfo.locked && !_lockInfo.is_mine;
+  let h = '<div class="fmeta"><b>Автор:</b> ' + escapeHtml(cardPerson(t.author)) + ' · <b>Создана:</b> ' + cardFmtDT(t.createdAt) + ' · <b>Изменена:</b> ' + cardFmtDT(t.updatedAt) + '</div><div class="factions"><span class="dirty" id="dirty"><i></i>Не сохранено</span>';
+  h += cardState.editing
+    ? '<button class="btn ghost" data-action="cancel">' + cardIcon('x') + 'Отменить</button><button class="btn primary" id="saveBtn" data-action="save">' + cardIcon('check') + 'Сохранить</button>'
+    : '<button class="btn primary" data-action="edit"' + (lockedByOther ? ' disabled style="opacity:.45;cursor:not-allowed" title="Задача редактируется другим пользователем"' : '') + '>' + cardIcon('edit') + 'Редактировать</button>';
+  el.innerHTML = h + '</div>';
+  cardUpdateDirty();
+}
+
+function cardRender() {
+  cardRenderHeader();
+  cardRenderTabs();
+  cardRenderBody();
+  cardRenderFooter();
+  const modal = document.getElementById('task-detail-modal');
+  if (modal) modal.classList.toggle('editing', cardState.editing);
+}
+
+function cardRefreshDynamic() {
+  const t = cardCur();
+  const cost = cardCalcCost(t.eo), fcost = cardCalcCost(t.ftz);
+  const ftzT = cardCalcSum(t.ftz), eoSum = cardCalcSum(t.eo);
+  const cvE = cardCvCalc(cost, t.finEffect), cvF = cardCvCalc(fcost, t.finEffect);
+  const set = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
+  set('hStatus', el => { el.textContent = t.status; el.className = 'badge ' + cardStatusCls(t.status); });
+  set('hPrio', el => { el.textContent = t.priority; el.className = 'badge ' + cardPrioCls(t.priority); });
+  set('hTeam', el => { el.textContent = t.team; });
+  set('hAssignee', el => { el.textContent = cardPerson(t.assignee); });
+  set('hDeadline', el => { el.textContent = t.deadline; });
+  set('hProject', el => { el.textContent = t.project; });
+  set('custAva', el => { el.textContent = getInitials(t.customer); });
+  set('ringFg', el => { el.style.strokeDashoffset = (94.25 * (1 - (+t.progress || 0) / 100)).toFixed(2); });
+  set('ringTxt', el => { el.textContent = t.progress + '%'; });
+  set('titleCount', el => { el.textContent = (255 - String(t.title || '').length); });
+  set('psBar', el => { el.style.width = (t.priorityScore || 0) + '%'; });
+  document.querySelectorAll('#task-detail-overlay [data-dyn]').forEach(el => {
+    const k = el.dataset.dyn;
+    if (k === 'eo') el.textContent = cardFmtNum(eoSum);
+    else if (k === 'cost') el.textContent = cardFmtMoney(cost);
+    else if (k === 'fcost') el.textContent = cardFmtMoney(fcost);
+    else if (k === 'ftz') el.textContent = cardFmtNum(ftzT);
+    else if (k === 'fin') el.textContent = cardFmtNum(t.finEffect, 2);
+    else if (k === 'finAi') el.textContent = cardFmtNum(t.finEffectAi, 2);
+    else if (k === 'ps') { el.textContent = (t.priorityScore == null ? '—' : t.priorityScore); el.className = cardPsCls(t.priorityScore); }
+    else if (k === 'cvE') { el.textContent = (cvE == null ? '—' : cvE.toLocaleString('ru-RU')); el.className = cardCvCls(cvE); }
+    else if (k === 'cvF') { el.textContent = (cvF == null ? '—' : cvF.toLocaleString('ru-RU')); el.className = cardCvCls(cvF); }
+    else if (k === 'costTotal') el.textContent = cardFmtMoney(cost);
+    else if (k === 'fcostTotal') el.textContent = cardFmtMoney(fcost);
+    else if (k === 'diffTotal') { const d = cardDiffPct(eoSum, ftzT); el.textContent = d.txt; el.className = 'diff ' + d.cls; }
+  });
+  document.querySelectorAll('#task-detail-overlay [data-costrow]').forEach(el => {
+    const v = +t.eo[el.dataset.costrow] || 0;
+    el.textContent = v ? cardFmtMoney(v * cardRate(el.dataset.costrow)) : '—';
+  });
+  document.querySelectorAll('#task-detail-overlay [data-ftzrow]').forEach(el => {
+    const v = +t.ftz[el.dataset.ftzrow] || 0;
+    el.textContent = v ? cardFmtMoney(v * cardRate(el.dataset.ftzrow)) : '—';
+  });
+  document.querySelectorAll('#task-detail-overlay [data-diffrow]').forEach(el => {
+    const d = cardDiffPct(+t.eo[el.dataset.diffrow] || null, +t.ftz[el.dataset.diffrow] || null);
+    el.textContent = d.txt; el.className = 'diff ' + d.cls;
+  });
+}
+function cardUpdateDirty() {
+  const d = document.getElementById('dirty');
+  if (d) d.style.display = cardState.dirty ? 'inline-flex' : 'none';
+}
+
+function cardSetPath(o, p, v) {
+  const parts = p.split('.');
+  let x = o;
+  for (let i = 0; i < parts.length - 1; i++) x = x[parts[i]];
+  x[parts[parts.length - 1]] = v;
+}
+
+function cardToast(msg, type) {
+  const t = document.getElementById('card-toast');
+  if (!t) { window.toast?.(msg, type === 'ok' ? 'success' : type === 'warn' ? 'info' : 'error'); return; }
+  t.className = 'toast show';
+  t.innerHTML = cardIcon(type === 'ok' ? 'check' : 'alert') + '<span>' + escapeHtml(msg) + '</span>';
+  clearTimeout(_cardToastTimer);
+  _cardToastTimer = setTimeout(() => { t.classList.remove('show'); }, 2800);
+}
+
+function cardRequestClose() {
+  if (cardState.editing || cardState.dirty) {
+    cardToast('Сохраните или отмените изменения, чтобы закрыть карточку', 'warn');
+    return;
+  }
+  closeTaskDetailModal();
+}
+
+function cardAiSuggest(t) {
+  const cost = cardCalcCost(t.eo);
+  const fin = Math.round((cost || 0) / 0.25 / 1e6 * 10) / 10;
+  const text = 'AI-оценка: стоимость по ЭО ' + cardFmtMoney(cost) + ' при целевом C/V 0,25 даёт финансовый эффект ' + cardFmtNum(fin, 1) + ' млн ₽. Учтены ответственная команда ' + (t.team || '—') + (t.otherTeams.length ? ', вовлечённые команды: ' + t.otherTeams.join(', ') : '') + ', срок ' + (t.deadline || '—') + ' и медианные эффекты аналогичных задач портфеля.';
+  return { fin: fin, text: text };
+}
+
+function cardPsCls(v) {
+  if (v == null) return '';
+  return v >= 70 ? 'cv-good' : (v >= 40 ? 'cv-warn' : 'cv-bad');
+}
+
+function cardPsSuggest(t) {
+  const cost = cardCalcCost(t.eo);
+  const cvE = cardCvCalc(cost, t.finEffect);
+  const prio = String(t.priority || '').toUpperCase();
+  let s = 0;
+  s += prio === 'ВЫСОКИЙ' ? 40 : (prio === 'СРЕДНИЙ' ? 25 : 10);
+  s += Math.min(30, Math.round((t.finEffect || 0) * 2));
+  s += cvE == null ? 0 : (cvE < 0.3 ? 20 : (cvE <= 1 ? 10 : 0));
+  s += t.deadline === 'БЕЗ СРОКА' ? 0 : 10;
+  s = Math.min(100, s);
+  const text = 'Агент учёл: приоритет «' + (t.priority || '—') + '», финансовый эффект ' + cardFmtNum(t.finEffect, 2) + ' млн ₽, C/V по ЭО ' + (cvE == null ? '—' : cvE.toLocaleString('ru-RU')) + ', срок «' + (t.deadline || '—') + '», принадлежность к проекту «' + (t.project || '—') + '». Итог: ' + s + '/100.';
+  return { score: s, text: text };
+}
+
+async function cardStartEdit(app) {
+  if (!currentTask?.id) return;
+  if (_lockInfo && _lockInfo.locked && !_lockInfo.is_mine) {
+    cardToast('Задача редактируется другим пользователем', 'warn');
+    return;
+  }
+  const lock = await acquireLock(currentTask.id);
+  if (!lock || lock.error) {
+    if (lock && lock.status === 423) cardToast('Задача уже редактируется другим пользователем', 'warn');
+    else cardToast('Не удалось захватить задачу: ' + (lock?.detail || 'ошибка'), 'warn');
+    return;
+  }
+  _lockInfo = { locked: true, is_mine: true, lock_owner_name: 'Вы' };
+  renderLockBanner();
+  cardState.draft = JSON.parse(JSON.stringify(cardState.current));
+  cardState.editing = true;
+  cardState.dirty = false;
+  cardState.replyFor = null;
+  cardAi = null;
+  cardPs = null;
+  modalMode = 'edit';
+  cardRender();
+  cardToast('Режим редактирования включён', 'ok');
+  const ti = document.getElementById('titleInput');
+  if (ti) { ti.focus(); ti.setSelectionRange(ti.value.length, ti.value.length); }
+}
+
+async function cardCancelEdit(app) {
+  if (currentTask?.id) releaseLock(currentTask.id);
+  _lockInfo = null;
+  cardState.editing = false;
+  cardState.draft = null;
+  cardState.dirty = false;
+  cardState.replyFor = null;
+  cardAi = null;
+  cardPs = null;
+  modalMode = 'view';
+  cardRender();
+  cardToast('Изменения отменены', 'warn');
+}
+
+function cardValidate(d) {
+  if (!String(d.title || '').trim()) return 'Укажите название задачи — поле обязательно (NOT NULL)';
+  if (d.mockupUrl && !cardUrlOk(d.mockupUrl)) return 'Некорректная ссылка на макеты (ожидается http(s)://…)';
+  return null;
+}
+
+const CARD_DIFF_TRACK = [
+  ['title', 'Название задачи'], ['description', 'Описание задачи'], ['receivedAt', 'Дата получения'],
+  ['channel', 'Канал поступления'], ['customer', 'Бизнес-заказчик'], ['project', 'Проект'],
+  ['type', 'Тип задачи'], ['priority', 'Приоритет'], ['status', 'Статус задачи'],
+  ['deadline', 'Срок выполнения'], ['team', 'Ответственная команда'], ['assignee', 'Исполнитель'],
+  ['progress', 'Прогресс'], ['finEffect', 'Финансовый эффект'], ['finJust', 'Обоснование фин. эффекта'],
+  ['finEffectAi', 'AI-финансовый эффект'], ['finJustAi', 'Обоснование AI-финэффекта'],
+  ['mockupUrl', 'Ссылка на макеты'], ['statuses', 'Отчётные статусы'], ['demoDid', 'Демо для ДИД'],
+  ['tags', 'Метки (теги)'], ['otherTeams', 'Другие вовлечённые команды'],
+  ['jiraLinks', 'Ссылки на Jira'], ['reqLinks', 'Ссылки на бизнес-требования'],
+];
+function cardDiffChanges(a, b) {
+  const ch = [];
+  CARD_DIFF_TRACK.forEach(p => {
+    if (JSON.stringify(a[p[0]]) !== JSON.stringify(b[p[0]])) ch.push({ field: p[1], old: cardPretty(a[p[0]]), nw: cardPretty(b[p[0]]) });
+  });
+  CARD_ROLES.forEach(r => { if (+a.eo[r.key] !== +b.eo[r.key]) ch.push({ field: r.name + ' (ЭО)', old: cardPretty(a.eo[r.key]), nw: cardPretty(b.eo[r.key]) }); });
+  return ch;
+}
+
+function cardPayload() {
+  const d = cardState.draft;
+  const m = cardMaps || {};
+  const p = {
+    title: String(d.title || '').trim(),
+    description: d.description || null,
+    comment: d.comment || null,
+    date_received: d.receivedAt || null,
+    status_id: m.statusId ? m.statusId(d.status) : null,
+    priority_id: m.priorityId ? m.priorityId(d.priority) : null,
+    deadline_id: m.deadlineId ? m.deadlineId(d.deadline) : null,
+    team_id: m.teamId ? m.teamId(d.team) : null,
+    project_id: m.projectId ? m.projectId(d.project) : null,
+    task_type_id: m.typeId ? m.typeId(d.type) : null,
+    channel_id: m.channelId ? m.channelId(d.channel) : null,
+    business_customer_id: m.customerId ? m.customerId(d.customer) : null,
+    owner_id: m.userId ? m.userId(d.assignee) : null,
+    involved_teams: d.otherTeams.map(n => (m.teamId ? m.teamId(n) : null)).filter(id => id != null),
+    tags: d.tags,
+    progress: Math.max(0, Math.min(100, Math.round(+d.progress || 0))),
+    financial_effect: d.finEffect != null && d.finEffect !== '' ? Math.round(+d.finEffect) : null,
+    financial_effect_justification: d.finJust || null,
+    financial_effect_ai: d.finEffectAi != null && d.finEffectAi !== '' ? Math.round(+d.finEffectAi) : null,
+    financial_effect_ai_justification: d.finJustAi || null,
+    priority_score: d.priorityScore != null && d.priorityScore !== '' ? Math.round(+d.priorityScore) : null,
+    priority_justification: d.priorityJust || null,
+    assessment_weight: d.weightPercent != null && d.weightPercent !== '' ? +d.weightPercent : null,
+    completion_forecast: d.forecastPercent != null && d.forecastPercent !== '' ? +d.forecastPercent : null,
+    hard_score: d.hardScore || null,
+    soft_score: d.softScore || null,
+    directorate_status: d.statuses.directorate.cur,
+    did_status: d.statuses.did.cur,
+    key_project_status: d.statuses.key.cur,
+    did_demo: !!d.demoDid,
+    link_mockups: d.mockupUrl || null,
+    link_jira: d.jiraLinks,
+    link_requirements: d.reqLinks,
+    version: currentTask?.version || 0,
+  };
+  CARD_ROLES.forEach(r => { p[r.field] = cardNum(d.eo[r.key]); });
+  return p;
+}
+
+async function cardReloadTask(app) {
+  const api = app?.api || window.app?.api;
+  if (!api || !currentTask?.id) return;
+  const data = await api.get(`/tasks/${currentTask.id}`);
+  currentTask = data;
+  cardState.current = buildCardState(data);
+  cardState.history = [];
+  await cardLoadHistory(app);
+}
+
+async function cardLoadHistory(app) {
+  const api = app?.api || window.app?.api;
+  if (!api || !currentTask?.id) return;
+  try {
+    const data = await api.get(`/tasks/${currentTask.id}/history`);
+    cardState.history = Array.isArray(data) ? data : [];
+  } catch (_) {
+    cardState.history = [];
+  }
+}
+
+async function cardSaveEdit(app) {
+  if (cardState.saving) return;
+  const api = app?.api || window.app?.api;
+  if (!api || !currentTask?.id) return;
+  const err = cardValidate(cardState.draft);
+  if (err) {
+    cardToast(err, 'err');
+    const ti = document.querySelector('[data-k="title"]');
+    if (ti) ti.focus();
+    return;
+  }
+  const changes = cardDiffChanges(cardState.current, cardState.draft);
+  cardState.saving = true;
+  const btn = document.getElementById('saveBtn');
+  if (btn) btn.classList.add('loading');
+  try {
+    await api.put(`/tasks/${currentTask.id}`, cardPayload());
+    if (currentTask?.id) releaseLock(currentTask.id);
+    _lockInfo = null;
+    await cardReloadTask(app);
+    cardState.editing = false;
+    cardState.draft = null;
+    cardState.dirty = false;
+    cardState.replyFor = null;
+    cardAi = null;
+    cardPs = null;
+    modalMode = 'view';
+    cardRender();
+    cardToast(changes.length ? 'Сохранено · изменений: ' + changes.length : 'Сохранено · без изменений', 'ok');
+  } catch (e) {
+    if (e && e.status === 409) {
+      cardShowConflict(e.data && e.data.detail, app);
+    } else if (e && e.status === 423) {
+      cardToast('Задача уже редактируется другим пользователем', 'warn');
+      await cardReloadTask(app);
+      cardState.editing = false; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null; cardPs = null;
+      modalMode = 'view';
+      cardRender();
+    } else {
+      cardToast('Ошибка: ' + (e.message || 'не удалось сохранить'), 'err');
+    }
+  } finally {
+    cardState.saving = false;
+    const btn2 = document.getElementById('saveBtn');
+    if (btn2) btn2.classList.remove('loading');
+  }
+}
+
+function cardShowConflict(detail, app) {
+  if (!detail) return;
+  const serverTask = detail.task || {};
+  const currentVer = detail.current_version ?? '?';
+  const submittedVer = detail.submitted_version ?? '?';
+  let overlay = document.getElementById('card-conflict-overlay');
+  if (overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'card-conflict-overlay';
+  overlay.className = 'conflict-overlay';
+  const rows = cardConflictRows(serverTask);
+  const hasChanges = rows.length > 0;
+  overlay.innerHTML = `
+    <div class="conflict-modal conflict-modal--wide">
+      <div class="conflict-modal-header">
+        <div class="conflict-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div>
+          <h3 class="conflict-title">Конфликт версий</h3>
+          <p class="conflict-subtitle">Задача была изменена другим пользователем. Выберите значения для каждого изменённого поля.</p>
+        </div>
+      </div>
+      <div class="conflict-versions">
+        <span>Ваша версия: <strong>${submittedVer}</strong></span>
+        <span class="conflict-arrow">&rarr;</span>
+        <span>Текущая версия: <strong>${currentVer}</strong></span>
+      </div>
+      ${hasChanges
+        ? `<div class="conflict-diff-wrap"><table class="diff-table diff-table--selectable">
+            <thead><tr><th style="width:28px;"></th><th style="width:28px;"></th><th>Поле</th><th>На сервере</th><th>Ваше значение</th></tr></thead>
+            <tbody>${rows}</tbody></table></div>`
+        : '<div class="diff-empty">Все поля совпадают — различий не обнаружено</div>'}
+      <div class="conflict-actions conflict-actions--row">
+        <button class="conflict-btn conflict-btn-primary" id="cc-btn-save" ${!hasChanges ? 'disabled' : ''}>Сохранить выбранные</button>
+        <button class="conflict-btn conflict-btn-danger" id="cc-btn-force">Принудительно сохранить</button>
+        <button class="conflict-btn conflict-btn-secondary" id="cc-btn-refresh">Обновить с сервера</button>
+        <button class="conflict-btn conflict-btn-ghost" id="cc-btn-cancel">Отмена</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('cc-btn-save')?.addEventListener('click', () => cardConflictMerge(serverTask, app, currentVer));
+  document.getElementById('cc-btn-force')?.addEventListener('click', () => cardConflictForce(app, currentVer));
+  document.getElementById('cc-btn-refresh')?.addEventListener('click', () => cardConflictRefresh(serverTask, app));
+  document.getElementById('cc-btn-cancel')?.addEventListener('click', cardConflictClose);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) cardConflictClose(); });
+}
+
+function cardConflictRows(serverTask) {
+  const payload = cardPayload();
+  const labels = {
+    title: 'Название', status_id: 'Статус', priority_id: 'Приоритет', deadline_id: 'Срок',
+    team_id: 'Команда', owner_id: 'Исполнитель', project_id: 'Проект', task_type_id: 'Тип',
+    channel_id: 'Канал', business_customer_id: 'Бизнес-заказчик', involved_teams: 'Другие команды',
+    tags: 'Метки', progress: 'Прогресс', description: 'Описание', date_received: 'Дата получения',
+    financial_effect: 'Финансовый эффект (₽)', financial_effect_justification: 'Обоснование фин. эффекта',
+    financial_effect_ai: 'AI-финансовый эффект (₽)', financial_effect_ai_justification: 'Обоснование AI',
+    directorate_status: 'Статус (директорская)', did_status: 'Статус (ДИД)', key_project_status: 'Статус (ключ. проекты)',
+    did_demo: 'Демо для ДИД', link_mockups: 'Макеты', link_jira: 'Jira', link_requirements: 'Требования',
+    effort_designee: 'Designee (ЭО)', effort_analytics: 'Аналитика (ЭО)', effort_be: 'Разработка BE (ЭО)',
+    effort_python_be: 'python BE (ЭО)', effort_fe: 'FE (ЭО)', effort_test: 'Test (ЭО)',
+    effort_test_auto: 'Test Auto (ЭО)', effort_delivery: 'Delivery (ЭО)',
+  };
+  const fmt = v => {
+    if (v === null || v === undefined || v === '') return '—';
+    if (Array.isArray(v)) return v.join(', ') || '—';
+    if (typeof v === 'boolean') return v ? 'да' : 'нет';
+    return String(v);
+  };
+  return Object.keys(payload).filter(k => k !== 'version').map(field => {
+    const sv = serverTask[field];
+    const lv = payload[field];
+    if (JSON.stringify(sv ?? null) === JSON.stringify(lv ?? null)) return null;
+    const rName = 'ccr-' + field;
+    return `<tr class="diff-row" data-field="${escapeHtml(field)}">
+      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="server" class="diff-radio" data-field="${escapeHtml(field)}" checked></td>
+      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="local" class="diff-radio" data-field="${escapeHtml(field)}"></td>
+      <td class="diff-field">${escapeHtml(labels[field] || field)}</td>
+      <td class="diff-server">${escapeHtml(fmt(sv))}</td>
+      <td class="diff-local">${escapeHtml(fmt(lv))}</td>
+    </tr>`;
+  }).filter(Boolean).join('');
+}
+
+async function cardDoSave(payload, app) {
+  const api = app?.api || window.app?.api;
+  if (!api || !currentTask?.id) return;
+  const btn = document.getElementById('saveBtn');
+  if (btn) btn.classList.add('loading');
+  try {
+    await api.put(`/tasks/${currentTask.id}`, payload);
+    if (currentTask?.id) releaseLock(currentTask.id);
+    _lockInfo = null;
+    await cardReloadTask(app);
+    cardState.editing = false; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
+    modalMode = 'view';
+    cardRender();
+    cardToast('Сохранено', 'ok');
+  } catch (e2) {
+    if (e2 && e2.status === 409) {
+      cardShowConflict(e2.data && e2.data.detail, app);
+    } else {
+      cardToast('Ошибка: ' + (e2.message || 'не удалось сохранить'), 'err');
+    }
+  } finally {
+    const b = document.getElementById('saveBtn');
+    if (b) b.classList.remove('loading');
+  }
+}
+async function cardConflictMerge(serverTask, app, currentVer) {
+  const payload = cardPayload();
+  document.querySelectorAll('#card-conflict-overlay .diff-radio:checked').forEach(r => {
+    const field = r.dataset.field;
+    if (r.value === 'server' && serverTask[field] !== undefined) payload[field] = serverTask[field];
+  });
+  payload.version = currentVer;
+  cardConflictClose();
+  await cardDoSave(payload, app);
+}
+async function cardConflictForce(app, currentVer) {
+  const payload = cardPayload();
+  payload.version = currentVer;
+  cardConflictClose();
+  await cardDoSave(payload, app);
+}
+function cardConflictRefresh(serverTask, app) {
+  cardConflictClose();
+  currentTask = serverTask;
+  cardState.current = buildCardState(serverTask);
+  cardState.editing = false; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
+  modalMode = 'view';
+  if (currentTask?.id) releaseLock(currentTask.id);
+  _lockInfo = null;
+  cardReloadTask(app).then(() => cardRender());
+  cardToast('Данные обновлены с сервера', 'info');
+}
+function cardConflictClose() {
+  const o = document.getElementById('card-conflict-overlay');
+  if (o) o.remove();
+}
+
+function cardShowAi(target, app) {
+  const src = cardState.draft || cardState.current;
+  if (!src) return;
+  cardAi = { target: target, ...cardAiSuggest(src) };
+  const popId = target === 'finAi' ? 'aiPop' : 'finPop';
+  const pop = document.getElementById(popId);
+  if (!pop) return;
+  pop.innerHTML = '<div class="ah">' + cardIcon('spark') + 'AI-подсказка</div><div class="av">Финансовый эффект: ' + cardFmtNum(cardAi.fin, 1) + ' млн ₽</div><div class="at">' + escapeHtml(cardAi.text) + '</div><div style="display:flex;gap:8px">' + (cardState.editing ? '<button class="btn primary mini" data-action="ai-apply">' + cardIcon('check') + 'Применить</button>' : '') + '<button class="btn ghost mini" data-action="ai-dismiss">Скрыть</button></div>';
+  pop.classList.add('show');
+}
+function cardApplyAi() {
+  if (!cardAi) return;
+  const d = cardState.draft;
+  if (cardAi.target === 'fin') {
+    d.finEffect = cardAi.fin;
+    d.finJust = cardAi.text;
+  } else {
+    d.finEffectAi = cardAi.fin;
+    d.finJustAi = cardAi.text;
+  }
+  cardAi = null;
+  cardState.dirty = true;
+  cardRenderBody();
+  cardUpdateDirty();
+  cardToast('AI-рекомендация применена', 'ok');
+}
+
+async function cardApplyPsToDb(app) {
+  if (!cardPs) return;
+  const api = app?.api || window.app?.api;
+  if (!api || !currentTask?.id) return;
+  const score = cardPs.score, text = cardPs.text;
+  try {
+    await api.put(`/tasks/${currentTask.id}`, {
+      priority_score: score,
+      priority_justification: text,
+      version: currentTask?.version || 0
+    });
+    cardPs = null;
+    await cardReloadTask(app);
+    cardRender();
+    cardToast('Priority Score применён и сохранён', 'ok');
+  } catch (e) {
+    cardPs = null;
+    if (e && e.status === 409) cardToast('Задача изменена другим пользователем. Обновите страницу и повторите.', 'warn');
+    else if (e && e.status === 423) cardToast('Задача редактируется другим пользователем', 'warn');
+    else cardToast('Ошибка: ' + (e.message || 'не удалось сохранить Priority Score'), 'err');
+  }
+}
+function cardApplyPs() {
+  if (!cardPs) return;
+  const d = cardState.draft;
+  d.priorityScore = cardPs.score;
+  d.priorityJust = cardPs.text;
+  cardPs = null;
+  cardState.dirty = true;
+  cardRenderBody();
+  cardUpdateDirty();
+  cardToast('Priority Score применён — сохраните изменения', 'ok');
+}
+
+function cardOnField(ev) {
+  if (!cardState.editing) return;
+  const el = ev.target;
+  const k = el.dataset && el.dataset.k;
+  if (!k) return;
+  let v = el.value;
+  if (el.type === 'checkbox') v = el.checked;
+  else if (el.type === 'number' || el.type === 'range') {
+    v = (v === '') ? null : Math.max(0, +v);
+    if (k === 'progress') v = Math.min(100, Math.round(v));
+  }
+  cardSetPath(cardState.draft, k, v);
+  cardState.dirty = true;
+  cardUpdateDirty();
+  if (k === 'progress') {
+    document.querySelectorAll('#task-detail-overlay [data-k="progress"]').forEach(el2 => { if (el2 !== el) el2.value = v; });
+  }
+  if (k === 'demoDid') cardRenderBody();
+  cardRefreshDynamic();
+}
+
+function cardOnClick(ev, app) {
+  const actEl = ev.target.closest('[data-action]');
+  if (actEl) {
+    const a = actEl.dataset.action;
+    if (a === 'close') { cardRequestClose(); return; }
+    if (a === 'edit') { cardStartEdit(app); return; }
+    if (a === 'cancel') { cardCancelEdit(app); return; }
+    if (a === 'save') { cardSaveEdit(app); return; }
+    if (a === 'copy-id') {
+      try { navigator.clipboard.writeText(String(currentTask.id)); cardToast('ID ' + currentTask.id + ' скопирован', 'ok'); }
+      catch (_) { cardToast('ID: ' + currentTask.id, 'ok'); }
+      return;
+    }
+    if (a === 'ai-calc') { cardShowAi('finAi', app); return; }
+    if (a === 'ai-calc-fin') { cardShowAi('fin', app); return; }
+    if (a === 'ai-apply') { cardApplyAi(); return; }
+    if (a === 'ai-dismiss') {
+      cardAi = null;
+      const p1 = document.getElementById('aiPop'); if (p1) p1.classList.remove('show');
+      const p2 = document.getElementById('finPop'); if (p2) p2.classList.remove('show');
+      return;
+    }
+    if (a === 'ps-calc') {
+      const src = cardState.draft || cardState.current;
+      if (!src) return;
+      cardPs = cardPsSuggest(src);
+      if (cardState.editing) cardApplyPs();
+      else cardApplyPsToDb(app);
+      return;
+    }
+    if (a === 'add-jira') {
+      const inp = document.getElementById('newJira');
+      if (inp && inp.value.trim()) {
+        if (!cardUrlOk(inp.value.trim())) { cardToast('Некорректная ссылка Jira', 'err'); return; }
+        cardState.draft.jiraLinks.push(inp.value.trim()); cardState.dirty = true; cardRenderBody(); cardUpdateDirty();
+      }
+      return;
+    }
+    if (a === 'del-jira') { cardState.draft.jiraLinks.splice(+actEl.dataset.idx, 1); cardState.dirty = true; cardRenderBody(); cardUpdateDirty(); return; }
+    if (a === 'add-req') {
+      const inp = document.getElementById('newReq');
+      if (inp && inp.value.trim()) {
+        if (!cardUrlOk(inp.value.trim())) { cardToast('Некорректная ссылка на требования', 'err'); return; }
+        cardState.draft.reqLinks.push(inp.value.trim()); cardState.dirty = true; cardRenderBody(); cardUpdateDirty();
+      }
+      return;
+    }
+    if (a === 'del-req') { cardState.draft.reqLinks.splice(+actEl.dataset.idx, 1); cardState.dirty = true; cardRenderBody(); cardUpdateDirty(); return; }
+    return;
+  }
+  const tabEl = ev.target.closest('[data-tab]');
+  if (tabEl) {
+    cardState.tab = tabEl.dataset.tab;
+    cardState.replyFor = null;
+    if (cardState.tab === 'com') {
+      _commentFormInitialized = false;
+      setTimeout(() => { initCommentForm(currentTask?.id, app); renderCommentList(); }, 0);
+    }
+    if (cardState.tab === 'files') {
+      _attachmentFormInitialized = false;
+      setTimeout(() => { initAttachmentForm(currentTask?.id, app); renderAttachmentsList(); }, 0);
+    }
+    cardRenderTabs();
+    cardRenderBody();
+    return;
+  }
+  const chip = ev.target.closest('[data-toggle]');
+  if (chip && cardState.editing) {
+    const field = chip.dataset.toggle;
+    const val = chip.dataset.val;
+    const arr = cardState.draft[field];
+    const i = arr.indexOf(val);
+    if (i >= 0) arr.splice(i, 1); else arr.push(val);
+    cardState.dirty = true;
+    cardRenderBody();
+    cardUpdateDirty();
+    return;
+  }
+}
+
+function cardReset() {
+  cardState = { tab: 'main', editing: false, dirty: false, saving: false, replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
+  cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
+  if (_cardEscHandler) { document.removeEventListener('keydown', _cardEscHandler); _cardEscHandler = null; }
+}
+
+async function cardInit(app) {
+  const api = app?.api || window.app?.api;
+  cardRender();
+  if (!api || !currentTask?.id) return;
+  const ratesData = await api.get('/admin/competency-costs').catch(() => []);
+  cardRates = cardBuildRates(ratesData);
+  await cardLoadDict(app);
+  cardRender();
+  await cardLoadHistory(app);
+  await loadComments(currentTask.id, app);
+  await loadAttachments(currentTask.id, app);
+  cardState.commentsCount = _commentsCache.length;
+  cardState.filesCount = _attachmentsCache.length;
+  cardRenderTabs();
+  if (cardState.tab === 'com') { _commentFormInitialized = false; initCommentForm(currentTask.id, app); }
+  if (cardState.tab === 'files') { _attachmentFormInitialized = false; initAttachmentForm(currentTask.id, app); }
+  checkAndRenderLock(currentTask.id);
+  registerViewer(currentTask.id).then(() => fetchViewers(currentTask.id).then(v => { _currentViewers = v; renderViewerBanner(); }));
+  startViewerPolling(currentTask.id);
+  cardRenderTabs();
+}
+
+export function renderTaskDetailModal(task, app) {
+  currentTask = task;
+  modalMode = task ? 'view' : 'edit';
+  cardState.current = buildCardState(task || {});
+  cardState.tab = 'main';
+  cardState.editing = false; cardState.dirty = false; cardState.saving = false; cardState.replyFor = null;
+  cardState.history = []; cardState.commentsCount = 0; cardState.filesCount = 0;
+  cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
+  return `
+    <div class="modal-overlay" id="task-detail-overlay">
+      <div class="task-detail-modal" id="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="mhead">
+        <div class="mhead" id="mhead"></div>
+        <div class="tabs" id="tabs"><span id="tabInd"></span></div>
+        <div class="mbody" id="mbody"></div>
+        <div class="mfoot" id="mfoot"></div>
+      </div>
+      <div class="toast" id="card-toast"></div>
+    </div>`;
+}
+
+export function initTaskDetailModal(app) {
+  const overlay = document.getElementById('task-detail-overlay');
+  if (!overlay) return;
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) { cardRequestClose(); return; }
+    cardOnClick(e, app);
+  });
+  overlay.addEventListener('input', cardOnField);
+  overlay.addEventListener('change', cardOnField);
+
+  if (!window._cardResizeBound) {
+    window.addEventListener('resize', cardPlaceInd);
+    window._cardResizeBound = true;
+  }
+
+  if (_cardEscHandler) document.removeEventListener('keydown', _cardEscHandler);
+  _cardEscHandler = (e) => { if (e.key === 'Escape') cardRequestClose(); };
+  document.addEventListener('keydown', _cardEscHandler);
+
+  cardInit(app);
+
+  setTimeout(() => {
+    const first = overlay.querySelector('button, a, input');
+    first?.focus();
+  }, 150);
 }

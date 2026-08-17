@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     
     # CORS
     CORS_ORIGINS: list = ["http://localhost:5500", "http://127.0.0.1:5500", "http://localhost:8080"]
+
+    # AI Business Analyst Assistant (agent service)
+    AGENT_BASE_URL: str = "http://127.0.0.1:9000"
+    AGENT_SECRET: str = "dmb-agent-local-secret-2026"
     
     class Config:
         env_file = ".env"

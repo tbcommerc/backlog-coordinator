@@ -1,10 +1,10 @@
 console.log('[DMB] taskTable.js v20260806 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue } from './filterToolbar.js?v=45';
-import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js';
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast } from './filterToolbar.js?v=47';
+import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=47';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=45';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=45';
-import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions } from './tableUtils.js?v=45';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=47';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=47';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=47';
 
 let tasksCache = null;
 let currentView = 'table';
@@ -24,6 +24,12 @@ let columnWidths = {};
 let columnMinWidths = {};
 const columnFixed = {};
 const columnSort = { key: null, dir: 'asc' };
+let paginationPage = 1;
+const PAGE_SIZE = 100;
+const COLUMNS_STORAGE_KEY = 'dmb_backlog_columns_v1';
+let autoRefreshTimer = null;
+let keyboardHandler = null;
+const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
 export function renderTasksPage(app) {
   currentApp = app;
@@ -91,9 +97,11 @@ async function applyDefaultDisplaySettings(app) {
 export async function initTasksPage(app) {
   COLUMN_LABELS = { ...buildColumnLabels(window.app?.fieldLabels || {}) };
   await applyDefaultDisplaySettings(app);
+  loadBacklogColumnState();
   await loadTasks(app);
 
   function onFilterChange() {
+    paginationPage = 1;
     syncQuickFilterButtons('backlog');
     renderCurrentView();
   }
@@ -109,16 +117,36 @@ export async function initTasksPage(app) {
     columnLabels: COLUMN_LABELS,
     defaultColumnSettings: buildColumnSettings({}, DMB_DEFAULT_OVERRIDES),
     onViewChange: (view) => { currentView = view; renderCurrentView(); },
-    onColumnChange: () => renderCurrentView(),
-    onColumnOrderChange: () => renderCurrentView(),
+    onColumnChange: () => { saveBacklogColumnState(); renderCurrentView(); },
+    onColumnOrderChange: () => { saveBacklogColumnState(); renderCurrentView(); },
     onExport: () => { const list = getFilteredList(); exportExcel(list); },
     onImport: () => { importTasksFromExcel(app, loadTasks); },
     onRefresh: () => loadTasks(app),
     onQuickEdit: () => { if (currentView === 'table') { if (isQuickEdit('backlog')) { requestExitQuickEdit('backlog'); } else { enterQuickEdit('backlog'); } } },
-    onBulkOps: () => { if (currentView === 'table') { showBulkOpsModal(app, 'backlog', tasks); } },
+    onBulkOps: () => { if (currentView === 'table') { showBulkOpsModal(app, 'backlog', getFilteredList()); } },
   });
 
   setOnTaskSaved(() => loadTasks(app));
+
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    if (!isQuickEdit('backlog')) loadTasks(app);
+  }, 60000);
+
+  if (keyboardHandler) window.removeEventListener('keydown', keyboardHandler);
+  keyboardHandler = (e) => {
+    if (e.defaultPrevented) return;
+    const tag = document.activeElement?.tagName;
+    const editing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable;
+    if (e.key === '/' && !editing) {
+      e.preventDefault();
+      document.getElementById('f-backlog-search')?.focus();
+    } else if (e.key.toLowerCase() === 'r' && !editing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      loadTasks(app);
+    }
+  };
+  window.addEventListener('keydown', keyboardHandler);
 
   initQuickEdit('backlog', {
     app: currentApp,
@@ -134,10 +162,12 @@ export async function initTasksPage(app) {
     getMinWidths: () => columnMinWidths,
     getLayout: () => ({ cols: columnOrder.filter(k => columnSettings[k]), offset: 0 }),
     getFixed: () => columnFixed,
-    onUnfix: () => renderCurrentView(),
+    onUnfix: () => { saveBacklogColumnState(); renderCurrentView(); },
     onSort: (key) => {
       toggleSortState(columnSort, key);
+      paginationPage = 1;
       setToolbarSortValue('backlog', 'id-desc');
+      saveBacklogColumnState();
       renderCurrentView();
     },
   });
@@ -145,6 +175,40 @@ export async function initTasksPage(app) {
 
 function getColumnLabel(key) {
   return COLUMN_LABELS[key] || key;
+}
+
+function saveBacklogColumnState() {
+  persistColumnState(COLUMNS_STORAGE_KEY, {
+    settings: columnSettings,
+    order: columnOrder,
+    widths: columnWidths,
+    fixed: columnFixed,
+    sort: columnSort,
+  });
+}
+
+function loadBacklogColumnState() {
+  const st = readColumnState(COLUMNS_STORAGE_KEY);
+  if (!st) return;
+  const validKeys = new Set(getAllColumnKeys());
+  if (st.settings) {
+    const newSettings = {};
+    Object.keys(st.settings).forEach(k => { if (validKeys.has(k)) newSettings[k] = st.settings[k]; });
+    columnSettings = buildColumnSettings(newSettings, DMB_DEFAULT_OVERRIDES);
+  }
+  if (Array.isArray(st.order)) columnOrder = st.order.filter(k => validKeys.has(k));
+  if (st.widths) {
+    columnWidths = {};
+    Object.keys(st.widths).forEach(k => { columnWidths[k] = st.widths[k]; });
+  }
+  if (st.fixed) {
+    Object.keys(columnFixed).forEach(k => delete columnFixed[k]);
+    Object.keys(st.fixed).forEach(k => { if (st.fixed[k]) columnFixed[k] = st.fixed[k]; });
+  }
+  if (st.sort && st.sort.key) {
+    columnSort.key = st.sort.key;
+    columnSort.dir = st.sort.dir || 'asc';
+  }
 }
 
 function renderSkeletonRows(count) {
@@ -188,13 +252,41 @@ function renderCurrentView() {
   const list = getFilteredList();
   const countEl = document.getElementById('tasks-count');
   if (countEl) countEl.textContent = `Найдено: ${list.length} задач`;
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  if (paginationPage > totalPages) paginationPage = totalPages;
+  const pageList = list.slice((paginationPage - 1) * PAGE_SIZE, paginationPage * PAGE_SIZE);
   const isMobile = window.innerWidth <= 768;
   const view = isMobile ? 'cards' : currentView;
   if (view === 'cards') {
-    renderCardView(list);
+    renderCardView(pageList);
   } else {
-    renderTableView(list);
+    renderTableView(pageList);
   }
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  const container = document.getElementById('pagination');
+  if (!container) return;
+  if (totalPages <= 1) { container.innerHTML = ''; return; }
+  const pages = [];
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || Math.abs(p - paginationPage) <= 1) pages.push(p);
+  }
+  let html = '';
+  let prev = 0;
+  pages.forEach(p => {
+    if (p - prev > 1) html += '<button class="btn btn-sm btn-ghost" disabled style="opacity:.4;min-width:34px;">…</button>';
+    html += `<button class="btn btn-sm ${p === paginationPage ? 'btn-primary' : 'btn-secondary'}" data-page="${p}" style="min-width:34px;">${p}</button>`;
+    prev = p;
+  });
+  container.innerHTML = html;
+  container.querySelectorAll('[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      paginationPage = parseInt(btn.dataset.page);
+      renderCurrentView();
+    });
+  });
 }
 
 function renderTableView(list) {
@@ -236,6 +328,7 @@ function renderTableView(list) {
       autoSizeColumns(table, visibleCols, columnWidths, columnMinWidths, { offset: 0 });
     }
     applyColumnWidths(table, visibleCols, columnWidths, { offset: 0, fixed: columnFixed });
+    saveBacklogColumnState();
   }
 
   updateStickyOffsets();
@@ -258,8 +351,8 @@ function renderCell(col, task) {
 
   switch (col) {
     case 'id': return `<span class="font-mono text-muted">#${task.id}</span>`;
-    case 'title': return `<strong>${task.title}</strong>`;
-    case 'description': return `<span style="color:var(--text-muted);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">${task.description || '—'}</span>`;
+    case 'title': return `<strong class="cell-truncate">${task.title}</strong>`;
+    case 'description': return `<span class="cell-truncate">${task.description || '—'}</span>`;
     case 'date_received': return `<span>${task.date_received || '—'}</span>`;
     case 'status': return `<span>${renderStatus(task.status_name || task.status)}</span>`;
     case 'priority': return `<span>${renderPriority(task.priority_name || task.priority)}</span>`;
@@ -269,8 +362,8 @@ function renderCell(col, task) {
     case 'department': return `<span>${task.department_name || '—'}</span>`;
     case 'project': return `<span>${task.project_name || '—'}</span>`;
     case 'task_type': return `<span>${task.task_type_name || '—'}</span>`;
-    case 'involved_teams': return `<span>${task.involved_teams || '—'}</span>`;
-    case 'deadline': return `<span>${task.deadline_name || task.deadline || '—'}</span>`;
+    case 'involved_teams': return `<span class="cell-truncate">${task.involved_teams || '—'}</span>`;
+    case 'deadline': return `<span>${renderDeadline(task)}</span>`;
     case 'deadline_po': return `<span>${task.deadline_po_name || '—'}</span>`;
     case 'effort_days': return `<span>${task.effort_days != null ? task.effort_days + ' дн' : '—'}</span>`;
     case 'effort_rub': return `<span class="font-mono">${metricFormat(task.effort_rub)}</span>`;
@@ -296,13 +389,13 @@ function renderCell(col, task) {
     case 'cv': return `<span>${renderCV(task)}</span>`;
     case 'progress': return `<span>${renderProgress(task.progress)}</span>`;
     case 'owner': return `<span>${task.owner_name || task.owner || '—'}</span>`;
-    case 'key_project_status': return `<span>${task.key_project_status || '—'}</span>`;
-    case 'directorate_status': return `<span>${task.directorate_status || '—'}</span>`;
-    case 'did_status': return `<span>${task.did_status || '—'}</span>`;
+    case 'key_project_status': return `<span class="cell-truncate">${task.key_project_status || '—'}</span>`;
+    case 'directorate_status': return `<span class="cell-truncate">${task.directorate_status || '—'}</span>`;
+    case 'did_status': return `<span class="cell-truncate">${task.did_status || '—'}</span>`;
     case 'link_mockups': return `<span>${task.link_mockups ? `<a href="${task.link_mockups}" target="_blank" style="color:var(--accent)">Макеты</a>` : '—'}</span>`;
     case 'link_jira': return `<span>${task.link_jira ? `<a href="${task.link_jira}" target="_blank" style="color:var(--accent)">Jira</a>` : '—'}</span>`;
-    case 'rejection_reason': return `<span>${task.rejection_reason || '—'}</span>`;
-    case 'comment': return `<span>${task.comment || '—'}</span>`;
+    case 'rejection_reason': return `<span class="cell-truncate">${task.rejection_reason || '—'}</span>`;
+    case 'comment': return `<span class="cell-truncate">${task.comment || '—'}</span>`;
     case 'created_at': return `<span>${task.created_at || '—'}</span>`;
     case 'updated_at': return `<span>${task.updated_at || '—'}</span>`;
     case 'metric_kr_plan':
@@ -350,6 +443,12 @@ function renderCardView(list) {
 
 function renderCard(task) {
   return renderTaskCard(task);
+}
+
+function renderDeadline(task) {
+  const dl = task.deadline_name || task.deadline || '—';
+  const overdue = dl !== '—' && task.deadline_id != null && !TERMINAL_STATUSES.includes(task.status_name) && isDeadlinePast(dl);
+  return overdue ? `<span style="color:#ef4444;font-weight:600;">${dl}</span>` : `<span>${dl}</span>`;
 }
 
 function renderPriority(priority) {

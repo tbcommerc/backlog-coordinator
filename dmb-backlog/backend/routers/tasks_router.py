@@ -41,9 +41,7 @@ SORT_FIELD_MAP = {
 
 def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
     """Convert Task ORM object to TaskResponse schema"""
-    cv = None
-    if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
-        cv = round(task.financial_effect / task.effort_rub, 2)
+    cv = task.cv
 
     involved_team_names = None
     if task.involved_teams:
@@ -66,6 +64,7 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         department_id=task.department_id,
         project_id=task.project_id,
         task_type_id=task.task_type_id,
+        task_type_name=task.task_type.name if task.task_type else None,
         involved_teams=task.involved_teams,
         priority_id=task.priority_id,
         status_id=task.status_id,
@@ -91,18 +90,30 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         actual_effort_delivery=task.actual_effort_delivery,
         financial_effect=task.financial_effect,
         financial_effect_justification=task.financial_effect_justification,
+        financial_effect_ai=task.financial_effect_ai,
+        financial_effect_ai_justification=task.financial_effect_ai_justification,
+        priority_score=task.priority_score,
+        priority_justification=task.priority_justification,
+        assessment_weight=task.assessment_weight,
+        completion_forecast=task.completion_forecast,
+        hard_score=task.hard_score,
+        soft_score=task.soft_score,
         progress=task.progress,
         link_mockups=task.link_mockups,
         link_jira=task.link_jira,
+        link_requirements=task.link_requirements,
         rejection_reason=task.rejection_reason,
         comment=task.comment,
         owner_id=task.owner_id,
         key_project_status=task.key_project_status,
         key_project_status_updated_at=task.key_project_status_updated_at,
+        prev_key_project_status=task.prev_key_project_status,
         directorate_status=task.directorate_status,
         directorate_status_updated_at=task.directorate_status_updated_at,
+        prev_directorate_status=task.prev_directorate_status,
         did_status=task.did_status,
         did_status_updated_at=task.did_status_updated_at,
+        prev_did_status=task.prev_did_status,
         metric_kr_plan=task.metric_kr_plan,
         metric_kr_fact=task.metric_kr_fact,
         metric_kr_unit=task.metric_kr_unit,
@@ -266,7 +277,7 @@ def recalculate_effort_rub_for_all(db: Session) -> int:
         if new_rub is not None and new_rub != task.effort_rub:
             task.effort_rub = new_rub
             if task.financial_effect is not None and new_rub > 0:
-                task.cv = round(task.financial_effect / new_rub, 2)
+                task.cv = round(float(task.financial_effect) / float(new_rub), 2)
             else:
                 task.cv = None
             changed += 1
@@ -860,6 +871,174 @@ async def get_tribe_dashboard(
     }
 
 
+@router.get("/analytics/lt-reports")
+async def get_lt_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Единый датасет для отчётов «Аналитики Лидера Трайба»:
+    1) Трудозатраты по типам задач; 2) Потоки работ (заказчики → команды → типы);
+    3) Карта взаимосвязей команд. Возвращает агрегации по всем периодам сразу.
+
+    Периоды определяются динамически по плановым дедлайнам задач:
+    - кварталы «NQ YYYY»;
+    - год «YYYY год» = сумма квартальных дедлайнов года + годовой дедлайн «YYYYY».
+    """
+    query = db.query(Task).filter(Task.is_deleted == False)
+
+    scope = "tribe"
+    if not check_permission(current_user, "backlog_dmb", "read"):
+        user_team_id = current_user.team_id
+        if user_team_id:
+            query = query.filter(Task.team_id == user_team_id)
+            scope = "team"
+        else:
+            query = query.filter(False)
+
+    tasks = query.all()
+    team_names = {t.id: t.name for t in db.query(Team).all()}
+
+    q_re = re.compile(r"^(\d)Q\s*(\d{4})$")
+    y_re = re.compile(r"^Y\s*(\d{4})$")
+    q_groups = {}
+    y_groups = {}
+    for t in tasks:
+        dl_name = t.deadline.name if t.deadline else None
+        if not dl_name:
+            continue
+        m = q_re.match(dl_name.strip())
+        if m:
+            q_groups.setdefault(int(m.group(2)), {}).setdefault(int(m.group(1)), []).append(t)
+            continue
+        m2 = y_re.match(dl_name.strip())
+        if m2:
+            y_groups.setdefault(int(m2.group(1)), []).append(t)
+
+    periods = []
+    period_map = {}
+    today = date.today()
+    current_year = today.year
+    if current_year in set(list(q_groups.keys()) + list(y_groups.keys())):
+        qs = q_groups.get(current_year, {})
+        for q in range(1, 5):
+            if q not in qs:
+                continue
+            pid = "q{}_{}".format(q, current_year)
+            period_map[pid] = {"label": "{}Q {}".format(q, current_year), "tasks": qs[q]}
+            periods.append(pid)
+        qts = [t for q in range(1, 5) for t in qs.get(q, [])]
+        yts = y_groups.get(current_year, [])
+        if qts or yts:
+            pid = "y{}".format(current_year)
+            period_map[pid] = {"label": "{} год".format(current_year), "tasks": qts + yts}
+            periods.append(pid)
+
+    today = date.today()
+    cur_q = (today.month - 1) // 3 + 1
+    cur_pid = "q{}_{}".format(cur_q, today.year)
+    active_period = cur_pid if cur_pid in period_map else (periods[0] if periods else None)
+
+    def effort_rows(ts):
+        rows = {}
+        for t in ts:
+            tn = t.task_type.name if t.task_type else "Без типа"
+            tm = t.team.name if t.team else "Без команды"
+            days = float(t.effort_days or 0)
+            r = rows.setdefault(tn, {"type": tn, "tasks": 0, "days": 0.0, "by_team": {}})
+            r["tasks"] += 1
+            r["days"] += days
+            bt = r["by_team"].setdefault(tm, {"tasks": 0, "days": 0.0})
+            bt["tasks"] += 1
+            bt["days"] += days
+        out = [
+            {
+                "type": r["type"],
+                "tasks": r["tasks"],
+                "days": round(r["days"], 1),
+                "by_team": {k: {"tasks": v["tasks"], "days": round(v["days"], 1)} for k, v in r["by_team"].items()},
+            }
+            for r in rows.values()
+        ]
+        out.sort(key=lambda x: (-x["days"], -x["tasks"]))
+        return out
+
+    def sankey_data(ts):
+        customers, teams, types = [], [], []
+        cset, tset, yset = {}, {}, {}
+        c2t, t2y = {}, {}
+        for t in ts:
+            c = t.business_customer_rel.name if t.business_customer_rel else "Без заказчика"
+            tm = t.team.name if t.team else "Без команды"
+            ty = t.task_type.name if t.task_type else "Без типа"
+            days = float(t.effort_days or 0)
+            if c not in cset:
+                cset[c] = 1
+                customers.append(c)
+            if tm not in tset:
+                tset[tm] = 1
+                teams.append(tm)
+            if ty not in yset:
+                yset[ty] = 1
+                types.append(ty)
+            a = c2t.setdefault((c, tm), {"tasks": 0, "days": 0.0})
+            a["tasks"] += 1
+            a["days"] += days
+            b = t2y.setdefault((tm, ty), {"tasks": 0, "days": 0.0})
+            b["tasks"] += 1
+            b["days"] += days
+        links = []
+        for (c, tm), v in c2t.items():
+            links.append({"source": c, "target": tm, "tasks": v["tasks"], "days": round(v["days"], 1)})
+        for (tm, ty), v in t2y.items():
+            links.append({"source": tm, "target": ty, "tasks": v["tasks"], "days": round(v["days"], 1)})
+        return {"customers": customers, "teams": teams, "types": types, "links": links}
+
+    def map_data(ts):
+        stat = {}
+        edges = {}
+        for t in ts:
+            main = t.team.name if t.team else None
+            ids = [i for i in (t.involved_teams or []) if isinstance(i, int)]
+            if main is None or not ids:
+                continue
+            s = stat.setdefault(main, {"asMain": 0, "asPartner": 0})
+            s["asMain"] += 1
+            for i in ids:
+                pn = team_names.get(i)
+                if not pn:
+                    continue
+                stat.setdefault(pn, {"asMain": 0, "asPartner": 0})["asPartner"] += 1
+                edges[(main, pn)] = edges.get((main, pn), 0) + 1
+        teams_out = [
+            {"name": k, "asMain": v["asMain"], "asPartner": v["asPartner"]}
+            for k, v in stat.items()
+        ]
+        teams_out.sort(key=lambda x: -(x["asMain"] + x["asPartner"]))
+        edges_out = [
+            {"source": k[0], "target": k[1], "count": v}
+            for k, v in sorted(edges.items(), key=lambda kv: -kv[1])
+        ]
+        return {"teams": teams_out, "edges": edges_out}
+
+    effort_by_type = {}
+    sankey = {}
+    map_reports = {}
+    for pid, meta in period_map.items():
+        ts = meta["tasks"]
+        effort_by_type[pid] = effort_rows(ts)
+        sankey[pid] = sankey_data(ts)
+        map_reports[pid] = map_data(ts)
+
+    return {
+        "periods": [{"id": p, "label": period_map[p]["label"]} for p in periods],
+        "active_period": active_period,
+        "scope": scope,
+        "effort_by_type": effort_by_type,
+        "sankey": sankey,
+        "map": map_reports,
+    }
+
+
 # ==================== TASK LOCK ====================
 
 LOCK_DURATION_MINUTES = 15
@@ -926,7 +1105,6 @@ async def acquire_task_lock(task_id: int, db: Session = Depends(get_db), current
 
     task.lock_owner_id = current_user.id
     task.lock_until = new_until
-    task.version = (task.version or 0) + 1
     db.commit()
     db.refresh(task)
 
@@ -1120,10 +1298,19 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
         actual_effort_delivery=task_data.actual_effort_delivery,
         financial_effect=task_data.financial_effect,
         financial_effect_justification=task_data.financial_effect_justification,
+        financial_effect_ai=task_data.financial_effect_ai,
+        financial_effect_ai_justification=task_data.financial_effect_ai_justification,
+        priority_score=task_data.priority_score,
+        priority_justification=task_data.priority_justification,
+        assessment_weight=task_data.assessment_weight,
+        completion_forecast=task_data.completion_forecast,
+        hard_score=task_data.hard_score,
+        soft_score=task_data.soft_score,
         cv=cv,
         progress=task_data.progress,
         link_mockups=task_data.link_mockups,
         link_jira=task_data.link_jira,
+        link_requirements=task_data.link_requirements,
         rejection_reason=task_data.rejection_reason,
         comment=task_data.comment,
         owner_id=task_data.owner_id,
@@ -1219,6 +1406,9 @@ async def update_task(
         # Capture old values before changes
         old_status_id = task.status_id
         old_owner_id = task.owner_id
+        old_dir_status = task.directorate_status
+        old_did_status = task.did_status
+        old_key_status = task.key_project_status
 
         update_data = task_data.model_dump(exclude_unset=True)
         logger.info(f"[update_task] task_id={task_id}, update_data={update_data}")
@@ -1237,7 +1427,7 @@ async def update_task(
                     "message": "Задача была изменена другим пользователем. Пожалуйста, обновите страницу и повторите изменения.",
                     "current_version": task.version or 0,
                     "submitted_version": submitted_version,
-                    "task": current.model_dump()
+                    "task": current.model_dump(mode="json")
                 }
             )
 
@@ -1280,17 +1470,44 @@ async def update_task(
         # Auto-calculate C/V if financial_effect or effort_rub changed
         if 'financial_effect' in update_data or 'effort_rub' in update_data:
             if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
-                task.cv = round(task.financial_effect / task.effort_rub, 2)
+                task.cv = round(float(task.financial_effect) / float(task.effort_rub), 2)
             else:
                 task.cv = None
 
-        # Auto-set timestamps when status fields change
+        # Auto-set timestamps when status fields change; shift old status into prev_*
         from datetime import datetime, timezone
         if 'directorate_status' in update_data:
+            if 'prev_directorate_status' not in update_data and old_dir_status:
+                task.prev_directorate_status = old_dir_status
+                db.add(TaskHistory(
+                    task_id=task.id,
+                    changed_by=current_user.id,
+                    field_name='prev_directorate_status',
+                    old_value=None,
+                    new_value=old_dir_status,
+                ))
             task.directorate_status_updated_at = datetime.now(timezone.utc)
         if 'did_status' in update_data:
+            if 'prev_did_status' not in update_data and old_did_status:
+                task.prev_did_status = old_did_status
+                db.add(TaskHistory(
+                    task_id=task.id,
+                    changed_by=current_user.id,
+                    field_name='prev_did_status',
+                    old_value=None,
+                    new_value=old_did_status,
+                ))
             task.did_status_updated_at = datetime.now(timezone.utc)
         if 'key_project_status' in update_data:
+            if 'prev_key_project_status' not in update_data and old_key_status:
+                task.prev_key_project_status = old_key_status
+                db.add(TaskHistory(
+                    task_id=task.id,
+                    changed_by=current_user.id,
+                    field_name='prev_key_project_status',
+                    old_value=None,
+                    new_value=old_key_status,
+                ))
             task.key_project_status_updated_at = datetime.now(timezone.utc)
 
         # Notifications: status change
@@ -1380,6 +1597,14 @@ async def get_task_documents(task_id: int, db: Session = Depends(get_db), curren
                     docs.append({"type": "jira", "title": "Jira Task", "url": url})
         else:
             docs.append({"type": "jira", "title": "Jira Task", "url": task.link_jira})
+
+    if task.link_requirements:
+        if isinstance(task.link_requirements, list):
+            for url in task.link_requirements:
+                if url:
+                    docs.append({"type": "requirements", "title": "Бизнес-требования", "url": url})
+        else:
+            docs.append({"type": "requirements", "title": "Бизнес-требования", "url": task.link_requirements})
 
     return {"documents": docs}
 
@@ -1787,191 +2012,27 @@ async def import_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Import tasks from CSV file"""
-    import csv
-    import io
+    """Import tasks from CSV file with validation, error reporting and audit logging.
 
-    if not file.filename or not file.filename.endswith('.csv'):
+    Поля CSV сопоставляются по умолчанию (русские метки из field_labels / DB-ключи).
+    Ошибочные строки пропускаются, валидные импортируются. Разделитель определяется
+    автоматически (запятая или точка с запятой).
+    """
+    import import_service
+
+    if not file.filename or not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Только CSV файлы поддерживаются")
 
+    if not check_permission(current_user, "backlog_team", "write_own"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
     content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Файл пуст")
+
     try:
-        decoded_content = content.decode('utf-8-sig')
-    except UnicodeDecodeError:
-        try:
-            decoded_content = content.decode('cp1251')
-        except UnicodeDecodeError:
-            raise HTTPException(status_code=400, detail="Не удалось декодировать файл. Убедитесь, что файл в формате UTF-8 или Windows-1251")
-
-    reader = csv.DictReader(io.StringIO(decoded_content), delimiter=';')
-    headers = reader.fieldnames or []
-
-    rows = list(reader)
-
-    created = 0
-    updated = 0
-    errors = []
-
-    FIELD_MAP = {
-        'id': 'id',
-        'title': 'title',
-        'description': 'description',
-        'date_received': 'date_received',
-        'channel_id': 'channel_id',
-        'business_customer_id': 'business_customer_id',
-        'department_id': 'department_id',
-        'project_id': 'project_id',
-        'task_type_id': 'task_type_id',
-        'priority_id': 'priority_id',
-        'status_id': 'status_id',
-        'deadline_id': 'deadline_id',
-        'effort_days': 'effort_days',
-        'effort_rub': 'effort_rub',
-        'effort_designee': 'effort_designee',
-        'effort_analytics': 'effort_analytics',
-        'effort_be': 'effort_be',
-        'effort_python_be': 'effort_python_be',
-        'effort_fe': 'effort_fe',
-        'effort_test': 'effort_test',
-        'effort_test_auto': 'effort_test_auto',
-        'effort_delivery': 'effort_delivery',
-        'actual_effort_days': 'actual_effort_days',
-        'actual_effort_designee': 'actual_effort_designee',
-        'actual_effort_analytics': 'actual_effort_analytics',
-        'actual_effort_be': 'actual_effort_be',
-        'actual_effort_python_be': 'actual_effort_python_be',
-        'actual_effort_fe': 'actual_effort_fe',
-        'actual_effort_test': 'actual_effort_test',
-        'actual_effort_test_auto': 'actual_effort_test_auto',
-        'actual_effort_delivery': 'actual_effort_delivery',
-        'financial_effect': 'financial_effect',
-        'financial_effect_justification': 'financial_effect_justification',
-        'progress': 'progress',
-        'link_mockups': 'link_mockups',
-        'link_jira': 'link_jira',
-        'rejection_reason': 'rejection_reason',
-        'comment': 'comment',
-        'owner_id': 'owner_id',
-        'key_project_status': 'key_project_status',
-        'directorate_status': 'directorate_status',
-        'did_status': 'did_status',
-        'did_demo': 'did_demo',
-        'metric_kr_plan': 'metric_kr_plan',
-        'metric_kr_fact': 'metric_kr_fact',
-        'involved_teams': 'involved_teams',
-        'created_by': 'created_by',
-    }
-
-    for row_num, row in enumerate(rows, start=2):
-        try:
-            task_id = row.get('id') or None
-            if task_id:
-                try:
-                    task_id = int(task_id)
-                except (ValueError, TypeError):
-                    task_id = None
-
-            if task_id:
-                existing_task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-                if existing_task:
-                    errors.append({
-                        "row": row_num,
-                        "id": task_id,
-                        "message": f"Задача с ID {task_id} уже существует"
-                    })
-                    continue
-
-            task_data = {}
-            for csv_col, model_col in FIELD_MAP.items():
-                val = row.get(csv_col)
-                if val is None or val == '':
-                    continue
-
-                if model_col in ('effort_days', 'effort_rub', 'financial_effect',
-                                  'effort_designee', 'effort_analytics', 'effort_be',
-                                  'effort_python_be', 'effort_fe', 'effort_test',
-                                  'effort_test_auto', 'effort_delivery',
-                                  'actual_effort_days', 'actual_effort_designee',
-                                  'actual_effort_analytics', 'actual_effort_be',
-                                  'actual_effort_python_be', 'actual_effort_fe',
-                                  'actual_effort_test',
-                                  'actual_effort_test_auto', 'actual_effort_delivery',
-                                  'metric_kr_plan', 'metric_kr_fact'):
-                    try:
-                        val = float(val) if val and val != '' else None
-                    except (ValueError, TypeError):
-                        val = None
-
-                elif model_col in ('priority_id', 'status_id', 'team_id', 'channel_id',
-                                    'department_id', 'project_id', 'task_type_id',
-                                    'deadline_id', 'owner_id', 'created_by'):
-                    try:
-                        val = int(val) if val and val != '' else None
-                    except (ValueError, TypeError):
-                        val = None
-
-                elif model_col in ('progress', 'did_demo'):
-                    val = str(val).lower() in ('true', '1', 'yes', 'да') if val else False
-
-                elif model_col == 'date_received':
-                    if val:
-                        for fmt in ('%Y-%m-%d', '%d.%m.%Y', '%d/%m/%Y'):
-                            try:
-                                val = datetime.strptime(val, fmt).date()
-                                break
-                            except ValueError:
-                                continue
-                        else:
-                            val = None
-
-                elif model_col == 'link_jira':
-                    if val:
-                        val = [v.strip() for v in str(val).split(',') if v.strip()]
-
-                elif model_col == 'involved_teams':
-                    if val:
-                        teams = []
-                        for v in str(val).split(','):
-                            try:
-                                teams.append(int(v.strip()))
-                            except (ValueError, TypeError):
-                                pass
-                        val = teams if teams else None
-
-                task_data[model_col] = val
-
-            if not task_data.get('title'):
-                errors.append({
-                    "row": row_num,
-                    "id": task_id,
-                    "message": "Отсутствует обязательное поле 'title'"
-                })
-                continue
-
-            if not task_data.get('team_id'):
-                errors.append({
-                    "row": row_num,
-                    "id": task_id,
-                    "message": "Отсутствует обязательное поле 'team_id'"
-                })
-                continue
-
-            task = Task(**task_data)
-            task.actual_effort_days = compute_actual_effort_days({f: getattr(task, f) for f in ACTUAL_EFFORT_FIELDS})
-            db.add(task)
-            created += 1
-
-        except Exception as e:
-            errors.append({
-                "row": row_num,
-                "id": row.get('id'),
-                "message": str(e)
-            })
-
-    db.commit()
-
-    return {
-        "created": created,
-        "updated": updated,
-        "errors": errors
-    }
+        return import_service.import_tasks_from_csv(db, content, current_user)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка импорта: {e}")

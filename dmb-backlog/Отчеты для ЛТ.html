@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="ru" data-accent="indigo" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Аналитика ЛТ — Трудозатраты по типам задач</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/cyrillic-400-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/cyrillic-500-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-500-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/cyrillic-600-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/cyrillic-700-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/unbounded@latest/cyrillic-700-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/unbounded@latest/latin-700-normal.css">
+<style>
+:root{
+  --bg-primary:#0f0f23; --bg-secondary:#1a1a2e; --bg-tertiary:#16213e; --bg-elevated:#232342;
+  --bg-hover:rgba(255,255,255,0.05); --bg-active:rgba(255,255,255,0.08);
+  --border-color:#2a2a4a; --border-hover:#3a3a5a; --border-focus:var(--accent);
+  --text-primary:#ffffff; --text-secondary:#a0a0b0; --text-muted:#6b6b80; --text-inverse:#0f0f23; --text-link:var(--accent);
+  --accent:#6366f1; --accent-hover:#5558e8; --accent-light:rgba(99,102,241,0.12); --accent-medium:rgba(99,102,241,0.25);
+  --success:#10b981; --warning:#f59e0b; --danger:#ef4444; --info:#3b82f6;
+  --font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --text-xs:0.75rem; --text-sm:0.875rem; --text-base:1rem; --text-lg:1.125rem; --text-xl:1.25rem; --text-2xl:1.5rem;
+  --font-normal:400; --font-medium:500; --font-semibold:600; --font-bold:700;
+  --line-height-tight:1.25; --line-height-normal:1.5;
+  --space-1:0.25rem; --space-2:0.5rem; --space-3:0.75rem; --space-4:1rem; --space-5:1.25rem; --space-6:1.5rem; --space-8:2rem;
+  --radius-sm:4px; --radius-md:8px; --radius-lg:12px; --radius-xl:16px; --radius-full:9999px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.3); --shadow-md:0 4px 12px rgba(0,0,0,0.4); --shadow-lg:0 8px 24px rgba(0,0,0,0.5);
+  --transition-fast:0.15s ease; --transition-normal:0.2s ease;
+  --z-sticky:200; --z-fixed:300;
+  --sidebar-width:260px; --sidebar-collapsed-width:64px; --navbar-height:64px;
+}
+[data-theme="light"]{
+  --bg-primary:#f8fafc; --bg-secondary:#ffffff; --bg-tertiary:#f1f5f9; --bg-elevated:#ffffff;
+  --border-color:#e2e8f0; --border-hover:#cbd5e1;
+  --text-primary:#1e293b; --text-secondary:#64748b; --text-muted:#94a3b8;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--font-family);font-size:var(--text-sm);line-height:var(--line-height-normal);color:var(--text-primary);background-color:var(--bg-primary)}
+a{color:var(--text-link);text-decoration:none;transition:color var(--transition-fast)}
+img,svg{display:block;max-width:100%}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--bg-primary)}
+::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:var(--radius-full)}
+h1,h2,h3,h4,h5,h6{font-weight:var(--font-semibold);line-height:var(--line-height-tight);color:var(--text-primary)}
+h1{font-size:var(--text-2xl)} h3{font-size:var(--text-xl)}
+p{color:var(--text-secondary)}
+.hidden{display:none !important}
+#app{min-height:100vh;display:flex;overflow-x:visible}
+.main-wrapper{flex:1;margin-left:var(--sidebar-width);min-height:100vh;display:flex;flex-direction:column;transition:margin-left 0.3s ease;background:var(--bg-primary);min-width:0}
+.main-content{flex:1;padding:var(--space-8);background:var(--bg-primary);min-width:0}
+.page-header{margin-bottom:var(--space-6)}
+.page-header h1{margin-bottom:var(--space-1)}
+.page-header p{color:var(--text-secondary);font-size:var(--text-sm)}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:calc(var(--z-fixed) - 1)}
+.sidebar{width:var(--sidebar-width);height:100vh;position:fixed;left:0;top:0;background:var(--bg-secondary);border-right:1px solid var(--border-color);display:flex;flex-direction:column;padding:var(--space-4);z-index:var(--z-fixed);transition:width 0.3s ease}
+.sidebar-logo{display:flex;align-items:center;gap:var(--space-3);padding:0 var(--space-2);margin-bottom:var(--space-6)}
+.sidebar-logo .logo-icon{width:36px;height:36px;background:var(--accent);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:white;font-weight:var(--font-bold);font-size:var(--text-lg);flex-shrink:0}
+.sidebar-logo .logo-text{font-weight:var(--font-bold);font-size:var(--text-base)}
+.sidebar-nav{flex:1;overflow-y:auto}
+.sidebar-section{margin-bottom:var(--space-6)}
+.sidebar-section-title{font-size:var(--text-xs);font-weight:var(--font-semibold);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;padding:0 var(--space-3);margin-bottom:var(--space-2)}
+.sidebar-item-sub{padding-left:calc(var(--space-3) + 28px)}
+.sidebar-item-sub svg{width:16px;height:16px}
+.sidebar-item{display:flex;align-items:center;gap:var(--space-3);padding:10px var(--space-3);border-radius:var(--radius-md);color:var(--text-secondary);text-decoration:none;transition:all var(--transition-fast);margin-bottom:2px;cursor:pointer}
+.sidebar-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.sidebar-item.active{background:var(--accent-light);color:var(--accent)}
+.sidebar-item svg{width:20px;height:20px;flex-shrink:0}
+.sidebar-item .item-badge{margin-left:auto;background:var(--danger);color:white;font-size:10px;padding:2px 6px;border-radius:var(--radius-full);min-width:18px;text-align:center}
+.sidebar-toggle{position:absolute;bottom:12px;right:12px;width:28px;height:28px;border-radius:50%;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.2s;z-index:5}
+.sidebar-toggle:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--accent)}
+.sidebar-toggle svg{transition:transform 0.3s ease}
+.sidebar.collapsed{width:var(--sidebar-collapsed-width);padding:var(--space-2)}
+.sidebar.collapsed ~ .main-wrapper{margin-left:var(--sidebar-collapsed-width)}
+.sidebar.collapsed .logo-text,.sidebar.collapsed .sidebar-section-title,.sidebar.collapsed .sidebar-item > span{display:none}
+.sidebar.collapsed .sidebar-logo{justify-content:center;padding:var(--space-2) 0;margin-bottom:var(--space-4);gap:0}
+.sidebar.collapsed .sidebar-item{justify-content:center;padding:10px 0;gap:0}
+.sidebar.collapsed .sidebar-item-sub{padding-left:0}
+.sidebar.collapsed .sidebar-toggle{right:8px;bottom:8px}
+.sidebar.collapsed .sidebar-toggle svg{transform:rotate(180deg)}
+.navbar{height:var(--navbar-height);background:var(--bg-secondary);border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;padding:0 var(--space-8);position:sticky;top:0;z-index:var(--z-sticky)}
+.btn-hamburger{display:none;padding:8px;border-radius:8px;background:transparent;cursor:pointer;color:var(--text-primary)}
+.navbar-right{display:flex;align-items:center;gap:var(--space-3);flex-shrink:0}
+.notif-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;background:var(--danger);color:white;font-size:10px;font-weight:700;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-secondary)}
+.search-input{width:100%;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:8px 12px 8px 36px;color:var(--text-primary);font-size:var(--text-sm);transition:all var(--transition-fast)}
+.search-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.search-input::placeholder{color:var(--text-muted)}
+@media (max-width:768px){
+  .sidebar{transform:translateX(-100%);transition:transform 0.3s ease,width 0.3s ease}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar.open ~ .sidebar-backdrop{display:block}
+  .main-wrapper{margin-left:0}
+  .main-content{padding:var(--space-4)}
+  .navbar{padding:0 var(--space-4) !important}
+  .navbar .search-wrap{display:none}
+  .btn-hamburger{display:flex;align-items:center;justify-content:center}
+}
+@media (max-width:480px){
+  .main-content{padding:var(--space-3)}
+  .navbar{padding:0 var(--space-3) !important;gap:var(--space-2)}
+  .navbar .navbar-right{gap:2px}
+  .page-header h1{font-size:var(--text-xl)}
+}
+.effort-report{display:flex;flex-direction:column;gap:var(--space-5);animation:fadeIn .4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes rowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-4)}
+.kpi{background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px 18px;display:flex;gap:14px;align-items:center;transition:border-color .2s,transform .2s,box-shadow .2s}
+.kpi:hover{border-color:var(--border-hover);transform:translateY(-2px);box-shadow:0 10px 28px -16px rgba(30,41,59,.28)}
+.kpi-ic{width:42px;height:42px;flex:0 0 42px;border-radius:11px;display:flex;align-items:center;justify-content:center;color:var(--kc);background:var(--kc-bg)}
+.kpi-ic svg{width:21px;height:21px}
+.kpi-val{font-family:'Unbounded',var(--font-family);font-weight:700;font-size:20px;line-height:1.2;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.kpi-val.k-topname{font-family:var(--font-family);font-size:14.5px;display:flex;align-items:center;gap:8px;min-height:22px}
+.kpi-lab{font-size:12px;color:var(--text-muted);margin-top:3px}
+.kpi-lab b{color:var(--text-secondary);font-weight:600}
+.rep-card{background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-xl);overflow:hidden}
+.rep-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;border-bottom:1px solid var(--border-color);flex-wrap:wrap}
+.rep-title{flex:1;min-width:220px;overflow:hidden}
+.rep-title h3{font-size:16px;font-weight:700;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.rep-title h3::before{content:'';width:4px;height:16px;border-radius:4px;background:linear-gradient(180deg,#6366f1,#8b5cf6);flex-shrink:0}
+.rep-sub{font-size:12.5px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rep-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dd{position:relative}
+.dd-btn{display:flex;align-items:center;gap:8px;width:300px;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-md);font-size:13.5px;font-weight:600;color:var(--text-primary);transition:border-color .15s,box-shadow .15s}
+.dd-btn:hover{border-color:var(--border-hover)}
+.dd.open .dd-btn{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.dd-btn svg{width:16px;height:16px;color:var(--text-muted);flex-shrink:0}
+.dd-btn .dd-label{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-btn .chev{transition:transform .2s;flex-shrink:0}
+.dd.open .chev{transform:rotate(180deg)}
+.dd-panel{position:absolute;right:0;top:calc(100% + 6px);width:300px;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-lg);box-shadow:0 16px 40px -12px rgba(30,41,59,.30);padding:6px;opacity:0;transform:translateY(-6px);pointer-events:none;transition:.18s ease;z-index:120}
+.dd.open .dd-panel{opacity:1;transform:none;pointer-events:auto}
+.dd-item{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:8px;font-size:13.5px;color:var(--text-primary);text-align:left;transition:background .12s}
+.dd-item:hover{background:var(--bg-hover)}
+.dd-item.sel{color:var(--accent);font-weight:600}
+.dd-item .chk{width:16px;height:16px;color:var(--accent);opacity:0;flex-shrink:0}
+.dd-item.sel .chk{opacity:1}
+.seg{position:relative;display:grid;grid-template-columns:1fr 1fr;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:3px}
+.seg-thumb{position:absolute;top:3px;left:3px;bottom:3px;width:calc(50% - 3px);background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;box-shadow:0 1px 3px rgba(30,41,59,.14);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+.seg-btn{position:relative;z-index:1;font-size:13px;font-weight:600;color:var(--text-muted);padding:6px 14px;white-space:nowrap;transition:color .2s}
+.seg-btn.active{color:var(--text-primary)}
+.seg-5{grid-template-columns:repeat(5,1fr)}
+.seg-5 .seg-thumb{width:calc(20% - 1.2px)}
+.seg-5 .seg-btn{padding:6px 10px;font-size:12.5px}
+.rep-body{display:grid;grid-template-columns:290px 1fr;gap:24px;padding:24px;align-items:center}
+.donut-wrap{position:relative;width:236px;height:236px;margin:0 auto}
+.donut{width:100%;height:100%;overflow:visible}
+.donut-track{fill:none;stroke:var(--bg-tertiary);stroke-width:25}
+.arc{fill:none;stroke-width:25;transition:opacity .2s ease,stroke-width .2s ease;cursor:pointer}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;pointer-events:none;text-align:center;padding:0 34px}
+.dc-num{font-family:'Unbounded',var(--font-family);font-weight:700;font-size:27px;line-height:1;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.dc-lab{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)}
+.dc-sub{font-size:11.5px;color:var(--text-muted);white-space:nowrap}
+.donut-cap{margin-top:14px;text-align:center;font-size:11.5px;color:var(--text-muted)}
+.table-wrap{overflow-x:auto}
+.rep-table{width:100%;border-collapse:collapse;min-width:560px;table-layout:fixed}
+.rep-table th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:700;text-align:right;padding:10px 12px;border-bottom:1px solid var(--border-color);white-space:nowrap;overflow:hidden}
+.rep-table th:first-child{text-align:left}
+.th-in{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--text-secondary)}
+th.sorted{color:var(--accent)}
+.arr{font-size:11px;opacity:.5}
+th.sorted .arr{opacity:1}
+.rep-table tbody td{padding:11px 12px;border-bottom:1px solid var(--border-color);font-size:13.5px;text-align:right;font-variant-numeric:tabular-nums;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rep-table tbody td:first-child{text-align:left}
+.rep-table tbody tr{transition:background .15s ease}
+.rep-table tbody tr:hover,.rep-table tbody tr.hot{background:var(--bg-tertiary)}
+.rep-table tbody tr.zero td{color:var(--text-muted)}
+.t-name{display:flex;align-items:center;gap:10px;font-weight:600;overflow:hidden}
+.t-name .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--c,#6366f1);flex-shrink:0;box-shadow:0 0 0 3px var(--ring,rgba(99,102,241,.15))}
+.no-eff{font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);background:var(--bg-tertiary);border:1px solid var(--border-color);padding:2px 7px;border-radius:999px;flex-shrink:0}
+.t-share{display:flex;align-items:center;gap:12px;justify-content:flex-end}
+.bar{flex:1;max-width:160px;height:7px;border-radius:999px;background:var(--bg-tertiary);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:999px;background:var(--c,#6366f1)}
+.pct{font-weight:700;font-size:13px;min-width:54px}
+.rep-table tfoot td{padding:13px 12px;font-weight:700;font-size:13.5px;text-align:right;background:var(--bg-tertiary);border-top:1px solid var(--border-color);font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.rep-table tfoot td:first-child{text-align:left}
+@media (max-width:1100px){.rep-body{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:768px){.rep-controls{width:100%}.dd,.dd-btn,.dd-panel{width:100%}.seg{flex:1}}
+@media (max-width:560px){.kpi-grid{grid-template-columns:1fr}}
+.skp-card{background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-xl);padding:20px 24px;margin-top:24px}
+.skp-card h2{margin:0 0 4px;font-size:18px;color:var(--text-primary)}
+.skp-card h3{margin:18px 0 8px;font-size:14px;color:var(--text-primary)}
+.skp-sub{color:var(--text-muted);font-size:13px;margin:0 0 16px}
+.skp-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.skp-seg{display:inline-flex;flex-wrap:wrap;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:10px;padding:3px;gap:2px}
+.skp-seg button{border:0;background:transparent;padding:7px 14px;border-radius:8px;font-size:13px;color:var(--text-secondary);cursor:pointer;white-space:nowrap}
+.skp-seg button.active{background:var(--bg-secondary);color:var(--text-primary);box-shadow:0 1px 2px rgba(16,24,40,.14);font-weight:600}
+.skp-kpis{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 10px}
+.skp-kpi{flex:1 1 170px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:10px;padding:10px 14px;min-width:0}
+.skp-kpi .v{font-size:17px;font-weight:700;color:var(--text-primary);word-break:break-word}
+.skp-kpi .l{font-size:12px;color:var(--text-muted);margin-top:2px}
+.skp-chart{width:100%;height:560px}
+.skp-chart--map{height:620px}
+.skp-tables{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:6px}
+@media(max-width:900px){.skp-tables{grid-template-columns:1fr}}
+.skp-table{width:100%;border-collapse:collapse;font-size:13px}
+.skp-table th,.skp-table td{border-bottom:1px solid var(--border-color);padding:8px 10px;text-align:left;color:var(--text-primary)}
+.skp-table th{color:var(--text-muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.skp-note{font-size:12px;color:var(--text-muted);margin-top:12px}
+.skp-err{padding:40px;text-align:center;color:#b91c1c;font-size:13px}
+.prj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:6px}
+.prj-card{background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:12px;padding:14px}
+.prj-card h4{font-size:14px;color:var(--text-primary)}
+.prj-meta{font-size:12px;color:var(--text-muted);margin-top:8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.prj-badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.prj-g{background:rgba(16,185,129,.16);color:#059669}
+.prj-y{background:rgba(245,158,11,.16);color:#d97706}
+.prj-r{background:rgba(239,68,68,.16);color:#dc2626}
+.prj-spark{margin-top:10px;max-width:100%}
+.seg-mini{display:inline-flex;flex-wrap:wrap;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;padding:2px;gap:2px}
+.seg-mini button{padding:5px 11px;border-radius:6px;font-size:12px;color:var(--text-secondary)}
+.seg-mini button.active{background:var(--bg-secondary);color:var(--text-primary);font-weight:600;box-shadow:0 1px 2px rgba(16,24,40,.12)}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">D</div><span class="logo-text">DMB Backlog</span></div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Управление бэклогом</div>
+        <a class="sidebar-item" aria-label="Главная"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span>Главная</span></a>
+        <a class="sidebar-item" aria-label="Бэклог DMB"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg><span>Бэклог DMB</span></a>
+        <a class="sidebar-item" aria-label="Бэклог команды"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Бэклог команды</span></a>
+        <a class="sidebar-item" aria-label="Экспресс-оценка"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Экспресс-оценка</span></a>
+        <a class="sidebar-item" aria-label="Канбан-доска"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/></svg><span>Канбан-доска</span></a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Аналитика</div>
+        <a class="sidebar-item" aria-label="Статусы для встреч"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg><span>Статусы для встреч</span></a>
+        <a class="sidebar-item active" aria-label="Аналитика ЛТ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg><span>Аналитика ЛТ</span></a>
+        <a class="sidebar-item" aria-label="Аналитика PO/PL"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg><span>Аналитика PO/PL</span></a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Бизнес-заказчику</div>
+        <a class="sidebar-item" aria-label="Мои задачи"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Мои задачи</span></a>
+        <a class="sidebar-item sidebar-item-sub" aria-label="Создать задачу"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg><span>Создать задачу</span></a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Настройки и администрирование</div>
+        <a class="sidebar-item" aria-label="Мои уведомления"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span>Мои уведомления</span><span class="item-badge" id="notification-count">0</span></a>
+        <a class="sidebar-item" aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg><span>Настройки</span></a>
+        <a class="sidebar-item" aria-label="Администрирование"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Администрирование</span></a>
+        <a class="sidebar-item" aria-label="Аудит действий"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M15 8h-5"/><path d="M15 12h-5"/></svg><span>Аудит действий</span></a>
+      </div>
+    </nav>
+    <button class="sidebar-toggle" id="sidebarToggle" title="Свернуть/развернуть" aria-label="Свернуть или развернуть боковую панель">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="main-wrapper">
+    <header class="navbar">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button class="btn-hamburger" id="hamburgerBtn" title="Меню">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <nav id="breadcrumb-nav" style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+          <span style="color: var(--text-muted);">DMB Backlog</span>
+          <span style="color: var(--text-muted);">/</span>
+          <span id="breadcrumb-current" style="color: var(--text-primary); font-weight: 500;">Аналитика ЛТ</span>
+        </nav>
+      </div>
+      <div class="search-wrap" style="position: relative; flex: 1; max-width: 400px; margin: 0 16px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted); pointer-events: none;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="global-search" placeholder="Поиск задач..." class="search-input" style="padding-left: 36px;">
+      </div>
+      <div class="navbar-right" style="display: flex; align-items: center; gap: 4px;">
+        <div style="position:relative;" id="notif-bell-wrap">
+          <button id="notif-bell-btn" style="position: relative; padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <span id="notif-badge" class="notif-badge hidden">0</span>
+          </button>
+        </div>
+        <div style="width:1px;height:24px;background:var(--border-color);margin:0 4px;"></div>
+        <button id="theme-toggle" style="padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer;" title="Переключить тему">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
+        <button id="logout-btn" style="padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer;" title="Выйти">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+        </button>
+        <div style="width:1px;height:24px;background:var(--border-color);margin:0 4px;"></div>
+        <div style="position: relative;">
+          <button id="user-avatar-btn" style="display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: 8px; border: none; background: transparent; cursor: pointer;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: #6366f1; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0;">ТБ</div>
+            <span style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Т. Бабяк</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Аналитика Лидера Трайба</h1>
+        <p>Финансовая эффективность, риски и здоровье портфеля</p>
+      </div>
+
+      <section class="effort-report">
+        <div class="kpi-grid">
+          <article class="kpi" style="--kc:#6366f1;--kc-bg:rgba(99,102,241,.12)">
+            <div class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.5 8.5 4.7L12 12.9 3.5 8.2 12 3.5Z"/><path d="m4.2 13 7.8 4.3 7.8-4.3"/><path d="m4.2 17 7.8 4.3 7.8-4.3"/></svg></div>
+            <div><div class="kpi-val" id="kTasks">0</div><div class="kpi-lab">Всего задач в срезе</div></div>
+          </article>
+          <article class="kpi" style="--kc:#f59e0b;--kc-bg:rgba(245,158,11,.12)">
+            <div class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></div>
+            <div><div class="kpi-val" id="kDays">0</div><div class="kpi-lab">Трудозатраты, чел.-дней</div></div>
+          </article>
+          <article class="kpi" style="--kc:#10b981;--kc-bg:rgba(16,185,129,.12)">
+            <div class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12.5h3.5l2.5-6 4 11 2.5-5H21"/></svg></div>
+            <div><div class="kpi-val" id="kAvg">0,0</div><div class="kpi-lab">Средняя трудоёмкость, ч.-д. / задачу</div></div>
+          </article>
+          <article class="kpi" style="--kc:#8b5cf6;--kc-bg:rgba(139,92,246,.12)">
+            <div class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.8 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8L12 3.8Z"/></svg></div>
+            <div>
+              <div class="kpi-val k-topname"><span class="dot" id="kTopDot" style="--c:#6366f1;--ring:rgba(99,102,241,.15)"></span><span id="kTop">—</span></div>
+              <div class="kpi-lab">Крупнейший тип · <b id="kTopPct">0,0%</b></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="rep-card">
+          <div class="rep-head">
+            <div class="rep-title">
+              <h3>Трудозатраты по типам задач</h3>
+              <div class="rep-sub" id="repSub">Весь трайб · 3Q 2026</div>
+            </div>
+            <div class="rep-controls">
+              <div class="dd" id="squadDd">
+                <button class="dd-btn" id="squadBtn" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  <span class="dd-label" id="squadName">Весь трайб</span>
+                  <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="dd-panel" id="squadPanel"></div>
+              </div>
+              <div class="seg seg-5" id="periodSeg">
+                <div class="seg-thumb" id="segThumb"></div>
+                <button class="seg-btn" data-p="q1" type="button">1Q 2026</button>
+                <button class="seg-btn" data-p="q2" type="button">2Q 2026</button>
+                <button class="seg-btn active" data-p="q3" type="button">3Q 2026</button>
+                <button class="seg-btn" data-p="q4" type="button">4Q 2026</button>
+                <button class="seg-btn" data-p="year" type="button">2026 год</button>
+              </div>
+            </div>
+          </div>
+          <div class="rep-body">
+            <div>
+              <div class="donut-wrap">
+                <svg class="donut" viewBox="0 0 200 200">
+                  <circle class="donut-track" cx="100" cy="100" r="78"/>
+                  <g id="segGroup" transform="rotate(-90 100 100)"></g>
+                </svg>
+                <div class="donut-center">
+                  <div class="dc-num" id="dcNum">0</div>
+                  <div class="dc-lab">чел.-дней</div>
+                  <div class="dc-sub" id="dcSub">0 задач</div>
+                </div>
+              </div>
+              <div class="donut-cap">Распределение оценённых трудозатрат по типам задач</div>
+            </div>
+            <div class="table-wrap">
+              <table class="rep-table">
+                <colgroup><col style="width:34%"><col style="width:12%"><col style="width:15%"><col style="width:39%"></colgroup>
+                <thead>
+                  <tr>
+                    <th class="sortable" data-col="name"><span class="th-in">Тип задачи <span class="arr">↕</span></span></th>
+                    <th class="sortable" data-col="tasks"><span class="th-in">Задач <span class="arr">↕</span></span></th>
+                    <th class="sortable" data-col="days"><span class="th-in">Чел.-дни <span class="arr">↕</span></span></th>
+                    <th class="sortable sorted" data-col="share"><span class="th-in">Доля <span class="arr">↓</span></span></th>
+                  </tr>
+                </thead>
+                <tbody id="repTbody"></tbody>
+                <tfoot><tr><td>Итого</td><td id="tTasks">0</td><td id="tDays">0</td><td>100%</td></tr></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="skp-card" id="skp-sankey-card">
+        <h2>Потоки работ: заказчики → команды → типы задач</h2>
+        <p class="skp-sub">Диаграмма Санки: слева — заказчики, в центре — команды, справа — типы задач. Толщина потока пропорциональна выбранной метрике.</p>
+        <div class="skp-controls">
+          <div class="skp-seg" id="skp-mode">
+            <button type="button" data-mode="tasks" class="active">Количество задач, шт</button>
+            <button type="button" data-mode="days">Трудозатраты, чел.-дни</button>
+          </div>
+          <div class="skp-seg" id="skp-period">
+            <button type="button" data-period="q1">1Q 2026</button>
+            <button type="button" data-period="q2">2Q 2026</button>
+            <button type="button" data-period="q3" class="active">3Q 2026</button>
+            <button type="button" data-period="q4">4Q 2026</button>
+            <button type="button" data-period="year">2026 год</button>
+          </div>
+        </div>
+        <div class="skp-kpis" id="skp-kpis"></div>
+        <div id="skp-sankey" class="skp-chart"></div>
+        <p class="skp-note">Данные демонстрационные.</p>
+      </section>
+
+      <section class="skp-card" id="skp-map-card">
+        <h2>Карта взаимосвязей команд</h2>
+        <p class="skp-sub">По каждой задаче одна команда является основной и вовлекает команды-партнёры. Толщина ребра и число на нём — количество совместных задач. Команды расположены по кругу.</p>
+        <div class="skp-controls">
+          <div class="skp-seg" id="skp-map-period">
+            <button type="button" data-period="q1">1Q 2026</button>
+            <button type="button" data-period="q2">2Q 2026</button>
+            <button type="button" data-period="q3" class="active">3Q 2026</button>
+            <button type="button" data-period="q4">4Q 2026</button>
+            <button type="button" data-period="year">2026 год</button>
+          </div>
+        </div>
+        <div class="skp-kpis" id="skp-map-kpis"></div>
+        <div id="skp-map" class="skp-chart skp-chart--map"></div>
+        <div class="skp-tables">
+          <div>
+            <h3>Топ взаимосвязей</h3>
+            <table class="skp-table"><thead><tr><th>#</th><th>Основная команда</th><th>Вовлечённая команда</th><th>Совместных задач</th></tr></thead><tbody id="skp-pairs-body"></tbody></table>
+          </div>
+          <div>
+            <h3>Статистика по командам</h3>
+            <table class="skp-table"><thead><tr><th>Команда</th><th>Как основная, задач</th><th>Как партнёр, участий</th><th>Всего взаимосвязей</th></tr></thead><tbody id="skp-teams-body"></tbody></table>
+          </div>
+        </div>
+        <p class="skp-note">Данные демонстрационные.</p>
+      </section>
+
+      <div class="page-header" style="margin-top:36px">
+        <h1 style="font-size:20px">Новые отчёты — кандидаты на ревью</h1>
+        <p>10 дополнительных отчётов на демо-данных. Лишний удаляется одной строкой в функции initNewReports().</p>
+      </div>
+      <div id="new-reports" style="display:flex;flex-direction:column;gap:24px"></div>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var G='КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ', A='AD-HOC', K='МЕТРИЧЕСКИЕ KR', R='ИССЛЕДОВАНИЕ', N='Без типа';
+var ALL_KEYS=[G,A,R,K,N];
+var TYPES={};
+TYPES[G]={label:'Квартальная / годовая цель', color:'#6366f1', ring:'rgba(99,102,241,.16)'};
+TYPES[A]={label:'Ad-hoc', color:'#f59e0b', ring:'rgba(245,158,11,.16)'};
+TYPES[R]={label:'Исследования', color:'#10b981', ring:'rgba(16,185,129,.16)'};
+TYPES[K]={label:'Метрические KR', color:'#8b5cf6', ring:'rgba(139,92,246,.16)'};
+TYPES[N]={label:'Без типа', color:'#94a3b8', ring:'rgba(148,163,184,.18)'};
+var REPORTS={
+  'all':{name:'Весь трайб',
+    q:[[G,63,1793],[A,50,1377],[K,54,0],[R,6,0],[N,5,0]],
+    ytd:[[G,178,3200],[A,129,1925],[R,7,542],[K,114,0],[N,5,0]]},
+  'Core':{name:'Core',
+    q:[[G,2,581],[K,1,0]],
+    ytd:[[G,16,743],[A,3,548],[R,1,542],[K,2,0]]},
+  'IB':{name:'IB',
+    q:[[G,3,212],[K,8,0],[A,1,0]],
+    ytd:[[G,16,212],[K,8,0],[A,8,0]]},
+  'PT':{name:'Post-Trade (Products & Service)',
+    q:[[G,27,356],[A,3,162],[K,6,0]],
+    ytd:[[G,47,1011],[A,28,162],[K,6,0]]},
+  'PreT':{name:'Pre-Trade',
+    q:[[A,7,1215],[G,5,644],[K,6,0]],
+    ytd:[[G,25,1234],[A,15,1215],[K,8,0]]}
+};
+Object.keys(REPORTS).forEach(function(id){
+  var rep=REPORTS[id], qMap={}, yMap={};
+  rep.q.forEach(function(r){qMap[r[0]]={t:r[1],d:r[2]};});
+  rep.ytd.forEach(function(r){yMap[r[0]]={t:r[1],d:r[2]};});
+  var q1=[],q2=[],q4=[];
+  ALL_KEYS.forEach(function(key){
+    var y=yMap[key]||{t:0,d:0}, q3v=qMap[key]||{t:0,d:0};
+    var restT=Math.max(0,y.t-q3v.t), restD=Math.max(0,y.d-q3v.d);
+    var t1=Math.round(restT*0.40), t2=Math.round(restT*0.35), t4=Math.max(0,restT-t1-t2);
+    var d1=Math.round(restD*0.40), d2=Math.round(restD*0.35), d4=Math.max(0,restD-d1-d2);
+    if(t1>0||d1>0)q1.push([key,t1,d1]);
+    if(t2>0||d2>0)q2.push([key,t2,d2]);
+    if(t4>0||d4>0)q4.push([key,t4,d4]);
+  });
+  rep.q1=q1; rep.q2=q2; rep.q3=rep.q; rep.q4=q4;
+  var sum={};
+  [q1,q2,rep.q,q4].forEach(function(qr){
+    qr.forEach(function(r){
+      if(!sum[r[0]])sum[r[0]]={t:0,d:0};
+      sum[r[0]].t+=r[1]; sum[r[0]].d+=r[2];
+    });
+  });
+  rep.year=Object.keys(sum).map(function(k){return [k,sum[k].t,sum[k].d];});
+});
+var SQUAD_IDS=['all','Core','IB','PT','PreT'];
+var PERIOD_META={q1:{label:'1Q 2026'},q2:{label:'2Q 2026'},q3:{label:'3Q 2026'},q4:{label:'4Q 2026'},year:{label:'2026 год'}};
+var period='q3', squad='all';
+var sortState={col:'share', dir:-1};
+var rows=[], arcs=[];
+var animId=null, kpiAnim=null;
+var prevKpi={tasks:0, days:0, avg:0};
+var SVG_NS='http://www.w3.org/2000/svg';
+function fmtInt(n){return Math.round(n).toLocaleString('ru-RU');}
+function fmtPct(n){return n.toLocaleString('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';}
+function plural(n,one,few,many){
+  n=Math.round(n); var m10=n%10, m100=n%100;
+  if(m10===1&&m100!==11)return one;
+  if(m10>=2&&m10<=4&&(m100<12||m100>14))return few;
+  return many;
+}
+function easeOut(x){return 1-Math.pow(1-x,3);}
+var tbody=document.getElementById('repTbody'),
+    segGroup=document.getElementById('segGroup'),
+    dcNum=document.getElementById('dcNum'),
+    dcSub=document.getElementById('dcSub'),
+    tTasks=document.getElementById('tTasks'),
+    tDays=document.getElementById('tDays'),
+    kTasks=document.getElementById('kTasks'),
+    kDays=document.getElementById('kDays'),
+    kAvg=document.getElementById('kAvg'),
+    kTop=document.getElementById('kTop'),
+    kTopDot=document.getElementById('kTopDot'),
+    kTopPct=document.getElementById('kTopPct'),
+    repSub=document.getElementById('repSub');
+function currentData(){
+  var raw=REPORTS[squad][period], map={};
+  raw.forEach(function(r){map[r[0]]={tasks:r[1], days:r[2]};});
+  var totalTasks=0, totalDays=0;
+  var items=ALL_KEYS.map(function(key){
+    var v=map[key]||{tasks:0, days:0};
+    totalTasks+=v.tasks; totalDays+=v.days;
+    return {key:key, label:TYPES[key].label, color:TYPES[key].color, ring:TYPES[key].ring,
+            tasks:v.tasks, days:v.days, share:0};
+  });
+  items.forEach(function(it){it.share=totalDays? it.days/totalDays*100 : 0;});
+  return {items:items, totalTasks:totalTasks, totalDays:totalDays};
+}
+function focusType(i){
+  arcs.forEach(function(c,j){
+    c.style.opacity=(i===null||i===j)?'1':'0.2';
+    c.style.strokeWidth=(i===j)?'30':'25';
+  });
+  rows.forEach(function(r,j){r.el.classList.toggle('hot',i===j);});
+}
+function renderReport(){
+  var data=currentData(), items=data.items;
+  segGroup.innerHTML='';
+  arcs=items.map(function(it,i){
+    var c=document.createElementNS(SVG_NS,'circle');
+    c.setAttribute('cx',100);c.setAttribute('cy',100);c.setAttribute('r',78);
+    c.setAttribute('pathLength','100');
+    c.setAttribute('class','arc');
+    c.setAttribute('stroke',it.color);
+    c.setAttribute('stroke-dasharray','0 100');
+    c.addEventListener('mouseenter',function(){focusType(i);});
+    c.addEventListener('mouseleave',function(){focusType(null);});
+    segGroup.appendChild(c);
+    return c;
+  });
+  tbody.innerHTML='';
+  rows=items.map(function(it,i){
+    var tr=document.createElement('tr');
+    if(it.tasks===0&&it.days===0)tr.classList.add('zero');
+    var badge=(it.tasks>0&&it.days===0)?'<span class="no-eff">нет оценки</span>':'';
+    tr.innerHTML=
+      '<td><div class="t-name"><span class="dot" style="--c:'+it.color+';--ring:'+it.ring+'"></span><span class="lbl">'+it.label+'</span>'+badge+'</div></td>'+
+      '<td class="c-tasks">0</td>'+
+      '<td class="c-days">0</td>'+
+      '<td><div class="t-share"><div class="bar"><i style="--c:'+it.color+'"></i></div><span class="pct">0,0%</span></div></td>';
+    tr.style.animation='rowIn .45s '+(0.05+i*0.05)+'s both';
+    tr.addEventListener('mouseenter',function(){focusType(i);});
+    tr.addEventListener('mouseleave',function(){focusType(null);});
+    tbody.appendChild(tr);
+    return {el:tr, tasksEl:tr.querySelector('.c-tasks'), daysEl:tr.querySelector('.c-days'),
+            pctEl:tr.querySelector('.pct'), barEl:tr.querySelector('.bar i'),
+            tasks:it.tasks, days:it.days, share:it.share, label:it.label};
+  });
+  applySort(true);
+  repSub.textContent=REPORTS[squad].name+' · '+PERIOD_META[period].label;
+  dcSub.textContent=fmtInt(data.totalTasks)+' '+plural(data.totalTasks,'задача','задачи','задач');
+  if(animId)cancelAnimationFrame(animId);
+  var totalDays=data.totalDays, totalTasks=data.totalTasks;
+  var maxShare=Math.max.apply(null, items.map(function(it){return it.share;}).concat([0.0001]));
+  var t0=performance.now(), DUR=800;
+  function step(now){
+    var p=Math.min(1,(now-t0)/DUR), e=easeOut(p), cumRun=0;
+    items.forEach(function(it,i){
+      var seg=it.share*e;
+      var dash=seg>0.5?Math.max(seg-1.3,0.4):0;
+      arcs[i].setAttribute('stroke-dasharray',dash+' '+(100-dash));
+      arcs[i].setAttribute('stroke-dashoffset',String(-(cumRun+0.65)));
+      cumRun+=seg;
+    });
+    rows.forEach(function(r){
+      r.tasksEl.textContent=fmtInt(r.tasks*e);
+      r.daysEl.textContent=fmtInt(r.days*e);
+      r.pctEl.textContent=fmtPct(r.share*e);
+      r.barEl.style.width=(r.share/maxShare*100*e)+'%';
+    });
+    dcNum.textContent=fmtInt(totalDays*e);
+    tTasks.textContent=fmtInt(totalTasks*e);
+    tDays.textContent=fmtInt(totalDays*e);
+    if(p<1){animId=requestAnimationFrame(step);}
+    else{
+      rows.forEach(function(r){
+        r.tasksEl.textContent=fmtInt(r.tasks);
+        r.daysEl.textContent=fmtInt(r.days);
+        r.pctEl.textContent=fmtPct(r.share);
+      });
+      dcNum.textContent=fmtInt(totalDays);
+      tTasks.textContent=fmtInt(totalTasks);
+      tDays.textContent=fmtInt(totalDays);
+    }
+  }
+  animId=requestAnimationFrame(step);
+  var topI=0;
+  items.forEach(function(it,i){if(it.days>items[topI].days)topI=i;});
+  var target={tasks:totalTasks, days:totalDays, avg:totalTasks?totalDays/totalTasks:0};
+  var from={tasks:prevKpi.tasks, days:prevKpi.days, avg:prevKpi.avg};
+  prevKpi=target;
+  kTop.textContent=items[topI].label;
+  kTopDot.style.setProperty('--c',items[topI].color);
+  kTopDot.style.setProperty('--ring',items[topI].ring);
+  kTopPct.textContent=fmtPct(items[topI].share);
+  if(kpiAnim)cancelAnimationFrame(kpiAnim);
+  var k0=performance.now();
+  function kstep(now){
+    var p=Math.min(1,(now-k0)/650), e=easeOut(p);
+    kTasks.textContent=fmtInt(from.tasks+(target.tasks-from.tasks)*e);
+    kDays.textContent=fmtInt(from.days+(target.days-from.days)*e);
+    kAvg.textContent=(from.avg+(target.avg-from.avg)*e).toLocaleString('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1});
+    if(p<1)kpiAnim=requestAnimationFrame(kstep);
+  }
+  kpiAnim=requestAnimationFrame(kstep);
+}
+function applySort(silent){
+  var idx=rows.map(function(_,i){return i;});
+  idx.sort(function(a,b){
+    var ra=rows[a], rb=rows[b], va, vb;
+    if(sortState.col==='name'){return ra.label.localeCompare(rb.label,'ru')*sortState.dir;}
+    if(sortState.col==='tasks'){va=ra.tasks;vb=rb.tasks;}
+    else if(sortState.col==='days'){va=ra.days;vb=rb.days;}
+    else{va=ra.share;vb=rb.share;}
+    return (va-vb)*sortState.dir;
+  });
+  idx.forEach(function(i,pos){
+    var el=rows[i].el;
+    tbody.appendChild(el);
+    if(!silent){
+      el.style.animation='none'; void el.offsetWidth;
+      el.style.animation='rowIn .4s '+(pos*0.04)+'s both';
+    }
+  });
+  document.querySelectorAll('.rep-table th.sortable').forEach(function(th){
+    var col=th.getAttribute('data-col'), on=(col===sortState.col);
+    th.classList.toggle('sorted',on);
+    th.querySelector('.arr').textContent=on?(sortState.dir>0?'↑':'↓'):'↕';
+  });
+}
+document.querySelectorAll('.rep-table th.sortable').forEach(function(th){
+  th.addEventListener('click',function(){
+    var col=th.getAttribute('data-col');
+    if(sortState.col===col){sortState.dir*=-1;}
+    else{sortState.col=col;sortState.dir=(col==='name')?1:-1;}
+    applySort(false);
+  });
+});
+var ddEl=document.getElementById('squadDd'),
+    squadPanel=document.getElementById('squadPanel'),
+    squadNameEl=document.getElementById('squadName');
+function renderDd(){
+  squadPanel.innerHTML=SQUAD_IDS.map(function(id){
+    var sel=(id===squad);
+    return '<button class="dd-item'+(sel?' sel':'')+'" data-id="'+id+'" type="button"><span>'+REPORTS[id].name+'</span>'+
+      '<svg class="chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button>';
+  }).join('');
+  squadPanel.querySelectorAll('.dd-item').forEach(function(b){
+    b.addEventListener('click',function(){
+      squad=b.getAttribute('data-id');
+      squadNameEl.textContent=REPORTS[squad].name;
+      ddEl.classList.remove('open');
+      renderDd();
+      renderReport();
+    });
+  });
+}
+document.getElementById('squadBtn').addEventListener('click',function(e){
+  e.stopPropagation();
+  ddEl.classList.toggle('open');
+});
+document.addEventListener('click',function(e){
+  if(!ddEl.contains(e.target))ddEl.classList.remove('open');
+});
+var segBtns=Array.prototype.slice.call(document.querySelectorAll('.seg-btn')),
+    segThumb=document.getElementById('segThumb');
+segBtns.forEach(function(b,i){
+  if(b.getAttribute('data-p')===period)segThumb.style.transform='translateX('+(i*100)+'%)';
+  b.addEventListener('click',function(){
+    if(period===b.getAttribute('data-p'))return;
+    period=b.getAttribute('data-p');
+    segBtns.forEach(function(x){x.classList.toggle('active',x===b);});
+    segThumb.style.transform='translateX('+(i*100)+'%)';
+    renderReport();
+  });
+});
+var sidebar=document.getElementById('sidebar'),
+    backdrop=document.getElementById('sidebarBackdrop');
+document.getElementById('sidebarToggle').addEventListener('click',function(){
+  sidebar.classList.toggle('collapsed');
+});
+document.getElementById('hamburgerBtn').addEventListener('click',function(){
+  sidebar.classList.add('open');
+});
+backdrop.addEventListener('click',function(){
+  sidebar.classList.remove('open');
+});
+renderDd();
+renderReport();
+})();
+</script>
+
+<script>
+(function(){
+'use strict';
+if(window.__SKP_LOADED)return;
+window.__SKP_LOADED=true;
+var CUSTOMERS=['УСИ','IB','M&A','УРК','ЦУП','ФИНАНСЫ','РИСКИ','ЦР','L2P','ЦИ','РЕГ. ДИРЕКТОРЫ'];
+var TEAMS=['Pre-Trade','Post-Trade (Products & Service)','IB','Core','Delivery','Post-Trade (Finance)','Methodology','ИТ ЛТ','AI','Проектный офис'];
+var TYPES=['КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ','AD-HOC','ТЕХДОЛГ','ИССЛЕДОВАНИЕ','МЕТРИЧЕСКИЕ KR'];
+var QUARTERS=['q1','q2','q3','q4'];
+var COLORS_C=['#4E79A7','#59A14F','#F28E2B','#E15759','#76B7B2','#EDC949','#B07AA1','#FF9DA7','#9C755F','#BAB0AB','#86BCB6'];
+var COLORS_T=['#0EA5E9','#8B5CF6','#F59E0B','#10B981','#EF4444','#6366F1','#14B8A6','#F97316','#EC4899','#84CC16'];
+var COLORS_Y=['#2563EB','#D97706','#0F766E','#A21CAF','#DC2626'];
+var COLORS_M=['#0EA5E9','#8B5CF6','#F59E0B','#10B981','#EF4444','#6366F1','#14B8A6','#F97316','#EC4899'];
+var PERIODS=[['q1','1Q 2026'],['q2','2Q 2026'],['q3','3Q 2026'],['q4','4Q 2026'],['year','2026 год']];
+var allCharts=[],nrRoot=null;
+function rndFactory(s){var a=s;return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function pickDistinct(n,k,r){var a=[],i,j,t;for(i=0;i<n;i++)a.push(i);for(i=n-1;i>0;i--){j=Math.floor(r()*(i+1));t=a[i];a[i]=a[j];a[j]=t;}return a.slice(0,k);}
+function fmt(n,d){return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:d||0,maximumFractionDigits:d||0});}
+function kpi(v,l){return '<div class="skp-kpi"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';}
+function median(arr){var a=arr.slice().sort(function(x,y){return x-y;});if(!a.length)return 0;var m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2;}
+/* ===== Санки ===== */
+var COMBOS=[],rnd=rndFactory(20260915);
+TEAMS.forEach(function(_t,ti){
+  var custs=[(ti*3)%CUSTOMERS.length,(ti*3+4)%CUSTOMERS.length,(ti*5+2)%CUSTOMERS.length],seen={};
+  custs.forEach(function(ci){
+    if(seen[ci])return;seen[ci]=1;
+    [(ti+ci)%TYPES.length,(ti+ci+2)%TYPES.length].forEach(function(yi){
+      var base=3+rnd()*9,pq={};
+      QUARTERS.forEach(function(q){
+        var tasks=Math.round(base*(0.4+rnd()*1.1));
+        if(rnd()<0.08)tasks=0;
+        pq[q]={tasks:tasks,days:Math.round(tasks*(1.5+rnd()*4.5)*2)/2};
+      });
+      COMBOS.push({c:ci,t:ti,y:yi,pq:pq});
+    });
+  });
+});
+function comboVal(k,p,m){
+  var s=0;
+  if(p==='year'){QUARTERS.forEach(function(q){s+=(m==='tasks'?k.pq[q].tasks:k.pq[q].days);});}
+  else{s=(m==='tasks'?k.pq[p].tasks:k.pq[p].days);}
+  return m==='days'?Math.round(s*2)/2:s;
+}
+var state={mode:'tasks',period:'q3'},mapState={period:'q3'};
+var sankeyEl=document.getElementById('skp-sankey'),mapEl=document.getElementById('skp-map');
+var sankeyChart=null,mapChart=null,nodeIndex={};
+function unitLabel(){return state.mode==='tasks'?'задач':'чел.-дней';}
+function fmtVal(v){return state.mode==='tasks'?fmt(Math.round(v)):fmt(v,1);}
+function nodeLabel(k){return nodeIndex[k]||k;}
+function buildSankey(period,mode){
+  var c2t={},t2y={},total=0;
+  COMBOS.forEach(function(k){
+    var v=comboVal(k,period,mode);
+    if(v<=0)return;
+    total+=v;
+    var A='c:'+k.c,B='t:'+k.t,D='y:'+k.y;
+    c2t[A+'>'+B]=(c2t[A+'>'+B]||0)+v;
+    t2y[B+'>'+D]=(t2y[B+'>'+D]||0)+v;
+  });
+  var nodes=[],present={},links=[];
+  function addNode(key,kind,idx){
+    if(present[key])return;present[key]=1;
+    var dict=kind==='c'?CUSTOMERS:kind==='t'?TEAMS:TYPES;
+    var color=kind==='c'?COLORS_C:kind==='t'?COLORS_T:COLORS_Y;
+    nodes.push({name:key,skpLabel:dict[idx],itemStyle:{color:color[idx%color.length],borderColor:color[idx%color.length]}});
+  }
+  Object.keys(c2t).forEach(function(key){
+    var p=key.split('>'),ci=+p[0].slice(2),ti=+p[1].slice(2);
+    addNode(p[0],'c',ci);addNode(p[1],'t',ti);
+    links.push({source:p[0],target:p[1],value:Math.round(c2t[key]*2)/2});
+  });
+  Object.keys(t2y).forEach(function(key){
+    var p=key.split('>'),ti=+p[0].slice(2),yi=+p[1].slice(2);
+    addNode(p[0],'t',ti);addNode(p[1],'y',yi);
+    links.push({source:p[0],target:p[1],value:Math.round(t2y[key]*2)/2});
+  });
+  return {nodes:nodes,links:links,total:total,c2t:c2t,t2y:t2y};
+}
+function renderSankey(){
+  var d=buildSankey(state.period,state.mode);
+  nodeIndex={};d.nodes.forEach(function(n){nodeIndex[n.name]=n.skpLabel;});
+  var maxKey=null,maxV=0;
+  Object.keys(d.c2t).forEach(function(k){if(d.c2t[k]>maxV){maxV=d.c2t[k];maxKey=k;}});
+  var maxLabel='—';
+  if(maxKey){var mp=maxKey.split('>');maxLabel=CUSTOMERS[+mp[0].slice(2)]+' → '+TEAMS[+mp[1].slice(2)];}
+  var teamTotals={};
+  Object.keys(d.t2y).forEach(function(k){var t=k.split('>')[0];teamTotals[t]=(teamTotals[t]||0)+d.t2y[k];});
+  var topT=null,topTV=0;
+  Object.keys(teamTotals).forEach(function(t){if(teamTotals[t]>topTV){topTV=teamTotals[t];topT=t;}});
+  var topTeam=topT?TEAMS[+topT.slice(2)]:'—';
+  document.getElementById('skp-kpis').innerHTML=
+    kpi(fmtVal(d.total),'Всего в потоке, '+unitLabel())+
+    kpi(String(Object.keys(d.c2t).length),'Потоков заказчик → команда')+
+    kpi(maxLabel,'Крупнейший поток ('+fmtVal(maxV)+' '+unitLabel()+')')+
+    kpi(topTeam,'Максимальная загрузка ('+fmtVal(topTV)+' '+unitLabel()+')');
+  sankeyChart.setOption({
+    tooltip:{trigger:'item',formatter:function(p){
+      if(p.dataType==='edge'){
+        return nodeLabel(p.data.source)+' → '+nodeLabel(p.data.target)+'<br/><b>'+fmtVal(p.data.value)+' '+unitLabel()+'</b>';
+      }
+      return '<b>'+nodeLabel(p.data.name)+'</b><br/>Объём потока: <b>'+fmtVal(p.value)+' '+unitLabel()+'</b>';
+    }},
+    series:[{
+      type:'sankey',data:d.nodes,links:d.links,
+      nodeWidth:14,nodeGap:10,layoutIterations:64,nodeAlign:'justify',
+      left:8,right:220,top:16,bottom:16,
+      label:{show:true,fontSize:12,color:'#374151',formatter:function(p){return p.data.skpLabel||p.data.name;}},
+      lineStyle:{color:'gradient',opacity:0.38,curveness:0.5},
+      itemStyle:{borderWidth:0},
+      emphasis:{focus:'adjacency',lineStyle:{opacity:0.65}}
+    }]
+  },true);
+}
+/* ===== Карта взаимосвязей ===== */
+var MAP_TEAMS=['Pre-Trade','Post-Trade (Products & Service)','IB','Core','Delivery','Post-Trade (Finance)','Methodology','ИТ ЛТ','AI'];
+var PARTNERS={
+  'Pre-Trade':['IB','Core','Methodology','AI'],
+  'Post-Trade (Products & Service)':['Core','Delivery','Post-Trade (Finance)','Methodology'],
+  'IB':['Pre-Trade','Delivery','AI','Core'],
+  'Core':['Delivery','ИТ ЛТ','Post-Trade (Finance)','AI'],
+  'Delivery':['ИТ ЛТ','Core','AI','Post-Trade (Products & Service)'],
+  'Post-Trade (Finance)':['Methodology','Core','Delivery'],
+  'Methodology':['ИТ ЛТ','AI','Post-Trade (Products & Service)'],
+  'ИТ ЛТ':['Core','AI','Delivery'],
+  'AI':['ИТ ЛТ','Core','Methodology']
+};
+var COOP_TASKS=[],rnd2=rndFactory(424242);
+for(var i=0;i<48;i++){
+  var main=MAP_TEAMS[Math.floor(rnd2()*MAP_TEAMS.length)];
+  var pool=PARTNERS[main];
+  var n=1+Math.floor(rnd2()*Math.min(3,pool.length));
+  var chosen=pickDistinct(pool.length,n,rnd2).map(function(ix){return pool[ix];});
+  var pq={};
+  QUARTERS.forEach(function(q){pq[q]=rnd2()<0.15?0:1+Math.floor(rnd2()*4);});
+  COOP_TASKS.push({main:main,involved:chosen,pq:pq});
+}
+function getCoopCount(task,p){
+  if(p==='year'){var s=0;QUARTERS.forEach(function(q){s+=task.pq[q];});return s;}
+  return task.pq[p];
+}
+function renderMap(){
+  var edges={},stat={},totalTasks=0;
+  MAP_TEAMS.forEach(function(t){stat[t]={asMain:0,asPartner:0};});
+  COOP_TASKS.forEach(function(task){
+    var count=getCoopCount(task,mapState.period);
+    if(count<=0)return;
+    totalTasks+=count;
+    stat[task.main].asMain+=count;
+    task.involved.forEach(function(p){
+      var key=task.main+'→'+p;
+      edges[key]=(edges[key]||0)+count;
+      stat[p].asPartner+=count;
+    });
+  });
+  var gNodes=MAP_TEAMS.map(function(t,i){
+    var total=stat[t].asMain+stat[t].asPartner;
+    var angle=(i/MAP_TEAMS.length)*Math.PI*2 - Math.PI/2;
+    var cosA=Math.cos(angle), sinA=Math.sin(angle);
+    var pos;
+    if(cosA>0.5)pos='right';
+    else if(cosA<-0.5)pos='left';
+    else if(sinA>0)pos='bottom';
+    else pos='top';
+    return {name:t,x:cosA*100,y:sinA*100,
+      symbolSize:Math.min(26+total*2.2,72),
+      itemStyle:{color:COLORS_M[i]},
+      label:{show:true,position:pos,fontSize:12,fontWeight:600,color:'#1f2937'}};
+  });
+  var nodeSize={},maxCount=0;
+  gNodes.forEach(function(n2){nodeSize[n2.name]=n2.symbolSize;});
+  Object.keys(edges).forEach(function(k){if(edges[k]>maxCount)maxCount=edges[k];});
+  var gLinks=Object.keys(edges).map(function(key){
+    var p=key.split('→'),count=edges[key];
+    var cap=Math.min(nodeSize[p[0]],nodeSize[p[1]])*0.65;
+    var width=Math.min(1.5+(count/maxCount)*16,cap);
+    return {source:p[0],target:p[1],value:count,
+      lineStyle:{width:width,curveness:edges[p[1]+'→'+p[0]]?0.3:0.12,opacity:0.5,color:COLORS_M[MAP_TEAMS.indexOf(p[0])]},
+      symbol:['none','arrow'],symbolSize:[0,Math.max(6,Math.min(12,width*0.7))]};
+  });
+  var sorted=Object.keys(edges).map(function(k){return {pair:k,count:edges[k]};}).sort(function(a,b){return b.count-a.count;});
+  var top=sorted[0];
+  var topParts=top?top.pair.split('→'):['—','—'];
+  document.getElementById('skp-map-kpis').innerHTML=
+    kpi(String(totalTasks),'Задач в кооперации (демо)')+
+    kpi(String(gLinks.length),'Уникальных взаимосвязей')+
+    kpi(topParts[0]+' → '+topParts[1],'Самая частая пара ('+(top?top.count:0)+' задач)');
+  var pairsHtml='';
+  sorted.slice(0,10).forEach(function(e,idx){
+    var p=e.pair.split('→');
+    pairsHtml+='<tr><td>'+(idx+1)+'</td><td>'+p[0]+'</td><td>'+p[1]+'</td><td><b>'+e.count+'</b></td></tr>';
+  });
+  document.getElementById('skp-pairs-body').innerHTML=pairsHtml;
+  var teamsHtml='';
+  MAP_TEAMS.forEach(function(t){
+    teamsHtml+='<tr><td>'+t+'</td><td>'+stat[t].asMain+'</td><td>'+stat[t].asPartner+'</td><td><b>'+(stat[t].asMain+stat[t].asPartner)+'</b></td></tr>';
+  });
+  document.getElementById('skp-teams-body').innerHTML=teamsHtml;
+  mapChart.setOption({
+    tooltip:{formatter:function(p){
+      if(p.dataType==='edge'){
+        return p.data.source+' → '+p.data.target+'<br/>Совместных задач: <b>'+p.data.value+'</b>';
+      }
+      var s=stat[p.name];
+      return '<b>'+p.name+'</b><br/>Как основная: '+s.asMain+' задач<br/>Как партнёр: '+s.asPartner+' участий';
+    }},
+    series:[{
+      type:'graph',layout:'none',
+      data:gNodes,links:gLinks,directed:true,roam:false,draggable:false,
+      left:130,right:210,top:40,bottom:40,
+      edgeSymbol:['none','arrow'],
+      edgeLabel:{show:true,fontSize:10,color:'#334155',formatter:function(p){return p.data.value;},backgroundColor:'#ffffff',padding:[2,4],borderRadius:4},
+      emphasis:{focus:'adjacency',lineStyle:{opacity:0.85}}
+    }]
+  },true);
+}
+/* ===== Хелперы новых отчётов ===== */
+function el(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;}
+function addCard(title,sub){var c=el('section','skp-card');c.appendChild(el('h2',null,title));c.appendChild(el('p','skp-sub',sub));nrRoot.appendChild(c);return c;}
+function addKpis(card){var w=el('div','skp-kpis');card.appendChild(w);return w;}
+function addChart(card,h){var d=el('div','skp-chart');if(h)d.style.height=h+'px';card.appendChild(d);var ch=echarts.init(d);allCharts.push(ch);return ch;}
+function addSeg(card,opts,cb,defIdx,mini){
+  var wrap=el('div','skp-controls'),seg=el('div',mini?'seg-mini':'skp-seg'),cur=defIdx||0;
+  opts.forEach(function(o,i2){
+    var b=el('button',i2===cur?'active':'',o[1]);
+    b.addEventListener('click',function(){
+      if(i2===cur)return;cur=i2;
+      var bs=seg.querySelectorAll('button');
+      for(var j=0;j<bs.length;j++)bs[j].classList.toggle('active',j===i2);
+      cb(o[0]);
+    });
+    seg.appendChild(b);
+  });
+  wrap.appendChild(seg);card.appendChild(wrap);
+  return opts[cur][0];
+}
+function addTable(card,headers){
+  var t=el('table','skp-table');
+  t.innerHTML='<thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody></tbody>';
+  card.appendChild(t);
+  return t.querySelector('tbody');
+}
+/* ===== 1. Возврат на вложения ===== */
+function repROI(){
+  var card=addCard('1. Возврат на вложения (стоимость vs эффект)','Каждый пузырь — задача: X — стоимость по ЭО (тыс. руб.), Y — финансовый эффект (млн руб.), размер — трудозатраты. Пунктир — медианы среза.');
+  var per=addSeg(card,PERIODS,function(p){per=p;draw();},3);
+  var kpis=addKpis(card),ch1=addChart(card,430),ch2=addChart(card,280);
+  var r=rndFactory(7001),tasksQ={};
+  QUARTERS.forEach(function(q){
+    var arr=[];
+    for(var i2=0;i2<30;i2++){
+      var eff=5+Math.floor(r()*70),cost=Math.round(eff*(26+r()*14)),fin=r()>0.38?Math.round((0.3+r()*r()*60)*10)/10:0;
+      arr.push([cost,fin,eff,CUSTOMERS[Math.floor(r()*CUSTOMERS.length)]]);
+    }
+    tasksQ[q]=arr;
+  });
+  function get(p){return p==='year'?[].concat(tasksQ.q1,tasksQ.q2,tasksQ.q3,tasksQ.q4):tasksQ[p];}
+  function draw(){
+    var d=get(per),mx=median(d.map(function(t){return t[0];})),my=median(d.map(function(t){return t[1];}));
+    var totCost=0,totFin=0,withFin=0,byC={};
+    d.forEach(function(t){totCost+=t[0];totFin+=t[1];if(t[1]>0)withFin++;if(!byC[t[3]])byC[t[3]]={e:0,f:0};byC[t[3]].e+=t[2];byC[t[3]].f+=t[1];});
+    kpis.innerHTML=kpi(fmt(totCost/1000,1)+' млн руб','Стоимость среза (ЭО)')+
+      kpi(fmt(totFin,1)+' млн руб','Суммарный фин. эффект')+
+      kpi(totCost>0?fmt(totFin/(totCost/1000),2):'—','Отдача (млн эффекта / млн стоимости)')+
+      kpi(withFin+' из '+d.length,'Задач с эффектом');
+    ch1.setOption({
+      tooltip:{formatter:function(p){var t=p.value;return 'Стоимость: <b>'+fmt(t[0])+' тыс. руб.</b><br/>Эффект: <b>'+fmt(t[1],1)+' млн руб.</b><br/>Трудоёмкость: '+t[2]+' чел.-дн.<br/>Заказчик: '+t[3];}},
+      grid:{left:60,right:30,top:30,bottom:45},
+      xAxis:{name:'Стоимость, тыс. руб.',nameLocation:'middle',nameGap:28,type:'value'},
+      yAxis:{name:'Эффект, млн руб.',type:'value'},
+      series:[{type:'scatter',data:d,symbolSize:function(t){return 6+Math.sqrt(t[2])*2.2;},
+        itemStyle:{color:'#6366f1',opacity:.65},
+        markLine:{silent:true,symbol:'none',lineStyle:{type:'dashed',color:'#94a3b8'},label:{show:false},data:[{xAxis:mx},{yAxis:my}]}}]
+    },true);
+    var rows=Object.keys(byC).map(function(c){return {c:c,v:byC[c].e>0?byC[c].f/byC[c].e*1000:0};}).sort(function(a,b){return b.v-a.v;}).slice(0,6);
+    ch2.setOption({
+      tooltip:{formatter:function(p){return p.name+'<br/><b>'+fmt(p.value)+' руб.</b> эффекта на 1 чел.-день';}},
+      grid:{left:120,right:40,top:10,bottom:25},
+      xAxis:{type:'value',name:'руб. / чел.-дн.',nameLocation:'middle',nameGap:22},
+      yAxis:{type:'category',data:rows.map(function(x){return x.c;}).reverse(),axisLabel:{fontSize:11}},
+      series:[{type:'bar',data:rows.map(function(x){return Math.round(x.v);}).reverse(),barWidth:14,itemStyle:{color:'#10b981',borderRadius:4}}]
+    },true);
+  }
+  draw();
+}
+/* ===== 2. Структура затрат по ролям ===== */
+function repRoles(){
+  var ROLES=['Дизайн','Аналитика','Разр. BE','Python BE','Разр. FE','Тестир.','Test Auto','Delivery'];
+  var RATE=[38,34,40,38,36,30,33,35],RC=['#F472B6','#8B5CF6','#0EA5E9','#6366F1','#14B8A6','#F59E0B','#10B981','#84CC16'];
+  var card=addCard('2. Структура затрат по ролям','Доля трудозатрат/стоимости по ролям в работах каждой команды. Переключение «чел.-дни / рубли» меняет доли из-за разных ставок ролей.');
+  var mode=addSeg(card,[['days','Чел.-дни'],['rub','Стоимость, тыс. руб.']],function(m){mode=m;draw();},0,true);
+  var per=addSeg(card,PERIODS,function(p){per=p;draw();},3);
+  var kpis=addKpis(card),ch=addChart(card,420);
+  var PROF=TEAMS.map(function(t,ti){var r=rndFactory(500+ti);return ROLES.map(function(){return 0.3+r();});});
+  function data(p){
+    return TEAMS.map(function(t,ti){
+      var r=rndFactory(610+ti*7+(p==='year'?99:QUARTERS.indexOf(p)));
+      return PROF[ti].map(function(b){return Math.round(b*(15+r()*25)*(p==='year'?4:1));});
+    });
+  }
+  function draw(){
+    var m=data(per),tot=0,autoSum=0,testSum=0,roleTot=ROLES.map(function(){return 0;});
+    m.forEach(function(row){row.forEach(function(v,ri){var w=mode==='rub'?v*RATE[ri]:v;roleTot[ri]+=w;tot+=w;if(ri===6)autoSum+=w;if(ri===5)testSum+=w;});});
+    var topI=0;roleTot.forEach(function(v,i){if(v>roleTot[topI])topI=i;});
+    kpis.innerHTML=kpi(fmt(tot)+(mode==='rub'?' тыс. руб.':' чел.-дн.'),'Всего затрат в срезе')+
+      kpi(ROLES[topI],'Топ-роль по доле ('+fmt(roleTot[topI]/tot*100,1)+'%)')+
+      kpi(fmt(autoSum/(autoSum+testSum)*100,1)+'%','Доля Test Auto в тестировании')+
+      kpi(autoSum>0?fmt(testSum/autoSum,2):'—','Ручные тесты / авто (отношение)');
+    ch.setOption({
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var s='<b>'+ps[0].name+'</b>';ps.forEach(function(p){s+='<br/>'+p.marker+p.seriesName+': '+fmt(p.value,1)+'%';});return s;}},
+      legend:{data:ROLES,textStyle:{fontSize:11,color:'#64748b'},top:0},
+      grid:{left:150,right:30,top:60,bottom:10},
+      xAxis:{type:'value',max:100,axisLabel:{formatter:'{value}%'}},
+      yAxis:{type:'category',data:TEAMS.slice().reverse(),axisLabel:{fontSize:11}},
+      series:ROLES.map(function(rn,ri){return {name:rn,type:'bar',stack:'t',barWidth:16,itemStyle:{color:RC[ri]},
+        data:m.map(function(row){var w=mode==='rub'?row[ri]*RATE[ri]:row[ri];var rowTot=0;row.forEach(function(v,j){rowTot+=mode==='rub'?v*RATE[j]:v;});return Math.round(w/rowTot*1000)/10;}).reverse()};})
+    },true);
+  }
+  draw();
+}
+/* ===== 3. Точность планирования ЭО vs ФТЗ ===== */
+function repAcc(){
+  var card=addCard('3. Точность планирования: ЭО vs ФТЗ','Каждая точка — задача: X — оценка (ЭО), Y — факт (ФТЗ). Пунктирная диагональ — идеал.');
+  var per=addSeg(card,PERIODS,function(p){per=p;draw();},3);
+  var kpis=addKpis(card),ch=addChart(card,430),tb=addTable(card,['Команда','Задач','MAPE','Отклонение > 30%']);
+  var TC=['#0EA5E9','#8B5CF6','#F59E0B','#10B981','#EF4444','#6366F1','#14B8A6','#F97316','#EC4899','#84CC16'];
+  function data(p){
+    return TEAMS.map(function(t,ti){
+      var r=rndFactory(900+ti*13+(p==='year'?77:QUARTERS.indexOf(p)));
+      var n2=6+Math.floor(r()*8),bias=0.8+r()*0.45,list=[];
+      for(var i2=0;i2<n2;i2++){var est=2+Math.round(r()*45);list.push([est,Math.max(0.5,Math.round(est*bias*(0.7+r()*0.7)*10)/10)]);}
+      return {t:t,list:list};
+    });
+  }
+  function draw(){
+    var d=data(per),devs=[],series=[];
+    d.forEach(function(team,ti){
+      series.push({name:team.t,type:'scatter',symbolSize:9,itemStyle:{color:TC[ti%TC.length],opacity:.8},data:team.list});
+      team.list.forEach(function(pt){devs.push(Math.abs(pt[1]-pt[0])/pt[0]);});
+    });
+    var mape=devs.reduce(function(a,b){return a+b;},0)/devs.length,
+        ok=devs.filter(function(x){return x<=0.2;}).length,
+        bad=devs.filter(function(x){return x>0.3;}).length,rowsHtml='';
+    d.forEach(function(team){
+      var s=0,b=0;
+      team.list.forEach(function(pt){var dv=Math.abs(pt[1]-pt[0])/pt[0];s+=dv;if(dv>0.3)b++;});
+      rowsHtml+='<tr><td>'+team.t+'</td><td>'+team.list.length+'</td><td><b>'+fmt(s/team.list.length*100,1)+'%</b></td><td>'+fmt(b/team.list.length*100,1)+'%</td></tr>';
+    });
+    tb.innerHTML=rowsHtml;
+    kpis.innerHTML=kpi(fmt(mape*100,1)+'%','MAPE по всем командам')+
+      kpi(fmt(ok/devs.length*100,1)+'%','Задач с точностью в пределах ±20%')+
+      kpi(bad,'Задач с отклонением > 30%')+
+      kpi(devs.length,'Задач с оценкой и фактом');
+    ch.setOption({
+      tooltip:{formatter:function(p){return '<b>'+p.seriesName+'</b><br/>Оценка: '+fmt(p.value[0],1)+' ч/д<br/>Факт: '+fmt(p.value[1],1)+' ч/д<br/>Отклонение: '+fmt(Math.abs(p.value[1]-p.value[0])/p.value[0]*100,0)+'%';}},
+      legend:{data:TEAMS,type:'scroll',top:0,textStyle:{fontSize:10,color:'#64748b'}},
+      grid:{left:50,right:25,top:40,bottom:45},
+      xAxis:{name:'Оценка ЭО, ч/д',nameLocation:'middle',nameGap:28,type:'value',max:90},
+      yAxis:{name:'Факт ФТЗ, ч/д',type:'value',max:90},
+      series:series.concat([{type:'line',data:[[0,0],[90,90]],symbol:'none',lineStyle:{type:'dashed',color:'#94a3b8'},silent:true,tooltip:{show:false}}])
+    },true);
+  }
+  draw();
+}
+/* ===== 4. Lead Time и SLA ===== */
+function repLead(){
+  var card=addCard('4. Lead Time и SLA','Время от получения задачи до завершения: медиана и 90-й перцентиль по командам. SLA — доля задач, выполненных к заявленному сроку.');
+  var per=addSeg(card,PERIODS,function(p){per=p;draw();},3);
+  var kpis=addKpis(card),ch=addChart(card,380);
+  function data(p){
+    return TEAMS.map(function(t,ti){
+      var r=rndFactory(1300+ti*17+(p==='year'?55:QUARTERS.indexOf(p)));
+      var med=4+Math.floor(r()*18);
+      return {t:t,med:med,p90:med+6+Math.floor(r()*30),sla:58+Math.floor(r()*40)};
+    });
+  }
+  function draw(){
+    var d=data(per),slaAvg=d.reduce(function(a,x){return a+x.sla;},0)/d.length;
+    var best=d.slice().sort(function(a,b){return b.sla-a.sla;})[0];
+    var worst=d.slice().sort(function(a,b){return b.p90-a.p90;})[0];
+    kpis.innerHTML=kpi(fmt(d.reduce(function(a,x){return a+x.med;},0)/d.length,1)+' дн.','Медианный lead time (по командам)')+
+      kpi(worst.p90+' дн.','Максимальный P90 ('+worst.t+')')+
+      kpi(fmt(slaAvg,1)+'%','Средняя доля выполненных в срок')+
+      kpi(best.t,'Лучшая команда по SLA ('+best.sla+'%)');
+    ch.setOption({
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+      legend:{data:['Медиана, дн.','P90, дн.','SLA %'],top:0,textStyle:{fontSize:11,color:'#64748b'}},
+      grid:{left:45,right:55,top:40,bottom:90},
+      xAxis:{type:'category',data:d.map(function(x){return x.t;}),axisLabel:{interval:0,rotate:35,fontSize:10}},
+      yAxis:[{type:'value',name:'дней'},{type:'value',name:'%',max:100}],
+      series:[
+        {name:'Медиана, дн.',type:'bar',data:d.map(function(x){return x.med;}),itemStyle:{color:'#6366f1',borderRadius:4},barWidth:14},
+        {name:'P90, дн.',type:'bar',data:d.map(function(x){return x.p90;}),itemStyle:{color:'#f59e0b',borderRadius:4},barWidth:14},
+        {name:'SLA %',type:'line',yAxisIndex:1,data:d.map(function(x){return x.sla;}),itemStyle:{color:'#10b981'},symbol:'circle',symbolSize:7}
+      ]
+    },true);
+  }
+  draw();
+}
+/* ===== 5. Светофор дедлайнов ===== */
+function repRisk(){
+  var card=addCard('5. Светофор дедлайнов (риск-матрица)','Активные задачи в координатах «дней до дедлайна × прогресс». Красная зона — дедлайн ≤ 14 дней при прогрессе < 55%.');
+  var kpis=addKpis(card),ch=addChart(card,430),tb=addTable(card,['Задача','Команда','Исполнитель','Приоритет','Дней осталось','Прогресс']);
+  var r=rndFactory(2024),EXE=['А. Иванов','М. Петрова','Д. Ким','О. Соколов','Е. Ветрова','П. Лебедев','Н. Орлова','В. Гусев'],tasks=[];
+  for(var i2=0;i2<26;i2++){
+    var dLeft=1+Math.floor(r()*45),pr=Math.floor(r()*101);
+    var risk=(dLeft<=14&&pr<55)?2:(dLeft<=21&&pr<70)?1:0;
+    tasks.push({name:'Задача '+(1000+i2),team:MAP_TEAMS[Math.floor(r()*MAP_TEAMS.length)],exe:EXE[Math.floor(r()*EXE.length)],
+      prio:r()<0.3?'Высокий':(r()<0.6?'Средний':'Низкий'),d:dLeft,pr:pr,risk:risk});
+  }
+  var cols=['#10b981','#f59e0b','#ef4444'];
+  function draw(){
+    var red=tasks.filter(function(t){return t.risk===2;}).length,yel=tasks.filter(function(t){return t.risk===1;}).length;
+    kpis.innerHTML=kpi(red,'Задач в красной зоне')+kpi(yel,'Задач в жёлтой зоне')+
+      kpi(tasks.length,'Активных задач всего')+
+      kpi(fmt(median(tasks.map(function(t){return t.pr;})),0)+'%','Медианный прогресс');
+    ch.setOption({
+      tooltip:{formatter:function(p){var t=p.value;return '<b>'+t[3]+'</b><br/>'+t[4]+' · '+t[5]+'<br/>Дней до дедлайна: '+t[0]+'<br/>Прогресс: '+t[1]+'%';}},
+      grid:{left:55,right:30,top:20,bottom:50},
+      xAxis:{name:'Дней до дедлайна',nameLocation:'middle',nameGap:30,type:'value',max:50},
+      yAxis:{name:'Прогресс, %',type:'value',max:100},
+      series:[{type:'scatter',symbolSize:13,
+        data:tasks.map(function(t){return {value:[t.d,t.pr,t.risk,t.name,t.team,t.exe],itemStyle:{color:cols[t.risk],opacity:.85}};}),
+        markArea:{silent:true,data:[
+          [{coord:[0,0],itemStyle:{color:'rgba(245,158,11,.10)'}},{coord:[21,70]}],
+          [{coord:[0,0],itemStyle:{color:'rgba(239,68,68,.14)'}},{coord:[14,55]}]
+        ]}}]
+    },true);
+    var srt=tasks.slice().sort(function(a,b){return b.risk-a.risk||a.d-b.d;}).slice(0,10);
+    tb.innerHTML=srt.map(function(t){
+      return '<tr><td>'+t.name+'</td><td>'+t.team+'</td><td>'+t.exe+'</td><td>'+t.prio+'</td><td>'+t.d+'</td><td><b style="color:'+cols[t.risk]+'">'+t.pr+'%</b></td></tr>';
+    }).join('');
+  }
+  draw();
+}
+/* ===== 6. Тепловая карта спроса + Парето ===== */
+function repDemand(){
+  var DEPTS=['Корпоративный блок','Рынки','Операции','Финансы','Риски','HR','ИТ','Юристы'];
+  var card=addCard('6. Тепловая карта спроса и Парето','Интенсивность спроса «заказчик × подразделение» (сверху) и кумулятивная доля трудозатрат по заказчикам (снизу).');
+  var unit=addSeg(card,[['tasks','Задачи, шт'],['days','Чел.-дни']],function(u){unit=u;draw();},0,true);
+  var kpis=addKpis(card),ch1=addChart(card,460),ch2=addChart(card,300);
+  var r=rndFactory(333),CELL={};
+  CUSTOMERS.forEach(function(c,ci){DEPTS.forEach(function(d,di){
+    var v=Math.pow(r(),1.6)*40;CELL[ci+'_'+di]={tasks:Math.round(v),days:Math.round(v*(2+r()*5)*2)/2};
+  });});
+  function val(ci,di){return unit==='tasks'?CELL[ci+'_'+di].tasks:CELL[ci+'_'+di].days;}
+  function draw(){
+    var data=[],max=0,byC=CUSTOMERS.map(function(){return 0;});
+    CUSTOMERS.forEach(function(c,ci){DEPTS.forEach(function(d,di){var v=val(ci,di);data.push([ci,di,v]);if(v>max)max=v;byC[ci]+=v;});});
+    var tot=byC.reduce(function(a,b){return a+b;},0),nonZero=data.filter(function(x){return x[2]>0;}).length;
+    var topC=byC.indexOf(Math.max.apply(null,byC));
+    kpis.innerHTML=kpi(fmt(tot,unit==='days'?1:0)+(unit==='tasks'?' задач':' чел.-дн.'),'Весь спрос')+
+      kpi(nonZero+' из '+data.length,'Ненулевых сочетаний')+
+      kpi(CUSTOMERS[topC],'Топ-заказчик')+
+      kpi(fmt(byC[topC]/tot*100,1)+'%','Доля топ-заказчика');
+    ch1.setOption({
+      tooltip:{formatter:function(p){return '<b>'+CUSTOMERS[p.data[0]]+'</b> · '+DEPTS[p.data[1]]+'<br/>'+fmt(p.data[2],unit==='days'?1:0)+(unit==='tasks'?' задач':' чел.-дн.');}},
+      grid:{left:140,right:70,top:10,bottom:90},
+      xAxis:{type:'category',data:CUSTOMERS,axisLabel:{interval:0,rotate:45,fontSize:10}},
+      yAxis:{type:'category',data:DEPTS,axisLabel:{fontSize:10}},
+      visualMap:{min:0,max:max,calculable:true,orient:'vertical',right:0,top:'center',inRange:{color:['#eef2ff','#a5b4fc','#6366f1','#4338ca']},textStyle:{color:'#64748b'}},
+      series:[{type:'heatmap',data:data,label:{show:false},emphasis:{itemStyle:{borderColor:'#1e293b',borderWidth:1}}}]
+    },true);
+    var idx=byC.map(function(v,i2){return [i2,v];}).sort(function(a,b){return b[1]-a[1];});
+    var cum=0,cumArr=idx.map(function(x){cum+=x[1];return Math.round(cum/tot*1000)/10;});
+    ch2.setOption({
+      tooltip:{trigger:'axis'},
+      legend:{data:['Трудоёмкость','Накопленная доля %'],top:0,textStyle:{fontSize:11,color:'#64748b'}},
+      grid:{left:60,right:55,top:35,bottom:90},
+      xAxis:{type:'category',data:idx.map(function(x){return CUSTOMERS[x[0]];}),axisLabel:{interval:0,rotate:45,fontSize:10}},
+      yAxis:[{type:'value'},{type:'value',max:100,axisLabel:{formatter:'{value}%'}}],
+      series:[
+        {name:'Трудоёмкость',type:'bar',data:idx.map(function(x){return x[1];}),itemStyle:{color:'#6366f1',borderRadius:4},barWidth:16},
+        {name:'Накопленная доля %',type:'line',yAxisIndex:1,data:cumArr,itemStyle:{color:'#f59e0b'},symbol:'circle',symbolSize:6}
+      ]
+    },true);
+  }
+  draw();
+}
+/* ===== 7. Burnup ===== */
+function repBurn(){
+  var card=addCard('7. Burnup: спрос vs мощности','Накопленные поступление и выполнение трудозатрат по неделям года, линия мощностей и прогноз выполнения на 8 недель вперёд по текущему темпу.');
+  var kpis=addKpis(card),ch=addChart(card,420);
+  var r=rndFactory(444),wk=[],inc=[],done=[],cap=[],fore=[],ci=0,cd=0,w;
+  for(w=1;w<=26;w++){ci+=140+Math.floor(r()*120);cd+=110+Math.floor(r()*120);wk.push('W'+w);inc.push(ci);done.push(cd);cap.push(210*w);fore.push(null);}
+  fore[25]=cd;
+  var rate=(done[25]-done[17])/8,f=cd;
+  for(w=27;w<=34;w++){f+=rate;wk.push('W'+w);inc.push(null);done.push(null);cap.push(210*w);fore.push(Math.round(f));}
+  kpis.innerHTML=kpi(fmt(ci)+' ч/д','Поступило с начала года')+
+    kpi(fmt(cd)+' ч/д','Выполнено')+
+    kpi(fmt(ci-cd)+' ч/д','Накопленный бэклог')+
+    kpi(fmt(rate,1)+' ч/д/нед','Средний темп выполнения (8 недель)');
+  ch.setOption({
+    tooltip:{trigger:'axis'},
+    legend:{data:['Поступило','Выполнено','Мощности','Прогноз'],top:0,textStyle:{fontSize:11,color:'#64748b'}},
+    grid:{left:65,right:30,top:40,bottom:35},
+    xAxis:{type:'category',data:wk,axisLabel:{fontSize:10}},
+    yAxis:{type:'value',name:'чел.-дней'},
+    series:[
+      {name:'Поступило',type:'line',data:inc,symbol:'none',lineStyle:{width:2,color:'#6366f1'},itemStyle:{color:'#6366f1'}},
+      {name:'Выполнено',type:'line',data:done,symbol:'none',lineStyle:{width:2,color:'#10b981'},itemStyle:{color:'#10b981'}},
+      {name:'Мощности',type:'line',data:cap,symbol:'none',lineStyle:{type:'dashed',width:1.5,color:'#94a3b8'},itemStyle:{color:'#94a3b8'}},
+      {name:'Прогноз',type:'line',data:fore,symbol:'none',lineStyle:{type:'dotted',width:2,color:'#10b981'},itemStyle:{color:'#10b981'}}
+    ]
+  },true);
+}
+/* ===== 8. Детектор зависших ===== */
+function repStuck(){
+  var card=addCard('8. Детектор «зависших» задач','Задачи, у которых статус/прогресс не менялся длительное время. Выберите минимальный возраст «простоя».');
+  var thr=addSeg(card,[[0,'Все'],[7,'7+ дней'],[14,'14+ дней'],[30,'30+ дней']],function(v){thr=v;draw();},1,true);
+  var kpis=addKpis(card),ch=addChart(card,260),tb=addTable(card,['Задача','Команда','Заказчик','Статус','Приоритет','Простой, дней']);
+  var r=rndFactory(555),STAT=['В работе','Ожидает заказчика','Оценивается','Приостановлена'],tasks=[];
+  for(var i2=0;i2<26;i2++){
+    tasks.push({name:'Задача '+(2000+i2),team:MAP_TEAMS[Math.floor(r()*MAP_TEAMS.length)],cust:CUSTOMERS[Math.floor(r()*CUSTOMERS.length)],
+      st:STAT[Math.floor(r()*STAT.length)],prio:r()<0.3?'Высокий':'Средний',age:2+Math.floor(r()*r()*95)});
+  }
+  function draw(){
+    var f=tasks.filter(function(t){return t.age>=thr;}).sort(function(a,b){return b.age-a.age;});
+    var byT={};f.forEach(function(t){byT[t.team]=(byT[t.team]||0)+1;});
+    var teams=Object.keys(byT).sort(function(a,b){return byT[b]-byT[a];});
+    if(!teams.length){teams=['—'];byT['—']=0;}
+    kpis.innerHTML=kpi(f.length,'Задач с простоем от '+thr+' дней')+
+      kpi((f.length?Math.max.apply(null,f.map(function(t){return t.age;})):0)+' дн.','Максимальный возраст')+
+      kpi(teams[0],'Больше всего зависших у')+
+      kpi(f.filter(function(t){return t.prio==='Высокий';}).length,'Из них с высоким приоритетом');
+    ch.setOption({
+      tooltip:{},
+      grid:{left:150,right:30,top:10,bottom:25},
+      xAxis:{type:'value'},
+      yAxis:{type:'category',data:teams.slice(0,8).reverse(),axisLabel:{fontSize:11}},
+      series:[{type:'bar',data:teams.slice(0,8).map(function(t){return byT[t];}).reverse(),barWidth:14,itemStyle:{color:'#ef4444',borderRadius:4}}]
+    },true);
+    tb.innerHTML=f.slice(0,15).map(function(t){
+      return '<tr><td>'+t.name+'</td><td>'+t.team+'</td><td>'+t.cust+'</td><td>'+t.st+'</td><td>'+t.prio+'</td><td><b>'+t.age+'</b></td></tr>';
+    }).join('');
+  }
+  draw();
+}
+/* ===== 9. Здоровье ключевых проектов ===== */
+function repProj(){
+  var card=addCard('9. Здоровье ключевых проектов','Траектория статуса по встречам за последние 8 недель: зелёный — в графике, жёлтый — под риском, красный — критично.');
+  var r=rndFactory(666),MEET=['Ключевой проект','Директорская опер-ка','ДИД'],SN=['В графике','Под риском','Критично'],SC=['prj-g','prj-y','prj-r'];
+  var P=['Цифровой профиль','Расчёты 2.0','ESG-платформа','Миграция BE','Автоматизация KYC','Клиентская аналитика','Рег-отчётность','Мобильный онбординг'];
+  var kpis=addKpis(card),grid=el('div','prj-grid');card.appendChild(grid);
+  var projs=P.map(function(nm){
+    var hist=[],s=Math.floor(r()*3);
+    for(var wI=0;wI<8;wI++){s=Math.max(0,Math.min(2,s+(r()<0.35?(r()<0.5?-1:1):0)));hist.push(s);}
+    return {nm:nm,meet:MEET[Math.floor(r()*MEET.length)],hist:hist,days:1+Math.floor(r()*30)};
+  });
+  var now=projs.map(function(p){return p.hist[7];});
+  kpis.innerHTML=kpi(now.filter(function(x){return x===0;}).length,'Проектов в графике')+
+    kpi(now.filter(function(x){return x===1;}).length,'Под риском')+
+    kpi(now.filter(function(x){return x===2;}).length,'Критичных')+
+    kpi(projs.length,'Ключевых проектов всего');
+  grid.innerHTML=projs.map(function(p){
+    var cur=p.hist[7];
+    return '<div class="prj-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h4>'+p.nm+'</h4><span class="prj-badge '+SC[cur]+'">'+SN[cur]+'</span></div>'+
+      spark(p.hist)+
+      '<div class="prj-meta"><span>'+p.meet+'</span><span>'+p.days+' дн. без изменений</span></div></div>';
+  }).join('');
+  function spark(hist){
+    var w=230,h=44,step=w/(hist.length-1),cols=['#10b981','#f59e0b','#ef4444'];
+    var pts=hist.map(function(v,i2){return [Math.round(i2*step),6+Math.round(v*(h-14)/2)];});
+    var dots=pts.map(function(pt,i2){return '<circle cx="'+pt[0]+'" cy="'+pt[1]+'" r="3.5" fill="'+cols[hist[i2]]+'"/>';}).join('');
+    return '<svg class="prj-spark" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'"><polyline points="'+pts.map(function(pt){return pt[0]+','+pt[1];}).join(' ')+'" fill="none" stroke="#94a3b8" stroke-width="1.5"/>'+dots+'</svg>';
+  }
+}
+/* ===== 10. Турбулентность ===== */
+function repTurb(){
+  var card=addCard('10. Индекс «турбулентности» задач','Число изменений по задачам (из лога): переносы срока и смены заказчика весят больше. Высокий индекс — задача «трясётся» и жжёт управление.');
+  var kpis=addKpis(card),ch=addChart(card,320),tb=addTable(card,['Задача','Команда','Сроки','Приоритет','Исполнители','Заказчики','Индекс']);
+  var r=rndFactory(777),tasks=[];
+  for(var i2=0;i2<18;i2++){
+    var c={term:Math.floor(r()*r()*7),prio:Math.floor(r()*5),exec:Math.floor(r()*4),cust:Math.floor(r()*r()*4)};
+    var idx=Math.round((c.term*2+c.prio*1.5+c.exec+c.cust*2)*2)/2;
+    tasks.push({name:'Задача '+(3000+i2),team:MAP_TEAMS[Math.floor(r()*MAP_TEAMS.length)],c:c,idx:idx});
+  }
+  tasks.sort(function(a,b){return b.idx-a.idx;});
+  var avg=tasks.reduce(function(a,t){return a+t.idx;},0)/tasks.length;
+  kpis.innerHTML=kpi(fmt(tasks[0].idx,1),'Максимальный индекс ('+tasks[0].name+')')+
+    kpi(fmt(avg,1),'Средний индекс')+
+    kpi(tasks.filter(function(t){return t.idx>=8;}).length,'Задач с индексом ≥ 8')+
+    kpi(tasks.length,'Проанализировано задач');
+  var top=tasks.slice(0,10);
+  ch.setOption({
+    tooltip:{formatter:function(p){return '<b>'+p.name+'</b><br/>Индекс турбулентности: '+fmt(p.value,1);}},
+    grid:{left:110,right:40,top:10,bottom:25},
+    xAxis:{type:'value'},
+    yAxis:{type:'category',data:top.map(function(t){return t.name;}).reverse(),axisLabel:{fontSize:11}},
+    series:[{type:'bar',data:top.map(function(t){return t.idx;}).reverse(),barWidth:14,
+      itemStyle:{color:function(p){return p.value>=8?'#ef4444':p.value>=5?'#f59e0b':'#6366f1';},borderRadius:4}}]
+  },true);
+  tb.innerHTML=tasks.slice(0,12).map(function(t){
+    return '<tr><td>'+t.name+'</td><td>'+t.team+'</td><td>'+t.c.term+'</td><td>'+t.c.prio+'</td><td>'+t.c.exec+'</td><td>'+t.c.cust+'</td><td><b>'+fmt(t.idx,1)+'</b></td></tr>';
+  }).join('');
+}
+function initNewReports(){
+  nrRoot=document.getElementById('new-reports');
+  if(!nrRoot)return;
+  repROI();
+  repRoles();
+  repAcc();
+  repLead();
+  repRisk();
+  repDemand();
+  repBurn();
+  repStuck();
+  repProj();
+  repTurb();
+}
+/* ===== Инициализация ===== */
+function showErr(m){
+  [sankeyEl,mapEl].forEach(function(e2){if(e2)e2.innerHTML='<div class="skp-err">'+m+'</div>';});
+}
+function init(){
+  try{
+    sankeyChart=echarts.init(sankeyEl);
+    mapChart=echarts.init(mapEl);
+    allCharts.push(sankeyChart,mapChart);
+    renderSankey();
+    renderMap();
+    document.querySelectorAll('#skp-mode button').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        state.mode=btn.getAttribute('data-mode');
+        document.querySelectorAll('#skp-mode button').forEach(function(b){b.classList.toggle('active',b===btn);});
+        renderSankey();
+      });
+    });
+    document.querySelectorAll('#skp-period button').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        state.period=btn.getAttribute('data-period');
+        document.querySelectorAll('#skp-period button').forEach(function(b){b.classList.toggle('active',b===btn);});
+        renderSankey();
+      });
+    });
+    document.querySelectorAll('#skp-map-period button').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        mapState.period=btn.getAttribute('data-period');
+        document.querySelectorAll('#skp-map-period button').forEach(function(b){b.classList.toggle('active',b===btn);});
+        renderMap();
+      });
+    });
+    try{initNewReports();}catch(e2){console.error('Новые отчёты:',e2);}
+    window.addEventListener('resize',function(){allCharts.forEach(function(c){c.resize();});});
+  }catch(e){
+    console.error(e);
+    showErr('Ошибка построения отчётов: '+e.message);
+  }
+}
+function boot(){
+  if(!sankeyEl||!mapEl)return;
+  if(window.echarts){init();return;}
+  var CDNS=[
+    'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js',
+    'https://unpkg.com/echarts@5.5.1/dist/echarts.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.1/echarts.min.js'
+  ],i=0;
+  (function next(){
+    if(window.echarts){init();return;}
+    if(i>=CDNS.length){showErr('Не удалось загрузить библиотеку ECharts с CDN. Проверьте доступ в интернет.');return;}
+    var s=document.createElement('script');
+    s.src=CDNS[i++];
+    s.onload=next;
+    s.onerror=next;
+    document.head.appendChild(s);
+  })();
+}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',boot);}else{boot();}
+})();
+</script>
+</body>
+</html>

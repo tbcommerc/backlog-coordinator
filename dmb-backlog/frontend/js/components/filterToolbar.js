@@ -225,9 +225,8 @@ export function renderToolbar(scope, opts = {}) {
 
   const columnSettingsHtml = `
     <div class="relative" id="${scope}-column-settings-wrapper">
-      <button class="btn btn-secondary btn-sm" id="${scope}-btn-column-settings" style="display:flex;align-items:center;gap:6px;">
+      <button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-column-settings" title="Столбцы">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        Столбцы
       </button>
       <div class="column-settings-dropdown" id="${scope}-column-settings-dropdown" style="display:none;position:absolute;right:0;top:100%;z-index:100;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:10px;padding:0;min-width:380px;max-height:420px;box-shadow:0 8px 24px rgba(0,0,0,0.25);margin-top:6px;">
         <div style="padding:10px 10px 6px 10px;background:var(--bg-primary);position:sticky;top:0;z-index:1;border-radius:10px 10px 0 0;">
@@ -275,22 +274,20 @@ export function renderToolbar(scope, opts = {}) {
       ${quickEditBtn}
       ${opts.viewToggle !== false ? viewToggleHtml : ''}
       ${opts.columnSettings ? columnSettingsHtml : ''}
-      ${opts.excel !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-export-excel" title="Экспорт в Excel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>` : ''}
+      ${opts.excel !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-export-excel" title="Экспорт в CSV"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>` : ''}
       ${importBtn}
-      ${opts.refresh !== false ? `<button class="btn btn-secondary btn-sm" id="${scope}-btn-refresh"><i data-lucide="refresh-ccw" style="width:15px;height:15px;"></i></button>` : ''}
+      ${opts.refresh !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-refresh" title="Обновить"><i data-lucide="refresh-ccw" style="width:15px;height:15px;"></i></button>` : ''}
     </div>` : '';
 
   return `
+    ${title ? `
+    <div class="page-header animate-fade-in">
+      <h1>${title}</h1>
+      ${subtitle ? `<p>${subtitle}</p>` : ''}
+    </div>` : ''}
     <div class="sticky-toolbar" data-version="3">
       <div style="display:flex;flex-direction:column;gap:var(--space-2);">
-        <div class="toolbar-title-row">
-          ${title ? `
-          <div class="toolbar-title-wrap">
-            <h2 class="toolbar-title">${title}</h2>
-            ${subtitle ? `<p class="toolbar-subtitle">${subtitle}</p>` : ''}
-          </div>` : ''}
-          ${actionsHtml}
-        </div>
+        ${actionsHtml}
         <div class="filter-panel">
           <div class="flex items-center gap-2 filter-toolbar-row">
             <div class="relative filter-search-wrap" style="flex:1;min-width:0;">
@@ -300,10 +297,10 @@ export function renderToolbar(scope, opts = {}) {
             <div id="f-${scope}-main-filters" class="flex items-center gap-2" style="flex:1;min-width:0;"></div>
             <button id="btn-ext-${scope}" class="btn btn-secondary btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-              <span id="btn-ext-${scope}-text">Ещё</span>
+              <span id="btn-ext-${scope}-text">Фильтры</span>
               <svg id="chev-ext-${scope}" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
-            <button id="f-${scope}-reset" class="btn btn-ghost btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
+            <button id="f-${scope}-reset" class="btn btn-secondary btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
               Сброс
             </button>
@@ -770,8 +767,8 @@ function renderFilterButtons(scope, allTasks) {
   };
 
   const allHtml = sortedColumns.map(renderBtn).join('');
-  mainC.innerHTML = allHtml;
-  if (extC) extC.innerHTML = '';
+  mainC.innerHTML = '';
+  if (extC) extC.innerHTML = allHtml;
 
   document.querySelectorAll(`[data-scope="${scope}"].filter-btn`).forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -785,32 +782,9 @@ function renderFilterButtons(scope, allTasks) {
     el.addEventListener('click', (e) => clearFilter(e, el.dataset.clear));
   });
 
-  if (mainC.children.length > 0) {
-    requestAnimationFrame(() => {
-      const cells = Array.from(mainC.children);
-      if (cells.length > 1) {
-        cells.forEach(el => el.style.flex = '0 0 auto');
-        void mainC.offsetHeight;
-        const natWidths = cells.map(el => el.scrollWidth);
-        let totalNatural = natWidths.reduce((a, b) => a + b, 0);
-        let removeCount = 0;
-        while (totalNatural > mainC.offsetWidth + 1 && removeCount < cells.length - 1) {
-          removeCount++;
-          totalNatural -= natWidths[natWidths.length - removeCount];
-        }
-        while (removeCount-- > 0) {
-          const last = mainC.lastElementChild;
-          if (last && extC) extC.insertBefore(last, extC.firstChild);
-        }
-      }
-      Array.from(mainC.children).forEach(el => el.style.flex = '1');
-
-      const extActive = extC ? Object.keys(cf).filter(k => cf[k] && cf[k].size > 0
-        && !Array.from(mainC.children).some(el => el.getAttribute('data-filter-key') === k)).length : 0;
-      const btnTxt = $(`btn-ext-${scope}-text`);
-      if (btnTxt) btnTxt.textContent = extActive > 0 ? `Ещё (${extActive})` : 'Ещё';
-    });
-  }
+  const extActive = Object.keys(cf).filter(k => cf[k] && cf[k].size > 0).length;
+  const btnTxt = $(`btn-ext-${scope}-text`);
+  if (btnTxt) btnTxt.textContent = extActive > 0 ? `Фильтры (${extActive})` : 'Фильтры';
   updateActiveFiltersRow(scope);
 }
 

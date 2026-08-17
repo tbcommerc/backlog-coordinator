@@ -1,0 +1,373 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Бэклог — карточка задачи v18</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/css/inter@latest/index.css">
+<style>
+:root{--bg:#EEF2F7;--surface:#fff;--body:#F7F9FC;--ink:#0B1526;--muted:#5D6B84;--faint:#98A2B8;--line:#E3E8F0;--accent:#1F9D44;--accent-soft:#E5F6EA;--ring:rgba(31,157,68,.18);--info:#2E6BE6;--info-bg:#E8F0FE;--warn:#B7791F;--warn-bg:#FFF4DC;--danger:#D64545;--danger-bg:#FBE9E9;--violet:#6C4CD4;--violet-bg:#EEEBFB}
+*{box-sizing:border-box;margin:0;padding:0}body{font:14px 'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink)}button{font-family:inherit}svg{width:14px;height:14px;flex:none}
+.overlay{position:fixed;inset:0;background:rgba(9,16,32,.55);display:none;align-items:center;justify-content:center;z-index:50}.overlay.show{display:flex}
+.modal{width:min(1240px,96vw);height:min(94vh,960px);background:var(--surface);border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(11,21,38,.28)}.modal.editing{box-shadow:0 0 0 3px var(--ring),0 24px 64px rgba(11,21,38,.28)}
+.mhead{padding:14px 22px 12px;border-bottom:1px solid var(--line)}
+.row1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tid{border:1px solid var(--line);background:#F4F6FA;border-radius:9px;padding:5px 9px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;display:inline-flex;gap:6px;align-items:center}.tid svg{width:12px;height:12px}
+.mtitle{font-size:19px;font-weight:800;flex:1;min-width:240px}
+.title-input{flex:1;min-width:240px;font-size:17px;font-weight:700;border:1.5px solid var(--accent);border-radius:10px;padding:8px 12px;outline:none;font-family:inherit}
+.tcount{font-size:11px;color:var(--faint)}
+.editbadge{background:var(--warn-bg);color:var(--warn);border-radius:999px;padding:5px 12px;font-size:11px;font-weight:800;text-transform:uppercase}
+.iconbtn{border:none;background:#F1F4F9;border-radius:9px;width:32px;height:32px;cursor:pointer;color:#414B63;display:inline-flex;align-items:center;justify-content:center}.iconbtn.close{margin-left:auto}
+.row2{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.mchip{display:inline-flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-size:12px;box-shadow:0 1px 3px rgba(16,24,40,.07)}
+.mchip .mi{width:24px;height:24px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex:none}.mchip .mi svg{width:13px;height:13px;color:#fff}
+.mi.g{background:linear-gradient(135deg,#21c04a,#12813a)}.mi.b{background:linear-gradient(135deg,#4c8dff,#2E6BE6)}.mi.a{background:linear-gradient(135deg,#ffb02e,#e08c00)}.mi.v{background:linear-gradient(135deg,#8f6ff5,#6C4CD4)}
+.mchip .k{color:var(--faint);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.mchip b{font-weight:700;font-size:12.5px}
+.ava24{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#4c8dff,#2E6BE6);color:#fff;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ringwrap{margin-left:auto;display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:5px 12px}
+.ring{width:30px;height:30px;transform:rotate(-90deg)}.ring .rbg{fill:none;stroke:#E6EBF2;stroke-width:4}.ring .rfg{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round}.ringtxt{font-size:12.5px;font-weight:800}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}.badge.nodot::before{display:none}
+.b-gray{background:#EAEEF4;color:#5A6478}.b-blue{background:var(--info-bg);color:var(--info)}.b-green{background:var(--accent-soft);color:#177A3D}.b-red{background:var(--danger-bg);color:var(--danger)}.b-amber{background:var(--warn-bg);color:var(--warn)}.b-violet{background:var(--violet-bg);color:var(--violet)}
+.tabs{position:relative;display:flex;gap:22px;padding:0 22px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:none;background:none;padding:12px 2px 11px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;display:inline-flex;gap:7px;align-items:center;white-space:nowrap}.tab.on{color:var(--ink)}.tab svg{width:15px;height:15px}
+#tabInd{position:absolute;bottom:-1px;height:2.5px;background:var(--accent);border-radius:3px;transition:left .25s,width .25s}
+.mbody{flex:1;overflow:auto;background:var(--body);padding:16px 22px 26px}
+.sec{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:18px 0 8px}.sec:first-child{margin-top:0}.sec .sic{width:22px;height:22px;border-radius:7px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center}.sec .sic svg{width:12px;height:12px}.sec::after{content:'';flex:1;height:1px;background:var(--line)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.span2{grid-column:1/-1}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.span4{grid-column:1/-1}
+.field{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 13px}
+.field:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)}
+.flabel,.kl{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;display:flex;gap:6px;align-items:center}
+.flt{flex:1;min-width:0}
+.lk{flex:none;display:inline-flex;color:var(--faint)}.lk svg{width:12px;height:12px}
+.fval{font-weight:600;line-height:1.45;word-break:break-word}.fval .txt{color:#2A3650;font-weight:500}
+.fval a{color:var(--info);text-decoration:none;display:inline-flex;gap:7px;align-items:center;word-break:break-all}.fval a svg{width:13px;height:13px;flex:none}
+.vchip{display:inline-flex;gap:8px;align-items:center;font-weight:700}.vchip svg{width:14px;height:14px;color:var(--faint)}
+.pbar2{display:inline-block;width:55%;height:7px;background:#E6EBF2;border-radius:99px;overflow:hidden;vertical-align:middle;margin-right:8px}.pbar2 span{display:block;height:100%;background:var(--accent);border-radius:99px}
+input[type=text],input[type=number],input[type=date],input[type=datetime-local],input[type=url],select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-family:inherit;font-size:13px;font-weight:500;background:#fff;outline:none;color:var(--ink)}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)}textarea{resize:vertical;line-height:1.5}
+input[type=range]{flex:1;min-width:50px;accent-color:var(--accent);border:none;padding:0}.pnum{width:64px}.prog-edit{display:flex;align-items:center;gap:10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:#F7F9FC;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:600;color:#414B63;cursor:pointer;display:inline-flex;align-items:center;gap:6px}.chip svg{width:12px;height:12px;color:var(--faint)}.chip.on{background:var(--accent-soft);border-color:var(--accent);color:#177A3D}.chip.on svg{color:var(--accent)}.chip.static{cursor:default}
+.kpi2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;align-items:stretch}
+.kpigroup{min-width:0;display:flex;flex-direction:column}.kpigroup .kpirow3{flex:1}
+.kglabel{font-size:10.5px;font-weight:800;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.kpirow3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpirow3 .kpi{height:100%}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:0}
+.kv{font-size:17px;font-weight:800}.kv.big{font-size:20px}.kv small{font-size:10.5px;color:var(--faint);font-weight:600}
+.psrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
+.just{margin-top:8px}
+.psbar{margin-top:8px;width:100%;height:7px;background:#E6EBF2;border-radius:99px;overflow:hidden}.psbar span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#21c04a,#8fd6a4)}
+.psbar.hide{visibility:hidden}
+.cv-good{color:#177A3D}.cv-warn{color:var(--warn)}.cv-bad{color:var(--danger)}
+.btn.ai{flex:none;background:linear-gradient(135deg,#6C4CD4,#2E6BE6);color:#fff;height:28px;padding:0 12px;font-size:11.5px}
+.aipop{display:none;margin-top:10px;border:1px dashed var(--violet);background:var(--violet-bg);border-radius:10px;padding:10px 12px}.aipop.show{display:block}
+.aipop .ah{font-size:11px;font-weight:800;text-transform:uppercase;color:var(--violet);margin-bottom:5px;display:flex;gap:6px;align-items:center}
+.aipop .av{font-size:14px;font-weight:800;margin-bottom:4px}.aipop .at{font-size:12.5px;color:#2A3650;font-weight:500;margin-bottom:8px}
+table.tbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;table-layout:fixed}
+table.tbl th{font-size:10.5px;text-transform:uppercase;color:var(--faint);text-align:left;padding:8px 14px;background:#FAFBFD;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.tbl td{padding:7px 14px;border-top:1px solid #EFF2F7;overflow:hidden;text-overflow:ellipsis}
+table.tbl tbody tr:nth-child(even){background:#FBFCFE}table.tbl tfoot td{background:#F6F8FB;font-weight:800;border-top:1px solid var(--line)}
+table.tbl td.num,table.tbl th.num{text-align:right;font-variant-numeric:tabular-nums}
+.diff{padding:3px 10px;border-radius:999px;font-weight:800;font-size:11px;white-space:nowrap}.d-good{background:var(--accent-soft);color:#177A3D}.d-bad{background:var(--danger-bg);color:var(--danger)}.d-neutral{background:#EAEEF4;color:#5A6478}
+.repgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.repcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.rc-head{display:flex;gap:10px;align-items:center;margin-bottom:10px}.rc-head .ric{width:28px;height:28px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center}.rc-head .ric svg{width:14px;height:14px}.rc-head h4{font-size:13px;font-weight:800}
+.stack{display:flex;flex-direction:column;gap:8px}
+.switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none;font-weight:700}.switch.view{pointer-events:none;opacity:.85}.switch input{display:none}
+.sl{width:42px;height:24px;background:#D7DCE5;border-radius:99px;position:relative;transition:.2s;flex:none}.sl::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s}
+.switch input:checked + .sl{background:var(--accent)}.switch input:checked + .sl::after{left:21px}
+.jrow{display:flex;align-items:center;gap:9px;padding:6px 0}.jrow + .jrow{border-top:1px dashed var(--line)}
+.jrow a{color:var(--info);text-decoration:none;font-weight:600;word-break:break-all;display:inline-flex;gap:7px;align-items:center}.jrow a svg{width:13px;height:13px;flex:none}
+.jadd{display:flex;gap:8px;margin-top:8px}
+.cthread{display:flex;flex-direction:column;gap:10px}.citem{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 13px}
+.chead{display:flex;gap:10px;align-items:center;margin-bottom:6px}.cava{width:26px;height:26px;border-radius:50%;background:var(--violet-bg);color:var(--violet);font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.cauthor{font-weight:700;font-size:13px}.cdate{font-size:11px;color:var(--faint)}.ctext{font-size:13px;color:#2A3650;line-height:1.5}
+.mention{color:var(--info);background:var(--info-bg);border-radius:6px;padding:1px 5px;font-weight:600}
+.creplies{margin-top:8px;padding-left:34px;display:flex;flex-direction:column;gap:8px}.creplies .citem{background:#F8FAFD}
+.composer{position:relative}.mpop{position:absolute;top:100%;left:0;margin-top:6px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(11,21,38,.18);z-index:30;min-width:230px;display:none;overflow:hidden}.mpop.show{display:block}
+.mpop button{display:flex;gap:9px;align-items:center;width:100%;border:none;background:none;padding:9px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--ink)}.mpop button:hover{background:#F3F7FF}.mpop .cava{width:22px;height:22px;font-size:8px}
+.mfoot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 22px;border-top:1px solid var(--line);background:#fff}
+.fmeta{font-size:12px;color:var(--faint)}.fmeta b{color:var(--muted)}.factions{display:flex;gap:10px;align-items:center}
+.dirty{display:none;align-items:center;gap:7px;background:var(--warn-bg);color:var(--warn);border-radius:999px;padding:6px 13px;font-size:11.5px;font-weight:800}.dirty i{width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.btn{position:relative;border:none;border-radius:10px;height:36px;padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn svg{width:14px;height:14px}.btn.primary{background:var(--accent);color:#fff}.btn.ghost{background:#fff;border:1px solid var(--line);color:#414B63}.btn.mini{height:28px;padding:0 10px;font-size:11.5px;margin-left:auto}
+.btn.loading{color:transparent;pointer-events:none}.btn.loading::after{content:'';position:absolute;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(90px);background:#0B1526;color:#fff;padding:12px 22px;border-radius:999px;font-size:13px;font-weight:600;display:flex;gap:10px;align-items:center;opacity:0;transition:.3s;z-index:99}.toast.show{opacity:1;transform:translateX(-50%)}.toast svg{width:16px;height:16px}
+.errbox{background:var(--danger-bg);color:var(--danger);border-radius:12px;padding:14px;font-weight:700}
+@media(max-width:960px){.grid,.grid4,.repgrid,.kpirow3,.kpi2,.psrow{grid-template-columns:1fr}.ringwrap{margin-left:0}}
+</style></head><body>
+<div class="overlay show" id="overlay"><div class="modal" id="modal" role="dialog" aria-modal="true" tabindex="-1">
+<div class="mhead" id="mhead"></div><div class="tabs" id="tabs"></div><div class="mbody" id="mbody"></div><div class="mfoot" id="mfoot"></div>
+</div></div><div class="toast" id="toast"></div>
+<script>
+'use strict';
+var IC={x:'<path d="M18 6L6 18M6 6l12 12"/>',lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',link:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7L12 4.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19.5"/>',plus:'<path d="M12 5v14M5 12h14"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',check:'<path d="M20 6L9 17l-5-5"/>',alert:'<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>',trend:'<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>',tag:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/>',folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',team:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5c2 .8 3.5 2.6 3.5 5.5"/>',msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',spark:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/>'};
+function ic(n){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+IC[n]+'</svg>';}
+var DICT={teams:['Pre-Trade','Post-Trade (Products & Service)','IB','Core','Delivery','Post-Trade (Finance)','Methodology','ИТ ЛТ','AI','Проектный офис'],channels:['Почта','СберЧат','Встреча/Звонок','Бизнес-план'],customers:['Дмитриев Игорь','Романова Полина','Ильин Тимур','Борисов Денис','Ушаков Виктор','Ковалёв Дмитрий'],customerDept:{'Дмитриев Игорь':'IB','Романова Полина':'M&A','Ильин Тимур':'ЦУП','Борисов Денис':'ФИНАНСЫ','Ушаков Виктор':'РИСКИ','Ковалёв Дмитрий':'ЦР'},projects:['НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД','АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ','ВЕНДОРОЗАМЕЩЕНИЕ','ВЫВОД PM В СИГМУ','ДАШБОРДЫ','ДЕСК НЕДВИЖИМОСТИ','ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ','ИМПОРТОЗАМЕЩЕНИЕ','КАРТОЧКА КЛИЕНТА','ЛИДЫ ДЛЯ КМ','ЛИДЫ ОТ КМ','МАРШРУТИЗАЦИЯ','ПАЙПЛАЙН-СКАНЕР СДЕЛОК','ПОИСК ПОТЕНЦИАЛОВ ДЛЯ ВЫПУСКОВ ОБЛИГАЦИЙ','СДЕЛКИ МАРШРУТИЗАЦИИ','ЦЕЛИ ЛПР','ЦИФРОВОЙ МЕТОДОЛОГ','AI ПОМОЩНИК IB','AI-СПРАВКА ПО КЛИЕНТУ','BI','DATA','IB','MIS','ЦКП','ПРОЧИЕ ЦЕЛИ'],taskTypes:['КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ','AD-HOC','ТЕХДОЛГ','ИССЛЕДОВАНИЕ','МЕТРИЧЕСКИЕ KR'],priorities:['ВЫСОКИЙ','СРЕДНИЙ','НИЗКИЙ'],statuses:['НОВАЯ ЗАДАЧА','НАЗНАЧЕНА КОМАНДА','СБОР ТРЕБОВАНИЙ','ПРОВЕРКА ТРЕБОВАНИЙ','УТОЧНЕНИЕ ТРЕБОВАНИЙ','ЭКСПРЕСС-ОЦЕНКА','ПРИНЯТИЕ РЕШЕНИЯ','ПРИНЯТА В РАБОТУ','ОТКЛОНЕНА','НЕ АКТУАЛЬНА','ВЫПОЛНЕНА','ЭСКАЛАЦИЯ НА ЛТ','ХОЛД'],deadlines:['1Q 2026','2Q 2026','3Q 2026','4Q 2026','Y2026','1Q 2027','2Q 2027','БЕЗ СРОКА'],users:['Иванова Мария','Петров Алексей','Сидоров Кирилл','Кузнецова Анна','Смирнов Дмитрий','Орлова Елена'],tags:['интеграция','отчётность','регуляторика','ML','UX','прод','данные','API','риск']};
+var RATES={designee:15000,analytics:12000,be:14000,python:16000,fe:13000,test:10000,testAuto:12000,delivery:15000};
+var ROLES=[{key:'designee',name:'Designee'},{key:'analytics',name:'Аналитика'},{key:'be',name:'Разработка BE'},{key:'python',name:'Разработка python BE'},{key:'fe',name:'Разработка FE'},{key:'test',name:'Test'},{key:'testAuto',name:'Test Auto'},{key:'delivery',name:'Delivery'}];
+var CURRENT_USER='Кузнецова Анна';
+var task={id:1247,title:'Пайплайн-сканер сделок: маршрутизация до КМ',description:'Автоматический сканер пайплайна сделок IB с маршрутизацией потенциальных сделок до клиентских менеджеров.\nНеобходимо реализовать скоринг сделок, уведомление КМ в СберЧат и дашборд конверсии для ДИД.',receivedAt:'2025-11-12',team:'Core',channel:'СберЧат',customer:'Дмитриев Игорь',project:'ПАЙПЛАЙН-СКАНЕР СДЕЛОК',type:'AD-HOC',otherTeams:['AI','Delivery'],priority:'ВЫСОКИЙ',status:'ПРИНЯТА В РАБОТУ',deadline:'2Q 2026',eo:{designee:10,analytics:20,be:30,python:15,fe:20,test:10,testAuto:5,delivery:10},ftz:{designee:8,analytics:18,be:25,python:10,fe:20,test:8,testAuto:4,delivery:9},finEffect:12.5,finJust:'Оценка по методике ДИД: рост конверсии пайплайна +1,8 п.п. даёт +12,5 млн руб. комиссии в год при текущем объёме выпусков.',priorityScore:78,priorityJust:'Приоритет «ВЫСОКИЙ», фин. эффект 12,5 млн ₽, C/V по ЭО 0,13 (ниже цели 0,3), срок 2Q 2026. Задача относится к ключевому проекту «ПАЙПЛАЙН-СКАНЕР СДЕЛОК».',progress:65,prevDirStatus:'В работе. Команда укладывалась в график, рисков не фиксировалось.',dirStatus:'В работе. Отставание от графика 3 дня из-за смежной команды ЦУП, компенсируем в следующем спринте.',dirStatusAt:'2026-01-19T14:00',prevDidStatus:'В работе. Интеграция с ЦУП находилась на этапе согласования.',didStatus:'Требует решения. Нужна приоритизация интеграции с ЦУП до конца квартала, иначе риск по срокам демо.',didStatusAt:'2026-01-20T09:15',demoDid:true,prevKeyStatus:'На контроле. Прогресс соответствовал плану квартала.',keyStatus:'На контроле. Демо пайплайн-сканера запланировано на встрече 12.02, эскалаций не требуется.',keyStatusAt:'2026-01-12T10:30',mockupUrl:'https://figma.com/file/pipeline-scanner-v3',jiraLinks:['https://jira.sbertech.ru/browse/IB-101','https://jira.sbertech.ru/browse/IB-118'],reqLinks:['https://docs.sbertech.ru/pages/IB-118-requirements'],comments:[{id:1,author:'Иванова Мария',at:'2026-01-18T11:10',text:'Коллеги, задача принята в работу. @Петров Алексей, посмотри, пожалуйста, требования по маршрутизации.',replies:[{id:2,author:'Петров Алексей',at:'2026-01-18T12:02',text:'Посмотрел, требования полные. Беру в спринт 12.'}]},{id:3,author:'Смирнов Дмитрий',at:'2026-01-20T09:20',text:'Демо для ДИД запланировано, нужен стенд с данными ЦУП. @Орлова Елена, помоги с выгрузкой.',replies:[]}],assignee:'Петров Алексей',author:'Иванова Мария',createdAt:'2025-11-12T09:14',updatedAt:'2026-01-20T18:42',tags:['прод','данные','ML'],history:[{at:'2026-01-20T18:42',by:'Петров Алексей',field:'Прогресс',old:'50',nw:'65'},{at:'2026-01-18T11:05',by:'Иванова Мария',field:'Статус задачи',old:'ЭКСПРЕСС-ОЦЕНКА',nw:'ПРИНЯТА В РАБОТУ'},{at:'2025-11-12T09:14',by:'Система',field:'—',old:'—',nw:'Задача создана'}]};
+var state={tab:'main',editing:false,draft:null,dirty:false,replyFor:null};
+var aiSugg=null,psSugg=null;
+function $(s){return document.querySelector(s);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function cur(){return state.editing?state.draft:task;}
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function initials(n){return (n||'').split(' ').map(function(w){return w[0]||'';}).join('').replace(/\./g,'').slice(0,2).toUpperCase();}
+function personDisp(n){if(!n)return '—';var p=n.split(' ');return p.length>1?p[1][0]+'. '+p[0]:n;}
+function fmtDate(v){return v?new Date(v).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'}):'—';}
+function fmtDT(v){return v?new Date(v).toLocaleString('ru-RU',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';}
+function fmtMoney(v){return v==null?'—':Number(v).toLocaleString('ru-RU')+' ₽';}
+function fmtNum(v,d){return (v==null||v==='')?'—':Number(v).toLocaleString('ru-RU',{maximumFractionDigits:(d==null?1:d)});}
+function urlOk(v){return /^https?:\/\/\S+\.\S+/.test(v||'');}
+function nl2br(s){return esc(s).replace(/\n/g,'<br>');}
+function nowLocal(){var d=new Date(),p=function(n){return String(n).padStart(2,'0');};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes());}
+function mentionHtml(s){var out=esc(s).replace(/\n/g,'<br>');DICT.users.forEach(function(u){out=out.split('@'+esc(u)).join('<span class="mention">@'+personDisp(u)+'</span>');});return out;}
+function calcCost(o){var s=0,a=false;ROLES.forEach(function(r){var v=+o[r.key];if(v){a=true;s+=v*RATES[r.key];}});return a?s:null;}
+function calcSum(o){var s=0,a=false;ROLES.forEach(function(r){var v=+o[r.key];if(v){a=true;s+=v;}});return a?Math.round(s*100)/100:null;}
+function cvCalc(cost,fin){return (cost>0&&fin!=null&&fin>0)?Math.round(cost/(fin*1e6)*100)/100:null;}
+function cvCls(v){if(v==null)return '';return v<0.3?'cv-good':(v<=1?'cv-warn':'cv-bad');}
+function psCls(v){if(v==null)return '';return v>=70?'cv-good':(v>=40?'cv-warn':'cv-bad');}
+function diffPct(eo,ftz){if(eo==null||eo===0||eo==='')return{txt:'—',cls:'d-neutral'};if(ftz==null||ftz==='')return{txt:'—',cls:'d-neutral'};var p=Math.round((ftz-eo)/eo*100);if(p<0)return{txt:p+'%',cls:'d-good'};if(p>0)return{txt:'+'+p+'%',cls:'d-bad'};return{txt:'0%',cls:'d-neutral'};}
+function statusCls(s){if(s==='ВЫПОЛНЕНА')return 'b-green';if(s==='ОТКЛОНЕНА'||s==='НЕ АКТУАЛЬНА'||s==='ЭСКАЛАЦИЯ НА ЛТ')return 'b-red';if(s==='ХОЛД'||s==='ПРИНЯТИЕ РЕШЕНИЯ'||s==='ЭКСПРЕСС-ОЦЕНКА')return 'b-amber';if(s==='НОВАЯ ЗАДАЧА')return 'b-gray';return 'b-blue';}
+function prioCls(p){return p==='ВЫСОКИЙ'?'b-red':(p==='СРЕДНИЙ'?'b-amber':'b-green');}
+function selC(k,o,v){return '<select data-k="'+k+'">'+o.map(function(x){return '<option '+((x===v)?'selected':'')+'>'+esc(x)+'</option>';}).join('')+'</select>';}
+function numC(k,v,s){return '<input type="number" step="'+(s||1)+'" min="0" data-k="'+k+'" value="'+(v==null?'':v)+'">';}
+function txtC(k,v){return '<input type="text" data-k="'+k+'" value="'+esc(v)+'">';}
+function taC(k,v,r){return '<textarea rows="'+(r||4)+'" data-k="'+k+'">'+esc(v)+'</textarea>';}
+function dateC(k,v){return '<input type="date" data-k="'+k+'" value="'+(v||'')+'">';}
+function dtimeC(k,v){return '<input type="datetime-local" data-k="'+k+'" value="'+(v||'')+'">';}
+function F(l,i,o){o=o||{};return '<div class="field '+(o.span2?'span2 ':'')+(o.span4?'span4 ':'')+'"><div class="flabel"><span class="flt">'+esc(l)+'</span>'+(o.lock?'<span class="lk">'+ic('lock')+'</span>':'')+'</div><div class="fval">'+i+'</div></div>';}
+function V(v){return '<div>'+v+'</div>';}
+function ROv(v){return '<div style="display:flex;gap:7px;align-items:center;color:#5A6478">'+v+'</div>';}
+function grid(){return '<div class="grid">'+Array.prototype.slice.call(arguments).join('')+'</div>';}
+function grid4(){return '<div class="grid4">'+Array.prototype.slice.call(arguments).join('')+'</div>';}
+function chipsStatic(arr){return arr.length?'<div class="chips">'+arr.map(function(x){return '<span class="chip static">'+ic('team')+esc(x)+'</span>';}).join('')+'</div>':'—';}
+function chipsTeams(all,selArr,field){var ordered=all.slice().sort(function(a,b){return (selArr.includes(b)?1:0)-(selArr.includes(a)?1:0);});
+return '<div class="chips">'+ordered.map(function(x){return '<button type="button" class="chip '+(selArr.includes(x)?'on':'')+'" data-toggle="'+field+'" data-val="'+esc(x)+'">'+(selArr.includes(x)?ic('check'):ic('plus'))+esc(x)+'</button>';}).join('')+'</div>';}
+function chipsTags(all,selArr,field,editable){return '<div class="chips">'+(editable?all.map(function(x){return '<button type="button" class="chip '+(selArr.includes(x)?'on':'')+'" data-toggle="'+field+'" data-val="'+esc(x)+'">'+(selArr.includes(x)?ic('check'):ic('plus'))+esc(x)+'</button>';}).join(''):(selArr.length?selArr.map(function(x){return '<span class="chip static">'+ic('tag')+esc(x)+'</span>';}).join(''):'—'))+'</div>';}
+function sec(t,i){return '<h3 class="sec"><span class="sic">'+ic(i)+'</span>'+esc(t)+'</h3>';}
+function lnk(u){return '<a href="#" onclick="return false">'+ic('link')+esc(u)+'</a>';}
+function renderHeader(){var t=cur();var h='<div class="row1"><button class="tid" data-action="copy-id" title="Скопировать ID">#'+t.id+' '+ic('copy')+'</button><span class="badge nodot b-gray">v18</span><span class="badge nodot b-violet" id="hType">'+esc(t.type)+'</span>';
+h+=state.editing?'<input class="title-input" data-k="title" maxlength="255" value="'+esc(t.title)+'"><span class="tcount" id="titleCount"></span>':'<h1 class="mtitle">'+esc(t.title)+'</h1>';
+h+='<span class="badge '+statusCls(t.status)+'" id="hStatus">'+esc(t.status)+'</span><span class="badge '+prioCls(t.priority)+'" id="hPrio">'+esc(t.priority)+'</span>';
+if(state.editing)h+='<span class="editbadge">Редактирование</span>';
+h+='<button class="iconbtn close" data-action="close" title="Закрыть (Esc)">'+ic('x')+'</button></div><div class="row2">';
+h+='<span class="mchip"><span class="mi g">'+ic('team')+'</span><span><span class="k">Команда</span><br><b id="hTeam">'+esc(t.team)+'</b></span></span>';
+h+='<span class="mchip"><span class="ava24">'+initials(t.assignee)+'</span><span><span class="k">Исполнитель</span><br><b id="hAssignee">'+esc(personDisp(t.assignee))+'</b></span></span>';
+h+='<span class="mchip"><span class="mi a">'+ic('cal')+'</span><span><span class="k">Срок</span><br><b id="hDeadline">'+esc(t.deadline)+'</b></span></span>';
+h+='<span class="mchip"><span class="mi v">'+ic('folder')+'</span><span><span class="k">Проект</span><br><b id="hProject">'+esc(t.project)+'</b></span></span>';
+h+='<span class="ringwrap"><svg class="ring" viewBox="0 0 36 36"><circle class="rbg" cx="18" cy="18" r="15"/><circle class="rfg" id="ringFg" cx="18" cy="18" r="15" stroke-dasharray="94.25" stroke-dashoffset="94.25"/></svg><span class="ringtxt" id="ringTxt"></span></span></div>';
+$('#mhead').innerHTML=h;}
+var TABS=[['main','Основное','file'],['eco','Экономика и трудозатраты','trend'],['rep','Отчётные статусы','flag'],['com','Комментарии','msg'],['sys','Ссылки и система','link'],['log','Лог изменений','clock']];
+function renderTabs(){$('#tabs').innerHTML=TABS.map(function(x){return '<button class="tab '+(state.tab===x[0]?'on':'')+'" data-tab="'+x[0]+'">'+ic(x[2])+esc(x[1])+'</button>';}).join('')+'<span id="tabInd"></span>';placeInd();}
+function placeInd(){var on=$('#tabs .tab.on'),ind=$('#tabInd');if(on&&ind){ind.style.left=on.offsetLeft+'px';ind.style.width=on.offsetWidth+'px';}}
+window.addEventListener('resize',placeInd);
+function kpiCard(l,v,lock){return '<div class="kpi"><div class="kl"><span class="flt">'+l+'</span>'+(lock?'<span class="lk">'+ic('lock')+'</span>':'')+'</div><div class="kv">'+v+'</div></div>';}
+function kpiBlock(t,e,withAI){var cost=calcCost(t.eo),fcost=calcCost(t.ftz),ftzT=calcSum(t.ftz),eoSum=calcSum(t.eo),cvE=cvCalc(cost,t.finEffect),cvF=cvCalc(fcost,t.finEffect);
+var h='<div class="kpi2"><div class="kpigroup"><div class="kglabel">План (ЭО)</div><div class="kpirow3">'
++kpiCard('Оценка трудозатрат (ЭО)','<span data-dyn="eo">'+fmtNum(eoSum)+'</span> <small>ч/д</small>',true)
++kpiCard('Стоимость по ЭО','<span data-dyn="cost">'+fmtMoney(cost)+'</span>',true)
++kpiCard('C/V по ЭО','<span data-dyn="cvE" class="'+cvCls(cvE)+'">'+(cvE==null?'—':cvE.toLocaleString('ru-RU'))+'</span>',true)
++'</div></div><div class="kpigroup"><div class="kglabel">Факт (ФТЗ)</div><div class="kpirow3">'
++kpiCard('Фактические трудозатраты','<span data-dyn="ftz">'+fmtNum(ftzT)+'</span> <small>ч/д</small>',true)
++kpiCard('Стоимость по ФТЗ','<span data-dyn="fcost">'+fmtMoney(fcost)+'</span>',true)
++kpiCard('C/V по ФТЗ','<span data-dyn="cvF" class="'+cvCls(cvF)+'">'+(cvF==null?'—':cvF.toLocaleString('ru-RU'))+'</span>',true)
++'</div></div></div>';
+h+='<div class="psrow">';
+h+='<div class="kpi"><div class="kl"><span class="flt">Priority Score</span><span class="lk">'+ic('lock')+'</span><button class="btn ai" data-action="ps-calc">'+ic('spark')+'AI-расчет</button></div><div class="kv big"><span data-dyn="ps" class="'+psCls(t.priorityScore)+'">'+(t.priorityScore==null?'—':t.priorityScore)+'</span> <small>/ 100</small></div><div class="psbar"><span id="psBar" style="width:'+(t.priorityScore||0)+'%"></span></div><div class="just"><div class="flabel"><span class="flt">Обоснование агента</span></div><div class="fval"><span class="txt">'+(t.priorityJust?nl2br(t.priorityJust):'—')+'</span></div></div><div class="aipop" id="psPop"></div></div>';
+h+='<div class="kpi"><div class="kl"><span class="flt">Финансовый эффект</span><button class="btn ai" data-action="ai-calc">'+ic('spark')+'AI-расчет</button></div>';
+h+=e?'<div class="fval"><input type="number" step="0.1" min="0" data-k="finEffect" value="'+(t.finEffect==null?'':t.finEffect)+'" style="max-width:140px;display:inline-block"> <small style="color:var(--faint)">млн ₽</small></div>'
+:'<div class="kv big"><span data-dyn="fin">'+fmtNum(t.finEffect,2)+'</span> <small>млн ₽</small></div>';
+h+='<div class="psbar hide"></div>';
+h+='<div class="just"><div class="flabel"><span class="flt">Обоснование расчёта</span></div><div class="fval">'+(e?taC('finJust',t.finJust,3):'<span class="txt">'+(t.finJust?nl2br(t.finJust):'—')+'</span>')+'</div></div><div class="aipop" id="aiPop"></div></div></div>';
+return h;}
+function aiSuggest(){var t=cur();var cost=calcCost(t.eo)||0;var fin=Math.round(cost/0.25/1e6*10)/10;
+var text='AI-оценка: стоимость по ЭО '+fmtMoney(cost)+' при целевом C/V 0,25 даёт финансовый эффект '+fmtNum(fin,1)+' млн ₽. Учтены ответственная команда '+t.team+(t.otherTeams.length?', вовлечённые команды: '+t.otherTeams.join(', '):'')+', срок '+t.deadline+' и медианные эффекты аналогичных задач портфеля.';
+return {fin:fin,text:text};}
+function psSuggest(){var t=cur();var cost=calcCost(t.eo);var cvE=cvCalc(cost,t.finEffect);var s=0;
+s+=t.priority==='ВЫСОКИЙ'?40:(t.priority==='СРЕДНИЙ'?25:10);
+s+=Math.min(30,Math.round((t.finEffect||0)*2));
+s+=cvE==null?0:(cvE<0.3?20:(cvE<=1?10:0));
+s+=t.deadline==='БЕЗ СРОКА'?0:10;s=Math.min(100,s);
+var text='Агент учёл: приоритет «'+t.priority+'», финансовый эффект '+fmtNum(t.finEffect,2)+' млн ₽, C/V по ЭО '+(cvE==null?'—':cvE.toLocaleString('ru-RU'))+', срок «'+t.deadline+'», принадлежность к проекту «'+t.project+'». Итог: '+s+'/100.';
+return {score:s,text:text};}
+function composerHtml(id,ph){return '<div style="position:relative"><textarea id="'+id+'" data-mention="1" rows="3" placeholder="'+esc(ph)+'"></textarea><div class="mpop" id="mpop-'+id+'"></div></div>';}
+function commentsBlock(t){var h='<div class="cthread">';
+t.comments.forEach(function(c){h+='<div class="citem"><div class="chead"><span class="cava">'+initials(c.author)+'</span><div><div class="cauthor">'+esc(personDisp(c.author))+'</div><div class="cdate">'+fmtDT(c.at)+'</div></div><button class="btn ghost mini" data-action="reply" data-cid="'+c.id+'">'+ic('msg')+'Ответить</button></div><div class="ctext">'+mentionHtml(c.text)+'</div>';
+if(c.replies&&c.replies.length){h+='<div class="creplies">';c.replies.forEach(function(r){h+='<div class="citem"><div class="chead"><span class="cava">'+initials(r.author)+'</span><div><div class="cauthor">'+esc(personDisp(r.author))+'</div><div class="cdate">'+fmtDT(r.at)+'</div></div></div><div class="ctext">'+mentionHtml(r.text)+'</div></div>';});h+='</div>';}
+if(state.replyFor===c.id){h+='<div style="margin-top:8px">'+composerHtml('replyBox','Ответить…')+'<div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" data-action="send-reply" data-cid="'+c.id+'">'+ic('check')+'Отправить</button><button class="btn ghost" data-action="reply-cancel">Отменить</button></div></div>';}
+h+='</div>';});
+return h+'<div class="composer">'+composerHtml('commentBox','Написать комментарий… используйте @, чтобы упомянуть коллегу')+'<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn primary" data-action="send-comment">'+ic('msg')+'Отправить комментарий</button></div></div></div>';}
+function bodyMain(t,e){var h='';
+h+=sec('Исполнение и команды','user');
+h+=grid4(
+F('Статус задачи',e?selC('status',DICT.statuses,t.status):V('<span class="badge '+statusCls(t.status)+'">'+esc(t.status)+'</span>')),
+F('Приоритет',e?selC('priority',DICT.priorities,t.priority):V('<span class="badge '+prioCls(t.priority)+'">'+esc(t.priority)+'</span>')),
+F('Срок выполнения',e?selC('deadline',DICT.deadlines,t.deadline):V('<span class="vchip">'+ic('cal')+esc(t.deadline)+'</span>')),
+F('Прогресс',e?'<div class="prog-edit"><input type="range" min="0" max="100" data-k="progress" value="'+t.progress+'"><input type="number" class="pnum" min="0" max="100" data-k="progress" value="'+t.progress+'"></div>':V('<span class="pbar2"><span style="width:'+t.progress+'%"></span></span>'+t.progress+'%')),
+F('Ответственная команда',e?selC('team',DICT.teams,t.team):V('<span class="vchip">'+ic('team')+esc(t.team)+'</span>')),
+F('Исполнитель',e?selC('assignee',DICT.users,t.assignee):V('<span class="vchip"><span class="ava24">'+initials(t.assignee)+'</span>'+esc(personDisp(t.assignee))+'</span>')),
+F('Проект',e?selC('project',DICT.projects,t.project):V('<span class="vchip">'+ic('folder')+esc(t.project)+'</span>')),
+F('Тип задачи',e?selC('type',DICT.taskTypes,t.type):V('<span class="badge nodot b-violet">'+esc(t.type)+'</span>')),
+F('Другие вовлечённые команды · '+t.otherTeams.length,e?chipsTeams(DICT.teams,t.otherTeams,'otherTeams'):chipsStatic(t.otherTeams),{span4:true}),
+F('Метки (теги)',chipsTags(DICT.tags,t.tags,'tags',e),{span4:true}));
+h+=sec('Контекст и заказчик','folder');
+h+=grid4(
+F('Канал поступления',e?selC('channel',DICT.channels,t.channel):V(esc(t.channel))),
+F('Дата получения',e?dateC('receivedAt',t.receivedAt):V(fmtDate(t.receivedAt))),
+F('Бизнес-заказчик',e?'<div style="display:flex;gap:8px;align-items:center"><span class="ava24" id="custAva">'+initials(t.customer)+'</span>'+selC('customer',DICT.customers,t.customer)+'</div>':V('<span class="vchip"><span class="ava24">'+initials(t.customer)+'</span>'+esc(personDisp(t.customer))+'</span>')),
+F('Подразделение бизнес-заказчика',ROv(esc(DICT.customerDept[t.customer]||'—')),{lock:true}));
+h+=sec('Описание задачи','file');
+h+=grid(F('Описание задачи',e?taC('description',t.description,4):V('<span class="txt">'+nl2br(t.description)+'</span>'),{span2:true}));
+h+=sec('Ключевые показатели','trend');
+h+=kpiBlock(t,e,true);
+return h;}
+function effortTable(t,e){var rows='';
+ROLES.forEach(function(r){var eoV=t.eo[r.key],ftzV=t.ftz[r.key],eoRub=(+eoV)?eoV*RATES[r.key]:null,ftzRub=(+ftzV)?ftzV*RATES[r.key]:null,d=diffPct(+eoV||null,+ftzV||null);
+rows+='<tr><td><b>'+r.name+'</b></td><td class="num">'+RATES[r.key].toLocaleString('ru-RU')+'</td><td class="num">'+(e?numC('eo.'+r.key,eoV,0.5):fmtNum(eoV))+'</td><td class="num" title="Тянется из внешней БД (Jira)">'+fmtNum(ftzV)+'</td><td class="num" data-costrow="'+r.key+'">'+(eoRub?fmtMoney(eoRub):'—')+'</td><td class="num" data-ftzrow="'+r.key+'">'+(ftzRub?fmtMoney(ftzRub):'—')+'</td><td class="num"><span class="diff '+d.cls+'" data-diffrow="'+r.key+'">'+d.txt+'</span></td></tr>';});
+var eoSum=calcSum(t.eo),ftzSum=calcSum(t.ftz),dt=diffPct(eoSum,ftzSum);
+return '<table class="tbl"><colgroup><col style="width:23%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:15%"><col style="width:15%"><col style="width:14%"></colgroup><thead><tr><th>Компетенция</th><th class="num">Ставка, ₽/ч-д</th><th class="num">ЭО, ч/д</th><th class="num">ФТЗ, ч/д</th><th class="num">ЭО, ₽</th><th class="num">ФТЗ, ₽</th><th class="num">Разница</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td>Итого</td><td class="num">—</td><td class="num">'+fmtNum(eoSum)+'</td><td class="num">'+fmtNum(ftzSum)+'</td><td class="num"><span data-dyn="costTotal">'+fmtMoney(calcCost(t.eo))+'</span></td><td class="num"><span data-dyn="fcostTotal">'+fmtMoney(calcCost(t.ftz))+'</span></td><td class="num"><span class="diff '+dt.cls+'" data-dyn="diffTotal">'+dt.txt+'</span></td></tr></tfoot></table>';}
+function bodyEco(t,e){var h=sec('Сводка','trend')+kpiBlock(t,e,true);
+h+=sec('Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)','edit');
+h+=effortTable(t,e);
+h+='<div class="field" style="margin-top:10px"><div class="flabel"><span class="flt">Источник ФТЗ</span><span class="lk">'+ic('lock')+'</span></div><div class="fval"><span class="txt">Фактические трудозатраты тянутся из внешней БД, связанной с Jira. Разница &lt; 0 — факт ниже оценки (хорошо), &gt; 0 — перерасход.</span></div></div>';
+return h;}
+function repCard(title,color,icon,prevK,curK,dateK,t,e,extra){var h='<div class="repcard"><div class="rc-head"><span class="ric" style="background:'+color+'22;color:'+color+'">'+ic(icon)+'</span><h4>'+esc(title)+'</h4></div><div class="stack">';
+h+='<div class="field"><div class="flabel"><span class="flt">Статус предыдущей встречи</span></div><div class="fval">'+(e?'<textarea rows="2" data-k="'+prevK+'" placeholder="Итог предыдущей встречи…">'+esc(t[prevK])+'</textarea>':'<span class="txt">'+(t[prevK]?nl2br(t[prevK]):'—')+'</span>')+'</div></div>';
+h+='<div class="field"><div class="flabel"><span class="flt">Текущий статус</span></div><div class="fval">'+(e?'<textarea rows="3" data-k="'+curK+'" placeholder="Несколько предложений о текущем состоянии…">'+esc(t[curK])+'</textarea>':'<span class="txt">'+(t[curK]?nl2br(t[curK]):'—')+'</span>')+'</div></div>';
+h+='<div class="field"><div class="flabel"><span class="flt">Дата изменения текущего статуса</span></div><div class="fval">'+(e?dtimeC(dateK,t[dateK]):V(fmtDT(t[dateK])))+'</div></div>';
+if(extra)h+=extra;return h+'</div></div>';}
+function bodyRep(t,e){var demo='<div class="field"><div class="flabel"><span class="flt">Демо для ДИД</span></div><div class="fval"><label class="switch'+(e?'':' view')+'"><input type="checkbox" data-k="demoDid" '+(t.demoDid?'checked':'')+(e?'':' disabled')+'><span class="sl"></span>'+(t.demoDid?'да':'нет')+'</label></div></div>';
+return sec('Отчётные статусы для встреч','flag')+'<div class="repgrid">'+repCard('Директорская оперативка','#6C4CD4','trend','prevDirStatus','dirStatus','dirStatusAt',t,e,null)+repCard('Оперативка ДИД','#1F9D44','clock','prevDidStatus','didStatus','didStatusAt',t,e,demo)+repCard('Встреча по ключевым проектам','#2E6BE6','flag','prevKeyStatus','keyStatus','keyStatusAt',t,e,null)+'</div>';}
+function bodyCom(t){return sec('Комментарии · '+t.comments.length,'msg')+commentsBlock(t);}
+function linksField(label,links,e,addId,delAct,addAct,ph){var inner='';
+if(e){inner=links.map(function(u,i){return '<div class="jrow"><a href="#" onclick="return false">'+ic('link')+esc(u)+'</a><button class="iconbtn" data-action="'+delAct+'" data-idx="'+i+'" title="Удалить">'+ic('x')+'</button></div>';}).join('')+'<div class="jadd"><input type="url" id="'+addId+'" placeholder="'+esc(ph)+'"><button class="btn ghost" data-action="'+addAct+'">'+ic('plus')+'Добавить</button></div>';}
+else{inner=links.map(function(u){return '<div class="jrow"><a href="#" onclick="return false">'+ic('link')+esc(u)+'</a></div>';}).join('')||'—';}
+return F(label,inner,{span2:true});}
+function bodySys(t,e){var h=sec('Ссылки и артефакты','link');
+h+=grid(F('Ссылка на макеты',e?txtC('mockupUrl',t.mockupUrl):V(t.mockupUrl?lnk(t.mockupUrl):'—'),{span2:true}));
+h+=grid(linksField('Ссылки на Jira',t.jiraLinks,e,'newJira','del-jira','add-jira','https://jira…/ISSUE-123'));
+h+=grid(linksField('Ссылки на бизнес-требования',t.reqLinks,e,'newReq','del-req','add-req','https://docs…/requirements'));
+h+=sec('Системная информация','user');
+h+=grid(F('Автор задачи',ROv('<span class="vchip"><span class="ava24">'+initials(t.author)+'</span>'+esc(personDisp(t.author))+'</span>'),{lock:true}),
+F('Дата создания задачи',ROv(fmtDT(t.createdAt)),{lock:true}),
+F('Дата последнего изменения',ROv(fmtDT(t.updatedAt)),{lock:true,span2:true}));
+return h;}
+function bodyLog(t){return sec('История изменений (лог) · '+t.history.length,'clock')+'<table class="tbl"><colgroup><col style="width:16%"><col style="width:18%"><col style="width:24%"><col style="width:21%"><col style="width:21%"></colgroup><thead><tr><th>Дата</th><th>Пользователь</th><th>Поле</th><th>Старое значение</th><th>Новое значение</th></tr></thead><tbody>'+t.history.map(function(r){return '<tr><td>'+fmtDT(r.at)+'</td><td><b>'+esc(r.by)+'</b></td><td>'+esc(r.field)+'</td><td>'+esc(r.old)+'</td><td>'+esc(r.nw)+'</td></tr>';}).join('')+'</tbody></table>';}
+function renderBody(){var t=cur(),e=state.editing,h='';
+if(state.tab==='main')h=bodyMain(t,e);else if(state.tab==='eco')h=bodyEco(t,e);else if(state.tab==='rep')h=bodyRep(t,e);else if(state.tab==='com')h=bodyCom(t);else if(state.tab==='sys')h=bodySys(t,e);else h=bodyLog(t);
+$('#mbody').innerHTML=h;refreshDynamic();}
+function renderFooter(){var t=cur();var h='<div class="fmeta"><b>Автор:</b> '+esc(personDisp(t.author))+' · <b>Создана:</b> '+fmtDT(t.createdAt)+' · <b>Изменена:</b> '+fmtDT(t.updatedAt)+'</div><div class="factions"><span class="dirty" id="dirty"><i></i>Не сохранено</span>';
+h+=state.editing?'<button class="btn ghost" data-action="cancel">'+ic('x')+'Отменить</button><button class="btn primary" id="saveBtn" data-action="save">'+ic('check')+'Сохранить</button>':'<button class="btn primary" data-action="edit">'+ic('edit')+'Редактировать</button>';
+$('#mfoot').innerHTML=h+'</div>';updateDirty();}
+function render(){renderHeader();renderTabs();renderBody();renderFooter();$('#modal').classList.toggle('editing',state.editing);}
+function refreshDynamic(){var t=cur(),cost=calcCost(t.eo),fcost=calcCost(t.ftz),ftzT=calcSum(t.ftz),eoSum=calcSum(t.eo),cvE=cvCalc(cost,t.finEffect),cvF=cvCalc(fcost,t.finEffect);
+function set(id,fn){var el=document.getElementById(id);if(el)fn(el);}
+set('hType',function(el){el.textContent=t.type;});
+set('hStatus',function(el){el.textContent=t.status;el.className='badge '+statusCls(t.status);});
+set('hPrio',function(el){el.textContent=t.priority;el.className='badge '+prioCls(t.priority);});
+set('hTeam',function(el){el.textContent=t.team;});
+set('hAssignee',function(el){el.textContent=personDisp(t.assignee);});
+set('hDeadline',function(el){el.textContent=t.deadline;});
+set('hProject',function(el){el.textContent=t.project;});
+set('custAva',function(el){el.textContent=initials(t.customer);});
+set('ringFg',function(el){el.style.strokeDashoffset=(94.25*(1-(+t.progress||0)/100)).toFixed(2);});
+set('ringTxt',function(el){el.textContent=t.progress+'%';});
+set('titleCount',function(el){el.textContent=(255-String(t.title||'').length);});
+set('ps',function(el){el.textContent=(t.priorityScore==null?'—':t.priorityScore);el.className=psCls(t.priorityScore);});
+set('psBar',function(el){el.style.width=(t.priorityScore||0)+'%';});
+document.querySelectorAll('[data-dyn]').forEach(function(el){var k=el.dataset.dyn;
+if(k==='eo')el.textContent=fmtNum(eoSum);else if(k==='cost')el.textContent=fmtMoney(cost);
+else if(k==='fcost')el.textContent=fmtMoney(fcost);else if(k==='ftz')el.textContent=fmtNum(ftzT);
+else if(k==='fin')el.textContent=fmtNum(t.finEffect,2);
+else if(k==='cvE'){el.textContent=(cvE==null?'—':cvE.toLocaleString('ru-RU'));el.className=cvCls(cvE);}
+else if(k==='cvF'){el.textContent=(cvF==null?'—':cvF.toLocaleString('ru-RU'));el.className=cvCls(cvF);}
+else if(k==='costTotal'||k==='costTotal2')el.textContent=fmtMoney(cost);
+else if(k==='fcostTotal'||k==='fcostTotal2')el.textContent=fmtMoney(fcost);
+else if(k==='diffTotal'){var d=diffPct(eoSum,ftzSum);el.textContent=d.txt;el.className='diff '+d.cls;}});
+document.querySelectorAll('[data-costrow]').forEach(function(el){var v=+t.eo[el.dataset.costrow]||0;el.textContent=v?fmtMoney(v*RATES[el.dataset.costrow]):'—';});
+document.querySelectorAll('[data-ftzrow]').forEach(function(el){var v=+t.ftz[el.dataset.ftzrow]||0;el.textContent=v?fmtMoney(v*RATES[el.dataset.ftzrow]):'—';});
+document.querySelectorAll('[data-diffrow]').forEach(function(el){var d=diffPct(+t.eo[el.dataset.diffrow]||null,+t.ftz[el.dataset.diffrow]||null);el.textContent=d.txt;el.className='diff '+d.cls;});}
+function updateDirty(){var d=document.getElementById('dirty');if(d)d.style.display=state.dirty?'inline-flex':'none';}
+function applyAI(){if(!aiSugg)return;var t=state.editing?state.draft:task;var oldFin=t.finEffect;
+t.finEffect=aiSugg.fin;t.finJust=aiSugg.text;
+if(!state.editing){var now=nowLocal();t.updatedAt=now;
+t.history.unshift({at:now,by:CURRENT_USER,field:'Финансовый эффект',old:pretty(oldFin),nw:pretty(t.finEffect)});
+t.history.unshift({at:now,by:CURRENT_USER,field:'Обоснование расчёта',old:'AI-расчет',nw:'применено'});}
+aiSugg=null;if(state.editing)state.dirty=true;renderBody();refreshDynamic();renderFooter();updateDirty();
+toast('AI-рекомендация применена','ok');}
+function applyPS(){if(!psSugg)return;var t=state.editing?state.draft:task;var old=t.priorityScore;
+t.priorityScore=psSugg.score;t.priorityJust=psSugg.text;
+if(!state.editing){var now=nowLocal();t.updatedAt=now;t.history.unshift({at:now,by:CURRENT_USER,field:'Priority Score',old:pretty(old),nw:pretty(t.priorityScore)});}
+psSugg=null;if(state.editing)state.dirty=true;renderBody();refreshDynamic();renderFooter();updateDirty();
+toast('Priority Score обновлён','ok');}
+var mentionTarget=null;
+function hidePops(){document.querySelectorAll('.mpop').forEach(function(p){p.classList.remove('show');});}
+function onMentionInput(ta){mentionTarget=ta;var pos=ta.selectionStart||0;var m=ta.value.slice(0,pos).match(/@([^\s@]*)$/);var pop=document.getElementById('mpop-'+ta.id);
+if(!m||!pop){hidePops();return;}
+var list=DICT.users.filter(function(u){return u.toLowerCase().includes(m[1].toLowerCase());});
+if(!list.length){hidePops();return;}
+pop.innerHTML=list.map(function(u){return '<button type="button" data-action="mention" data-name="'+esc(u)+'"><span class="cava">'+initials(u)+'</span>'+esc(personDisp(u))+'</button>';}).join('');
+pop.classList.add('show');}
+function applyMention(name){var ta=mentionTarget;if(!ta)return;var pos=ta.selectionStart||0;var before=ta.value.slice(0,pos).replace(/@([^\s@]*)$/,'@'+name+' ');ta.value=before+ta.value.slice(pos);var np=before.length;ta.focus();ta.setSelectionRange(np,np);hidePops();}
+function startEdit(){state.draft=clone(task);state.editing=true;state.dirty=false;render();toast('Режим редактирования включён','ok');}
+function cancelEdit(){state.editing=false;state.draft=null;state.dirty=false;state.replyFor=null;aiSugg=null;psSugg=null;render();toast('Изменения отменены','warn');}
+function validate(d){if(!String(d.title||'').trim())return 'Укажите название задачи — поле обязательно (NOT NULL)';if(d.mockupUrl&&!urlOk(d.mockupUrl))return 'Некорректная ссылка на макеты (ожидается http(s)://…)';return null;}
+function saveEdit(){var err=validate(state.draft);if(err){toast(err,'err');var ti=document.querySelector('[data-k="title"]');if(ti)ti.focus();return;}
+var btn=$('#saveBtn');if(btn)btn.classList.add('loading');
+setTimeout(function(){var ch=diffChanges(task,state.draft),now=nowLocal();
+ch.forEach(function(c){state.draft.history.unshift({at:now,by:CURRENT_USER,field:c.field,old:c.old,nw:c.nw});});
+state.draft.updatedAt=now;task=state.draft;state.editing=false;state.draft=null;state.dirty=false;state.replyFor=null;aiSugg=null;psSugg=null;render();
+toast(ch.length?('Сохранено · изменений: '+ch.length):'Сохранено · без изменений','ok');},380);}
+function pretty(v){if(Array.isArray(v))return v.join(', ')||'—';if(v===null||v==='')return '—';if(typeof v==='boolean')return v?'да':'нет';return String(v);}
+function diffChanges(a,b){var ch=[];
+var TRACK=[['title','Название задачи'],['description','Описание задачи'],['receivedAt','Дата получения'],['channel','Канал поступления'],['customer','Бизнес-заказчик'],['project','Проект'],['type','Тип задачи'],['priority','Приоритет'],['status','Статус задачи'],['deadline','Срок выполнения'],['team','Ответственная команда'],['assignee','Исполнитель'],['progress','Прогресс'],['finEffect','Финансовый эффект'],['finJust','Обоснование фин. эффекта'],['priorityScore','Priority Score'],['priorityJust','Обоснование Priority Score'],['mockupUrl','Ссылка на макеты'],['prevDirStatus','Статус предыдущей встречи (директорская)'],['dirStatus','Статус для Директорской оперативки'],['dirStatusAt','Дата изменения статуса (директорская)'],['prevDidStatus','Статус предыдущей встречи (ДИД)'],['didStatus','Статус для оперативки ДИД'],['didStatusAt','Дата изменения статуса ДИД'],['demoDid','Демо для ДИД'],['prevKeyStatus','Статус предыдущей встречи (ключ. проекты)'],['keyStatus','Статус для встречи по ключевым проектам'],['keyStatusAt','Дата изменения статуса ключ. проекта'],['tags','Метки (теги)'],['otherTeams','Другие вовлечённые команды'],['jiraLinks','Ссылки на Jira'],['reqLinks','Ссылки на бизнес-требования']];
+TRACK.forEach(function(p){if(JSON.stringify(a[p[0]])!==JSON.stringify(b[p[0]]))ch.push({field:p[1],old:pretty(a[p[0]]),nw:pretty(b[p[0]])});});
+ROLES.forEach(function(r){if(+a.eo[r.key]!==+b.eo[r.key])ch.push({field:r.name+' (ЭО)',old:pretty(a.eo[r.key]),nw:pretty(b.eo[r.key])});});
+return ch;}
+function setPath(o,p,v){var parts=p.split('.');var x=o;for(var i=0;i<parts.length-1;i++)x=x[parts[i]];x[parts[parts.length-1]]=v;}
+function onField(ev){if(ev.target.dataset&&ev.target.dataset.mention){onMentionInput(ev.target);return;}
+var k=ev.target.dataset?ev.target.dataset.k:null;if(!k||!state.editing)return;
+var v=ev.target.value;
+if(ev.target.type==='checkbox')v=ev.target.checked;
+else if(ev.target.type==='number'||ev.target.type==='range'){v=v===''?null:Math.max(0,+v);if(k==='progress')v=Math.min(100,Math.round(v));}
+setPath(state.draft,k,v);state.dirty=true;updateDirty();
+if(k==='progress'){document.querySelectorAll('[data-k="progress"]').forEach(function(el){if(el!==ev.target)el.value=v;});}
+if(k==='demoDid')renderBody();
+refreshDynamic();}
+document.addEventListener('input',onField);
+document.addEventListener('change',onField);
+document.addEventListener('click',function(ev){
+if(!ev.target.closest('.mpop')&&!ev.target.closest('textarea[data-mention]'))hidePops();
+var act=ev.target.closest('[data-action]');
+if(act){var a=act.dataset.action;
+if(a==='edit')startEdit();
+else if(a==='save')saveEdit();
+else if(a==='cancel')cancelEdit();
+else if(a==='close')closeModal();
+else if(a==='copy-id'){try{navigator.clipboard.writeText(String(task.id));toast('ID '+task.id+' скопирован','ok');}catch(e){toast('ID: '+task.id,'ok');}}
+else if(a==='mention')applyMention(act.dataset.name);
+else if(a==='ai-calc'){aiSugg=aiSuggest();var pop=document.getElementById('aiPop');
+if(pop){pop.innerHTML='<div class="ah">'+ic('spark')+'AI-подсказка</div><div class="av">Финансовый эффект: '+fmtNum(aiSugg.fin,1)+' млн ₽</div><div class="at">'+esc(aiSugg.text)+'</div><div style="display:flex;gap:8px"><button class="btn primary mini" data-action="ai-apply">'+ic('check')+'Применить</button><button class="btn ghost mini" data-action="ai-dismiss">Скрыть</button></div>';pop.classList.add('show');}}
+else if(a==='ai-apply')applyAI();
+else if(a==='ai-dismiss'){aiSugg=null;var p1=document.getElementById('aiPop');if(p1)p1.classList.remove('show');}
+else if(a==='ps-calc'){psSugg=psSuggest();var pop2=document.getElementById('psPop');
+if(pop2){pop2.innerHTML='<div class="ah">'+ic('spark')+'Расчёт агента</div><div class="av">Priority Score: '+psSugg.score+'/100</div><div class="at">'+esc(psSugg.text)+'</div><div style="display:flex;gap:8px"><button class="btn primary mini" data-action="ps-apply">'+ic('check')+'Применить</button><button class="btn ghost mini" data-action="ps-dismiss">Скрыть</button></div>';pop2.classList.add('show');}}
+else if(a==='ps-apply')applyPS();
+else if(a==='ps-dismiss'){psSugg=null;var p2=document.getElementById('psPop');if(p2)p2.classList.remove('show');}
+else if(a==='reply'){state.replyFor=+act.dataset.cid;renderBody();}
+else if(a==='reply-cancel'){state.replyFor=null;renderBody();}
+else if(a==='send-comment'){var box=document.getElementById('commentBox');if(box&&box.value.trim()){task.comments.push({id:Date.now(),author:CURRENT_USER,at:nowLocal(),text:box.value.trim(),replies:[]});renderBody();toast('Комментарий добавлен','ok');}else toast('Комментарий пуст','err');}
+else if(a==='send-reply'){var box2=document.getElementById('replyBox');var c=task.comments.find(function(x){return x.id===+act.dataset.cid;});if(box2&&box2.value.trim()&&c){c.replies.push({id:Date.now(),author:CURRENT_USER,at:nowLocal(),text:box2.value.trim()});state.replyFor=null;renderBody();toast('Ответ добавлен','ok');}else toast('Ответ пуст','err');}
+else if(a==='add-jira'){var inp=document.getElementById('newJira');if(inp&&inp.value.trim()){if(!urlOk(inp.value.trim())){toast('Некорректная ссылка Jira','err');return;}state.draft.jiraLinks.push(inp.value.trim());state.dirty=true;renderBody();updateDirty();}}
+else if(a==='del-jira'){state.draft.jiraLinks.splice(+act.dataset.idx,1);state.dirty=true;renderBody();updateDirty();}
+else if(a==='add-req'){var inp2=document.getElementById('newReq');if(inp2&&inp2.value.trim()){if(!urlOk(inp2.value.trim())){toast('Некорректная ссылка на требования','err');return;}state.draft.reqLinks.push(inp2.value.trim());state.dirty=true;renderBody();updateDirty();}}
+else if(a==='del-req'){state.draft.reqLinks.splice(+act.dataset.idx,1);state.dirty=true;renderBody();updateDirty();}
+return;}
+var tab=ev.target.closest('[data-tab]');
+if(tab){state.tab=tab.dataset.tab;state.replyFor=null;renderTabs();renderBody();return;}
+var chip=ev.target.closest('[data-toggle]');
+if(chip&&state.editing){var field=chip.dataset.toggle,val=chip.dataset.val;var arr=state.draft[field],i=arr.indexOf(val);if(i>=0)arr.splice(i,1);else arr.push(val);state.dirty=true;renderBody();updateDirty();refreshDynamic();return;}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
+$('#overlay').addEventListener('mousedown',function(e){if(e.target.id==='overlay')closeModal();});
+function closeModal(){if(state.dirty||state.editing){toast('Сохраните или отмените изменения, чтобы закрыть карточку','warn');return;}$('#overlay').classList.remove('show');}
+var toastT;function toast(msg,type){var t=$('#toast');t.className='toast show';t.innerHTML=ic((type==='ok')?'check':'alert')+'<span>'+esc(msg)+'</span>';clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('show');},2800);}
+try{render();}catch(err){var mb=document.getElementById('mbody');if(mb)mb.innerHTML='<div class="errbox">Ошибка рендера: '+esc(err.message)+'</div>';}
+</script></body></html>

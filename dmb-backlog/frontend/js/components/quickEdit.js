@@ -1,5 +1,5 @@
-import { showConfirmModal, showErrorModal } from './modal.js';
-import { updateStickyOffsets } from './filterToolbar.js?v=45';
+import { showConfirmModal, showErrorModal } from './modal.js?v=47';
+import { updateStickyOffsets } from './filterToolbar.js?v=47';
 
 console.log('[DMB] quickEdit.js v20260804 loaded');
 

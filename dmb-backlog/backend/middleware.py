@@ -4,6 +4,7 @@ DMB Backlog - Middleware (Logging, Audit, CORS)
 import time
 import json
 import logging
+import sys
 from datetime import datetime
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -15,13 +16,24 @@ import os
 _log_dir = os.path.join(os.path.dirname(__file__), "logs")
 os.makedirs(_log_dir, exist_ok=True)
 
+
+def _utf8_stream_handler():
+    if hasattr(sys.stderr, "reconfigure"):
+        try:
+            sys.stderr.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+    return logging.StreamHandler()
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
-        logging.FileHandler(os.path.join(_log_dir, "app.log")),
-        logging.StreamHandler()
-    ]
+        logging.FileHandler(os.path.join(_log_dir, "app.log"), encoding="utf-8"),
+        _utf8_stream_handler()
+    ],
+    force=True
 )
 logger = logging.getLogger("dmb_backlog")
 
