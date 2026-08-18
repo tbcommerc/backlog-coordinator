@@ -15,3 +15,7 @@ login_body.json
 tasks.json
 tasks_all.json
 
+# Secrets
+.env
+!.env.example
+
