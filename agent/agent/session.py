@@ -5,6 +5,7 @@ session_id through. Serialization is JSON via dataclass helpers.
 """
 import json
 import sqlite3
+import threading
 import uuid
 from datetime import datetime, timezone
 
@@ -72,6 +73,10 @@ def state_to_dict(state: DialogueState) -> dict:
         # Phase 4 fields
         "user_expertise": state.user_expertise,
         "user_preferred_style": state.user_preferred_style,
+        "profile_message_count": state.profile_message_count,
+        "profile_tech_term_count": state.profile_tech_term_count,
+        "profile_novice_indicator_count": state.profile_novice_indicator_count,
+        "profile_expert_indicator_count": state.profile_expert_indicator_count,
         "consecutive_questions": state.consecutive_questions,
         "short_answers_count": state.short_answers_count,
         "fatigue_level": state.fatigue_level,
@@ -82,6 +87,12 @@ def state_to_dict(state: DialogueState) -> dict:
         "total_agent_messages": state.total_agent_messages,
         "escalation_reason": state.escalation_reason,
         "clarification_failures": state.clarification_failures,
+        "intermediate_summary_shown": state.intermediate_summary_shown,
+        "intermediate_summary_pending": state.intermediate_summary_pending,
+        "fatigue_offer_shown": state.fatigue_offer_shown,
+        "fatigue_offer_pending": state.fatigue_offer_pending,
+        "last_user_signal": state.last_user_signal,
+        "last_extracted_slots": state.last_extracted_slots,
     }
 
 
@@ -124,6 +135,10 @@ def state_from_dict(data: dict) -> DialogueState:
         # Phase 4 fields
         user_expertise=data.get("user_expertise", "medium"),
         user_preferred_style=data.get("user_preferred_style", ""),
+        profile_message_count=data.get("profile_message_count", 0),
+        profile_tech_term_count=data.get("profile_tech_term_count", 0),
+        profile_novice_indicator_count=data.get("profile_novice_indicator_count", 0),
+        profile_expert_indicator_count=data.get("profile_expert_indicator_count", 0),
         consecutive_questions=data.get("consecutive_questions", 0),
         short_answers_count=data.get("short_answers_count", 0),
         fatigue_level=data.get("fatigue_level", "normal"),
@@ -134,6 +149,12 @@ def state_from_dict(data: dict) -> DialogueState:
         total_agent_messages=data.get("total_agent_messages", 0),
         escalation_reason=data.get("escalation_reason", ""),
         clarification_failures=data.get("clarification_failures", 0),
+        intermediate_summary_shown=data.get("intermediate_summary_shown", False),
+        intermediate_summary_pending=data.get("intermediate_summary_pending", False),
+        fatigue_offer_shown=data.get("fatigue_offer_shown", False),
+        fatigue_offer_pending=data.get("fatigue_offer_pending", False),
+        last_user_signal=data.get("last_user_signal", ""),
+        last_extracted_slots=data.get("last_extracted_slots", []),
     )
     slots = {}
     for key, slot_data in (data.get("slots") or {}).items():
@@ -146,6 +167,7 @@ def state_from_dict(data: dict) -> DialogueState:
 class SessionStore:
     def __init__(self, path: str = None):
         self.path = path or settings.SESSION_DB
+        self._lock = threading.RLock()
         self._conn = sqlite3.connect(self.path, check_same_thread=False)
         self._conn.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
@@ -165,9 +187,10 @@ class SessionStore:
         return state
 
     def get(self, session_id: str) -> DialogueState | None:
-        row = self._conn.execute(
-            "SELECT state_json FROM sessions WHERE session_id=?", (session_id,)
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT state_json FROM sessions WHERE session_id=?", (session_id,)
+            ).fetchone()
         if not row:
             return None
         try:
@@ -178,24 +201,27 @@ class SessionStore:
     def save(self, state: DialogueState):
         payload = json.dumps(state_to_dict(state), ensure_ascii=False, default=str)
         now = datetime.now(timezone.utc).isoformat()
-        self._conn.execute(
-            "INSERT INTO sessions(session_id, user_id, state_json, updated_at) VALUES(?,?,?,?) "
-            "ON CONFLICT(session_id) DO UPDATE SET state_json=excluded.state_json, "
-            "updated_at=excluded.updated_at",
-            (state.session_id, state.user_id, payload, now),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO sessions(session_id, user_id, state_json, updated_at) VALUES(?,?,?,?) "
+                "ON CONFLICT(session_id) DO UPDATE SET state_json=excluded.state_json, "
+                "updated_at=excluded.updated_at",
+                (state.session_id, state.user_id, payload, now),
+            )
+            self._conn.commit()
 
     def delete(self, session_id: str):
-        self._conn.execute("DELETE FROM sessions WHERE session_id=?", (session_id,))
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute("DELETE FROM sessions WHERE session_id=?", (session_id,))
+            self._conn.commit()
 
     def list_for_user(self, user_id: int, limit: int = 50) -> list[dict]:
-        rows = self._conn.execute(
-            "SELECT session_id, state_json, updated_at FROM sessions "
-            "WHERE user_id=? ORDER BY updated_at DESC LIMIT ?",
-            (user_id, limit),
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT session_id, state_json, updated_at FROM sessions "
+                "WHERE user_id=? ORDER BY updated_at DESC LIMIT ?",
+                (user_id, limit),
+            ).fetchall()
         result = []
         for session_id, state_json, updated_at in rows:
             title = "Новый диалог"

@@ -191,6 +191,7 @@ class User(Base):
     position = Column(String(100), nullable=True)
     team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
+    business_customer_id = Column(Integer, ForeignKey("business_customers.id"), nullable=True)
     can_edit = Column(Boolean, default=True)
     can_delete = Column(Boolean, default=False)
     can_export = Column(Boolean, default=True)
@@ -200,6 +201,7 @@ class User(Base):
 
     role = relationship("Role", back_populates="users")
     team_rel = relationship("Team", back_populates="users", foreign_keys=[team_id])
+    business_customer = relationship("BusinessCustomer", foreign_keys=[business_customer_id])
 
     @property
     def team_name(self):
@@ -208,6 +210,26 @@ class User(Base):
     @property
     def role_name(self):
         return self.role.name if self.role else None
+
+    @property
+    def business_customer_name(self):
+        return self.business_customer.name if self.business_customer else None
+
+
+class RefreshSession(Base):
+    __tablename__ = "refresh_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    jti = Column(String(36), unique=True, nullable=False, index=True)
+    family_id = Column(String(36), nullable=False, index=True)
+    token_hash = Column(String(64), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    rotated_to_jti = Column(String(36), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
 
 
 class Project(Base):
@@ -241,6 +263,7 @@ class Task(Base):
     involved_teams = Column(JSON, nullable=True, comment='Другие вовлечённые команды (массив id команд)')
     priority_id = Column(Integer, ForeignKey("priorities.id"), nullable=True)
     status_id = Column(Integer, ForeignKey("statuses.id"), nullable=True)
+    previous_status_id = Column(Integer, ForeignKey("statuses.id"), nullable=True, comment='Статус до перевода в ЭКСПРЕСС-ОЦЕНКА')
     deadline_id = Column(Integer, ForeignKey("deadlines.id"), nullable=True)
     effort_days = Column(Integer, nullable=True)
     effort_rub = Column(DECIMAL(18, 2), nullable=True, comment='Стоимость по ЭО (руб)')
@@ -307,7 +330,7 @@ class Task(Base):
     project = relationship("Project")
     task_type = relationship("TaskType")
     priority = relationship("Priority")
-    status = relationship("TaskStatus")
+    status = relationship("TaskStatus", foreign_keys=[status_id])
     deadline = relationship("Deadline", foreign_keys=[deadline_id])
     owner = relationship("User", foreign_keys=[owner_id])
     lock_owner = relationship("User", foreign_keys=[lock_owner_id])
@@ -351,7 +374,6 @@ class Story(Base):
     epic_id = Column(Integer, ForeignKey("epics.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    progress = Column(Integer, default=0, comment='Прогресс: 0, 50, 100')
     effort_designee = Column(Float, nullable=True, comment='Designee (дни)')
     effort_analytics = Column(Float, nullable=True, comment='Аналитика (дни)')
     effort_be = Column(Float, nullable=True, comment='Разработка BE (дни)')
@@ -441,11 +463,13 @@ class Notification(Base):
     importance = Column(String(20), default="medium")
     is_read = Column(Boolean, default=False)
     is_dismissed = Column(Boolean, default=False)
+    is_resolved = Column(Boolean, default=False)
     action_url = Column(String(200), nullable=True)
     group_key = Column(String(100), nullable=True)
     group_count = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     read_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User")
 

@@ -126,7 +126,7 @@ class Slot:
     @property
     def handled(self) -> bool:
         return self.status in ("filled", "skipped")
-    
+
     @property
     def needs_review(self) -> bool:
         return self.assumption or (self.confidence < 0.7 and self.status == "filled")
@@ -178,6 +178,10 @@ class DialogueState:
     # Phase 4: User profile
     user_expertise: str = "medium"  # novice | medium | expert
     user_preferred_style: str = ""  # business | technical (auto-detected)
+    profile_message_count: int = 0
+    profile_tech_term_count: int = 0
+    profile_novice_indicator_count: int = 0
+    profile_expert_indicator_count: int = 0
     
     # Phase 4: Fatigue detection
     consecutive_questions: int = 0  # Questions asked without user giving data
@@ -191,6 +195,16 @@ class DialogueState:
     total_user_messages: int = 0
     total_agent_messages: int = 0
     
+    # Intermediate summary tracking
+    intermediate_summary_shown: bool = False  # Prevent showing summary twice in a row
+    intermediate_summary_pending: bool = False
+    fatigue_offer_shown: bool = False  # Prevent fatigue draft offer loop
+    fatigue_offer_pending: bool = False
+
+    # Conversation continuity: what was understood from the latest message.
+    last_user_signal: str = ""
+    last_extracted_slots: List[str] = field(default_factory=list)
+
     # Phase 4: Escalation
     escalation_reason: str = ""  # Why escalated
     clarification_failures: int = 0  # Times agent failed to understand
@@ -215,6 +229,9 @@ class DialogueState:
         self.slots[key].assumption = assumption
         if value is not None and value != "":
             self.slots[key].status = "filled"
+            if self.first_slot_filled_at is None:
+                import time
+                self.first_slot_filled_at = time.time()
 
     def skip(self, key: str):
         slot = self.slots.get(key)
@@ -374,13 +391,15 @@ class DialogueState:
     
     def record_user_answer(self, message: str):
         """Record user's answer and update fatigue metrics."""
-        self.consecutive_questions = 0  # Reset consecutive questions
         self.total_user_messages += 1
         
         # Check for short answers (potential fatigue)
         words = message.strip().split()
         if len(words) <= 3:
             self.short_answers_count += 1
+        else:
+            self.short_answers_count = 0
+            self.consecutive_questions = 0
         
         self._update_fatigue()
     

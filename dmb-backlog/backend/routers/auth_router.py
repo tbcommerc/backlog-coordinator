@@ -1,21 +1,63 @@
 """
 DMB Backlog - Auth Router
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 from datetime import datetime
 
 from database import get_db
 from models import User
-from schemas import LoginRequest, TokenResponse, RefreshRequest, UserResponse
-from auth import verify_password, create_access_token, create_refresh_token, get_current_user, decode_token
+from schemas import LoginRequest, TokenResponse, UserResponse
+from auth import verify_password, create_access_token, get_current_user
+from rate_limit import get_rate_limiter, rate_limit_key
+from refresh_sessions import issue_refresh_session, revoke_refresh_session, rotate_refresh_session, cleanup_expired_sessions
+from config import settings
 
 router = APIRouter()
+REFRESH_COOKIE_NAME = "dmb_refresh"
+
+
+def _require_trusted_origin(request: Request) -> None:
+    origin = request.headers.get("origin")
+    if not origin and settings.DEBUG:
+        return
+    same_origin = str(request.base_url).rstrip("/")
+    allowed = {value.rstrip("/") for value in settings.CORS_ORIGINS} | {same_origin}
+    if not origin or origin.rstrip("/") not in allowed:
+        raise HTTPException(status_code=403, detail="Untrusted request origin")
+    if not settings.DEBUG and not origin.lower().startswith("https://"):
+        raise HTTPException(status_code=403, detail="HTTPS origin required")
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=token,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="strict",
+        path="/api/v1/auth",
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
+async def login(request: Request, response: Response, login_data: LoginRequest, db: Session = Depends(get_db)):
     """Authenticate user and return tokens"""
+    _require_trusted_origin(request)
+    client_ip = request.client.host if request.client else "unknown"
+    limiter = get_rate_limiter()
+    decisions = [
+        await limiter.check(rate_limit_key("login-ip", client_ip), 5, 60),
+        await limiter.check(rate_limit_key("login-account", login_data.email), 5, 60),
+    ]
+    blocked = next((decision for decision in decisions if not decision.allowed), None)
+    if blocked:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded",
+            headers={"Retry-After": str(blocked.retry_after)},
+        )
     user = db.query(User).filter(User.email == login_data.email).first()
     
     if not user or not verify_password(login_data.password, user.password_hash):
@@ -30,18 +72,19 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             detail="Account is deactivated"
         )
     
-    # Update last login
+    # Update last login and create the server-side refresh session atomically.
     user.last_login = datetime.utcnow()
+    cleanup_expired_sessions(db)
+    refresh_token, _session = issue_refresh_session(db, user)
     db.commit()
+    _set_refresh_cookie(response, refresh_token)
     
     # Create tokens
     token_data = {"sub": str(user.id), "email": user.email}
     access_token = create_access_token(token_data)
-    refresh_token = create_refresh_token(token_data)
     
     return TokenResponse(
         access_token=access_token,
-        refresh_token=refresh_token,
         expires_in=3600,
         user={
             "id": user.id,
@@ -68,29 +111,28 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_data: RefreshRequest, db: Session = Depends(get_db)):
+async def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
     """Refresh access token using refresh token"""
-    payload = decode_token(refresh_data.refresh_token)
-    
-    if not payload or payload.get("type") != "refresh":
+    _require_trusted_origin(request)
+    client_ip = request.client.host if request.client else "unknown"
+    decision = await get_rate_limiter().check(rate_limit_key("refresh-ip", client_ip), 10, 60)
+    if not decision.allowed:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
+            status_code=429,
+            detail="Rate limit exceeded",
+            headers={"Retry-After": str(decision.retry_after)},
         )
-    
-    user_id = payload.get("sub")
-    user = db.query(User).filter(User.id == int(user_id)).first()
-    
-    if not user or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    current_refresh = request.cookies.get(REFRESH_COOKIE_NAME)
+    if not current_refresh:
+        raise HTTPException(status_code=401, detail="Refresh cookie not found")
+    user, refresh_token = rotate_refresh_session(db, current_refresh)
+    _set_refresh_cookie(response, refresh_token)
     
     token_data = {"sub": str(user.id), "email": user.email}
     access_token = create_access_token(token_data)
-    refresh_token = create_refresh_token(token_data)
     
     return TokenResponse(
         access_token=access_token,
-        refresh_token=refresh_token,
         expires_in=3600,
         user={
             "id": user.id,
@@ -117,7 +159,7 @@ async def refresh_token(refresh_data: RefreshRequest, db: Session = Depends(get_
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)):
+def get_me(current_user: User = Depends(get_current_user)):
     """Get current user profile"""
     return UserResponse(
         id=current_user.id,
@@ -139,6 +181,11 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-async def logout():
-    """Logout (client should discard tokens)"""
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    """Revoke the current server-side refresh session."""
+    _require_trusted_origin(request)
+    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if refresh_token:
+        revoke_refresh_session(db, refresh_token)
+    response.delete_cookie(REFRESH_COOKIE_NAME, path="/api/v1/auth")
     return {"message": "Logged out successfully"}

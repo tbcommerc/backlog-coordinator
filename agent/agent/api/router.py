@@ -4,6 +4,8 @@ The agent runs on its own port and is reached by the DMB backend only
 (which enforces authentication and passes the user context). The secret
 header X-Agent-Secret protects the endpoint.
 """
+import secrets
+
 from fastapi import APIRouter, Depends, Header, HTTPException
 
 from ..config import settings
@@ -28,7 +30,7 @@ _orchestrator = get_orchestrator()
 
 
 def _check_secret(x_agent_secret: str = Header(default="")):
-    if x_agent_secret != settings.AGENT_SECRET:
+    if not settings.AGENT_SECRET or not secrets.compare_digest(x_agent_secret, settings.AGENT_SECRET):
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
@@ -73,7 +75,7 @@ def sessions(user_id: int = 0, _=Depends(_check_secret)):
 
 @router.post("/send-for-review", response_model=AgentResponse)
 def send_for_review(req: SendForReviewRequest, _=Depends(_check_secret)):
-    return _orchestrator.confirm_and_send(req.session_id, req.task_id, req.title)
+    return _orchestrator.confirm_and_send(req.session_id, req.task_id, req.title, req.user_id)
 
 
 @router.get("/config", response_model=ConfigResponse)

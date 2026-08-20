@@ -57,6 +57,17 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+DEFAULT_AGENT_SECRET = "dmb-agent-local-secret-2026"
+
+
+def validate_runtime_settings() -> None:
+    """Fail closed when production is started with the development secret."""
+    if not settings.DEBUG and (
+        not settings.AGENT_SECRET or settings.AGENT_SECRET == DEFAULT_AGENT_SECRET
+    ):
+        raise RuntimeError("AGENT_SECRET must be set to a non-default value in production")
+
+
 def parse_json_list(raw: str) -> list:
     if not raw:
         return []

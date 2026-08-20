@@ -2,12 +2,16 @@
 DMB Backlog - Admin Router (CRUD for roles, teams, users, dictionaries)
 """
 import json
+import logging
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import case as sql_case, desc
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
+
+
+logger = logging.getLogger("dmb_backlog.admin")
 
 from database import get_db
 from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, FieldLabel, Project, BusinessCustomer, Department, AuditLog, CompetencyCostHistory, Tag, IssueTag, ProjectTag
@@ -33,7 +37,7 @@ router = APIRouter(tags=["admin"])
 # ==================== AUDIT LOG ====================
 
 @router.get("/audit-log")
-async def get_audit_log(
+def get_audit_log(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     user_id: Optional[int] = Query(None),
@@ -93,7 +97,7 @@ async def get_audit_log(
 # ==================== AUDIT LOG FILTER VALUES ====================
 
 @router.get("/audit-log/filters")
-async def get_audit_log_filters(
+def get_audit_log_filters(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "read"))
 ):
@@ -138,7 +142,7 @@ def _resolve_team_names(team, db: Session) -> dict:
 # ==================== ROLES CRUD ====================
 
 @router.get("/roles", response_model=List[RoleResponse])
-async def get_roles(
+def get_roles(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -147,7 +151,7 @@ async def get_roles(
 
 
 @router.get("/roles/{role_id}", response_model=RoleResponse)
-async def get_role(
+def get_role(
     role_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -159,7 +163,7 @@ async def get_role(
 
 
 @router.post("/roles", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
-async def create_role(
+def create_role(
     role_data: RoleCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -175,7 +179,7 @@ async def create_role(
 
 
 @router.put("/roles/{role_id}", response_model=RoleResponse)
-async def update_role(
+def update_role(
     role_id: int,
     role_data: RoleUpdate,
     db: Session = Depends(get_db),
@@ -197,7 +201,7 @@ async def update_role(
 
 
 @router.delete("/roles/{role_id}")
-async def delete_role(
+def delete_role(
     role_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -216,7 +220,7 @@ async def delete_role(
 # ==================== TEAMS CRUD ====================
 
 @router.get("/teams", response_model=List[TeamResponse])
-async def admin_get_teams(
+def admin_get_teams(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "read"))
 ):
@@ -237,7 +241,7 @@ async def admin_get_teams(
 
 
 @router.post("/teams", response_model=TeamResponse, status_code=status.HTTP_201_CREATED)
-async def admin_create_team(
+def admin_create_team(
     team_data: TeamCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -259,7 +263,7 @@ async def admin_create_team(
 
 
 @router.put("/teams/{team_id}", response_model=TeamResponse)
-async def admin_update_team(
+def admin_update_team(
     team_id: int,
     team_data: TeamCreate,
     db: Session = Depends(get_db),
@@ -285,7 +289,7 @@ async def admin_update_team(
 
 
 @router.delete("/teams/{team_id}")
-async def admin_delete_team(
+def admin_delete_team(
     team_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -307,7 +311,7 @@ async def admin_delete_team(
 # ==================== USERS CRUD ====================
 
 @router.get("/users", response_model=List[UserResponse])
-async def admin_get_users(
+def admin_get_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "read"))
 ):
@@ -317,7 +321,7 @@ async def admin_get_users(
 
 
 @router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def admin_create_user(
+def admin_create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -328,6 +332,10 @@ async def admin_create_user(
     existing_name = db.query(User).filter(User.name == user_data.name).first()
     if existing_name:
         raise HTTPException(status_code=400, detail="User with this name already exists")
+    if user_data.business_customer_id is not None and not db.query(BusinessCustomer).filter(
+        BusinessCustomer.id == user_data.business_customer_id
+    ).first():
+        raise HTTPException(status_code=422, detail="Business customer not found")
 
     password = user_data.password or "dmb2026"
     user = User(
@@ -338,6 +346,7 @@ async def admin_create_user(
         position=user_data.position,
         team_id=user_data.team_id,
         role_id=user_data.role_id,
+        business_customer_id=user_data.business_customer_id,
         is_active=user_data.is_active if user_data.is_active is not None else True,
         can_edit=user_data.can_edit if user_data.can_edit is not None else True,
         can_delete=user_data.can_delete if user_data.can_delete is not None else False,
@@ -350,7 +359,7 @@ async def admin_create_user(
 
 
 @router.put("/users/{user_id}", response_model=UserResponse)
-async def admin_update_user(
+def admin_update_user(
     user_id: int,
     user_data: UserUpdate,
     db: Session = Depends(get_db),
@@ -370,6 +379,10 @@ async def admin_update_user(
         if existing_email:
             raise HTTPException(status_code=400, detail="Email already registered")
 
+    if "business_customer_id" in user_data.model_fields_set and user_data.business_customer_id is not None:
+        if not db.query(BusinessCustomer).filter(BusinessCustomer.id == user_data.business_customer_id).first():
+            raise HTTPException(status_code=422, detail="Business customer not found")
+
     for field, value in user_data.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
     db.commit()
@@ -378,7 +391,7 @@ async def admin_update_user(
 
 
 @router.delete("/users/{user_id}")
-async def admin_delete_user(
+def admin_delete_user(
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -483,7 +496,7 @@ def _release_dict_lock(dict_type: str, user: User, db: Session) -> DictLockRespo
 
 
 @router.get("/dict-locks")
-async def get_all_dict_locks(
+def get_all_dict_locks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -495,7 +508,7 @@ async def get_all_dict_locks(
 
 
 @router.get("/{dict_type}/lock")
-async def get_dict_lock(
+def get_dict_lock(
     dict_type: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -509,7 +522,7 @@ async def get_dict_lock(
 
 
 @router.post("/{dict_type}/lock")
-async def acquire_dict_lock(
+def acquire_dict_lock(
     dict_type: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial")),
@@ -521,10 +534,10 @@ async def acquire_dict_lock(
 
 
 @router.delete("/{dict_type}/lock")
-async def release_dict_lock(
+def release_dict_lock(
     dict_type: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("admin", "partial")),
 ):
     """Release lock on a dictionary type."""
     if dict_type not in VALID_DICT_TYPES:
@@ -550,7 +563,7 @@ def _check_dict_lock(dict_type: str, user: User, db: Session):
 
 
 @router.get("/priorities", response_model=List[DictionaryItemResponse])
-async def get_priorities(
+def get_priorities(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -558,7 +571,7 @@ async def get_priorities(
 
 
 @router.get("/statuses", response_model=List[DictionaryItemResponse])
-async def get_statuses(
+def get_statuses(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -566,7 +579,7 @@ async def get_statuses(
 
 
 @router.get("/task-types", response_model=List[DictionaryItemResponse])
-async def get_task_types(
+def get_task_types(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -574,7 +587,7 @@ async def get_task_types(
 
 
 @router.get("/business-customers", response_model=List[BusinessCustomerResponse])
-async def get_business_customers(
+def get_business_customers(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -592,7 +605,7 @@ async def get_business_customers(
 
 
 @router.post("/priorities", response_model=DictionaryItemResponse, status_code=status.HTTP_201_CREATED)
-async def create_priority(
+def create_priority(
     data: DictionaryItemCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -606,7 +619,7 @@ async def create_priority(
 
 
 @router.post("/statuses", response_model=DictionaryItemResponse, status_code=status.HTTP_201_CREATED)
-async def create_status(
+def create_status(
     data: DictionaryItemCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -620,7 +633,7 @@ async def create_status(
 
 
 @router.post("/task-types", response_model=DictionaryItemResponse, status_code=status.HTTP_201_CREATED)
-async def create_task_type(
+def create_task_type(
     data: DictionaryItemCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -634,7 +647,7 @@ async def create_task_type(
 
 
 @router.put("/priorities/{item_id}", response_model=DictionaryItemResponse)
-async def update_priority(
+def update_priority(
     item_id: int,
     data: DictionaryItemUpdate,
     db: Session = Depends(get_db),
@@ -653,7 +666,7 @@ async def update_priority(
 
 
 @router.put("/statuses/{item_id}", response_model=DictionaryItemResponse)
-async def update_status(
+def update_status(
     item_id: int,
     data: DictionaryItemUpdate,
     db: Session = Depends(get_db),
@@ -672,7 +685,7 @@ async def update_status(
 
 
 @router.put("/task-types/{item_id}", response_model=DictionaryItemResponse)
-async def update_task_type(
+def update_task_type(
     item_id: int,
     data: DictionaryItemUpdate,
     db: Session = Depends(get_db),
@@ -691,7 +704,7 @@ async def update_task_type(
 
 
 @router.delete("/priorities/{item_id}")
-async def delete_priority(
+def delete_priority(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -706,7 +719,7 @@ async def delete_priority(
 
 
 @router.delete("/statuses/{item_id}")
-async def delete_status(
+def delete_status(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -721,7 +734,7 @@ async def delete_status(
 
 
 @router.delete("/task-types/{item_id}")
-async def delete_task_type(
+def delete_task_type(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -736,7 +749,7 @@ async def delete_task_type(
 
 
 @router.post("/business-customers", response_model=BusinessCustomerResponse, status_code=status.HTTP_201_CREATED)
-async def create_business_customer(
+def create_business_customer(
     data: BusinessCustomerCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -755,7 +768,7 @@ async def create_business_customer(
 
 
 @router.put("/business-customers/{item_id}", response_model=BusinessCustomerResponse)
-async def update_business_customer(
+def update_business_customer(
     item_id: int,
     data: BusinessCustomerUpdate,
     db: Session = Depends(get_db),
@@ -780,7 +793,7 @@ async def update_business_customer(
 # ==================== NEW DICTIONARY TYPES ====================
 
 @router.get("/channels", response_model=List[DictionaryItemResponse])
-async def get_channels(
+def get_channels(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -788,7 +801,7 @@ async def get_channels(
 
 
 @router.post("/channels", response_model=DictionaryItemResponse, status_code=status.HTTP_201_CREATED)
-async def create_channel(
+def create_channel(
     data: DictionaryItemCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -802,7 +815,7 @@ async def create_channel(
 
 
 @router.put("/channels/{item_id}", response_model=DictionaryItemResponse)
-async def update_channel(
+def update_channel(
     item_id: int,
     data: DictionaryItemUpdate,
     db: Session = Depends(get_db),
@@ -821,7 +834,7 @@ async def update_channel(
 
 
 @router.delete("/channels/{item_id}")
-async def delete_channel(
+def delete_channel(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -836,7 +849,7 @@ async def delete_channel(
 
 
 @router.get("/deadlines", response_model=List[DictionaryItemResponse])
-async def get_deadlines(
+def get_deadlines(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -844,7 +857,7 @@ async def get_deadlines(
 
 
 @router.post("/deadlines", response_model=DictionaryItemResponse, status_code=status.HTTP_201_CREATED)
-async def create_deadline(
+def create_deadline(
     data: DictionaryItemCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -858,7 +871,7 @@ async def create_deadline(
 
 
 @router.put("/deadlines/{item_id}", response_model=DictionaryItemResponse)
-async def update_deadline(
+def update_deadline(
     item_id: int,
     data: DictionaryItemUpdate,
     db: Session = Depends(get_db),
@@ -877,7 +890,7 @@ async def update_deadline(
 
 
 @router.delete("/deadlines/{item_id}")
-async def delete_deadline(
+def delete_deadline(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -913,7 +926,7 @@ def _department_to_response(dept: Department, db: Session) -> dict:
 
 
 @router.get("/departments", response_model=List[DictionaryItemResponse])
-async def get_departments(
+def get_departments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -922,7 +935,7 @@ async def get_departments(
 
 
 @router.post("/departments", response_model=DictionaryItemResponse, status_code=status.HTTP_201_CREATED)
-async def create_department(
+def create_department(
     data: DictionaryItemCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -946,7 +959,7 @@ async def create_department(
 
 
 @router.put("/departments/{item_id}", response_model=DictionaryItemResponse)
-async def update_department(
+def update_department(
     item_id: int,
     data: DictionaryItemUpdate,
     db: Session = Depends(get_db),
@@ -969,7 +982,7 @@ async def update_department(
 
 
 @router.delete("/departments/{item_id}")
-async def delete_department(
+def delete_department(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -984,7 +997,7 @@ async def delete_department(
 
 
 @router.get("/team-types", response_model=List[DictionaryItemResponse])
-async def get_team_types(
+def get_team_types(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -992,7 +1005,7 @@ async def get_team_types(
 
 
 @router.post("/team-types", response_model=DictionaryItemResponse, status_code=status.HTTP_201_CREATED)
-async def create_team_type(
+def create_team_type(
     data: DictionaryItemCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1006,7 +1019,7 @@ async def create_team_type(
 
 
 @router.put("/team-types/{item_id}", response_model=DictionaryItemResponse)
-async def update_team_type(
+def update_team_type(
     item_id: int,
     data: DictionaryItemUpdate,
     db: Session = Depends(get_db),
@@ -1025,7 +1038,7 @@ async def update_team_type(
 
 
 @router.delete("/team-types/{item_id}")
-async def delete_team_type(
+def delete_team_type(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1040,7 +1053,7 @@ async def delete_team_type(
 
 
 @router.get("/project-statuses", response_model=List[DictionaryItemResponse])
-async def get_project_statuses(
+def get_project_statuses(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1048,7 +1061,7 @@ async def get_project_statuses(
 
 
 @router.post("/project-statuses", response_model=DictionaryItemResponse, status_code=status.HTTP_201_CREATED)
-async def create_project_status(
+def create_project_status(
     data: DictionaryItemCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1062,7 +1075,7 @@ async def create_project_status(
 
 
 @router.put("/project-statuses/{item_id}", response_model=DictionaryItemResponse)
-async def update_project_status(
+def update_project_status(
     item_id: int,
     data: DictionaryItemUpdate,
     db: Session = Depends(get_db),
@@ -1081,7 +1094,7 @@ async def update_project_status(
 
 
 @router.delete("/project-statuses/{item_id}")
-async def delete_project_status(
+def delete_project_status(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1098,7 +1111,7 @@ async def delete_project_status(
 # ==================== COMPETENCY COSTS (history: competency x year) ====================
 
 @router.get("/competency-costs", response_model=List[CompetencyCostHistoryResponse])
-async def get_competency_costs(
+def get_competency_costs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1111,7 +1124,7 @@ async def get_competency_costs(
 
 
 @router.post("/competency-costs", response_model=CompetencyCostHistoryResponse, status_code=status.HTTP_201_CREATED)
-async def create_competency_cost(
+def create_competency_cost(
     data: CompetencyCostHistoryCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1135,7 +1148,7 @@ async def create_competency_cost(
 
 
 @router.put("/competency-costs/{competency}/{year}", response_model=CompetencyCostHistoryResponse)
-async def update_competency_cost(
+def update_competency_cost(
     competency: str,
     year: int,
     data: CompetencyCostHistoryUpdate,
@@ -1153,16 +1166,16 @@ async def update_competency_cost(
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     item.is_active = True
+    changed = recalculate_effort_rub_for_all(db)
     db.commit()
     db.refresh(item)
-    changed = recalculate_effort_rub_for_all(db)
     if changed:
-        print(f"[admin] Competency costs changed -> effort_rub recalculated for {changed} tasks")
+        logger.info("Competency costs changed; recalculated effort_rub for %s tasks", changed)
     return item
 
 
 @router.delete("/competency-costs/{competency}/{year}")
-async def delete_competency_cost(
+def delete_competency_cost(
     competency: str,
     year: int,
     db: Session = Depends(get_db),
@@ -1176,21 +1189,21 @@ async def delete_competency_cost(
         raise HTTPException(status_code=404, detail="Competency cost not found")
     _check_dict_lock("competency_cost", current_user, db)
     item.is_active = False
-    db.commit()
     changed = recalculate_effort_rub_for_all(db)
+    db.commit()
     if changed:
-        print(f"[admin] Competency costs changed -> effort_rub recalculated for {changed} tasks")
+        logger.info("Competency costs changed; recalculated effort_rub for %s tasks", changed)
     return {"message": "Competency cost deleted"}
 
 
 # ==================== PROJECTS CRUD ====================
 
 @router.get("/projects", response_model=List[ProjectResponse])
-async def get_projects(
+def get_projects(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "read"))
 ):
-    projects = db.query(Project).order_by(Project.created_at.desc()).all()
+    projects = db.query(Project).order_by(Project.name).all()
     result = []
     for p in projects:
         result.append(ProjectResponse(
@@ -1208,7 +1221,7 @@ async def get_projects(
 
 
 @router.post("/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-async def create_project(
+def create_project(
     project_data: ProjectCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1234,7 +1247,7 @@ async def create_project(
 
 
 @router.put("/projects/{item_id}", response_model=ProjectResponse)
-async def update_project(
+def update_project(
     item_id: int,
     project_data: ProjectUpdate,
     db: Session = Depends(get_db),
@@ -1261,7 +1274,7 @@ async def update_project(
 
 
 @router.delete("/projects/{item_id}")
-async def delete_project(
+def delete_project(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1269,6 +1282,9 @@ async def delete_project(
     project = db.query(Project).filter(Project.id == item_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+    tasks_count = db.query(Task).filter(Task.project_id == item_id).count()
+    if tasks_count > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete project linked to {tasks_count} tasks")
     db.delete(project)
     db.commit()
     return {"message": "Project deleted"}
@@ -1279,7 +1295,7 @@ async def delete_project(
 from models import TeamType as TeamTypeModel
 
 @router.get("/team-types-ref")
-async def get_team_types_ref(
+def get_team_types_ref(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1290,7 +1306,7 @@ async def get_team_types_ref(
 # ==================== DISPLAY SETTINGS ====================
 
 @router.get("/display-settings", response_model=List[DisplaySettingResponse])
-async def get_display_settings(
+def get_display_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "read"))
 ):
@@ -1308,7 +1324,7 @@ async def get_display_settings(
 
 
 @router.get("/display-settings/{page}", response_model=DisplaySettingResponse)
-async def get_display_setting(
+def get_display_setting(
     page: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -1326,7 +1342,7 @@ async def get_display_setting(
 
 
 @router.put("/display-settings/{page}", response_model=DisplaySettingResponse)
-async def update_display_setting(
+def update_display_setting(
     page: str,
     data: DisplaySettingUpdate,
     db: Session = Depends(get_db),
@@ -1334,19 +1350,21 @@ async def update_display_setting(
 ):
     pages_to_save = ['backlog_dmb', 'team_backlog'] if page == 'shared' else [page]
     saved = None
+    touched = []
     for p in pages_to_save:
         setting = db.query(DisplaySetting).filter(DisplaySetting.page == p).first()
         if not setting:
             setting = DisplaySetting(page=p, settings=json.dumps(data.settings, ensure_ascii=False))
             db.add(setting)
-            db.commit()
-            db.refresh(setting)
         else:
             setting.settings = json.dumps(data.settings, ensure_ascii=False)
-            db.commit()
-            db.refresh(setting)
+        db.flush()
+        touched.append(setting)
         if p == page or page == 'shared':
             saved = setting
+    db.commit()
+    for setting in touched:
+        db.refresh(setting)
     return DisplaySettingResponse(
         id=saved.id,
         page=page,
@@ -1359,7 +1377,7 @@ async def update_display_setting(
 # ==================== COLUMN LABELS ====================
 
 @router.get("/field-labels")
-async def get_field_labels(
+def get_field_labels(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1369,7 +1387,7 @@ async def get_field_labels(
 
 
 @router.get("/column-labels")
-async def get_column_labels(
+def get_column_labels(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1378,7 +1396,7 @@ async def get_column_labels(
 
 
 @router.put("/column-labels")
-async def update_column_labels(
+def update_column_labels(
     data: ColumnLabelUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1395,7 +1413,7 @@ async def update_column_labels(
 
 
 @router.put("/field-labels")
-async def update_field_labels(
+def update_field_labels(
     data: ColumnLabelUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1414,7 +1432,7 @@ async def update_field_labels(
 
 
 @router.delete("/business-customers/{item_id}")
-async def delete_business_customer(
+def delete_business_customer(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1427,110 +1445,10 @@ async def delete_business_customer(
     return {"message": "Business customer deleted"}
 
 
-# ==================== PROJECTS CRUD ====================
-
-@router.get("/projects", response_model=List[ProjectResponse])
-async def get_projects(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    projects = db.query(Project).order_by(Project.name).all()
-    result = []
-    for p in projects:
-        status_name = p.status.name if p.status else None
-        pl_name = p.pl.name if p.pl else None
-        result.append(ProjectResponse(
-            id=p.id,
-            code=p.code,
-            name=p.name,
-            description=p.description,
-            status_id=p.status_id,
-            responsible_pl=p.responsible_pl,
-            created_at=p.created_at,
-            status_name=status_name,
-            pl_name=pl_name,
-        ))
-    return result
-
-
-@router.post("/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-async def create_project(
-    data: ProjectCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
-):
-    existing = db.query(Project).filter(Project.code == data.code).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Project code already exists")
-    project = Project(**data.model_dump())
-    db.add(project)
-    db.commit()
-    db.refresh(project)
-    status_name = project.status.name if project.status else None
-    pl_name = project.pl.name if project.pl else None
-    return ProjectResponse(
-        id=project.id,
-        code=project.code,
-        name=project.name,
-        description=project.description,
-        status_id=project.status_id,
-        responsible_pl=project.responsible_pl,
-        created_at=project.created_at,
-        status_name=status_name,
-        pl_name=pl_name,
-    )
-
-
-@router.put("/projects/{item_id}", response_model=ProjectResponse)
-async def update_project(
-    item_id: int,
-    data: ProjectUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
-):
-    project = db.query(Project).filter(Project.id == item_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    for key, val in data.model_dump(exclude_unset=True).items():
-        setattr(project, key, val)
-    db.commit()
-    db.refresh(project)
-    status_name = project.status.name if project.status else None
-    pl_name = project.pl.name if project.pl else None
-    return ProjectResponse(
-        id=project.id,
-        code=project.code,
-        name=project.name,
-        description=project.description,
-        status_id=project.status_id,
-        responsible_pl=project.responsible_pl,
-        created_at=project.created_at,
-        status_name=status_name,
-        pl_name=pl_name,
-    )
-
-
-@router.delete("/projects/{item_id}")
-async def delete_project(
-    item_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
-):
-    project = db.query(Project).filter(Project.id == item_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    tasks_count = db.query(Task).filter(Task.project_id == item_id).count()
-    if tasks_count > 0:
-        raise HTTPException(status_code=400, detail=f"Cannot delete project linked to {tasks_count} tasks")
-    db.delete(project)
-    db.commit()
-    return {"message": "Project deleted"}
-
-
 # ==================== TAGS ====================
 
 @router.get("/tags", response_model=List[TagResponse])
-async def get_tags(
+def get_tags(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1538,7 +1456,7 @@ async def get_tags(
 
 
 @router.post("/tags", response_model=TagResponse, status_code=status.HTTP_201_CREATED)
-async def create_tag(
+def create_tag(
     data: TagCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -1556,7 +1474,7 @@ async def create_tag(
 
 
 @router.put("/tags/{tag_id}", response_model=TagResponse)
-async def update_tag(
+def update_tag(
     tag_id: int,
     data: TagCreate,
     db: Session = Depends(get_db),
@@ -1574,7 +1492,7 @@ async def update_tag(
 
 
 @router.delete("/tags/{tag_id}")
-async def delete_tag(
+def delete_tag(
     tag_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))

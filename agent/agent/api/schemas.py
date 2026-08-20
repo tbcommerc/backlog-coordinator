@@ -23,6 +23,7 @@ class SendForReviewRequest(BaseModel):
     session_id: str = ""
     task_id: int
     title: str = ""
+    user_id: Optional[int] = None
 
 
 class AgentResponse(BaseModel):

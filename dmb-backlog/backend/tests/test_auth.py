@@ -28,8 +28,21 @@ def test_login_success(client, db):
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
-    assert "refresh_token" in data
+    assert "refresh_token" not in data
     assert data["user"]["email"] == "login@dmb.ru"
+    cookie = response.headers["set-cookie"]
+    assert "dmb_refresh=" in cookie
+    assert "HttpOnly" in cookie
+    assert "SameSite=strict" in cookie
+
+    refresh_response = client.post("/api/v1/auth/refresh")
+    assert refresh_response.status_code == 200
+    assert "access_token" in refresh_response.json()
+    assert "refresh_token" not in refresh_response.json()
+
+    logout_response = client.post("/api/v1/auth/logout")
+    assert logout_response.status_code == 200
+    assert "dmb_refresh=" in logout_response.headers["set-cookie"]
 
 
 def test_login_invalid_credentials(client):

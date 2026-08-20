@@ -129,7 +129,7 @@ async function loadTasks(app) {
     renderTasksTable(items, filter);
   } catch (e) {
     document.getElementById('customer-tasks-tbody').innerHTML =
-      `<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${e.message}</td></tr>`;
+      `<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -160,9 +160,9 @@ function renderTasksTable(tasks, statusFilter) {
       <td><strong>${escapeHtml(task.title)}</strong></td>
       <td>${renderStatus(task.status)}</td>
       <td>${renderPriority(task.priority)}</td>
-      <td><span class="badge badge-info">${task.team_name || '—'}</span></td>
+      <td><span class="badge badge-info">${escapeHtml(task.team_name || '—')}</span></td>
       <td>${renderProgress(task.progress)}</td>
-      <td>${task.deadline || '—'}</td>
+      <td>${escapeHtml(task.deadline || '—')}</td>
     </tr>
   `).join('');
 
@@ -214,13 +214,13 @@ function renderStatus(status) {
     'НЕ_АКТУАЛЬНА': 'badge-low',
     'ВЫПОЛНЕНА': 'badge-status-done'
   };
-  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${status || 'СБОР ТРЕБОВАНИЙ'}</span>`;
+  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${escapeHtml(status || 'СБОР ТРЕБОВАНИЙ')}</span>`;
 }
 
 function renderPriority(priority) {
   const map = { 'ВЫСОКИЙ': 'high', 'СРЕДНИЙ': 'medium', 'НИЗКИЙ': 'low' };
   const cls = map[priority] || 'medium';
-  return `<span class="badge badge-${cls}">${priority || 'СРЕДНИЙ'}</span>`;
+  return `<span class="badge badge-${cls}">${escapeHtml(priority || 'СРЕДНИЙ')}</span>`;
 }
 
 function renderProgress(progress) {

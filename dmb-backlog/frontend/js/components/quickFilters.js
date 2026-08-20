@@ -1,6 +1,6 @@
 console.log('[DMB] quickFilters.js loaded');
 
-import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask } from './filterToolbar.js?v=47';
+import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask } from './filterToolbar.js?v=52';
 
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
@@ -65,16 +65,36 @@ const QUICK_FILTERS = [
 
 export function renderQuickFilters() {
   return `
-    <div id="quick-filters" class="flex gap-2" style="margin-bottom:var(--space-4);flex-wrap:wrap;">
-      ${QUICK_FILTERS.map(f => `
-        <button class="quick-filter-btn" data-filter="${f.key}">
-          <span class="quick-filter-icon" style="${f.iconBg}">${f.icon}</span>
-          <span class="quick-filter-info">
-            <span class="quick-filter-label">${f.label}</span>
-            <span class="quick-filter-count" id="qf-${f.key}-count">0</span>
-          </span>
-        </button>`).join('')}
+    <div class="quick-filters-shell">
+      <button type="button" class="quick-filters-mobile-toggle" id="quick-filters-mobile-toggle" aria-expanded="false" aria-controls="quick-filters">
+        <i data-lucide="zap" aria-hidden="true"></i>
+        <span>Быстрые фильтры</span>
+        <span class="quick-filters-active-count hidden" id="quick-filters-active-count">0</span>
+        <i data-lucide="chevron-down" class="quick-filters-toggle-chevron" aria-hidden="true"></i>
+      </button>
+      <div id="quick-filters" class="flex gap-2" style="margin-bottom:var(--space-4);flex-wrap:wrap;">
+        ${QUICK_FILTERS.map(f => `
+          <button class="quick-filter-btn" data-filter="${f.key}" aria-pressed="false">
+            <span class="quick-filter-icon" style="${f.iconBg}">${f.icon}</span>
+            <span class="quick-filter-info">
+              <span class="quick-filter-label">${f.label}</span>
+              <span class="quick-filter-count" id="qf-${f.key}-count">0</span>
+            </span>
+          </button>`).join('')}
+      </div>
     </div>`;
+}
+
+let mobileOutsideHandler = null;
+let mobileKeyHandler = null;
+
+function setMobilePanelOpen(open) {
+  const toggle = document.getElementById('quick-filters-mobile-toggle');
+  const panel = document.getElementById('quick-filters');
+  if (!toggle || !panel) return;
+  panel.classList.toggle('mobile-open', open);
+  toggle.classList.toggle('active', open);
+  toggle.setAttribute('aria-expanded', String(open));
 }
 
 export function initQuickFilters(scope, getTasks) {
@@ -111,13 +131,43 @@ export function initQuickFilters(scope, getTasks) {
     });
   });
 
+  const mobileToggle = document.getElementById('quick-filters-mobile-toggle');
+  mobileToggle?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setMobilePanelOpen(mobileToggle.getAttribute('aria-expanded') !== 'true');
+  });
+
+  if (mobileOutsideHandler) document.removeEventListener('click', mobileOutsideHandler);
+  mobileOutsideHandler = (event) => {
+    if (!event.target.closest('.quick-filters-shell')) setMobilePanelOpen(false);
+  };
+  document.addEventListener('click', mobileOutsideHandler);
+
+  if (mobileKeyHandler) document.removeEventListener('keydown', mobileKeyHandler);
+  mobileKeyHandler = (event) => {
+    if (event.key === 'Escape') setMobilePanelOpen(false);
+  };
+  document.addEventListener('keydown', mobileKeyHandler);
+
   updateCounts();
+  syncQuickFilterButtons(scope);
 }
 
 export function syncQuickFilterButtons(scope) {
   const cf = columnFilters[scope] || {};
+  let activeCount = 0;
   document.querySelectorAll('.quick-filter-btn').forEach(btn => {
     const fk = `_${btn.dataset.filter}`;
-    btn.classList.toggle('active', !!(cf[fk] && cf[fk].size > 0));
+    const active = !!(cf[fk] && cf[fk].size > 0);
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+    if (active) activeCount += 1;
   });
+  const count = document.getElementById('quick-filters-active-count');
+  const toggle = document.getElementById('quick-filters-mobile-toggle');
+  if (count) {
+    count.textContent = String(activeCount);
+    count.classList.toggle('hidden', activeCount === 0);
+  }
+  toggle?.classList.toggle('has-active-filters', activeCount > 0);
 }

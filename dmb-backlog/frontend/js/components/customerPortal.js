@@ -1,6 +1,4 @@
 console.log('[DMB] customerPortal.js loaded');
-import { openTaskModal } from './modal.js?v=47';
-
 let tasksCache = null;
 
 export function renderCustomerPortal(app) {
@@ -169,7 +167,7 @@ async function loadTasks(app) {
     renderTasksTable(items, filter);
   } catch (e) {
     document.getElementById('customer-tasks-tbody').innerHTML =
-      `<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${e.message}</td></tr>`;
+      `<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -195,26 +193,17 @@ function renderTasksTable(tasks, statusFilter) {
   }
 
   tbody.innerHTML = filtered.map(task => `
-    <tr data-task-id="${task.id}" style="cursor:pointer;">
+    <tr data-task-id="${task.id}">
       <td><span class="font-mono text-muted">#${task.id}</span></td>
       <td><strong>${escapeHtml(task.title)}</strong></td>
       <td>${renderStatus(task.status)}</td>
       <td>${renderPriority(task.priority)}</td>
-      <td><span class="badge badge-info">${task.team_name || '—'}</span></td>
+      <td><span class="badge badge-info">${escapeHtml(task.team_name || '—')}</span></td>
       <td>${renderProgress(task.progress)}</td>
-      <td>${task.deadline || '—'}</td>
+      <td>${escapeHtml(task.deadline || '—')}</td>
     </tr>
   `).join('');
 
-  tbody.querySelectorAll('tr').forEach(tr => {
-    tr.addEventListener('click', () => {
-      const taskId = parseInt(tr.dataset.taskId);
-      const task = filtered.find(t => t.id === taskId);
-      if (task) {
-        openTaskModal(task);
-      }
-    });
-  });
 }
 
 function escapeHtml(str) {
@@ -241,13 +230,13 @@ function renderStatus(status) {
     'НЕ_АКТУАЛЬНА': 'badge-low',
     'ВЫПОЛНЕНА': 'badge-status-done'
   };
-  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${status || 'СБОР ТРЕБОВАНИЙ'}</span>`;
+  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${escapeHtml(status || 'СБОР ТРЕБОВАНИЙ')}</span>`;
 }
 
 function renderPriority(priority) {
   const map = { 'ВЫСОКИЙ': 'high', 'СРЕДНИЙ': 'medium', 'НИЗКИЙ': 'low' };
   const cls = map[priority] || 'medium';
-  return `<span class="badge badge-${cls}">${priority || 'СРЕДНИЙ'}</span>`;
+  return `<span class="badge badge-${cls}">${escapeHtml(priority || 'СРЕДНИЙ')}</span>`;
 }
 
 function renderProgress(progress) {
@@ -296,7 +285,7 @@ async function loadRequests(app) {
     renderRequestsTable(rows);
   } catch (e) {
     const tbody = document.getElementById('customer-requests-tbody');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${e.message}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -318,7 +307,7 @@ function renderRequestsTable(requests) {
   }
 
   tbody.innerHTML = requests.map(r => `
-    <tr data-request-id="${r.id}" style="cursor:pointer;">
+    <tr data-request-id="${r.id}">
       <td><span class="font-mono text-muted">#${r.id}</span></td>
       <td><strong>${escapeHtml(r.title)}</strong></td>
       <td>${requestStatusBadge(r.status)}</td>
@@ -326,11 +315,6 @@ function renderRequestsTable(requests) {
     </tr>
   `).join('');
 
-  tbody.querySelectorAll('tr').forEach(tr => {
-    tr.addEventListener('click', () => {
-      window.location.hash = `#/customer/request/${tr.dataset.requestId}`;
-    });
-  });
 }
 
 function formatDate(iso) {
@@ -403,7 +387,8 @@ export function initRequestPage(app, requestId) {
         }
       } catch (e) {
         btn.disabled = false;
-        alert(`Не удалось обновить статус: ${e.message}`);
+        const detail = window.formatErrorMessage?.(e) || 'Не удалось обновить статус';
+        window.toast?.(`Не удалось обновить статус: ${detail}`, 'error');
       }
     });
   });

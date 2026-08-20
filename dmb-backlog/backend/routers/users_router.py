@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("/")
-async def get_users(
+def get_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
@@ -44,7 +44,7 @@ async def get_users(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get user by ID"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -66,7 +66,7 @@ async def get_user(user_id: int, db: Session = Depends(get_db), current_user: Us
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(
+def create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -107,7 +107,7 @@ async def create_user(
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-async def update_user(
+def update_user(
     user_id: int,
     user_data: UserUpdate,
     db: Session = Depends(get_db),
@@ -140,7 +140,7 @@ async def update_user(
 
 
 @router.delete("/{user_id}")
-async def delete_user(
+def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "full"))

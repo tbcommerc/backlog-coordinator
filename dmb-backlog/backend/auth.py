@@ -2,7 +2,7 @@
 DMB Backlog - Authentication & Authorization
 """
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Literal, Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -14,6 +14,115 @@ from models import User, Role
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
+
+
+TASK_TEAM_EDITOR_ROLES = {
+    "po/pl/cl",
+    "ba/участник команды",
+    "it pl",
+}
+TASK_GLOBAL_EDITOR_ROLES = {
+    "проектный офис (админ)",
+    # Совместимость с текущей seed-ролью до её переименования.
+    "администратор",
+}
+TASK_COMMENT_ROLES = TASK_TEAM_EDITOR_ROLES | TASK_GLOBAL_EDITOR_ROLES | {
+    "лидер трайба",
+}
+BUSINESS_CUSTOMER_ROLES = {"бизнес-заказчик"}
+TaskAction = Literal["read", "edit", "comment", "delete"]
+
+
+def _task_team_id(task) -> Optional[int]:
+    return getattr(task, "team_id", None)
+
+
+def can_access_task(action: TaskAction, task, user: User, target_team_id: Optional[int] = None) -> bool:
+    """Единая policy-функция объектного доступа к задаче."""
+    role_name = (user.role_name or "").strip().casefold()
+    task_team_id = _task_team_id(task)
+    if role_name in BUSINESS_CUSTOMER_ROLES:
+        return False
+    if action == "read":
+        return check_permission(user, "backlog_dmb", "read") or (
+            user.team_id is not None and task_team_id == user.team_id
+        )
+    if action == "edit":
+        return can_edit_task(user, task_team_id, target_team_id)
+    if action == "comment":
+        return can_comment_task(user)
+    if action == "delete":
+        return role_name in TASK_GLOBAL_EDITOR_ROLES
+    return False
+
+
+def authorize_task(action: TaskAction, task, user: User, target_team_id: Optional[int] = None) -> None:
+    """Отклонить действие, не разрешённое единой task-policy."""
+    if not can_access_task(action, task, user, target_team_id):
+        messages = {
+            "read": "Недостаточно прав для просмотра этой задачи",
+            "edit": "Недостаточно прав для редактирования этой задачи",
+            "comment": "Недостаточно прав для комментирования задач",
+            "delete": "Удаление задач доступно только проектному офису (админу)",
+        }
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=messages[action])
+
+
+def can_edit_task(user: User, task_team_id: Optional[int], target_team_id: Optional[int] = None) -> bool:
+    """Проверить право пользователя редактировать задачу.
+
+    Командные редакторы могут менять только задачи своей команды и не могут
+    переносить их в другую команду. Проектный офис (админ) не ограничен командой.
+    """
+    role_name = (user.role_name or "").strip().casefold()
+    if role_name in TASK_GLOBAL_EDITOR_ROLES:
+        return True
+    if role_name not in TASK_TEAM_EDITOR_ROLES:
+        return False
+    if user.team_id is None or task_team_id != user.team_id:
+        return False
+    return target_team_id is None or target_team_id == user.team_id
+
+
+def is_task_global_editor(user: User) -> bool:
+    """Пользователь может редактировать задачи без ограничения по команде."""
+    return (user.role_name or "").strip().casefold() in TASK_GLOBAL_EDITOR_ROLES
+
+
+def require_task_edit_access(user: User, task_team_id: Optional[int], target_team_id: Optional[int] = None) -> None:
+    """Отклонить изменение задачи, если роль или область команды не разрешены."""
+    scope = type("TaskScope", (), {"team_id": task_team_id})()
+    authorize_task("edit", scope, user, target_team_id)
+
+
+def can_comment_task(user: User) -> bool:
+    """Проверить право комментировать любую задачу независимо от команды."""
+    return (user.role_name or "").strip().casefold() in TASK_COMMENT_ROLES
+
+
+def require_task_comment_access(user: User) -> None:
+    """Отклонить комментарий для ролей без явно выданного права."""
+    scope = type("TaskScope", (), {"team_id": None})()
+    authorize_task("comment", scope, user)
+
+
+def require_bulk_task_edit_access(
+    user: User,
+    task_team_ids: list[Optional[int]],
+    target_team_id: Optional[int] = None,
+    is_delete: bool = False,
+) -> None:
+    """Атомарно проверить область массового изменения задач."""
+    if is_delete and not is_task_global_editor(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Массовое удаление задач доступно только проектному офису (админу)",
+        )
+    if any(not can_edit_task(user, team_id, target_team_id) for team_id in task_team_ids):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Массовая операция содержит задачи недоступной команды",
+        )
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -31,10 +140,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(data: dict, jti: Optional[str] = None, family_id: Optional[str] = None) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
+    if jti:
+        to_encode["jti"] = jti
+    if family_id:
+        to_encode["family_id"] = family_id
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -46,7 +159,7 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
-async def get_current_user(
+def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
@@ -76,7 +189,7 @@ async def get_current_user(
     return user
 
 
-async def get_current_user_optional(
+def get_current_user_optional(
     credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
     db: Session = Depends(get_db)
 ) -> Optional[User]:
@@ -84,14 +197,29 @@ async def get_current_user_optional(
     if credentials is None:
         return None
     try:
-        return await get_current_user(credentials, db)
+        return get_current_user(credentials, db)
     except HTTPException:
         return None
 
 
+def require_non_business_customer_access(current_user: User = Depends(get_current_user)) -> User:
+    """Закрыть предметный API для роли, ограниченной customer/agent API."""
+    if (current_user.role_name or "").strip().casefold() in BUSINESS_CUSTOMER_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Бизнес-заказчику доступен только портал «Мои задачи» и ИИ-ассистент",
+        )
+    return current_user
+
+
+def require_backlog_page_access(current_user: User = Depends(get_current_user)) -> User:
+    """Обратная совместимость для зависимости основного API задач."""
+    return require_non_business_customer_access(current_user)
+
+
 def require_role(allowed_roles: list):
     """Dependency factory: require user to have one of allowed roles"""
-    async def role_checker(current_user: User = Depends(get_current_user)):
+    def role_checker(current_user: User = Depends(get_current_user)):
         if current_user.role and current_user.role.name not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -139,7 +267,7 @@ def check_permission(user: User, permission: str, level: str = "read") -> bool:
 
 def require_permission(permission: str, level: str = "read"):
     """Dependency factory: require specific permission"""
-    async def permission_checker(current_user: User = Depends(get_current_user)):
+    def permission_checker(current_user: User = Depends(get_current_user)):
         if not check_permission(current_user, permission, level):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

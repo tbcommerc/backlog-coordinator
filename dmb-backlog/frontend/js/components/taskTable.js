@@ -1,10 +1,19 @@
 console.log('[DMB] taskTable.js v20260806 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast } from './filterToolbar.js?v=47';
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast } from './filterToolbar.js?v=52';
 import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=47';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
 import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=47';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=47';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=49';
 import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=47';
+import { safeExternalUrl } from '../urlUtils.js';
+import { escapeHtml } from '../htmlUtils.js';
+import { bindViewStateAction, renderViewState } from './viewState.js';
+
+function renderExternalTaskLink(value, label) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const url = safeExternalUrl(raw);
+  return url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">${label}</a>` : '—';
+}
 
 let tasksCache = null;
 let currentView = 'table';
@@ -235,8 +244,16 @@ async function loadTasks(app) {
     renderCurrentView();
   
   } catch (e) {
-    document.getElementById('tasks-tbody').innerHTML =
-      `<tr><td colspan="13" class="text-center text-muted" style="padding: 40px;">Ошибка загрузки: ${e.message}</td></tr>`;
+    const container = document.getElementById('tasks-container');
+    if (container) {
+      container.innerHTML = renderViewState({
+        kind: 'error',
+        message: window.formatErrorMessage?.(e) || 'Повторите попытку позже.',
+        actionLabel: 'Повторить',
+      });
+      bindViewStateAction(container, () => loadTasks(app));
+      window.lucide?.createIcons();
+    }
   }
 }
 
@@ -254,9 +271,7 @@ function renderCurrentView() {
   const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
   if (paginationPage > totalPages) paginationPage = totalPages;
   const pageList = list.slice((paginationPage - 1) * PAGE_SIZE, paginationPage * PAGE_SIZE);
-  const isMobile = window.innerWidth <= 768;
-  const view = isMobile ? 'cards' : currentView;
-  if (view === 'cards') {
+  if (currentView === 'cards') {
     renderCardView(pageList);
   } else {
     renderTableView(pageList);
@@ -314,7 +329,7 @@ function renderTableView(list) {
         </thead>
         <tbody id="tasks-tbody">
           ${list.length === 0
-            ? '<tr><td colspan="' + visibleCols.length + '" class="text-center text-muted" style="padding:40px;">Нет задач</td></tr>'
+            ? '<tr><td colspan="' + visibleCols.length + '">' + renderViewState({ kind: 'empty', title: 'Задачи не найдены', message: 'Измените фильтры или создайте новую задачу.' }) + '</td></tr>'
             : list.map(task => renderTableRow(task, visibleCols)).join('')}
         </tbody>
       </table>
@@ -350,20 +365,20 @@ function renderCell(col, task) {
 
   switch (col) {
     case 'id': return `<span class="font-mono text-muted">#${task.id}</span>`;
-    case 'title': return `<strong class="cell-truncate">${task.title}</strong>`;
-    case 'description': return `<span class="cell-truncate">${task.description || '—'}</span>`;
-    case 'date_received': return `<span>${task.date_received || '—'}</span>`;
+    case 'title': return `<strong class="cell-truncate">${escapeHtml(task.title)}</strong>`;
+    case 'description': return `<span class="cell-truncate">${escapeHtml(task.description || '—')}</span>`;
+    case 'date_received': return `<span>${escapeHtml(task.date_received || '—')}</span>`;
     case 'status': return `<span>${renderStatus(task.status_name || task.status)}</span>`;
     case 'priority': return `<span>${renderPriority(task.priority_name || task.priority)}</span>`;
-    case 'team': return `<span class="badge badge-info">${task.team_name || '—'}</span>`;
-    case 'channel': return `<span>${task.channel_name || '—'}</span>`;
-    case 'business_customer': return `<span>${task.business_customer_name || task.business_customer || '—'}</span>`;
-    case 'department': return `<span>${task.department_name || '—'}</span>`;
-    case 'project': return `<span>${task.project_name || '—'}</span>`;
-    case 'task_type': return `<span>${task.task_type_name || '—'}</span>`;
-    case 'involved_teams': return `<span class="cell-truncate">${task.involved_teams || '—'}</span>`;
+    case 'team': return `<span class="badge badge-info">${escapeHtml(task.team_name || '—')}</span>`;
+    case 'channel': return `<span>${escapeHtml(task.channel_name || '—')}</span>`;
+    case 'business_customer': return `<span>${escapeHtml(task.business_customer_name || task.business_customer || '—')}</span>`;
+    case 'department': return `<span>${escapeHtml(task.department_name || '—')}</span>`;
+    case 'project': return `<span>${escapeHtml(task.project_name || '—')}</span>`;
+    case 'task_type': return `<span>${escapeHtml(task.task_type_name || '—')}</span>`;
+    case 'involved_teams': return `<span class="cell-truncate">${escapeHtml(Array.isArray(task.involved_teams) ? task.involved_teams.join(', ') : task.involved_teams || '—')}</span>`;
     case 'deadline': return `<span>${renderDeadline(task)}</span>`;
-    case 'deadline_po': return `<span>${task.deadline_po_name || '—'}</span>`;
+    case 'deadline_po': return `<span>${escapeHtml(task.deadline_po_name || '—')}</span>`;
     case 'effort_days': return `<span>${task.effort_days != null ? task.effort_days + ' дн' : '—'}</span>`;
     case 'effort_rub': return `<span class="font-mono">${metricFormat(task.effort_rub)}</span>`;
     case 'effort_designee':
@@ -387,19 +402,19 @@ function renderCell(col, task) {
     case 'financial_effect': return `<span class="font-mono">${metricFormat(task.financial_effect)}</span>`;
     case 'cv': return `<span>${renderCV(task)}</span>`;
     case 'progress': return `<span>${renderProgress(task.progress)}</span>`;
-    case 'owner': return `<span>${task.owner_name || task.owner || '—'}</span>`;
-    case 'key_project_status': return `<span class="cell-truncate">${task.key_project_status || '—'}</span>`;
-    case 'directorate_status': return `<span class="cell-truncate">${task.directorate_status || '—'}</span>`;
-    case 'did_status': return `<span class="cell-truncate">${task.did_status || '—'}</span>`;
-    case 'link_mockups': return `<span>${task.link_mockups ? `<a href="${task.link_mockups}" target="_blank" style="color:var(--accent)">Макеты</a>` : '—'}</span>`;
-    case 'link_jira': return `<span>${task.link_jira ? `<a href="${task.link_jira}" target="_blank" style="color:var(--accent)">Jira</a>` : '—'}</span>`;
-    case 'rejection_reason': return `<span class="cell-truncate">${task.rejection_reason || '—'}</span>`;
-    case 'comment': return `<span class="cell-truncate">${task.comment || '—'}</span>`;
-    case 'created_at': return `<span>${task.created_at || '—'}</span>`;
-    case 'updated_at': return `<span>${task.updated_at || '—'}</span>`;
+    case 'owner': return `<span>${escapeHtml(task.owner_name || task.owner || '—')}</span>`;
+    case 'key_project_status': return `<span class="cell-truncate">${escapeHtml(task.key_project_status || '—')}</span>`;
+    case 'directorate_status': return `<span class="cell-truncate">${escapeHtml(task.directorate_status || '—')}</span>`;
+    case 'did_status': return `<span class="cell-truncate">${escapeHtml(task.did_status || '—')}</span>`;
+    case 'link_mockups': return `<span>${renderExternalTaskLink(task.link_mockups, 'Макеты')}</span>`;
+    case 'link_jira': return `<span>${renderExternalTaskLink(task.link_jira, 'Jira')}</span>`;
+    case 'rejection_reason': return `<span class="cell-truncate">${escapeHtml(task.rejection_reason || '—')}</span>`;
+    case 'comment': return `<span class="cell-truncate">${escapeHtml(task.comment || '—')}</span>`;
+    case 'created_at': return `<span>${escapeHtml(task.created_at || '—')}</span>`;
+    case 'updated_at': return `<span>${escapeHtml(task.updated_at || '—')}</span>`;
     case 'metric_kr_plan':
     case 'metric_kr_fact': return `<span class="font-mono">${metricFormat(task[col])}${task.metric_kr_unit ? ' ' + task.metric_kr_unit : ''}</span>`;
-    case 'metric_kr_unit': return `<span>${task.metric_kr_unit || '—'}</span>`;
+    case 'metric_kr_unit': return `<span>${escapeHtml(task.metric_kr_unit || '—')}</span>`;
     case 'tags': return renderTags(task.tags);
     default: return '';
   }
@@ -427,7 +442,7 @@ function renderCardView(list) {
     container.innerHTML = `
     <div class="task-card-grid">
       ${list.length === 0
-        ? '<div class="text-center text-muted" style="padding:40px;width:100%;">Нет задач</div>'
+        ? renderViewState({ kind: 'empty', title: 'Задачи не найдены', message: 'Измените фильтры или создайте новую задачу.' })
         : list.map(task => renderCard(task)).join('')}
     </div>
   `;
@@ -447,13 +462,13 @@ function renderCard(task) {
 function renderDeadline(task) {
   const dl = task.deadline_name || task.deadline || '—';
   const overdue = dl !== '—' && task.deadline_id != null && !TERMINAL_STATUSES.includes(task.status_name) && isDeadlinePast(dl);
-  return overdue ? `<span style="color:#ef4444;font-weight:600;">${dl}</span>` : `<span>${dl}</span>`;
+  return overdue ? `<span style="color:#ef4444;font-weight:600;">${escapeHtml(dl)}</span>` : `<span>${escapeHtml(dl)}</span>`;
 }
 
 function renderPriority(priority) {
   const map = { 'ВЫСОКИЙ': 'high', 'СРЕДНИЙ': 'medium', 'НИЗКИЙ': 'low' };
   const cls = map[priority] || 'medium';
-  return `<span class="badge badge-${cls}">${priority || 'СРЕДНИЙ'}</span>`;
+  return `<span class="badge badge-${cls}">${escapeHtml(priority || 'СРЕДНИЙ')}</span>`;
 }
 
 function renderStatus(status) {
@@ -473,7 +488,7 @@ function renderStatus(status) {
     'НЕ_АКТУАЛЬНА': 'badge-low',
     'ВЫПОЛНЕНА': 'badge-status-done'
   };
-  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${status || 'СБОР ТРЕБОВАНИЙ'}</span>`;
+  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${escapeHtml(status || 'СБОР ТРЕБОВАНИЙ')}</span>`;
 }
 
 function renderProgress(progress) {
@@ -510,8 +525,9 @@ function renderTags(tags) {
     list = String(tags).split(',').map(t => t.trim()).filter(Boolean).map(t => ({ name: t, color: '' }));
   }
   return list.filter(t => t.name).map(t => {
-    const style = t.color ? `background:${t.color}22;color:${t.color};border:1px solid ${t.color}55;` : '';
-    return `<span class="badge" style="font-size:10px;${style}">${t.name}</span>`;
+    const color = /^#[0-9a-f]{6}$/i.test(t.color || '') ? t.color : '';
+    const style = color ? `background:${color}22;color:${color};border:1px solid ${color}55;` : '';
+    return `<span class="badge" style="font-size:10px;${style}">${escapeHtml(t.name)}</span>`;
   }).join(' ');
 }
 

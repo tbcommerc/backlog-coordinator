@@ -1,6 +1,8 @@
 /**
  * DMB Backlog - Notifications Component (Server-driven)
  */
+import { escapeHtml } from '../htmlUtils.js';
+import { bindViewStateAction, renderViewState } from './viewState.js';
 
 let currentPage = 1;
 let loading = false;
@@ -44,6 +46,18 @@ function formatNotifTime(dateStr) {
     return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
+function getActionLabel(notification) {
+    const url = notification.action_url || '';
+    if (notification.task_id) return notification.category === 'comment' || notification.category === 'mention'
+        ? 'К обсуждению' : 'Открыть задачу';
+    if (url.includes('/settings')) return 'Настроить уведомления';
+    if (url.includes('/review/')) return 'Перейти к ревью';
+    if (url.includes('/customer/request/')) return 'Открыть запрос';
+    if (url.includes('filter=')) return 'Показать задачи';
+    if (url.includes('/express-estimate')) return 'Открыть оценку';
+    return 'Перейти';
+}
+
 function renderNotifItem(n) {
     const meta = CATEGORY_META[n.category] || CATEGORY_META.system;
     const isUnread = !n.is_read;
@@ -51,38 +65,56 @@ function renderNotifItem(n) {
         ? `<span class="badge" style="background:${IMPORTANCE_COLORS[n.importance] || '#64748b'}22;color:${IMPORTANCE_COLORS[n.importance] || '#64748b'};font-size:10px;margin-left:6px;">×${n.group_count}</span>`
         : '';
 
+    const importanceLabel = { critical: 'Срочно', high: 'Требует действия', medium: 'Важно', low: 'Информация' }[n.importance] || 'Информация';
     return `
-    <div class="flex items-start gap-3 p-3 rounded-lg border border-main notification-item ${isUnread ? 'notification-unread' : ''}" data-notif-id="${n.id}" data-task-id="${n.task_id || ''}">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:${IMPORTANCE_COLORS[n.importance] || '#64748b'}15;color:${IMPORTANCE_COLORS[n.importance] || '#64748b'};">
+    <article class="notification-card ${isUnread ? 'is-unread' : ''} ${n.is_resolved ? 'is-resolved' : ''} importance-${n.importance}" data-notif-id="${n.id}" data-task-id="${n.task_id || ''}">
+        <div class="notification-card-icon" style="background:${IMPORTANCE_COLORS[n.importance] || '#64748b'}15;color:${IMPORTANCE_COLORS[n.importance] || '#64748b'};">
             <i data-lucide="${meta.icon}" class="w-4 h-4"></i>
         </div>
-        <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-0.5">
-                <span class="font-semibold text-sm text-main">${n.title}</span>
+        <div class="notification-card-content">
+            <div class="notification-card-meta">
+                <span class="notification-topic">${meta.label}</span>
+                <span class="notification-priority">${importanceLabel}</span>
+                ${n.is_resolved ? '<span class="notification-resolved-label">Выполнено</span>' : ''}
+                <time>${formatNotifTime(n.created_at)}</time>
+            </div>
+            <div class="notification-card-title-row">
+                <h3>${escapeHtml(n.title)}</h3>
                 ${groupBadge}
             </div>
-            ${n.body ? `<div class="text-xs text-muted">${n.body}</div>` : ''}
-            <div class="text-xs text-muted mt-1">
-                <span class="badge badge-sm" style="background:${IMPORTANCE_COLORS[n.importance] || '#64748b'}15;color:${IMPORTANCE_COLORS[n.importance] || '#64748b'};">${meta.label}</span>
-                <span style="margin-left:8px;">${formatNotifTime(n.created_at)}</span>
-            </div>
+            ${n.body ? `<p>${escapeHtml(n.body)}</p>` : ''}
         </div>
-        <div class="flex items-center gap-1 shrink-0">
-            ${n.task_id
-                ? `<button data-open-task="${n.task_id}" class="btn-secondary px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1 shrink-0" title="Открыть задачу">
-                    <i data-lucide="external-link" class="w-3 h-3"></i>
+        <div class="notification-card-actions">
+            ${(n.task_id || n.action_url)
+                ? `<button data-open-notification data-task-id="${n.task_id || ''}" data-action-url="${encodeURIComponent(n.action_url || '')}" class="btn btn-primary btn-sm">
+                    ${getActionLabel(n)} <i data-lucide="arrow-right" class="w-3 h-3"></i>
                 </button>`
                 : ''}
-            ${isUnread
-                ? `<button data-mark-read="${n.id}" class="btn-ghost px-2 py-1.5 text-xs rounded-lg flex items-center gap-1 shrink-0" title="Отметить прочитанным">
+            ${!n.is_resolved
+                ? `<button data-resolve="${n.id}" class="notification-icon-btn notification-resolve-btn" title="Отметить выполненным" aria-label="Отметить выполненным">
                     <i data-lucide="check" class="w-3 h-3"></i>
                 </button>`
                 : ''}
-            <button data-dismiss="${n.id}" class="btn-ghost px-2 py-1.5 text-xs rounded-lg flex items-center gap-1 shrink-0" title="Скрыть">
+            <button data-dismiss="${n.id}" class="notification-icon-btn" title="Скрыть">
                 <i data-lucide="x" class="w-3 h-3"></i>
             </button>
         </div>
-    </div>`;
+    </article>`;
+}
+
+async function loadSummary(app) {
+    try {
+        const summary = await app.api.get('/notifications/summary');
+        const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+        set('notif-stat-action', summary.requires_action || 0);
+        set('notif-stat-unread', summary.unread || 0);
+        set('notif-stat-today', summary.today || 0);
+        document.querySelectorAll('[data-category-count]').forEach(el => {
+            const count = summary.by_category?.[el.dataset.categoryCount] || 0;
+            el.textContent = count;
+            el.classList.toggle('hidden', count === 0);
+        });
+    } catch {}
 }
 
 async function loadNotifications(app, append = false) {
@@ -100,12 +132,7 @@ async function loadNotifications(app, append = false) {
         if (!append) container.innerHTML = '';
 
         if (data.items.length === 0 && !append) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon"><i data-lucide="bell-off"></i></div>
-                    <h3 class="empty-state-title">Нет уведомлений</h3>
-                    <p class="empty-state-description">Пока ничего нового</p>
-                </div>`;
+            container.innerHTML = renderViewState({ kind: 'empty', title: 'Нет уведомлений', message: 'Пока ничего нового.' });
             hasMore = false;
         } else {
             container.insertAdjacentHTML('beforeend', data.items.map(renderNotifItem).join(''));
@@ -114,9 +141,20 @@ async function loadNotifications(app, append = false) {
         }
 
         updateBadge(app);
+        loadSummary(app);
         if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
     } catch (e) {
         console.error('Notifications load error:', e);
+        const container = document.getElementById('notifications-list');
+        if (container && !append) {
+            container.innerHTML = renderViewState({
+                kind: 'error',
+                message: window.formatErrorMessage?.(e) || 'Повторите попытку позже.',
+                actionLabel: 'Повторить',
+            });
+            bindViewStateAction(container, () => loadNotifications(app));
+            window.lucide?.createIcons();
+        }
     } finally {
         loading = false;
     }
@@ -150,34 +188,40 @@ function setupInfiniteScroll(app) {
 
 export function renderNotifications(app) {
     return `
-    <div class="page-header animate-fade-in">
-        <h1>Мои уведомления</h1>
-        <p>Уведомления по вашим задачам</p>
-    </div>
-    <div class="flex gap-3" style="margin-bottom: var(--space-6);">
-        <button class="btn btn-secondary btn-sm" id="mark-all-read">
-            <i data-lucide="check-check" style="width:14px;height:14px;"></i>
-            Отметить все прочитанными
-        </button>
-    </div>
-    <div class="tabs" id="notification-tabs">
-        <div class="tab active" data-cat="">Все</div>
-        <div class="tab" data-cat="risk">Риск</div>
-        <div class="tab" data-cat="deadline">Дедлайны</div>
-        <div class="tab" data-cat="status_change">Статус</div>
-        <div class="tab" data-cat="assignment">Назначение</div>
-        <div class="tab" data-cat="mention">Упоминания</div>
-        <div class="tab" data-cat="comment">Комментарии</div>
-        <div class="tab" data-cat="express">Экспресс</div>
-        <div class="tab" data-cat="system">Система</div>
-    </div>
-    <div class="card" id="notifications-list" style="display:flex;flex-direction:column;gap:8px;padding:8px;">
-        <div class="empty-state">
-            <div class="empty-state-icon"><i data-lucide="loader"></i></div>
-            <p class="text-muted">Загрузка...</p>
+    <section class="notification-center animate-fade-in">
+      <header class="notification-hero page-header">
+        <div>
+          <h1>Мои уведомления</h1>
+          <p>Важные события и обновления по вашей зоне ответственности</p>
         </div>
-    </div>
-    <div id="scroll-sentinel" style="height:1px;"></div>
+        <button class="btn btn-secondary btn-sm" id="mark-all-read">
+          <i data-lucide="check-check" style="width:14px;height:14px;"></i> Прочитать всё
+        </button>
+      </header>
+      <div class="notification-stats">
+        <div class="notification-stat is-action"><span id="notif-stat-action">—</span><div><strong>Требуют действия</strong><small>срочные и важные</small></div></div>
+        <div class="notification-stat"><span id="notif-stat-unread">—</span><div><strong>Не прочитано</strong><small>в центре уведомлений</small></div></div>
+        <div class="notification-stat"><span id="notif-stat-today">—</span><div><strong>Сегодня</strong><small>новых событий</small></div></div>
+      </div>
+      <div class="notification-workspace">
+        <nav class="notification-nav" id="notification-tabs" aria-label="Темы уведомлений">
+          ${[
+            ['', 'inbox', 'Все уведомления'], ['risk', 'alert-triangle', 'Риски'],
+            ['deadline', 'clock', 'Сроки'], ['assignment', 'user-plus', 'Назначения'],
+            ['mention', 'at-sign', 'Упоминания'], ['comment', 'message-circle', 'Обсуждения'],
+            ['status_change', 'refresh-cw', 'Изменения статуса'], ['stale', 'timer', 'Требуют обновления'],
+            ['attrs', 'file-text', 'Неполные данные'], ['system', 'info', 'Система'],
+          ].map(([key, icon, label], index) => `<button class="notification-nav-item ${index === 0 ? 'active' : ''}" data-cat="${key}"><i data-lucide="${icon}"></i><span>${label}</span>${key ? `<b data-category-count="${key}" class="hidden">0</b>` : ''}</button>`).join('')}
+        </nav>
+        <main class="notification-feed">
+          <div class="notification-feed-header"><div><h2>Последние события</h2><p>Сначала показываем то, что требует вашего внимания</p></div></div>
+          <div id="notifications-list">
+            ${renderViewState({ kind: 'loading', title: 'Загружаем уведомления…' })}
+          </div>
+          <div id="scroll-sentinel" style="height:1px;"></div>
+        </main>
+      </div>
+    </section>
     `;
 }
 
@@ -190,7 +234,7 @@ export async function initNotifications(app) {
     await loadNotifications(app);
     setupInfiniteScroll(app);
 
-    const tabs = document.querySelectorAll('#notification-tabs .tab');
+    const tabs = document.querySelectorAll('#notification-tabs [data-cat]');
     tabs.forEach(tab => {
         tab.addEventListener('click', async () => {
             tabs.forEach(t => t.classList.remove('active'));
@@ -218,17 +262,23 @@ export async function initNotifications(app) {
     const list = document.getElementById('notifications-list');
     if (list) {
         list.addEventListener('click', async (e) => {
-            const readBtn = e.target.closest('[data-mark-read]');
-            if (readBtn) {
-                const nid = parseInt(readBtn.dataset.markRead, 10);
+            const resolveBtn = e.target.closest('[data-resolve]');
+            if (resolveBtn) {
+                const nid = parseInt(resolveBtn.dataset.resolve, 10);
                 try {
-                    await app.api.put('/notifications/read', { ids: [nid] });
-                    const item = readBtn.closest('.notification-item');
-                    if (item) item.classList.remove('notification-unread');
-                    readBtn.remove();
+                    await app.api.put(`/notifications/${nid}/resolve`);
+                    const item = resolveBtn.closest('.notification-card');
+                    if (item) {
+                        item.classList.remove('is-unread');
+                        item.classList.add('is-resolved');
+                        const meta = item.querySelector('.notification-card-meta');
+                        meta?.insertAdjacentHTML('beforeend', '<span class="notification-resolved-label">Выполнено</span>');
+                    }
+                    resolveBtn.remove();
                     updateBadge(app);
+                    loadSummary(app);
                 } catch (err) {
-                    console.error('Mark read error:', err);
+                    console.error('Resolve notification error:', err);
                 }
                 return;
             }
@@ -238,19 +288,32 @@ export async function initNotifications(app) {
                 const nid = parseInt(dismissBtn.dataset.dismiss, 10);
                 try {
                     await app.api.delete(`/notifications/${nid}`);
-                    const item = dismissBtn.closest('.notification-item');
+                    const item = dismissBtn.closest('.notification-card');
                     if (item) item.remove();
                     updateBadge(app);
+                    loadSummary(app);
                 } catch (err) {
                     console.error('Dismiss error:', err);
                 }
                 return;
             }
 
-            const taskBtn = e.target.closest('[data-open-task]');
-            if (taskBtn) {
-                const taskId = parseInt(taskBtn.dataset.openTask, 10);
-                document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId } }));
+            const openBtn = e.target.closest('[data-open-notification]');
+            if (openBtn) {
+                const item = openBtn.closest('.notification-card');
+                const notificationId = parseInt(item?.dataset.notifId, 10);
+                if (notificationId && item?.classList.contains('is-unread')) {
+                    try { await app.api.put('/notifications/read', { ids: [notificationId] }); } catch {}
+                    item.classList.remove('is-unread');
+                    updateBadge(app);
+                }
+                const taskId = parseInt(openBtn.dataset.taskId, 10);
+                if (taskId) {
+                    document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId } }));
+                } else {
+                    const target = decodeURIComponent(openBtn.dataset.actionUrl || '').replace(/^#/, '');
+                    app.router.navigate(target || '/notifications');
+                }
             }
         });
     }

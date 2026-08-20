@@ -178,27 +178,16 @@ https://jira.example.com/ABC-1,https://jira.example.com/ABC-2
 
 ---
 
-## 6. Миграции
+## 6. Изменение схемы
 
-### 6.1 Миграция 2026-08-07_task_import_support.py
+Текущая схема импорта определяется моделями в `backend/models.py`; отсутствующие
+таблицы и колонки добавляет `database.ensure_schema()` при старте приложения.
 
-Миграция выполняет (идемпотентно):
-1. Добавляет колонку `external_id` в `tasks` (также добавляется автоматически через `ensure_schema`)
-2. Создаёт уникальный индекс `uq_tasks_external_id` по `tasks(external_id)`
-3. Создаёт таблицу `task_jira_links` (если отсутствует)
-4. Backfill: переносит ссылки из JSON `tasks.link_jira` в `task_jira_links`
-5. Проставляет `is_required=1` для `title` и `team_id` в `field_labels`
-
-**Запуск:**
-```bash
-cd backend
-python migrations/2026-08-07_task_import_support.py
-```
-
-Или через переменную окружения (если БД в другом месте):
-```bash
-DMB_DB_PATH=/path/to/dmb_backlog.db python migrations/2026-08-07_task_import_support.py
-```
+`backend/migrations/2026-08-07_task_import_support.py` — исторический одноразовый
+скрипт. Он содержит преобразования, которые не соответствуют полностью текущим
+моделям (в частности, текущая модель `Task` не содержит `external_id`), поэтому
+запускать его для актуальной базы нельзя. Общая политика и ограничения описаны в
+`docs/SCHEMA_CHANGES.md`.
 
 ---
 

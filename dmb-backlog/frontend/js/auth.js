@@ -14,7 +14,6 @@
 /**
  * @typedef {Object} LoginResponse
  * @property {string} access_token
- * @property {string} refresh_token
  * @property {string} token_type
  * @property {number} expires_in
  * @property {User} user
@@ -28,14 +27,14 @@ export class Auth {
     constructor(api, store) {
         this.api = api;
         this.store = store;
+        localStorage.removeItem('dmb_tokens');
     }
     
     /**
      * @returns {boolean}
      */
     isAuthenticated() {
-        const tokens = JSON.parse(localStorage.getItem('dmb_tokens') || '{}');
-        return !!tokens.access;
+        return this.api.hasAccessToken();
     }
     
     /**
@@ -46,19 +45,28 @@ export class Auth {
     async login(email, password) {
         const response = await this.api.post('/auth/login', { email, password });
         
-        localStorage.setItem('dmb_tokens', JSON.stringify({
-            access: response.access_token,
-            refresh: response.refresh_token
-        }));
+        this.api.setAccessToken(response.access_token);
         localStorage.setItem('dmb_user', JSON.stringify(response.user));
         
         return response;
     }
     
-    logout() {
-        localStorage.removeItem('dmb_tokens');
-        localStorage.removeItem('dmb_user');
-        window.location.reload();
+    async logout() {
+        try {
+            await this.api.post('/auth/logout');
+        } catch {
+            // Local logout must still complete if the session is already expired.
+        } finally {
+            this.api.setAccessToken(null);
+            localStorage.removeItem('dmb_user');
+        }
+    }
+
+    async restoreSession() {
+        const response = await this.api.refreshToken();
+        if (!response) return false;
+        localStorage.setItem('dmb_user', JSON.stringify(response.user));
+        return true;
     }
     
     /**

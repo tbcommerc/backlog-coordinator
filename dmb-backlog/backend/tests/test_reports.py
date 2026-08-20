@@ -165,3 +165,49 @@ def test_grouping(client, auth_headers, db):
     group_names = sorted(g["name"] for g in data["groups"])
     assert group_names == ["Команда А", "Команда Б"]
     assert sum(g["count"] for g in data["groups"]) == data["total"]
+
+
+def test_pip_report_uses_managed_status_and_exposes_planning_fields(client, auth_headers, db):
+    from models import Report, TaskStatus
+
+    tasks = _seed(db)
+    decision = TaskStatus(code="S_DECISION", name="Принятие решения")
+    db.add(decision)
+    db.flush()
+
+    tasks[0].status_id = decision.id
+    tasks[0].effort_days = 12
+    tasks[0].effort_rub = 2.5
+    tasks[0].priority_score = 87
+
+    # Имитируем старую конфигурацию в БД: системная логика PIP не должна
+    # позволить ей вернуть задачи из других статусов.
+    report = Report(
+        key="pip",
+        name="PI-планирование трайба",
+        type="standard",
+        filters='[{"field":"status_name","operator":"not_equals","value":"Выполнена"}]',
+        fields='["id","title"]',
+        group_by="team_name",
+        sort_by="progress",
+        sort_order="desc",
+        is_public=True,
+    )
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+
+    data = _exec(client, auth_headers, report.id)
+
+    assert data["total"] == 1
+    assert data["grouped"] is False
+    item = data["items"][0]
+    assert item["id"] == tasks[0].id
+    assert item["status_name"] == "Принятие решения"
+    assert item["task_type_name"] == "МЕТРИЧЕСКИЕ KR"
+    assert item["team_name"] == "Команда А"
+    assert item["effort_days"] == 12
+    assert item["effort_rub"] == 2.5
+    assert item["financial_effect"] == 10.5
+    assert item["cv"] == 4.2
+    assert item["priority_score"] == 87

@@ -108,6 +108,10 @@ export function initSidebar() {
     const toggle = sidebar?.querySelector('.sidebar-toggle');
     if (!sidebar || !toggle) return;
 
+    sidebar.querySelectorAll('.sidebar-item[aria-label]').forEach(item => {
+        item.title = item.getAttribute('aria-label');
+    });
+
     toggle.addEventListener('click', () => {
         const isCollapsed = sidebar.classList.toggle('collapsed');
         localStorage.setItem('sidebarCollapsed', isCollapsed);
@@ -117,7 +121,21 @@ export function initSidebar() {
     setTimeout(() => {
         const user = window.app?.store?.get('currentUser');
         const perms = user?.permissions;
-        const roleName = (user?.role_name || '').toLowerCase();
+        const roleName = String(user?.role_name || user?.role || '').trim().toLocaleLowerCase('ru-RU');
+        if (roleName === 'бизнес-заказчик') {
+            const allowedLabels = new Set(['Мои задачи', 'Создать задачу']);
+            document.querySelectorAll('.sidebar-item').forEach(el => {
+                if (!allowedLabels.has(el.getAttribute('aria-label'))) {
+                    el.style.display = 'none';
+                }
+            });
+            document.querySelectorAll('.sidebar-section').forEach(section => {
+                const hasVisibleItem = [...section.querySelectorAll('.sidebar-item')]
+                    .some(el => el.style.display !== 'none');
+                if (!hasVisibleItem) section.style.display = 'none';
+            });
+            return;
+        }
         if (!perms) return; // no permissions data yet — keep everything visible
         const map = {
             'Бэклог DMB': 'backlog_dmb',
@@ -141,7 +159,10 @@ export function initSidebar() {
                 el.style.display = 'none';
             }
             if (label === 'Ревью запросов') {
-                const canReview = ['po/pl/cl', 'ba/бизнес-аналитик', 'лидер трайба', 'администратор'].includes(roleName);
+                const canReview = [
+                    'po/pl/cl', 'ba/участник команды', 'ba/бизнес-аналитик',
+                    'лидер трайба', 'проектный офис (админ)', 'администратор',
+                ].includes(roleName);
                 if (!canReview) {
                     el.style.display = 'none';
                 }

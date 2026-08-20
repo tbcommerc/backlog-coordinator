@@ -1,10 +1,16 @@
-import { renderStatus, renderPriority } from './reports.js';
 import { TASK_COLUMNS, buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
+import { renderDictionariesTab } from './adminDictionaries.js';
+import { acquireDictionaryLock, DICTIONARY_CONFIG, getDictionaryChanges, persistDictionaryItems, releaseDictionaryLock, renderDictionaryForm } from './adminDictionaries.js';
+import { executeAdminReport, getReportFields, getReportPayload, parseReportJson, renderFilterRow, renderReportForm, REPORT_GROUP_OPTIONS, scriptManagedReportKeys } from './adminReports.js';
 
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+function safeHexColor(value, fallback = '#64748b') {
+  return /^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value) : fallback;
 }
 
 let adminTab = 'teams';
@@ -19,7 +25,7 @@ let currentDictLockType = null;
 
 function getRoleDisplayName(role) {
     if (!role) return '';
-    return role.name;
+    return escapeHtml(role.name);
 }
 
 function showConfirmModal(message, onConfirm) {
@@ -329,7 +335,7 @@ function renderTabContent(tab, app) {
     case 'users': return renderUsersTab(app);
     case 'roles': return renderRolesTab(app);
     case 'home': return renderHomeTab(app);
-    case 'dictionaries': return renderDictionariesTab(app);
+    case 'dictionaries': return renderDictionariesTab(adminData, dictLocks, escapeHtml);
     case 'display': return renderDisplayTab(app);
     case 'reports': return renderReportsTab(app);
     default: return '<p class="text-muted">Выберите вкладку</p>';
@@ -355,7 +361,7 @@ function renderTeamsTab(app) {
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
               <div style="width:44px;height:44px;border-radius:12px;background:${gradient};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:white;flex-shrink:0">${abbr}</div>
               <div style="flex:1;min-width:0">
-                <div style="font-weight:600;font-size:14px;color:var(--text-primary);word-break:break-word">${t.name}</div>
+                <div style="font-weight:600;font-size:14px;color:var(--text-primary);word-break:break-word">${escapeHtml(t.name)}</div>
               </div>
               <div style="flex-shrink:0;display:flex;align-items:flex-start;gap:4px">
                 <button class="admin-edit-btn" data-type="team" data-id="${t.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать команду">
@@ -367,7 +373,7 @@ function renderTeamsTab(app) {
               </div>
             </div>
             <div style="flex:1">${leadInfo}</div>
-            ${t.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-color)">${t.description}</div>` : ''}
+            ${t.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-color)">${escapeHtml(t.description)}</div>` : ''}
           </div>
         `;
       }).join('')
@@ -395,11 +401,11 @@ function renderProjectsTab(app) {
     return `
       <tr>
         <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted)">#${p.id}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:13px;font-weight:600;color:var(--text-primary)">${p.code}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:13px;color:var(--text-primary)">${p.name}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.description || '—'}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary)">${status ? status.name : '—'}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary)">${pl ? pl.name : '—'}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(p.code)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:13px;color:var(--text-primary)">${escapeHtml(p.name)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(p.description || '—')}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary)">${escapeHtml(status ? status.name : '—')}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary)">${escapeHtml(pl ? pl.name : '—')}</td>
         <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:11px;color:var(--text-muted)">${p.created_at ? p.created_at.slice(0, 10) : '—'}</td>
         <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);text-align:right">
           <div style="display:flex;gap:4px;justify-content:flex-end">
@@ -453,7 +459,7 @@ function renderBusinessCustomersTab(app) {
     return `
       <tr>
         <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted)">#${c.id}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:13px;font-weight:600;color:var(--text-primary)">${c.name}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(c.name)}</td>
         <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary)">${c.department_name || (c.department_id && deptMap[c.department_id]) || '—'}</td>
         <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:11px;color:var(--text-muted)">${c.created_at ? c.created_at.slice(0, 10) : '—'}</td>
         <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);text-align:right">
@@ -495,7 +501,7 @@ function renderBusinessCustomersTab(app) {
 
 function renderBusinessCustomerForm(data) {
   const departments = adminData.departments || [];
-  const deptOpts = departments.map(d => `<option value="${d.id}"${data.department_id == d.id ? ' selected' : ''}>${d.name}</option>`).join('');
+  const deptOpts = departments.map(d => `<option value="${d.id}"${data.department_id == d.id ? ' selected' : ''}>${escapeHtml(d.name)}</option>`).join('');
   const isEdit = adminModal.mode === 'edit';
   return `
     <div class="form-group">
@@ -504,7 +510,7 @@ function renderBusinessCustomerForm(data) {
     </div>
     <div class="form-group">
       <label class="form-label">ФИО <span class="required">*</span></label>
-      <input class="input modal-field" id="bc-name" value="${data.name || ''}" placeholder="ФИО бизнес-заказчика">
+      <input class="input modal-field" id="bc-name" value="${escapeHtml(data.name || '')}" placeholder="ФИО бизнес-заказчика">
     </div>
     <div class="form-group">
       <label class="form-label">Подразделение</label>
@@ -593,7 +599,7 @@ function renderUsersTab(app) {
   const selStyle = 'font-size:12px;padding:3px 6px;border:1px solid var(--border-color);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);width:100%';
   const fOpt = (val, label) => `<option value="${val}"${userFilters[label] === val ? ' selected' : ''}>`;
   const roleFilter = `<select onchange="window._adminFilterChange(this)" id="admin-filter-role" style="${selStyle}"><option value="">Все</option>${roles.map(r => `<option value="${r.id}"${userFilters.role == r.id ? ' selected' : ''}>${getRoleDisplayName(r)}</option>`).join('')}</select>`;
-  const teamFilter = `<select onchange="window._adminFilterChange(this)" id="admin-filter-team" style="${selStyle}"><option value="">Все</option>${teams.map(t => `<option value="${t.id}"${userFilters.team == t.id ? ' selected' : ''}>${t.name}</option>`).join('')}</select>`;
+  const teamFilter = `<select onchange="window._adminFilterChange(this)" id="admin-filter-team" style="${selStyle}"><option value="">Все</option>${teams.map(t => `<option value="${t.id}"${userFilters.team == t.id ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}</select>`;
   const statusFilter = `<select onchange="window._adminFilterChange(this)" id="admin-filter-status" style="${selStyle}"><option value="">Все</option><option value="1"${userFilters.status == '1' ? ' selected' : ''}>Активен</option><option value="0"${userFilters.status == '0' ? ' selected' : ''}>Неактивен</option></select>`;
 
   const rows = users.length
@@ -609,7 +615,7 @@ function renderUsersTab(app) {
               <div style="display:flex;align-items:center;gap:10px">
                 <div style="width:32px;height:32px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0">${initials}</div>
                 <div>
-                  <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${u.name}</div>
+                  <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${escapeHtml(u.name)}</div>
                 </div>
               </div>
             </td>
@@ -617,7 +623,7 @@ function renderUsersTab(app) {
               ${role ? `<span class="badge badge-info" style="font-size:11px">${getRoleDisplayName(role)}</span>` : '<span class="text-muted" style="font-size:12px">—</span>'}
             </td>
             <td style="padding:12px 16px;border-bottom:1px solid var(--border-color);color:var(--text-secondary);font-size:13px">${teamName}</td>
-            <td style="padding:12px 16px;border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:12px">${u.email || '—'}</td>
+            <td style="padding:12px 16px;border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:12px">${escapeHtml(u.email || '—')}</td>
             <td style="padding:12px 16px;border-bottom:1px solid var(--border-color)">${getStatusBadge(u.is_active)}</td>
             <td style="padding:12px 16px;border-bottom:1px solid var(--border-color);text-align:right">
               <div style="display:flex;gap:4px;justify-content:flex-end">
@@ -696,7 +702,7 @@ function renderRolesTab(app) {
           <tr>
             <td style="padding:10px 12px;border-bottom:1px solid var(--border-color)">
               <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${getRoleDisplayName(r)}</div>
-              ${r.description ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${r.description}</div>` : ''}
+              ${r.description ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${escapeHtml(r.description)}</div>` : ''}
             </td>
             ${perms}
             <td style="padding:10px 12px;text-align:center;border-bottom:1px solid var(--border-color)">${getRoleStatusBadge(r.status)}</td>
@@ -743,137 +749,13 @@ function renderRolesTab(app) {
   `;
 }
 
-function competencyCostCardData() {
-  const items = adminData.competencyCosts || [];
-  const byComp = {};
-  items.forEach(i => {
-    if (!byComp[i.competency]) byComp[i.competency] = {};
-    byComp[i.competency][i.year] = i.rate;
-  });
-  const competencies = Object.keys(byComp).sort();
-  const preview = competencies.slice(0, 3).map(comp => {
-    const rates = byComp[comp];
-    const latestYear = Math.max(...Object.keys(rates).map(Number));
-    return { name: comp, code: String(rates[latestYear]) };
-  });
-  return { count: competencies.length, preview };
-}
 
 // ==================== DICTIONARIES TAB ====================
 
-function renderDictionariesTab(app) {
-  const ccCard = competencyCostCardData();
-  const dicts = [
-    { key: 'priorities', dictType: 'priority', label: 'Приоритеты', icon: 'flag', count: (adminData.priorities || []).length, preview: (adminData.priorities || []).slice(0, 3) },
-    { key: 'statuses', dictType: 'status', label: 'Статусы задачи', icon: 'circle', count: (adminData.statuses || []).length, preview: (adminData.statuses || []).slice(0, 3) },
-    { key: 'taskTypes', dictType: 'task_type', label: 'Типы задач', icon: 'tag', count: (adminData.taskTypes || []).length, preview: (adminData.taskTypes || []).slice(0, 3) },
-    { key: 'channels', dictType: 'channel', label: 'Каналы', icon: 'radio', count: (adminData.channels || []).length, preview: (adminData.channels || []).slice(0, 3) },
-    { key: 'deadlines', dictType: 'deadline', label: 'Сроки', icon: 'clock', count: (adminData.deadlines || []).length, preview: (adminData.deadlines || []).slice(0, 3) },
-    { key: 'departments', dictType: 'department', label: 'Подразделения', icon: 'building', count: (adminData.departments || []).length, preview: (adminData.departments || []).slice(0, 3) },
-    { key: 'teamTypes', dictType: 'team_type', label: 'Типы команд', icon: 'layers', count: (adminData.teamTypes || []).length, preview: (adminData.teamTypes || []).slice(0, 3) },
-    { key: 'projectStatuses', dictType: 'project_status', label: 'Статусы проектов', icon: 'git-branch', count: (adminData.projectStatuses || []).length, preview: (adminData.projectStatuses || []).slice(0, 3) },
-    { key: 'competencyCosts', dictType: 'competency_cost', label: 'Стоимость компетенций', icon: 'coins', count: ccCard.count, preview: ccCard.preview, showRate: true },
-    { key: 'tags', dictType: 'tag', label: 'Теги', icon: 'tags', count: (adminData.tags || []).length, preview: (adminData.tags || []).slice(0, 3) },
-  ];
-
-  const cards = dicts.map(d => {
-    const lock = dictLocks[d.dictType];
-    const isLocked = lock && lock.locked && !lock.is_mine;
-    const isMine = lock && lock.locked && lock.is_mine;
-    const lockBanner = isLocked
-      ? `<div style="position:absolute;top:0;left:0;right:0;padding:4px 12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;font-size:11px;font-weight:600;border-radius:12px 12px 0 0;text-align:center;z-index:1">
-          <i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px"></i>
-          Редактируется: ${lock.lock_owner_name || 'Администратор'}
-        </div>`
-      : '';
-    const previewItems = d.preview.map(v => {
-      const label = d.showRate && v.code ? `${v.name}: ${v.code}` : v.name;
-      return v.color
-        ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:${v.color}20;color:${v.color};margin:2px">${label}</span>`
-        : `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:var(--bg-tertiary);color:var(--text-muted);margin:2px">${label}</span>`;
-    }).join('');
-    return `
-      <div class="card rounded-xl p-5 card-hover admin-dict-card${isLocked ? ' dict-locked' : ''}" data-dict="${d.key}" style="cursor:${isLocked ? 'default' : 'pointer'};height:${isLocked ? '220' : '200'}px;position:relative;${isLocked ? 'opacity:0.85' : ''}">
-        ${lockBanner}
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px${lockBanner ? ';margin-top:20px' : ''}">
-          <div style="width:40px;height:40px;border-radius:10px;background:${isLocked ? '#f59e0b20' : 'var(--bg-tertiary)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <i data-lucide="${isLocked ? 'lock' : d.icon}" style="width:18px;height:18px;color:${isLocked ? '#f59e0b' : 'var(--accent)'}"></i>
-          </div>
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:14px;color:var(--text-primary)">${d.label}</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${d.count} значений</div>
-          </div>
-          ${isMine ? '<span style="font-size:10px;background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Вы редактируете</span>' : '<i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--text-muted)"></i>'}
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px">${previewItems || '<span style="font-size:12px;color:var(--text-muted)">Нет значений</span>'}</div>
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">${cards}</div>
-  `;
-}
 
 // ==================== REPORTS TAB ====================
 
-function getReportFields() {
-  const fl = window.app?.fieldLabels || {};
-  return [
-  { key: 'id', label: fl.id || 'ID' },
-  { key: 'title', label: fl.title || 'Название задачи' },
-  { key: 'description', label: fl.description || 'Описание' },
-  { key: 'team_name', label: fl.team_id || 'Команда' },
-  { key: 'priority_name', label: fl.priority_id || 'Приоритет' },
-  { key: 'status_name', label: fl.status_id || 'Статус' },
-  { key: 'project_name', label: fl.project_id || 'Проект' },
-  { key: 'business_customer', label: fl.business_customer_id || 'Бизнес-заказчик' },
-  { key: 'business_customer_name', label: fl.business_customer_id || 'Бизнес-заказчик (имя)' },
-  { key: 'department_name', label: fl.department_id || 'Подразделение' },
-  { key: 'channel_name', label: fl.channel_id || 'Канал поступления' },
-  { key: 'task_type_name', label: fl.task_type_id || 'Тип задачи' },
-  { key: 'deadline_name', label: fl.deadline_id || 'Дедлайн' },
-  { key: 'owner_name', label: fl.owner_id || 'Исполнитель' },
-  { key: 'progress', label: fl.progress || 'Прогресс' },
-  { key: 'effort_days', label: fl.effort_days || 'Трудозатраты (дни)' },
-  { key: 'effort_rub', label: fl.effort_rub || 'Трудозатраты (руб)' },
-  { key: 'financial_effect', label: fl.financial_effect || 'Фин. эффект' },
-  { key: 'cv', label: fl.cv || 'C/V' },
-  { key: 'key_project_status', label: fl.key_project_status || 'Статус ключ. проекта' },
-  { key: 'directorate_status', label: fl.directorate_status || 'Статус для директорской' },
-  { key: 'did_status', label: fl.did_status || 'Статус для ДИД' },
-  { key: 'involved_teams', label: fl.involved_teams || 'Вовлечённые команды' },
-  { key: 'did_demo', label: fl.did_demo || 'Демо на оперативке' },
-  { key: 'date_received', label: 'Дата получения' },
-  { key: 'created_at', label: fl.created_at || 'Дата создания' },
-  { key: 'updated_at', label: fl.updated_at || 'Дата обновления' },
-  ];
-}
 
-const REPORT_GROUP_OPTIONS = [
-  { value: '', label: 'Без группировки' },
-  { value: 'team_name', label: 'По командам' },
-  { value: 'project_name', label: 'По проектам' },
-  { value: 'status_name', label: 'По статусам' },
-  { value: 'priority_name', label: 'По приоритетам' },
-  { value: 'department_name', label: 'По подразделениям' },
-];
-
-const REPORT_SORT_FIELDS = [
-  { value: '', label: 'Без сортировки' },
-  { value: 'title', label: 'По названию' },
-  { value: 'priority_name', label: 'По приоритету' },
-  { value: 'status_name', label: 'По статусу' },
-  { value: 'team_name', label: 'По команде' },
-  { value: 'project_name', label: 'По проекту' },
-  { value: 'progress', label: 'По прогрессу' },
-  { value: 'financial_effect', label: 'По фин. эффекту' },
-  { value: 'cv', label: 'По C/V' },
-  { value: 'created_at', label: 'По дате создания' },
-];
-
-const scriptManagedReportKeys = ['directorate', 'did-operational'];
-const BOOLEAN_REPORT_FIELDS = ['did_demo'];
 
 // ==================== HOME / TIMELINE TAB ====================
 
@@ -1135,10 +1017,6 @@ async function deleteTimelineEvent(id, app) {
 
 let adminReportView = null;
 
-function parseReportJson(str) {
-  if (!str) return null;
-  try { return typeof str === 'string' ? JSON.parse(str) : str; } catch { return null; }
-}
 
 function renderReportsTab(app) {
   const dbReports = adminData.reports || [];
@@ -1159,14 +1037,14 @@ function renderReportsTab(app) {
     <div class="card rounded-xl" style="padding:20px;min-height:150px;display:flex;flex-direction:column;background:linear-gradient(135deg,#64748b,#475569);color:white;cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''" data-admin-report-id="${r.id}">
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;min-height:40px">
         <i data-lucide="file-text" style="width:18px;height:18px;opacity:0.8;flex-shrink:0;margin-top:1px"></i>
-        <h4 style="margin:0;font-size:13px;font-weight:600;color:white;line-height:1.3;flex:1;min-height:34px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${r.name}</h4>
+        <h4 style="margin:0;font-size:13px;font-weight:600;color:white;line-height:1.3;flex:1;min-height:34px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escapeHtml(r.name)}</h4>
         <div style="display:flex;gap:2px;flex-shrink:0">
           <button class="admin-edit-btn" data-type="report" data-id="${r.id}" style="padding:4px;border:none;background:rgba(255,255,255,0.15);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Настроить отчёт">
             <i data-lucide="settings" style="width:14px;height:14px;color:white"></i>
           </button>
         </div>
       </div>
-      <div style="font-size:12px;opacity:0.8;flex:1">${r.description || ''}</div>
+      <div style="font-size:12px;opacity:0.8;flex:1">${escapeHtml(r.description || '')}</div>
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
         <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;flex-shrink:0">Стандартный</span>
         ${r.key ? `<span style="font-size:10px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px">${r.key}</span>` : ''}
@@ -1187,7 +1065,7 @@ function renderReportsTab(app) {
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:8px">
             <i data-lucide="bar-chart-3" style="width:18px;height:18px;color:var(--accent)"></i>
-            <h4 style="margin:0;font-size:13px;font-weight:600;color:var(--text-primary)">${r.name}</h4>
+            <h4 style="margin:0;font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(r.name)}</h4>
             ${r.is_public ? '<span style="font-size:10px;background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Публичный</span>' : ''}
           </div>
           <div style="display:flex;gap:2px">
@@ -1199,7 +1077,7 @@ function renderReportsTab(app) {
             </button>
           </div>
         </div>
-        <div style="font-size:12px;color:var(--text-muted);flex:1">${r.description || 'Без описания'}</div>
+        <div style="font-size:12px;color:var(--text-muted);flex:1">${escapeHtml(r.description || 'Без описания')}</div>
         <div style="display:flex;gap:12px;margin-top:10px;font-size:11px;color:var(--text-muted)">
           <span>Фильтров: ${filterCount}</span>
           <span>Полей: ${fieldCount || 'все'}</span>
@@ -1244,7 +1122,7 @@ function renderReportView(app) {
         <button class="btn btn-ghost btn-sm" id="report-view-back" title="Назад к списку">
           <i data-lucide="arrow-left" style="width:16px;height:16px"></i> Назад
         </button>
-        <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--text-primary)">${report.name}</h3>
+        <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--text-primary)">${escapeHtml(report.name)}</h3>
       </div>
       <div style="display:flex;gap:8px">
         ${scriptManagedReportKeys.includes(report.key) ? `
@@ -1256,7 +1134,7 @@ function renderReportView(app) {
         `}
       </div>
     </div>
-    ${report.description ? `<p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0">${report.description}</p>` : ''}
+    ${report.description ? `<p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0">${escapeHtml(report.description)}</p>` : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
       <div class="card" style="padding:12px">
         <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Фильтры</div>
@@ -1278,271 +1156,10 @@ function renderReportView(app) {
   `;
 }
 
-function renderReportForm(data) {
-  const isEdit = adminModal.mode === 'edit';
-  const existingFields = parseReportJson(data.fields) || [];
-  const existingFilters = parseReportJson(data.filters) || [];
 
-  const fieldCheckboxes = getReportFields().map(f => {
-    const checked = existingFields.includes(f.key) ? ' checked' : '';
-    return `<label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-      <input type="checkbox" class="report-field-cb" value="${f.key}"${checked} style="width:14px;height:14px">
-      ${f.label}
-    </label>`;
-  }).join('');
 
-  const filterRows = existingFilters.map((f, i) => renderFilterRow(f, i)).join('');
 
-  const groupOpts = REPORT_GROUP_OPTIONS.map(g =>
-    `<option value="${g.value}"${data.group_by === g.value ? ' selected' : ''}>${g.label}</option>`
-  ).join('');
 
-  const sortOpts = REPORT_SORT_FIELDS.map(s =>
-    `<option value="${s.value}"${data.sort_by === s.value ? ' selected' : ''}>${s.label}</option>`
-  ).join('');
-
-  const standardBadge = data.type === 'standard' ? `
-    <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <span style="font-size:11px;background:var(--bg-tertiary);color:var(--text-muted);padding:3px 8px;border-radius:6px">Стандартный отчёт</span>
-      ${data.key ? `<span style="font-size:11px;background:var(--accent-dim);color:var(--accent);padding:3px 8px;border-radius:6px;font-family:monospace">key: ${data.key}</span>` : ''}
-    </div>` : '';
-
-  const isScriptManaged = scriptManagedReportKeys.includes(data.key);
-  const scriptNotice = isScriptManaged ? `
-    <div style="margin-bottom:16px;padding:10px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-muted);font-size:12px;line-height:1.5">
-      Отчёт выполняется по сценарию страницы «Статусы для встреч» — со своей квартальной фильтрацией и группировкой.
-      Поля, фильтры и группировка заданы этим сценарием и вручную не настраиваются. Доступно изменение названия и описания.
-    </div>` : '';
-
-  return `
-    ${standardBadge}
-    ${scriptNotice}
-    <div class="form-group">
-      <label class="form-label">Название отчёта <span class="required">*</span></label>
-      <input class="input modal-field" id="report-name" value="${data.name || ''}" placeholder="Например: Задачи команды">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Описание</label>
-      <textarea class="input modal-field" id="report-description" rows="2" placeholder="Описание назначения отчёта">${data.description || ''}</textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Видимость</label>
-      <select class="input modal-field" id="report-is-public">
-        <option value="false"${data.is_public !== true ? ' selected' : ''}>Только я</option>
-        <option value="true"${data.is_public === true ? ' selected' : ''}>Все пользователи</option>
-      </select>
-    </div>
-
-    ${isScriptManaged ? `
-    <div style="margin-top:16px;padding:14px;background:var(--bg-tertiary);border:1px dashed var(--border-color);border-radius:8px;color:var(--text-muted);font-size:12px;text-align:center">
-      Настройка полей, фильтров и группировки для этого отчёта недоступна.
-    </div>` : `
-    <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
-      <strong style="font-size:13px">Поля для отображения</strong>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Отметьте галочками колонки, которые будут видны в отчёте</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;max-height:200px;overflow-y:auto;padding:4px 0">
-      ${fieldCheckboxes}
-    </div>
-
-    <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
-      <strong style="font-size:13px">Фильтры</strong>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Настройте условия фильтрации задач. Для оператора «В списке» значения указываются через запятую</div>
-    </div>
-    <div id="report-filters-container">
-      ${filterRows}
-    </div>
-    <button class="btn btn-secondary btn-sm" id="report-add-filter" style="margin-top:8px">
-      <i data-lucide="plus" style="width:12px;height:12px"></i> Добавить фильтр
-    </button>
-
-    <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
-      <strong style="font-size:13px">Группировка и сортировка</strong>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group">
-        <label class="form-label">Группировка</label>
-        <select class="input modal-field" id="report-group-by">${groupOpts}</select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Сортировка по</label>
-        <select class="input modal-field" id="report-sort-by">${sortOpts}</select>
-      </div>
-    </div>
-    <div class="form-group" id="report-sort-order-group" style="${data.sort_by ? '' : 'display:none'}">
-      <label class="form-label">Направление сортировки</label>
-      <select class="input modal-field" id="report-sort-order">
-        <option value="asc"${data.sort_order !== 'desc' ? ' selected' : ''}>По возрастанию (А→Я)</option>
-        <option value="desc"${data.sort_order === 'desc' ? ' selected' : ''}>По убыванию (Я→А)</option>
-      </select>
-    </div>`}
-  `;
-}
-
-function renderFilterRow(filter, index) {
-  const fieldOpts = getReportFields().map(f =>
-    `<option value="${f.key}"${filter.field === f.key ? ' selected' : ''}>${f.label}</option>`
-  ).join('');
-  const opOpts = [
-    { value: 'equals', label: 'Равно' },
-    { value: 'not_equals', label: 'Не равно' },
-    { value: 'contains', label: 'Содержит' },
-    { value: 'gt', label: 'Больше' },
-    { value: 'lt', label: 'Меньше' },
-    { value: 'in', label: 'В списке' },
-  ].map(o => `<option value="${o.value}"${filter.operator === o.value ? ' selected' : ''}>${o.label}</option>`).join('');
-
-  const value = Array.isArray(filter.value) ? filter.value.join(', ') : (filter.value || '');
-
-  return `
-    <div class="report-filter-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px" data-filter-index="${index}">
-      <select class="input report-filter-field" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px">${fieldOpts}</select>
-      <select class="input report-filter-op" style="width:100px;font-size:12px;padding:5px 8px">${opOpts}</select>
-      <input class="input report-filter-value" value="${value.replace(/"/g, '&quot;')}" placeholder="Значение" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px">
-      <button class="report-filter-remove" style="padding:4px;border:none;background:transparent;cursor:pointer;color:#f43f5e;border-radius:4px" title="Удалить фильтр">
-        <i data-lucide="x" style="width:14px;height:14px"></i>
-      </button>
-    </div>
-  `;
-}
-
-function getReportPayload() {
-  const isScriptManaged = scriptManagedReportKeys.includes(adminModal.data && adminModal.data.key);
-  const selectedFields = Array.from(document.querySelectorAll('.report-field-cb:checked')).map(cb => cb.value);
-  const filterRows = document.querySelectorAll('.report-filter-row');
-  const filters = Array.from(filterRows).map(row => {
-    const field = row.querySelector('.report-filter-field')?.value;
-    const operator = row.querySelector('.report-filter-op')?.value || 'equals';
-    const rawValue = row.querySelector('.report-filter-value')?.value || '';
-    let value = rawValue;
-    if (operator === 'in') {
-      value = rawValue.split(',').map(s => s.trim()).filter(Boolean);
-    } else if (operator === 'gt' || operator === 'lt') {
-      const num = parseFloat(rawValue);
-      value = Number.isNaN(num) ? rawValue : num;
-    } else if (BOOLEAN_REPORT_FIELDS.includes(field) && typeof rawValue === 'string') {
-      const t = rawValue.trim().toLowerCase();
-      if (t === 'true' || t === '1') value = true;
-      else if (t === 'false' || t === '0') value = false;
-    }
-    return { field, operator, value };
-  }).filter(f => {
-    if (!f.field) return false;
-    if (f.operator === 'not_equals') return true;
-    if (Array.isArray(f.value)) return f.value.length > 0;
-    return f.value !== '' && f.value !== null && f.value !== undefined;
-  });
-
-  if (isScriptManaged) {
-    return {
-      name: document.getElementById('report-name')?.value || '',
-      description: document.getElementById('report-description')?.value || null,
-      is_public: document.getElementById('report-is-public')?.value === 'true',
-      fields: (adminModal.data && adminModal.data.fields) || null,
-      filters: (adminModal.data && adminModal.data.filters) || null,
-      group_by: (adminModal.data && adminModal.data.group_by) || null,
-      sort_by: (adminModal.data && adminModal.data.sort_by) || null,
-      sort_order: (adminModal.data && adminModal.data.sort_order) || 'asc',
-    };
-  }
-
-  return {
-    name: document.getElementById('report-name')?.value || '',
-    description: document.getElementById('report-description')?.value || null,
-    is_public: document.getElementById('report-is-public')?.value === 'true',
-    fields: selectedFields.length ? JSON.stringify(selectedFields) : null,
-    filters: filters.length ? JSON.stringify(filters) : null,
-    group_by: document.getElementById('report-group-by')?.value || null,
-    sort_by: document.getElementById('report-sort-by')?.value || null,
-    sort_order: document.getElementById('report-sort-order')?.value || 'asc',
-  };
-}
-
-function adminReportCell(f, item) {
-  let val = item[f];
-  if (val === null || val === undefined) val = '—';
-  if (typeof val === 'boolean') val = val ? 'Да' : 'Нет';
-  if (f === 'progress' && val !== '—') {
-    const p = Number(val) || 0;
-    val = `<div style="display:flex;align-items:center;gap:6px"><div style="width:60px;height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden"><div style="width:${p}%;height:100%;background:${p >= 100 ? 'var(--success)' : p > 0 ? 'var(--warning)' : 'var(--border-color)'}"></div></div><span style="font-size:11px">${p}%</span></div>`;
-  } else if (f === 'cv' && val !== '—') val = `<span style="font-weight:600;color:${val >= 2 ? 'var(--success)' : val >= 1 ? 'var(--warning)' : 'var(--danger)'}">${val}</span>`;
-  else if (f === 'financial_effect' && val !== '—') val = `${val} млн ₽`;
-  else if (f === 'effort_rub' && val !== '—') val = `${val} тыс ₽`;
-  else if (f === 'priority_name') val = val === '—' ? '—' : renderPriority(val);
-  else if (f === 'status_name') val = val === '—' ? '—' : renderStatus(val);
-  return val;
-}
-
-async function executeAdminReport(reportId, app) {
-  const resultEl = document.getElementById('report-execution-result');
-  if (!resultEl) return;
-  resultEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)"><i data-lucide="loader" style="width:24px;height:24px;animation:spin 1s linear infinite;display:block;margin:0 auto 8px"></i>Выполнение отчёта...</div>';
-  if (window.lucide) lucide.createIcons();
-
-  try {
-    const data = await app.api.get(`/reports/${reportId}/execute`);
-    const items = data.items || [];
-    const grouped = data.grouped;
-
-    if (!items.length) {
-      resultEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Нет задач, соответствующих фильтрам</div>';
-      return;
-    }
-
-    const report = adminReportView;
-    const displayFields = parseReportJson(report.fields) || getReportFields().slice(0, 8).map(f => f.key);
-
-    const headers = displayFields.map(f => {
-      const def = getReportFields().find(rf => rf.key === f);
-      return `<th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);border-bottom:2px solid var(--border-color);background:var(--bg-tertiary);white-space:nowrap">${def ? def.label : f}</th>`;
-    }).join('');
-
-    const rows = items.map(item => {
-      const cells = displayFields.map(f => `<td style="padding:8px 10px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-primary);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${adminReportCell(f, item)}</td>`).join('');
-      return `<tr>${cells}</tr>`;
-    }).join('');
-
-    let html = '';
-
-    if (grouped && data.groups) {
-      html = `<div style="padding:8px 0;font-size:12px;color:var(--text-muted)">${items.length} задач · ${data.groups.length} групп · Группировка по «${data.group_field}»</div>`;
-      data.groups.forEach(grp => {
-        html += `
-          <div class="card" style="margin-bottom:12px;overflow:hidden">
-            <div style="padding:10px 14px;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-color)">
-              <strong style="font-size:13px;color:var(--text-primary)">${grp.name}</strong>
-              <span class="badge badge-info" style="font-size:11px">${grp.count}</span>
-            </div>
-            <div style="overflow-x:auto">
-              <table style="width:100%;border-collapse:collapse">
-                <thead><tr>${headers}</tr></thead>
-                <tbody>${grp.items.map(item => {
-                  const cells = displayFields.map(f => `<td style="padding:8px 10px;border-bottom:1px solid var(--border-color);font-size:12px">${adminReportCell(f, item)}</td>`).join('');
-                  return `<tr>${cells}</tr>`;
-                }).join('')}</tbody>
-              </table>
-            </div>
-          </div>`;
-      });
-    } else {
-      html = `
-        <div style="padding:8px 0;font-size:12px;color:var(--text-muted)">${items.length} задач</div>
-        <div class="card" style="overflow:hidden">
-          <div style="overflow-x:auto">
-            <table style="width:100%;border-collapse:collapse">
-              <thead><tr>${headers}</tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-        </div>`;
-    }
-
-    resultEl.innerHTML = html;
-    if (window.lucide) lucide.createIcons();
-  } catch (e) {
-    resultEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--danger)">Ошибка выполнения отчёта: ${e.message || 'Неизвестная ошибка'}</div>`;
-  }
-}
 
 // ==================== NOTIFICATIONS TAB ====================
 
@@ -1731,10 +1348,10 @@ function renderModal() {
   if (type === 'team') body = renderTeamForm(data);
   else if (type === 'user') body = renderUserForm(data);
   else if (type === 'role') body = renderRoleForm(data);
-  else if (type === 'dict') body = renderDictForm(data);
+  else if (type === 'dict') body = renderDictionaryForm(data, { escapeHtml, safeHexColor, autoDictColor, dictCodePlaceholder });
   else if (type === 'project') body = renderProjectForm(data);
   else if (type === 'bc') body = renderBusinessCustomerForm(data);
-  else if (type === 'report') body = renderReportForm(data);
+  else if (type === 'report') body = renderReportForm(data, adminModal.mode, escapeHtml);
 
   return `
     <div class="admin-modal-overlay" id="admin-modal-overlay" style="z-index:1000">
@@ -1784,15 +1401,15 @@ function renderTeamForm(data) {
   ).join('');
   const users = adminData.users || [];
   const teamTypes = adminData.teamTypeRefs || [];
-  const typeOpts = teamTypes.map(tt => `<option value="${tt.id}"${data.team_type_id == tt.id ? ' selected' : ''}>${tt.name}</option>`).join('');
+  const typeOpts = teamTypes.map(tt => `<option value="${tt.id}"${data.team_type_id == tt.id ? ' selected' : ''}>${escapeHtml(tt.name)}</option>`).join('');
   return `
     <div class="form-group">
       <label class="form-label">Название команды <span class="required">*</span></label>
-      <input class="input modal-field" id="modal-name" value="${data.name || ''}" placeholder="Название">
+      <input class="input modal-field" id="modal-name" value="${escapeHtml(data.name || '')}" placeholder="Название">
     </div>
     <div class="form-group">
       <label class="form-label">Аббревиатура (на аватаре)</label>
-      <input class="input modal-field" id="modal-abbr" value="${data.abbr || ''}" placeholder="Напр: PT" maxlength="4" style="width:100px">
+      <input class="input modal-field" id="modal-abbr" value="${escapeHtml(data.abbr || '')}" placeholder="Напр: PT" maxlength="4" style="width:100px">
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px">1-4 буквы, отображаются на аватаре команды</div>
     </div>
     <div class="form-group">
@@ -1808,37 +1425,37 @@ function renderTeamForm(data) {
       <label class="form-label">Product Leader (PL)</label>
       <select class="input modal-field" id="modal-pl">
         <option value="">—</option>
-        ${users.map(u => `<option value="${u.name}"${data.pl === u.name ? ' selected' : ''}>${u.name}</option>`).join('')}
+        ${users.map(u => `<option value="${escapeHtml(u.name)}"${data.pl === u.name ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
       </select>
     </div>
     <div class="form-group">
       <label class="form-label">Product Owner (PO)</label>
       <select class="input modal-field" id="modal-po">
         <option value="">—</option>
-        ${users.map(u => `<option value="${u.name}"${data.po === u.name ? ' selected' : ''}>${u.name}</option>`).join('')}
+        ${users.map(u => `<option value="${escapeHtml(u.name)}"${data.po === u.name ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
       </select>
     </div>
     <div class="form-group">
       <label class="form-label">Cluster Lead (CL)</label>
       <select class="input modal-field" id="modal-cl">
         <option value="">—</option>
-        ${users.map(u => `<option value="${u.name}"${data.cl === u.name ? ' selected' : ''}>${u.name}</option>`).join('')}
+        ${users.map(u => `<option value="${escapeHtml(u.name)}"${data.cl === u.name ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
       </select>
     </div>
     <div class="form-group">
       <label class="form-label">IT Product Lead (IT PL)</label>
       <select class="input modal-field" id="modal-it-pl">
         <option value="">—</option>
-        ${users.map(u => `<option value="${u.name}"${data.it_pl === u.name ? ' selected' : ''}>${u.name}</option>`).join('')}
+        ${users.map(u => `<option value="${escapeHtml(u.name)}"${data.it_pl === u.name ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
       </select>
     </div>
     <div class="form-group">
       <label class="form-label">Описание</label>
-      <textarea class="input modal-field" id="modal-description" placeholder="Описание команды" style="min-height:60px">${data.description || ''}</textarea>
+      <textarea class="input modal-field" id="modal-description" placeholder="Описание команды" style="min-height:60px">${escapeHtml(data.description || '')}</textarea>
     </div>
     <div class="form-group">
       <label class="form-label">Домен</label>
-      <input class="input modal-field" id="modal-domain" value="${data.domain || ''}" placeholder="Домен">
+      <input class="input modal-field" id="modal-domain" value="${escapeHtml(data.domain || '')}" placeholder="Домен">
     </div>
   `;
 }
@@ -1846,8 +1463,10 @@ function renderTeamForm(data) {
 function renderUserForm(data) {
   const teams = adminData.teams || [];
   const roles = adminData.roles || [];
-  const teamOpts = teams.map(t => `<option value="${t.id}"${data.team_id == t.id ? ' selected' : ''}>${t.name}</option>`).join('');
+  const businessCustomers = adminData.businessCustomers || [];
+  const teamOpts = teams.map(t => `<option value="${t.id}"${data.team_id == t.id ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('');
   const roleOpts = roles.map(r => `<option value="${r.id}"${data.role_id == r.id ? ' selected' : ''}>${getRoleDisplayName(r)}</option>`).join('');
+  const customerOpts = businessCustomers.map(c => `<option value="${c.id}"${data.business_customer_id == c.id ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
   const initials = window.getUserInitials(data.name);
   const avatarColor = window.getAvatarColor(data.name);
   return `
@@ -1857,11 +1476,11 @@ function renderUserForm(data) {
     </div>
     <div class="form-group">
       <label class="form-label">ФИО</label>
-      <input class="input modal-field" id="modal-name" value="${data.name || ''}" placeholder="ФИО пользователя" oninput="updateUserAvatarPreview(this.value)">
+      <input class="input modal-field" id="modal-name" value="${escapeHtml(data.name || '')}" placeholder="ФИО пользователя" oninput="updateUserAvatarPreview(this.value)">
     </div>
     <div class="form-group">
       <label class="form-label">Email</label>
-      <input class="input modal-field" id="modal-email" value="${data.email || ''}" placeholder="Email" type="email">
+      <input class="input modal-field" id="modal-email" value="${escapeHtml(data.email || '')}" placeholder="Email" type="email">
     </div>
     <div class="form-group">
       <label class="form-label">Роль</label>
@@ -1870,6 +1489,10 @@ function renderUserForm(data) {
     <div class="form-group">
       <label class="form-label">Команда</label>
       <select class="input modal-field" id="modal-team"><option value="">—</option>${teamOpts}</select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Бизнес-заказчик</label>
+      <select class="input modal-field" id="modal-business-customer"><option value="">—</option>${customerOpts}</select>
     </div>
     <div class="form-group">
       <label class="form-label">Статус</label>
@@ -1911,11 +1534,11 @@ function renderRoleForm(data) {
   return `
     <div class="form-group">
       <label class="form-label">Название роли <span class="required">*</span></label>
-      <input class="input modal-field" id="modal-name" value="${getRoleDisplayName(data) || data.name || ''}" placeholder="Название">
+      <input class="input modal-field" id="modal-name" value="${getRoleDisplayName(data) || escapeHtml(data.name || '')}" placeholder="Название">
     </div>
     <div class="form-group">
       <label class="form-label">Описание</label>
-      <input class="input modal-field" id="modal-description" value="${data.description || ''}" placeholder="Описание">
+      <input class="input modal-field" id="modal-description" value="${escapeHtml(data.description || '')}" placeholder="Описание">
     </div>
     <div style="margin:16px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border-color)">
       <strong style="font-size:14px">Права доступа</strong>
@@ -1924,68 +1547,7 @@ function renderRoleForm(data) {
   `;
 }
 
-function renderDictForm(data) {
-  if (data.dictKey === 'competencyCosts') return renderCompetencyCostForm(data);
 
-  const items = data.items || [];
-  const list = items.map((item, i) => `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" data-item-id="${item.id || ''}">
-      <input type="hidden" class="dict-color-input" value="${item.color || autoDictColor(item.name)}">
-      <span class="dict-color-swatch" style="display:inline-block;width:28px;height:28px;border-radius:6px;background:${item.color || autoDictColor(item.name)};cursor:pointer;border:1px solid var(--border-color);flex-shrink:0;" onclick="openDictColorPalette(this)"></span>
-      <input class="input dict-value-input" value="${item.name}" placeholder="Значение" style="flex:1" oninput="autoFillDictRow(this)">
-      <input class="input dict-code-input" value="${item.code || ''}" placeholder="${dictCodePlaceholder(data.dictKey)}" style="width:100px" oninput="markDictEdited(this)">
-      <button class="dict-remove-btn" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;color:#f43f5e" title="Удалить">
-        <i data-lucide="x" style="width:14px;height:14px"></i>
-      </button>
-    </div>
-  `).join('');
-
-  return `
-    <h4 style="font-size:14px;font-weight:600;margin-bottom:12px">${data.dictLabel}</h4>
-    <div id="dict-items-container">${list || '<p class="text-muted" style="font-size:13px">Нет значений</p>'}</div>
-    <button class="btn btn-primary btn-sm" id="dict-add-value" style="margin-top:8px">
-      <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить значение
-    </button>
-  `;
-}
-
-function renderCompetencyCostForm(data) {
-  const items = data.items || [];
-  const competencies = [...new Set(items.map(i => i.competency))].sort();
-  const years = [...new Set(items.map(i => i.year))].sort((a, b) => a - b);
-
-  const cellFor = (comp, year) => items.find(i => i.competency === comp && i.year === year);
-
-  const header = `<th style="padding:8px;text-align:left;font-size:12px">Компетенция</th>` +
-    years.map(y => `<th data-year="${y}" style="padding:8px;text-align:center;font-size:12px">${y}</th>`).join('');
-
-  const rows = competencies.map(comp => {
-    const cells = years.map(y => {
-      const it = cellFor(comp, y);
-      return `<td style="padding:4px"><input class="input comp-cost-input" data-comp="${comp}" data-year="${y}" data-id="${it ? it.id : ''}" value="${it ? it.rate : ''}" placeholder="0" style="width:90px" oninput="markDictEdited(this)"></td>`;
-    }).join('');
-    return `<tr><td style="padding:8px;font-weight:500;font-size:13px">${comp}</td>${cells}</tr>`;
-  }).join('');
-
-  return `
-    <h4 style="font-size:14px;font-weight:600;margin-bottom:8px">${data.dictLabel}</h4>
-    <p class="text-muted" style="font-size:12px;margin-bottom:12px">Ставки (руб/день) по годам. Для задачи берётся ставка года её дедлайна; без дедлайна — ставка последнего (актуального) года. Очистка ячейки удаляет ставку, сохранённые effort_rub задач пересчитаются.</p>
-    <div style="overflow-x:auto">
-      <table id="comp-cost-table" style="border-collapse:collapse;min-width:100%">
-        <thead><tr style="border-bottom:1px solid var(--border-color)">${header}</tr></thead>
-        <tbody>${rows || '<tr><td style="padding:8px" class="text-muted">Нет значений</td></tr>'}</tbody>
-      </table>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-secondary btn-sm" id="cc-add-year">
-        <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить год
-      </button>
-      <button class="btn btn-secondary btn-sm" id="cc-add-competency">
-        <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить компетенцию
-      </button>
-    </div>
-  `;
-}
 
 function addCompetencyCostYear() {
   const input = prompt('Введите год (например, 2028):');
@@ -2194,8 +1756,7 @@ function handleAdminClick(e, app) {
 
   if (target.classList.contains('admin-dict-card')) {
     const dictKey = target.dataset.dict;
-    const dictTypeMap = { priorities: 'priority', statuses: 'status', taskTypes: 'task_type', channels: 'channel', deadlines: 'deadline', departments: 'department', teamTypes: 'team_type', projectStatuses: 'project_status', competencyCosts: 'competency_cost' };
-    const lock = dictLocks[dictTypeMap[dictKey]];
+    const lock = dictLocks[DICTIONARY_CONFIG[dictKey]?.type];
     if (lock && lock.locked && !lock.is_mine) {
       toast(`Справочник редактируется: ${lock.lock_owner_name || 'Администратор'}`, 'error');
       return;
@@ -2219,7 +1780,7 @@ function handleAdminClick(e, app) {
   if (target.id === 'report-execute-btn' || target.closest('#report-execute-btn')) {
     const btn = target.closest('#report-execute-btn') || target;
     const reportId = btn.dataset.reportId;
-    if (reportId) executeAdminReport(parseInt(reportId), app);
+    if (reportId) executeAdminReport(parseInt(reportId), app, adminReportView, escapeHtml);
     return;
   }
 
@@ -2346,6 +1907,7 @@ function saveModalData(app) {
       email: getFieldVal('modal-email'),
       role_id: parseInt(getFieldVal('modal-role')) || null,
       team_id: teamId,
+      business_customer_id: parseInt(getFieldVal('modal-business-customer')) || null,
       is_active: getFieldVal('modal-is-active') === '1',
     };
     if (!payload.name || !payload.email) { toast('Заполните ФИО и email', 'error'); return; }
@@ -2382,7 +1944,7 @@ function saveModalData(app) {
     if (!payload.name) { toast('ФИО бизнес-заказчика обязательно', 'error'); return; }
     saveEntity('bc', { ...data, ...payload }, app);
   } else if (type === 'report') {
-    const payload = getReportPayload();
+    const payload = getReportPayload(adminModal.data);
     if (!payload.name) { toast('Введите название отчёта', 'error'); return; }
     saveEntity('report', { ...data, ...payload }, app);
   } else if (type === 'dict') {
@@ -2409,40 +1971,11 @@ async function saveDictData(app) {
     };
   });
 
-  const validItems = items.filter(i => i.name.trim());
-
-  const dictTypeMap = {
-    priorities: { type: 'priority', endpoint: 'priorities' },
-    statuses: { type: 'status', endpoint: 'statuses' },
-    taskTypes: { type: 'task_type', endpoint: 'task-types' },
-    channels: { type: 'channel', endpoint: 'channels' },
-    deadlines: { type: 'deadline', endpoint: 'deadlines' },
-    departments: { type: 'department', endpoint: 'departments' },
-    teamTypes: { type: 'team_type', endpoint: 'team-types' },
-    projectStatuses: { type: 'project_status', endpoint: 'project-statuses' },
-    competencyCosts: { type: 'competency_cost', endpoint: 'competency-costs' },
-    tags: { type: 'tag', endpoint: 'tags' },
-  };
-  const config = dictTypeMap[data.dictKey];
-  if (!config) return;
-
-  const existingIds = new Set((data.items || []).filter(i => i.id).map(i => i.id));
-  const newIds = new Set(validItems.filter(i => i.id).map(i => i.id));
-  const toDelete = [...existingIds].filter(id => !newIds.has(id));
+  const { validItems, deleteIds: toDelete } = getDictionaryChanges(items, data.items || []);
 
   const doSave = async () => {
     try {
-      for (const item of validItems) {
-        const payload = { dict_type: config.type, name: item.name, code: item.code, color: item.color || '#6366f1', sort_order: 1 };
-        if (item.id) {
-          await app.api.put(`/admin/${config.endpoint}/${item.id}`, payload);
-        } else {
-          await app.api.post(`/admin/${config.endpoint}`, payload);
-        }
-      }
-      for (const id of toDelete) {
-        await app.api.delete(`/admin/${config.endpoint}/${id}`);
-      }
+      await persistDictionaryItems(app, data.dictKey, validItems, toDelete);
       adminModal.show = false;
       document.getElementById('admin-modal-root').innerHTML = '';
       await releaseDictLockIfHeld(app);
@@ -2516,21 +2049,18 @@ async function confirmDelete(type, id, app) {
 async function releaseDictLockIfHeld(app) {
   if (!currentDictLockType) return;
   try {
-    await app.api.delete(`/admin/${currentDictLockType}/lock`);
+    await releaseDictionaryLock(app, currentDictLockType);
   } catch (e) { /* ignore */ }
   currentDictLockType = null;
 }
 
-const DICT_KEY_TO_TYPE = { priorities: 'priority', statuses: 'status', taskTypes: 'task_type', channels: 'channel', deadlines: 'deadline', departments: 'department', teamTypes: 'team_type', projectStatuses: 'project_status', competencyCosts: 'competency_cost' };
-
 async function openDictModal(dictKey, app) {
-  const keyMap = { priorities: 'priorities', statuses: 'statuses', taskTypes: 'taskTypes', channels: 'channels', deadlines: 'deadlines', departments: 'departments', teamTypes: 'teamTypes', projectStatuses: 'projectStatuses', competencyCosts: 'competencyCosts' };
-  const labelMap = { priorities: 'Приоритеты', statuses: 'Статусы задачи', taskTypes: 'Типы задач', channels: 'Каналы', deadlines: 'Сроки', departments: 'Подразделения', teamTypes: 'Типы команд', projectStatuses: 'Статусы проектов', competencyCosts: 'Стоимость компетенций' };
-  const dictType = DICT_KEY_TO_TYPE[dictKey];
+  const config = DICTIONARY_CONFIG[dictKey];
+  if (!config) return;
+  const dictType = config.type;
 
   try {
-    await app.api.post(`/admin/${dictType}/lock`);
-    currentDictLockType = dictType;
+    currentDictLockType = await acquireDictionaryLock(app, dictKey);
   } catch (e) {
     if (e.status === 423) {
       const lock = dictLocks[dictType];
@@ -2547,11 +2077,11 @@ async function openDictModal(dictKey, app) {
     type: 'dict',
     data: {
       dictKey,
-      dictLabel: labelMap[dictKey] || dictKey,
+      dictLabel: config.label,
       dictType: dictKey,
       items: dictKey === 'competencyCosts'
         ? (adminData.competencyCosts || []).map(i => ({ id: i.id, competency: i.competency, year: i.year, rate: i.rate }))
-        : (adminData[keyMap[dictKey]] || []).map(i => ({ id: i.id, name: i.name, code: i.code, color: i.color })),
+        : (adminData[config.dataKey] || []).map(i => ({ id: i.id, name: i.name, code: i.code, color: i.color })),
     },
   };
   refreshModal();
@@ -2568,8 +2098,8 @@ function refreshModal() {
 function renderProjectForm(data) {
   const projectStatuses = adminData.projectStatuses || [];
   const users = adminData.users || [];
-  const statusOpts = projectStatuses.map(s => `<option value="${s.id}"${data.status_id == s.id ? ' selected' : ''}>${s.name}</option>`).join('');
-  const plOpts = users.map(u => `<option value="${u.id}"${data.responsible_pl == u.id ? ' selected' : ''}>${u.name}</option>`).join('');
+  const statusOpts = projectStatuses.map(s => `<option value="${s.id}"${data.status_id == s.id ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
+  const plOpts = users.map(u => `<option value="${u.id}"${data.responsible_pl == u.id ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
   const isEdit = adminModal.mode === 'edit';
   return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -2584,15 +2114,15 @@ function renderProjectForm(data) {
     </div>
     <div class="form-group">
       <label class="form-label">Код проекта <span class="required">*</span></label>
-      <input class="input modal-field" id="project-code" value="${data.code || ''}" placeholder="Код проекта" ${isEdit ? 'readonly' : ''}>
+      <input class="input modal-field" id="project-code" value="${escapeHtml(data.code || '')}" placeholder="Код проекта" ${isEdit ? 'readonly' : ''}>
     </div>
     <div class="form-group">
       <label class="form-label">Название <span class="required">*</span></label>
-      <input class="input modal-field" id="project-name" value="${data.name || ''}" placeholder="Название проекта">
+      <input class="input modal-field" id="project-name" value="${escapeHtml(data.name || '')}" placeholder="Название проекта">
     </div>
     <div class="form-group">
       <label class="form-label">Описание</label>
-      <textarea class="input modal-field" id="project-description" placeholder="Описание проекта" style="min-height:60px">${data.description || ''}</textarea>
+      <textarea class="input modal-field" id="project-description" placeholder="Описание проекта" style="min-height:60px">${escapeHtml(data.description || '')}</textarea>
     </div>
     <div class="form-group">
       <label class="form-label">Статус</label>

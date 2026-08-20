@@ -451,7 +451,8 @@ project_tags.tag_id     → tags.id
 **Dev окружение:**
 ```bash
 cd dmb-backlog
-pip install -r requirements.txt
+cp .env.example .env
+pip install -r backend/requirements.txt
 cd backend
 uvicorn main:app --reload --port 8000
 ```
@@ -459,14 +460,16 @@ uvicorn main:app --reload --port 8000
 
 **Production (Linux):**
 ```bash
+# Выполнять из корня dmb-backlog
 # 1. Установка зависимостей
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 # 2. Настройка .env
 cp .env.example .env
 # редактировать DATABASE_URL, SECRET_KEY, CORS_ORIGINS
 
 # 3. Запуск через gunicorn + uvicorn
+cd backend
 gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000
 
 # 4. Nginx reverse proxy

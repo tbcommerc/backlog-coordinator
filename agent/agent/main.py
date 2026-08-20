@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from .api.router import router as agent_router
-from .config import settings
+from .config import settings, validate_runtime_settings
 from .kb.ontology import stem as stem_word
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
     from .mcp.registry import registry as mcp_registry
     from .tools.base import registry as tool_registry
 
+    validate_runtime_settings()
     input_harness.set_domain_vocabulary(
         _vocab_stems(ontology.strong_domain_terms()),
         _vocab_stems(ontology.weak_domain_terms()),

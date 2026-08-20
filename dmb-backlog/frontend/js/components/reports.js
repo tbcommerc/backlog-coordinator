@@ -1,6 +1,8 @@
 /**
  * DMB Backlog - Reports Page
  */
+import { escapeHtml } from '../htmlUtils.js';
+import { bindViewStateAction, renderViewState } from './viewState.js';
 
 function renderInvolvedTeams(teams) {
   if (!teams || !teams.length) return '—';
@@ -51,7 +53,9 @@ const reportConfig = {
     isDb: true,
     key: 'pip',
     filters: [],
-    fields: ['id','title','team_name','status_name','priority_name','progress','deadline_name','owner_name'],
+    managedFields: true,
+    hideCharts: true,
+    fields: ['id','title','task_type_name','team_name','effort_days','effort_rub','financial_effect','cv','priority_score'],
     group: null,
     sort: null
   },
@@ -94,7 +98,7 @@ let dbReportsCache = {};
 let cachedDbReport = null;
 
 function resolveReportFields(config) {
-  if (config.isDb && cachedDbReport && cachedDbReport.fields) {
+  if (config.isDb && !config.managedFields && cachedDbReport && cachedDbReport.fields) {
     try {
       const parsed = JSON.parse(cachedDbReport.fields);
       if (Array.isArray(parsed) && parsed.length) return parsed;
@@ -129,7 +133,7 @@ export function renderPriority(priority) {
   const map = { 'ВЫСОКИЙ': 'high', 'СРЕДНИЙ': 'medium', 'НИЗКИЙ': 'low' };
   const norm = String(priority || '').toUpperCase();
   const cls = map[norm] || 'medium';
-  return `<span class="badge badge-${cls}">${priority || 'СРЕДНИЙ'}</span>`;
+  return `<span class="badge badge-${cls}">${escapeHtml(priority || 'СРЕДНИЙ')}</span>`;
 }
 
 export function renderStatus(status) {
@@ -150,7 +154,7 @@ export function renderStatus(status) {
     'НЕ_АКТУАЛЬНА': 'badge-low',
     'ВЫПОЛНЕНА': 'badge-status-done'
   };
-  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${raw || 'СБОР ТРЕБОВАНИЙ'}</span>`;
+  return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${escapeHtml(raw || 'СБОР ТРЕБОВАНИЙ')}</span>`;
 }
 
 function renderProgress(progress) {
@@ -170,30 +174,36 @@ function renderProgress(progress) {
 function renderCell(task, field) {
   switch (field) {
     case 'id': return `<span class="font-mono text-muted">#${task.id}</span>`;
-    case 'title': return `<strong>${task.title}</strong>`;
+    case 'title': return `<strong>${escapeHtml(task.title)}</strong>`;
     case 'status': return renderStatus(task.status_name || task.status);
     case 'status_name': return renderStatus(task.status_name || task.status);
     case 'priority': return renderPriority(task.priority_name || task.priority);
     case 'priority_name': return renderPriority(task.priority_name || task.priority);
     case 'progress': return renderProgress(task.progress);
-    case 'team_name': return `<span class="badge badge-info">${task.team_name || '—'}</span>`;
-    case 'project': return task.project_name || task.project || '—';
-    case 'project_name': return task.project_name || task.project || '—';
-    case 'deadline': return task.deadline_name || task.deadline || '—';
-    case 'deadline_name': return task.deadline_name || task.deadline || '—';
-    case 'financial_effect': return task.financial_effect ? `${task.financial_effect} млн ₽` : '—';
-    case 'business_customer': return task.business_customer_name || task.business_customer || '—';
-    case 'department_name': return task.department_name || '—';
-    case 'channel_name': return task.channel_name || '—';
-    case 'task_type_name': return task.task_type_name || '—';
-    case 'owner': return task.owner_name || task.owner || '—';
-    case 'owner_name': return task.owner_name || task.owner || '—';
+    case 'team_name': return `<span class="badge badge-info">${escapeHtml(task.team_name || '—')}</span>`;
+    case 'project': return escapeHtml(task.project_name || task.project || '—');
+    case 'project_name': return escapeHtml(task.project_name || task.project || '—');
+    case 'deadline': return escapeHtml(task.deadline_name || task.deadline || '—');
+    case 'deadline_name': return escapeHtml(task.deadline_name || task.deadline || '—');
+    case 'effort_days': return task.effort_days != null ? `${task.effort_days} ч/д` : '—';
+    case 'effort_rub': return task.effort_rub != null
+      ? `${Number(task.effort_rub).toLocaleString('ru-RU')} ₽`
+      : '—';
+    case 'financial_effect': return task.financial_effect != null ? `${task.financial_effect} млн ₽` : '—';
+    case 'cv': return task.cv != null ? escapeHtml(String(task.cv)) : '—';
+    case 'priority_score': return task.priority_score != null ? escapeHtml(String(task.priority_score)) : '—';
+    case 'business_customer': return escapeHtml(task.business_customer_name || task.business_customer || '—');
+    case 'department_name': return escapeHtml(task.department_name || '—');
+    case 'channel_name': return escapeHtml(task.channel_name || '—');
+    case 'task_type_name': return escapeHtml(task.task_type_name || '—');
+    case 'owner': return escapeHtml(task.owner_name || task.owner || '—');
+    case 'owner_name': return escapeHtml(task.owner_name || task.owner || '—');
     case 'directorate_status': return renderDirectorateStatus(task.directorate_status);
     case 'did_status': return renderDidStatus(task.did_status);
     case 'did_demo': return task.did_demo ? '<span class="badge badge-success">Да</span>' : '<span class="badge badge-low">Нет</span>';
-    case 'involved_teams': return renderInvolvedTeams(task.involved_teams);
+    case 'involved_teams': return escapeHtml(renderInvolvedTeams(task.involved_teams));
     case 'key_project_status': return renderDirectorateStatus(task.key_project_status);
-    default: return task[field] || '—';
+    default: return escapeHtml(task[field] || '—');
   }
 }
 
@@ -215,7 +225,7 @@ function renderDirectorateStatus(status) {
     'Не актуальна': 'badge-low',
   };
   const cls = colors[status] || 'badge-status-backlog';
-  return `<span class="badge ${cls}">${status}</span>`;
+  return `<span class="badge ${cls}">${escapeHtml(status)}</span>`;
 }
 
 function renderDidStatus(status) {
@@ -227,7 +237,7 @@ function renderDidStatus(status) {
     'Блокировано': 'badge-danger',
   };
   const cls = colors[status] || 'badge-status-backlog';
-  return `<span class="badge ${cls}">${status}</span>`;
+  return `<span class="badge ${cls}">${escapeHtml(status)}</span>`;
 }
 
 const fieldLabels = {
@@ -235,6 +245,8 @@ const fieldLabels = {
   project: 'Проект', project_name: 'Проект',
   status: 'Статус', priority: 'Приоритет', deadline: 'Срок',
   progress: '%', financial_effect: 'Фин. эффект',
+  effort_days: 'Трудозатраты по экспресс-оценке',
+  effort_rub: 'Оценка трудозатрат, руб.', cv: 'C/V', priority_score: 'Priority Score',
   business_customer: 'Бизнес-заказчик', department_name: 'Подразделение',
   business_customer_name: 'Бизнес-заказчик',
   channel_name: 'Канал', task_type_name: 'Тип задачи',
@@ -443,9 +455,33 @@ function renderReportTable(list, fields) {
     </th>`;
   }).join('');
 
-  const rows = filtered.map(task =>
-    `<tr>${fields.map(f => `<td style="padding:8px 12px;border-bottom:1px solid var(--border-color);font-size:13px">${renderCell(task, f)}</td>`).join('')}</tr>`
-  ).join('');
+  const roleName = String(window.app?.store?.get('currentUser')?.role_name || '').trim().toLocaleLowerCase('ru-RU');
+  const canMakePipDecision = currentReport === 'pip' && [
+    'лидер трайба', 'проектный офис (админ)', 'администратор'
+  ].includes(roleName);
+  const widths = {
+    id: 90, title: 320, task_type_name: 170, team_name: 190,
+    effort_days: 155, effort_rub: 165, financial_effect: 135,
+    cv: 90, priority_score: 115,
+  };
+  const tableWidth = fields.reduce((sum, field) => sum + (widths[field] || 140), 0)
+    + (canMakePipDecision ? 205 : 0);
+  const colgroup = `<colgroup>${fields.map(f => `<col style="width:${widths[f] || 140}px">`).join('')}${canMakePipDecision ? '<col style="width:205px">' : ''}</colgroup>`;
+  const actionHeader = canMakePipDecision
+    ? '<th style="width:205px;padding:8px 12px;white-space:nowrap;background:var(--bg-tertiary);border-bottom:1px solid var(--border-color);font-size:11px;text-transform:uppercase;color:var(--text-muted)">Действия</th>'
+    : '';
+
+  const rows = filtered.map(task => {
+    const cells = fields.map(f => `<td style="padding:8px 12px;border-bottom:1px solid var(--border-color);font-size:13px;overflow:hidden;text-overflow:ellipsis;${f === 'title' ? 'white-space:normal' : 'white-space:nowrap'}">${renderCell(task, f)}</td>`).join('');
+    const actions = canMakePipDecision ? `
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);white-space:nowrap">
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-danger btn-xs pip-decision-btn" data-task-id="${task.id}" data-decision="reject">Отклонить</button>
+          <button class="btn btn-primary btn-xs pip-decision-btn" data-task-id="${task.id}" data-decision="accept">В работу</button>
+        </div>
+      </td>` : '';
+    return `<tr>${cells}${actions}</tr>`;
+  }).join('');
 
   let footerHtml = `<span style="font-size:11px;color:var(--text-muted)">${filtered.length} из ${list.length} задач</span>`;
 
@@ -454,9 +490,10 @@ function renderReportTable(list, fields) {
   }
 
   return `
-    <div class="table-container">
-      <table class="table" style="width:100%;border-collapse:collapse">
-        <thead><tr>${headers}</tr></thead>
+    <div class="table-container" style="overflow-x:auto">
+      <table class="table report-balanced-table" style="width:100%;min-width:${tableWidth}px;border-collapse:collapse;table-layout:fixed">
+        ${colgroup}
+        <thead><tr>${headers}${actionHeader}</tr></thead>
         <tbody>${rows || '<tr><td colspan="99" style="text-align:center;padding:24px;color:var(--text-muted)">Нет совпадений</td></tr>'}</tbody>
       </table>
       <div style="padding:8px 12px;">
@@ -536,7 +573,7 @@ async function loadReportData(app) {
     }
   } catch (e) {
     const body = document.getElementById('report-body');
-    if (body) body.innerHTML = `<p class="text-muted" style="padding:var(--space-8);">Ошибка загрузки: ${e.message}</p>`;
+    if (body) body.innerHTML = `<p class="text-muted" style="padding:var(--space-8);">Ошибка загрузки: ${escapeHtml(e.message)}</p>`;
   }
 }
 
@@ -550,10 +587,10 @@ function renderReportContent(config, reportKey, data) {
       const isCollapsed = localStorage.getItem(storageKey) === 'true';
       return `
         <div class="card" style="margin-bottom:var(--space-4);">
-          <div class="card-header did-team-header" data-team="${team.team_name}" style="cursor:pointer;">
+          <div class="card-header did-team-header" data-team="${escapeHtml(team.team_name)}" style="cursor:pointer;">
             <div style="display:flex;align-items:center;gap:8px;">
               <i data-lucide="chevron-${isCollapsed ? 'right' : 'down'}" class="did-chevron" style="width:16px;height:16px;transition:transform 0.2s;flex-shrink:0;"></i>
-              <h3 class="card-title">${smartCap(team.team_name)}</h3>
+              <h3 class="card-title">${escapeHtml(smartCap(team.team_name))}</h3>
             </div>
             <span class="badge badge-info">${team.total} ${formatCount(team.total)}</span>
           </div>
@@ -589,7 +626,7 @@ function renderReportContent(config, reportKey, data) {
   const risk = tasks.filter(t => riskStatuses.some(s => String(t[statusField] || '').toUpperCase() === s.toUpperCase())).length;
   const avg = total ? Math.round(tasks.reduce((s, t) => s + (t.progress || 0), 0) / total) : 0;
 
-  if (!config.isCustom) renderReportCharts(tasks);
+  if (!config.isCustom && !config.hideCharts) renderReportCharts(tasks);
 
   const totalEl = document.getElementById('report-total');
   const highEl = document.getElementById('report-high');
@@ -611,7 +648,7 @@ function renderReportContent(config, reportKey, data) {
     body.innerHTML = data.groups.map(group => `
       <div class="card" style="margin-bottom:var(--space-4);">
         <div class="card-header">
-          <h3 class="card-title">${group.name}</h3>
+          <h3 class="card-title">${escapeHtml(group.name)}</h3>
           <span class="badge badge-info">${group.count} ${formatCount(group.count)}</span>
         </div>
         ${renderReportTable(group.items, fields)}
@@ -632,7 +669,7 @@ function renderReportContent(config, reportKey, data) {
     body.innerHTML = sortedGroups.map(([groupName, groupTasks]) => `
       <div class="card" style="margin-bottom:var(--space-4);">
         <div class="card-header">
-          <h3 class="card-title">${groupName}</h3>
+          <h3 class="card-title">${escapeHtml(groupName)}</h3>
           <span class="badge badge-info">${groupTasks.length} ${formatCount(groupTasks.length)}</span>
         </div>
         ${renderReportTable(groupTasks, fields)}
@@ -700,6 +737,7 @@ export function renderReports(app) {
       <h1>Статусы для встреч</h1>
       <p>Готовые отчёты для оперативок и директорских</p>
     </div>
+    <div id="reports-content">
     <div style="margin-bottom:32px;">
       <h3 class="text-xs font-bold text-muted" style="text-transform:uppercase;letter-spacing:0.05em;margin-bottom:16px;">Стандартные отчёты</h3>
       <div class="reports-grid">
@@ -718,6 +756,7 @@ export function renderReports(app) {
           </div>
         </div>
       </div>
+    </div>
     </div>`;
 }
 
@@ -764,6 +803,22 @@ export async function initReports(app) {
     });
   } catch (e) {
     console.error('Reports load error:', e);
+    const content = document.getElementById('reports-content');
+    if (content) {
+      content.innerHTML = renderViewState({
+        kind: 'error',
+        message: window.formatErrorMessage?.(e) || 'Повторите попытку позже.',
+        actionLabel: 'Повторить',
+      });
+      bindViewStateAction(content, async () => {
+        const page = document.getElementById('page-content');
+        if (!page) return;
+        page.innerHTML = renderReports(app);
+        window.lucide?.createIcons();
+        await initReports(app);
+      });
+      window.lucide?.createIcons();
+    }
   }
 }
 
@@ -1031,7 +1086,7 @@ export function renderReportPage(app) {
         </div>
       </div>
 
-      <div class="chart-grid-3">
+      ${!config.hideCharts ? `<div class="chart-grid-3">
         <div class="card" style="padding:16px;border-radius:12px;">
           <div style="height:200px;"><canvas id="chart-report-status"></canvas></div>
         </div>
@@ -1041,7 +1096,7 @@ export function renderReportPage(app) {
         <div class="card" style="padding:16px;border-radius:12px;">
           <div style="height:200px;"><canvas id="chart-report-team"></canvas></div>
         </div>
-      </div>
+      </div>` : ''}
       ` : ''}
 
       <div id="report-body">
@@ -1105,6 +1160,27 @@ export function initReportPage(app) {
 
   document.getElementById('report-body')?.addEventListener('click', (e) => {
     const config = reportConfig[currentReport];
+
+    const decisionButton = e.target.closest('.pip-decision-btn');
+    if (decisionButton) {
+      const decision = decisionButton.dataset.decision;
+      const taskId = Number(decisionButton.dataset.taskId);
+      if (!taskId || !['reject', 'accept'].includes(decision)) return;
+      if (decision === 'reject' && !window.confirm('Отклонить эту задачу?')) return;
+
+      const rowButtons = decisionButton.closest('tr')?.querySelectorAll('.pip-decision-btn') || [];
+      rowButtons.forEach(btn => { btn.disabled = true; });
+      app.api.put(`/tasks/${taskId}/pip-decision`, { decision })
+        .then(() => {
+          window.toast?.(decision === 'reject' ? 'Задача отклонена' : 'Задача принята в работу', 'success');
+          return loadReportData(app);
+        })
+        .catch(err => {
+          rowButtons.forEach(btn => { btn.disabled = false; });
+          window.toast?.(window.formatErrorMessage?.(err) || err.message || 'Не удалось изменить статус', 'error');
+        });
+      return;
+    }
 
     if (e.target.closest('.filter-trigger')) {
       if (config.isCustom || config.isDb) return;

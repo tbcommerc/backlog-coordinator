@@ -36,7 +36,7 @@ def _resolve_team_names(team, db: Session) -> dict:
 
 
 @router.get("/")
-async def get_teams(
+def get_teams(
     page: int = Query(1, ge=1),
     per_page: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
@@ -78,23 +78,28 @@ COMPETENCY_FIELD_MAP = {
     'Designee': 'effort_designee',
     'Аналитика': 'effort_analytics',
     'Разработка BE': 'effort_be',
+    'Разработка python BE': 'effort_python_be',
     'Разработка FE': 'effort_fe',
     'Tester': 'effort_test',
     'Tester Auto': 'effort_test_auto',
+    'Delivery': 'effort_delivery',
 }
+
+CAPACITY_COEFFS = {'senior': 1.3, 'middle': 1.0, 'junior': 0.8}
+LOSS_FACTOR = 0.95
 
 
 def calc_capacity(senior: int, middle: int, junior: int, working_days: int, vacation: int) -> float:
     """Calculate available capacity per competency."""
     return (
-        senior * working_days * 1.3 * 0.95 +
-        middle * working_days * 1.0 * 0.95 +
-        junior * working_days * 0.8 * 0.95
+        senior * working_days * CAPACITY_COEFFS['senior'] * LOSS_FACTOR +
+        middle * working_days * CAPACITY_COEFFS['middle'] * LOSS_FACTOR +
+        junior * working_days * CAPACITY_COEFFS['junior'] * LOSS_FACTOR
     ) - vacation
 
 
 @router.get("/competency-costs", response_model=List[CompetencyCostResponse])
-async def get_competency_costs(
+def get_competency_costs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -110,7 +115,7 @@ async def get_competency_costs(
 
 
 @router.get("/{team_id}", response_model=TeamResponse)
-async def get_team(team_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_team(team_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get team by ID"""
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
@@ -139,7 +144,7 @@ async def get_team(team_id: int, db: Session = Depends(get_db), current_user: Us
 
 
 @router.post("/", response_model=TeamResponse, status_code=status.HTTP_201_CREATED)
-async def create_team(
+def create_team(
     team_data: TeamCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
@@ -172,7 +177,7 @@ async def create_team(
 
 
 @router.put("/{team_id}", response_model=TeamResponse)
-async def update_team(
+def update_team(
     team_id: int,
     team_data: TeamUpdate,
     db: Session = Depends(get_db),
@@ -212,7 +217,7 @@ async def update_team(
 
 
 @router.delete("/{team_id}")
-async def delete_team(
+def delete_team(
     team_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "full"))
@@ -228,7 +233,7 @@ async def delete_team(
 
 
 @router.get("/{team_id}/resources", response_model=List[TeamCompetencyResourceResponse])
-async def get_team_resources(
+def get_team_resources(
     team_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -271,7 +276,7 @@ async def get_team_resources(
 
 
 @router.put("/{team_id}/resources", response_model=List[TeamCompetencyResourceResponse])
-async def update_team_resources(
+def update_team_resources(
     team_id: int,
     resources: List[dict],
     db: Session = Depends(get_db),
@@ -313,4 +318,4 @@ async def update_team_resources(
     db.commit()
 
     # Return updated resources
-    return await get_team_resources(team_id, db, current_user)
+    return get_team_resources(team_id, db, current_user)

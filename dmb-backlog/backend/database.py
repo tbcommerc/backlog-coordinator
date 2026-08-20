@@ -1,10 +1,16 @@
 """
 DMB Backlog - Database Setup
 """
+import logging
+
 from sqlalchemy import create_engine, inspect, text, event
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from config import settings
+
+
+logger = logging.getLogger("dmb_backlog.database")
 
 engine = create_engine(
     settings.DATABASE_URL,
@@ -69,9 +75,10 @@ def ensure_schema():
                     try:
                         conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type} {default}"))
                         conn.commit()
-                        print(f"[db] Added column: {table_name}.{col.name} ({col_type})")
-                    except Exception as e:
-                        print(f"[db] Column {table_name}.{col.name}: {e}")
+                        logger.info("Added column %s.%s (%s)", table_name, col.name, col_type)
+                    except SQLAlchemyError:
+                        logger.exception("Failed to add column %s.%s", table_name, col.name)
+                        raise
 
 
 def init_db():

@@ -77,6 +77,22 @@ class UserProfileDetector:
             "expert_indicators": expert_count,
         }
 
+    def update_state(self, state: DialogueState, message: str) -> UserProfile:
+        """Update profile counters owned by one dialogue session."""
+        low = message.lower()
+        state.profile_message_count += 1
+        state.profile_tech_term_count += sum(1 for term in TECHNICAL_TERMS if term in low)
+        state.profile_novice_indicator_count += sum(
+            1 for indicator in NOVICE_INDICATORS if indicator in low
+        )
+        state.profile_expert_indicator_count += sum(
+            1 for indicator in EXPERT_INDICATORS if indicator in low
+        )
+        profile = self.infer_profile(state)
+        state.user_expertise = profile.expertise
+        state.user_preferred_style = profile.style
+        return profile
+
     def infer_profile(self, state: DialogueState) -> UserProfile:
         """Infer user profile from accumulated dialogue data."""
         expertise = "medium"
@@ -84,23 +100,32 @@ class UserProfileDetector:
         confidence = 0.5
         
         # Analyze expertise level
-        if self.expert_indicator_count >= 3 or self.tech_term_count >= 5:
+        if state.profile_message_count:
+            expert_count = state.profile_expert_indicator_count
+            tech_count = state.profile_tech_term_count
+            novice_count = state.profile_novice_indicator_count
+        else:  # backwards-compatible direct use in isolated tests/tools
+            expert_count = self.expert_indicator_count
+            tech_count = self.tech_term_count
+            novice_count = self.novice_indicator_count
+
+        if expert_count >= 3 or tech_count >= 5:
             expertise = "expert"
             confidence = 0.8
-        elif self.novice_indicator_count >= 2:
+        elif novice_count >= 2:
             expertise = "novice"
             confidence = 0.7
-        elif self.tech_term_count >= 2:
+        elif tech_count >= 2:
             expertise = "medium"
             confidence = 0.6
         
         # Analyze preferred style
-        if self.tech_term_count > self.novice_indicator_count * 2:
+        if tech_count > novice_count * 2:
             style = "technical"
-            confidence = min(0.5 + self.tech_term_count * 0.1, 0.9)
+            confidence = min(0.5 + tech_count * 0.1, 0.9)
         else:
             style = "business"
-            confidence = min(0.5 + self.novice_indicator_count * 0.1, 0.8)
+            confidence = min(0.5 + novice_count * 0.1, 0.8)
         
         # Check user context if available
         if state.user_expertise != "medium":

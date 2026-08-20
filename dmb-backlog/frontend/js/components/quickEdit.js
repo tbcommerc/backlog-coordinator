@@ -424,40 +424,40 @@ function renderSelectForEdit(col, taskId, field, value, currentValue) {
 
   switch (field) {
     case 'status_id':
-      options = window.app?.statuses?.map(s => `<option value="${s.id}" ${s.id == value ? 'selected' : ''}>${s.name}</option>`).join('') || '';
+      options = window.app?.statuses?.map(s => `<option value="${s.id}" ${s.id == value ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('') || '';
       displayValue = window.app?.statuses?.find(s => s.id == value)?.name || value;
       break;
     case 'priority_id':
-      options = window.app?.priorities?.map(p => `<option value="${p.id}" ${p.id == value ? 'selected' : ''}>${p.name}</option>`).join('') || '';
+      options = window.app?.priorities?.map(p => `<option value="${p.id}" ${p.id == value ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('') || '';
       displayValue = window.app?.priorities?.find(p => p.id == value)?.name || value;
       break;
     case 'team_id':
-      options = window.app?.teams?.map(t => `<option value="${t.id}" ${t.id == value ? 'selected' : ''}>${t.name}</option>`).join('') || '';
+      options = window.app?.teams?.map(t => `<option value="${t.id}" ${t.id == value ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('') || '';
       displayValue = window.app?.teams?.find(t => t.id == value)?.name || value;
       break;
     case 'deadline_id':
-      options = window.app?.deadlines?.map(d => `<option value="${d.id}" ${d.id == value ? 'selected' : ''}>${d.name}</option>`).join('') || '';
+      options = window.app?.deadlines?.map(d => `<option value="${d.id}" ${d.id == value ? 'selected' : ''}>${escapeHtml(d.name)}</option>`).join('') || '';
       displayValue = window.app?.deadlines?.find(d => d.id == value)?.name || value;
       break;
     case 'task_type_id':
-      options = window.app?.taskTypes?.map(t => `<option value="${t.id}" ${t.id == value ? 'selected' : ''}>${t.name}</option>`).join('') || '';
+      options = window.app?.taskTypes?.map(t => `<option value="${t.id}" ${t.id == value ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('') || '';
       displayValue = window.app?.taskTypes?.find(t => t.id == value)?.name || value;
       break;
     case 'channel_id':
-      options = window.app?.channels?.map(c => `<option value="${c.id}" ${c.id == value ? 'selected' : ''}>${c.name}</option>`).join('') || '';
+      options = window.app?.channels?.map(c => `<option value="${c.id}" ${c.id == value ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('') || '';
       displayValue = window.app?.channels?.find(c => c.id == value)?.name || value;
       break;
     case 'department_id':
-      options = window.app?.departments?.map(d => `<option value="${d.id}" ${d.id == value ? 'selected' : ''}>${d.name}</option>`).join('') || '';
+      options = window.app?.departments?.map(d => `<option value="${d.id}" ${d.id == value ? 'selected' : ''}>${escapeHtml(d.name)}</option>`).join('') || '';
       displayValue = window.app?.departments?.find(d => d.id == value)?.name || value;
       break;
     case 'project_id':
-      options = window.app?.projects?.map(p => `<option value="${p.id}" ${p.id == value ? 'selected' : ''}>${p.name}</option>`).join('') || '';
+      options = window.app?.projects?.map(p => `<option value="${p.id}" ${p.id == value ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('') || '';
       displayValue = window.app?.projects?.find(p => p.id == value)?.name || value;
       break;
     case 'owner_id':
       const users = window.app?.users || [];
-      options = users.map(u => `<option value="${u.id}" ${u.id == value ? 'selected' : ''}>${u.name}</option>`).join('');
+      options = users.map(u => `<option value="${u.id}" ${u.id == value ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
       displayValue = users.find(u => u.id == value)?.name || value;
       break;
     default:

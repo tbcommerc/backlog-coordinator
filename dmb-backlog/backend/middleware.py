@@ -118,16 +118,16 @@ class AuditMiddleware(BaseHTTPMiddleware):
             db.add(audit_entry)
             db.commit()
             
-        except Exception as e:
-            logger.error(f"Failed to write audit log: {e}")
+        except Exception:
+            logger.exception("Failed to write audit log")
             if db:
                 try:
                     db.rollback()
                 except Exception:
-                    pass
+                    logger.exception("Failed to roll back audit transaction")
         finally:
             if db:
                 try:
                     db.close()
                 except Exception:
-                    pass
+                    logger.exception("Failed to close audit database session")

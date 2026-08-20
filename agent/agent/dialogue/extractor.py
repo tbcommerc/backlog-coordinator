@@ -17,8 +17,8 @@ from .state import DialogueState, INTENTS
 from .question_bank import QUESTIONS
 
 _INTENT_RULES = [
-    ("feature", ["новую функциональность", "новая функциональность", "функциональность", "новую возможность", "разработать", "feature", "доработка"]),
-    ("change", ["изменение существующ", "изменить существующ", "изменени", "change", "модификац", "скорректирова"]),
+    ("feature", ["новую функциональность", "новая функциональность", "функциональность", "новую возможность", "разработать", "feature", "доработка", "перекрасить", "перекраска", "цвет", "стиль", "дизайн", "добавить кнопку", "создать кнопку", "новая кнопка", "новый экран", "новая страница", "новый раздел", "хочу чтобы было", "хочу добавить", "нужно добавить", "было бы удобно", "можно ли сделать"]),
+    ("change", ["изменение существующ", "изменить существующ", "изменени", "change", "модификаци", "скорректирова", "изменить цвет", "поменять цвет", "перекрасить в", "изменить кнопку", "поменять кнопку", "изменить расположение", "переместить"]),
     ("problem", ["проблем", "неудобств", "неудобно", "не устраива", "сложно", "долго", "вручную", "боль", "неудобн"]),
     ("clarification", ["разъясн", "уточни", "как работает", "что значит", "что означает", "что такое", "как понимать", "вопрос по", "поясн", "объясн", "расшифруй", "статус"]),
     ("incident", ["инцидент", "ошибк", "баг", "не работает", "падает", "сбой", "ошибка в работе", "не проходит", "failed", "не расчитал", "не загружает"]),
@@ -145,6 +145,43 @@ class SlotExtractor:
             v, conf = self.extract_department(message, ctx)
             if v:
                 updates["department"] = (v, conf)
+        updates.update(self._extract_semantic_details(state, message))
+        return updates
+
+    def _extract_semantic_details(self, state: DialogueState, message: str) -> dict:
+        """Extract explicit business meaning from a rich free-form message.
+
+        This intentionally uses only strong linguistic markers. It may leave a
+        slot empty, but must not invent meaning merely to complete a checklist.
+        """
+        updates = {}
+        text = " ".join(message.strip().split())
+        low = text.lower()
+        if len(text) < 18:
+            return updates
+
+        sentences = [part.strip(" ,.;:") for part in re.split(r"[.!?;\n]+", text) if part.strip()]
+
+        def matching(markers):
+            return [sentence for sentence in sentences
+                    if any(marker in sentence.lower() for marker in markers)]
+
+        candidates = {
+            "as_is": matching(("сейчас", "сегодня", "вручную", "приходится", "текущий процесс")),
+            "to_be": matching(("хотим", "нужно чтобы", "должен ", "должна ", "должно ",
+                               "целевой", "ожидаем", "требуется возможность")),
+            "value": matching(("чтобы сократить", "чтобы снизить", "чтобы ускорить",
+                               "эконом", "эффект", "ценность", "избежать потерь")),
+            "business_rules": matching(("только если", "только после", "нельзя", "запрещено",
+                                         "обязательно", "при условии")),
+            "data_integrations": matching(("интеграц", " api", "api ", "данные из", "выгрузк",
+                                            "загрузк", "источник данных", "внешн")),
+            "acceptance_criteria": matching(("в течение", "не позднее", "считаем выполненным",
+                                              "критер", "приёмк", "приемк")),
+        }
+        for slot, parts in candidates.items():
+            if parts and not state.slots[slot].handled:
+                updates[slot] = ("; ".join(dict.fromkeys(parts))[:2000], 0.82)
         return updates
 
     def targeted(self, state: DialogueState, slot: str, message: str, ctx) -> tuple[str | None, float]:

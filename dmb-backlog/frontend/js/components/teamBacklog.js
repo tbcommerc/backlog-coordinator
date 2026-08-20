@@ -1,10 +1,17 @@
 console.log('[DMB] teamBacklog.js v20260806.1 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast } from './filterToolbar.js?v=47';
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast } from './filterToolbar.js?v=52';
 import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=47';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
 import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=47';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=47';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=49';
 import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=47';
+import { safeExternalUrl } from '../urlUtils.js';
+import { bindViewStateAction, renderViewState } from './viewState.js';
+
+function renderExternalTeamLink(value, label) {
+  const url = safeExternalUrl(value);
+  return url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">${label}</a>` : '—';
+}
 
 let COLUMN_LABELS = { ...buildColumnLabels(window.app?.fieldLabels || {}) };
 
@@ -209,8 +216,16 @@ async function loadTeamTasks(app) {
         if (countEl) countEl.textContent = `Найдено: ${data.items.length} задач`;
     
     } catch (e) {
-        document.getElementById('team-tasks-tbody').innerHTML =
-            `<tr><td colspan="9" class="text-center text-muted" style="padding: 40px;">Ошибка загрузки: ${e.message}</td></tr>`;
+        const container = document.getElementById('team-tasks-container');
+        if (container) {
+            container.innerHTML = renderViewState({
+                kind: 'error',
+                message: window.formatErrorMessage?.(e) || 'Повторите попытку позже.',
+                actionLabel: 'Повторить',
+            });
+            bindViewStateAction(container, () => loadTeamTasks(app));
+            window.lucide?.createIcons();
+        }
     }
 }
 
@@ -227,9 +242,7 @@ function renderTeamCurrentView() {
     const totalPages = Math.max(1, Math.ceil(list.length / TEAM_PAGE_SIZE));
     if (teamPaginationPage > totalPages) teamPaginationPage = totalPages;
     const pageList = list.slice((teamPaginationPage - 1) * TEAM_PAGE_SIZE, teamPaginationPage * TEAM_PAGE_SIZE);
-    const isMobile = window.innerWidth <= 768;
-    const view = isMobile ? 'cards' : teamCurrentView;
-    if (view === 'cards') {
+    if (teamCurrentView === 'cards') {
         renderTeamCards(pageList);
     } else {
         renderTeamTableView(pageList);
@@ -293,7 +306,7 @@ function renderTeamTableView(list) {
                 </thead>
                 <tbody id="team-tasks-tbody">
                     ${list.length === 0
-                        ? '<tr><td colspan="' + (visibleCols.length + (showCheckbox ? 1 : 0)) + '" class="text-center text-muted" style="padding:40px;">Нет задач</td></tr>'
+                        ? '<tr><td colspan="' + (visibleCols.length + (showCheckbox ? 1 : 0)) + '">' + renderViewState({ kind: 'empty', title: 'Задачи команды не найдены', message: 'Измените фильтры или создайте новую задачу.' }) + '</td></tr>'
                         : list.map(task => renderTeamTableRow(task, visibleCols, showCheckbox)).join('')}
                 </tbody>
             </table>
@@ -377,18 +390,18 @@ function renderTeamCell(col, task) {
 
     switch (col) {
         case 'id': return `<span class="font-mono text-muted">#${task.id}</span>`;
-        case 'title': return `<strong class="cell-truncate">${task.title}</strong>`;
-        case 'description': return `<span class="cell-truncate">${task.description || '—'}</span>`;
-        case 'date_received': return `<span>${task.date_received || '—'}</span>`;
+        case 'title': return `<strong class="cell-truncate">${escapeHtml(task.title)}</strong>`;
+        case 'description': return `<span class="cell-truncate">${escapeHtml(task.description || '—')}</span>`;
+        case 'date_received': return `<span>${escapeHtml(task.date_received || '—')}</span>`;
         case 'status': return `<span>${renderStatus(task.status_name || task.status)}</span>`;
         case 'priority': return `<span>${renderPriority(task.priority_name || task.priority)}</span>`;
-        case 'team': return `<span class="badge badge-info">${task.team_name || '—'}</span>`;
-        case 'channel': return `<span>${task.channel_name || '—'}</span>`;
-        case 'business_customer': return `<span>${task.business_customer_name || task.business_customer || '—'}</span>`;
-        case 'department': return `<span>${task.department_name || '—'}</span>`;
-        case 'project': return `<span>${task.project_name || '—'}</span>`;
-        case 'task_type': return `<span>${task.task_type_name || '—'}</span>`;
-        case 'involved_teams': return `<span class="cell-truncate">${renderInvolvedTeams(task.involved_team_names || task.involved_teams)}</span>`;
+        case 'team': return `<span class="badge badge-info">${escapeHtml(task.team_name || '—')}</span>`;
+        case 'channel': return `<span>${escapeHtml(task.channel_name || '—')}</span>`;
+        case 'business_customer': return `<span>${escapeHtml(task.business_customer_name || task.business_customer || '—')}</span>`;
+        case 'department': return `<span>${escapeHtml(task.department_name || '—')}</span>`;
+        case 'project': return `<span>${escapeHtml(task.project_name || '—')}</span>`;
+        case 'task_type': return `<span>${escapeHtml(task.task_type_name || '—')}</span>`;
+        case 'involved_teams': return `<span class="cell-truncate">${escapeHtml(renderInvolvedTeams(task.involved_team_names || task.involved_teams))}</span>`;
         case 'deadline': return `<span>${renderTeamDeadline(task)}</span>`;
         case 'effort_days': return `<span>${task.effort_days != null ? task.effort_days + ' дн' : '—'}</span>`;
         case 'effort_rub': return `<span class="font-mono">${metricFormat(task.effort_rub)}</span>`;
@@ -413,26 +426,26 @@ function renderTeamCell(col, task) {
         case 'metric_kr_plan':
         case 'metric_kr_fact':
             return `<span class="font-mono">${task[col] != null ? metricFormat(task[col]) + (task.metric_kr_unit ? ' ' + escapeHtml(task.metric_kr_unit) : '') : '—'}</span>`;
-        case 'metric_kr_unit': return `<span>${task.metric_kr_unit || '—'}</span>`;
+        case 'metric_kr_unit': return `<span>${escapeHtml(task.metric_kr_unit || '—')}</span>`;
         case 'financial_effect': return `<span class="font-mono">${metricFormat(task.financial_effect)}</span>`;
-        case 'financial_effect_justification': return `<span class="cell-truncate">${task.financial_effect_justification || '—'}</span>`;
+        case 'financial_effect_justification': return `<span class="cell-truncate">${escapeHtml(task.financial_effect_justification || '—')}</span>`;
         case 'cv': return `<span>${renderCV(task)}</span>`;
         case 'progress': return `<span>${renderProgress(task.progress)}</span>`;
-        case 'owner': return `<span>${task.owner_name || task.owner || '—'}</span>`;
-        case 'created_by': return `<span>${task.created_by_name || '—'}</span>`;
-        case 'key_project_status': return `<span class="cell-truncate">${task.key_project_status || '—'}</span>`;
+        case 'owner': return `<span>${escapeHtml(task.owner_name || task.owner || '—')}</span>`;
+        case 'created_by': return `<span>${escapeHtml(task.created_by_name || '—')}</span>`;
+        case 'key_project_status': return `<span class="cell-truncate">${escapeHtml(task.key_project_status || '—')}</span>`;
         case 'key_project_status_updated_at': return `<span>${fmtDate(task.key_project_status_updated_at)}</span>`;
-        case 'directorate_status': return `<span class="cell-truncate">${task.directorate_status || '—'}</span>`;
+        case 'directorate_status': return `<span class="cell-truncate">${escapeHtml(task.directorate_status || '—')}</span>`;
         case 'directorate_status_updated_at': return `<span>${fmtDate(task.directorate_status_updated_at)}</span>`;
-        case 'did_status': return `<span class="cell-truncate">${task.did_status || '—'}</span>`;
+        case 'did_status': return `<span class="cell-truncate">${escapeHtml(task.did_status || '—')}</span>`;
         case 'did_status_updated_at': return `<span>${fmtDate(task.did_status_updated_at)}</span>`;
         case 'did_demo': return `<span>${task.did_demo ? '<span class="badge badge-high">Да</span>' : '<span class="badge badge-low">Нет</span>'}</span>`;
-        case 'link_mockups': return `<span>${task.link_mockups ? `<a href="${task.link_mockups}" target="_blank" style="color:var(--accent)">Макеты</a>` : '—'}</span>`;
+        case 'link_mockups': return `<span>${renderExternalTeamLink(task.link_mockups, 'Макеты')}</span>`;
         case 'link_jira': return `<span>${renderLinkJiraList(task.link_jira)}</span>`;
-        case 'rejection_reason': return `<span class="cell-truncate">${task.rejection_reason || '—'}</span>`;
-        case 'comment': return `<span class="cell-truncate">${task.comment || '—'}</span>`;
-        case 'created_at': return `<span>${task.created_at || '—'}</span>`;
-        case 'updated_at': return `<span>${task.updated_at || '—'}</span>`;
+        case 'rejection_reason': return `<span class="cell-truncate">${escapeHtml(task.rejection_reason || '—')}</span>`;
+        case 'comment': return `<span class="cell-truncate">${escapeHtml(task.comment || '—')}</span>`;
+        case 'created_at': return `<span>${escapeHtml(task.created_at || '—')}</span>`;
+        case 'updated_at': return `<span>${escapeHtml(task.updated_at || '—')}</span>`;
         case 'tags': return renderTeamTags(task.tags);
         default: return '';
     }
@@ -463,7 +476,7 @@ function renderTeamCards(list) {
     container.innerHTML = `
         <div class="task-card-grid">
             ${list.length === 0
-                ? '<div class="text-center text-muted" style="padding:40px;width:100%;">Нет задач</div>'
+                ? renderViewState({ kind: 'empty', title: 'Задачи команды не найдены', message: 'Измените фильтры или создайте новую задачу.' })
                 : list.map(task => renderTaskCard(task)).join('')}
         </div>
     `;
@@ -481,7 +494,7 @@ async function populateTeamSelect(selectedTeamId) {
     try {
         const teams = await window.app?.api?.get('/teams') || [];
         select.innerHTML = teams.map(t =>
-            `<option value="${t.id}" ${t.id === selectedTeamId ? 'selected' : ''}>${t.name}</option>`
+            `<option value="${t.id}" ${t.id === selectedTeamId ? 'selected' : ''}>${escapeHtml(t.name)}</option>`
         ).join('');
     } catch {
         select.innerHTML = '<option value="">Нет команд</option>';
@@ -520,7 +533,7 @@ function setupTaskFormSave(modal, task, app) {
             document.querySelector('.modal-close')?.click();
             await loadTeamTasks(app);
         } catch (e) {
-            alert('Ошибка: ' + e.message);
+            window.toast?.(window.formatErrorMessage?.(e) || 'Не удалось сохранить задачу', 'error');
         }
     });
 }
@@ -560,8 +573,9 @@ function renderTeamTags(tags) {
     list = String(tags).split(',').map(t => t.trim()).filter(Boolean).map(t => ({ name: t, color: '' }));
   }
   return list.filter(t => t.name).map(t => {
-    const style = t.color ? `background:${t.color}22;color:${t.color};border:1px solid ${t.color}55;` : '';
-    return `<span class="badge" style="font-size:10px;${style}">${t.name}</span>`;
+    const color = /^#[0-9a-f]{6}$/i.test(t.color || '') ? t.color : '';
+    const style = color ? `background:${color}22;color:${color};border:1px solid ${color}55;` : '';
+    return `<span class="badge" style="font-size:10px;${style}">${escapeHtml(t.name)}</span>`;
   }).join(' ');
 }
 
@@ -587,13 +601,13 @@ function renderCV(task) {
 function renderTeamDeadline(task) {
     const dl = task.deadline_name || task.deadline || '—';
     const overdue = dl !== '—' && task.deadline_id != null && !TERMINAL_STATUSES.includes(task.status_name) && isDeadlinePast(dl);
-    return overdue ? `<span style="color:#ef4444;font-weight:600;">${dl}</span>` : `<span>${dl}</span>`;
+    return overdue ? `<span style="color:#ef4444;font-weight:600;">${escapeHtml(dl)}</span>` : `<span>${escapeHtml(dl)}</span>`;
 }
 
 function renderPriority(priority) {
     const map = { 'ВЫСОКИЙ': 'high', 'СРЕДНИЙ': 'medium', 'НИЗКИЙ': 'low' };
     const cls = map[priority] || 'medium';
-    return `<span class="badge badge-${cls}">${priority || 'СРЕДНИЙ'}</span>`;
+    return `<span class="badge badge-${cls}">${escapeHtml(priority || 'СРЕДНИЙ')}</span>`;
 }
 
 function renderStatus(status) {
@@ -613,7 +627,7 @@ function renderStatus(status) {
         'НЕ_АКТУАЛЬНА': 'badge-low',
         'ВЫПОЛНЕНА': 'badge-status-done'
     };
-    return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${status || 'СБОР ТРЕБОВАНИЙ'}</span>`;
+    return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${escapeHtml(status || 'СБОР ТРЕБОВАНИЙ')}</span>`;
 }
 
 function renderProgress(progress) {
@@ -690,7 +704,10 @@ function parseLinkList(links) {
 function renderLinkJiraList(links) {
   const arr = parseLinkList(links);
   if (!arr.length) return '—';
-  return arr.map(url => `<a href="${escapeHtml(url)}" target="_blank" style="color:var(--accent)">Jira</a>`).join(', ');
+  return arr.map(url => {
+    const safeUrl = safeExternalUrl(url);
+    return safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Jira</a>` : 'Некорректная ссылка';
+  }).join(', ');
 }
 
 function escapeHtml(text) {

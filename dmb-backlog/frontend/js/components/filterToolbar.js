@@ -253,7 +253,7 @@ export function renderToolbar(scope, opts = {}) {
       </div>
     </div>`;
 
-  const addTaskHtml = opts.addTask ? `<button class="btn btn-primary btn-sm" id="${scope}-add-task-btn"><i data-lucide="plus" style="width:15px;height:15px;flex-shrink:0;"></i> Добавить задачу</button>` : '';
+  const addTaskHtml = opts.addTask ? `<button class="btn btn-primary btn-sm toolbar-add-task" id="${scope}-add-task-btn" title="Добавить задачу" aria-label="Добавить задачу"><i data-lucide="plus" style="width:15px;height:15px;flex-shrink:0;"></i><span class="toolbar-add-task-label">Добавить задачу</span></button>` : '';
 
   const title = opts.title || '';
   const subtitle = opts.subtitle || '';
@@ -297,15 +297,17 @@ export function renderToolbar(scope, opts = {}) {
               <input id="f-${scope}-search" placeholder="Поиск..." style="width:100%;padding:6px 8px 6px 28px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-color);border-radius:8px;font-size:12px;">
             </div>
             <div id="f-${scope}-main-filters" class="flex items-center gap-2" style="flex:1;min-width:0;"></div>
-            <button id="btn-ext-${scope}" class="btn btn-secondary btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-              <span id="btn-ext-${scope}-text">Фильтры</span>
-              <svg id="chev-ext-${scope}" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </button>
-            <button id="f-${scope}-reset" class="btn btn-secondary btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-              Сброс
-            </button>
+            <div class="filter-toolbar-controls">
+              <button id="btn-ext-${scope}" class="btn btn-secondary btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+                <span id="btn-ext-${scope}-text">Фильтры</span>
+                <svg id="chev-ext-${scope}" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <button id="f-${scope}-reset" class="btn btn-secondary btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                Сброс
+              </button>
+            </div>
           </div>
           <div id="f-${scope}-ext-filters" class="hidden" style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border-color);">
             <div id="f-${scope}-ext-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;"></div>
@@ -577,6 +579,7 @@ export function initToolbar(scope, allTasks, onFilterChange) {
     searchValues[scope] = '';
     sortValues[scope] = 'id-desc';
     if (searchInput) searchInput.value = '';
+    clearQuickFilterVisualState();
     renderAll();
   });
 
@@ -927,18 +930,33 @@ function toggleDropdown(event, scope, key, allTasks) {
   });
 }
 
+let toolbarOffsetObserver = null;
+let observedToolbar = null;
+
 export function updateStickyOffsets() {
   requestAnimationFrame(() => {
     const toolbar = document.querySelector('.sticky-toolbar');
     if (!toolbar) return;
+    if (toolbar !== observedToolbar && typeof ResizeObserver !== 'undefined') {
+      toolbarOffsetObserver?.disconnect();
+      observedToolbar = toolbar;
+      toolbarOffsetObserver = new ResizeObserver(() => updateStickyOffsets());
+      toolbarOffsetObserver.observe(toolbar);
+    }
     const style = getComputedStyle(document.documentElement);
     const navbarHeight = parseFloat(style.getPropertyValue('--navbar-height'));
     const offset = navbarHeight + toolbar.offsetHeight;
     document.documentElement.style.setProperty('--sticky-thead-offset', offset + 'px');
+    const mainContent = document.querySelector('.main-content');
+    const toolbarIsFixed = getComputedStyle(toolbar).position === 'fixed';
+    const mainPaddingTop = mainContent ? parseFloat(getComputedStyle(mainContent).paddingTop) || 0 : 0;
     const contentContainers = document.querySelectorAll('#tasks-container, #team-tasks-container');
     contentContainers.forEach(el => {
-      el.style.marginTop = toolbar.offsetHeight + 'px';
+      el.style.marginTop = toolbarIsFixed
+        ? Math.max(0, toolbar.offsetHeight - mainPaddingTop) + 'px'
+        : '0px';
     });
+    if (resizeHandler) resizeHandler();
   });
 }
 
@@ -999,7 +1017,7 @@ export function initStickyTableHeader(tableId) {
         stickyHeaderWrapper.id = 'sticky-header-wrapper';
         stickyHeaderWrapper.style.cssText = `
           position: fixed;
-          z-index: 26;
+          z-index: 24;
           overflow: hidden;
           background: var(--bg-tertiary);
           box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -1078,6 +1096,21 @@ export function resetToolbarFilters(scope) {
   sortValues[scope] = 'id-desc';
   const searchInput = $(`f-${scope}-search`);
   if (searchInput) searchInput.value = '';
+  clearQuickFilterVisualState();
+}
+
+function clearQuickFilterVisualState() {
+  document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.setAttribute('aria-pressed', 'false');
+  });
+  const count = document.getElementById('quick-filters-active-count');
+  const toggle = document.getElementById('quick-filters-mobile-toggle');
+  if (count) {
+    count.textContent = '0';
+    count.classList.add('hidden');
+  }
+  toggle?.classList.remove('has-active-filters');
 }
 
 export { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask };

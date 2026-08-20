@@ -40,6 +40,11 @@ class ModeSelector:
                 confidence=0.9
             )
 
+        if state.user_expertise == "expert":
+            return ModeDecision(MODE_EXPERT, "detected_expert_profile", 0.8)
+        if state.user_expertise == "novice":
+            return ModeDecision(MODE_GUIDED, "detected_novice_profile", 0.7)
+
         # Check dialogue state
         filled_count = self._count_filled_slots(state)
         avg_confidence = self._calculate_avg_confidence(state)

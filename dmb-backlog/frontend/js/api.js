@@ -44,7 +44,11 @@ export class APIError extends Error {
 export class API {
     constructor() {
         this.baseURL = '/api/v1';
+        this.accessToken = null;
     }
+
+    setAccessToken(token) { this.accessToken = token || null; }
+    hasAccessToken() { return !!this.accessToken; }
     
     /**
      * @returns {Record<string, string>}
@@ -54,9 +58,8 @@ export class API {
             'Content-Type': 'application/json'
         };
         
-        const tokens = JSON.parse(localStorage.getItem('dmb_tokens') || '{}');
-        if (tokens.access) {
-            headers['Authorization'] = `Bearer ${tokens.access}`;
+        if (this.accessToken) {
+            headers['Authorization'] = `Bearer ${this.accessToken}`;
         }
         
         return headers;
@@ -72,7 +75,8 @@ export class API {
         const url = `${this.baseURL}${path}`;
         const options = {
             method,
-            headers: this.getHeaders()
+            headers: this.getHeaders(),
+            credentials: 'same-origin'
         };
         
         if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
@@ -93,6 +97,7 @@ export class API {
                 const retryResponse = await fetch(url, options);
                 return this.handleResponse(retryResponse);
             } else {
+                this.setAccessToken(null);
                 localStorage.removeItem('dmb_tokens');
                 localStorage.removeItem('dmb_user');
                 window.location.reload();
@@ -134,23 +139,17 @@ export class API {
     }
     
     async refreshToken() {
-        const tokens = JSON.parse(localStorage.getItem('dmb_tokens') || '{}');
-        if (!tokens.refresh) return false;
-        
         try {
             const response = await fetch(`${this.baseURL}/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refresh_token: tokens.refresh })
+                credentials: 'same-origin'
             });
             
             if (response.ok) {
                 const data = await response.json();
-                localStorage.setItem('dmb_tokens', JSON.stringify({
-                    access: data.access_token,
-                    refresh: data.refresh_token
-                }));
-                return true;
+                this.setAccessToken(data.access_token);
+                return data;
             }
             return false;
         } catch (e) {
@@ -188,6 +187,34 @@ export class API {
     async patch(path, data) { return this.request('PATCH', path, data); }
 
     /**
+     * Download an authenticated file without exposing a public storage URL.
+     * @param {string} path
+     * @param {string} filename
+     */
+    async download(path, filename) {
+        const url = `${this.baseURL}${path}`;
+        let response = await fetch(url, { headers: this.getHeaders() });
+
+        if (response.status === 401 && await this.refreshToken()) {
+            response = await fetch(url, { headers: this.getHeaders() });
+        }
+        if (!response.ok) return this.handleResponse(response);
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        try {
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = filename || 'attachment';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } finally {
+            URL.revokeObjectURL(objectUrl);
+        }
+    }
+
+    /**
      * Upload file via FormData
      * @param {string} path
      * @param {File} file
@@ -198,27 +225,25 @@ export class API {
         const formData = new FormData();
         formData.append('file', file);
 
-        const tokens = JSON.parse(localStorage.getItem('dmb_tokens') || '{}');
-        const headers = {};
-        if (tokens.access) {
-            headers['Authorization'] = `Bearer ${tokens.access}`;
-        }
+        const headers = this.getHeaders();
+        delete headers['Content-Type'];
 
         const response = await fetch(url, {
             method: 'POST',
             headers,
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         });
 
         if (response.status === 401) {
             const refreshed = await this.refreshToken();
             if (refreshed) {
-                const retryHeaders = {};
-                const newTokens = JSON.parse(localStorage.getItem('dmb_tokens') || '{}');
-                if (newTokens.access) retryHeaders['Authorization'] = `Bearer ${newTokens.access}`;
-                const retryResponse = await fetch(url, { method: 'POST', headers: retryHeaders, body: formData });
+                const retryHeaders = this.getHeaders();
+                delete retryHeaders['Content-Type'];
+                const retryResponse = await fetch(url, { method: 'POST', headers: retryHeaders, body: formData, credentials: 'same-origin' });
                 return this.handleResponse(retryResponse);
             } else {
+                this.setAccessToken(null);
                 localStorage.removeItem('dmb_tokens');
                 localStorage.removeItem('dmb_user');
                 window.location.reload();

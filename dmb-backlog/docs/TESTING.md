@@ -34,8 +34,9 @@
 ### 2.1 Установка
 
 ```bash
+# Из корня dmb-backlog
+pip install -r backend/requirements-dev.txt
 cd backend
-pip install pytest httpx  # TestClient требует httpx
 ```
 
 ### 2.2 Запуск тестов

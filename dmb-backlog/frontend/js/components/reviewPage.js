@@ -97,7 +97,7 @@ async function loadReviewList(app) {
       });
     });
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -110,7 +110,7 @@ function reviewStatusBadge(status) {
 function formatDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
+  if (isNaN(d.getTime())) return escapeHtml(iso);
   return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -137,7 +137,10 @@ export async function renderReviewDetailPage(app, requestId) {
 
   const user = app.store.get('currentUser');
   const role = (user?.role_name || '').toLowerCase();
-  const canReview = ['po/pl/cl', 'ba/бизнес-аналитик', 'лидер трайба', 'администратор'].includes(role);
+  const canReview = [
+    'po/pl/cl', 'ba/участник команды', 'ba/бизнес-аналитик',
+    'лидер трайба', 'проектный офис (админ)', 'администратор',
+  ].includes(role);
 
   return `
     <div class="page-header animate-fade-in" style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:var(--space-3);">
@@ -223,7 +226,7 @@ async function showAssignModal(app, requestId) {
   const req = await app.api.get(`/agent/requests/${requestId}`);
   const teamId = req.team_id;
   if (!teamId) {
-    alert('У запроса не указана команда');
+    window.toast?.('У запроса не указана команда', 'warning');
     return;
   }
 
@@ -259,7 +262,7 @@ async function showAssignModal(app, requestId) {
   modal.querySelector('#modal-confirm').addEventListener('click', async () => {
     const assigneeId = parseInt(modal.querySelector('#assignee-select').value);
     if (!assigneeId) {
-      alert('Выберите ответственного');
+      window.showFieldError?.(modal.querySelector('#assignee-select'), 'Выберите ответственного');
       return;
     }
     try {
@@ -271,7 +274,7 @@ async function showAssignModal(app, requestId) {
       window.location.hash = `#/review/${requestId}`;
       window.location.reload();
     } catch (e) {
-      alert('Ошибка: ' + e.message);
+      window.toast?.(window.formatErrorMessage?.(e) || 'Не удалось назначить ответственного', 'error');
     }
   });
 }
@@ -303,7 +306,7 @@ async function showRejectModal(app, requestId) {
   modal.querySelector('#modal-confirm').addEventListener('click', async () => {
     const reason = modal.querySelector('#reject-reason').value.trim();
     if (!reason) {
-      alert('Укажите причину отклонения');
+      window.showFieldError?.(modal.querySelector('#reject-reason'), 'Укажите причину отклонения');
       return;
     }
     try {
@@ -315,7 +318,7 @@ async function showRejectModal(app, requestId) {
       window.location.hash = `#/review/${requestId}`;
       window.location.reload();
     } catch (e) {
-      alert('Ошибка: ' + e.message);
+      window.toast?.(window.formatErrorMessage?.(e) || 'Не удалось отклонить запрос', 'error');
     }
   });
 }

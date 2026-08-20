@@ -6,6 +6,7 @@ through the LLM to sound more natural. Any failure falls back to the original
 template text so the chat never breaks.
 """
 import logging
+import re
 import time
 
 from ..config import settings
@@ -27,6 +28,19 @@ REPHRASE_TIMEOUT = 3.0
 REPHRASE_COOLDOWN = 300.0  # seconds to skip rephrasing after a failure
 
 _cooldown_until = 0.0
+
+
+def _preserves_invariants(source: str, candidate: str) -> bool:
+    """Reject rewrites that alter numbers or the structure of list-like text."""
+    if not candidate:
+        return False
+    if re.findall(r"\d+(?:[.,]\d+)?", source) != re.findall(r"\d+(?:[.,]\d+)?", candidate):
+        return False
+    source_markers = [line.lstrip()[:2] for line in source.splitlines()
+                      if line.lstrip().startswith(("- ", "* ", "1.", "2.", "3."))]
+    candidate_markers = [line.lstrip()[:2] for line in candidate.splitlines()
+                         if line.lstrip().startswith(("- ", "* ", "1.", "2.", "3."))]
+    return source_markers == candidate_markers
 
 
 def enabled() -> bool:
@@ -67,7 +81,7 @@ def rephrase(text: str) -> str:
             timeout=REPHRASE_TIMEOUT,
         )
         out = (out or "").strip()
-        if out:
+        if out and _preserves_invariants(text, out):
             return out
         return text
     except Exception:

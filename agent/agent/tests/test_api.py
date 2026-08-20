@@ -52,7 +52,7 @@ def test_out_of_domain(client):
     assert r.json()["action"] == "out_of_domain"
 
 
-def test_send_for_review(client):
+def test_send_for_review_rejects_unconfirmed_draft(client):
     r = client.post("/api/agent/new-session", headers=SECRET, json={"user_id": 2})
     sid = r.json()["session_id"]
     r = client.post("/api/agent/chat", headers=SECRET, json={
@@ -65,4 +65,4 @@ def test_send_for_review(client):
     r = client.post("/api/agent/send-for-review", headers=SECRET, json={
         "session_id": sid, "task_id": 999, "title": "Тест"
     })
-    assert r.json()["action"] == "sent"
+    assert r.json()["action"] == "error"

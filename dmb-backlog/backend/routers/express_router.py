@@ -10,10 +10,11 @@ from models import Task, Epic, Story, TaskStatus, User
 from schemas import (
     EpicCreate, EpicUpdate, EpicResponse, EpicListResponse,
     StoryCreate, StoryUpdate, StoryResponse, StoryListResponse,
+    SortRequest,
     QuickEstimateTaskResponse, QuickEstimateResponse,
     TaskResponse, SuccessResponse
 )
-from auth import get_current_user, check_permission
+from auth import get_current_user, check_permission, authorize_task
 from notifications import notify_express_import
 
 router = APIRouter()
@@ -21,6 +22,19 @@ router = APIRouter()
 EFFORT_FIELDS = ['effort_designee', 'effort_analytics', 'effort_be', 'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery']
 
 # ==================== Helper ====================
+
+def _task_for_epic(db: Session, epic: Epic) -> Task:
+    task = db.query(Task).filter(Task.id == epic.task_id, Task.is_deleted == False).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Parent task not found")
+    return task
+
+
+def _task_for_story(db: Session, story: Story) -> Task:
+    epic = db.query(Epic).filter(Epic.id == story.epic_id).first()
+    if not epic:
+        raise HTTPException(status_code=404, detail="Parent epic not found")
+    return _task_for_epic(db, epic)
 
 def epic_to_response(epic: Epic) -> EpicResponse:
     stories = getattr(epic, '_stories', [])
@@ -50,7 +64,6 @@ def story_to_response(story: Story) -> StoryResponse:
         epic_id=story.epic_id,
         title=story.title,
         description=story.description,
-        progress=story.progress,
         effort_designee=story.effort_designee,
         effort_analytics=story.effort_analytics,
         effort_be=story.effort_be,
@@ -126,7 +139,7 @@ def task_to_quick_estimate_response(task: Task, epics: list[Epic]) -> QuickEstim
 # ==================== GET Quick Estimate Data ====================
 
 @router.get("/quick-estimate", response_model=QuickEstimateResponse)
-async def get_quick_estimate(
+def get_quick_estimate(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -183,7 +196,7 @@ async def get_quick_estimate(
 # ==================== EPICS ====================
 
 @router.post("/quick-estimate/epics", response_model=EpicResponse, status_code=status.HTTP_201_CREATED)
-async def create_epic(
+def create_epic(
     data: EpicCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -192,6 +205,8 @@ async def create_epic(
     task = db.query(Task).filter(Task.id == data.task_id, Task.is_deleted == False).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    authorize_task("edit", task, current_user)
 
     epic = Epic(
         task_id=data.task_id,
@@ -214,7 +229,7 @@ async def create_epic(
 
 
 @router.put("/quick-estimate/epics/{epic_id}", response_model=EpicResponse)
-async def update_epic(
+def update_epic(
     epic_id: int,
     data: EpicUpdate,
     db: Session = Depends(get_db),
@@ -224,6 +239,8 @@ async def update_epic(
     epic = db.query(Epic).filter(Epic.id == epic_id).first()
     if not epic:
         raise HTTPException(status_code=404, detail="Epic not found")
+
+    authorize_task("edit", _task_for_epic(db, epic), current_user)
 
     update_data = data.model_dump(exclude_unset=True)
     for field in EFFORT_FIELDS + ['title', 'description', 'priority']:
@@ -236,7 +253,7 @@ async def update_epic(
 
 
 @router.delete("/quick-estimate/epics/{epic_id}", response_model=SuccessResponse)
-async def delete_epic(
+def delete_epic(
     epic_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -245,6 +262,8 @@ async def delete_epic(
     epic = db.query(Epic).filter(Epic.id == epic_id).first()
     if not epic:
         raise HTTPException(status_code=404, detail="Epic not found")
+
+    authorize_task("edit", _task_for_epic(db, epic), current_user)
 
     # Stories will be cascade-deleted
     db.delete(epic)
@@ -255,7 +274,7 @@ async def delete_epic(
 # ==================== STORIES ====================
 
 @router.post("/quick-estimate/stories", response_model=StoryResponse, status_code=status.HTTP_201_CREATED)
-async def create_story(
+def create_story(
     data: StoryCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -265,11 +284,12 @@ async def create_story(
     if not epic:
         raise HTTPException(status_code=404, detail="Epic not found")
 
+    authorize_task("edit", _task_for_epic(db, epic), current_user)
+
     story = Story(
         epic_id=data.epic_id,
         title=data.title,
         description=data.description,
-        progress=data.progress,
         effort_designee=data.effort_designee,
         effort_analytics=data.effort_analytics,
         effort_be=data.effort_be,
@@ -286,7 +306,7 @@ async def create_story(
 
 
 @router.put("/quick-estimate/stories/{story_id}", response_model=StoryResponse)
-async def update_story(
+def update_story(
     story_id: int,
     data: StoryUpdate,
     db: Session = Depends(get_db),
@@ -297,8 +317,10 @@ async def update_story(
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
 
+    authorize_task("edit", _task_for_story(db, story), current_user)
+
     update_data = data.model_dump(exclude_unset=True)
-    for field in EFFORT_FIELDS + ['title', 'description', 'progress']:
+    for field in EFFORT_FIELDS + ['title', 'description']:
         if field in update_data:
             setattr(story, field, update_data[field])
 
@@ -308,7 +330,7 @@ async def update_story(
 
 
 @router.delete("/quick-estimate/stories/{story_id}", response_model=SuccessResponse)
-async def delete_story(
+def delete_story(
     story_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -318,35 +340,47 @@ async def delete_story(
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
 
+    authorize_task("edit", _task_for_story(db, story), current_user)
+
     db.delete(story)
     db.commit()
     return SuccessResponse(success=True, detail="Story deleted")
 
 
-# ==================== TASK DELETE ====================
-
 @router.delete("/quick-estimate/tasks/{task_id}", response_model=SuccessResponse)
-async def delete_task(
+def remove_task_from_estimate(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Delete a task and its epics/stories (cascade)."""
+    """Remove a task from express estimation by restoring its previous status."""
     task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    authorize_task("edit", task, current_user)
 
-    epic_count = db.query(Epic).filter(Epic.task_id == task_id).count()
-    db.delete(task)
+    qe_status = db.query(TaskStatus).filter(TaskStatus.name == "ЭКСПРЕСС-ОЦЕНКА").first()
+    if not qe_status or task.status_id != qe_status.id:
+        raise HTTPException(status_code=400, detail="Task is not in express estimation")
+
+    if task.previous_status_id:
+        task.status_id = task.previous_status_id
+    else:
+        backlog = db.query(TaskStatus).filter(TaskStatus.name == "НОВАЯ ЗАДАЧА").first()
+        if backlog:
+            task.status_id = backlog.id
+        else:
+            raise HTTPException(status_code=500, detail="Default status not found")
+
+    task.previous_status_id = None
     db.commit()
-    detail = f"Task deleted ({epic_count} эпиков)" if epic_count else "Task deleted"
-    return SuccessResponse(success=True, detail=detail)
+    return SuccessResponse(success=True, detail="Task removed from express estimation")
 
 
 # ==================== TASK EFFORT UPDATE ====================
 
 @router.put("/quick-estimate/tasks/{task_id}", response_model=QuickEstimateTaskResponse)
-async def update_task_effort(
+def update_task_effort(
     task_id: int,
     data: dict,
     db: Session = Depends(get_db),
@@ -357,18 +391,44 @@ async def update_task_effort(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # Only allow updating effort fields through this endpoint
+    authorize_task("edit", task, current_user)
+
+    client_version = data.pop('version', None)
+    if client_version is not None and client_version != task.version:
+        raise HTTPException(status_code=409, detail="Conflict: task was modified by another user. Please refresh.")
+
     allowed_fields = set(EFFORT_FIELDS) | {'title'}
     for key, value in data.items():
         if key in allowed_fields:
+            if key.startswith('effort_') and value is not None and (not isinstance(value, (int, float)) or value < 0):
+                raise HTTPException(status_code=422, detail=f"Field '{key}' must be a non-negative number")
             setattr(task, key, value)
 
+    task.version = (task.version or 0) + 1
     db.commit()
     db.refresh(task)
 
-    # Get epics for the task
     epics = db.query(Epic).filter(Epic.task_id == task.id).order_by(Epic.id).all()
     return task_to_quick_estimate_response(task, epics)
+
+
+# ==================== BATCH SORT ====================
+
+@router.patch("/quick-estimate/sort", response_model=SuccessResponse)
+def update_sort_order(
+    data: SortRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Batch update sort_order for stories only."""
+    for item in data.stories:
+        story = db.query(Story).filter(Story.id == item.id).first()
+        if story:
+            authorize_task("edit", _task_for_story(db, story), current_user)
+            story.sort_order = item.sort_order
+
+    db.commit()
+    return SuccessResponse(success=True, detail="Sort order updated")
 
 
 # ==================== BACKLOG TASK IMPORT ====================
@@ -430,9 +490,11 @@ def _task_to_response(task: Task) -> TaskResponse:
     )
 
 
-@router.get("/quick-estimate/backlog-tasks", response_model=List[TaskResponse])
-async def get_backlog_tasks(
+@router.get("/quick-estimate/backlog-tasks")
+def get_backlog_tasks(
     q: str = Query("", max_length=200),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -453,12 +515,13 @@ async def get_backlog_tasks(
     if q:
         query = query.filter(Task.title.ilike(f"%{q}%"))
 
-    tasks = query.order_by(Task.id.desc()).limit(20).all()
-    return [_task_to_response(t) for t in tasks]
+    total = query.count()
+    tasks = query.order_by(Task.id.desc()).offset(offset).limit(limit).all()
+    return {"items": [_task_to_response(t) for t in tasks], "total": total}
 
 
 @router.post("/quick-estimate/import-task/{task_id}", response_model=QuickEstimateTaskResponse)
-async def import_task_to_estimate(
+def import_task_to_estimate(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -468,17 +531,17 @@ async def import_task_to_estimate(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    authorize_task("edit", task, current_user)
+
     qe_status = db.query(TaskStatus).filter(TaskStatus.name == "ЭКСПРЕСС-ОЦЕНКА").first()
     if not qe_status:
         raise HTTPException(status_code=500, detail="Status ЭКСПРЕСС-ОЦЕНКА not found")
 
+    task.previous_status_id = task.status_id
     task.status_id = qe_status.id
-    db.commit()
-    db.refresh(task)
-
-    # Notifications: express import
     notify_express_import(db, task, current_user.name)
     db.commit()
+    db.refresh(task)
 
     epics = db.query(Epic).filter(Epic.task_id == task.id).order_by(Epic.id).all()
     return task_to_quick_estimate_response(task, epics)

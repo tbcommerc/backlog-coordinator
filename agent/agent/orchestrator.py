@@ -56,7 +56,7 @@ from .guardrails.policies import REFUSAL_SENSITIVE
 from .kb.retrieval import retrieval
 from .llm import rephrase
 
-YES_WORDS = {"да", "yes", "ага", "угу", "да, верно", "всё верно", "все верно", "да, всё верно", "да все верно", "подтверждаю", "конечно", "оформить", "создать", "да, оформить", "да, создавать", "отправить", "да, отправить"}
+YES_WORDS = {"да", "yes", "ага", "угу", "да, верно", "всё верно", "все верно", "да, всё верно", "да все верно", "подтверждаю", "конечно", "оформить", "создать", "да, оформить", "да, создавать", "отправить", "да, отправить", "продолжим", "продолжай", "давай", "ок", "понял", "ясно", "всё хорошо", "все хорошо", "норм", "нормально"}
 NO_WORDS = {"нет", "no", "не", "не нужно", "завершить", "закрыть", "спасибо, не нужно", "отмена"}
 GREETINGS = {"привет", "здравствуйте", "добрый день", "добрый вечер", "доброе утро", "hello", "hi", "здравствуй", "ку"}
 SKIP_WORDS = {"пропустить", "skip", "__skip__", "не знаю", "затрудняюсь"}
@@ -81,7 +81,10 @@ class AgentOrchestrator:
         self.store = store
 
     # ------------------------------------------------------------- response
-    NO_REPHRASE_ACTIONS = ("welcome", "session")
+    NO_REPHRASE_ACTIONS = (
+        "welcome", "session", "summarize", "draft_ready", "sent",
+        "reflect", "reflect_correction", "edit", "refused", "escalated",
+    )
 
     def _build_response(self, state, action, message, blocks=None) -> AgentResponse:
         if message and action != "refused" and action not in self.NO_REPHRASE_ACTIONS:
@@ -91,7 +94,9 @@ class AgentOrchestrator:
                 pass
         if message:
             state.add_message("assistant", message)
-        return AgentResponse(
+            if action != "question":
+                state.total_agent_messages += 1
+        response = AgentResponse(
             session_id=state.session_id,
             action=action,
             message=message,
@@ -103,6 +108,10 @@ class AgentOrchestrator:
             can_generate_draft=state.all_required_handled(),
             history=state.history,
         )
+        # Response construction mutates history and metrics; persist exactly
+        # what the user receives, including early-return branches.
+        self.store.save(state)
+        return response
 
     def _chips(self, options):
         norm = []
@@ -121,16 +130,10 @@ class AgentOrchestrator:
         import time
         state = self.store.new_session(user_id)
         state.session_started_at = time.time()
-        
+
         # Initialize metrics tracking
         metrics_tracker.start_session(state)
-        
-        # Detect user expertise from context
-        if ctx:
-            profile = profile_detector.infer_profile(state)
-            state.user_expertise = profile.expertise
-            state.user_preferred_style = profile.style
-        
+
         log_event("session_start", {"session_id": state.session_id, "user_id": user_id})
         return self._build_response(state, "welcome", gen_welcome(ctx))
 
@@ -148,7 +151,7 @@ class AgentOrchestrator:
         state.record_user_answer(message)
         
         # Phase 4: Analyze user profile from message
-        profile_detector.analyze_message(message)
+        profile_detector.update_state(state, message)
         
         # Phase 4: Check for escalation before processing
         esc_decision = escalation_handler.check_escalation(state, message)
@@ -189,8 +192,13 @@ class AgentOrchestrator:
         if verdict in ("out_of_domain", "possibly_in_domain") and self._is_affirmation(message):
             verdict = "in_domain"
 
-        # mid-flow answers / already confirmed domain: user replies to our question
-        if verdict in ("out_of_domain", "possibly_in_domain") and (not first_turn or state.domain_confirmed):
+        if verdict == "out_of_domain" and not first_turn \
+                and self._is_plausible_slot_answer(state, message, ctx):
+            verdict = "in_domain"
+
+        # Ambiguous mid-flow text is usually an answer to the current question,
+        # but clearly out-of-domain text must never be written into a slot.
+        if verdict == "possibly_in_domain" and (not first_turn or state.domain_confirmed):
             verdict = "in_domain"
 
         if verdict == "malicious_or_policy_violation":
@@ -220,6 +228,38 @@ class AgentOrchestrator:
 
         state.domain_asked = False
         state.add_message("user", message)
+
+        if state.fatigue_offer_pending:
+            answer = self._yes_no(message)
+            state.fatigue_offer_pending = False
+            if answer is True:
+                for slot in state.slots.values():
+                    if not slot.handled:
+                        slot.status = "skipped"
+                self._prepare_summary(state, ctx)
+                state.confirmed = True
+                draft = composer.build_draft(state, ctx)
+                state.draft = draft.model_dump()
+                import time
+                state.draft_created_at = time.time()
+                log_draft(state.session_id, state.user_id, draft.id, draft.status, draft.completeness_score)
+                self.store.save(state)
+                return self._build_response(
+                    state, "draft_ready",
+                    draft_ready_message(draft.completeness_score, draft.confidence),
+                    self._draft_blocks(draft),
+                )
+            if answer is False:
+                response = self._advance(state, ctx)
+                self.store.save(state)
+                return response
+
+        if state.intermediate_summary_pending:
+            state.intermediate_summary_pending = False
+            if self._yes_no(message) is True:
+                response = self._advance(state, ctx)
+                self.store.save(state)
+                return response
 
         # ---------------- Phase 3: Q&A mode handling -------------------------
         if state.in_qa_mode:
@@ -263,10 +303,12 @@ class AgentOrchestrator:
                     confirmation = repair_handler.generate_repair_confirmation(
                         repair_decision.slot, old_value or "", repair_decision.new_value
                     )
+                    response = self._advance(state, ctx)
+                    response.message = confirmation + "\n\n" + response.message
+                    if response.history:
+                        response.history[-1]["content"] = response.message
                     self.store.save(state)
-                    response = self._build_response(state, "reflect_correction", confirmation)
-                    # Continue to advance after repair
-                    return self._advance(state, ctx)
+                    return response
                 else:
                     # Ask for new value
                     slot_label = SLOT_LABELS.get(repair_decision.slot, repair_decision.slot)
@@ -284,9 +326,12 @@ class AgentOrchestrator:
                 old_value = state.slots[slot].value if state.slots.get(slot) else None
                 repair_handler.apply_repair(state, slot, new_value, confidence)
                 confirmation = repair_handler.generate_repair_confirmation(slot, old_value or "", new_value)
+                response = self._advance(state, ctx)
+                response.message = confirmation + "\n\n" + response.message
+                if response.history:
+                    response.history[-1]["content"] = response.message
                 self.store.save(state)
-                response = self._build_response(state, "reflect_correction", confirmation)
-                return self._advance(state, ctx)
+                return response
             else:
                 self.store.save(state)
                 return self._build_response(state, "question", "Не понял. Уточните, пожалуйста, новое значение.")
@@ -348,6 +393,18 @@ class AgentOrchestrator:
     # --------------------------------------------------------- branch handlers
     def _handle_intent(self, state: DialogueState, message: str, ctx) -> AgentResponse:
         intent, confidence = extractor.extract_intent(message)
+
+        # Allow user to correct a previously set intent
+        if state.slots["intent"].handled and intent:
+            correction_markers = ["не проблема", "не баг", "не ошибка", "а доработка",
+                                  "а feature", "а изменение", "это не", "на самом деле",
+                                  "не инцидент", "не вопрос"]
+            if any(m in message.lower() for m in correction_markers):
+                state.set("intent", intent, confidence=confidence, source="user_correction")
+                if len(message.strip()) >= 12:
+                    state.set("need_statement", message.strip()[:2000], confidence=0.90)
+                return self._advance(state, ctx)
+
         if not intent:
             state.ask_counts["intent"] = state.ask_counts.get("intent", 0) + 1
             if state.ask_counts["intent"] >= 2 or len(message.strip()) >= 12:
@@ -357,6 +414,7 @@ class AgentOrchestrator:
                 self._apply_opportunistic(state, message, ctx)
                 return self._advance(state, ctx)
             q = planner.next_question(state, ctx)
+            state.last_asked_slot = q["slot"]
             return self._build_response(state, "question", q["question"], self._chips(q["chips"]))
         state.set("intent", intent, confidence=confidence, source="user_message")
 
@@ -378,6 +436,7 @@ class AgentOrchestrator:
 
     def _ask_need_statement(self, state: DialogueState, ctx) -> AgentResponse:
         q = planner.next_question(state, ctx)
+        state.last_asked_slot = q["slot"]
         return self._build_response(state, "question", q["question"], self._chips(q["chips"]))
 
     def _handle_need_statement(self, state: DialogueState, message: str, ctx) -> AgentResponse:
@@ -483,30 +542,52 @@ class AgentOrchestrator:
         if not slot:
             return self._advance(state, ctx)
 
-        opp = extractor.opportunistic(state, message, ctx)
-        for key, value_conf in opp.items():
-            value, confidence = value_conf
-            state.set(key, value, confidence=confidence, source="user_message")
+        # Check for affirmations / confirmations before slot extraction
+        yes_no = self._yes_no(message)
+        if yes_no is True:
+            return self._advance(state, ctx)
+        if yes_no is False:
+            return self._build_response(
+                state, "question",
+                "Уточните, пожалуйста, что именно не так.",
+            )
+
+        opp = self._apply_opportunistic(state, message, ctx)
 
         if state.slots[slot].handled:
+            state.intermediate_summary_shown = False
+            return self._advance(state, ctx)
+
+        # The user may deliberately add an important detail instead of
+        # answering the last checklist question. Preserve that detail and
+        # follow its meaning; do not coerce the whole message into the slot.
+        if opp:
+            state.intermediate_summary_shown = False
             return self._advance(state, ctx)
 
         # user may be answering a previously asked slot via targeted extraction
         value, confidence = extractor.targeted(state, slot, message, ctx)
         if value:
             state.set(slot, value, confidence=confidence, source="user_message")
+            state.last_user_signal = message.strip()[:240]
+            if slot not in state.last_extracted_slots:
+                state.last_extracted_slots.append(slot)
+            state.intermediate_summary_shown = False
             return self._advance(state, ctx)
 
         if message.strip().lower().rstrip("!. ") in SKIP_WORDS:
             state.skip(slot)
+            state.intermediate_summary_shown = False
             return self._advance(state, ctx)
 
         # not filled: count attempts, allow one re-ask then skip optional
         state.ask_counts[slot] = state.ask_counts.get(slot, 0) + 1
         if state.ask_counts[slot] >= 2 or slot in OPTIONAL_SLOTS:
             state.skip(slot)
+            state.intermediate_summary_shown = False
             return self._advance(state, ctx)
         q = planner.next_question(state, ctx)
+        state.last_asked_slot = q["slot"]
         return self._build_response(state, "question", q["question"], self._chips(q["chips"]))
 
     # ------------------------------------------------------------- helpers
@@ -515,6 +596,9 @@ class AgentOrchestrator:
         for key, value_conf in opp.items():
             value, confidence = value_conf
             state.set(key, value, confidence=confidence, source="user_message")
+        state.last_user_signal = message.strip()[:240]
+        state.last_extracted_slots = list(opp)
+        return opp
 
     def _prepare_summary(self, state: DialogueState, ctx):
         duplicate_check = composer.check_duplicates(state)
@@ -565,6 +649,26 @@ class AgentOrchestrator:
         tokens = low.split()
         return bool(tokens) and all(t.strip(",.! ") in filler for t in tokens)
 
+    @staticmethod
+    def _is_plausible_slot_answer(state: DialogueState, message: str, ctx) -> bool:
+        """Allow a direct answer to the current slot without disabling OOD checks."""
+        slot = state.last_asked_slot
+        low = message.lower().strip()
+        if not slot or slot.startswith("__") or low.endswith("?"):
+            return False
+        obvious_off_topic = (
+            "анекдот", "погод", "рецепт", "фильм", "музык", "столиц",
+            "курс доллар", "новост", "гороскоп", "стих", "расскажи",
+        )
+        if any(marker in low for marker in obvious_off_topic):
+            return False
+        value, confidence = extractor.targeted(state, slot, message, ctx)
+        if not value:
+            return False
+        if slot in {"role", "department", "process", "product", "module", "priority"}:
+            return confidence >= 0.6
+        return len(low.split()) >= 3
+
     def _advance(self, state: DialogueState, ctx) -> AgentResponse:
         """Recompute phase after a slot was filled; keep asking until we hit a
         non-question phase or need user confirmation."""
@@ -577,8 +681,10 @@ class AgentOrchestrator:
         state.fatigue_level = fatigue.level
         
         # Phase 4: If user is frustrated, offer to create draft with gaps
-        if fatigue_detector.should_offer_draft_with_gaps(state):
+        if not state.fatigue_offer_shown and fatigue_detector.should_offer_draft_with_gaps(state):
             if state.all_mandatory_hard_filled():
+                state.fatigue_offer_shown = True
+                state.fatigue_offer_pending = True
                 summary = generate_intermediate_summary(state)
                 progress = generate_progress_indicator(state)
                 offer_msg = (
@@ -592,19 +698,25 @@ class AgentOrchestrator:
         # Phase 3: Select/update dialogue mode
         mode_decision = mode_selector.select_mode(state, ctx)
         if state.dialogue_mode != mode_decision.mode:
+            old_mode = state.dialogue_mode
             state.set_mode(mode_decision.mode)
             log_event("mode_change", {
                 "session_id": state.session_id,
-                "old_mode": state.dialogue_mode,
+                "old_mode": old_mode,
                 "new_mode": mode_decision.mode,
                 "reason": mode_decision.reason,
             })
         
         # Phase 3: Check if we should show intermediate summary
         # Phase 4: Also show if user is tired
-        show_summary = should_show_intermediate_summary(state, state.question_count) or fatigue_detector.should_show_summary(state)
+        show_summary = (not state.intermediate_summary_shown) and (
+            should_show_intermediate_summary(state, state.question_count)
+            or fatigue_detector.should_show_summary(state)
+        )
         if show_summary:
             state.question_count = 0  # Reset counter
+            state.intermediate_summary_shown = True
+            state.intermediate_summary_pending = True
             summary = generate_intermediate_summary(state)
             progress = generate_progress_indicator(state)
             full_message = f"{summary}\n\n{progress}"
@@ -623,10 +735,10 @@ class AgentOrchestrator:
         if phase in PHASE_ORDER:
             slot = next_slot(state)
             if slot:
-                state.last_asked_slot = slot
                 state.question_count += 1  # Phase 3: Track question count
                 state.record_question_asked()  # Phase 4: Track for fatigue detection
                 q = planner.next_question(state, ctx, force_slot=slot)
+                state.last_asked_slot = q["slot"]
                 return self._build_response(state, "question", q["question"], self._chips(q["chips"]))
         if phase == PHASE_SUMMARIZE:
             if not state.summary_text and not state.needs_edit:
@@ -647,15 +759,24 @@ class AgentOrchestrator:
         # nothing more to ask: fall back to a question for the next missing slot
         slot = next_slot(state)
         if slot:
-            state.last_asked_slot = slot
             q = planner.next_question(state, ctx, force_slot=slot)
+            state.last_asked_slot = q["slot"]
             return self._build_response(state, "question", q["question"], self._chips(q["chips"]))
         return self._build_response(state, "ended", "Спасибо за обращение!")
 
-    def confirm_and_send(self, session_id: str, task_id: int, title: str) -> AgentResponse:
+    def confirm_and_send(self, session_id: str, task_id: int, title: str,
+                         user_id: int | None = None) -> AgentResponse:
         state = self.store.get(session_id)
         if state is None:
             return AgentResponse(session_id=session_id, action="error", message="Сессия не найдена.")
+        if user_id is not None and state.user_id != user_id:
+            return AgentResponse(session_id=session_id, action="error", message="Нет доступа к этой сессии.")
+        if not state.draft or not state.confirmed:
+            return AgentResponse(session_id=session_id, action="error", message="Сначала сформируйте и подтвердите черновик.")
+        if task_id <= 0:
+            return AgentResponse(session_id=session_id, action="error", message="Некорректный идентификатор задачи.")
+        if state.review_status == "needs_review":
+            return self._build_response(state, "sent", gen_sent(state.review_task_id or task_id, title))
         state.review_status = "needs_review"
         state.review_task_id = task_id
         self.store.save(state)

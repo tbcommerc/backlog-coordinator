@@ -4,11 +4,14 @@
  */
 console.log('[DMB] app.js v20260727 notif-v2 loaded');
 
-import { Router } from './router.js?v=47';
+import { Router } from './router.js?v=51';
 import { Store } from './store.js';
 import { API } from './api.js';
 import { Auth } from './auth.js';
 import { renderSidebar, initSidebar } from './components/sidebar.js?v=49';
+import { safeExternalUrl } from './urlUtils.js';
+import { confirmAction, formatErrorMessage, showFieldError, showToast } from './uiFeedback.js';
+import { initModalAccessibility } from './modalAccessibility.js';
 
 const AVATAR_COLORS = [
   '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e',
@@ -67,6 +70,51 @@ export async function checkNotifications() {
   }
 }
 
+let notificationPollTimer = null;
+let lastLiveNotificationId = 0;
+
+function openNotificationTarget(app, notification) {
+  if (notification.task_id) {
+    document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: notification.task_id } }));
+    return;
+  }
+  const target = String(notification.action_url || '').replace(/^#/, '');
+  app.router.navigate(target || '/notifications');
+}
+
+async function pollLiveNotifications(app, { announce = true } = {}) {
+  if (document.hidden) return;
+  try {
+    const data = await app.api.get('/notifications?unread_only=true&per_page=10');
+    const items = data.items || [];
+    const newestId = items.reduce((max, item) => Math.max(max, item.id), 0);
+    if (!lastLiveNotificationId) {
+      lastLiveNotificationId = newestId;
+    } else if (announce) {
+      items
+        .filter(item => item.id > lastLiveNotificationId && ['critical', 'high'].includes(item.importance))
+        .sort((a, b) => a.id - b.id)
+        .slice(-3)
+        .forEach(item => showToast(item.title, item.importance === 'critical' ? 'error' : 'warning', {
+          actionLabel: 'Открыть',
+          duration: item.importance === 'critical' ? 12000 : 8000,
+          onAction: () => openNotificationTarget(app, item),
+        }));
+      lastLiveNotificationId = Math.max(lastLiveNotificationId, newestId);
+    }
+    await checkNotifications();
+    if (!document.getElementById('notif-dropdown')?.classList.contains('hidden')) {
+      await loadNotifDropdown(app);
+    }
+  } catch {}
+}
+
+function startNotificationPolling(app) {
+  if (notificationPollTimer) window.clearInterval(notificationPollTimer);
+  pollLiveNotifications(app, { announce: false });
+  notificationPollTimer = window.setInterval(() => pollLiveNotifications(app), 60000);
+}
+
 async function loadNotifDropdown(app) {
   try {
     const data = await app.api.get('/notifications?per_page=5');
@@ -82,12 +130,12 @@ async function loadNotifDropdown(app) {
       const time = formatShortTime(n.created_at);
       const unread = !n.is_read ? 'font-weight:600;' : '';
       return `
-        <div class="notif-dropdown-item" data-task-id="${n.task_id || ''}" style="display:flex;align-items:start;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border-color);${unread}">
+        <div class="notif-dropdown-item" data-notif-id="${n.id}" data-task-id="${n.task_id || ''}" data-action-url="${encodeURIComponent(n.action_url || '')}" style="display:flex;align-items:start;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border-color);${unread}">
           <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${color}18;color:${color};">
             <i data-lucide="${icon}" style="width:14px;height:14px;"></i>
           </div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${n.title}</div>
+            <div style="font-size:13px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(n.title)}</div>
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${time}</div>
           </div>
         </div>`;
@@ -147,18 +195,24 @@ function parseLinkList(links) {
 function renderLinkJiraList(links) {
   const arr = parseLinkList(links);
   if (!arr.length) return '—';
-  return arr.map(url => `<a href="${escapeHtml(url)}" target="_blank" style="color:var(--accent)">Jira</a>`).join(', ');
+  return arr.map(url => {
+    const safeUrl = safeExternalUrl(url);
+    return safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Jira</a>` : 'Некорректная ссылка';
+  }).join(', ');
 }
 
 function renderLinkJiraTags(links) {
   const arr = parseLinkList(links);
   if (!arr.length) return '';
-  return arr.map(url => `<a class="b-tag" href="${escapeHtml(url)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>`).join('');
+  return arr.map(url => {
+    const safeUrl = safeExternalUrl(url);
+    return safeUrl ? `<a class="b-tag" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>` : '';
+  }).join('');
 }
 
 function renderInvolvedTeams(teams) {
   if (!teams || !teams.length) return '—';
-  return Array.isArray(teams) ? teams.join(', ') : teams;
+  return escapeHtml(Array.isArray(teams) ? teams.join(', ') : teams);
 }
 
 function fieldLabel(field) {
@@ -172,7 +226,7 @@ function fieldLabel(field) {
     business_customer: 'Заказчик',
     description: 'Описание',
   };
-  return labels[field] || fallback[field] || field;
+  return escapeHtml(labels[field] || fallback[field] || field);
 }
 
 function scoreTask(task, query) {
@@ -238,7 +292,7 @@ async function handleSearch(query, app) {
             <span class="search-result-title">${titleHtml}</span>
           </div>
           <div class="search-result-meta">
-            <span class="search-result-status">${task.status || ''}</span>
+            <span class="search-result-status">${escapeHtml(task.status || '')}</span>
             <span class="search-result-extra">${extraHtml}</span>
           </div>
         </div>`;
@@ -272,12 +326,13 @@ async function handleLogout() {
   const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
   if (!ok) return;
   clearQuickEditState();
-  localStorage.removeItem('dmb_tokens');
-  localStorage.removeItem('dmb_user');
   const app = window.app;
   if (app) {
+    await app.auth.logout();
     app.renderLoginPage();
   } else {
+    localStorage.removeItem('dmb_tokens');
+    localStorage.removeItem('dmb_user');
     window.location.reload();
   }
 }
@@ -352,6 +407,7 @@ export function renderAppShell(content) {
 export async function initApp(app) {
   app.refreshNotifications = checkNotifications;
   checkNotifications();
+  startNotificationPolling(app);
   initSidebar();
 
   // Bell dropdown
@@ -369,11 +425,21 @@ export async function initApp(app) {
         bellDropdown.classList.add('hidden');
       }
     });
-    bellDropdown.addEventListener('click', (e) => {
-      const item = e.target.closest('.notif-dropdown-item[data-task-id]');
-      if (item && item.dataset.taskId) {
-        document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: parseInt(item.dataset.taskId) } }));
+    bellDropdown.addEventListener('click', async (e) => {
+      const item = e.target.closest('.notif-dropdown-item');
+      if (item) {
+        const notificationId = parseInt(item.dataset.notifId, 10);
+        if (notificationId) {
+          try { await app.api.put('/notifications/read', { ids: [notificationId] }); } catch {}
+        }
+        if (item.dataset.taskId) {
+          document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: parseInt(item.dataset.taskId) } }));
+        } else {
+          const target = decodeURIComponent(item.dataset.actionUrl || '').replace(/^#/, '');
+          app.router.navigate(target || '/notifications');
+        }
         bellDropdown.classList.add('hidden');
+        checkNotifications();
       }
     });
   }
@@ -467,7 +533,7 @@ export async function initApp(app) {
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) checkNotifications();
+    if (!document.hidden) pollLiveNotifications(app);
   });
 
   /* Mobile sidebar toggle */
@@ -488,6 +554,13 @@ export async function initApp(app) {
 
   hamburger?.addEventListener('click', () => toggleMobileSidebar());
   backdrop?.addEventListener('click', () => toggleMobileSidebar(false));
+
+  /* An opened mobile drawer must never leak into compact/desktop layouts. */
+  const mobileLayout = window.matchMedia('(max-width: 640px)');
+  const resetSidebarAfterBreakpoint = (event) => {
+    if (!event.matches) toggleMobileSidebar(false);
+  };
+  mobileLayout.addEventListener?.('change', resetSidebarAfterBreakpoint);
 
   /* Close sidebar on route change on mobile */
   const origNavigate = app.router.navigate;
@@ -512,7 +585,7 @@ class App {
   async init() {
     this.applyTheme();
 
-    const isAuthenticated = this.auth.isAuthenticated();
+    const isAuthenticated = this.auth.isAuthenticated() || await this.auth.restoreSession();
 
     if (isAuthenticated) {
       await this.loadUser();
@@ -546,7 +619,7 @@ class App {
       const user = await this.api.get('/auth/me');
       this.store.set('currentUser', user);
     } catch (e) {
-      this.auth.logout();
+      await this.auth.logout();
       this.renderLoginPage();
     }
   }
@@ -687,11 +760,6 @@ class App {
       try {
         const response = await this.auth.login(email, password);
         this.store.set('currentUser', response.user);
-        this.store.set('tokens', {
-          access: response.access_token,
-          refresh: response.refresh_token
-        });
-
         this.renderAppLayout();
         this.router.init();
         this.router.navigate('/dashboard');
@@ -703,23 +771,12 @@ class App {
   }
 }
 
-window.toast = function (msg, type = 'success') {
-  const container = document.getElementById('toast-container');
-  if (!container) return;
-  const toast = document.createElement('div');
-  const icons = { success: '✓', error: '✕', info: 'ℹ', warning: '⚠' };
-  toast.className = 'toast toast-' + type;
-  toast.innerHTML = `<span class="toast-icon">${icons[type] || '✓'}</span><span class="toast-message">${escapeHtml(msg)}</span><button class="toast-close" aria-label="Закрыть">&times;</button>`;
-  container.appendChild(toast);
-  const timeout = type === 'error' ? 5000 : 3000;
-  const timer = setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, timeout);
-  toast.querySelector('.toast-close').addEventListener('click', () => {
-    clearTimeout(timer);
-    toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 300);
-  });
-};
+window.toast = showToast;
+window.confirmAction = confirmAction;
+window.showFieldError = showFieldError;
+window.formatErrorMessage = formatErrorMessage;
 
 document.addEventListener('DOMContentLoaded', () => {
+  initModalAccessibility();
   window.app = new App();
 });

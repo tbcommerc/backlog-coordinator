@@ -120,7 +120,14 @@ def test_greeting(orch):
     assert r.action == "welcome"
 
 
-def test_confirm_and_send(orch):
+def test_welcome_response_is_persisted(orch):
+    response = orch.new_session(5)
+    state = orch.store.get(response.session_id)
+    assert state.history[-1]["content"] == response.message
+    assert state.total_agent_messages == 1
+
+
+def test_confirm_and_send_rejects_unconfirmed_draft(orch):
     sid = orch.new_session(6).session_id
     orch.handle_message(
         sid,
@@ -129,7 +136,82 @@ def test_confirm_and_send(orch):
     orch.handle_message(sid, "да")
     orch.handle_message(sid, "да, всё верно")
     resp = orch.confirm_and_send(sid, task_id=111, title="Тест")
+    assert resp.action == "error"
+
+
+def test_confirm_and_send_validated_draft(orch):
+    sid = orch.new_session(6).session_id
+    state = _drive_to_draft(orch, sid)
+    assert state.draft is not None and state.confirmed
+    resp = orch.confirm_and_send(sid, task_id=111, title="Тест", user_id=6)
     assert resp.action == "sent"
     state = orch.store.get(sid)
     assert state.review_status == "needs_review"
     assert state.review_task_id == 111
+
+
+def test_confirm_and_send_checks_owner(orch):
+    sid = orch.new_session(6).session_id
+    state = _drive_to_draft(orch, sid)
+    assert state.draft is not None and state.confirmed
+    resp = orch.confirm_and_send(sid, task_id=111, title="Тест", user_id=999)
+    assert resp.action == "error"
+    assert orch.store.get(sid).review_status != "needs_review"
+
+
+def test_midflow_off_topic_does_not_fill_current_slot(orch):
+    sid = orch.new_session(8).session_id
+    resp = orch.handle_message(sid, "Нужна доработка расчётов по облигациям")
+    if resp.action == "reflect":
+        resp = orch.handle_message(sid, "да")
+    state_before = orch.store.get(sid)
+    slot = state_before.last_asked_slot
+    resp = orch.handle_message(sid, "Расскажи анекдот")
+    state_after = orch.store.get(sid)
+    assert resp.action == "out_of_domain"
+    assert slot is None or not state_after.slots[slot].handled
+
+
+def test_user_profile_is_isolated_per_session(orch):
+    expert_sid = orch.new_session(9).session_id
+    novice_sid = orch.new_session(10).session_id
+    orch.handle_message(expert_sid, "API JSON endpoint settlement integration architecture")
+    orch.handle_message(novice_sid, "Не знаю, помогите и объясните")
+    expert = orch.store.get(expert_sid)
+    novice = orch.store.get(novice_sid)
+    assert expert.profile_tech_term_count > 0
+    assert novice.profile_tech_term_count == 0
+
+
+def test_rich_message_drives_contextual_follow_up(orch):
+    sid = orch.new_session(11).session_id
+    response = orch.handle_message(
+        sid,
+        "Сейчас бэк-офицеры вручную сверяют расчёты по облигациям. "
+        "Хотим автоматическое уведомление о расхождениях.",
+    )
+    assert response.action == "reflect"
+    response = orch.handle_message(sid, "да")
+    state = orch.store.get(sid)
+    assert state.get("as_is")
+    assert state.get("to_be")
+    assert state.last_asked_slot == "acceptance_criteria"
+    assert "Целевой результат понятен" in response.message
+
+
+def test_unsolicited_detail_is_not_forced_into_asked_slot(orch):
+    sid = orch.new_session(12).session_id
+    response = orch.handle_message(sid, "Нужна доработка расчётов по облигациям")
+    if response.action == "reflect":
+        response = orch.handle_message(sid, "да")
+    state = orch.store.get(sid)
+    assert state.last_asked_slot == "role"
+
+    response = orch.handle_message(
+        sid,
+        "Ещё важно: данные поступают из внешней расчётной системы через API.",
+    )
+    state = orch.store.get(sid)
+    assert not state.slots["role"].handled
+    assert state.get("data_integrations")
+    assert "Связь с данными" in response.message

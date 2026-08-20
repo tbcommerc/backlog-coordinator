@@ -545,7 +545,7 @@ function renderTeamDashboard(app) {
 
     return `
     <div class="page-header animate-fade-in">
-        <h1>${greetingByTime()}, ${user?.name?.split(' ')[0] || 'Гость'}</h1>
+        <h1>${greetingByTime()}, ${escapeHtml(user?.name?.split(' ')[0] || 'Гость')}</h1>
         <p>${roleLabel(user)}</p>
     </div>
 
@@ -593,7 +593,7 @@ function renderAttentionList(tasks, user) {
             </div>
             <div class="dash-attention-body">
                 <div class="dash-attention-title">#${t.id} ${escapeHtml(t.title)}</div>
-                <div class="dash-attention-meta">${renderStatus(getStatus(t))}${getDeadline(t) ? ' · ' + getDeadline(t) : ''}</div>
+                <div class="dash-attention-meta">${renderStatus(getStatus(t))}${getDeadline(t) ? ' · ' + escapeHtml(getDeadline(t)) : ''}</div>
             </div>
         </div>`;
     }).join('');
@@ -626,13 +626,13 @@ function renderStatusBar(tasks) {
             ${sorted.map(([status, count]) => {
                 const pct = Math.round((count / total) * 100);
                 const color = STATUS_COLORS[status] || '#64748b';
-                return `<div class="dash-stacked-seg" style="width:${pct}%;background:${color};" title="${status}: ${count}"></div>`;
+                return `<div class="dash-stacked-seg" style="width:${pct}%;background:${color};" title="${escapeHtml(status)}: ${count}"></div>`;
             }).join('')}
         </div>
         <div class="dash-stacked-legend">
             ${sorted.map(([status, count]) => {
                 const color = STATUS_COLORS[status] || '#64748b';
-                return `<div class="dash-legend-item"><span class="dash-legend-dot" style="background:${color};"></span>${status} <span class="dash-legend-count">${count}</span></div>`;
+                return `<div class="dash-legend-item"><span class="dash-legend-dot" style="background:${color};"></span>${escapeHtml(status)} <span class="dash-legend-count">${count}</span></div>`;
             }).join('')}
         </div>`;
 }
@@ -644,8 +644,8 @@ function renderTribeDashboard(app) {
 
     return `
     <div class="page-header animate-fade-in">
-        <h1>${greetingByTime()}, ${user?.name?.split(' ')[0] || 'Гость'}</h1>
-        <p>${roleLabel(user)}</p>
+        <h1>${greetingByTime()}, ${escapeHtml(user?.name?.split(' ')[0] || 'Гость')}</h1>
+        <p>${escapeHtml(roleLabel(user))}</p>
     </div>
 
     <div id="timeline-container">${renderTimeline()}</div>
@@ -759,7 +759,7 @@ function renderCvTop(tasks) {
                     <div class="dash-cv-item" data-task-id="${t.id}" style="cursor:pointer;">
                         <div class="dash-cv-body">
                             <div class="dash-cv-title">#${t.id} ${escapeHtml(t.title).substring(0, 35)}${t.title?.length > 35 ? '…' : ''}</div>
-                            <div class="dash-cv-meta">${t.team_name || ''}</div>
+                            <div class="dash-cv-meta">${escapeHtml(t.team_name || '')}</div>
                         </div>
                         <div class="dash-cv-value dash-cv-high">${t.cv.toFixed(1)}x</div>
                     </div>
@@ -773,7 +773,7 @@ function renderCvTop(tasks) {
                     <div class="dash-cv-item" data-task-id="${t.id}" style="cursor:pointer;">
                         <div class="dash-cv-body">
                             <div class="dash-cv-title">#${t.id} ${escapeHtml(t.title).substring(0, 35)}${t.title?.length > 35 ? '…' : ''}</div>
-                            <div class="dash-cv-meta">${t.team_name || ''}</div>
+                            <div class="dash-cv-meta">${escapeHtml(t.team_name || '')}</div>
                         </div>
                         <div class="dash-cv-value dash-cv-low">${t.cv.toFixed(2)}x</div>
                     </div>
@@ -810,7 +810,7 @@ function renderTeamProgress(byTeam) {
         const barColor = pct >= 70 ? 'var(--success)' : pct >= 40 ? 'var(--warning)' : 'var(--danger)';
         return `
         <div class="dash-team-row">
-            <div class="dash-team-name">${t.name}</div>
+            <div class="dash-team-name">${escapeHtml(t.name)}</div>
             <div class="dash-team-bar-wrap">
                 <div class="dash-team-bar">
                     <div class="dash-team-bar-fill" style="width:${pct}%;background:${barColor};"></div>
@@ -887,7 +887,7 @@ function renderRisks(tasks, teamId) {
                 <div class="risk-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
                 <div class="risk-body">
                     <div class="risk-title">${escapeHtml(t.title || 'Без названия')}</div>
-                    <div class="risk-meta">${renderStatus(getStatus(t))}${getDeadline(t) ? ' · ' + getDeadline(t) : ''}</div>
+                    <div class="risk-meta">${renderStatus(getStatus(t))}${getDeadline(t) ? ' · ' + escapeHtml(getDeadline(t)) : ''}</div>
                 </div>
             </div>
         `).join('')}

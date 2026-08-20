@@ -1,31 +1,45 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc, func, String, cast, case
 from typing import Optional, List
-from datetime import date, datetime, timezone, timedelta
+from datetime import date, datetime, timezone
 import json
-import os
+import logging
 import re
-import uuid
-import shutil
+
+
+logger = logging.getLogger("dmb_backlog.tasks")
 
 from database import get_db
-from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, TaskComment, TaskAttachment, Notification, TaskViewer, TeamCompetencyResource, DictionaryItem, CompetencyCostHistory, FieldLabel, Tag, IssueTag
+from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, CompetencyCostHistory, FieldLabel, Tag, IssueTag
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
-    BulkActionRequest, SuccessResponse, TaskHistoryResponse,
-    CommentCreate, CommentResponse, CommentListResponse,
-    AttachmentResponse, AttachmentListResponse, TaskLinkUpdate,
-    TaskLockResponse, TaskViewerResponse, TaskViewersListResponse
+    BulkActionRequest, SuccessResponse, TaskHistoryResponse, TaskLinkUpdate,
+    PipDecisionRequest,
 )
-from auth import get_current_user, check_permission
-from notifications import (
-    notify_status_change, notify_assignment, notify_mention, notify_comment,
-    notify_lock_acquired,
+from auth import (
+    get_current_user,
+    check_permission,
+    require_bulk_task_edit_access,
+    require_backlog_page_access,
+    authorize_task,
 )
+from notifications import notify_status_change, notify_assignment
+from routers.task_collaboration_router import is_task_lock_active
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_backlog_page_access)])
+
+PIP_DECISION_ROLES = {
+    "лидер трайба",
+    "проектный офис (админ)",
+    # Совместимость с текущей seed-ролью.
+    "администратор",
+}
+PIP_DECISION_STATUS = "Принятие решения"
+PIP_TARGET_STATUSES = {
+    "reject": "Отклонена",
+    "accept": "Принята в работу",
+}
 
 SORT_FIELD_MAP = {
     "priority": "priority_id",
@@ -190,7 +204,7 @@ def _apply_tags(db: Session, task: Task, tag_names: Optional[List[str]], user_id
             db.add(tag)
             db.flush()
         db.add(IssueTag(issue_id=task.id, tag_id=tag.id))
-    db.commit()
+    db.flush()
 
 
 def _year_from_deadline(db: Session, deadline_id: Optional[int]) -> Optional[int]:
@@ -282,7 +296,7 @@ def recalculate_effort_rub_for_all(db: Session) -> int:
                 task.cv = None
             changed += 1
     if changed:
-        db.commit()
+        db.flush()
     return changed
 
 
@@ -323,7 +337,7 @@ def recalculate_actual_effort_days_for_all(db: Session) -> int:
 
 
 @router.get("/", response_model=TaskListResponse)
-async def get_tasks(
+def get_tasks(
     team_id: Optional[int] = None,
     status: Optional[str] = None,
     priority: Optional[str] = None,
@@ -377,7 +391,7 @@ async def get_tasks(
 
 
 @router.get("/search", response_model=List[TaskResponse])
-async def search_tasks(
+def search_tasks(
     q: str = Query("", min_length=1, max_length=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -400,7 +414,7 @@ async def search_tasks(
 
 
 @router.get("/stats")
-async def get_task_stats(
+def get_task_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -483,7 +497,7 @@ async def get_task_stats(
 
 
 @router.get("/reference")
-async def get_task_reference(
+def get_task_reference(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -516,7 +530,7 @@ async def get_task_reference(
 
 
 @router.get("/report/{kind}")
-async def get_report(
+def get_report(
     kind: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -600,645 +614,50 @@ async def get_report(
         return {"kind": kind, "groups": groups, "total": total}
 
 
-@router.get("/analytics")
-async def get_analytics(
-    type: str = Query("tribe"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Return analytics aggregation data by type (tribe or po-pl)"""
-    if type not in ("tribe", "po-pl"):
-        raise HTTPException(status_code=400, detail="Invalid analytics type")
 
-    terminal = ("ВЫПОЛНЕНА", "ОТКЛОНЕНА", "НЕ АКТУАЛЬНА")
-    tasks = db.query(Task).filter(Task.is_deleted == False).all()
-    teams = {t.id: t.name for t in db.query(Team).all()}
 
-    if type == "tribe":
-        high_cv = []
-        low_cv = []
-        for t in tasks:
-            if t.financial_effect is not None and t.effort_rub is not None and t.effort_rub > 0:
-                cv = round(t.financial_effect / t.effort_rub, 2)
-                entry = {"id": t.id, "title": t.title, "team": teams.get(t.team_id, ""), "cv": cv, "financial_effect": t.financial_effect}
-                if cv >= 1.0:
-                    high_cv.append(entry)
-                else:
-                    low_cv.append(entry)
 
-        high_cv.sort(key=lambda x: x["cv"], reverse=True)
-        low_cv.sort(key=lambda x: x["cv"])
 
-        at_risk_deadlines = ("1Q 2026", "2Q 2026")
-        risk_condition = (TaskStatus.name.in_(("СБОР ТРЕБОВАНИЙ", "ЭКСПРЕСС-ОЦЕНКА"))) & (Deadline.name.in_(at_risk_deadlines))
-        risk_rows = db.query(
-            Team.name,
-            func.count(Task.id),
-            func.sum(case((risk_condition, 1), else_=0))
-        ).join(Task, Task.team_id == Team.id).join(
-            TaskStatus, Task.status_id == TaskStatus.id
-        ).join(
-            Deadline, Task.deadline_id == Deadline.id, isouter=True
-        ).filter(
-            Task.is_deleted == False
-        ).group_by(Team.name).all()
-        risk_by_team = {r[0]: {"total": r[1], "risk": r[2]} for r in risk_rows}
 
-        status_rows = db.query(TaskStatus.name, func.count(Task.id)).join(
-            TaskStatus, Task.status_id == TaskStatus.id
-        ).filter(
-            Task.is_deleted == False
-        ).group_by(TaskStatus.name).all()
-        health_by_status = {r[0]: r[1] for r in status_rows}
 
-        fin_rows = db.query(
-            Team.name,
-            func.coalesce(func.sum(Task.financial_effect), 0.0)
-        ).join(Task, Task.team_id == Team.id).filter(
-            Task.is_deleted == False
-        ).group_by(Team.name).all()
-        team_fin_effect = {r[0]: float(r[1]) for r in fin_rows}
 
-        return {
-            "high_cv_tasks": high_cv[:10],
-            "low_cv_tasks": low_cv[:10],
-            "risk_by_team": risk_by_team,
-            "portfolio_health": health_by_status,
-            "team_financial_effect": team_fin_effect
-        }
 
-    else:
-        workload_rows = db.query(
-            Team.name,
-            func.count(Task.id),
-            func.sum(case((TaskStatus.name.notin_(terminal), 1), else_=0)),
-            func.coalesce(func.avg(Task.progress), 0.0)
-        ).join(Task, Task.team_id == Team.id).join(
-            TaskStatus, Task.status_id == TaskStatus.id
-        ).filter(
-            Task.is_deleted == False
-        ).group_by(Team.name).all()
-        workload_by_team = {
-            r[0]: {"total": r[1], "active": r[2], "avg_progress": round(float(r[3]), 1)}
-            for r in workload_rows
-        }
 
-        total_tasks = db.query(Task).filter(Task.is_deleted == False).count()
-        on_track = db.query(Task).join(
-            TaskStatus, Task.status_id == TaskStatus.id
-        ).filter(
-            Task.is_deleted == False,
-            Task.deadline_id != None,
-            TaskStatus.name.in_(terminal)
-        ).count()
-        overdue = db.query(Task).join(
-            TaskStatus, Task.status_id == TaskStatus.id
-        ).filter(
-            Task.is_deleted == False,
-            Task.deadline_id != None,
-            TaskStatus.name.notin_(terminal)
-        ).count()
-        no_deadline = db.query(Task).filter(
-            Task.is_deleted == False, Task.deadline_id == None
-        ).count()
-        deadline_pct = round(on_track / total_tasks * 100, 1) if total_tasks else 0
 
-        missing_attrs = {
-            "no_effort_days": db.query(Task).filter(Task.is_deleted == False, Task.effort_days == None).count(),
-            "no_effort_rub": db.query(Task).filter(Task.is_deleted == False, Task.effort_rub == None).count(),
-            "no_financial_effect": db.query(Task).filter(Task.is_deleted == False, Task.financial_effect == None).count(),
-            "no_owner": db.query(Task).filter(Task.is_deleted == False, Task.owner_id == None).count(),
-            "no_deadline": db.query(Task).filter(Task.is_deleted == False, Task.deadline_id == None).count(),
-        }
 
-        return {
-            "workload_by_team": workload_by_team,
-            "deadline_compliance": {"on_track": on_track, "overdue": overdue, "no_deadline": no_deadline, "compliance_pct": deadline_pct},
-            "missing_attributes": missing_attrs
-        }
 
 
-@router.get("/analytics/effort-by-type")
-async def get_effort_by_type(
-    period: str = Query("quarter", pattern="^(quarter|ytd)$"),
-    team_id: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Соотношение трудозатрат (экспресс-оценка, effort_days) по типам задач.
-    Период определяется по плановому дедлайну:
-      - quarter — текущий квартал;
-      - ytd — накопленный итог с начала года (все кварталы + годовой дедлайн)."""
-    today = date.today()
-    current_year = today.year
-    current_quarter = (today.month - 1) // 3 + 1
 
-    if period == "quarter":
-        deadline_names = [f"{current_quarter}Q {current_year}"]
-        period_label = f"{current_quarter}Q {current_year}"
-    else:
-        deadline_names = [f"{q}Q {current_year}" for q in range(1, 5)]
-        deadline_names.append(f"Y{current_year}")
-        period_label = str(current_year)
 
-    deadline_ids = db.query(Deadline.id).filter(Deadline.name.in_(deadline_names)).all()
-    deadline_ids = [d[0] for d in deadline_ids]
 
-    query = db.query(Task).filter(
-        Task.is_deleted == False,
-        Task.deadline_id.in_(deadline_ids),
-    )
 
-    scope = "tribe"
-    if not check_permission(current_user, "backlog_dmb", "read"):
-        user_team_id = current_user.team_id
-        if user_team_id:
-            query = query.filter(Task.team_id == user_team_id)
-            scope = "team"
-        else:
-            query = query.filter(False)
 
-    if team_id is not None:
-        query = query.filter(Task.team_id == team_id)
-        scope = "team"
 
-    tasks = query.all()
 
-    by_type = {}
-    for t in tasks:
-        type_name = t.task_type.name if t.task_type else "Без типа"
-        agg = by_type.setdefault(type_name, {"tasks": 0, "effort_days": 0.0})
-        agg["tasks"] += 1
-        agg["effort_days"] += t.effort_days or 0
 
-    total_effort = sum(v["effort_days"] for v in by_type.values())
 
-    result = []
-    for name, agg in sorted(by_type.items(), key=lambda x: x[1]["effort_days"], reverse=True):
-        share = round(agg["effort_days"] / total_effort * 100, 1) if total_effort else 0
-        result.append({
-            "task_type": name,
-            "tasks": agg["tasks"],
-            "effort_days": round(agg["effort_days"], 1),
-            "share": share,
-        })
 
-    return {
-        "period": period,
-        "period_label": period_label,
-        "scope": scope,
-        "team_id": team_id,
-        "total_tasks": len(tasks),
-        "total_effort_days": round(total_effort, 1),
-        "by_type": result,
-    }
 
 
-@router.get("/analytics/tribe-dashboard")
-async def get_tribe_dashboard(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Сводные агрегации для дашборда Лидера Трайба:
-    Загрузка команд vs ёмкость, матрица приоритет×срок,
-    ROI по командам."""
-    terminal = ("ВЫПОЛНЕНА", "ОТКЛОНЕНА", "НЕ АКТУАЛЬНА")
 
-    tasks = db.query(Task).filter(Task.is_deleted == False).all()
-    teams = {t.id: t.name for t in db.query(Team).all()}
-    deadline_order = {d.id: d.name for d in db.query(Deadline).all()}
 
-    # --- Загрузка команд vs ёмкость ---
-    cap_rows = db.query(TeamCompetencyResource).all()
-    capacity = {}
-    for r in cap_rows:
-        people = (r.senior_count or 0) + (r.middle_count or 0) + (r.junior_count or 0)
-        a = capacity.setdefault(r.team_id, {"capacity": 0.0, "headcount": 0})
-        a["capacity"] += people * (r.working_days or 66)
-        a["headcount"] += people
 
-    capacity_by_team = []
-    for tid, name in teams.items():
-        load = sum(
-            t.effort_days or 0 for t in tasks
-            if t.team_id == tid and t.status is not None and t.status.name not in terminal
-        )
-        cap = capacity.get(tid, {}).get("capacity", 0.0)
-        capacity_by_team.append({
-            "team": name,
-            "load": round(load, 1),
-            "capacity": round(cap, 1),
-            "headcount": capacity.get(tid, {}).get("headcount", 0),
-            "utilisation": round(load / cap * 100, 1) if cap else None,
-        })
-    capacity_by_team.sort(key=lambda x: x["team"])
-
-    # --- Матрица Приоритет × Срок (effort_days) ---
-    pd = {}
-    for t in tasks:
-        p = t.priority.name if t.priority else "БЕЗ ПРИОРИТЕТА"
-        dl = t.deadline.name if t.deadline else "БЕЗ СРОКА"
-        pd.setdefault(p, {}).setdefault(dl, 0.0)
-        pd[p][dl] += t.effort_days or 0
-    priority_deadline = [
-        {"priority": p, "values": [
-            {"deadline": dl, "effort_days": round(v, 1)}
-            for dl, v in cells.items()
-        ]}
-        for p, cells in pd.items()
-    ]
-
-    # --- ROI по командам ---
-    roi = {}
-    for t in tasks:
-        a = roi.setdefault(teams.get(t.team_id, "БЕЗ КОМАНДЫ"), {"financial_effect": 0.0, "effort_rub": 0.0})
-        a["financial_effect"] += t.financial_effect or 0
-        a["effort_rub"] += t.effort_rub or 0
-    roi_by_team = [
-        {
-            "team": k,
-            "financial_effect": round(v["financial_effect"], 1),
-            "effort_rub": round(v["effort_rub"], 1),
-            "roi": round(v["financial_effect"] / v["effort_rub"], 2) if v["effort_rub"] else None,
-        }
-        for k, v in sorted(roi.items())
-    ]
-
-    return {
-        "capacity_by_team": capacity_by_team,
-        "priority_deadline": priority_deadline,
-        "roi_by_team": roi_by_team,
-    }
-
-
-@router.get("/analytics/lt-reports")
-async def get_lt_reports(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Единый датасет для отчётов «Аналитики Лидера Трайба»:
-    1) Трудозатраты по типам задач; 2) Потоки работ (заказчики → команды → типы);
-    3) Карта взаимосвязей команд. Возвращает агрегации по всем периодам сразу.
-
-    Периоды определяются динамически по плановым дедлайнам задач:
-    - кварталы «NQ YYYY»;
-    - год «YYYY год» = сумма квартальных дедлайнов года + годовой дедлайн «YYYYY».
-    """
-    query = db.query(Task).filter(Task.is_deleted == False)
-
-    scope = "tribe"
-    if not check_permission(current_user, "backlog_dmb", "read"):
-        user_team_id = current_user.team_id
-        if user_team_id:
-            query = query.filter(Task.team_id == user_team_id)
-            scope = "team"
-        else:
-            query = query.filter(False)
-
-    tasks = query.all()
-    team_names = {t.id: t.name for t in db.query(Team).all()}
-
-    q_re = re.compile(r"^(\d)Q\s*(\d{4})$")
-    y_re = re.compile(r"^Y\s*(\d{4})$")
-    q_groups = {}
-    y_groups = {}
-    for t in tasks:
-        dl_name = t.deadline.name if t.deadline else None
-        if not dl_name:
-            continue
-        m = q_re.match(dl_name.strip())
-        if m:
-            q_groups.setdefault(int(m.group(2)), {}).setdefault(int(m.group(1)), []).append(t)
-            continue
-        m2 = y_re.match(dl_name.strip())
-        if m2:
-            y_groups.setdefault(int(m2.group(1)), []).append(t)
-
-    periods = []
-    period_map = {}
-    today = date.today()
-    current_year = today.year
-    if current_year in set(list(q_groups.keys()) + list(y_groups.keys())):
-        qs = q_groups.get(current_year, {})
-        for q in range(1, 5):
-            if q not in qs:
-                continue
-            pid = "q{}_{}".format(q, current_year)
-            period_map[pid] = {"label": "{}Q {}".format(q, current_year), "tasks": qs[q]}
-            periods.append(pid)
-        qts = [t for q in range(1, 5) for t in qs.get(q, [])]
-        yts = y_groups.get(current_year, [])
-        if qts or yts:
-            pid = "y{}".format(current_year)
-            period_map[pid] = {"label": "{} год".format(current_year), "tasks": qts + yts}
-            periods.append(pid)
-
-    today = date.today()
-    cur_q = (today.month - 1) // 3 + 1
-    cur_pid = "q{}_{}".format(cur_q, today.year)
-    active_period = cur_pid if cur_pid in period_map else (periods[0] if periods else None)
-
-    def effort_rows(ts):
-        rows = {}
-        for t in ts:
-            tn = t.task_type.name if t.task_type else "Без типа"
-            tm = t.team.name if t.team else "Без команды"
-            days = float(t.effort_days or 0)
-            r = rows.setdefault(tn, {"type": tn, "tasks": 0, "days": 0.0, "by_team": {}})
-            r["tasks"] += 1
-            r["days"] += days
-            bt = r["by_team"].setdefault(tm, {"tasks": 0, "days": 0.0})
-            bt["tasks"] += 1
-            bt["days"] += days
-        out = [
-            {
-                "type": r["type"],
-                "tasks": r["tasks"],
-                "days": round(r["days"], 1),
-                "by_team": {k: {"tasks": v["tasks"], "days": round(v["days"], 1)} for k, v in r["by_team"].items()},
-            }
-            for r in rows.values()
-        ]
-        out.sort(key=lambda x: (-x["days"], -x["tasks"]))
-        return out
-
-    def sankey_data(ts):
-        customers, teams, types = [], [], []
-        cset, tset, yset = {}, {}, {}
-        c2t, t2y = {}, {}
-        for t in ts:
-            c = t.business_customer_rel.name if t.business_customer_rel else "Без заказчика"
-            tm = t.team.name if t.team else "Без команды"
-            ty = t.task_type.name if t.task_type else "Без типа"
-            days = float(t.effort_days or 0)
-            if c not in cset:
-                cset[c] = 1
-                customers.append(c)
-            if tm not in tset:
-                tset[tm] = 1
-                teams.append(tm)
-            if ty not in yset:
-                yset[ty] = 1
-                types.append(ty)
-            a = c2t.setdefault((c, tm), {"tasks": 0, "days": 0.0})
-            a["tasks"] += 1
-            a["days"] += days
-            b = t2y.setdefault((tm, ty), {"tasks": 0, "days": 0.0})
-            b["tasks"] += 1
-            b["days"] += days
-        links = []
-        for (c, tm), v in c2t.items():
-            links.append({"source": c, "target": tm, "tasks": v["tasks"], "days": round(v["days"], 1)})
-        for (tm, ty), v in t2y.items():
-            links.append({"source": tm, "target": ty, "tasks": v["tasks"], "days": round(v["days"], 1)})
-        return {"customers": customers, "teams": teams, "types": types, "links": links}
-
-    def map_data(ts):
-        stat = {}
-        edges = {}
-        for t in ts:
-            main = t.team.name if t.team else None
-            ids = [i for i in (t.involved_teams or []) if isinstance(i, int)]
-            if main is None or not ids:
-                continue
-            s = stat.setdefault(main, {"asMain": 0, "asPartner": 0})
-            s["asMain"] += 1
-            for i in ids:
-                pn = team_names.get(i)
-                if not pn:
-                    continue
-                stat.setdefault(pn, {"asMain": 0, "asPartner": 0})["asPartner"] += 1
-                edges[(main, pn)] = edges.get((main, pn), 0) + 1
-        teams_out = [
-            {"name": k, "asMain": v["asMain"], "asPartner": v["asPartner"]}
-            for k, v in stat.items()
-        ]
-        teams_out.sort(key=lambda x: -(x["asMain"] + x["asPartner"]))
-        edges_out = [
-            {"source": k[0], "target": k[1], "count": v}
-            for k, v in sorted(edges.items(), key=lambda kv: -kv[1])
-        ]
-        return {"teams": teams_out, "edges": edges_out}
-
-    effort_by_type = {}
-    sankey = {}
-    map_reports = {}
-    for pid, meta in period_map.items():
-        ts = meta["tasks"]
-        effort_by_type[pid] = effort_rows(ts)
-        sankey[pid] = sankey_data(ts)
-        map_reports[pid] = map_data(ts)
-
-    return {
-        "periods": [{"id": p, "label": period_map[p]["label"]} for p in periods],
-        "active_period": active_period,
-        "scope": scope,
-        "effort_by_type": effort_by_type,
-        "sankey": sankey,
-        "map": map_reports,
-    }
-
-
-# ==================== TASK LOCK ====================
-
-LOCK_DURATION_MINUTES = 15
-
-
-def _is_lock_active(task: Task) -> bool:
-    """Check if the task lock is still valid (not expired)."""
-    if not task.lock_owner_id or not task.lock_until:
-        return False
-    return task.lock_until.replace(tzinfo=None) > datetime.now(timezone.utc).replace(tzinfo=None)
-
-
-@router.get("/{task_id}/lock", response_model=TaskLockResponse)
-async def get_task_lock(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Check lock status for a task."""
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if _is_lock_active(task):
-        owner = db.query(User).filter(User.id == task.lock_owner_id).first()
-        return TaskLockResponse(
-            locked=True,
-            lock_owner_id=task.lock_owner_id,
-            lock_owner_name=owner.name if owner else None,
-            lock_until=task.lock_until,
-            is_mine=(task.lock_owner_id == current_user.id),
-            version=task.version or 0,
-        )
-
-    return TaskLockResponse(locked=False, is_mine=False, version=task.version or 0)
-
-
-@router.post("/{task_id}/lock", response_model=TaskLockResponse)
-async def acquire_task_lock(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Acquire or extend a lock on a task for editing."""
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    now = datetime.now(timezone.utc)
-    new_until = now + timedelta(minutes=LOCK_DURATION_MINUTES)
-
-    if _is_lock_active(task):
-        if task.lock_owner_id == current_user.id:
-            task.lock_until = new_until
-            db.commit()
-            db.refresh(task)
-            owner = db.query(User).filter(User.id == task.lock_owner_id).first()
-            return TaskLockResponse(
-                locked=True,
-                lock_owner_id=task.lock_owner_id,
-                lock_owner_name=owner.name if owner else None,
-                lock_until=task.lock_until,
-                is_mine=True,
-                version=task.version or 0,
-            )
-        else:
-            owner = db.query(User).filter(User.id == task.lock_owner_id).first()
-            raise HTTPException(
-                status_code=423,
-                detail=f"Задача в данный момент редактируется пользователем {owner.name if owner else 'Неизвестный'}. Доступен режим 'только чтение'"
-            )
-
-    task.lock_owner_id = current_user.id
-    task.lock_until = new_until
-    db.commit()
-    db.refresh(task)
-
-    notify_lock_acquired(db, task, current_user.name)
-
-    owner = db.query(User).filter(User.id == task.lock_owner_id).first()
-    return TaskLockResponse(
-        locked=True,
-        lock_owner_id=task.lock_owner_id,
-        lock_owner_name=owner.name if owner else None,
-        lock_until=task.lock_until,
-        is_mine=True,
-        version=task.version or 0,
-    )
-
-
-@router.delete("/{task_id}/lock", response_model=TaskLockResponse)
-async def release_task_lock(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Release a lock on a task."""
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if task.lock_owner_id == current_user.id or not _is_lock_active(task):
-        task.lock_owner_id = None
-        task.lock_until = None
-        db.commit()
-        db.refresh(task)
-
-    return TaskLockResponse(locked=False, is_mine=False)
-
-
-# ==================== TASK VIEWERS ====================
-
-VIEWER_STALE_MINUTES = 10
-VIEWER_ACTIVE_MINUTES = 5
-
-
-def _cleanup_stale_viewers(db: Session):
-    """Remove viewer records older than VIEWER_STALE_MINUTES."""
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=VIEWER_STALE_MINUTES)
-    db.query(TaskViewer).filter(TaskViewer.last_seen_at < cutoff).delete(synchronize_session=False)
-    db.flush()
-
-
-@router.post("/{task_id}/viewers", response_model=TaskViewerResponse)
-async def register_viewer(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Register or refresh the current user as a viewer of the task."""
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    now = datetime.now(timezone.utc)
-    viewer = db.query(TaskViewer).filter(
-        TaskViewer.task_id == task_id,
-        TaskViewer.user_id == current_user.id,
-    ).first()
-
-    if viewer:
-        viewer.last_seen_at = now
-    else:
-        viewer = TaskViewer(
-            task_id=task_id,
-            user_id=current_user.id,
-            last_seen_at=now,
-        )
-        db.add(viewer)
-
-    db.commit()
-    db.refresh(viewer)
-    return TaskViewerResponse(
-        user_id=current_user.id,
-        user_name=current_user.name,
-        last_seen_at=viewer.last_seen_at,
-    )
-
-
-@router.get("/{task_id}/viewers", response_model=TaskViewersListResponse)
-async def list_viewers(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """List active viewers of the task (excluding the current user)."""
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    _cleanup_stale_viewers(db)
-    db.commit()
-
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=VIEWER_ACTIVE_MINUTES)
-    viewers = db.query(TaskViewer).filter(
-        TaskViewer.task_id == task_id,
-        TaskViewer.user_id != current_user.id,
-        TaskViewer.last_seen_at >= cutoff,
-    ).all()
-
-    result = []
-    for v in viewers:
-        user = db.query(User).filter(User.id == v.user_id).first()
-        result.append(TaskViewerResponse(
-            user_id=v.user_id,
-            user_name=user.name if user else None,
-            last_seen_at=v.last_seen_at,
-        ))
-
-    return TaskViewersListResponse(viewers=result)
-
-
-@router.delete("/{task_id}/viewers")
-async def unregister_viewer(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Remove the current user from the task viewers list."""
-    db.query(TaskViewer).filter(
-        TaskViewer.task_id == task_id,
-        TaskViewer.user_id == current_user.id,
-    ).delete(synchronize_session=False)
-    db.commit()
-    return {"message": "ok"}
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
-async def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get single task by ID"""
     task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    if not check_permission(current_user, "backlog_dmb", "read"):
-        user_team_id = current_user.team_id
-        if user_team_id and task.team_id != user_team_id:
-            raise HTTPException(status_code=403, detail="Permission denied")
+    authorize_task("read", task, current_user)
 
     return task_to_response(task, db)
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
-async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Create new task with auto-calculations and audit logging"""
     if not check_permission(current_user, "backlog_team", "write_own"):
         raise HTTPException(status_code=403, detail="Permission denied")
@@ -1325,8 +744,7 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
     )
 
     db.add(task)
-    db.commit()
-    db.refresh(task)
+    db.flush()
 
     _apply_tags(db, task, task_data.tags, current_user.id)
 
@@ -1368,35 +786,92 @@ async def create_task(task_data: TaskCreate, db: Session = Depends(get_db), curr
     )
     db.add(audit)
 
-    db.commit()
-    db.refresh(task)
-
     # Notifications: assignment on creation
     if task.owner_id:
-        notify_assignment(db, task, task.owner_id)
-        db.commit()
+        notify_assignment(db, task, task.owner_id, current_user.id)
+
+    db.commit()
+    db.refresh(task)
 
     return task_to_response(task, db)
 
 
+@router.put("/{task_id}/pip-decision", response_model=TaskResponse)
+def apply_pip_decision(
+    task_id: int,
+    payload: PipDecisionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Перевести задачу из PI-решения в один из двух разрешённых статусов."""
+    role_name = (current_user.role_name or "").strip().casefold()
+    if role_name not in PIP_DECISION_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="PI-решение доступно только Лидеру трайба и проектному офису",
+        )
+
+    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    current_status_name = task.status.name if task.status else ""
+    if current_status_name.strip().casefold() != PIP_DECISION_STATUS.casefold():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Решение можно принять только по задаче в статусе «Принятие решения»",
+        )
+
+    if is_task_lock_active(task) and task.lock_owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Задача заблокирована другим пользователем",
+        )
+
+    target_name = PIP_TARGET_STATUSES[payload.decision]
+    target_status = db.query(TaskStatus).filter(
+        func.lower_unicode(TaskStatus.name) == target_name.casefold()
+    ).first()
+    if not target_status:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Статус «{target_name}» не найден в справочнике",
+        )
+
+    db.add(TaskHistory(
+        task_id=task.id,
+        changed_by=current_user.id,
+        field_name="status_id",
+        old_value=str(task.status_id) if task.status_id else None,
+        new_value=str(target_status.id),
+    ))
+    task.status_id = target_status.id
+    task.version = (task.version or 0) + 1
+    notify_status_change(db, task, current_status_name, target_name, current_user.id)
+    db.commit()
+    db.refresh(task)
+    return task_to_response(task, db)
+
+
 @router.put("/{task_id}", response_model=TaskResponse)
-async def update_task(
+def update_task(
     task_id: int,
     task_data: TaskUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Update existing task"""
-    import traceback
-    import logging
-    logger = logging.getLogger(__name__)
-
     try:
         task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
 
-        if _is_lock_active(task) and task.lock_owner_id != current_user.id:
+        # PO/PL/CL, BA/Участник команды и IT PL редактируют только задачи
+        # своей команды. Проектный офис (админ) может редактировать все задачи.
+        requested_team_id = task_data.team_id if "team_id" in task_data.model_fields_set else None
+        authorize_task("edit", task, current_user, requested_team_id)
+
+        if is_task_lock_active(task) and task.lock_owner_id != current_user.id:
             owner = db.query(User).filter(User.id == task.lock_owner_id).first()
             raise HTTPException(
                 status_code=423,
@@ -1528,12 +1003,10 @@ async def update_task(
         # Notifications: assignment change
         new_owner_id = task.owner_id
         if old_owner_id != new_owner_id and new_owner_id:
-            notify_assignment(db, task, new_owner_id)
+            notify_assignment(db, task, new_owner_id, current_user.id)
 
-        db.commit()
-        db.refresh(task)
-
-        # Increment version after successful save
+        # Version, task fields, tags, history and notifications are committed
+        # atomically as one use-case.
         task.version = (task.version or 0) + 1
         db.commit()
         db.refresh(task)
@@ -1541,20 +1014,22 @@ async def update_task(
         return task_to_response(task, db)
 
     except HTTPException:
-        raise
-    except Exception as e:
         db.rollback()
-        logger.error(f"[update_task] ERROR task_id={task_id}: {e}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise
+    except Exception:
+        db.rollback()
+        logger.exception("Unexpected task update failure task_id=%s", task_id)
+        raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
 @router.get("/{task_id}/history", response_model=List[TaskHistoryResponse])
-async def get_task_history(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_task_history(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get change history for a task"""
     task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    authorize_task("read", task, current_user)
 
     history = db.query(TaskHistory).filter(
         TaskHistory.task_id == task_id
@@ -1581,11 +1056,13 @@ async def get_task_history(task_id: int, db: Session = Depends(get_db), current_
 
 
 @router.get("/{task_id}/documents")
-async def get_task_documents(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_task_documents(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get documents and links associated with a task"""
     task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    authorize_task("read", task, current_user)
 
     docs = []
     if task.link_mockups:
@@ -1610,285 +1087,35 @@ async def get_task_documents(task_id: int, db: Session = Depends(get_db), curren
 
 
 @router.delete("/{task_id}")
-async def delete_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Soft delete task"""
-    if not check_permission(current_user, "backlog_team", "write_all"):
-        raise HTTPException(status_code=403, detail="Permission denied")
-
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    authorize_task("delete", task, current_user)
 
     task.is_deleted = True
     db.commit()
     return {"message": "Task deleted"}
 
 
-# ==================== COMMENTS ====================
-
-@router.get("/{task_id}/comments", response_model=CommentListResponse)
-async def get_task_comments(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get comments for a task (threaded: root comments with nested replies)"""
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    comments = db.query(TaskComment).filter(
-        TaskComment.task_id == task_id
-    ).order_by(TaskComment.created_at.asc()).all()
-
-    user_cache = {}
-    def get_user_name(uid):
-        if uid not in user_cache:
-            u = db.query(User).filter(User.id == uid).first()
-            user_cache[uid] = u.name if u else None
-        return user_cache[uid]
-
-    def parse_mentions(raw):
-        if not raw:
-            return None
-        try:
-            return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            return None
-
-    comment_map = {}
-    for c in comments:
-        resp = CommentResponse(
-            id=c.id,
-            task_id=c.task_id,
-            user_id=c.user_id,
-            user_name=get_user_name(c.user_id),
-            text=c.text,
-            mentioned_user_ids=parse_mentions(c.mentioned_user_ids),
-            parent_id=c.parent_id,
-            replies=[],
-            created_at=c.created_at,
-        )
-        comment_map[c.id] = resp
-
-    roots = []
-    for c in comments:
-        resp = comment_map[c.id]
-        if c.parent_id and c.parent_id in comment_map:
-            comment_map[c.parent_id].replies.append(resp)
-        else:
-            roots.append(resp)
-
-    return CommentListResponse(items=roots, total=len(comments))
 
 
-@router.post("/{task_id}/comments", response_model=CommentResponse, status_code=status.HTTP_201_CREATED)
-async def create_task_comment(
-    task_id: int,
-    data: CommentCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Add a comment to a task, optionally mentioning users via @"""
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if data.parent_id:
-        parent_comment = db.query(TaskComment).filter(
-            TaskComment.id == data.parent_id,
-            TaskComment.task_id == task_id
-        ).first()
-        if not parent_comment:
-            raise HTTPException(status_code=404, detail="Parent comment not found")
-
-    mentioned_ids_json = None
-    if data.mentioned_user_ids:
-        mentioned_ids_json = json.dumps(data.mentioned_user_ids)
-
-    comment = TaskComment(
-        task_id=task_id,
-        user_id=current_user.id,
-        parent_id=data.parent_id,
-        text=data.text,
-        mentioned_user_ids=mentioned_ids_json,
-    )
-    db.add(comment)
-
-    history = TaskHistory(
-        task_id=task_id,
-        changed_by=current_user.id,
-        field_name="comment",
-        old_value=None,
-        new_value=data.text[:200] if len(data.text) > 200 else data.text,
-    )
-    db.add(history)
-
-    # Notifications: mentions + comment
-    if data.mentioned_user_ids:
-        notify_mention(db, task, data.mentioned_user_ids, current_user.name)
-    notify_comment(db, task, current_user.id)
-
-    db.commit()
-    db.refresh(comment)
-
-    user = db.query(User).filter(User.id == comment.user_id).first()
-    mentioned_ids = None
-    if comment.mentioned_user_ids:
-        try:
-            mentioned_ids = json.loads(comment.mentioned_user_ids)
-        except (json.JSONDecodeError, TypeError):
-            mentioned_ids = None
-
-    return CommentResponse(
-        id=comment.id,
-        task_id=comment.task_id,
-        user_id=comment.user_id,
-        user_name=user.name if user else None,
-        text=comment.text,
-        mentioned_user_ids=mentioned_ids,
-        parent_id=comment.parent_id,
-        created_at=comment.created_at,
-    )
 
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
 
-@router.get("/{task_id}/attachments", response_model=AttachmentListResponse)
-async def get_task_attachments(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    attachments = db.query(TaskAttachment).filter(
-        TaskAttachment.task_id == task_id
-    ).order_by(TaskAttachment.created_at.desc()).all()
-
-    items = []
-    for a in attachments:
-        user = db.query(User).filter(User.id == a.user_id).first()
-        items.append(AttachmentResponse(
-            id=a.id,
-            task_id=a.task_id,
-            user_id=a.user_id,
-            user_name=user.name if user else None,
-            filename=a.filename,
-            original_name=a.original_name,
-            mime_type=a.mime_type,
-            file_size=a.file_size,
-            download_url=f"/uploads/{task_id}/{a.filename}",
-            created_at=a.created_at,
-        ))
-
-    return AttachmentListResponse(items=items, total=len(items))
 
 
-@router.post("/{task_id}/attachments", response_model=AttachmentResponse, status_code=status.HTTP_201_CREATED)
-async def upload_task_attachment(
-    task_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large (max 50 MB)")
-
-    ext = os.path.splitext(file.filename or "")[1]
-    stored_name = f"{uuid.uuid4().hex}{ext}"
-    task_dir = os.path.join(UPLOAD_DIR, str(task_id))
-    os.makedirs(task_dir, exist_ok=True)
-    file_path = os.path.join(task_dir, stored_name)
-
-    with open(file_path, "wb") as f:
-        f.write(content)
-
-    attachment = TaskAttachment(
-        task_id=task_id,
-        user_id=current_user.id,
-        filename=stored_name,
-        original_name=file.filename or "unknown",
-        mime_type=file.content_type,
-        file_size=len(content),
-    )
-    db.add(attachment)
-
-    history = TaskHistory(
-        task_id=task_id,
-        changed_by=current_user.id,
-        field_name="attachment",
-        old_value=None,
-        new_value=f"Загружен файл: {file.filename}",
-    )
-    db.add(history)
-
-    db.commit()
-    db.refresh(attachment)
-
-    user = db.query(User).filter(User.id == attachment.user_id).first()
-    return AttachmentResponse(
-        id=attachment.id,
-        task_id=attachment.task_id,
-        user_id=attachment.user_id,
-        user_name=user.name if user else None,
-        filename=attachment.filename,
-        original_name=attachment.original_name,
-        mime_type=attachment.mime_type,
-        file_size=attachment.file_size,
-        download_url=f"/uploads/{task_id}/{attachment.filename}",
-        created_at=attachment.created_at,
-    )
 
 
-@router.delete("/{task_id}/attachments/{attachment_id}", response_model=SuccessResponse)
-async def delete_task_attachment(
-    task_id: int,
-    attachment_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
 
-    attachment = db.query(TaskAttachment).filter(
-        TaskAttachment.id == attachment_id,
-        TaskAttachment.task_id == task_id
-    ).first()
-    if not attachment:
-        raise HTTPException(status_code=404, detail="Attachment not found")
 
-    file_path = os.path.join(UPLOAD_DIR, str(task_id), attachment.filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
 
-    history = TaskHistory(
-        task_id=task_id,
-        changed_by=current_user.id,
-        field_name="attachment",
-        old_value=f"Удалён файл: {attachment.original_name}",
-        new_value=None,
-    )
-    db.add(history)
-
-    db.delete(attachment)
-    db.commit()
-
-    return SuccessResponse(message="Attachment deleted")
 
 
 @router.put("/{task_id}/links", response_model=TaskResponse)
-async def update_task_links(
+def update_task_links(
     task_id: int,
     data: TaskLinkUpdate,
     db: Session = Depends(get_db),
@@ -1897,6 +1124,8 @@ async def update_task_links(
     task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    authorize_task("edit", task, current_user)
 
     changes = {}
     if data.link_mockups is not None and data.link_mockups != (task.link_mockups or ""):
@@ -1952,17 +1181,36 @@ FORBIDDEN_BULK_FIELDS = {
 REQUIRES_REASON_STATUSES = {'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА', 'ХОЛД', 'ЭСКАЛАЦИЯ НА ЛТ'}
 
 @router.post("/bulk", response_model=SuccessResponse)
-async def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Perform bulk actions on multiple tasks"""
     if len(request.task_ids) > 500:
         raise HTTPException(status_code=400, detail="Лимит 500 задач за запрос")
+
+    if request.action not in {"close", "hold", "delete", "update"}:
+        raise HTTPException(status_code=400, detail=f"Неизвестная массовая операция: {request.action}")
 
     tasks = db.query(Task).filter(Task.id.in_(request.task_ids), Task.is_deleted == False).all()
 
     if not tasks:
         return SuccessResponse(message="No tasks found")
 
+    requested_ids = set(request.task_ids)
+    found_ids = {task.id for task in tasks}
+    if found_ids != requested_ids:
+        raise HTTPException(
+            status_code=404,
+            detail="Часть задач не найдена или недоступна для массовой операции",
+        )
+
     fields_to_update = request.fields or request.updates or {}
+
+    target_team_id = fields_to_update.get("team_id") if "team_id" in fields_to_update else None
+    require_bulk_task_edit_access(
+        current_user,
+        [task.team_id for task in tasks],
+        target_team_id=target_team_id,
+        is_delete=request.action == "delete",
+    )
 
     for field in fields_to_update.keys():
         if field in FORBIDDEN_BULK_FIELDS:
@@ -2007,7 +1255,7 @@ async def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db),
 
 
 @router.post("/import")
-async def import_tasks(
+def import_tasks(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -2026,7 +1274,7 @@ async def import_tasks(
     if not check_permission(current_user, "backlog_team", "write_own"):
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    content = await file.read()
+    content = file.file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Файл пуст")
 
@@ -2034,5 +1282,7 @@ async def import_tasks(
         return import_service.import_tasks_from_csv(db, content, current_user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка импорта: {e}")
+    except Exception:
+        db.rollback()
+        logger.exception("Unexpected task import failure filename=%r", file.filename)
+        raise HTTPException(status_code=500, detail="Внутренняя ошибка импорта")

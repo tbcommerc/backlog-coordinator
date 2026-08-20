@@ -76,7 +76,6 @@ dmb-backlog/
 │   ├── DEPLOYMENT.md      # Развертывание (dev/staging/prod, Docker, Nginx)
 │   ├── TESTING.md         # Тестирование (стратегия, план, примеры)
 │   └── SECURITY.md        # Безопасность (auth, CORS, инфраструктура)
-├── database/              # Альтернативные SQL-скрипты
 └── .env.example
 ```
 
@@ -84,19 +83,30 @@ dmb-backlog/
 
 ### 1. Клонирование и настройка
 
-```bash
-cd backend
-```
+Откройте терминал в корне `dmb-backlog`.
 
 ### 2. Установка зависимостей
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ### 3. Настройка окружения
 
-Скопируйте `.env.example` в `backend/.env` и при необходимости измените настройки:
+Скопируйте корневой `.env.example` в корневой `.env` и при необходимости измените
+настройки. Backend всегда читает этот файл независимо от текущего каталога.
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+bash:
+
+```bash
+cp .env.example .env
+```
 
 ```env
 DEBUG=true
@@ -107,6 +117,7 @@ SECRET_KEY=your-secret-key-change-in-production-dmb2026
 ### 4. Запуск
 
 ```bash
+cd backend
 uvicorn main:app --reload --port 8000
 ```
 
@@ -156,6 +167,8 @@ uvicorn main:app --reload --port 8000
 
 | Документ | Описание |
 |----------|----------|
+| [PROJECT_OVERVIEW_AS_IS.md](docs/PROJECT_OVERVIEW_AS_IS.md) | Актуальная карта фактически реализованной системы (As-Is) |
+| [CODE_REVIEW_2026-08-19.md](docs/CODE_REVIEW_2026-08-19.md) | Комплексный аудит: ошибки, безопасность, недоделки и UX/UI |
 | [SYSTEM_SPEC.md](docs/SYSTEM_SPEC.md) | Системная спецификация: жизненный цикл, обработка ошибок, роли |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура: C4-диаграммы, безопасность, деплой, мониторинг |
 | [DATA_MODEL.md](docs/DATA_MODEL.md) | Модели данных: ER-диаграмма, 20+ таблиц, индексы, сохранность |
@@ -200,19 +213,32 @@ uvicorn main:app --reload --port 8000
 
 - `uvicorn --reload` отслеживает только `backend/`. После изменений JS-файлов требуется **Ctrl+Shift+R** (жёсткое обновление без кэша).
 - Lucide Icons и Chart.js — локальные копии (не CDN). Версии: lucide 0.263.0, chart.js 4.4.0.
+- Inter и Unbounded подключены локально из `frontend/fonts/`; OFL-лицензии хранятся рядом с файлами шрифтов.
 - API возвращает задачи в формате `{ items: [...] }`.
 
-## Миграции базы данных (Alembic)
+## Изменение схемы базы данных
 
-```bash
-cd backend
-alembic revision --autogenerate -m "description"
-alembic upgrade head
-```
+Единственный поддерживаемый источник схемы — `backend/models.py`. При добавлении
+колонки измените SQLAlchemy-модель и перезапустите сервер: `database.ensure_schema()`
+создаст отсутствующую таблицу или добавит отсутствующую колонку.
+
+Не запускайте Alembic, ручные `ALTER TABLE` и скрипты из `backend/migrations/` в
+обычном процессе разработки или развёртывания. Эти файлы сохранены только как
+исторические артефакты. `ensure_schema()` поддерживает лишь аддитивные изменения;
+переименование, удаление, преобразование колонок и перенос данных требуют отдельного
+плана обслуживания, резервной копии и явного согласования.
+
+Подробнее: [docs/SCHEMA_CHANGES.md](docs/SCHEMA_CHANGES.md).
 
 ## Тесты
 
 ```bash
 cd backend
+pip install -r requirements-dev.txt
 pytest tests/ -v
 ```
+
+При push и pull request workflow `.github/workflows/quality.yml` автоматически
+проверяет компиляцию и тесты backend, синтаксис и security unit tests frontend, а
+также известные уязвимости Python-зависимостей. Startup seed, maintenance и scheduler
+в CI явно отключены; используется только временная SQLite-база runner'а.

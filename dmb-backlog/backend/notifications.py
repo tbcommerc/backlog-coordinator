@@ -3,6 +3,7 @@ DMB Backlog - Notification Service
 Event-driven notifications + scheduled scanning
 """
 import json
+import logging
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
@@ -11,6 +12,9 @@ from models import (
     Notification, UserNotificationPreference, User, Role,
     Task, Team, TaskStatus
 )
+
+
+logger = logging.getLogger("dmb_backlog.notifications")
 
 
 # ==================== CONSTANTS ====================
@@ -144,7 +148,8 @@ def _create_notification(
         importance=importance,
         is_read=False,
         is_dismissed=False,
-        action_url=action_url or f"#/backlog",
+        is_resolved=False,
+        action_url=action_url,
         group_key=group_key,
         group_count=1,
     )
@@ -162,8 +167,12 @@ def _send_to_users(
     importance: str | None = None,
     action_url: str | None = None,
     group_key: str | None = None,
+    exclude_user_ids: set[int] | None = None,
 ):
-    for uid in user_ids:
+    excluded = exclude_user_ids or set()
+    for uid in dict.fromkeys(user_ids):
+        if not uid or uid in excluded:
+            continue
         prefs = _get_preferences(db, uid)
         if not _is_enabled(prefs, category):
             continue
@@ -190,7 +199,9 @@ def notify_status_change(
     _send_to_users(
         db, recipients, task.id, "status_change", title,
         importance=IMPORTANCE["status_change"],
-        action_url=f"#/backlog",
+        action_url=f"#/backlog?task={task.id}",
+        group_key=f"task_updates_{task.id}",
+        exclude_user_ids={changed_by_user_id},
     )
 
     if new_status_name in RISK_STATUSES:
@@ -200,7 +211,8 @@ def notify_status_change(
             db, lt_ids, task.id, "risk", title_risk,
             importance=IMPORTANCE["risk"],
             group_key=f"risk_{task.id}",
-            action_url=f"#/backlog",
+            action_url=f"#/backlog?task={task.id}",
+            exclude_user_ids={changed_by_user_id},
         )
 
 
@@ -208,6 +220,7 @@ def notify_assignment(
     db: Session,
     task: Task,
     new_owner_id: int,
+    assigned_by_user_id: int | None = None,
 ):
     if not new_owner_id:
         return
@@ -216,7 +229,9 @@ def notify_assignment(
     _send_to_users(
         db, [new_owner_id], task.id, "assignment", title,
         importance=IMPORTANCE["assignment"],
-        action_url=f"#/backlog",
+        action_url=f"#/backlog?task={task.id}",
+        group_key=f"task_assignment_{task.id}_{new_owner_id}",
+        exclude_user_ids={assigned_by_user_id} if assigned_by_user_id else None,
     )
 
 
@@ -225,6 +240,7 @@ def notify_mention(
     task: Task,
     mentioned_user_ids: list[int] | None,
     author_name: str,
+    author_user_id: int | None = None,
 ):
     if not mentioned_user_ids:
         return
@@ -234,7 +250,9 @@ def notify_mention(
         _send_to_users(
             db, [uid], task.id, "mention", title,
             importance=IMPORTANCE["mention"],
-            action_url=f"#/backlog",
+            action_url=f"#/backlog?task={task.id}&tab=comments",
+            group_key=f"task_mention_{task.id}_{uid}",
+            exclude_user_ids={author_user_id} if author_user_id else None,
         )
 
 
@@ -242,6 +260,7 @@ def notify_comment(
     db: Session,
     task: Task,
     commenter_id: int,
+    excluded_recipient_ids: set[int] | None = None,
 ):
     if not task.owner_id or task.owner_id == commenter_id:
         return
@@ -250,7 +269,9 @@ def notify_comment(
     _send_to_users(
         db, [task.owner_id], task.id, "comment", title,
         importance=IMPORTANCE["comment"],
-        action_url=f"#/backlog",
+        action_url=f"#/backlog?task={task.id}&tab=comments",
+        group_key=f"task_comments_{task.id}",
+        exclude_user_ids=excluded_recipient_ids,
     )
 
 
@@ -280,7 +301,7 @@ def notify_customer_task_created(
     _send_to_users(
         db, recipients, task.id, "system", title,
         importance=IMPORTANCE["system"],
-        action_url=f"#/backlog",
+        action_url=f"#/backlog?task={task.id}",
     )
 
 
@@ -296,7 +317,7 @@ def notify_lock_acquired(
     _send_to_users(
         db, recipients, task.id, "editing", title,
         importance=IMPORTANCE["editing"],
-        action_url=f"#/backlog",
+        action_url=f"#/backlog?task={task.id}",
     )
 
 
@@ -340,61 +361,63 @@ def check_scheduled_notifications(db: Session):
                 if q_start <= dl <= q_end:
                     days_left = (dl - date.today()).days
                     deadline_tasks.append((task, days_left))
-            except Exception:
-                pass
+            except (AttributeError, TypeError, ValueError):
+                logger.warning(
+                    "Skipping task %s with invalid deadline value %r",
+                    task.id,
+                    task.deadline,
+                    exc_info=True,
+                )
 
         if not task.description or len(task.description) < 20:
             attrs_tasks.append((task, "no_description"))
         elif task.effort_days is None and task.effort_rub is None:
             attrs_tasks.append((task, "no_effort"))
 
-    if stale_tasks:
-        group_key = f"stale_{current_quarter}_{current_year}"
-        sample_task = stale_tasks[0][0]
-        recipients = _get_task_recipients(db, sample_task)
-        count = len(stale_tasks)
+    def per_recipient(rows):
+        result = {}
+        for row in rows:
+            task = row[0]
+            for uid in _get_task_recipients(db, task):
+                result.setdefault(uid, []).append(row)
+        return result
+
+    for uid, rows in per_recipient(stale_tasks).items():
+        count = len(rows)
         title = f"{count} {'задача' if count == 1 else 'задач'} без обновления > 5 дней"
         _send_to_users(
-            db, recipients, None, "system", title,
+            db, [uid], None, "stale", title,
             importance=IMPORTANCE["stale"],
-            group_key=group_key,
-            action_url=f"#/backlog",
+            group_key=f"stale_{uid}_{current_quarter}_{current_year}",
+            action_url="#/backlog?filter=stale",
         )
 
-    if deadline_tasks:
-        group_key = f"deadline_{current_quarter}_{current_year}"
-        sample_task = deadline_tasks[0][0]
-        recipients = _get_task_recipients(db, sample_task)
-        urgent = sum(1 for _, d in deadline_tasks if d < 7)
+    for uid, rows in per_recipient(deadline_tasks).items():
+        urgent = sum(1 for _, days_left in rows if days_left < 7)
         title_parts = []
         if urgent:
             title_parts.append(f"{urgent} с дедлайном < 7 дней")
-        title_parts.append(f"{len(deadline_tasks)} задач с дедлайном в квартале")
-        title = " | ".join(title_parts)
+        title_parts.append(f"{len(rows)} задач с дедлайном в квартале")
         _send_to_users(
-            db, recipients, None, "system", title,
+            db, [uid], None, "deadline", " | ".join(title_parts),
             importance=IMPORTANCE["deadline"],
-            group_key=group_key,
-            action_url=f"#/backlog",
+            group_key=f"deadline_{uid}_{current_quarter}_{current_year}",
+            action_url="#/backlog?filter=deadline",
         )
 
-    if attrs_tasks:
-        no_desc = sum(1 for _, k in attrs_tasks if k == "no_description")
-        no_eff = sum(1 for _, k in attrs_tasks if k == "no_effort")
-        group_key = f"attrs_{current_quarter}_{current_year}"
-        sample_task = attrs_tasks[0][0]
-        recipients = _get_task_recipients(db, sample_task)
+    for uid, rows in per_recipient(attrs_tasks).items():
+        no_desc = sum(1 for _, kind in rows if kind == "no_description")
+        no_eff = sum(1 for _, kind in rows if kind == "no_effort")
         parts = []
         if no_desc:
             parts.append(f"{no_desc} без описания")
         if no_eff:
             parts.append(f"{no_eff} без оценки трудозатрат")
-        title = f"Неполные атрибуты: {', '.join(parts)}"
         _send_to_users(
-            db, recipients, None, "system", title,
+            db, [uid], None, "attrs", f"Неполные атрибуты: {', '.join(parts)}",
             importance=IMPORTANCE["attrs"],
-            group_key=group_key,
-            action_url=f"#/backlog",
+            group_key=f"attrs_{uid}_{current_quarter}_{current_year}",
+            action_url="#/backlog?filter=incomplete",
         )
 
     db.commit()
@@ -408,6 +431,34 @@ def get_unread_count(db: Session, user_id: int) -> int:
         Notification.is_read == False,
         Notification.is_dismissed == False,
     ).scalar() or 0
+
+
+def get_notification_summary(db: Session, user_id: int) -> dict:
+    base = db.query(Notification).filter(
+        Notification.user_id == user_id,
+        Notification.is_dismissed == False,
+    )
+    unread = base.filter(Notification.is_read == False).count()
+    requires_action = base.filter(
+        Notification.is_read == False,
+        Notification.is_resolved == False,
+        Notification.importance.in_(("critical", "high")),
+    ).count()
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = base.filter(Notification.created_at >= today_start).count()
+    category_rows = db.query(
+        Notification.category, sql_func.count(Notification.id)
+    ).filter(
+        Notification.user_id == user_id,
+        Notification.is_dismissed == False,
+        Notification.is_read == False,
+    ).group_by(Notification.category).all()
+    return {
+        "unread": unread,
+        "requires_action": requires_action,
+        "today": today,
+        "by_category": {category: count for category, count in category_rows},
+    }
 
 
 def get_notifications(
@@ -468,6 +519,24 @@ def dismiss_notification(db: Session, notification_id: int, user_id: int):
         Notification.user_id == user_id,
     ).update(
         {Notification.is_dismissed: True},
+        synchronize_session=False,
+    )
+    db.flush()
+
+
+def resolve_notification(db: Session, notification_id: int, user_id: int):
+    now = datetime.utcnow()
+    db.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.user_id == user_id,
+        Notification.is_dismissed == False,
+    ).update(
+        {
+            Notification.is_resolved: True,
+            Notification.resolved_at: now,
+            Notification.is_read: True,
+            Notification.read_at: now,
+        },
         synchronize_session=False,
     )
     db.flush()

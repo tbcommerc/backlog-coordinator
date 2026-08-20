@@ -1,11 +1,11 @@
 import { renderDashboard, initDashboard } from './components/dashboard.js';
-import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=47';
-import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=47';
+import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=55';
+import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=54';
 import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js';
 import { renderKanban, initKanban } from './components/kanbanBoard.js?v=4';
-import { renderReports, initReports, renderReportPage, initReportPage } from './components/reports.js';
+import { renderReports, initReports, renderReportPage, initReportPage } from './components/reports.js?v=2';
 import { renderAnalytics, initAnalytics } from './components/analytics.js';
-import { renderNotifications, initNotifications } from './components/notifications.js';
+import { renderNotifications, initNotifications } from './components/notifications.js?v=6';
 import { renderSettings, initSettings } from './components/settings.js';
 import { renderAdmin, initAdmin } from './components/admin.js';
 import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage } from './components/customerPortal.js';
@@ -53,6 +53,16 @@ export class Router {
         const hash = window.location.hash.slice(1) || this.defaultRoute;
         const [path] = hash.split('?');
         const from = this.lastHash;
+
+        const user = this.app?.store?.get('currentUser');
+        const roleName = String(user?.role_name || user?.role || '').trim().toLocaleLowerCase('ru-RU');
+        const businessCustomerAllowedPaths = new Set(['/customer', '/customer/create']);
+        if (roleName === 'бизнес-заказчик' && !businessCustomerAllowedPaths.has(path)) {
+            if (window.location.hash !== '#/customer') {
+                history.replaceState(null, '', '#/customer');
+            }
+            return this.handleRoute();
+        }
 
         if (this.onBeforeNavigate && from !== null && path !== from.split('?')[0]) {
             const ok = await this.onBeforeNavigate(path, from);

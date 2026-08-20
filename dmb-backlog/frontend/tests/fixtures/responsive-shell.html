@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Responsive layout fixture</title>
+  <link rel="stylesheet" href="../../css/fonts.css">
+  <link rel="stylesheet" href="../../css/tokens.css">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/pages.css">
+  <link rel="stylesheet" href="../../css/responsive.css?v=11">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="sidebar-logo"><div class="logo-icon">D</div><span class="logo-text">DMB Backlog</span></div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Управление бэклогом</div>
+          <a class="sidebar-item" href="#"><svg width="20" height="20"></svg><span>Главная</span></a>
+          <a class="sidebar-item active" href="#"><svg width="20" height="20"></svg><span>Бэклог DMB</span></a>
+        </div>
+      </nav>
+      <button class="sidebar-toggle" aria-label="Свернуть">‹</button>
+    </aside>
+    <div class="sidebar-backdrop"></div>
+    <div class="main-wrapper">
+      <header class="navbar">
+        <div class="navbar-left"><button class="btn-hamburger" aria-label="Меню">☰</button><span>Бэклог DMB</span></div>
+      </header>
+      <main class="main-content">
+        <div class="sticky-toolbar">
+          <div class="toolbar-title-row">
+            <div class="toolbar-title-wrap"><h2 class="toolbar-title">Бэклог команды</h2></div>
+            <div class="toolbar-actions"><button class="btn btn-primary btn-sm toolbar-add-task" title="Добавить задачу"><span>+</span><span class="toolbar-add-task-label">Добавить задачу</span></button></div>
+          </div>
+          <div class="flex items-center gap-2 filter-toolbar-row">
+            <div class="filter-search-wrap" style="flex:1;min-width:0"><input class="search-input" placeholder="Поиск"></div>
+            <div class="filter-toolbar-controls"><button class="btn">Фильтры</button><button class="btn">Сброс</button></div>
+          </div>
+          <div class="quick-filters-shell">
+            <button class="quick-filters-mobile-toggle" id="quick-filters-mobile-toggle" aria-expanded="false" aria-controls="quick-filters"><span>⚡</span><span>Быстрые фильтры</span><span class="quick-filters-active-count hidden" id="quick-filters-active-count">0</span><span class="quick-filters-toggle-chevron">⌄</span></button>
+            <div id="quick-filters" class="flex gap-2" style="margin-bottom:var(--space-4);flex-wrap:wrap">
+              <button class="quick-filter-btn" aria-pressed="false"><span class="quick-filter-icon">!</span><span class="quick-filter-label">Просрочено</span></button>
+              <button class="quick-filter-btn" aria-pressed="false"><span class="quick-filter-icon">★</span><span class="quick-filter-label">Важные задачи</span></button>
+              <button class="quick-filter-btn" aria-pressed="false"><span class="quick-filter-icon">●</span><span class="quick-filter-label">В работе</span></button>
+              <button class="quick-filter-btn" aria-pressed="false"><span class="quick-filter-icon">Ⅱ</span><span class="quick-filter-label">Холд</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="table-container" id="tasks-container" style="min-height:1200px">
+          <table class="table">
+            <thead><tr><th>ID</th><th>Название задачи</th><th>Команда</th><th>Статус</th><th>Приоритет</th><th>Ответственный</th></tr></thead>
+            <tbody><tr><td>1001</td><td>Тестовая задача для проверки таблицы</td><td>Команда</td><td>В работе</td><td>Высокий</td><td>Сотрудник</td></tr></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script>
+    document.querySelector('.btn-hamburger').addEventListener('click', () => document.querySelector('.sidebar').classList.toggle('open'));
+    document.querySelector('.sidebar-backdrop').addEventListener('click', () => document.querySelector('.sidebar').classList.remove('open'));
+    document.querySelector('.quick-filters-mobile-toggle').addEventListener('click', event => {
+      const open = event.currentTarget.getAttribute('aria-expanded') !== 'true';
+      event.currentTarget.setAttribute('aria-expanded', String(open));
+      event.currentTarget.classList.toggle('active', open);
+      document.getElementById('quick-filters').classList.toggle('mobile-open', open);
+    });
+    document.querySelectorAll('.quick-filter-btn').forEach(button => button.addEventListener('click', () => {
+      const active = !button.classList.contains('active');
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    }));
+  </script>
+</body>
+</html>

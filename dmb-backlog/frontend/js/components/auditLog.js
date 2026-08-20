@@ -2,6 +2,12 @@ let auditState = { page: 1, perPage: 50, filters: { user_id: '', action: '', ent
 let auditData = { items: [], total: 0, pages: 0 };
 let auditFilters = { actions: [], entity_types: [], users: [] };
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+}
+
 function formatDateTime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -15,7 +21,7 @@ function getActionBadge(action) {
     update: '<span class="badge badge-info" style="font-size:11px">UPDATE</span>',
     delete: '<span class="badge" style="font-size:11px;background:var(--danger-light);color:var(--danger)">DELETE</span>',
   };
-  return map[action] || `<span class="badge" style="font-size:11px">${action}</span>`;
+  return map[action] || `<span class="badge" style="font-size:11px">${escapeHtml(action)}</span>`;
 }
 
 function getEntityTypeBadge(type) {
@@ -39,7 +45,7 @@ function getEntityTypeBadge(type) {
     'display-settings': '#10b981',
   };
   const c = colors[type] || 'var(--text-muted)';
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:${c}18;color:${c};font-weight:500">${type}</span>`;
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:${c}18;color:${c};font-weight:500">${escapeHtml(type)}</span>`;
 }
 
 function parseDetails(details) {
@@ -47,11 +53,11 @@ function parseDetails(details) {
   try {
     const obj = typeof details === 'string' ? JSON.parse(details) : details;
     if (obj.path && obj.status_code) {
-      return `<span style="font-size:11px;color:var(--text-muted)">${obj.method || ''} ${obj.path}</span> <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${obj.status_code < 400 ? 'var(--success-light);color:var(--success)' : 'var(--danger-light);color:var(--danger)'}">${obj.status_code}</span>`;
+      return `<span style="font-size:11px;color:var(--text-muted)">${escapeHtml(obj.method || '')} ${escapeHtml(obj.path)}</span> <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${obj.status_code < 400 ? 'var(--success-light);color:var(--success)' : 'var(--danger-light);color:var(--danger)'}">${Number(obj.status_code) || 0}</span>`;
     }
-    return JSON.stringify(obj);
+    return escapeHtml(JSON.stringify(obj));
   } catch {
-    return details;
+    return escapeHtml(details);
   }
 }
 
@@ -88,12 +94,12 @@ function renderAuditTable() {
   return items.map(item => `
     <tr>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted);white-space:nowrap">${formatDateTime(item.created_at)}</td>
-      <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);font-size:13px;color:var(--text-primary);font-weight:500">${item.user_name || '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);font-size:13px;color:var(--text-primary);font-weight:500">${item.user_name ? escapeHtml(item.user_name) : '<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border-color)">${getActionBadge(item.action)}</td>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border-color)">${getEntityTypeBadge(item.entity_type)}</td>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);font-size:13px;color:var(--text-secondary)">${item.entity_id || '—'}</td>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${parseDetails(item.details)}</td>
-      <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted);font-family:monospace">${item.ip_address || '—'}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted);font-family:monospace">${escapeHtml(item.ip_address || '—')}</td>
     </tr>
   `).join('');
 }
@@ -145,15 +151,15 @@ function renderFilterBar() {
   const selStyle = 'font-size:12px;padding:5px 8px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);min-width:140px';
 
   const userOpts = auditFilters.users.map(u =>
-    `<option value="${u.id}"${s.user_id == u.id ? ' selected' : ''}>${u.name}</option>`
+    `<option value="${u.id}"${s.user_id == u.id ? ' selected' : ''}>${escapeHtml(u.name)}</option>`
   ).join('');
 
   const actionOpts = auditFilters.actions.map(a =>
-    `<option value="${a}"${s.action === a ? ' selected' : ''}>${a.toUpperCase()}</option>`
+    `<option value="${escapeHtml(a)}"${s.action === a ? ' selected' : ''}>${escapeHtml(a.toUpperCase())}</option>`
   ).join('');
 
   const entityOpts = auditFilters.entity_types.map(e =>
-    `<option value="${e}"${s.entity_type === e ? ' selected' : ''}>${e}</option>`
+    `<option value="${escapeHtml(e)}"${s.entity_type === e ? ' selected' : ''}>${escapeHtml(e)}</option>`
   ).join('');
 
   return `

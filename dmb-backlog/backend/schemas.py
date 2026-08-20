@@ -1,6 +1,26 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime, date
+from urllib.parse import urlsplit
+
+
+def _validate_external_url(value: Optional[str]) -> Optional[str]:
+    """Разрешить только абсолютные HTTP(S) URL."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    parsed = urlsplit(value)
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("Ссылка должна быть абсолютным URL с протоколом http:// или https://")
+    return value
+
+
+def _validate_external_url_list(values: Optional[List[str]]) -> Optional[List[str]]:
+    if values is None:
+        return None
+    return [_validate_external_url(value) for value in values]
 
 
 # ==================== AUTH ====================
@@ -12,14 +32,9 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
     expires_in: int
     user: dict
-
-
-class RefreshRequest(BaseModel):
-    refresh_token: str
 
 
 # ==================== USER ====================
@@ -31,6 +46,7 @@ class UserBase(BaseModel):
     position: Optional[str] = Field(None, max_length=100)
     team_id: Optional[int] = None
     role_id: Optional[int] = None
+    business_customer_id: Optional[int] = None
     is_active: bool = True
 
 
@@ -48,6 +64,7 @@ class UserUpdate(BaseModel):
     position: Optional[str] = Field(None, max_length=100)
     team_id: Optional[int] = None
     role_id: Optional[int] = None
+    business_customer_id: Optional[int] = None
     is_active: Optional[bool] = None
     can_edit: Optional[bool] = None
     can_delete: Optional[bool] = None
@@ -60,6 +77,7 @@ class UserResponse(UserBase):
     created_at: datetime
     role_name: Optional[str] = None
     team_name: Optional[str] = None
+    business_customer_name: Optional[str] = None
     can_edit: bool = True
     can_delete: bool = False
     can_export: bool = True
@@ -239,8 +257,8 @@ class TaskBase(BaseModel):
             return None
         if isinstance(v, str):
             parts = [p.strip() for p in v.replace('\n', ',').split(',') if p.strip()]
-            return parts or None
-        return v
+            v = parts or None
+        return _validate_external_url_list(v)
 
     @field_validator('link_requirements', mode='before')
     @classmethod
@@ -249,8 +267,13 @@ class TaskBase(BaseModel):
             return None
         if isinstance(v, str):
             parts = [p.strip() for p in v.replace('\n', ',').split(',') if p.strip()]
-            return parts or None
-        return v
+            v = parts or None
+        return _validate_external_url_list(v)
+
+    @field_validator('link_mockups')
+    @classmethod
+    def _validate_link_mockups(cls, v):
+        return _validate_external_url(v)
 
 
 class TaskCreate(TaskBase):
@@ -331,8 +354,8 @@ class TaskUpdate(BaseModel):
             return None
         if isinstance(v, str):
             parts = [p.strip() for p in v.replace('\n', ',').split(',') if p.strip()]
-            return parts or None
-        return v
+            v = parts or None
+        return _validate_external_url_list(v)
 
     @field_validator('link_requirements', mode='before')
     @classmethod
@@ -341,8 +364,17 @@ class TaskUpdate(BaseModel):
             return None
         if isinstance(v, str):
             parts = [p.strip() for p in v.replace('\n', ',').split(',') if p.strip()]
-            return parts or None
-        return v
+            v = parts or None
+        return _validate_external_url_list(v)
+
+    @field_validator('link_mockups')
+    @classmethod
+    def _validate_link_mockups(cls, v):
+        return _validate_external_url(v)
+
+
+class PipDecisionRequest(BaseModel):
+    decision: Literal["reject", "accept"]
 
 
 class TaskResponse(TaskBase):
@@ -435,6 +467,11 @@ class TaskLinkUpdate(BaseModel):
     link_mockups: Optional[str] = None
     link_jira: Optional[str] = None
 
+    @field_validator('link_mockups', 'link_jira')
+    @classmethod
+    def _validate_links(cls, v):
+        return _validate_external_url(v)
+
 
 class BulkActionRequest(BaseModel):
     action: str = Field(max_length=50)
@@ -523,11 +560,13 @@ class NotificationResponse(BaseModel):
     importance: str
     is_read: bool
     is_dismissed: bool
+    is_resolved: bool = False
     action_url: Optional[str] = None
     group_key: Optional[str] = None
     group_count: int = 1
     created_at: datetime
     read_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -917,14 +956,14 @@ class CompetencyCostResponse(BaseModel):
 # ==================== EPIC & STORY (Экспресс-оценка) ====================
 
 class EffortFields(BaseModel):
-    effort_designee: Optional[float] = None
-    effort_analytics: Optional[float] = None
-    effort_be: Optional[float] = None
-    effort_python_be: Optional[float] = None
-    effort_fe: Optional[float] = None
-    effort_test: Optional[float] = None
-    effort_test_auto: Optional[float] = None
-    effort_delivery: Optional[float] = None
+    effort_designee: Optional[float] = Field(None, ge=0)
+    effort_analytics: Optional[float] = Field(None, ge=0)
+    effort_be: Optional[float] = Field(None, ge=0)
+    effort_python_be: Optional[float] = Field(None, ge=0)
+    effort_fe: Optional[float] = Field(None, ge=0)
+    effort_test: Optional[float] = Field(None, ge=0)
+    effort_test_auto: Optional[float] = Field(None, ge=0)
+    effort_delivery: Optional[float] = Field(None, ge=0)
 
 
 class EpicCreate(EffortFields):
@@ -938,27 +977,25 @@ class EpicUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
     priority: Optional[str] = Field(None, max_length=50)
-    effort_designee: Optional[float] = None
-    effort_analytics: Optional[float] = None
-    effort_be: Optional[float] = None
-    effort_python_be: Optional[float] = None
-    effort_fe: Optional[float] = None
-    effort_test: Optional[float] = None
-    effort_test_auto: Optional[float] = None
-    effort_delivery: Optional[float] = None
+    effort_designee: Optional[float] = Field(None, ge=0)
+    effort_analytics: Optional[float] = Field(None, ge=0)
+    effort_be: Optional[float] = Field(None, ge=0)
+    effort_python_be: Optional[float] = Field(None, ge=0)
+    effort_fe: Optional[float] = Field(None, ge=0)
+    effort_test: Optional[float] = Field(None, ge=0)
+    effort_test_auto: Optional[float] = Field(None, ge=0)
+    effort_delivery: Optional[float] = Field(None, ge=0)
 
 
 class StoryCreate(EffortFields):
     epic_id: int
     title: str = Field(max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
-    progress: Optional[int] = Field(0, ge=0, le=100)
 
 
 class StoryUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
-    progress: Optional[int] = Field(None, ge=0, le=100)
     effort_designee: Optional[float] = None
     effort_analytics: Optional[float] = None
     effort_be: Optional[float] = None
@@ -988,7 +1025,6 @@ class StoryResponse(EffortFields):
     epic_id: int
     title: str
     description: Optional[str] = None
-    progress: Optional[int] = 0
     created_at: datetime
     updated_at: datetime
 
@@ -1004,6 +1040,16 @@ class EpicListResponse(BaseModel):
 class StoryListResponse(BaseModel):
     items: List[StoryResponse]
     total: int
+
+
+class SortItem(BaseModel):
+    id: int
+    sort_order: int
+
+
+class SortRequest(BaseModel):
+    epics: List[SortItem] = []
+    stories: List[SortItem] = []
 
 
 class QuickEstimateTaskResponse(TaskResponse):

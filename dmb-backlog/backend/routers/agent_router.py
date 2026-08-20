@@ -43,6 +43,30 @@ class AgentRequestStatusUpdate(BaseModel):
 
 
 REQUEST_STATUSES = {"draft", "submitted", "in_review", "in_progress", "approved", "rejected", "returned"}
+TEAM_REQUEST_REVIEWER_ROLES = {
+    "po/pl/cl",
+    "ba/участник команды",
+    "лидер трайба",
+    # Совместимость с прежним названием роли.
+    "ba/бизнес-аналитик",
+}
+GLOBAL_REQUEST_REVIEWER_ROLES = {
+    "проектный офис (админ)",
+    # Совместимость с текущей seed-ролью.
+    "администратор",
+}
+
+
+def can_review_request(user: User, request_team_id: int | None) -> bool:
+    """Проверить область ревью запроса по актуальной матрице ролей."""
+    role = (user.role_name or "").strip().casefold()
+    if role in GLOBAL_REQUEST_REVIEWER_ROLES:
+        return True
+    return (
+        role in TEAM_REQUEST_REVIEWER_ROLES
+        and user.team_id is not None
+        and user.team_id == request_team_id
+    )
 
 
 def _agent_headers() -> dict:
@@ -64,8 +88,8 @@ def _call_agent(method: str, path: str, payload: dict | None = None) -> dict:
         body = e.read().decode("utf-8", errors="replace")[:300]
         logger.error("agent %s %s -> %s: %s", method, path, e.code, body)
         raise HTTPException(status_code=502, detail=f"Агент недоступен ({e.code})")
-    except Exception as e:
-        logger.error("agent %s %s failed: %s", method, path, e)
+    except (OSError, TimeoutError, UnicodeError, json.JSONDecodeError):
+        logger.exception("agent %s %s failed", method, path)
         raise HTTPException(status_code=502, detail="Сервис аналитика недоступен")
 
 
@@ -304,18 +328,22 @@ def agent_send_for_review(
         team_id=req.team_id or current_user.team_id,
     )
     db.add(request)
-    db.commit()
-    db.refresh(request)
-
-    resp = _call_agent("POST", "/api/agent/send-for-review", {
-        "session_id": req.session_id,
-        "task_id": request.id,
-        "title": req.title or draft.get("title") or "",
-    })
-    resp["request_id"] = request.id
-    resp["request_url"] = f"#/customer/request/{request.id}"
-    notify_new_request(db, request.id, request.team_id, request.title, current_user.name)
-    return resp
+    try:
+        db.flush()
+        resp = _call_agent("POST", "/api/agent/send-for-review", {
+            "session_id": req.session_id,
+            "task_id": request.id,
+            "title": req.title or draft.get("title") or "",
+        })
+        notify_new_request(db, request.id, request.team_id, request.title, current_user.name)
+        db.commit()
+        db.refresh(request)
+        resp["request_id"] = request.id
+        resp["request_url"] = f"#/customer/request/{request.id}"
+        return resp
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get("/agent/requests")
@@ -339,16 +367,16 @@ def agent_requests_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Requirement requests for review by PO/PL/CL of the user's team."""
-    role = (current_user.role_name or "").lower()
-    if role not in ("po/pl/cl", "ba/бизнес-аналитик", "администратор", "лидер трайба"):
+    """Запросы для ревью в разрешённой пользователю области."""
+    role = (current_user.role_name or "").strip().casefold()
+    if role not in TEAM_REQUEST_REVIEWER_ROLES | GLOBAL_REQUEST_REVIEWER_ROLES:
         raise HTTPException(status_code=403, detail="Доступ запрещён")
 
     query = db.query(RequirementRequest).filter(
         RequirementRequest.is_deleted.is_(False),
         RequirementRequest.status.in_(["submitted", "in_review", "in_progress", "returned"]),
     )
-    if role != "администратор":
+    if role not in GLOBAL_REQUEST_REVIEWER_ROLES:
         query = query.filter(RequirementRequest.team_id == current_user.team_id)
 
     rows = query.order_by(RequirementRequest.created_at.desc()).all()
@@ -367,12 +395,8 @@ def agent_request_detail(
     ).first()
     if not req:
         raise HTTPException(status_code=404, detail="Запрос не найден")
-    role = (current_user.role_name or "").lower()
     is_owner = req.user_id == current_user.id
-    is_reviewer = (role in ("po/pl/cl", "ba/бизнес-аналитик", "лидер трайба")
-                   and req.team_id == current_user.team_id)
-    is_admin = role == "администратор"
-    if not (is_owner or is_reviewer or is_admin):
+    if not (is_owner or can_review_request(current_user, req.team_id)):
         raise HTTPException(status_code=403, detail="Доступ запрещён")
     return _request_to_dict(req)
 
@@ -385,18 +409,21 @@ def agent_request_status(
     current_user: User = Depends(get_current_user),
 ):
     """Update the request lifecycle status with optional reject_reason or assignee."""
+    role = (current_user.role_name or "").strip().casefold()
+    if role == "бизнес-заказчик":
+        raise HTTPException(
+            status_code=403,
+            detail="Бизнес-заказчик не может изменять статус запроса после отправки на ревью",
+        )
+
     req = db.query(RequirementRequest).filter(
         RequirementRequest.id == request_id,
         RequirementRequest.is_deleted.is_(False),
     ).first()
     if not req:
         raise HTTPException(status_code=404, detail="Запрос не найден")
-    role = (current_user.role_name or "").lower()
     is_owner = req.user_id == current_user.id
-    is_reviewer = (role in ("po/pl/cl", "ba/бизнес-аналитик", "лидер трайба")
-                   and req.team_id == current_user.team_id)
-    is_admin = role == "администратор"
-    if not (is_owner or is_reviewer or is_admin):
+    if not (is_owner or can_review_request(current_user, req.team_id)):
         raise HTTPException(status_code=403, detail="Доступ запрещён")
     if body.status not in REQUEST_STATUSES:
         raise HTTPException(status_code=422, detail=f"Недопустимый статус: {body.status}")
@@ -428,7 +455,8 @@ def agent_request_delete(
     ).first()
     if not req:
         raise HTTPException(status_code=404, detail="Запрос не найден")
-    if req.user_id != current_user.id and (current_user.role_name or "").lower() != "администратор":
+    role = (current_user.role_name or "").strip().casefold()
+    if req.user_id != current_user.id and role not in GLOBAL_REQUEST_REVIEWER_ROLES:
         raise HTTPException(status_code=403, detail="Доступ запрещён")
     req.is_deleted = True
     db.commit()

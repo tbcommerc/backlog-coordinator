@@ -46,7 +46,7 @@ def _report_to_response(report: Report) -> ReportResponse:
 REPORT_DIRECT_FIELDS = {
     "id", "title", "description", "involved_teams",
     "key_project_status", "directorate_status", "did_status",
-    "did_demo", "effort_days", "effort_rub", "financial_effect", "cv",
+    "did_demo", "effort_days", "effort_rub", "financial_effect", "cv", "priority_score",
     "progress", "date_received", "created_at", "updated_at",
 }
 
@@ -66,8 +66,10 @@ REPORT_JOINED_FIELDS = {
 
 # Поля, которые сортируются как числа, а не строки.
 REPORT_NUMERIC_FIELDS = {
-    "id", "progress", "effort_days", "effort_rub", "financial_effect", "cv",
+    "id", "progress", "effort_days", "effort_rub", "financial_effect", "cv", "priority_score",
 }
+
+PIP_STATUS = "Принятие решения"
 
 # Ранг приоритета для корректной сортировки по важности (не по алфавиту).
 PRIORITY_RANK = {"ВЫСОКИЙ": 3, "СРЕДНИЙ": 2, "НИЗКИЙ": 1}
@@ -254,11 +256,11 @@ DEFAULT_STANDARD_REPORTS = [
         "name": "PI-планирование трайба",
         "description": "Отчет для проведения церемонии Product Increment Planning (PIP)",
         "legacy_names": [],
-        "filters": '[{"field":"status_name","operator":"not_equals","value":"Выполнена"}]',
-        "fields": '["id","title","team_name","status_name","priority_name","progress","deadline_name","owner_name"]',
+        "filters": '[{"field":"status_name","operator":"equals","value":"Принятие решения"}]',
+        "fields": '["id","title","task_type_name","team_name","effort_days","effort_rub","financial_effect","cv","priority_score"]',
         "group_by": None,
-        "sort_by": "progress",
-        "sort_order": "desc",
+        "sort_by": None,
+        "sort_order": "asc",
     },
     {
         "key": "did-backlog",
@@ -335,7 +337,7 @@ def ensure_standard_reports(db):
 
 
 @router.get("/", response_model=List[ReportResponse])
-async def get_reports(
+def get_reports(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -350,7 +352,7 @@ async def get_reports(
 
 
 @router.get("/did-operational-report")
-async def did_operational_report(
+def did_operational_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -434,7 +436,7 @@ async def did_operational_report(
 
 
 @router.get("/directorate-report")
-async def directorate_report(
+def directorate_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -513,7 +515,7 @@ async def directorate_report(
 
 
 @router.get("/{report_id}", response_model=ReportResponse)
-async def get_report(
+def get_report(
     report_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -530,7 +532,7 @@ async def get_report(
 
 
 @router.post("/", response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
-async def create_report(
+def create_report(
     report_data: ReportCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -562,7 +564,7 @@ async def create_report(
 
 
 @router.put("/{report_id}", response_model=ReportResponse)
-async def update_report(
+def update_report(
     report_id: int,
     report_data: ReportCreate,
     db: Session = Depends(get_db),
@@ -603,7 +605,7 @@ async def update_report(
 
 
 @router.delete("/{report_id}")
-async def delete_report(
+def delete_report(
     report_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -627,7 +629,7 @@ async def delete_report(
 
 
 @router.get("/{report_id}/execute")
-async def execute_report(
+def execute_report(
     report_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -648,7 +650,15 @@ async def execute_report(
 
     query = db.query(Task).filter(Task.is_deleted == False)
 
-    if report.filters:
+    # PI-отчёт — системный срез. Не зависим от устаревшей
+    # конфигурации стандартного отчёта в БД.
+    if report.type == "standard" and report.key == "pip":
+        query = _apply_report_filters(query, [{
+            "field": "status_name",
+            "operator": "equals",
+            "value": PIP_STATUS,
+        }])
+    elif report.filters:
         try:
             filters = json.loads(report.filters) if isinstance(report.filters, str) else report.filters
         except (json.JSONDecodeError, TypeError):
@@ -687,6 +697,7 @@ async def execute_report(
             "effort_rub": task.effort_rub,
             "financial_effect": task.financial_effect,
             "cv": cv,
+            "priority_score": task.priority_score,
             "key_project_status": task.key_project_status,
             "directorate_status": task.directorate_status,
             "did_status": task.did_status,
@@ -697,15 +708,17 @@ async def execute_report(
             "updated_at": task.updated_at.isoformat() if task.updated_at else None,
         })
 
-    if report.sort_by:
+    effective_sort_by = None if report.key == "pip" else report.sort_by
+    if effective_sort_by:
         reverse = (report.sort_order or "asc") == "desc"
-        items.sort(key=lambda x: _report_sort_key(x, report.sort_by), reverse=reverse)
-        items.sort(key=lambda x: 1 if x.get(report.sort_by) is None else 0)
+        items.sort(key=lambda x: _report_sort_key(x, effective_sort_by), reverse=reverse)
+        items.sort(key=lambda x: 1 if x.get(effective_sort_by) is None else 0)
 
-    if report.group_by:
+    effective_group_by = None if report.key == "pip" else report.group_by
+    if effective_group_by:
         groups = {}
         for item in items:
-            key = item.get(report.group_by) or "Без группы"
+            key = item.get(effective_group_by) or "Без группы"
             if key not in groups:
                 groups[key] = []
             groups[key].append(item)
@@ -715,7 +728,7 @@ async def execute_report(
         return {
             "total": len(items),
             "grouped": True,
-            "group_field": report.group_by,
+            "group_field": effective_group_by,
             "groups": [
                 {"name": name, "items": group_items, "count": len(group_items)}
                 for name, group_items in sorted_groups

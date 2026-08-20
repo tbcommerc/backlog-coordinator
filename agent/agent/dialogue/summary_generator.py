@@ -40,7 +40,7 @@ def generate_intermediate_summary(state: DialogueState) -> str:
     
     # Add prompt to continue or correct
     parts.append("")
-    parts.append("Продолжим? Если что-то неверно — скажите, я исправлю.")
+    parts.append("Всё верно? Если что-то неверно — скажите, я исправлю.")
     
     return "\n".join(parts)
 
@@ -75,18 +75,16 @@ def should_show_intermediate_summary(state: DialogueState, question_count: int) 
     if question_count >= threshold:
         return True
     
-    # Show if we have many slots filled
-    filled_count = sum(1 for slot in state.slots.values() 
+    filled_count = sum(1 for slot in state.slots.values()
                        if slot.status == "filled")
-    if filled_count >= 5:
-        return True
-    
-    # Show if average confidence is low
+
+    # Low-confidence summaries are useful only after some actual dialogue;
+    # otherwise they interrupt a rich first message with another template.
     confidences = [slot.confidence for slot in state.slots.values() 
                    if slot.status == "filled" and slot.confidence > 0]
     if confidences:
         avg_conf = sum(confidences) / len(confidences)
-        if avg_conf < 0.6 and filled_count >= 3:
+        if avg_conf < 0.6 and filled_count >= 3 and question_count >= 2:
             return True
     
     return False

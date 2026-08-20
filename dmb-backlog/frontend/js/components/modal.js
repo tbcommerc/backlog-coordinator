@@ -1,3 +1,7 @@
+import { safeExternalUrl } from '../urlUtils.js';
+import { renderAttachments } from './taskAttachments.js';
+import { renderComments, renderMentionOptions } from './taskComments.js';
+
 // === DMB Backlog — Подробная карточка задачи (Master-Detail) ===
 // === Референс: Карточка задачи - референс.html ===
 // === 24 атрибута, 6 табов, KPI Strip, связь с БД ===
@@ -65,7 +69,10 @@ function renderLinkJiraTags(links) {
       links = [links];
     }
   }
-  return links.filter(Boolean).map(url => `<a class="b-tag" href="${escapeHtml(url)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>`).join('');
+  return links.filter(Boolean).map(url => {
+    const safeUrl = safeExternalUrl(url);
+    return safeUrl ? `<a class="b-tag" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>` : '';
+  }).join('');
 }
 
 function getInitials(name) {
@@ -877,7 +884,7 @@ function renderOverviewDashboard(task) {
           const style = color ? `background:${color}22;color:${color};border-color:${color}55;` : '';
           return name ? `<span class="b-tag" style="${style}">${escapeHtml(name)}</span>` : '';
         }).join('')}
-        ${t.link_mockups ? `<a class="b-tag" href="${escapeHtml(t.link_mockups)}" target="_blank" style="text-decoration:none;color:#1e40af;background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2)">📎 Макеты</a>` : ''}
+        ${safeExternalUrl(t.link_mockups) ? `<a class="b-tag" href="${escapeHtml(safeExternalUrl(t.link_mockups))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:#1e40af;background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2)">📎 Макеты</a>` : ''}
         ${renderLinkJiraTags(t.link_jira)}
       </div>
     </div>`;
@@ -1132,25 +1139,6 @@ function initActivityTabs() {
 //  ATTACHMENTS
 // ============================================================
 
-function formatFileSize(bytes) {
-  if (!bytes) return '';
-  if (bytes < 1024) return bytes + ' Б';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
-}
-
-function getFileIcon(mimeType) {
-  if (!mimeType) return '📄';
-  if (mimeType.startsWith('image/')) return '🖼️';
-  if (mimeType.includes('pdf')) return '📕';
-  if (mimeType.includes('word') || mimeType.includes('document')) return '📘';
-  if (mimeType.includes('sheet') || mimeType.includes('excel')) return '📗';
-  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📙';
-  if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('7z') || mimeType.includes('tar')) return '🗜️';
-  if (mimeType.startsWith('text/')) return '📝';
-  return '📄';
-}
-
 async function loadAttachments(taskId, app) {
   const api = app?.api || window.app?.api;
   if (!api || !taskId) return;
@@ -1166,38 +1154,17 @@ async function loadAttachments(taskId, app) {
 
 function renderAttachmentsList() {
   const container = document.getElementById('attachments-list-container');
-  if (!container) return;
-  if (_attachmentsCache.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
-  container.innerHTML = `<div class="attachments-list">${_attachmentsCache.map(renderAttachmentItem).join('')}</div>`;
-}
-
-function renderAttachmentItem(att) {
-  const icon = getFileIcon(att.mime_type);
-  const size = formatFileSize(att.file_size);
-  const date = att.created_at ? new Date(att.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-  return `<div class="attachment-item" data-id="${att.id}">
-    <div class="attachment-item-icon">${icon}</div>
-    <div class="attachment-item-info">
-      <div class="attachment-item-name">
-        <a href="${escapeHtml(att.download_url || '')}" target="_blank" download>${escapeHtml(att.original_name)}</a>
-      </div>
-      <div class="attachment-item-meta">
-        ${size ? `<span>${size}</span>` : ''}
-        ${att.user_name ? `<span>${escapeHtml(att.user_name)}</span>` : ''}
-        ${date ? `<span>${date}</span>` : ''}
-      </div>
-    </div>
-    <button class="attachment-item-delete" title="Удалить файл" onclick="window.__deleteAttachment(${att.task_id}, ${att.id})">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-    </button>
-  </div>`;
+  renderAttachments(container, _attachmentsCache);
 }
 
 window.__deleteAttachment = async function(taskId, attachmentId) {
-  if (!confirm('Удалить этот файл?')) return;
+  const approved = await window.confirmAction?.({
+    title: 'Удалить вложение?',
+    message: 'Файл будет удалён из задачи. Это действие нельзя отменить.',
+    confirmText: 'Удалить',
+    destructive: true,
+  });
+  if (!approved) return;
   const api = window.app?.api;
   if (!api) return;
   try {
@@ -1206,6 +1173,20 @@ window.__deleteAttachment = async function(taskId, attachmentId) {
     await loadAttachments(taskId, window.app);
   } catch (e) {
     window.toast?.('Ошибка удаления: ' + (e.message || 'неизвестная'), 'error');
+  }
+};
+
+window.__downloadAttachment = async function(taskId, attachmentId) {
+  const api = window.app?.api;
+  if (!api) return;
+  const attachment = _attachmentsCache.find(item => item.id === attachmentId);
+  try {
+    await api.download(
+      `/tasks/${taskId}/attachments/${attachmentId}/download`,
+      attachment?.original_name || 'attachment'
+    );
+  } catch (e) {
+    window.toast?.('Ошибка скачивания: ' + (e.message || 'неизвестная'), 'error');
   }
 };
 
@@ -2320,57 +2301,6 @@ async function saveCreateTask(app) {
 //  COMMENTS FUNCTIONALITY
 // ============================================================
 
-function commentTime(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now - d;
-  const mins = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (mins < 1) return 'Только что';
-  if (mins < 60) return `${mins} мин. назад`;
-  if (hours < 24) return `${hours} ч. назад`;
-  if (days < 7) return `${days} д. назад`;
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-
-function renderCommentItem(comment, depth) {
-  depth = depth || 0;
-  const name = comment.user_name || 'Пользователь';
-  const initials = getInitials(name);
-  const color = avatarColor(name);
-  let text = escapeHtml(comment.text);
-  if (comment.mentioned_user_ids && comment.mentioned_user_ids.length > 0) {
-    _usersCache.forEach(u => {
-      if (comment.mentioned_user_ids.includes(u.id)) {
-        const re = new RegExp(`@${u.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g');
-        text = text.replace(re, `<span class="comment-mention">@${escapeHtml(u.name)}</span>`);
-      }
-    });
-  }
-  const replies = (comment.replies && comment.replies.length > 0)
-    ? `<div class="comment-replies">${comment.replies.map(r => renderCommentItem(r, depth + 1)).join('')}</div>`
-    : '';
-  return `<div class="comment-item${depth > 0 ? ' comment-item-reply' : ''}">
-    <div class="task-detail-avatar" style="width:32px;height:32px;background:${color};font-size:12px;flex-shrink:0;">${initials}</div>
-    <div class="comment-body">
-      <div class="comment-header">
-        <span class="comment-author">${escapeHtml(name)}</span>
-        <span class="comment-time">${commentTime(comment.created_at)}</span>
-      </div>
-      <div class="comment-text">${text}</div>
-      <div class="comment-actions">
-        <button class="comment-reply-btn" onclick="window.__setReplyTo(${comment.id}, '${escapeHtml(name).replace(/'/g, "\\'")}')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
-          Ответить
-        </button>
-      </div>
-      ${replies}
-    </div>
-  </div>`;
-}
-
 window.__setReplyTo = function(commentId, userName) {
   _replyingTo = { id: commentId, name: userName };
   const indicator = document.getElementById('reply-indicator');
@@ -2421,12 +2351,7 @@ async function loadComments(taskId, app) {
 
 function renderCommentList() {
   const container = document.getElementById('comments-list-container');
-  if (!container) return;
-  if (_commentsCache.length === 0) {
-    container.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;">Комментариев пока нет</div>';
-    return;
-  }
-  container.innerHTML = `<div class="comments-feed">${_commentsCache.map(renderCommentItem).join('')}</div>`;
+  renderComments(container, _commentsCache, _usersCache);
 }
 
 let _commentFormInitialized = false;
@@ -2526,14 +2451,7 @@ function detectMention(textarea, dropdown) {
   }
   _mentionQueryStart = atIndex;
   _mentionSelectedIdx = 0;
-  dropdown.innerHTML = filtered.map((u, i) => {
-    const initials = getInitials(u.name);
-    const color = avatarColor(u.name);
-    return `<div class="mention-item${i === 0 ? ' selected' : ''}" data-user-id="${u.id}" data-user-name="${escapeHtml(u.name || u.login || u.email)}">
-      <div class="task-detail-avatar" style="width:24px;height:24px;background:${color};font-size:9px;">${initials}</div>
-      <span>${escapeHtml(u.name || u.login || u.email)}</span>
-    </div>`;
-  }).join('');
+  renderMentionOptions(dropdown, filtered);
   dropdown.style.display = 'block';
 }
 
@@ -4143,7 +4061,7 @@ function cardChipsTags(all, selArr, field, editable) {
   return '<div class="chips">' + all.map(x => '<button type="button" class="chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
 }
 function cardSec(t, i) { return '<h3 class="sec"><span class="sic">' + cardIcon(i) + '</span>' + escapeHtml(t) + '</h3>'; }
-function cardLnk(u) { return '<a href="' + escapeHtml(u) + '" target="_blank" rel="noopener">' + cardIcon('link') + escapeHtml(u) + '</a>'; }
+function cardLnk(u) { const safe = safeExternalUrl(u); return safe ? '<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + cardIcon('link') + escapeHtml(u) + '</a>' : 'Некорректная ссылка'; }
 
 function buildCardState(task) {
   const t = task || {};
@@ -4452,7 +4370,7 @@ function cardBodyFiles() {
 function cardLinksField(label, links, e, addId, delAct, addAct, ph) {
   let inner = '';
   if (e) {
-    inner = links.map((u, i) => '<div class="jrow"><a href="' + escapeHtml(u) + '" target="_blank" rel="noopener">' + cardIcon('link') + escapeHtml(u) + '</a><button class="iconbtn" data-action="' + delAct + '" data-idx="' + i + '" title="Удалить">' + cardIcon('x') + '</button></div>').join('')
+    inner = links.map((u, i) => { const safe = safeExternalUrl(u); return '<div class="jrow">' + (safe ? '<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + cardIcon('link') + escapeHtml(u) + '</a>' : '<span>Некорректная ссылка</span>') + '<button class="iconbtn" data-action="' + delAct + '" data-idx="' + i + '" title="Удалить">' + cardIcon('x') + '</button></div>'; }).join('')
       + '<div class="jadd"><input type="url" id="' + addId + '" placeholder="' + escapeHtml(ph) + '"><button class="btn ghost" data-action="' + addAct + '">' + cardIcon('plus') + 'Добавить</button></div>';
   } else {
     inner = links.map(u => '<div class="jrow">' + cardLnk(u) + '</div>').join('') || '—';
