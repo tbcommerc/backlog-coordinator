@@ -71,6 +71,27 @@ REPORT_NUMERIC_FIELDS = {
 
 PIP_STATUS = "Принятие решения"
 
+
+def _current_quarter_progress(today: date) -> tuple[str, float]:
+    """Вернуть имя дедлайна текущего квартала и линейный план его завершённости."""
+    quarter = (today.month - 1) // 3 + 1
+    start = date(today.year, (quarter - 1) * 3 + 1, 1)
+    next_start = date(today.year + 1, 1, 1) if quarter == 4 else date(today.year, quarter * 3 + 1, 1)
+    total_days = (next_start - start).days
+    elapsed_days = min(total_days, max(0, (today - start).days + 1))
+    return f"{quarter}Q {today.year}", round(elapsed_days / total_days * 100, 1)
+
+
+def _progress_indicator(actual: int | float | None, planned: float) -> tuple[str, float]:
+    """Светофор по относительному отставанию факта от линейного плана."""
+    actual_value = float(actual or 0)
+    relative_gap = max(0.0, (planned - actual_value) / planned * 100) if planned > 0 else 0.0
+    if relative_gap > 50:
+        return "red", round(relative_gap, 1)
+    if relative_gap > 20:
+        return "yellow", round(relative_gap, 1)
+    return "green", round(relative_gap, 1)
+
 # Ранг приоритета для корректной сортировки по важности (не по алфавиту).
 PRIORITY_RANK = {"ВЫСОКИЙ": 3, "СРЕДНИЙ": 2, "НИЗКИЙ": 1}
 
@@ -279,10 +300,10 @@ DEFAULT_STANDARD_REPORTS = [
         "description": "Текущий прогресс по выполнению задач текущего квартала, отклонения, риски",
         "legacy_names": [],
         "filters": None,
-        "fields": '["id","title","team_name","status_name","priority_name","progress","deadline_name","owner_name"]',
+        "fields": '["id","title","task_type_name","team_name","progress"]',
         "group_by": None,
-        "sort_by": "progress",
-        "sort_order": "desc",
+        "sort_by": None,
+        "sort_order": "asc",
     },
 ]
 
@@ -658,6 +679,13 @@ def execute_report(
             "operator": "equals",
             "value": PIP_STATUS,
         }])
+    elif report.type == "standard" and report.key == "progress":
+        deadline_name, _planned_progress = _current_quarter_progress(date.today())
+        query = _apply_report_filters(query, [{
+            "field": "deadline_name",
+            "operator": "equals",
+            "value": deadline_name,
+        }])
     elif report.filters:
         try:
             filters = json.loads(report.filters) if isinstance(report.filters, str) else report.filters
@@ -669,11 +697,13 @@ def execute_report(
     tasks = query.all()
 
     items = []
+    progress_plan = _current_quarter_progress(date.today())[1] if report.key == "progress" else None
     for task in tasks:
         cv = None
         if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
             cv = round(task.financial_effect / task.effort_rub, 2)
 
+        progress_indicator, progress_deviation = _progress_indicator(task.progress, progress_plan) if progress_plan is not None else (None, None)
         items.append({
             "id": task.id,
             "title": task.title,
@@ -693,6 +723,9 @@ def execute_report(
             "deadline_name": task.deadline.name if task.deadline else "",
             "owner_name": task.owner.name if task.owner else "",
             "progress": task.progress or 0,
+            "planned_progress": progress_plan,
+            "progress_deviation_percent": progress_deviation,
+            "progress_indicator": progress_indicator,
             "effort_days": task.effort_days,
             "effort_rub": task.effort_rub,
             "financial_effect": task.financial_effect,
@@ -708,13 +741,13 @@ def execute_report(
             "updated_at": task.updated_at.isoformat() if task.updated_at else None,
         })
 
-    effective_sort_by = None if report.key == "pip" else report.sort_by
+    effective_sort_by = None if report.key in ("pip", "progress") else report.sort_by
     if effective_sort_by:
         reverse = (report.sort_order or "asc") == "desc"
         items.sort(key=lambda x: _report_sort_key(x, effective_sort_by), reverse=reverse)
         items.sort(key=lambda x: 1 if x.get(effective_sort_by) is None else 0)
 
-    effective_group_by = None if report.key == "pip" else report.group_by
+    effective_group_by = None if report.key in ("pip", "progress") else report.group_by
     if effective_group_by:
         groups = {}
         for item in items:

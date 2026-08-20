@@ -1,4 +1,4 @@
-console.log('[DMB] expressEstimate.js v27 loaded');
+console.log('[DMB] expressEstimate.js v29 loaded');
 
 const COMPETENCIES = ['Designee', 'Аналитика', 'Разработка BE', 'Разработка python BE', 'Разработка FE', 'Tester', 'Tester Auto', 'Delivery'];
 const EFFORT_FIELDS = ['effort_designee', 'effort_analytics', 'effort_be', 'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery'];
@@ -6,6 +6,16 @@ const EFFORT_FIELD_MAP = {};
 COMPETENCIES.forEach((c, i) => { EFFORT_FIELD_MAP[c] = EFFORT_FIELDS[i]; });
 const FIELD_TO_LABEL = {};
 EFFORT_FIELDS.forEach((f, i) => { FIELD_TO_LABEL[f] = COMPETENCIES[i]; });
+const COMPETENCY_SHORT_LABELS = {
+    'Designee': 'Des',
+    'Аналитика': 'Аналит.',
+    'Разработка BE': 'BE',
+    'Разработка python BE': 'Py BE',
+    'Разработка FE': 'FE',
+    'Tester': 'QA',
+    'Tester Auto': 'Auto QA',
+    'Delivery': 'Delivery'
+};
 
 const CAPACITY_COEFFS = { senior: 1.3, middle: 1.0, junior: 0.8, lossFactor: 0.95 };
 const EPIC_PRIORITIES = ['БЛОКИРУЮЩИЙ', 'КРИТИЧНЫЙ', 'ВЫСОКИЙ', 'СРЕДНИЙ', 'НИЗКИЙ'];
@@ -15,8 +25,13 @@ let expressData = null;
 let expressCurrentApp = null;
 let teamResources = [];
 let competencyCosts = [];
-let expressChart = null;
 let resourcesEditing = false;
+let resourceChartMode = 'util';
+let selectedResourceCompetency = null;
+let expressTaskSearch = '';
+let expressTaskFilter = 'all';
+const saveStateTimers = new Map();
+let resourceHelpOutsideHandler = null;
 
 // ==================== Main Render ====================
 
@@ -30,6 +45,9 @@ export function renderExpressEstimate(app) {
             <p>Команда: <strong>${escHtml(teamName)}</strong></p>
         </div>
         <div style="display:flex;gap:8px;">
+            <button id="express-complete-btn" class="btn btn-primary btn-sm" disabled title="Завершить экспресс-оценку и перейти к принятию решения">
+                <i data-lucide="check-circle" style="width:16px;height:16px;"></i> Завершить оценку
+            </button>
             <button id="express-export-btn" class="btn btn-secondary btn-sm" title="Экспорт в Excel">
                 <i data-lucide="download" style="width:16px;height:16px;"></i> Excel
             </button>
@@ -41,7 +59,6 @@ export function renderExpressEstimate(app) {
 
     <div id="express-top-section"></div>
     <div id="express-hierarchy-section"></div>
-    <div id="express-summary-section"></div>
 
     <div style="margin-top:var(--space-4);">
         <span class="text-secondary" id="express-tasks-count">Загрузка...</span>
@@ -55,6 +72,7 @@ export async function initExpressEstimate(app) {
     expressCurrentApp = app;
     document.getElementById('express-refresh-btn')?.addEventListener('click', () => loadData(app));
     document.getElementById('express-export-btn')?.addEventListener('click', exportToExcel);
+    document.getElementById('express-complete-btn')?.addEventListener('click', showCompleteEstimateModal);
     await loadData(app);
 }
 
@@ -73,6 +91,8 @@ async function loadData(app) {
         resourcesEditing = false;
         renderAll();
         const count = (resp.tasks || []).length;
+        const completeButton = document.getElementById('express-complete-btn');
+        if (completeButton) completeButton.disabled = count === 0;
         const el = document.getElementById('express-tasks-count');
         if (el) el.textContent = `Найдено: ${count} задач`;
     } catch (e) {
@@ -101,7 +121,7 @@ async function loadCompetencyCosts(app) {
 function renderAll() {
     renderTopSection();
     renderHierarchyBlock();
-    renderSummaryBlock();
+    if (window.lucide) window.lucide.createIcons();
 }
 
 // ==================== Block 1+2: Resources + Chart (Compact) ====================
@@ -112,23 +132,36 @@ function renderTopSection() {
 
     const isEdit = resourcesEditing;
 
+    const resourceRows = COMPETENCIES.map(competency => {
+        const existing = teamResources.find(item => item.competency === competency);
+        return existing || {
+            competency,
+            senior_count: 0,
+            middle_count: 0,
+            junior_count: 0,
+            vacation_days: 0,
+            working_days: 66,
+            capacity: 0
+        };
+    });
+
     let tableRows;
     if (isEdit) {
-        tableRows = teamResources.map(r => `
+        tableRows = resourceRows.map(r => `
             <tr>
-                <td style="font-weight:500;white-space:nowrap;">${escHtml(r.competency)}</td>
-                <td style="text-align:center;"><input type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="senior_count" value="${r.senior_count}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
-                <td style="text-align:center;"><input type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="middle_count" value="${r.middle_count}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
-                <td style="text-align:center;"><input type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="junior_count" value="${r.junior_count}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
-                <td style="text-align:center;"><input type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="vacation_days" value="${r.vacation_days}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
-                <td style="text-align:center;"><input type="number" min="1" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="working_days" value="${r.working_days}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
+                <td class="qe-resource-table-name" title="${escAttr(r.competency)}"><strong>${escHtml(COMPETENCY_SHORT_LABELS[r.competency] || r.competency)}</strong><span>${escHtml(r.competency)}</span></td>
+                <td style="text-align:center;"><input title="Количество специалистов Senior" aria-label="Senior: ${escAttr(r.competency)}" type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="senior_count" value="${r.senior_count}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
+                <td style="text-align:center;"><input title="Количество специалистов Middle" aria-label="Middle: ${escAttr(r.competency)}" type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="middle_count" value="${r.middle_count}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
+                <td style="text-align:center;"><input title="Количество специалистов Junior" aria-label="Junior: ${escAttr(r.competency)}" type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="junior_count" value="${r.junior_count}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
+                <td style="text-align:center;"><input title="Суммарные дни отпуска по компетенции" aria-label="Дни отпуска: ${escAttr(r.competency)}" type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="vacation_days" value="${r.vacation_days}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
+                <td style="text-align:center;"><input title="Рабочие дни в расчётном периоде" aria-label="Рабочие дни: ${escAttr(r.competency)}" type="number" min="1" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="working_days" value="${r.working_days}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
                 <td style="text-align:center;font-weight:700;">${r.capacity.toFixed(1)}</td>
             </tr>
         `).join('');
     } else {
-        tableRows = teamResources.map(r => `
+        tableRows = resourceRows.map(r => `
             <tr>
-                <td style="font-weight:500;white-space:nowrap;">${escHtml(r.competency)}</td>
+                <td class="qe-resource-table-name" title="${escAttr(r.competency)}"><strong>${escHtml(COMPETENCY_SHORT_LABELS[r.competency] || r.competency)}</strong><span>${escHtml(r.competency)}</span></td>
                 <td style="text-align:center;">${r.senior_count}</td>
                 <td style="text-align:center;">${r.middle_count}</td>
                 <td style="text-align:center;">${r.junior_count}</td>
@@ -145,102 +178,155 @@ function renderTopSection() {
         : `<button class="btn btn-xs btn-secondary" id="res-edit-btn"><i data-lucide="pencil" style="width:12px;height:12px;"></i> Редактировать ресурсы</button>`;
 
     el.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+    <div style="display:flex;align-items:center;margin-bottom:8px;">
         <h3 style="font-size:15px;font-weight:600;margin:0;">Ресурсы и потребности</h3>
-        <div style="display:flex;gap:6px;">${editBtns}</div>
     </div>
-    <div style="background:var(--bg-primary);border:1px solid var(--border-color);border-radius:8px;padding:16px;margin-bottom:16px;">
-        <div style="display:flex;gap:16px;flex-wrap:wrap;">
-            <div style="flex:2;min-width:300px;overflow-x:auto;">
-                <table class="table" style="font-size:12px;">
+    <div class="qe-resource-meta">
+        <span><i data-lucide="calendar-range"></i> Расчётный период: квартал</span>
+        <span><i data-lucide="ruler"></i> Единица: чел./дн.</span>
+        <details class="qe-resource-help">
+            <summary><i data-lucide="info"></i> Как считается</summary>
+            <div class="qe-resource-help-popover">
+                <strong>Capacity — доступный ресурс</strong>
+                <code>(Sr × РД × ${CAPACITY_COEFFS.senior} + Md × РД × ${CAPACITY_COEFFS.middle} + Jr × РД × ${CAPACITY_COEFFS.junior}) × ${CAPACITY_COEFFS.lossFactor} − Отп.</code>
+                <span>Sr, Md, Jr — количество Senior, Middle и Junior; РД — рабочие дни в периоде; Отп. — суммарные дни отпуска.</span>
+                <span>Demand — сумма оценок задач по компетенции. Если Demand выше Capacity, возникает дефицит.</span>
+            </div>
+        </details>
+    </div>
+    <div class="qe-resource-overview">
+        <div class="qe-resource-layout">
+            <section class="qe-resource-panel qe-capacity-panel">
+                <div class="qe-panel-head">
+                    <div><strong>Состав команды</strong><span>Специалисты и доступный Capacity · ${resourceRows.length} компетенций</span></div>
+                    <div class="qe-panel-actions">
+                        ${editBtns}
+                    </div>
+                </div>
+                <div class="qe-resource-table-wrap">
+                <table class="table qe-resource-table">
                     <thead>
                         <tr>
                             <th style="white-space:nowrap;">Компетенция</th>
-                            <th style="width:56px;text-align:center;">Sr</th>
-                            <th style="width:56px;text-align:center;">Md</th>
-                            <th style="width:56px;text-align:center;">Jr</th>
-                            <th style="width:56px;text-align:center;">Отп.</th>
-                            <th style="width:56px;text-align:center;">РД</th>
-                            <th style="width:64px;text-align:center;">Ресурс</th>
+                            <th title="Senior, коэффициент ${CAPACITY_COEFFS.senior}" style="width:56px;text-align:center;">Sr</th>
+                            <th title="Middle, коэффициент ${CAPACITY_COEFFS.middle}" style="width:56px;text-align:center;">Md</th>
+                            <th title="Junior, коэффициент ${CAPACITY_COEFFS.junior}" style="width:56px;text-align:center;">Jr</th>
+                            <th title="Суммарные дни отпуска по компетенции" style="width:56px;text-align:center;">Отп.</th>
+                            <th title="Рабочие дни в расчётном периоде" style="width:56px;text-align:center;">РД</th>
+                            <th title="Доступный Capacity, чел./дн." style="width:64px;text-align:center;">Capacity</th>
                         </tr>
                     </thead>
                     <tbody>${tableRows}</tbody>
                 </table>
-            </div>
-            <div style="flex:3;min-width:260px;">
-                <div style="position:relative;height:220px;">
-                    <canvas id="express-chart"></canvas>
                 </div>
-                <div style="display:flex;gap:12px;margin-top:6px;font-size:11px;color:var(--text-secondary);">
-                    <span><span style="display:inline-block;width:10px;height:10px;background:#10b981;border-radius:2px;margin-right:3px;"></span>Capacity</span>
-                    <span><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin-right:3px;"></span>Demand</span>
-                    <span><span style="display:inline-block;width:10px;height:10px;background:#ef4444;border-radius:2px;margin-right:3px;"></span>Дефицит</span>
-                </div>
-            </div>
+            </section>
+            <section class="qe-resource-panel qe-resource-cockpit-wrap">
+                <div id="qe-resource-cockpit"></div>
+            </section>
         </div>
     </div>`;
 
     if (window.lucide) window.lucide.createIcons();
-    drawChart();
+    renderResourceCockpit();
     bindResourceActions();
+    bindResourceHelpDismiss();
 }
 
-function drawChart() {
-    const canvas = document.getElementById('express-chart');
-    if (!canvas || !window.Chart) return;
-    if (expressChart) { expressChart.destroy(); expressChart = null; }
+function bindResourceHelpDismiss() {
+    if (resourceHelpOutsideHandler) {
+        document.removeEventListener('pointerdown', resourceHelpOutsideHandler);
+    }
+    resourceHelpOutsideHandler = event => {
+        const help = document.querySelector('.qe-resource-help[open]');
+        if (help && !help.contains(event.target)) help.removeAttribute('open');
+    };
+    document.addEventListener('pointerdown', resourceHelpOutsideHandler);
+}
 
+function renderResourceCockpit() {
+    const container = document.getElementById('qe-resource-cockpit');
+    if (!container) return;
     const demand = calcTotalDemand();
-    const labels = COMPETENCIES;
-    const capacityData = labels.map(c => {
-        const r = teamResources.find(x => x.competency === c);
-        return r ? r.capacity : 0;
+    const rows = COMPETENCIES.map(competency => {
+        const resource = teamResources.find(item => item.competency === competency);
+        const capacity = resource?.capacity || 0;
+        const needed = demand[competency] || 0;
+        const utilization = capacity > 0 ? needed / capacity * 100 : (needed > 0 ? null : 0);
+        const balance = capacity - needed;
+        const state = capacity <= 0 && needed <= 0 ? 'empty'
+            : utilization === null || utilization > 100.05 ? 'over'
+                : utilization < 80 ? 'under' : 'good';
+        return { competency, capacity, needed, utilization, balance, state };
     });
-    const demandData = labels.map(c => demand[c] || 0);
-    const barColors = labels.map((c, i) => demandData[i] > capacityData[i] ? '#ef4444' : '#3b82f6');
+    const counts = rows.reduce((result, row) => {
+        if (row.state !== 'empty') result[row.state]++;
+        return result;
+    }, { over: 0, good: 0, under: 0 });
+    const maxAbsBalance = Math.max(1, ...rows.map(row => Math.abs(row.balance)));
+    if (!selectedResourceCompetency || !rows.some(row => row.competency === selectedResourceCompetency)) {
+        selectedResourceCompetency = rows.find(row => row.state === 'over')?.competency || rows[0]?.competency;
+    }
 
-    expressChart = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [
-                { label: 'Capacity', data: capacityData, backgroundColor: '#10b981', borderRadius: 4 },
-                { label: 'Demand', data: demandData, backgroundColor: barColors, borderRadius: 4 }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        afterLabel: (ctx) => {
-                            const idx = ctx.dataIndex;
-                            const diff = demandData[idx] - capacityData[idx];
-                            return diff > 0 ? `Дефицит: ${diff.toFixed(1)} ч/д` : `Профицит: ${Math.abs(diff).toFixed(1)} ч/д`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: { beginAtZero: true, title: { display: true, text: 'Чел/д', font: { size: 11 } }, ticks: { font: { size: 10 } } },
-                x: { ticks: { font: { size: 10 } } }
-            }
+    const rowsHtml = rows.map(row => {
+        let width;
+        let offset = 0;
+        let value;
+        if (resourceChartMode === 'util') {
+            width = row.utilization === null ? 100 : Math.min(row.utilization, 160) / 1.6;
+            value = row.utilization === null ? '∞' : `${row.utilization.toFixed(0)}%`;
+        } else {
+            width = Math.abs(row.balance) / maxAbsBalance * 50;
+            offset = row.balance < 0 ? 50 - width : 50;
+            value = `${row.balance > 0 ? '+' : ''}${row.balance.toFixed(1)}`;
         }
+        const selected = row.competency === selectedResourceCompetency;
+        return `<button type="button" class="qe-resource-row" data-competency="${escAttr(row.competency)}" aria-selected="${selected}" aria-label="${escAttr(row.competency)}: Demand ${row.needed.toFixed(1)}, Capacity ${row.capacity.toFixed(1)}, ${value}">
+            <span class="qe-resource-name" title="${escAttr(row.competency)}">${escHtml(COMPETENCY_SHORT_LABELS[row.competency] || row.competency)}</span>
+            <span class="qe-resource-track ${resourceChartMode}"><span class="qe-resource-bar ${row.state}" style="width:${width}%;margin-left:${offset}%"></span></span>
+            <span class="qe-resource-values"><b>${row.needed.toFixed(1)}</b><span>/ ${row.capacity.toFixed(1)}</span><em class="${row.state}">${value}</em></span>
+        </button>`;
+    }).join('');
+    const selectedRow = rows.find(row => row.competency === selectedResourceCompetency) || rows[0];
+    let detail = '';
+    if (selectedRow) {
+        detail = selectedRow.state === 'empty'
+            ? `${selectedRow.competency}: Capacity и Demand не заданы`
+            : selectedRow.balance < 0
+                ? `${selectedRow.competency}: дефицит ${Math.abs(selectedRow.balance).toFixed(1)} чел./дн. — нужно перераспределение или снижение объёма`
+                : `${selectedRow.competency}: резерв ${selectedRow.balance.toFixed(1)} чел./дн. — доступен для дополнительной нагрузки`;
+    }
+    const balanceAxis = resourceChartMode === 'balance';
+    container.innerHTML = `
+        <div class="qe-cockpit-head">
+            <div><strong>Ресурсный баланс</strong><span>Demand / Capacity · чел./дн.</span></div>
+            <div class="qe-cockpit-switch" role="group" aria-label="Режим диаграммы">
+                <button data-mode="util" aria-pressed="${!balanceAxis}">Утилизация</button>
+                <button data-mode="balance" aria-pressed="${balanceAxis}">Баланс</button>
+            </div>
+        </div>
+        <div class="qe-cockpit-column-head">
+            <div class="qe-cockpit-summary"><span class="over"><b>${counts.over}</b> дефицит</span><span class="good"><b>${counts.good}</b> в норме</span><span class="under"><b>${counts.under}</b> резерв</span></div>
+            <div class="qe-cockpit-axis"><span>${balanceAxis ? `−${maxAbsBalance.toFixed(0)}` : '0%'}</span><span>${balanceAxis ? '0 · баланс' : '100% Capacity'}</span><span>${balanceAxis ? `+${maxAbsBalance.toFixed(0)}` : '160%'}</span></div>
+        </div>
+        <div class="qe-resource-rows">${rowsHtml}</div>
+        <div class="qe-resource-detail">${escHtml(detail)}</div>`;
+
+    container.querySelectorAll('.qe-cockpit-switch button').forEach(button => {
+        button.addEventListener('click', () => {
+            resourceChartMode = button.dataset.mode;
+            renderResourceCockpit();
+        });
+    });
+    container.querySelectorAll('.qe-resource-row').forEach(button => {
+        button.addEventListener('click', () => {
+            selectedResourceCompetency = button.dataset.competency;
+            renderResourceCockpit();
+        });
     });
 }
 
 function updateChartData() {
-    if (!expressChart) return;
-    const demand = calcTotalDemand();
-    const demandData = COMPETENCIES.map(c => demand[c] || 0);
-    const capacityData = COMPETENCIES.map(c => {
-        const r = teamResources.find(x => x.competency === c);
-        return r ? r.capacity : 0;
-    });
-    expressChart.data.datasets[1].data = demandData;
-    expressChart.data.datasets[1].backgroundColor = demandData.map((d, i) => d > capacityData[i] ? '#ef4444' : '#3b82f6');
-    expressChart.update('none');
+    renderResourceCockpit();
 }
 
 function bindResourceActions() {
@@ -260,9 +346,9 @@ async function saveResources() {
     const user = app.store.get('currentUser');
     if (!user?.team_id) return;
 
-    const updated = teamResources.map(r => {
-        const row = { competency: r.competency };
-        document.querySelectorAll(`.res-edit[data-comp="${CSS.escape(r.competency)}"]`).forEach(inp => {
+    const updated = COMPETENCIES.map(competency => {
+        const row = { competency };
+        document.querySelectorAll(`.res-edit[data-comp="${CSS.escape(competency)}"]`).forEach(inp => {
             row[inp.dataset.field] = parseInt(inp.value) || 0;
         });
         return row;
@@ -285,7 +371,19 @@ function renderHierarchyBlock() {
     const tasks = expressData?.tasks || [];
 
     const tasksHtml = tasks.length === 0
-        ? '<div style="padding:24px;text-align:center;color:var(--text-muted);">Нет задач для оценки. Добавьте задачу из бэклога.</div>'
+        ? `<div class="qe-empty-state">
+            <div class="qe-empty-icon"><i data-lucide="plus-circle"></i></div>
+            <h4>Начните экспресс-оценку</h4>
+            <p>Добавьте задачу из бэклога и декомпозируйте её до оцениваемых элементов.</p>
+            <div class="qe-empty-steps" aria-label="Этапы экспресс-оценки">
+                <span><b>1</b> Добавьте задачу</span>
+                <i data-lucide="chevron-right"></i>
+                <span><b>2</b> Создайте эпики и истории</span>
+                <i data-lucide="chevron-right"></i>
+                <span><b>3</b> Внесите оценки</span>
+            </div>
+            <button class="btn btn-primary btn-sm" id="express-empty-add-btn"><i data-lucide="plus"></i> Добавить задачу из бэклога</button>
+        </div>`
         : tasks.map(t => renderTaskBlock(t)).join('');
 
     el.innerHTML = `
@@ -296,40 +394,121 @@ function renderHierarchyBlock() {
                 <i data-lucide="plus" style="width:16px;height:16px;"></i> Добавить задачу из бэклога
             </button>
         </div>
-        ${tasksHtml}
+        <div class="qe-list-toolbar" ${tasks.length === 0 ? 'style="display:none;"' : ''}>
+            <label class="qe-task-search">
+                <i data-lucide="search" aria-hidden="true"></i>
+                <input id="qe-task-search-input" type="search" value="${escAttr(expressTaskSearch)}" placeholder="Поиск по ID или названию" aria-label="Поиск задач экспресс-оценки">
+            </label>
+            <div class="qe-estimate-filters" role="group" aria-label="Фильтр по наличию оценки">
+                <button class="qe-estimate-filter${expressTaskFilter === 'all' ? ' active' : ''}" data-filter="all" aria-pressed="${expressTaskFilter === 'all'}">Все</button>
+                <button class="qe-estimate-filter${expressTaskFilter === 'unestimated' ? ' active' : ''}" data-filter="unestimated" aria-pressed="${expressTaskFilter === 'unestimated'}">Без оценки</button>
+                <button class="qe-estimate-filter${expressTaskFilter === 'estimated' ? ' active' : ''}" data-filter="estimated" aria-pressed="${expressTaskFilter === 'estimated'}">Оценённые</button>
+            </div>
+            <span id="qe-filtered-count" class="qe-filtered-count"></span>
+            <div class="qe-collapse-actions">
+                <button class="btn btn-xs btn-secondary" id="qe-collapse-all-btn" title="Свернуть все задачи и эпики"><i data-lucide="chevrons-up"></i> Свернуть всё</button>
+                <button class="btn btn-xs btn-secondary" id="qe-expand-all-btn" title="Развернуть все задачи и эпики"><i data-lucide="chevrons-down"></i> Развернуть всё</button>
+            </div>
+        </div>
+        <div class="qe-task-list-scroll">
+            ${tasksHtml}
+            <div id="qe-filter-empty" class="qe-filter-empty" style="display:none;">По заданным условиям задач не найдено</div>
+        </div>
     </div>`;
 
     document.getElementById('express-import-btn')?.addEventListener('click', showImportModal);
+    document.getElementById('express-empty-add-btn')?.addEventListener('click', showImportModal);
+    bindListToolbar();
     bindHierarchyActions();
+    applyTaskFilters();
+}
+
+function bindListToolbar() {
+    document.getElementById('qe-task-search-input')?.addEventListener('input', (event) => {
+        expressTaskSearch = event.target.value;
+        applyTaskFilters();
+    });
+    document.querySelectorAll('.qe-estimate-filter').forEach(button => {
+        button.addEventListener('click', () => {
+            expressTaskFilter = button.dataset.filter;
+            document.querySelectorAll('.qe-estimate-filter').forEach(item => {
+                const active = item === button;
+                item.classList.toggle('active', active);
+                item.setAttribute('aria-pressed', String(active));
+            });
+            applyTaskFilters();
+        });
+    });
+    document.getElementById('qe-collapse-all-btn')?.addEventListener('click', () => setHierarchyCollapsed(true));
+    document.getElementById('qe-expand-all-btn')?.addEventListener('click', () => setHierarchyCollapsed(false));
+}
+
+function applyTaskFilters() {
+    const tasks = expressData?.tasks || [];
+    const normalizedQuery = expressTaskSearch.trim().toLocaleLowerCase('ru-RU');
+    const idQuery = normalizedQuery.replace(/^#/, '');
+    let visibleCount = 0;
+
+    tasks.forEach(task => {
+        const total = EFFORT_FIELDS.reduce((sum, field) => sum + effectiveEffort({ ...task, _type: 'task' }, field), 0);
+        const estimated = total > 0;
+        const matchesSearch = !normalizedQuery
+            || String(task.id).includes(idQuery)
+            || String(task.title || '').toLocaleLowerCase('ru-RU').includes(normalizedQuery);
+        const matchesFilter = expressTaskFilter === 'all'
+            || (expressTaskFilter === 'estimated' && estimated)
+            || (expressTaskFilter === 'unestimated' && !estimated);
+        const visible = matchesSearch && matchesFilter;
+        const block = document.querySelector(`.qe-task-block[data-task-id="${task.id}"]`);
+        if (block) block.hidden = !visible;
+        if (visible) visibleCount++;
+    });
+
+    const count = document.getElementById('qe-filtered-count');
+    if (count) count.textContent = `Показано ${visibleCount} из ${tasks.length}`;
+    const empty = document.getElementById('qe-filter-empty');
+    if (empty) empty.style.display = tasks.length > 0 && visibleCount === 0 ? 'block' : 'none';
+}
+
+function setHierarchyCollapsed(collapsed) {
+    const section = document.getElementById('express-hierarchy-section');
+    if (!section) return;
+    section.querySelectorAll('.qe-toggle[data-target]').forEach(toggle => {
+        const taskBlock = toggle.closest('.qe-task-block');
+        if (taskBlock?.hidden) return;
+        const target = document.getElementById(toggle.dataset.target);
+        if (!target) return;
+        target.style.display = collapsed ? 'none' : '';
+        const icon = toggle.matches('svg, i') ? toggle : toggle.querySelector('svg, i');
+        if (icon) icon.style.transform = collapsed ? 'rotate(-90deg)' : '';
+    });
 }
 
 function renderTaskBlock(task) {
     const epics = task.epics || [];
     const total = EFFORT_FIELDS.reduce((s, f) => s + effectiveEffort({ ...task, _type: 'task' }, f), 0);
+    const estimateClass = total > 0 ? '' : ' qe-unestimated';
     const epicsHtml = epics.map(e => renderEpicBlock(e, task.id)).join('');
+    const taskToggleAttrs = epics.length
+        ? `class="qe-toggle qe-estimate-row" data-target="task-${task.id}"`
+        : 'class="qe-estimate-row"';
     const taskEffort = {};
     if (epics.length > 0) {
         COMPETENCIES.forEach(c => { taskEffort[EFFORT_FIELD_MAP[c]] = effectiveEffort({ ...task, _type: 'task' }, EFFORT_FIELD_MAP[c]); });
     }
-    const unestimatedEpics = epics.filter(e => {
-        return EFFORT_FIELDS.every(f => !e[f] || e[f] === 0);
-    });
-    const warnBadge = unestimatedEpics.length > 0
-        ? `<span title="${unestimatedEpics.length} эпик(ов) без оценки" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#f59e0b20;color:#f59e0b;font-size:11px;font-weight:700;flex-shrink:0;">${unestimatedEpics.length}</span>`
-        : '';
     return `
-    <div class="qe-task-block" data-task-id="${task.id}" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-secondary);border-radius:6px 6px 0 0;" class="qe-toggle" data-target="task-${task.id}">
-            <div style="display:flex;align-items:center;gap:8px;width:300px;flex-shrink:0;overflow:hidden;">
-                <i data-lucide="chevron-down" style="width:16px;height:16px;color:var(--text-muted);transition:transform .2s;flex-shrink:0;"></i>
+    <div class="qe-task-block${estimateClass}" data-task-id="${task.id}" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-secondary);border-radius:6px 6px 0 0;" ${taskToggleAttrs}>
+            <div class="qe-entity-title" style="display:flex;align-items:center;gap:8px;width:300px;flex-shrink:0;overflow:hidden;">
+                ${epics.length ? '<i data-lucide="chevron-down" style="width:16px;height:16px;color:var(--text-muted);transition:transform .2s;flex-shrink:0;"></i>' : ''}
                 <i data-lucide="clipboard-check" style="width:16px;height:16px;color:var(--accent);flex-shrink:0;" title="Задача"></i>
                 <strong style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(task.title)}</strong>
                 <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">(${epics.length} эпиков)</span>
-                ${warnBadge}
+                ${renderUnestimatedLabel()}
             </div>
             ${renderEffortInline(task, 'task', true, taskEffort)}
-            <span style="font-weight:700;font-size:13px;min-width:60px;text-align:right;white-space:nowrap;margin-left:auto;" data-total-task="${task.id}">${total.toFixed(1)} ч/д</span>
-            <button class="btn btn-xs btn-danger qe-del-task-btn" data-task-id="${task.id}" title="Убрать из экспресс-оценки" style="margin-left:8px;"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>
+            <span class="qe-effort-total" style="font-weight:700;font-size:13px;min-width:60px;text-align:right;white-space:nowrap;margin-left:auto;" data-total-task="${task.id}">${total.toFixed(1)} ч/д</span>
+            <button class="btn btn-xs btn-secondary qe-exclude-task-btn" data-task-id="${task.id}" title="Исключить из экспресс-оценки" aria-label="Исключить задачу из экспресс-оценки" style="margin-left:8px;"><i data-lucide="minus-circle" style="width:12px;height:12px;"></i></button>
         </div>
         <div id="task-${task.id}" style="padding:8px 0 8px 12px;">
             ${epicsHtml}
@@ -345,28 +524,35 @@ function renderTaskBlock(task) {
 function renderEpicBlock(epic, taskId) {
     const stories = epic.stories || [];
     const total = EFFORT_FIELDS.reduce((s, f) => s + effectiveEffort({ ...epic, _type: 'epic' }, f), 0);
+    const estimateClass = total > 0 ? '' : ' qe-unestimated';
     const storiesHtml = stories.map(s => renderStoryBlock(s, epic.id)).join('');
     const priColor = PRIORITY_COLORS[epic.priority] || '#6b7280';
     const priOptions = EPIC_PRIORITIES.map(p => `<option value="${p}" ${epic.priority === p ? 'selected' : ''}>${p}</option>`).join('');
     const hasStories = stories.length > 0;
+    const epicToggle = hasStories
+        ? `<i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--text-muted);cursor:pointer;transition:transform .2s;flex-shrink:0;" class="qe-toggle" data-target="epic-${epic.id}"></i>`
+        : '';
     const epicEffort = {};
     if (hasStories) {
         COMPETENCIES.forEach(c => { epicEffort[EFFORT_FIELD_MAP[c]] = effectiveEffort({ ...epic, _type: 'epic' }, EFFORT_FIELD_MAP[c]); });
     }
     return `
-    <div class="qe-epic-block" data-epic-id="${epic.id}" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:6px;margin-left:16px;">
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px 6px 0 0;">
-            <div style="display:flex;align-items:center;gap:6px;width:272px;flex-shrink:0;overflow:hidden;">
-                <i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--text-muted);cursor:pointer;transition:transform .2s;flex-shrink:0;" class="qe-toggle" data-target="epic-${epic.id}"></i>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><title>Эпик</title><rect x="0" y="0" width="14" height="14" rx="2" fill="#904EE2"/><g transform="translate(4,3)" fill="#FFF"><path d="M5.92 3.76l-.004-.004c.046-.08.08-.162.08-.256 0-.276-.224-.5-.5-.5H3V.5C3 .224 2.776 0 2.5 0c-.172 0-.315.092-.405.223-.028.04-.051.083-.066.13L.08 4.24l.002.002C.035 4.32 0 4.4 0 4.5c0 .276.224.5.5.5H3v2.5c0 .276.224.5.5.5.18 0 .33-.1.418-.242l.003.002.013-.026c.011-.02.023-.04.031-.062l1.958-3.915z"/></g></svg>
+    <div class="qe-epic-block${estimateClass}" data-epic-id="${epic.id}" data-task-id="${taskId}" draggable="true" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:6px;margin-left:16px;">
+        <div class="qe-estimate-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px 6px 0 0;position:relative;">
+            <div class="qe-entity-title" style="display:flex;align-items:center;gap:6px;width:272px;flex-shrink:0;overflow:hidden;">
+                <i data-lucide="grip-vertical" style="width:14px;height:14px;color:var(--text-muted);cursor:grab;flex-shrink:0;" class="qe-drag-handle" data-drag-type="epic" title="Изменить порядок эпика"></i>
+                ${epicToggle}
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><title>Эпик</title><rect width="16" height="16" rx="2.5" fill="#904EE2"/><g transform="translate(5,4)" fill="#FFF"><path d="M5.92 3.76l-.004-.004c.046-.08.08-.162.08-.256 0-.276-.224-.5-.5-.5H3V.5C3 .224 2.776 0 2.5 0c-.172 0-.315.092-.405.223-.028.04-.051.083-.066.13L.08 4.24l.002.002C.035 4.32 0 4.4 0 4.5c0 .276.224.5.5.5H3v2.5c0 .276.224.5.5.5.18 0 .33-.1.418-.242l.003.002.013-.026c.011-.02.023-.04.031-.062l1.958-3.915z"/></g></svg>
                 <input type="text" class="qe-inline-field-input" data-entity="epic" data-id="${epic.id}" data-field="title" data-original="${escHtml(epic.title)}" value="${escHtml(epic.title)}" style="font-size:13px;font-weight:500;padding:4px 6px;border:1px solid transparent;border-radius:4px;background:transparent;min-width:40px;flex:1;overflow:hidden;text-overflow:ellipsis;" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';">
                 <select class="qe-inline-field-select" data-entity="epic" data-id="${epic.id}" data-field="priority" data-original="${epic.priority || ''}" style="font-size:11px;padding:4px 6px;border-radius:4px;background:${priColor}15;color:${priColor};border:1px solid ${priColor}33;font-weight:600;cursor:pointer;max-width:120px;flex-shrink:0;">
                     <option value="">—</option>${priOptions}
                 </select>
                 <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">(${stories.length})</span>
+                ${renderUnestimatedLabel()}
             </div>
             ${renderEffortInline(epic, 'epic', hasStories, hasStories ? epicEffort : null)}
-            <span style="font-weight:600;font-size:13px;min-width:60px;text-align:right;white-space:nowrap;margin-left:auto;" data-total-epic="${epic.id}">${total.toFixed(1)}</span>
+            <span class="qe-effort-total" style="font-weight:600;font-size:13px;min-width:60px;text-align:right;white-space:nowrap;margin-left:auto;" data-total-epic="${epic.id}">${total.toFixed(1)}</span>
+            ${renderSaveState('epic', epic.id)}
             <button class="btn btn-xs btn-danger qe-del-epic-btn" data-epic-id="${epic.id}" title="Удалить" style="margin-left:8px;"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>
         </div>
         <div id="epic-${epic.id}" style="padding:6px 0 6px 12px;">
@@ -385,7 +571,7 @@ function renderEpicEditPanel(epic, taskId) {
     const effortInputs = COMPETENCIES.map(c => {
         const field = EFFORT_FIELD_MAP[c];
         const val = epic?.[field] ?? '';
-        return `<td style="padding:2px 3px;text-align:center;"><input type="number" step="0.5" min="0" class="qe-effort-input" data-field="${field}" data-panel-id="${epic?.id || 'new-epic'}" value="${val}" placeholder="0" style="width:52px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:11px;text-align:center;"></td>`;
+        return `<td style="padding:2px 3px;text-align:center;"><input title="${escAttr(c)}" aria-label="${escAttr(c)}" type="number" step="0.5" min="0" class="qe-effort-input" data-field="${field}" data-panel-id="${epic?.id || 'new-epic'}" value="${val}" placeholder="0" style="width:52px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:11px;text-align:center;"></td>`;
     }).join('');
     const total = EFFORT_FIELDS.reduce((s, f) => s + (parseFloat(epic?.[f]) || 0), 0);
     const effortCells = hasNoStories ? effortInputs : COMPETENCIES.map(() => '<td style="text-align:center;color:var(--text-muted);font-size:11px;">—</td>').join('');
@@ -395,7 +581,7 @@ function renderEpicEditPanel(epic, taskId) {
             <tr>
                 <th style="text-align:left;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;">Название</th>
                 <th style="text-align:left;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;width:130px;">Приоритет</th>
-                ${COMPETENCIES.map(c => `<th style="text-align:center;font-size:10px;padding:2px 3px;color:var(--text-secondary);font-weight:500;">${c.split(' ').pop()}</th>`).join('')}
+                ${COMPETENCIES.map(c => `<th title="${escAttr(c)}" style="text-align:center;font-size:10px;padding:2px 3px;color:var(--text-secondary);font-weight:500;">${COMPETENCY_SHORT_LABELS[c] || c}</th>`).join('')}
                 <th style="text-align:center;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;min-width:40px;">Итого</th>
                 <th style="width:30px;"></th>
             </tr>
@@ -416,16 +602,19 @@ function renderEpicEditPanel(epic, taskId) {
 
 function renderStoryBlock(story, epicId) {
     const total = EFFORT_FIELDS.reduce((s, f) => s + (parseFloat(story[f]) || 0), 0);
+    const estimateClass = total > 0 ? '' : ' qe-unestimated';
     return `
-    <div class="qe-story-block" data-story-id="${story.id}" data-epic-id="${epicId}" draggable="true" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:6px;margin-left:32px;">
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-secondary);border-radius:6px 6px 0 0;overflow:hidden;">
-            <div style="display:flex;align-items:center;gap:6px;width:228px;flex-shrink:0;overflow:hidden;">
-                <i data-lucide="grip-vertical" style="width:14px;height:14px;color:var(--text-muted);cursor:grab;flex-shrink:0;" class="qe-drag-handle"></i>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><title>История</title><rect x="0" y="0" width="14" height="14" rx="2" fill="#63BA3C"/><path d="M9 3H5a1 1 0 00-1 1v6.5a.5.5 0 00.5.5c.175 0 .321-.095.41-.231l.004-.001L6.84 8.54a.5.5 0 01.68 0l1.886 2.228.004.001c.089.136.235.231.41.231a.5.5 0 00.5-.5V4a1 1 0 00-1-1z" fill="#FFF"/></svg>
+    <div class="qe-story-block${estimateClass}" data-story-id="${story.id}" data-epic-id="${epicId}" draggable="true" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:6px;margin-left:32px;">
+        <div class="qe-estimate-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-secondary);border-radius:6px 6px 0 0;overflow:visible;position:relative;">
+            <div class="qe-entity-title" style="display:flex;align-items:center;gap:6px;width:228px;flex-shrink:0;overflow:hidden;">
+                <i data-lucide="grip-vertical" style="width:14px;height:14px;color:var(--text-muted);cursor:grab;flex-shrink:0;" class="qe-drag-handle" data-drag-type="story" title="Изменить порядок истории"></i>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><title>История</title><rect width="16" height="16" rx="2.5" fill="#63BA3C"/><path d="M10 3H6a1 1 0 00-1 1v7a.5.5 0 00.91.269L7.84 9.04a.5.5 0 01.68 0l1.99 2.229A.5.5 0 0011 11V4a1 1 0 00-1-1z" fill="#FFF"/></svg>
                 <input type="text" class="qe-inline-field-input" data-entity="story" data-id="${story.id}" data-field="title" data-original="${escHtml(story.title)}" value="${escHtml(story.title)}" style="font-size:13px;padding:4px 6px;border:1px solid transparent;border-radius:4px;background:transparent;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';">
+                ${renderUnestimatedLabel()}
             </div>
             ${renderEffortInline(story, 'story')}
-            <span style="font-weight:600;font-size:13px;min-width:60px;text-align:right;white-space:nowrap;margin-left:auto;" data-total-story="${story.id}">${total.toFixed(1)}</span>
+            <span class="qe-effort-total" style="font-weight:600;font-size:13px;min-width:60px;text-align:right;white-space:nowrap;margin-left:auto;" data-total-story="${story.id}">${total.toFixed(1)}</span>
+            ${renderSaveState('story', story.id)}
             <button class="btn btn-xs btn-danger qe-del-story-btn" data-story-id="${story.id}" title="Удалить" style="margin-left:8px;"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
         </div>
     </div>`;
@@ -435,7 +624,7 @@ function renderStoryEditPanel(story, epicId) {
     const effortInputs = COMPETENCIES.map(c => {
         const field = EFFORT_FIELD_MAP[c];
         const val = story?.[field] ?? '';
-        return `<td style="padding:2px 3px;text-align:center;"><input type="number" step="0.5" min="0" class="qe-effort-input" data-field="${field}" data-panel-id="${story?.id || 'new-story'}" value="${val}" placeholder="0" style="width:52px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:11px;text-align:center;"></td>`;
+        return `<td style="padding:2px 3px;text-align:center;"><input title="${escAttr(c)}" aria-label="${escAttr(c)}" type="number" step="0.5" min="0" class="qe-effort-input" data-field="${field}" data-panel-id="${story?.id || 'new-story'}" value="${val}" placeholder="0" style="width:52px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:11px;text-align:center;"></td>`;
     }).join('');
     const total = EFFORT_FIELDS.reduce((s, f) => s + (parseFloat(story?.[f]) || 0), 0);
     return `
@@ -443,7 +632,7 @@ function renderStoryEditPanel(story, epicId) {
         <thead>
             <tr>
                 <th style="text-align:left;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;">Название</th>
-                ${COMPETENCIES.map(c => `<th style="text-align:center;font-size:10px;padding:2px 3px;color:var(--text-secondary);font-weight:500;">${c.split(' ').pop()}</th>`).join('')}
+                ${COMPETENCIES.map(c => `<th title="${escAttr(c)}" style="text-align:center;font-size:10px;padding:2px 3px;color:var(--text-secondary);font-weight:500;">${COMPETENCY_SHORT_LABELS[c] || c}</th>`).join('')}
                 <th style="text-align:center;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;min-width:40px;">Итого</th>
                 <th style="width:30px;"></th>
             </tr>
@@ -461,23 +650,31 @@ function renderStoryEditPanel(story, epicId) {
 
 // ==================== Shared Render Helpers ====================
 
+function renderUnestimatedLabel() {
+    return '<span class="qe-unestimated-label" title="Трудозатраты не указаны">Без оценки</span>';
+}
+
+function renderSaveState(entity, id) {
+    return `<span class="qe-save-state" data-save-state="${entity}-${id}" aria-live="polite"></span>`;
+}
+
 function renderEffortInline(item, entityType, readonly = false, computedValues = null) {
-    return `<div style="display:grid;grid-template-columns:repeat(8, 48px);gap:6px;flex-shrink:0;">` +
+    return `<div class="qe-effort-grid" style="display:grid;grid-template-columns:repeat(8, 48px);gap:6px;flex-shrink:0;">` +
         COMPETENCIES.map(c => {
             const field = EFFORT_FIELD_MAP[c];
             const rawVal = item[field];
             const val = computedValues ? computedValues[field] : rawVal;
-            const shortLabel = c.split(' ').pop();
+            const shortLabel = COMPETENCY_SHORT_LABELS[c] || c;
             if (readonly) {
                 const display = (val !== undefined && val !== null && val !== '') ? val : '—';
                 return `<div style="display:flex;flex-direction:column;align-items:center;">
-                    <span style="font-size:8px;color:var(--text-muted);line-height:1;margin-bottom:2px;">${shortLabel}</span>
-                    <span style="width:100%;padding:5px 4px;text-align:center;font-size:12px;font-weight:500;background:#6b728015;border:1px solid #6b728030;border-radius:4px;min-height:24px;color:var(--text-muted);" data-effort-display="${entityType}-${item.id}-${field}">${display}</span>
+                    <span class="qe-competency-label" title="${escAttr(c)}">${shortLabel}</span>
+                    <span title="${escAttr(c)}: ${display}" style="width:100%;padding:5px 4px;text-align:center;font-size:12px;font-weight:500;background:#6b728015;border:1px solid #6b728030;border-radius:4px;min-height:24px;color:var(--text-muted);" data-effort-display="${entityType}-${item.id}-${field}">${display}</span>
                 </div>`;
             }
             return `<div style="display:flex;flex-direction:column;align-items:center;">
-                <span style="font-size:8px;color:var(--text-muted);line-height:1;margin-bottom:2px;">${shortLabel}</span>
-                <input type="number" step="0.5" min="0" class="qe-inline-effort" data-entity="${entityType}" data-id="${item.id}" data-field="${field}" data-original="${val ?? ''}" value="${val ?? ''}" placeholder="0" style="width:48px;padding:5px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;text-align:center;">
+                <span class="qe-competency-label" title="${escAttr(c)}">${shortLabel}</span>
+                <input title="${escAttr(c)}" aria-label="${escAttr(c)}" type="number" step="0.5" min="0" class="qe-inline-effort" data-entity="${entityType}" data-id="${item.id}" data-field="${field}" data-original="${val ?? ''}" value="${val ?? ''}" placeholder="0" style="width:48px;padding:5px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;text-align:center;">
             </div>`;
         }).join('') +
     `</div>`;
@@ -489,75 +686,6 @@ function renderEffortChips(item) {
         const label = FIELD_TO_LABEL[f];
         return `<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);white-space:nowrap;" title="${label}: ${val} ч/д">${label.substring(0, 3)} ${val}</span>`;
     }).join('');
-}
-
-// ==================== Block 4: Summary Table ====================
-
-function renderSummaryBlock() {
-    const el = document.getElementById('express-summary-section');
-    if (!el) return;
-    const summary = calcSummaryByStatusPriority();
-    if (summary.length === 0) {
-        el.innerHTML = '';
-        return;
-    }
-    const rows = summary.map((row, idx) => `
-        <tr data-status="${escHtml(row.status)}" data-priority="${escHtml(row.priority)}" data-row-idx="${idx}" class="qe-summary-row" style="cursor:pointer;">
-            <td style="font-weight:500;">${escHtml(row.status)}</td>
-            <td><span style="font-size:11px;padding:2px 6px;border-radius:4px;background:${PRIORITY_COLORS[row.priority] || '#6b7280'}15;color:${PRIORITY_COLORS[row.priority] || '#6b7280'};font-weight:600;">${escHtml(row.priority)}</span></td>
-            ${COMPETENCIES.map(c => `<td style="text-align:center;">${(row.demand[c] || 0).toFixed(1)}</td>`).join('')}
-            <td style="text-align:right;font-weight:700;">${formatRub(row.totalCost)}</td>
-        </tr>
-    `).join('');
-    const totals = summary.reduce((acc, row) => {
-        COMPETENCIES.forEach(c => { acc[c] = (acc[c] || 0) + (row.demand[c] || 0); });
-        acc.totalCost += row.totalCost;
-        return acc;
-    }, { totalCost: 0 });
-
-    el.innerHTML = `
-    <div style="background:var(--bg-primary);border:1px solid var(--border-color);border-radius:8px;padding:16px;margin-bottom:16px;">
-        <h3 style="font-size:15px;font-weight:600;margin:0 0 12px;">Сводная таблица потребности в ресурсах</h3>
-        <div style="overflow-x:auto;">
-            <table class="table qe-summary-table" style="font-size:12px;">
-                <thead>
-                    <tr>
-                        <th>Статус</th>
-                        <th>Приоритет</th>
-                        ${COMPETENCIES.map(c => `<th style="width:65px;text-align:center;font-size:11px;">${c.split(' ').pop()}</th>`).join('')}
-                        <th style="width:100px;text-align:right;">Total Cost</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                    <tr style="background:var(--bg-secondary);font-weight:700;">
-                        <td colspan="2">Итого</td>
-                        ${COMPETENCIES.map(c => `<td style="text-align:center;">${(totals[c] || 0).toFixed(1)}</td>`).join('')}
-                        <td style="text-align:right;">${formatRub(totals.totalCost)}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>`;
-
-    el.querySelectorAll('.qe-summary-row').forEach(tr => {
-        tr.addEventListener('click', () => {
-            const status = tr.dataset.status;
-            const priority = tr.dataset.priority;
-            const wasHighlighted = tr.classList.contains('qe-summary-active');
-            el.querySelectorAll('.qe-summary-row').forEach(r => r.classList.remove('qe-summary-active'));
-            document.querySelectorAll('.qe-task-block').forEach(b => b.classList.remove('qe-highlighted'));
-            if (wasHighlighted) return;
-            tr.classList.add('qe-summary-active');
-            const tasks = expressData?.tasks || [];
-            tasks.forEach(task => {
-                if ((task.status_name || 'Неизвестно') === status && (task.priority_name || 'СРЕДНИЙ') === priority) {
-                    const block = document.querySelector(`.qe-task-block[data-task-id="${task.id}"]`);
-                    if (block) block.classList.add('qe-highlighted');
-                }
-            });
-        });
-    });
 }
 
 // ==================== Import Task Modal (search/select — not editing) ====================
@@ -718,7 +846,10 @@ async function importSelectedTasks() {
     modal?.remove();
     if (fail > 0) window.toast(`Добавлено: ${ok}, ошибок: ${fail}`, 'warning');
     else window.toast(`Добавлено задач: ${ok}`, 'success');
+    expressTaskSearch = '';
+    expressTaskFilter = 'all';
     await loadData(app);
+    revealImportedTasks(ids);
 }
 
 async function importSingleTask(taskId) {
@@ -727,23 +858,45 @@ async function importSingleTask(taskId) {
         await app.api.post(`/quick-estimate/import-task/${taskId}`);
         window.toast('Задача добавлена', 'success');
         document.getElementById('qe-modal')?.remove();
+        expressTaskSearch = '';
+        expressTaskFilter = 'all';
         await loadData(app);
+        revealImportedTasks([taskId]);
     } catch (e) {
         window.toast('Ошибка: ' + e.message, 'error');
     }
 }
 
-// ==================== Delete Confirm Modal ====================
+function revealImportedTasks(taskIds) {
+    let firstBlock = null;
+    taskIds.forEach(taskId => {
+        const block = document.querySelector(`.qe-task-block[data-task-id="${taskId}"]`);
+        if (!block) return;
+        if (!firstBlock) firstBlock = block;
+        block.hidden = false;
+        const body = document.getElementById(`task-${taskId}`);
+        if (body) body.style.display = '';
+        const toggle = block.querySelector(`.qe-toggle[data-target="task-${taskId}"]`);
+        const icon = toggle?.querySelector('svg, i');
+        if (icon) icon.style.transform = '';
+        block.classList.add('qe-just-imported');
+        setTimeout(() => block.classList.remove('qe-just-imported'), 2200);
+    });
+    firstBlock?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 
-function showDeleteConfirm(message, onConfirm) {
+// ==================== Confirm Modal ====================
+
+function showConfirm({ title, message, confirmLabel, danger = false, errorMessage, onConfirm }) {
+    const confirmClass = danger ? 'btn-danger' : 'btn-primary';
     const html = `
     <div class="modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;" id="qe-modal">
         <div style="background:var(--bg-primary);border-radius:12px;padding:24px;width:400px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-            <h3 style="margin:0 0 12px;font-size:16px;">Подтверждение удаления</h3>
+            <h3 style="margin:0 0 12px;font-size:16px;">${escHtml(title)}</h3>
             <p style="font-size:13px;color:var(--text-secondary);margin:0 0 16px;">${escHtml(message)}</p>
             <div style="display:flex;justify-content:flex-end;gap:8px;">
                 <button class="btn btn-secondary btn-sm" id="qe-confirm-cancel">Отмена</button>
-                <button class="btn btn-danger btn-sm" id="qe-confirm-delete">Удалить</button>
+                <button class="btn ${confirmClass} btn-sm" id="qe-confirm-action">${escHtml(confirmLabel)}</button>
             </div>
         </div>
     </div>`;
@@ -753,26 +906,35 @@ function showDeleteConfirm(message, onConfirm) {
         if (e.target === overlay) overlay.remove();
     });
     document.getElementById('qe-confirm-cancel').addEventListener('click', () => overlay.remove());
-    document.getElementById('qe-confirm-delete').addEventListener('click', async () => {
-        await onConfirm();
-        overlay.remove();
+    document.getElementById('qe-confirm-action').addEventListener('click', async () => {
+        const confirmButton = document.getElementById('qe-confirm-action');
+        confirmButton.disabled = true;
+        try {
+            await onConfirm();
+            overlay.remove();
+        } catch (e) {
+            confirmButton.disabled = false;
+            window.toast('Ошибка: ' + (e?.message || errorMessage), 'error');
+        }
     });
 }
 
 // ==================== Hierarchy Actions (Event Delegation) ====================
 
-let _hierarchyBound = false;
+let _boundHierarchySection = null;
 
 function bindHierarchyActions() {
-    if (_hierarchyBound) return;
-    _hierarchyBound = true;
-
     const section = document.getElementById('express-hierarchy-section');
     if (!section) return;
+    if (_boundHierarchySection === section) return;
+    _boundHierarchySection = section;
 
     section.addEventListener('click', (e) => {
         const toggle = e.target.closest('.qe-toggle');
-        if (toggle) {
+        // В шапке задачи есть кнопки и поля. Они должны получить клик
+        // раньше обработчика сворачивания всей строки.
+        const interactive = e.target.closest('button,input,select,textarea,a');
+        if (toggle && !interactive) {
             const target = document.getElementById(toggle.dataset.target);
             if (target) {
                 const hidden = target.style.display === 'none';
@@ -797,10 +959,17 @@ function bindHierarchyActions() {
             const msg = storyCount > 0
                 ? `Удаление эпика приведёт к удалению ${storyCount} связанных историй. Продолжить?`
                 : 'Удалить эпик?';
-            showDeleteConfirm(msg, async () => {
-                await expressCurrentApp.api.delete(`/quick-estimate/epics/${epicId}`);
-                window.toast('Эпик удалён', 'success');
-                await loadData(expressCurrentApp);
+            showConfirm({
+                title: 'Удалить эпик',
+                message: msg,
+                confirmLabel: 'Удалить',
+                danger: true,
+                errorMessage: 'не удалось удалить эпик',
+                onConfirm: async () => {
+                    await expressCurrentApp.api.delete(`/quick-estimate/epics/${epicId}`);
+                    window.toast('Эпик удалён', 'success');
+                    await loadData(expressCurrentApp);
+                }
             });
             return;
         }
@@ -814,21 +983,34 @@ function bindHierarchyActions() {
         if (e.target.closest('.qe-del-story-btn')) {
             const btn = e.target.closest('.qe-del-story-btn');
             const storyId = parseInt(btn.dataset.storyId);
-            showDeleteConfirm('Удалить историю?', async () => {
-                await expressCurrentApp.api.delete(`/quick-estimate/stories/${storyId}`);
-                window.toast('История удалена', 'success');
-                await loadData(expressCurrentApp);
+            showConfirm({
+                title: 'Удалить историю',
+                message: 'История будет удалена безвозвратно.',
+                confirmLabel: 'Удалить',
+                danger: true,
+                errorMessage: 'не удалось удалить историю',
+                onConfirm: async () => {
+                    await expressCurrentApp.api.delete(`/quick-estimate/stories/${storyId}`);
+                    window.toast('История удалена', 'success');
+                    await loadData(expressCurrentApp);
+                }
             });
             return;
         }
 
-        if (e.target.closest('.qe-del-task-btn')) {
-            const btn = e.target.closest('.qe-del-task-btn');
+        if (e.target.closest('.qe-exclude-task-btn')) {
+            const btn = e.target.closest('.qe-exclude-task-btn');
             const taskId = parseInt(btn.dataset.taskId);
-            showDeleteConfirm('Убрать задачу из экспресс-оценки? Она вернётся в предыдущий статус.', async () => {
-                await expressCurrentApp.api.delete(`/quick-estimate/tasks/${taskId}`);
-                window.toast('Задача убрана из экспресс-оценки', 'success');
-                await loadData(expressCurrentApp);
+            showConfirm({
+                title: 'Исключить из экспресс-оценки',
+                message: 'Задача не будет удалена. Она вернётся в статус, который был до начала экспресс-оценки.',
+                confirmLabel: 'Исключить',
+                errorMessage: 'не удалось исключить задачу из экспресс-оценки',
+                onConfirm: async () => {
+                    await expressCurrentApp.api.delete(`/quick-estimate/tasks/${taskId}`);
+                    window.toast('Задача исключена из экспресс-оценки', 'success');
+                    await loadData(expressCurrentApp);
+                }
             });
             return;
         }
@@ -912,56 +1094,89 @@ function bindHierarchyActions() {
         }
     });
 
-    // ---- Drag & Drop reorder (stories only) ----
+    // ---- Drag & Drop reorder (epics inside tasks, stories inside epics) ----
     let _draggedEl = null;
+    let _dragReadyEl = null;
+
+    const getDragParent = () => {
+        if (!_draggedEl) return null;
+        if (_draggedEl.classList.contains('qe-epic-block')) {
+            const task = _draggedEl.closest('.qe-task-block');
+            return task?.querySelector(`#task-${task.dataset.taskId}`) || null;
+        }
+        const epic = _draggedEl.closest('.qe-epic-block');
+        return epic?.querySelector(`#epic-${epic.dataset.epicId}`) || null;
+    };
+
+    const resolveDropTarget = clientY => {
+        const parent = getDragParent();
+        if (!parent) return null;
+        const parentRect = parent.getBoundingClientRect();
+        if (clientY < parentRect.top - 12 || clientY > parentRect.bottom + 12) return null;
+        const selector = _draggedEl.classList.contains('qe-epic-block')
+            ? ':scope > .qe-epic-block'
+            : ':scope > .qe-story-block';
+        const candidates = [...parent.querySelectorAll(selector)].filter(item => item !== _draggedEl);
+        if (!candidates.length) return null;
+        return candidates.reduce((nearest, item) => {
+            const rect = item.getBoundingClientRect();
+            const distance = Math.abs(clientY - (rect.top + rect.height / 2));
+            return !nearest || distance < nearest.distance ? { item, distance } : nearest;
+        }, null)?.item || null;
+    };
+
+    section.addEventListener('pointerdown', (e) => {
+        const handle = e.target.closest('.qe-drag-handle');
+        if (!handle) { _dragReadyEl = null; return; }
+        _dragReadyEl = handle.dataset.dragType === 'epic'
+            ? handle.closest('.qe-epic-block')
+            : handle.closest('.qe-story-block');
+    });
 
     section.addEventListener('dragstart', (e) => {
-        const handle = e.target.closest('.qe-drag-handle');
-        if (!handle) { e.preventDefault(); return; }
-        const block = handle.closest('.qe-story-block');
-        if (!block) return;
-        _draggedEl = block;
-        block.classList.add('qe-dragging');
+        const source = e.target.closest('.qe-epic-block, .qe-story-block');
+        if (!_dragReadyEl || source !== _dragReadyEl) { e.preventDefault(); return; }
+        _draggedEl = source;
+        source.classList.add('qe-dragging');
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', '');
+        e.dataTransfer.setData('text/plain', source.dataset.epicId || source.dataset.storyId || '');
     });
 
     section.addEventListener('dragover', (e) => {
         if (!_draggedEl) return;
-        const target = e.target.closest('.qe-story-block');
-        if (!target || target === _draggedEl) return;
-        if (target.dataset.epicId !== _draggedEl.dataset.epicId) return;
+        const target = resolveDropTarget(e.clientY);
+        if (!target) {
+            section.querySelectorAll('.qe-drag-over-above, .qe-drag-over-below').forEach(element => {
+                element.classList.remove('qe-drag-over-above', 'qe-drag-over-below');
+            });
+            return;
+        }
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
+        section.querySelectorAll('.qe-drag-over-above, .qe-drag-over-below').forEach(element => {
+            if (element !== target) element.classList.remove('qe-drag-over-above', 'qe-drag-over-below');
+        });
         const rect = target.getBoundingClientRect();
         const midY = rect.top + rect.height / 2;
         target.classList.toggle('qe-drag-over-above', e.clientY < midY);
         target.classList.toggle('qe-drag-over-below', e.clientY >= midY);
     });
 
-    section.addEventListener('dragleave', (e) => {
-        const target = e.target.closest('.qe-story-block');
-        if (target) {
-            target.classList.remove('qe-drag-over-above', 'qe-drag-over-below');
-        }
-    });
-
     section.addEventListener('drop', (e) => {
         e.preventDefault();
         if (!_draggedEl) return;
-        const target = e.target.closest('.qe-story-block');
-        if (!target || target === _draggedEl) return;
+        const target = resolveDropTarget(e.clientY);
+        if (!target) return;
         target.classList.remove('qe-drag-over-above', 'qe-drag-over-below');
 
         const rect = target.getBoundingClientRect();
         const midY = rect.top + rect.height / 2;
         const insertBefore = e.clientY < midY;
 
-        const epicBlock = target.closest('.qe-epic-block');
-        const body = epicBlock?.querySelector(`#epic-${epicBlock.dataset.epicId}`);
-        if (body) {
-            if (insertBefore) body.insertBefore(_draggedEl, target);
-            else body.insertBefore(_draggedEl, target.nextSibling);
+        const parent = getDragParent();
+        if (parent) {
+            if (insertBefore) parent.insertBefore(_draggedEl, target);
+            else parent.insertBefore(_draggedEl, target.nextSibling);
         }
         persistSortOrder();
     });
@@ -972,6 +1187,7 @@ function bindHierarchyActions() {
             el.classList.remove('qe-drag-over-above', 'qe-drag-over-below');
         });
         _draggedEl = null;
+        _dragReadyEl = null;
     });
 
     if (window.lucide) window.lucide.createIcons();
@@ -983,6 +1199,13 @@ function persistSortOrder() {
     const app = expressCurrentApp;
     if (!app) return;
     const payload = { epics: [], stories: [] };
+    document.querySelectorAll('.qe-task-block').forEach(taskBlock => {
+        const body = taskBlock.querySelector(`#task-${taskBlock.dataset.taskId}`);
+        if (!body) return;
+        body.querySelectorAll(':scope > .qe-epic-block').forEach((el, idx) => {
+            payload.epics.push({ id: parseInt(el.dataset.epicId), sort_order: idx });
+        });
+    });
     document.querySelectorAll('.qe-epic-block').forEach(epicBlock => {
         const body = epicBlock.querySelector(`#epic-${epicBlock.dataset.epicId}`);
         if (!body) return;
@@ -1056,6 +1279,7 @@ async function handleInlineFieldSave(el) {
     if (String(value) === String(original || '')) return;
 
     const data = { [field]: value || null };
+    setSaveState(entity, id, 'saving');
     try {
         if (entity === 'epic') {
             await app.api.put(`/quick-estimate/epics/${id}`, data);
@@ -1073,8 +1297,9 @@ async function handleInlineFieldSave(el) {
             el.style.background = `${color}15`;
             el.style.borderColor = `${color}33`;
         }
-        window.toast('Сохранено', 'success');
+        setSaveState(entity, id, 'saved');
     } catch (e) {
+        setSaveState(entity, id, 'error');
         window.toast('Ошибка: ' + e.message, 'error');
         el.value = original || '';
     }
@@ -1100,7 +1325,9 @@ async function handleInlineEffortSave(el) {
     }
     el.dataset.original = value ?? '';
     updateParentDisplays(entity, id);
+    applyTaskFilters();
     updateChartData();
+    setSaveState(entity, id, 'saving');
 
     try {
         if (entity === 'epic') {
@@ -1108,7 +1335,9 @@ async function handleInlineEffortSave(el) {
         } else {
             await app.api.put(`/quick-estimate/stories/${id}`, data);
         }
+        setSaveState(entity, id, 'saved');
     } catch (e) {
+        setSaveState(entity, id, 'error');
         window.toast('Ошибка: ' + e.message, 'error');
         el.value = original || '';
         el.dataset.original = original || '';
@@ -1120,11 +1349,13 @@ async function handleInlineEffortSave(el) {
             if (story) story[field] = original === '' ? null : parseFloat(original);
         }
         updateParentDisplays(entity, id);
+        applyTaskFilters();
         updateChartData();
     }
 }
 
 function updateParentDisplays(entity, id) {
+    updateEstimateHighlight(entity, id);
     if (entity === 'story') {
         const story = findStoryById(id);
         if (!story) return;
@@ -1152,6 +1383,7 @@ function updateParentDisplays(entity, id) {
         const task = (expressData?.tasks || []).find(t => t.id === taskId);
         if (!task) return;
         const total = EFFORT_FIELDS.reduce((s, f) => s + effectiveEffort({ ...task, _type: 'task' }, f), 0);
+        taskBlock.classList.toggle('qe-unestimated', total <= 0);
         const totalEl = taskBlock.querySelector(`[data-total-task="${taskId}"]`);
         if (totalEl) totalEl.textContent = total.toFixed(1) + ' ч/д';
         COMPETENCIES.forEach(c => {
@@ -1160,6 +1392,44 @@ function updateParentDisplays(entity, id) {
             const displayEl = taskBlock.querySelector(`[data-effort-display="task-${taskId}-${field}"]`);
             if (displayEl) displayEl.textContent = val || 0;
         });
+    }
+}
+
+function updateEstimateHighlight(entity, id) {
+    let item;
+    let block;
+    let total = 0;
+    if (entity === 'story') {
+        item = findStoryById(id);
+        block = document.querySelector(`.qe-story-block[data-story-id="${id}"]`);
+        total = item ? EFFORT_FIELDS.reduce((sum, field) => sum + (parseFloat(item[field]) || 0), 0) : 0;
+    } else if (entity === 'epic') {
+        item = findEpicById(id);
+        block = document.querySelector(`.qe-epic-block[data-epic-id="${id}"]`);
+        total = item ? EFFORT_FIELDS.reduce((sum, field) => sum + effectiveEffort({ ...item, _type: 'epic' }, field), 0) : 0;
+    }
+    block?.classList.toggle('qe-unestimated', total <= 0);
+}
+
+function setSaveState(entity, id, state) {
+    const key = `${entity}-${id}`;
+    const element = document.querySelector(`[data-save-state="${key}"]`);
+    if (!element) return;
+    const previousTimer = saveStateTimers.get(key);
+    if (previousTimer) clearTimeout(previousTimer);
+
+    element.dataset.state = state;
+    element.textContent = state === 'saving'
+        ? 'Сохраняется…'
+        : state === 'saved' ? 'Сохранено' : 'Не сохранено';
+
+    if (state === 'saved') {
+        const timer = setTimeout(() => {
+            element.dataset.state = '';
+            element.textContent = '';
+            saveStateTimers.delete(key);
+        }, 1800);
+        saveStateTimers.set(key, timer);
     }
 }
 
@@ -1247,14 +1517,10 @@ function calcTotalDemand() {
     const demand = {};
     COMPETENCIES.forEach(c => { demand[c] = 0; });
     for (const task of (expressData?.tasks || [])) {
-        for (const epic of (task.epics || [])) {
-            const stories = epic.stories || [];
-            for (const story of stories) {
-                COMPETENCIES.forEach(c => {
-                    demand[c] += parseFloat(story[EFFORT_FIELD_MAP[c]]) || 0;
-                });
-            }
-        }
+        COMPETENCIES.forEach(c => {
+            const field = EFFORT_FIELD_MAP[c];
+            demand[c] += effectiveEffort({ ...task, _type: 'task' }, field);
+        });
     }
     return demand;
 }
@@ -1281,6 +1547,91 @@ function calcSummaryByStatusPriority() {
         g.totalCost = totalCost;
         return g;
     });
+}
+
+// ==================== Complete Estimate ====================
+
+function showCompleteEstimateModal() {
+    const tasks = expressData?.tasks || [];
+    if (tasks.length === 0) return;
+    const demand = calcTotalDemand();
+    const unestimatedCount = tasks.filter(task => EFFORT_FIELDS.every(field => effectiveEffort({ ...task, _type: 'task' }, field) <= 0)).length;
+    const rows = COMPETENCIES.map(competency => {
+        const resource = teamResources.find(item => item.competency === competency);
+        const capacity = resource?.capacity || 0;
+        const needed = demand[competency] || 0;
+        const delta = needed - capacity;
+        const utilization = capacity > 0 ? (needed / capacity) * 100 : (needed > 0 ? null : 0);
+        const state = delta > 0.05 ? 'over' : delta < -0.05 ? 'under' : 'balanced';
+        return { competency, capacity, needed, delta, utilization, state };
+    });
+    const totalDemand = rows.reduce((sum, row) => sum + row.needed, 0);
+    const totalCapacity = rows.reduce((sum, row) => sum + row.capacity, 0);
+    const deviationItems = rows.filter(row => row.state !== 'balanced').map(row => {
+        if (row.state === 'over') {
+            const utilization = row.utilization === null ? 'нет Capacity' : `утилизация ${row.utilization.toFixed(0)}%`;
+            return `<li class="over"><strong>${escHtml(row.competency)}</strong>: дефицит ${row.delta.toFixed(1)} чел./дн. (${utilization})</li>`;
+        }
+        return `<li class="under"><strong>${escHtml(row.competency)}</strong>: резерв ${Math.abs(row.delta).toFixed(1)} чел./дн. (утилизация ${row.utilization.toFixed(0)}%)</li>`;
+    }).join('');
+    const tableRows = rows.map(row => `
+        <tr>
+            <td>${escHtml(row.competency)}</td>
+            <td>${row.needed.toFixed(1)}</td>
+            <td>${row.capacity.toFixed(1)}</td>
+            <td class="qe-util-${row.state}">${row.utilization === null ? '—' : row.utilization.toFixed(0) + '%'}</td>
+            <td class="qe-util-${row.state}">${row.state === 'over' ? 'Дефицит ' + row.delta.toFixed(1) : row.state === 'under' ? 'Резерв ' + Math.abs(row.delta).toFixed(1) : 'Баланс'}</td>
+        </tr>`).join('');
+
+    const html = `
+    <div class="modal-overlay qe-complete-overlay" id="qe-modal">
+        <div class="qe-complete-modal" role="dialog" aria-modal="true" aria-labelledby="qe-complete-title">
+            <div class="qe-complete-heading">
+                <div class="qe-complete-icon"><i data-lucide="check-circle"></i></div>
+                <div><h3 id="qe-complete-title">Завершить экспресс-оценку?</h3><p>Все ${tasks.length} задач перейдут в статус «ПРИНЯТИЕ РЕШЕНИЯ».</p></div>
+            </div>
+            ${unestimatedCount > 0 ? `<div class="qe-complete-warning"><i data-lucide="alert-triangle"></i> Без оценки: ${unestimatedCount} задач. Они также будут переведены на следующий этап.</div>` : ''}
+            <div class="qe-complete-kpis">
+                <div><span>Задач</span><strong>${tasks.length}</strong></div>
+                <div><span>Demand</span><strong>${totalDemand.toFixed(1)} <small>чел./дн.</small></strong></div>
+                <div><span>Capacity</span><strong>${totalCapacity.toFixed(1)} <small>чел./дн.</small></strong></div>
+            </div>
+            <h4>Ключевые отклонения</h4>
+            <ul class="qe-deviation-list">${deviationItems || '<li class="balanced">Потребность сбалансирована с Capacity по всем компетенциям.</li>'}</ul>
+            <details class="qe-complete-details"><summary>Показать сводку по компетенциям</summary>
+                <div class="qe-complete-table-wrap"><table><thead><tr><th>Компетенция</th><th>Demand</th><th>Capacity</th><th>Утилизация</th><th>Отклонение</th></tr></thead><tbody>${tableRows}</tbody></table></div>
+            </details>
+            <div class="qe-complete-actions">
+                <button class="btn btn-secondary btn-sm" id="qe-complete-cancel">Отмена</button>
+                <button class="btn btn-primary btn-sm" id="qe-complete-confirm"><i data-lucide="check"></i> Подтвердить завершение</button>
+            </div>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    if (window.lucide) window.lucide.createIcons();
+    const overlay = document.getElementById('qe-modal');
+    overlay.addEventListener('click', event => { if (event.target === overlay) overlay.remove(); });
+    document.getElementById('qe-complete-cancel').addEventListener('click', () => overlay.remove());
+    document.getElementById('qe-complete-confirm').addEventListener('click', completeEstimate);
+}
+
+async function completeEstimate() {
+    const button = document.getElementById('qe-complete-confirm');
+    if (!button || !expressCurrentApp) return;
+    button.disabled = true;
+    button.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> Завершаем…';
+    if (window.lucide) window.lucide.createIcons();
+    try {
+        const result = await expressCurrentApp.api.put('/quick-estimate/complete', {});
+        document.getElementById('qe-modal')?.remove();
+        window.toast(result?.detail || 'Экспресс-оценка завершена', 'success');
+        await loadData(expressCurrentApp);
+    } catch (error) {
+        button.disabled = false;
+        button.innerHTML = '<i data-lucide="check"></i> Подтвердить завершение';
+        if (window.lucide) window.lucide.createIcons();
+        window.toast('Ошибка: ' + error.message, 'error');
+    }
 }
 
 // ==================== Finders ====================
@@ -1311,34 +1662,85 @@ function exportToExcel() {
         if (!XLSX) { window.toast('Библиотека Excel не загружена', 'error'); return; }
         const wb = XLSX.utils.book_new();
 
-        const rows = [['Задача', 'Эпик', 'Приоритет', 'История', ...COMPETENCIES, 'Итого']];
+        const rows = [['ID задачи', 'Задача', 'Статус', 'Эпик', 'Приоритет эпика', 'История', ...COMPETENCIES, 'Итого, чел./дн.']];
         for (const task of (expressData?.tasks || [])) {
+            if ((task.epics || []).length === 0) {
+                rows.push([task.id, task.title, task.status_name || '', '', '', '', ...COMPETENCIES.map(() => 0), 0]);
+            }
             for (const epic of (task.epics || [])) {
                 if ((epic.stories || []).length === 0) {
                     const total = COMPETENCIES.reduce((s, c) => s + (parseFloat(epic[EFFORT_FIELD_MAP[c]]) || 0), 0);
-                    rows.push([task.title, epic.title, epic.priority || '', '', ...COMPETENCIES.map(c => parseFloat(epic[EFFORT_FIELD_MAP[c]]) || 0), total]);
+                    rows.push([task.id, task.title, task.status_name || '', epic.title, epic.priority || '', '', ...COMPETENCIES.map(c => parseFloat(epic[EFFORT_FIELD_MAP[c]]) || 0), total]);
                 }
                 for (const story of (epic.stories || [])) {
                     const total = COMPETENCIES.reduce((s, c) => s + (parseFloat(story[EFFORT_FIELD_MAP[c]]) || 0), 0);
-                    rows.push([task.title, epic.title, epic.priority || '', story.title, ...COMPETENCIES.map(c => parseFloat(story[EFFORT_FIELD_MAP[c]]) || 0), total]);
+                    rows.push([task.id, task.title, task.status_name || '', epic.title, epic.priority || '', story.title, ...COMPETENCIES.map(c => parseFloat(story[EFFORT_FIELD_MAP[c]]) || 0), total]);
                 }
             }
         }
         const ws1 = XLSX.utils.aoa_to_sheet(rows);
+        configureExcelSheet(XLSX, ws1, [12, 36, 22, 32, 22, 36, ...COMPETENCIES.map(() => 16), 18], rows.length, rows[0].length);
+        setExcelNumberFormat(XLSX, ws1, 1, rows.length - 1, 6, rows[0].length - 1, '0.0');
         XLSX.utils.book_append_sheet(wb, ws1, 'Иерархия');
 
         const summary = calcSummaryByStatusPriority();
-        const sRows = [['Статус', 'Приоритет', ...COMPETENCIES, 'Total Cost, руб']];
+        const sRows = [['Статус', 'Приоритет', ...COMPETENCIES, 'Стоимость, руб.']];
         summary.forEach(r => {
-            sRows.push([r.status, r.priority, ...COMPETENCIES.map(c => (r.demand[c] || 0).toFixed(1)), r.totalCost]);
+            sRows.push([r.status, r.priority, ...COMPETENCIES.map(c => r.demand[c] || 0), r.totalCost]);
         });
+        const summaryTotals = summary.reduce((acc, row) => {
+            COMPETENCIES.forEach(c => { acc[c] = (acc[c] || 0) + (row.demand[c] || 0); });
+            acc.totalCost += row.totalCost;
+            return acc;
+        }, { totalCost: 0 });
+        sRows.push(['ИТОГО', '', ...COMPETENCIES.map(c => summaryTotals[c] || 0), summaryTotals.totalCost]);
         const ws2 = XLSX.utils.aoa_to_sheet(sRows);
+        configureExcelSheet(XLSX, ws2, [22, 18, ...COMPETENCIES.map(() => 18), 20], sRows.length, sRows[0].length);
+        setExcelNumberFormat(XLSX, ws2, 1, sRows.length - 1, 2, sRows[0].length - 2, '0.0');
+        setExcelNumberFormat(XLSX, ws2, 1, sRows.length - 1, sRows[0].length - 1, sRows[0].length - 1, '#,##0\" руб.\"');
         XLSX.utils.book_append_sheet(wb, ws2, 'Сводная');
 
-        XLSX.writeFile(wb, 'express_estimate.xlsx');
+        const demand = calcTotalDemand();
+        const resourceRows = [['Компетенция', 'Capacity, чел./дн.', 'Demand, чел./дн.', 'Баланс, чел./дн.', 'Состояние']];
+        COMPETENCIES.forEach(c => {
+            const resource = teamResources.find(r => r.competency === c);
+            const capacity = resource?.capacity || 0;
+            const needed = demand[c] || 0;
+            const balance = capacity - needed;
+            resourceRows.push([c, capacity, needed, balance, balance < 0 ? 'Дефицит' : 'Резерв']);
+        });
+        resourceRows.push([
+            'ИТОГО',
+            resourceRows.slice(1).reduce((sum, r) => sum + r[1], 0),
+            resourceRows.slice(1).reduce((sum, r) => sum + r[2], 0),
+            resourceRows.slice(1).reduce((sum, r) => sum + r[3], 0),
+            ''
+        ]);
+        const ws3 = XLSX.utils.aoa_to_sheet(resourceRows);
+        configureExcelSheet(XLSX, ws3, [28, 22, 22, 22, 16], resourceRows.length, resourceRows[0].length);
+        setExcelNumberFormat(XLSX, ws3, 1, resourceRows.length - 1, 1, 3, '0.0');
+        XLSX.utils.book_append_sheet(wb, ws3, 'Ресурсы');
+
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, `express_estimate_${dateStamp}.xlsx`);
         window.toast('Экспорт выполнен', 'success');
     } catch (e) {
         window.toast('Ошибка экспорта: ' + e.message, 'error');
+    }
+}
+
+function configureExcelSheet(XLSX, sheet, widths, rowCount, columnCount) {
+    sheet['!cols'] = widths.map(wch => ({ wch }));
+    sheet['!autofilter'] = { ref: XLSX.utils.encode_range({ r: 0, c: 0 }, { r: Math.max(0, rowCount - 1), c: columnCount - 1 }) };
+    sheet['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
+}
+
+function setExcelNumberFormat(XLSX, sheet, startRow, endRow, startColumn, endColumn, format) {
+    for (let row = startRow; row <= endRow; row++) {
+        for (let column = startColumn; column <= endColumn; column++) {
+            const cell = sheet[XLSX.utils.encode_cell({ r: row, c: column })];
+            if (cell?.t === 'n') cell.z = format;
+        }
     }
 }
 
@@ -1351,6 +1753,10 @@ function escHtml(str) {
     return d.innerHTML;
 }
 
-function formatRub(val) {
-    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(val || 0);
+function escAttr(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('"', '&quot;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
 }

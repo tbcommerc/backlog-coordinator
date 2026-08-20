@@ -279,8 +279,19 @@ class TaskBase(BaseModel):
 class TaskCreate(TaskBase):
     title: str = Field(min_length=1, max_length=255)
     team_id: int
-    priority_id: int
+    task_type_id: int
+    channel_id: int
+    date_received: date
+    priority_id: Optional[int] = None
     description: Optional[str] = Field(None, max_length=10000)
+
+    @field_validator('title')
+    @classmethod
+    def _validate_create_title(cls, value):
+        value = value.strip()
+        if not value:
+            raise ValueError('Введите название задачи')
+        return value
 
 
 class TaskUpdate(BaseModel):
@@ -345,6 +356,20 @@ class TaskUpdate(BaseModel):
     metric_kr_unit: Optional[str] = Field(None, max_length=50, description='Единица измерения Метрического KR')
     did_demo: Optional[bool] = None
     tags: Optional[List[str]] = Field(None, description='Метки (теги) — имена тегов')
+
+    @field_validator('title')
+    @classmethod
+    def _validate_update_title(cls, value):
+        if value is None or not value.strip():
+            raise ValueError('Введите название задачи')
+        return value.strip()
+
+    @field_validator('team_id', 'task_type_id', 'channel_id', 'date_received')
+    @classmethod
+    def _validate_required_update_fields(cls, value):
+        if value is None:
+            raise ValueError('Обязательное поле не может быть пустым')
+        return value
     version: Optional[int] = Field(None, description='Версия задачи для optimistic lock')
 
     @field_validator('link_jira', mode='before')
@@ -475,7 +500,7 @@ class TaskLinkUpdate(BaseModel):
 
 class BulkActionRequest(BaseModel):
     action: str = Field(max_length=50)
-    task_ids: List[int] = Field(max_length=500)
+    task_ids: List[int] = Field(min_length=1)
     fields: Optional[Dict[str, Any]] = None
     updates: Optional[Dict[str, Any]] = None  # deprecated, use fields instead
 
@@ -900,6 +925,33 @@ class ErrorResponse(BaseModel):
 class SuccessResponse(BaseModel):
     success: bool = True
     detail: Optional[str] = None
+
+
+class BulkActionResponse(SuccessResponse):
+    operation_id: str
+    requested_tasks: int
+    changed_tasks: int
+    unchanged_tasks: int
+    applied_changes: int
+    skipped_changes: int
+    changed_task_ids: List[int] = Field(default_factory=list)
+    unchanged_task_ids: List[int] = Field(default_factory=list)
+    error_task_ids: List[int] = Field(default_factory=list)
+    errors: List[str] = Field(default_factory=list)
+
+
+class BulkPreviewResponse(BaseModel):
+    requested_tasks: int
+    found_tasks: int
+    accessible_tasks: int
+    inaccessible_tasks: int
+    changed_tasks: int
+    unchanged_tasks: int
+    applied_changes: int
+    skipped_changes: int
+    notifications: int
+    can_apply: bool
+    errors: List[str] = Field(default_factory=list)
 
 
 # ==================== COLUMN LABELS ====================

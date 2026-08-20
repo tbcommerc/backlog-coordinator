@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 
 from database import get_db
-from models import Task, Epic, Story, TaskStatus, User
+from models import Task, Epic, Story, TaskStatus, TaskHistory, User
 from schemas import (
     EpicCreate, EpicUpdate, EpicResponse, EpicListResponse,
     StoryCreate, StoryUpdate, StoryResponse, StoryListResponse,
@@ -15,7 +15,7 @@ from schemas import (
     TaskResponse, SuccessResponse
 )
 from auth import get_current_user, check_permission, authorize_task
-from notifications import notify_express_import
+from notifications import notify_express_import, notify_status_change
 
 router = APIRouter()
 
@@ -166,7 +166,7 @@ def get_quick_estimate(
     task_ids = [t.id for t in tasks]
 
     # Get all epics for these tasks
-    epics = db.query(Epic).filter(Epic.task_id.in_(task_ids)).order_by(Epic.id).all()
+    epics = db.query(Epic).filter(Epic.task_id.in_(task_ids)).order_by(Epic.sort_order, Epic.id).all()
     epic_map: dict[int, list[Epic]] = {}
     for e in epics:
         epic_map.setdefault(e.task_id, []).append(e)
@@ -175,7 +175,7 @@ def get_quick_estimate(
     epic_ids = [e.id for e in epics]
     stories = []
     if epic_ids:
-        stories = db.query(Story).filter(Story.epic_id.in_(epic_ids)).order_by(Story.id).all()
+        stories = db.query(Story).filter(Story.epic_id.in_(epic_ids)).order_by(Story.sort_order, Story.id).all()
     story_map: dict[int, list[Story]] = {}
     for s in stories:
         story_map.setdefault(s.epic_id, []).append(s)
@@ -377,6 +377,58 @@ def remove_task_from_estimate(
     return SuccessResponse(success=True, detail="Task removed from express estimation")
 
 
+@router.put("/quick-estimate/complete", response_model=SuccessResponse)
+def complete_quick_estimate(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Complete the team's express estimate and move all its tasks to decision."""
+    if not current_user.team_id:
+        raise HTTPException(status_code=400, detail="User has no team assigned")
+
+    qe_status = db.query(TaskStatus).filter(TaskStatus.name == "ЭКСПРЕСС-ОЦЕНКА").first()
+    decision_status = db.query(TaskStatus).filter(TaskStatus.name == "ПРИНЯТИЕ РЕШЕНИЯ").first()
+    if not qe_status or not decision_status:
+        raise HTTPException(status_code=409, detail="Required workflow statuses are not configured")
+
+    tasks = db.query(Task).filter(
+        Task.is_deleted == False,
+        Task.team_id == current_user.team_id,
+        Task.status_id == qe_status.id,
+    ).order_by(Task.id).all()
+    if not tasks:
+        raise HTTPException(status_code=409, detail="No tasks in express estimation")
+
+    # Authorize the full batch before changing any task.
+    for task in tasks:
+        authorize_task("edit", task, current_user)
+
+    try:
+        for task in tasks:
+            db.add(TaskHistory(
+                task_id=task.id,
+                changed_by=current_user.id,
+                field_name="status_id",
+                old_value=str(qe_status.id),
+                new_value=str(decision_status.id),
+            ))
+            task.status_id = decision_status.id
+            task.previous_status_id = None
+            task.version = (task.version or 0) + 1
+            notify_status_change(
+                db, task, qe_status.name, decision_status.name, current_user.id,
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return SuccessResponse(
+        success=True,
+        detail=f"Экспресс-оценка завершена. Задач переведено: {len(tasks)}",
+    )
+
+
 # ==================== TASK EFFORT UPDATE ====================
 
 @router.put("/quick-estimate/tasks/{task_id}", response_model=QuickEstimateTaskResponse)
@@ -408,7 +460,7 @@ def update_task_effort(
     db.commit()
     db.refresh(task)
 
-    epics = db.query(Epic).filter(Epic.task_id == task.id).order_by(Epic.id).all()
+    epics = db.query(Epic).filter(Epic.task_id == task.id).order_by(Epic.sort_order, Epic.id).all()
     return task_to_quick_estimate_response(task, epics)
 
 
@@ -420,7 +472,13 @@ def update_sort_order(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Batch update sort_order for stories only."""
+    """Batch update sort_order for epics and stories within their parents."""
+    for item in data.epics:
+        epic = db.query(Epic).filter(Epic.id == item.id).first()
+        if epic:
+            authorize_task("edit", _task_for_epic(db, epic), current_user)
+            epic.sort_order = item.sort_order
+
     for item in data.stories:
         story = db.query(Story).filter(Story.id == item.id).first()
         if story:
@@ -543,5 +601,5 @@ def import_task_to_estimate(
     db.commit()
     db.refresh(task)
 
-    epics = db.query(Epic).filter(Epic.task_id == task.id).order_by(Epic.id).all()
+    epics = db.query(Epic).filter(Epic.task_id == task.id).order_by(Epic.sort_order, Epic.id).all()
     return task_to_quick_estimate_response(task, epics)

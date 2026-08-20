@@ -38,6 +38,7 @@ export class Router {
         this.defaultRoute = '/dashboard';
         this.onBeforeNavigate = null;
         this.lastHash = null;
+        this.lastDeepLinkedTask = null;
     }
 
     init() {
@@ -49,9 +50,69 @@ export class Router {
         window.location.hash = path;
     }
 
+    pushTaskRoute(taskId, tab = 'main') {
+        const hash = window.location.hash.slice(1) || this.defaultRoute;
+        const [path, query = ''] = hash.split('?');
+        const params = new URLSearchParams(query);
+        if (Number(params.get('task')) === Number(taskId)) return;
+        params.set('task', String(taskId));
+        if (tab && tab !== 'main') params.set('tab', tab);
+        else params.delete('tab');
+        const nextHash = `${path}?${params.toString()}`;
+        history.pushState({ ...(history.state || {}), dmbTaskModal: true }, '', '#' + nextHash);
+        this.lastHash = nextHash;
+        this.lastDeepLinkedTask = `${path}:${Number(taskId)}`;
+    }
+
+    updateTaskTabRoute(tab) {
+        const hash = window.location.hash.slice(1) || this.defaultRoute;
+        const [path, query = ''] = hash.split('?');
+        const params = new URLSearchParams(query);
+        if (!params.has('task')) return;
+        if (tab && tab !== 'main') params.set('tab', tab);
+        else params.delete('tab');
+        const nextHash = `${path}?${params.toString()}`;
+        history.replaceState(history.state, '', '#' + nextHash);
+        this.lastHash = nextHash;
+    }
+
+    clearTaskRoute() {
+        const hash = window.location.hash.slice(1) || this.defaultRoute;
+        const [path, query = ''] = hash.split('?');
+        const params = new URLSearchParams(query);
+        if (!params.has('task')) return;
+        if (history.state?.dmbTaskModal) {
+            history.back();
+            return;
+        }
+        params.delete('task');
+        params.delete('tab');
+        const nextHash = params.toString() ? `${path}?${params.toString()}` : path;
+        history.replaceState(history.state, '', '#' + nextHash);
+        this.lastHash = nextHash;
+        this.lastDeepLinkedTask = null;
+    }
+
+    openDeepLinkedTask(path, query) {
+        const params = new URLSearchParams(query);
+        const linkedTaskId = Number(params.get('task'));
+        const linkedTaskTab = params.get('tab') || 'main';
+        if (Number.isInteger(linkedTaskId) && linkedTaskId > 0) {
+            const deepLinkKey = `${path}:${linkedTaskId}`;
+            if (this.lastDeepLinkedTask !== deepLinkKey) {
+                this.lastDeepLinkedTask = deepLinkKey;
+                setTimeout(() => document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: linkedTaskId, tab: linkedTaskTab } })), 100);
+            } else {
+                document.dispatchEvent(new CustomEvent('task-tab-change', { detail: { taskId: linkedTaskId, tab: linkedTaskTab } }));
+            }
+        } else {
+            this.lastDeepLinkedTask = null;
+        }
+    }
+
     async handleRoute() {
         const hash = window.location.hash.slice(1) || this.defaultRoute;
-        const [path] = hash.split('?');
+        const [path, query = ''] = hash.split('?');
         const from = this.lastHash;
 
         const user = this.app?.store?.get('currentUser');
@@ -64,7 +125,7 @@ export class Router {
             return this.handleRoute();
         }
 
-        if (this.onBeforeNavigate && from !== null && path !== from.split('?')[0]) {
+        if (this.onBeforeNavigate && from !== null && hash !== from) {
             const ok = await this.onBeforeNavigate(path, from);
             if (!ok) {
                 if (from !== hash && from !== null) {
@@ -74,6 +135,12 @@ export class Router {
             }
         }
         this.lastHash = hash;
+        const fromPath = from?.split('?')[0];
+        if (from !== null && path === fromPath) {
+            this.openDeepLinkedTask(path, query);
+            this.updateSidebarActive(path);
+            return;
+        }
 
         const route = this.routes[path];
 
@@ -128,10 +195,10 @@ export class Router {
                         '/customer/create': 'ИИ-ассистент',
                         '/review': 'Ревью запросов',
                     };
-                    const pageName = names[hash] || (requestMatch ? 'Запрос' : '') || (reviewMatch ? 'Ревью запроса' : hash);
+                    const pageName = names[path] || (requestMatch ? 'Запрос' : '') || (reviewMatch ? 'Ревью запроса' : path);
                     // For multi-segment paths like /analytics/tribe, only show the final name
-                    const segments = hash.split('/').filter(Boolean);
-                    if (segments.length <= 1 || !names[hash]) {
+                    const segments = path.split('/').filter(Boolean);
+                    if (segments.length <= 1 || !names[path]) {
                         bc.innerHTML = `
                             <a href="#/dashboard" style="color: var(--text-muted); text-decoration: none;">DMB Backlog</a>
                             <span style="color: var(--text-muted);">/</span>
@@ -159,12 +226,13 @@ export class Router {
                 if (resolved.init) {
                     setTimeout(() => resolved.init(this.app), 50);
                 }
+                this.openDeepLinkedTask(path, query);
             }
         } else {
             this.navigate(this.defaultRoute);
         }
 
-        this.updateSidebarActive(hash);
+        this.updateSidebarActive(path);
     }
 
     updateSidebarActive(path) {

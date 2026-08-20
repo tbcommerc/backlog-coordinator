@@ -1,6 +1,7 @@
 """Тесты движка фильтров/сортировки/группировки отчётов (execute_report)."""
 
 import json
+from datetime import date
 
 
 def _seed(db):
@@ -211,3 +212,50 @@ def test_pip_report_uses_managed_status_and_exposes_planning_fields(client, auth
     assert item["financial_effect"] == 10.5
     assert item["cv"] == 4.2
     assert item["priority_score"] == 87
+
+
+def test_progress_report_uses_current_quarter_and_relative_traffic_light(client, auth_headers, db):
+    from models import Deadline, Report
+    from routers.reports_router import _current_quarter_progress, _progress_indicator
+
+    tasks = _seed(db)
+    deadline_name, planned = _current_quarter_progress(date.today())
+    current_deadline = db.query(Deadline).filter(Deadline.name == deadline_name).first()
+    if current_deadline is None:
+        current_deadline = Deadline(code=f"TEST_{deadline_name.replace(' ', '_')}", name=deadline_name)
+        db.add(current_deadline)
+        db.flush()
+
+    tasks[0].deadline_id = current_deadline.id
+    tasks[0].progress = round(planned)
+    tasks[1].deadline_id = None
+    tasks[2].deadline_id = None
+    tasks[3].deadline_id = None
+
+    report = Report(
+        key="progress",
+        name="Прогресс по задачам",
+        type="standard",
+        filters=None,
+        fields='["id"]',
+        group_by="team_name",
+        sort_by="progress",
+        sort_order="desc",
+        is_public=True,
+    )
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+
+    data = _exec(client, auth_headers, report.id)
+    assert data["total"] == 1
+    assert data["grouped"] is False
+    item = data["items"][0]
+    assert item["id"] == tasks[0].id
+    assert item["planned_progress"] == planned
+    assert item["progress_indicator"] == "green"
+
+    assert _progress_indicator(79, 100)[0] == "yellow"
+    assert _progress_indicator(50, 100)[0] == "yellow"
+    assert _progress_indicator(49, 100)[0] == "red"
+    assert _progress_indicator(120, 100)[0] == "green"

@@ -1,8 +1,8 @@
 console.log('[DMB] taskTable.js v20260806 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast } from './filterToolbar.js?v=52';
-import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=47';
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=52';
+import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=71';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=47';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=47';
 import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=49';
 import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=47';
 import { safeExternalUrl } from '../urlUtils.js';
@@ -38,6 +38,8 @@ const PAGE_SIZE = 100;
 const COLUMNS_STORAGE_KEY = 'dmb_backlog_columns_v1';
 let autoRefreshTimer = null;
 let keyboardHandler = null;
+let tasksLoadInProgress = false;
+let tasksReloadQueued = false;
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
 export function renderTasksPage(app) {
@@ -53,10 +55,16 @@ export function renderTasksPage(app) {
       excel: true,
       onQuickEdit: true,
       onBulkOps: true,
+      savedViews: true,
       quickFilters: renderQuickFilters(),
     })}
 
     ${renderQuickEditToolbar('backlog')}
+
+    <div id="backlog-bulk-actions" class="flex items-center gap-3" style="margin-bottom:var(--space-4);display:none;">
+      <span class="text-secondary">Выбрано: <strong id="backlog-selected-count">0</strong></span>
+      <button class="btn btn-secondary btn-sm" id="backlog-bulk-selected">Массовые операции (0)</button>
+    </div>
 
     <div id="tasks-container">
       <div class="table-container" style="overflow-x:auto;">
@@ -131,14 +139,28 @@ export async function initTasksPage(app) {
     onImport: () => { importTasksFromExcel(app, loadTasks); },
     onRefresh: () => loadTasks(app),
     onQuickEdit: () => { if (currentView === 'table') { if (isQuickEdit('backlog')) { requestExitQuickEdit('backlog'); } else { enterQuickEdit('backlog'); } } },
-    onBulkOps: () => { if (currentView === 'table') { showBulkOpsModal(app, 'backlog', getFilteredList()); } },
+    onBulkOps: () => { if (currentView === 'table') openBacklogBulkOps(app); },
+    getSavedViewState: () => ({
+      view: currentView,
+      columns: { ...columnSettings },
+      columnOrder: [...columnOrder],
+      widths: { ...columnWidths },
+      fixed: { ...columnFixed },
+      columnSort: { ...columnSort },
+    }),
+    applySavedViewState: applyBacklogSavedViewState,
   });
 
   setOnTaskSaved(() => loadTasks(app));
 
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
   autoRefreshTimer = setInterval(() => {
-    if (!isQuickEdit('backlog')) loadTasks(app);
+    if (!isBacklogRouteActive()) {
+      clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+      return;
+    }
+    if (!isBacklogInteractionActive()) loadTasks(app);
   }, 60000);
 
   if (keyboardHandler) window.removeEventListener('keydown', keyboardHandler);
@@ -168,7 +190,7 @@ export async function initTasksPage(app) {
   registerTableInteractions('tasks-table', {
     getWidths: () => columnWidths,
     getMinWidths: () => columnMinWidths,
-    getLayout: () => ({ cols: columnOrder.filter(k => columnSettings[k]), offset: 0 }),
+    getLayout: () => ({ cols: columnOrder.filter(k => columnSettings[k]), offset: isQuickEdit('backlog') ? 0 : 1 }),
     getFixed: () => columnFixed,
     onUnfix: () => { saveBacklogColumnState(); renderCurrentView(); },
     onSort: (key) => {
@@ -238,8 +260,13 @@ function renderSkeletonRows(count) {
 }
 
 async function loadTasks(app) {
+  if (tasksLoadInProgress) {
+    tasksReloadQueued = true;
+    return;
+  }
+  tasksLoadInProgress = true;
   try {
-    const data = await app.api.get('/tasks?per_page=500');
+    const data = await loadAllTaskPages(app, '');
     tasksCache = data;
     renderCurrentView();
   
@@ -254,7 +281,60 @@ async function loadTasks(app) {
       bindViewStateAction(container, () => loadTasks(app));
       window.lucide?.createIcons();
     }
+  } finally {
+    tasksLoadInProgress = false;
+    if (tasksReloadQueued) {
+      tasksReloadQueued = false;
+      if (isBacklogRouteActive()) await loadTasks(app);
+    }
   }
+}
+
+function isBacklogRouteActive() {
+  return (window.location.hash.slice(1).split('?')[0] || '/') === '/backlog';
+}
+
+function isBacklogInteractionActive() {
+  return isQuickEdit('backlog')
+    || document.querySelector('.backlog-task-checkbox:checked') !== null
+    || document.getElementById('task-detail-overlay') !== null
+    || document.getElementById('create-task-overlay') !== null
+    || document.getElementById('bulk-modal-overlay') !== null;
+}
+
+function applyBacklogSavedViewState(state = {}) {
+  if (state.view === 'table' || state.view === 'cards') currentView = state.view;
+  if (state.columns) {
+    Object.keys(columnSettings).forEach(key => { columnSettings[key] = !!state.columns[key]; });
+  }
+  if (Array.isArray(state.columnOrder)) {
+    const valid = new Set(getAllColumnKeys());
+    columnOrder.splice(0, columnOrder.length, ...state.columnOrder.filter(key => valid.has(key)));
+  }
+  columnWidths = state.widths ? { ...state.widths } : {};
+  Object.keys(columnFixed).forEach(key => delete columnFixed[key]);
+  Object.assign(columnFixed, state.fixed || {});
+  columnSort.key = state.columnSort?.key || null;
+  columnSort.dir = state.columnSort?.dir || 'asc';
+  document.querySelectorAll('#backlog-view-toggle-group [data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === currentView));
+  saveBacklogColumnState();
+  renderCurrentView();
+}
+
+async function loadAllTaskPages(app, extraQuery) {
+  const perPage = 1000;
+  const suffix = extraQuery ? `&${extraQuery}` : '';
+  const first = await app.api.get(`/tasks?page=1&per_page=${perPage}${suffix}`);
+  const pages = Math.max(1, Number(first.pages) || 1);
+  if (pages === 1) return first;
+
+  const requests = [];
+  for (let page = 2; page <= pages; page++) {
+    requests.push(app.api.get(`/tasks?page=${page}&per_page=${perPage}${suffix}`));
+  }
+  const rest = await Promise.all(requests);
+  const items = [first, ...rest].flatMap(part => part.items || []);
+  return { ...first, items, total: Number(first.total) || items.length, page: 1, per_page: items.length, pages: 1 };
 }
 
 function getFilteredList() {
@@ -308,6 +388,7 @@ function renderTableView(list) {
   if (!container) return;
 
   const visibleCols = columnOrder.filter(k => columnSettings[k]);
+  const showCheckbox = !isQuickEdit('backlog') && list.some(task => canEditTaskForScope('backlog', task));
 
   const hasWidths = visibleCols.every(c => columnWidths[c]);
 
@@ -316,21 +397,23 @@ function renderTableView(list) {
     return `<col style="${w}">`;
   }).join('');
 
+  const checkboxCol = showCheckbox ? '<col style="width:40px;">' : '';
   const tableStyle = hasWidths ? 'table-layout:fixed;' : '';
 
   container.innerHTML = `
     <div class="table-container" style="overflow-x:auto;">
       <table class="table" id="tasks-table" style="${tableStyle}">
-        <colgroup>${colgroupHtml}</colgroup>
+        <colgroup>${checkboxCol}${colgroupHtml}</colgroup>
         <thead>
           <tr>
+            ${showCheckbox ? '<th><input type="checkbox" id="backlog-select-all" aria-label="Выбрать все задачи на странице"></th>' : ''}
             ${visibleCols.map(col => headerCellHtml(getColumnLabel(col), col, columnSort.key, columnSort.dir)).join('')}
           </tr>
         </thead>
         <tbody id="tasks-tbody">
           ${list.length === 0
-            ? '<tr><td colspan="' + visibleCols.length + '">' + renderViewState({ kind: 'empty', title: 'Задачи не найдены', message: 'Измените фильтры или создайте новую задачу.' }) + '</td></tr>'
-            : list.map(task => renderTableRow(task, visibleCols)).join('')}
+            ? '<tr><td colspan="' + (visibleCols.length + (showCheckbox ? 1 : 0)) + '">' + renderViewState({ kind: 'empty', title: 'Задачи не найдены', message: 'Измените фильтры или создайте новую задачу.' }) + '</td></tr>'
+            : list.map(task => renderTableRow(task, visibleCols, showCheckbox)).join('')}
         </tbody>
       </table>
     </div>
@@ -339,9 +422,9 @@ function renderTableView(list) {
   if (!isQuickEdit('backlog')) {
     const table = document.getElementById('tasks-table');
     if (!hasWidths) {
-      autoSizeColumns(table, visibleCols, columnWidths, columnMinWidths, { offset: 0 });
+      autoSizeColumns(table, visibleCols, columnWidths, columnMinWidths, { offset: showCheckbox ? 1 : 0 });
     }
-    applyColumnWidths(table, visibleCols, columnWidths, { offset: 0, fixed: columnFixed });
+    applyColumnWidths(table, visibleCols, columnWidths, { offset: showCheckbox ? 1 : 0, fixed: columnFixed });
     saveBacklogColumnState();
   }
 
@@ -349,8 +432,10 @@ function renderTableView(list) {
   initStickyTableHeader('tasks-table');
 
   if (!isQuickEdit('backlog')) {
+    bindBacklogSelection();
     document.getElementById('tasks-tbody')?.querySelectorAll('tr').forEach(tr => {
-      tr.addEventListener('click', () => {
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('.backlog-task-checkbox, input, button, a')) return;
         const t = list.find(x => x.id == tr.dataset.taskId);
         if (t) openTaskModal(t);
       });
@@ -359,7 +444,7 @@ function renderTableView(list) {
 }
 
 function renderCell(col, task) {
-  if (isQuickEdit('backlog') && isEditableField(col)) {
+  if (isQuickEdit('backlog') && canEditTaskForScope('backlog', task) && isEditableField(col)) {
     return renderQuickEditCell('backlog', col, task);
   }
 
@@ -420,8 +505,9 @@ function renderCell(col, task) {
   }
 }
 
-function renderTableRow(task, cols) {
+function renderTableRow(task, cols, showCheckbox) {
   const changes = getQuickEditChanges('backlog');
+  const saveError = getQuickEditError('backlog', task.id);
   const cells = cols.map(col => {
     const field = getQuickEditField(col);
     const change = changes[task.id]?.[field];
@@ -430,10 +516,52 @@ function renderTableRow(task, cols) {
     return `<td style="${cellStyle}">${renderCell(col, task)}</td>`;
   });
   const hasChanges = changes[task.id] && Object.keys(changes[task.id]).length > 0;
-  const rowStyle = hasChanges
+  const rowStyle = saveError
+    ? `cursor:default;border-left:3px solid var(--danger);background:rgba(239,68,68,.06);`
+    : hasChanges
     ? `cursor:default;border-left:3px solid var(--warning);`
     : (isQuickEdit('backlog') ? 'cursor:default;' : 'cursor:pointer;');
-  return `<tr data-task-id="${task.id}" style="${rowStyle}">${cells.join('')}</tr>`;
+  const checkboxHtml = showCheckbox ? `<td>${canEditTaskForScope('backlog', task) ? `<input type="checkbox" class="backlog-task-checkbox" value="${task.id}" aria-label="Выбрать задачу ${task.id}">` : '<span title="Нет прав на изменение этой задачи" style="color:var(--text-muted);">—</span>'}</td>` : '';
+  const errorCell = saveError && cells.length > 0
+    ? cells.map((cell, index) => index === 0
+      ? cell.replace('>', ` title="${escapeHtml(saveError)}">⚠ `).replace('</td>', `<div style="margin-top:4px;color:var(--danger);font-size:11px;white-space:normal;">${escapeHtml(saveError)}</div></td>`)
+      : cell)
+    : cells;
+  return `<tr data-task-id="${task.id}" style="${rowStyle}" ${saveError ? `aria-label="Ошибка сохранения: ${escapeHtml(saveError)}"` : ''}>${checkboxHtml}${errorCell.join('')}</tr>`;
+}
+
+function getBacklogSelectedTasks() {
+  const ids = new Set([...document.querySelectorAll('.backlog-task-checkbox:checked')].map(cb => Number(cb.value)));
+  return (tasksCache?.items || []).filter(task => ids.has(task.id));
+}
+
+function updateBacklogBulkBar() {
+  const count = document.querySelectorAll('.backlog-task-checkbox:checked').length;
+  const bar = document.getElementById('backlog-bulk-actions');
+  if (bar) bar.style.display = count > 0 ? 'flex' : 'none';
+  const countEl = document.getElementById('backlog-selected-count');
+  if (countEl) countEl.textContent = String(count);
+  const action = document.getElementById('backlog-bulk-selected');
+  if (action) action.textContent = `Массовые операции (${count})`;
+  const toolbarAction = document.getElementById('backlog-bulk-open');
+  if (toolbarAction) toolbarAction.title = count > 0 ? `Массовые операции (${count} выбрано)` : 'Массовые операции';
+}
+
+function bindBacklogSelection() {
+  document.getElementById('backlog-select-all')?.addEventListener('change', function () {
+    document.querySelectorAll('.backlog-task-checkbox').forEach(cb => { cb.checked = this.checked; });
+    updateBacklogBulkBar();
+  });
+  document.querySelectorAll('.backlog-task-checkbox').forEach(cb => cb.addEventListener('change', updateBacklogBulkBar));
+  document.getElementById('backlog-bulk-selected')?.addEventListener('click', () => openBacklogBulkOps(currentApp));
+  updateBacklogBulkBar();
+}
+
+async function openBacklogBulkOps(app) {
+  const selected = getBacklogSelectedTasks();
+  const editable = getFilteredList().filter(task => canEditTaskForScope('backlog', task));
+  const result = await showBulkOpsModal(app, 'backlog', selected.length > 0 ? selected : editable);
+  if (result?.success) await loadTasks(app);
 }
 
 function renderCardView(list) {
@@ -453,6 +581,7 @@ function renderCardView(list) {
       if (t) openTaskModal(t);
     });
   });
+  updateBacklogBulkBar();
 }
 
 function renderCard(task) {

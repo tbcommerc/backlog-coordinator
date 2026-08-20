@@ -4,7 +4,7 @@
  */
 console.log('[DMB] app.js v20260727 notif-v2 loaded');
 
-import { Router } from './router.js?v=51';
+import { Router } from './router.js?v=57';
 import { Store } from './store.js';
 import { API } from './api.js';
 import { Auth } from './auth.js';
@@ -507,10 +507,11 @@ export async function initApp(app) {
     if (!taskId) return;
     try {
       const task = await app.api.get(`/tasks/${taskId}`);
-        const { openTaskModal } = await import('./components/modal.js?v=47');
+        const { openTaskModal } = await import('./components/modal.js?v=71');
       openTaskModal(task);
     } catch (err) {
       console.error('Failed to open task', err);
+      showToast('Не удалось открыть задачу: она удалена или недоступна', 'error');
     }
   });
 
@@ -593,6 +594,9 @@ class App {
       await this.loadReferenceData();
       this.renderAppLayout();
       this.router.onBeforeNavigate = async (toPath, fromHash) => {
+        const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=71');
+        const taskCardOk = await confirmAndCloseTaskFormsForNavigation();
+        if (!taskCardOk) return false;
         const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=47');
         const ok = await confirmDiscardChanges('Продолжить', 'Есть несохранённые изменения в режиме массового редактирования. Перейти и потерять их?');
         if (ok) clearQuickEditState();

@@ -180,5 +180,7 @@ if os.path.exists(frontend_path):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True,
-                reload_excludes=["logs/*", "*.log", "uploads/*", "uploads/**"])
+    # Autoreload cannot safely watch this project directory: SQLite creates
+    # journal/WAL files during writes and watchfiles restarts the worker in the
+    # middle of POST requests. Run the working server without a reloader.
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

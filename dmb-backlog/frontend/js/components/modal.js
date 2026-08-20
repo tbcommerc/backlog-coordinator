@@ -11,6 +11,297 @@ let currentTask = null;
 let modalMode = 'view';
 let currentModal = null;
 let onSaveCallback = null;
+let _createTaskDirty = false;
+let _createTaskInitialSnapshot = '';
+let _createTaskSaving = false;
+let _createReferenceUsers = [];
+const CREATE_TASK_DRAFT_VERSION = 1;
+let _discardPromptPromise = null;
+let _taskBeforeUnloadBound = false;
+let _taskFocusTrapRoot = null;
+let _taskFocusTrapHandler = null;
+let _taskModalReturnFocus = null;
+let _taskModalBaseDocumentTitle = null;
+let _createTaskKeyHandler = null;
+
+function setTaskModalDocumentTitle(task) {
+  if (!task?.id) return;
+  if (_taskModalBaseDocumentTitle === null) {
+    _taskModalBaseDocumentTitle = document.title || 'DMB Backlog';
+  }
+  const rawTitle = String(task.title || task.name || 'Без названия').trim() || 'Без названия';
+  const compactTitle = rawTitle.length > 70 ? `${rawTitle.slice(0, 67)}…` : rawTitle;
+  document.title = `#${task.id} · ${compactTitle} — ${_taskModalBaseDocumentTitle}`;
+}
+
+function restoreTaskModalDocumentTitle() {
+  if (_taskModalBaseDocumentTitle === null) return;
+  document.title = _taskModalBaseDocumentTitle;
+  _taskModalBaseDocumentTitle = null;
+}
+
+function hasUnsavedTaskChanges() {
+  return Boolean(cardState?.dirty || _createTaskDirty);
+}
+
+function ensureTaskBeforeUnloadGuard() {
+  if (_taskBeforeUnloadBound) return;
+  window.addEventListener('beforeunload', (event) => {
+    if (!hasUnsavedTaskChanges()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+  _taskBeforeUnloadBound = true;
+}
+
+function activateTaskModalFocusTrap(root) {
+  deactivateTaskModalFocusTrap();
+  _taskFocusTrapRoot = root;
+  _taskFocusTrapHandler = event => {
+    if (event.key !== 'Tab') return;
+    const activeDialog = document.getElementById('confirm-modal-overlay')
+      || document.getElementById('card-conflict-overlay')
+      || _taskFocusTrapRoot;
+    if (!activeDialog?.isConnected) return;
+    const focusable = Array.from(activeDialog.querySelectorAll(
+      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter(element => !element.hidden && element.getAttribute('aria-hidden') !== 'true' && element.getClientRects().length > 0);
+    if (!focusable.length) return;
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !activeDialog.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !activeDialog.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  document.addEventListener('keydown', _taskFocusTrapHandler);
+}
+
+function deactivateTaskModalFocusTrap() {
+  if (_taskFocusTrapHandler) document.removeEventListener('keydown', _taskFocusTrapHandler);
+  _taskFocusTrapHandler = null;
+  _taskFocusTrapRoot = null;
+}
+
+function rememberTaskModalReturnFocus(taskId = null) {
+  const active = document.activeElement;
+  const taskElement = taskId != null
+    ? document.querySelector(`[data-id="${Number(taskId)}"], [data-task-id="${Number(taskId)}"]`)
+    : null;
+  _taskModalReturnFocus = {
+    element: active && active !== document.body ? active : taskElement,
+    taskId: taskId == null ? null : Number(taskId),
+  };
+}
+
+function takeTaskModalReturnFocus() {
+  const context = _taskModalReturnFocus;
+  _taskModalReturnFocus = null;
+  return context;
+}
+
+function restoreTaskModalReturnFocus(context) {
+  if (!context || document.getElementById('task-detail-overlay') || document.getElementById('create-task-overlay')) return;
+  let target = context.element?.isConnected ? context.element : null;
+  if (!target && Number.isFinite(context.taskId)) {
+    target = document.querySelector(`[data-id="${context.taskId}"], [data-task-id="${context.taskId}"]`);
+  }
+  if (!target) return;
+  const hadTabindex = target.hasAttribute('tabindex');
+  if (!hadTabindex && !target.matches('button, a[href], input, select, textarea')) target.setAttribute('tabindex', '-1');
+  target.focus({ preventScroll: true });
+  target.scrollIntoView({ block: 'nearest' });
+  if (!hadTabindex) setTimeout(() => target.removeAttribute('tabindex'), 0);
+}
+
+function createTaskFormSnapshot() {
+  const overlay = document.getElementById('create-task-overlay');
+  if (!overlay) return '';
+  return JSON.stringify(Array.from(overlay.querySelectorAll('input, select, textarea')).filter(control => !control.classList.contains('dict-search-input')).map(control => [
+    control.id,
+    control.type === 'checkbox' ? control.checked : control.value,
+  ]));
+}
+
+function createTaskDraftStorageKey() {
+  const userId = window.app?.store?.get('currentUser')?.id || 'anonymous';
+  return `dmb:create-task-draft:v${CREATE_TASK_DRAFT_VERSION}:user:${userId}`;
+}
+
+function saveCreateTaskDraft() {
+  const snapshot = createTaskFormSnapshot();
+  if (!snapshot || snapshot === _createTaskInitialSnapshot) {
+    clearCreateTaskDraft();
+    return;
+  }
+  try {
+    localStorage.setItem(createTaskDraftStorageKey(), JSON.stringify({ snapshot, savedAt: new Date().toISOString() }));
+  } catch (_) { /* localStorage can be unavailable in private/restricted mode */ }
+}
+
+function clearCreateTaskDraft() {
+  try { localStorage.removeItem(createTaskDraftStorageKey()); } catch (_) { /* no-op */ }
+}
+
+function applyCreateTaskSnapshot(snapshot) {
+  try {
+    const values = JSON.parse(snapshot);
+    if (!Array.isArray(values)) return false;
+    values.forEach(([id, value]) => {
+      const control = document.getElementById(id);
+      if (!control) return;
+      if (control.type === 'checkbox') control.checked = Boolean(value);
+      else if (control.tagName !== 'SELECT' || Array.from(control.options).some(option => option.value === String(value))) control.value = value ?? '';
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function restoreCreateTaskDraft() {
+  try {
+    const draft = JSON.parse(localStorage.getItem(createTaskDraftStorageKey()) || 'null');
+    if (!draft?.snapshot || !applyCreateTaskSnapshot(draft.snapshot)) return false;
+    return createTaskFormSnapshot() !== _createTaskInitialSnapshot;
+  } catch (_) {
+    clearCreateTaskDraft();
+    return false;
+  }
+}
+
+function updateCreateTaskDirty() {
+  _createTaskDirty = createTaskFormSnapshot() !== _createTaskInitialSnapshot;
+  saveCreateTaskDraft();
+}
+
+function createRequiredControls() {
+  return Object.values(TASK_FORM_SCHEMA)
+    .filter(field => field.required)
+    .map(field => document.getElementById(field.createId))
+    .filter(Boolean);
+}
+
+function updateCreateFormReadiness(changedControl = null) {
+  const requiredControls = createRequiredControls();
+  requiredControls.forEach(control => {
+    const empty = !String(control.value || '').trim();
+    if (control === changedControl || !empty) {
+      control.classList.toggle('input-error', empty);
+      control.setAttribute('aria-invalid', empty ? 'true' : 'false');
+      const error = document.getElementById(control.id + '-error');
+      if (error) error.hidden = !empty;
+    }
+  });
+  const ready = requiredControls.length > 0 && requiredControls.every(control => String(control.value || '').trim());
+  const saveButton = document.getElementById('create-save-btn');
+  if (saveButton) {
+    saveButton.disabled = !ready || _createTaskSaving;
+    saveButton.setAttribute('aria-disabled', ready && !_createTaskSaving ? 'false' : 'true');
+    saveButton.title = ready ? '' : 'Заполните обязательные поля';
+  }
+  return ready;
+}
+
+function attachDictionarySearch(root, configs) {
+  configs.forEach(({ selector, label, preferredValues = null }) => {
+    const select = root?.querySelector(selector);
+    if (!select || select.closest('.dict-search-control')) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'dict-search-control';
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.className = 'dict-search-input';
+    search.placeholder = 'Поиск…';
+    search.setAttribute('aria-label', `Поиск: ${label}`);
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.append(search, select);
+
+    const originalOptions = Array.from(select.options).map(option => ({
+      value: option.value,
+      text: option.textContent || '',
+      disabled: option.disabled,
+    }));
+    let teamValues = new Set((preferredValues || []).map(String));
+    let showAll = !preferredValues;
+    let scopeButton = null;
+    if (preferredValues) {
+      scopeButton = document.createElement('button');
+      scopeButton.type = 'button';
+      scopeButton.className = 'dict-search-scope';
+      wrapper.prepend(scopeButton);
+    }
+    const renderOptions = query => {
+      const selectedValue = select.value;
+      const normalized = String(query || '').trim().toLocaleLowerCase('ru-RU');
+      const matches = option => !normalized || option.text.toLocaleLowerCase('ru-RU').includes(normalized);
+      const visible = originalOptions.filter((option, index) => {
+        if ((index === 0 && option.value === '') || option.value === selectedValue) return true;
+        if (normalized) return matches(option);
+        return showAll || teamValues.has(option.value);
+      }).sort((a, b) => {
+        if (!showAll || normalized) return 0;
+        return Number(teamValues.has(b.value)) - Number(teamValues.has(a.value));
+      });
+      select.innerHTML = visible.map(option => `<option value="${escapeHtml(option.value)}"${option.disabled ? ' disabled' : ''}>${escapeHtml(option.text)}</option>`).join('');
+      if (visible.some(option => option.value === selectedValue)) select.value = selectedValue;
+      if (scopeButton) scopeButton.textContent = showAll ? 'Только команда' : `Показать всех · ${originalOptions.filter(option => option.value !== '').length}`;
+    };
+    select._dictionarySearchRefresh = values => {
+      teamValues = new Set((values || []).map(String));
+      showAll = false;
+      search.value = '';
+      renderOptions('');
+    };
+    search.addEventListener('input', () => renderOptions(search.value));
+    select.addEventListener('change', () => {
+      search.value = '';
+      renderOptions('');
+    });
+    scopeButton?.addEventListener('click', () => {
+      showAll = !showAll;
+      renderOptions(search.value);
+    });
+    renderOptions('');
+  });
+}
+
+function userValuesForTeam(users, teamId, useNames = false) {
+  if (teamId == null || teamId === '') return [];
+  return (users || [])
+    .filter(user => Number(user.team_id) === Number(teamId))
+    .map(user => useNames ? (user.name || user.login || user.email || '') : String(user.id))
+    .filter(Boolean);
+}
+
+function showTaskFormErrorSummary(summaryId, message, target) {
+  const summary = document.getElementById(summaryId);
+  if (!summary) return;
+  summary.hidden = false;
+  summary.innerHTML = '';
+  const text = document.createElement('span');
+  text.textContent = message;
+  summary.appendChild(text);
+  if (target) {
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'form-error-summary-link';
+    link.textContent = 'Перейти к полю';
+    link.addEventListener('click', () => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.focus();
+    });
+    summary.appendChild(link);
+  }
+  summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function clearTaskFormErrorSummary(summaryId) {
+  const summary = document.getElementById(summaryId);
+  if (summary) summary.hidden = true;
+}
 
 // === LOCK STATE ===
 let _lockInfo = null; // { locked, lock_owner_id, lock_owner_name, lock_until, is_mine }
@@ -1574,7 +1865,7 @@ function renderEditForm(task) {
     <div class="b-edit-row-2" style="margin-top:10px">
       ${field('Дата поступления', binput('edit-date-received', 'date', t.date_received || ''))}
       ${field('Прогресс', `
-        <input type="range" min="0" max="100" value="${t.progress || 0}" class="b-edit-range" id="edit-progress">
+        <input type="range" min="0" max="100" step="5" value="${Math.round((t.progress || 0) / 5) * 5}" class="b-edit-range" id="edit-progress">
         <div class="b-edit-range-label"><span>0%</span><b id="progress-label">${t.progress || 0}%</b><span>100%</span></div>
       `)}
     </div>
@@ -1664,7 +1955,15 @@ function renderEditForm(task) {
 }
 
 // Global handlers for edit mode buttons
-window.__cancelEdit = function() {
+window.__cancelEdit = async function() {
+  const confirmed = await showConfirmModal(
+    'Внесённые изменения не будут сохранены. Отменить редактирование?',
+    'Отменить изменения?',
+    'Отменить изменения',
+    'Продолжить редактирование',
+    true
+  );
+  if (!confirmed) return;
   modalMode = 'view';
   if (currentTask?.id) {
     releaseLock(currentTask.id);
@@ -1817,7 +2116,7 @@ async function saveTaskDetail(app) {
     if (currentTask?.id) {
       await api.put(`/tasks/${currentTask.id}`, data);
     } else {
-      await api.post('/tasks', data);
+      await api.post('/tasks/', data);
     }
     closeTaskDetailModal();
     if (onSaveCallback) onSaveCallback();
@@ -1840,6 +2139,15 @@ async function saveTaskDetail(app) {
 //  CLOSE MODAL
 // ============================================================
 export function closeTaskDetailModal() {
+  if (document.getElementById('task-detail-overlay')?.classList.contains('modal-closing')) return;
+  restoreTaskModalDocumentTitle();
+  deactivateTaskModalFocusTrap();
+  if (_cardRouteTabHandler) { document.removeEventListener('task-tab-change', _cardRouteTabHandler); _cardRouteTabHandler = null; }
+  const returnFocus = takeTaskModalReturnFocus();
+  window.app?.router?.clearTaskRoute?.();
+  cardState.dirty = false;
+  cardState.editing = false;
+  cardState.draft = null;
   stopLockPolling();
   stopViewerPolling();
   if (currentTask?.id) {
@@ -1861,6 +2169,7 @@ export function closeTaskDetailModal() {
       currentTask = null;
       currentModal = null;
       modalMode = 'view';
+      restoreTaskModalReturnFocus(returnFocus);
     }, 200);
   }
   if (taskId && wasEditing) {
@@ -1873,8 +2182,11 @@ export function closeTaskDetailModal() {
 //  OPEN TASK MODAL (главная точка входа)
 // ============================================================
 export function openTaskModal(task = null) {
+  rememberTaskModalReturnFocus(task?.id);
+  if (task?.id) window.app?.router?.pushTaskRoute?.(task.id);
   currentTask = task;
   modalMode = task ? 'view' : 'edit';
+  setTaskModalDocumentTitle(task);
 
   const html = renderTaskDetailModal(task, window.app);
   const wrapper = document.createElement('div');
@@ -1945,8 +2257,12 @@ export function setOnTaskSaved(callback) {
 //  CREATE TASK MODAL (dedicated form with required fields)
 // ============================================================
 export function openCreateTaskModal(app) {
+  rememberTaskModalReturnFocus();
   currentTask = null;
   modalMode = 'create';
+  _createTaskDirty = false;
+  _createTaskInitialSnapshot = '';
+  ensureTaskBeforeUnloadGuard();
 
   const html = renderCreateTaskForm();
   const wrapper = document.createElement('div');
@@ -1966,36 +2282,31 @@ export function openCreateTaskModal(app) {
 function renderCreateTaskForm() {
   return `
     <div class="modal-overlay" id="create-task-overlay">
-      <div class="task-detail-modal" id="create-task-modal" role="dialog" aria-modal="true" aria-labelledby="create-task-title">
+      <div class="task-detail-modal modal" id="create-task-modal" role="dialog" aria-modal="true" aria-labelledby="create-task-title">
         
         <!-- Modal Header -->
-        <div class="task-detail-modal-header">
-          <div class="task-detail-header-left">
-            <div class="task-detail-badges-row">
-              <span class="task-detail-id">Новая задача</span>
-            </div>
-            <h2 class="task-detail-title" id="create-task-title">Создать задачу</h2>
-          </div>
-          <div class="task-detail-header-actions">
-            <button class="task-detail-btn-icon task-detail-btn-close" id="create-close-btn" title="Закрыть">
+        <div class="mhead">
+          <div class="head-row1"><div class="row-badges"><span class="task-head-chip task-head-chip--type">Новая задача</span></div>
+          <div class="row-actions">
+            <button class="iconbtn close" id="create-close-btn" title="Закрыть">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
+            </button></div></div>
+          <h2 class="head-title" id="create-task-title">Создание новой задачи</h2>
         </div>
 
         <!-- Modal Body -->
-        <div class="task-detail-modal-body" id="create-modal-body" style="padding:24px;">
-          ${renderCreateTaskFormFields()}
+        <div class="mbody" id="create-modal-body">
+          <div class="form-error-summary" id="create-form-error-summary" role="alert" hidden></div>
+          ${renderCreateTaskFormFieldsV30()}
         </div>
 
         <!-- Modal Footer -->
-        <div class="task-detail-modal-footer">
-          <div class="task-detail-footer-info">
-            <span style="font-size:12px;color:var(--text-muted);">* Обязательные поля</span>
-          </div>
-          <div class="task-detail-footer-actions">
-            <button class="task-detail-btn task-detail-btn-ghost" id="create-cancel-btn" onclick="document.getElementById('create-close-btn')?.click()">Отмена</button>
-            <button class="task-detail-btn task-detail-btn-primary" id="create-save-btn">
+        <div class="mfoot">
+          <div class="fmeta"><b>*</b> Обязательные поля</div>
+          <div class="factions">
+            <button class="btn ghost" id="create-clear-draft-btn" type="button">Очистить форму</button>
+            <button class="btn ghost" id="create-cancel-btn" onclick="document.getElementById('create-close-btn')?.click()">Отмена</button>
+            <button class="btn primary" id="create-save-btn" disabled aria-disabled="true" title="Заполните обязательные поля">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
               Создать задачу
             </button>
@@ -2004,6 +2315,84 @@ function renderCreateTaskForm() {
 
       </div>
     </div>`;
+}
+
+const TASK_FORM_SCHEMA = Object.freeze({
+  title: { label: 'Название', required: true, createId: 'create-title', type: 'text' },
+  description: { label: 'Описание', createId: 'create-description', type: 'textarea' },
+  team: { label: 'Ответственная команда', required: true, createId: 'create-team', type: 'select', dict: 'teams' },
+  type: { label: 'Тип задачи', required: true, createId: 'create-task-type', type: 'select', dict: 'taskTypes' },
+  channel: { label: 'Канал поступления', required: true, createId: 'create-channel', type: 'select', dict: 'channels' },
+  receivedAt: { label: 'Дата получения', required: true, createId: 'create-date-received', type: 'date' },
+  project: { label: 'Проект', createId: 'create-project', type: 'select', dict: 'projects' },
+  priority: { label: 'Приоритет', createId: 'create-priority', type: 'select', dict: 'priorities' },
+  deadline: { label: 'Срок выполнения', createId: 'create-deadline', type: 'select', dict: 'deadlines' },
+  customer: { label: 'Бизнес-заказчик', createId: 'create-business-customer', type: 'select', dict: 'customers' },
+  assignee: { label: 'Исполнитель', createId: 'create-owner', type: 'select', dict: 'users' },
+  comment: { label: 'Комментарий', createId: 'create-comment', type: 'textarea' },
+  mockupUrl: { label: 'Макеты', createId: 'create-link-mockups', type: 'url' },
+  jiraLinks: { label: 'Jira', createId: 'create-link-jira', type: 'url' },
+});
+
+function taskFormMeta(key) {
+  return TASK_FORM_SCHEMA[key] || { label: key };
+}
+
+function taskFormLabel(key, requiredMark = '') {
+  const meta = taskFormMeta(key);
+  return meta.label + (meta.required ? ' ' + requiredMark : '');
+}
+
+function taskFormCreateControl(key, opts = {}) {
+  const meta = taskFormMeta(key), id = meta.createId;
+  if (meta.type === 'select') return '<select id="' + id + '"><option value="">' + escapeHtml(opts.placeholder || 'Загрузка...') + '</option></select>';
+  if (meta.type === 'textarea') return '<textarea id="' + id + '" rows="' + (opts.rows || 4) + '" placeholder="' + escapeHtml(opts.placeholder || '') + '"></textarea>';
+  const value = opts.value == null ? '' : String(opts.value);
+  return '<input type="' + meta.type + '" id="' + id + '" value="' + escapeHtml(value) + '"' + (key === 'title' ? ' class="title-input" maxlength="255" required autofocus' : '') + (meta.required ? ' required' : '') + ' placeholder="' + escapeHtml(opts.placeholder || '') + '">';
+}
+
+function taskFormEditControl(key, value) {
+  const meta = taskFormMeta(key);
+  if (meta.type === 'select') return cardSel(key, cardNameList(meta.dict), value);
+  if (meta.type === 'date') return cardDateC(key, value);
+  if (meta.type === 'textarea') return cardTaC(key, value, key === 'comment' ? 3 : 4);
+  if (meta.type === 'url') return '<input type="url" data-k="' + key + '" value="' + escapeHtml(value || '') + '" placeholder="https://...">';
+  return '<input type="text" data-k="' + key + '" value="' + escapeHtml(value || '') + '">';
+}
+
+function renderCreateTaskFormFieldsV30() {
+  const req = '<span class="create-required" aria-hidden="true">*</span>';
+  const error = (id, text) => '<div class="create-field-error" id="' + id + '-error" hidden>' + escapeHtml(text) + '</div>';
+  const field = (label, control, opts = {}) => '<div class="icell ' + (opts.span2 ? 'span2cell' : '') + '"><label class="ilab" for="' + opts.forId + '"><span class="flt">' + label + '</span></label><div class="ival">' + control + '</div>' + (opts.error ? error(opts.forId, opts.error) : '') + '</div>';
+  let h = '<div class="task-top">'
+    + '<div class="task-title-card"><label class="desc-label" for="create-title">' + taskFormLabel('title', req) + '</label>' + taskFormCreateControl('title', { placeholder: 'Введите название задачи' }) + error('create-title', 'Введите название задачи') + '</div>'
+    + '<div class="task-desc"><label class="desc-label" for="create-description">' + taskFormLabel('description') + '</label>' + taskFormCreateControl('description', { placeholder: 'Опишите задачу' }) + '</div></div>';
+
+  h += cardSec('Паспорт задачи', 'file') + '<div class="bento">';
+  h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('team') + '<span>Регистрация</span></div><div class="cl-grid exec">'
+    + field(taskFormLabel('team', req), taskFormCreateControl('team'), { forId: 'create-team', error: 'Выберите ответственную команду' })
+    + field(taskFormLabel('type', req), taskFormCreateControl('type'), { forId: 'create-task-type', error: 'Выберите тип задачи' })
+    + field(taskFormLabel('channel', req), taskFormCreateControl('channel'), { forId: 'create-channel', error: 'Выберите канал поступления' })
+    + field(taskFormLabel('receivedAt', req), taskFormCreateControl('receivedAt', { value: new Date().toISOString().slice(0, 10) }), { forId: 'create-date-received', error: 'Укажите дату получения' })
+    + '</div></div>';
+
+  h += '<div class="cl half"><div class="cl-h">' + cardIcon('folder') + '<span>Классификация</span></div><div class="cl-grid duo">'
+    + field(taskFormLabel('project'), taskFormCreateControl('project', { placeholder: 'Не выбран' }), { forId: 'create-project' })
+    + field(taskFormLabel('priority'), taskFormCreateControl('priority'), { forId: 'create-priority' })
+    + field(taskFormLabel('deadline'), taskFormCreateControl('deadline', { placeholder: 'Не выбран' }), { forId: 'create-deadline', span2: true })
+    + '</div></div>';
+
+  h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Участники</span></div><div class="cl-grid duo">'
+    + field(taskFormLabel('customer'), taskFormCreateControl('customer', { placeholder: 'Не выбран' }), { forId: 'create-business-customer' })
+    + field(taskFormLabel('assignee'), taskFormCreateControl('assignee', { placeholder: 'Не назначен' }), { forId: 'create-owner' })
+    + field(taskFormLabel('comment'), taskFormCreateControl('comment', { rows: 3, placeholder: 'Общий комментарий' }), { forId: 'create-comment', span2: true })
+    + '</div></div></div>';
+
+  h += cardSec('Ссылки', 'link') + cardGrid(
+    cardF(taskFormLabel('mockupUrl'), taskFormCreateControl('mockupUrl', { placeholder: 'https://...' })),
+    cardF(taskFormLabel('jiraLinks'), taskFormCreateControl('jiraLinks', { placeholder: 'https://...' }))
+  );
+  return h;
 }
 
 function renderCreateTaskFormFields() {
@@ -2126,25 +2515,67 @@ function renderCreateTaskFormFields() {
 async function initCreateTaskModal(app) {
   const overlay = document.getElementById('create-task-overlay');
   if (!overlay) return;
+  activateTaskModalFocusTrap(overlay);
 
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeCreateTaskModal();
+    if (e.target === overlay) requestCloseCreateTaskModal();
   });
 
-  document.getElementById('create-close-btn')?.addEventListener('click', closeCreateTaskModal);
-
-  document.getElementById('create-save-btn')?.addEventListener('click', () => saveCreateTask(app));
-
-  const escHandler = (e) => {
-    if (e.key === 'Escape') {
-      closeCreateTaskModal();
-      document.removeEventListener('keydown', escHandler);
+  document.getElementById('create-close-btn')?.addEventListener('click', requestCloseCreateTaskModal);
+  const handleCreateFormChange = event => {
+    clearTaskFormErrorSummary('create-form-error-summary');
+    updateCreateTaskDirty();
+    updateCreateFormReadiness(event.target);
+    if (event.target?.id === 'create-team') {
+      document.getElementById('create-owner')?._dictionarySearchRefresh?.(userValuesForTeam(_createReferenceUsers, event.target.value));
     }
   };
-  document.addEventListener('keydown', escHandler);
+  overlay.addEventListener('input', handleCreateFormChange);
+  overlay.addEventListener('change', handleCreateFormChange);
+
+  document.getElementById('create-save-btn')?.addEventListener('click', () => saveCreateTask(app));
+  document.getElementById('create-clear-draft-btn')?.addEventListener('click', async () => {
+    if (!_createTaskDirty) return;
+    const confirmed = await confirmTaskCardDiscard('Все введённые данные новой задачи будут удалены. Очистить форму?');
+    if (!confirmed) return;
+    clearCreateTaskDraft();
+    applyCreateTaskSnapshot(_createTaskInitialSnapshot);
+    clearCreateApiErrors();
+    _createTaskDirty = false;
+    updateCreateFormReadiness();
+    document.getElementById('create-title')?.focus();
+    window.toast?.('Форма очищена', 'info');
+  });
+
+  if (_createTaskKeyHandler) document.removeEventListener('keydown', _createTaskKeyHandler);
+  _createTaskKeyHandler = async (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      if (!_createTaskSaving) saveCreateTask(app);
+      return;
+    }
+    if (e.key === 'Escape') {
+      const closed = await requestCloseCreateTaskModal();
+      if (closed && _createTaskKeyHandler) {
+        document.removeEventListener('keydown', _createTaskKeyHandler);
+        _createTaskKeyHandler = null;
+      }
+    }
+  };
+  document.addEventListener('keydown', _createTaskKeyHandler);
 
   // Populate API selects
   await populateCreateSelects(app);
+  _createTaskInitialSnapshot = createTaskFormSnapshot();
+  _createTaskDirty = restoreCreateTaskDraft();
+  updateCreateFormReadiness();
+  attachDictionarySearch(overlay, [
+    { selector: '#create-team', label: 'Ответственная команда' },
+    { selector: '#create-project', label: 'Проект' },
+    { selector: '#create-business-customer', label: 'Бизнес-заказчик' },
+    { selector: '#create-owner', label: 'Исполнитель', preferredValues: userValuesForTeam(_createReferenceUsers, document.getElementById('create-team')?.value) },
+  ]);
+  if (_createTaskDirty) window.toast?.('Черновик новой задачи восстановлен', 'info');
 
   // Focus title
   setTimeout(() => {
@@ -2155,72 +2586,116 @@ async function initCreateTaskModal(app) {
 async function populateCreateSelects(app) {
   const api = app?.api || window.app?.api;
   if (!api) return;
-
-  async function populate(endpoint, selectId) {
+  function populate(items, selectId, placeholder = 'Выберите', preferredName = '') {
     const select = document.getElementById(selectId);
     if (!select) return;
-    try {
-      const data = await api.get(endpoint);
-      const items = Array.isArray(data) ? data : (data.items || data.data || []);
-      select.innerHTML = '<option value="">Выберите</option>' +
-        items.map(item => {
-          const id = item.id;
-          const name = item.name || item.title || item.label || '';
-          return `<option value="${escapeHtml(String(id))}">${escapeHtml(name)}</option>`;
-        }).join('');
-    } catch (e) {
-      console.error(`Failed to load ${endpoint}:`, e);
-    }
+    const list = Array.isArray(items) ? items : [];
+    select.innerHTML = '<option value="">' + escapeHtml(placeholder) + '</option>' + list.map(item => {
+      const name = item.name || item.title || item.label || '';
+      return '<option value="' + escapeHtml(String(item.id)) + '">' + escapeHtml(name) + '</option>';
+    }).join('');
+    const preferred = list.find(item => String(item.name || '').toLocaleUpperCase('ru-RU') === preferredName.toLocaleUpperCase('ru-RU'));
+    if (preferred) select.value = String(preferred.id);
   }
-
-  populate('/teams', 'create-team');
-  populate('/projects', 'create-project');
-  populate('/admin/business-customers', 'create-business-customer');
+  try {
+    const ref = await api.get('/tasks/reference');
+    _createReferenceUsers = Array.isArray(ref.users) ? ref.users : [];
+    populate(ref.teams, 'create-team');
+    const currentUser = app?.store?.get('currentUser') || window.app?.store?.get('currentUser');
+    const teamSelect = document.getElementById('create-team');
+    if (teamSelect && currentUser?.team_id != null && Array.from(teamSelect.options).some(option => option.value === String(currentUser.team_id))) {
+      teamSelect.value = String(currentUser.team_id);
+    }
+    populate(ref.task_types, 'create-task-type');
+    populate(ref.channels, 'create-channel');
+    populate(ref.projects, 'create-project', 'Не выбран');
+    populate(ref.priorities, 'create-priority', 'Выберите', 'СРЕДНИЙ');
+    const prioritySelect = document.getElementById('create-priority');
+    if (prioritySelect && !prioritySelect.value && ref.priorities?.length) prioritySelect.value = String(ref.priorities[0].id);
+    populate(ref.deadlines, 'create-deadline', 'Не выбран');
+    populate(ref.business_customers, 'create-business-customer', 'Не выбран');
+    populate(ref.users, 'create-owner', 'Не назначен');
+  } catch (e) {
+    window.toast?.('Не удалось загрузить справочники для создания задачи', 'error');
+  }
 }
 
 function validateCreateForm() {
-  let valid = true;
+  let firstInvalid = null;
+  createRequiredControls().forEach(control => {
+    const id = control.id, error = document.getElementById(id + '-error');
+    const empty = !String(control?.value || '').trim();
+    control?.classList.toggle('input-error', empty);
+    control?.setAttribute('aria-invalid', empty ? 'true' : 'false');
+    if (error) error.hidden = !empty;
+    if (empty) firstInvalid ||= control;
+  });
+  firstInvalid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  firstInvalid?.focus();
+  updateCreateFormReadiness();
+  if (firstInvalid) showTaskFormErrorSummary('create-form-error-summary', 'Заполните обязательные поля перед созданием задачи.', firstInvalid);
+  return !firstInvalid;
+}
 
-  // Title
-  const title = document.getElementById('create-title');
-  const titleError = document.getElementById('create-title-error');
-  if (!title?.value?.trim()) {
-    title?.classList.add('input-error');
-    if (titleError) titleError.style.display = 'block';
-    valid = false;
-  } else {
-    title?.classList.remove('input-error');
-    if (titleError) titleError.style.display = 'none';
+const CREATE_API_FIELD_IDS = Object.freeze({
+  title: 'create-title',
+  team_id: 'create-team',
+  task_type_id: 'create-task-type',
+  channel_id: 'create-channel',
+  date_received: 'create-date-received',
+  priority_id: 'create-priority',
+  project_id: 'create-project',
+  business_customer_id: 'create-business-customer',
+  owner_id: 'create-owner',
+  deadline_id: 'create-deadline',
+  link_mockups: 'create-link-mockups',
+  link_jira: 'create-link-jira',
+});
+
+function clearCreateApiErrors() {
+  document.querySelectorAll('#create-task-overlay .create-field-error').forEach(error => { error.hidden = true; });
+  document.querySelectorAll('#create-task-overlay .input-error').forEach(control => {
+    control.classList.remove('input-error');
+    control.setAttribute('aria-invalid', 'false');
+  });
+}
+
+function showCreateApiFieldError(id, message) {
+  const control = document.getElementById(id);
+  if (!control) return null;
+  control.classList.add('input-error');
+  control.setAttribute('aria-invalid', 'true');
+  let error = document.getElementById(id + '-error');
+  if (!error) {
+    error = document.createElement('div');
+    error.id = id + '-error';
+    error.className = 'create-field-error';
+    control.closest('.icell, .task-title-card, .field')?.appendChild(error);
   }
+  error.textContent = message;
+  error.hidden = false;
+  return control;
+}
 
-  // Team
-  const team = document.getElementById('create-team');
-  const teamError = document.getElementById('create-team-error');
-  if (!team?.value) {
-    team?.classList.add('input-error');
-    if (teamError) teamError.style.display = 'block';
-    valid = false;
-  } else {
-    team?.classList.remove('input-error');
-    if (teamError) teamError.style.display = 'none';
-  }
-
-  // Description
-  const desc = document.getElementById('create-description');
-  const descError = document.getElementById('create-description-error');
-  if (!desc?.value?.trim()) {
-    desc?.classList.add('input-error');
-    if (descError) descError.style.display = 'block';
-    valid = false;
-  } else {
-    desc?.classList.remove('input-error');
-    if (descError) descError.style.display = 'none';
-  }
-
-  return valid;
+function applyCreateApiErrors(error) {
+  const details = error?.data?.detail;
+  if (!Array.isArray(details)) return false;
+  clearCreateApiErrors();
+  let firstInvalid = null;
+  details.forEach(item => {
+    const fieldName = Array.isArray(item.loc) ? item.loc[item.loc.length - 1] : null;
+    const id = CREATE_API_FIELD_IDS[fieldName];
+    if (id) firstInvalid ||= showCreateApiFieldError(id, item.msg || 'Проверьте значение');
+  });
+  firstInvalid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  firstInvalid?.focus();
+  if (firstInvalid) showTaskFormErrorSummary('create-form-error-summary', 'Исправьте отмеченные поля и повторите создание.', firstInvalid);
+  return Boolean(firstInvalid);
 }
 
 async function saveCreateTask(app) {
+  if (_createTaskSaving) return;
+  clearCreateApiErrors();
   if (!validateCreateForm()) {
     window.toast?.('Заполните обязательные поля', 'error');
     return;
@@ -2232,6 +2707,7 @@ async function saveCreateTask(app) {
   const saveBtn = document.getElementById('create-save-btn');
   const originalHtml = saveBtn?.innerHTML || 'Создать задачу';
   if (saveBtn) {
+    _createTaskSaving = true;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></span>Создание...';
   }
@@ -2261,12 +2737,13 @@ async function saveCreateTask(app) {
   const data = {
     title: document.getElementById('create-title')?.value?.trim() || '',
     team_id: getInt('create-team'),
-    priority_id: getInt('create-priority') || 2,
-    description: document.getElementById('create-description')?.value?.trim() || '',
+    priority_id: getInt('create-priority'),
+    description: document.getElementById('create-description')?.value?.trim() || null,
     task_type_id: getInt('create-task-type'),
     channel_id: getInt('create-channel'),
     project_id: getInt('create-project'),
     business_customer_id: getInt('create-business-customer'),
+    owner_id: getInt('create-owner'),
     deadline_id: getInt('create-deadline'),
     date_received: document.getElementById('create-date-received')?.value || null,
     effort_days: getInt('create-effort-days'),
@@ -2283,17 +2760,34 @@ async function saveCreateTask(app) {
   });
 
   try {
-    await api.post('/tasks', data);
+    const createdTask = await api.post('/tasks/', data);
+    clearCreateTaskDraft();
+    _createTaskDirty = false;
     closeCreateTaskModal();
-    if (onSaveCallback) onSaveCallback();
+    if (onSaveCallback) {
+      try { await Promise.resolve(onSaveCallback()); } catch (refreshError) { console.warn('Task list refresh failed:', refreshError); }
+    }
     window.toast?.('Задача создана', 'success');
+    setTimeout(async () => {
+      let taskToOpen = createdTask;
+      if (createdTask?.id) {
+        try { taskToOpen = await api.get(`/tasks/${createdTask.id}`); } catch (_) { /* create response is sufficient */ }
+      }
+      if (taskToOpen?.id) openTaskModal(taskToOpen);
+    }, 240);
   } catch (e) {
-    window.toast?.('Ошибка: ' + (e.message || 'не удалось создать задачу'), 'error');
+    if (applyCreateApiErrors(e)) window.toast?.('Исправьте отмеченные поля', 'error');
+    else {
+      const message = 'Не удалось создать задачу: ' + (e.message || 'ошибка сервера');
+      showTaskFormErrorSummary('create-form-error-summary', message, document.getElementById('create-title'));
+      window.toast?.(message, 'error');
+    }
   } finally {
+    _createTaskSaving = false;
     if (saveBtn) {
-      saveBtn.disabled = false;
       saveBtn.innerHTML = originalHtml;
     }
+    updateCreateFormReadiness();
   }
 }
 
@@ -2507,7 +3001,24 @@ async function submitComment(taskId, app) {
   }
 }
 
+async function requestCloseCreateTaskModal() {
+  if (_createTaskDirty) {
+    const confirmed = await confirmTaskCardDiscard('Форма будет закрыта. Введённые данные сохранятся в черновике. Закрыть форму?');
+    if (!confirmed) return false;
+  }
+  closeCreateTaskModal();
+  return true;
+}
+
 function closeCreateTaskModal() {
+  deactivateTaskModalFocusTrap();
+  if (_createTaskKeyHandler) {
+    document.removeEventListener('keydown', _createTaskKeyHandler);
+    _createTaskKeyHandler = null;
+  }
+  const returnFocus = takeTaskModalReturnFocus();
+  _createTaskDirty = false;
+  _createTaskInitialSnapshot = '';
   const overlay = document.getElementById('create-task-overlay');
   if (overlay) {
     overlay.classList.add('modal-closing');
@@ -2515,6 +3026,7 @@ function closeCreateTaskModal() {
       overlay.remove();
       currentTask = null;
       modalMode = 'view';
+      restoreTaskModalReturnFocus(returnFocus);
     }, 200);
   }
 }
@@ -2553,7 +3065,8 @@ export function showConfirmModal(message, title = 'Подтверждение', 
     const okBtn = overlay.querySelector('#confirm-ok');
     const cancelBtn = overlay.querySelector('#confirm-cancel');
 
-    okBtn?.focus();
+    if (danger) cancelBtn?.focus();
+    else okBtn?.focus();
 
     function handleOk() {
       overlay.remove();
@@ -2733,8 +3246,8 @@ const FIELD_GROUPS = {
   'ownership': { label: 'Принадлежность', fields: ['team_id', 'project_id', 'task_type_id', 'channel_id', 'department_id', 'business_customer_id'] },
   'meetings': { label: 'Для встреч', fields: ['key_project_status', 'directorate_status', 'did_status'] },
   'estimation': { label: 'Оценка', fields: ['effort_days', 'effort_rub', 'financial_effect'] },
-  'text_links': { label: 'Тексты и ссылки', fields: ['rejection_reason', 'comment', 'link_jira', 'link_mockups'] },
-  'tags': { label: 'Метки', fields: ['tags'] }
+  'text_links': { label: 'Тексты и ссылки', fields: ['rejection_reason', 'comment_add', 'link_jira', 'link_mockups'] },
+  'tags': { label: 'Метки', fields: ['tags_add', 'tags_remove'] }
 };
 
 const FIELD_LABELS_BULK = {
@@ -2744,8 +3257,8 @@ const FIELD_LABELS_BULK = {
   team_id: 'Команда', project_id: 'Проект', task_type_id: 'Тип задачи', channel_id: 'Канал', department_id: 'Подразделение', business_customer_id: 'Бизнес-заказчик',
   key_project_status: 'Статус ключ. проекта', directorate_status: 'Статус для директорской', did_status: 'Статус для ДИД',
   effort_days: 'Трудозатраты дни', effort_rub: 'Трудозатраты руб', financial_effect: 'Фин. эффект',
-  rejection_reason: 'Причина отклонения', comment: 'Комментарий', link_jira: 'Ссылка на Jira', link_mockups: 'Ссылка на макеты',
-  tags: 'Теги'
+  rejection_reason: 'Причина отклонения', comment_add: 'Добавить комментарий', link_jira: 'Ссылка на Jira', link_mockups: 'Ссылка на макеты',
+  tags_add: 'Добавить теги', tags_remove: 'Удалить теги'
 };
 
 const FIELD_TYPES_BULK = {
@@ -2755,11 +3268,108 @@ const FIELD_TYPES_BULK = {
   team_id: 'select', project_id: 'select', task_type_id: 'select', channel_id: 'select', department_id: 'select', business_customer_id: 'select',
   key_project_status: 'select', directorate_status: 'text', did_status: 'text',
   effort_days: 'number', effort_rub: 'number', financial_effect: 'number',
-  rejection_reason: 'textarea', comment: 'textarea', link_jira: 'text', link_mockups: 'text',
-  tags: 'tags'
+  rejection_reason: 'textarea', comment_add: 'comment', link_jira: 'text', link_mockups: 'text',
+  tags_add: 'tags', tags_remove: 'tags'
 };
 
+const FIELD_HINTS_BULK = {
+  tags_add: 'Существующие теги сохранятся',
+  tags_remove: 'Остальные теги не изменятся',
+  status_id: 'Статус изменится у всех выбранных задач',
+  team_id: 'Доступность зависит от ваших прав на команды',
+  owner_id: 'Один владелец будет назначен всем задачам',
+  comment_add: 'Комментарий будет добавлен в ленту каждой задачи, существующие комментарии сохранятся',
+};
+
+function hasBulkValue(value) {
+  return !(value === '' || value === null || value === undefined || (Array.isArray(value) && value.length === 0));
+}
+
+function bulkPluralize(n, one, few, many) {
+  const mod10 = Math.abs(n) % 10;
+  const mod100 = Math.abs(n) % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
+
+function formatBulkValue(field, value) {
+  if (!hasBulkValue(value)) return 'значение не задано';
+  if (Array.isArray(value)) return value.join(', ');
+  const sources = {
+    status_id: window.app?.statuses,
+    priority_id: window.app?.priorities,
+    team_id: window.app?.teams,
+    deadline_id: window.app?.deadlines,
+    task_type_id: window.app?.taskTypes,
+    channel_id: window.app?.channels,
+    department_id: window.app?.departments,
+    project_id: window.app?.projects,
+    owner_id: window.app?.users,
+    business_customer_id: window.app?.businessCustomers,
+  };
+  const item = (sources[field] || []).find(option => option.id == value);
+  return item?.name || item?.label || String(value);
+}
+
+function renderBulkSummary(selectedFields, selected) {
+  const configured = selectedFields.filter(item => hasBulkValue(item.value));
+  if (configured.length === 0) {
+    return '<span style="color:var(--text-muted);font-size:13px;">Пока нечего применять — добавьте поле и задайте новое значение.</span>';
+  }
+  return `
+    <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;">
+      <strong style="font-size:13px;color:var(--text-primary);">Итог изменений</strong>
+      <span style="font-size:12px;color:var(--text-muted);">${selected} ${bulkPluralize(selected, 'задача', 'задачи', 'задач')}</span>
+    </div>
+    <div style="display:grid;gap:5px;">${configured.map(item => `
+      <div style="display:grid;grid-template-columns:minmax(130px,1fr) 1.4fr;gap:8px;font-size:12px;">
+        <span style="color:var(--text-secondary);">${escapeHtml(FIELD_LABELS_BULK[item.field] || item.field)}</span>
+        <strong style="color:var(--text-primary);overflow-wrap:anywhere;">→ ${escapeHtml(formatBulkValue(item.field, item.value))}</strong>
+      </div>`).join('')}
+    </div>`;
+}
+
 const REQUIRES_REASON_STATUSES_BULK = ['ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА', 'ХОЛД', 'ЭСКАЛАЦИЯ НА ЛТ'];
+
+function showBulkResultModal(result, tasks, fallbackError = '') {
+  const existing = document.getElementById('bulk-result-overlay');
+  existing?.remove();
+  const taskMap = new Map((tasks || []).map(task => [Number(task.id), task]));
+  const groups = [
+    { key: 'changed', label: 'Изменено', ids: result?.changed_task_ids || [], color: 'var(--success)' },
+    { key: 'unchanged', label: 'Без изменений', ids: result?.unchanged_task_ids || [], color: 'var(--text-muted)' },
+    { key: 'error', label: 'Ошибка', ids: result?.error_task_ids || [], color: 'var(--danger)', errors: result?.errors || (fallbackError ? [fallbackError] : []) },
+  ].filter(group => group.ids.length || group.errors?.length);
+  const overlay = document.createElement('div');
+  overlay.id = 'bulk-result-overlay';
+  overlay.className = 'modal-overlay';
+  overlay.style.zIndex = '1110';
+  const groupHtml = groups.map((group, index) => `
+    <details ${index === 0 || group.key === 'error' ? 'open' : ''} style="border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);">
+      <summary style="cursor:pointer;padding:10px 12px;font-size:13px;font-weight:600;color:${group.color};">${group.label} · ${group.ids.length}</summary>
+      <div style="padding:0 12px 12px;display:grid;gap:6px;max-height:190px;overflow:auto;">
+        ${(group.errors || []).map(error => `<div style="font-size:12px;color:var(--danger);">${escapeHtml(error)}</div>`).join('')}
+        ${group.ids.map(id => `<div style="display:grid;grid-template-columns:52px 1fr;gap:8px;font-size:12px;"><span style="font-family:monospace;color:var(--text-muted);">#${id}</span><span>${escapeHtml(taskMap.get(Number(id))?.title || 'Задача')}</span></div>`).join('')}
+      </div>
+      ${group.key === 'error' && group.ids.length ? `<div style="padding:0 12px 10px;text-align:right;"><button class="btn btn-secondary btn-xs" data-copy-error-ids>Копировать ID</button></div>` : ''}
+    </details>`).join('');
+  overlay.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-result-title" style="background:var(--bg-primary);border-radius:12px;max-width:620px;width:94%;max-height:85vh;display:flex;flex-direction:column;">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border-color);"><div id="bulk-result-title" style="font-size:15px;font-weight:600;">Результат массовой операции</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${result?.operation_id ? `Операция ${escapeHtml(result.operation_id.slice(0, 8))}` : 'Операция не выполнена'}</div></div>
+    <div style="padding:14px 16px;display:grid;gap:8px;overflow:auto;">${groupHtml || '<div style="font-size:13px;color:var(--text-muted);">Нет данных о результате</div>'}</div>
+    <div style="padding:10px 16px;border-top:1px solid var(--border-color);text-align:right;"><button class="btn btn-primary btn-sm" data-close-bulk-result>Закрыть</button></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-close-bulk-result]')?.addEventListener('click', close);
+  overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
+  overlay.querySelector('[data-copy-error-ids]')?.addEventListener('click', async () => {
+    const ids = (result?.error_task_ids || []).join(', ');
+    try { await navigator.clipboard.writeText(ids); window.toast?.('ID скопированы', 'success'); }
+    catch (_) { window.toast?.(`ID: ${ids}`, 'warning'); }
+  });
+  overlay.querySelector('[data-close-bulk-result]')?.focus();
+}
 
 export function showBulkOpsModal(app, scope, tasks) {
   return new Promise((resolve) => {
@@ -2889,41 +3499,51 @@ export function showBulkOpsModal(app, scope, tasks) {
             controlHtml = `<input type="number" class="bc-field-val" data-field="${item.field}" value="${item.value ?? ''}" placeholder="0" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
           } else if (ftype === 'date') {
             controlHtml = `<input type="date" class="bc-field-val" data-field="${item.field}" value="${item.value ?? ''}" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
+          } else if (ftype === 'comment') {
+            const mentionOptions = (window.app?.users || []).map(user =>
+              `<option value="${user.id}" ${(item.mentionedUserIds || []).includes(user.id) ? 'selected' : ''}>${escapeHtml(user.name)}</option>`
+            ).join('');
+            controlHtml = `<textarea class="bc-field-val" data-field="${item.field}" rows="3" maxlength="5000" placeholder="Введите комментарий" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;resize:vertical;">${escapeHtml(item.value || '')}</textarea>
+              <label style="display:block;margin-top:8px;font-size:11px;color:var(--text-muted);">Упомянуть пользователей</label>
+              <select multiple class="bc-comment-mentions" data-field="${item.field}" size="3" style="width:100%;margin-top:4px;padding:5px 7px;font-size:12px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">${mentionOptions}</select>`;
           } else if (ftype === 'textarea') {
             controlHtml = `<textarea class="bc-field-val" data-field="${item.field}" rows="2" placeholder="Введите значение" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;resize:none;">${escapeHtml(item.value || '')}</textarea>`;
+          } else if (ftype === 'tags') {
+            controlHtml = `<input type="text" class="bc-field-val" data-field="${item.field}" value="${escapeHtml(Array.isArray(item.value) ? item.value.join(', ') : (item.value || ''))}" placeholder="Введите теги через запятую" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
           } else {
             controlHtml = `<input type="text" class="bc-field-val" data-field="${item.field}" value="${escapeHtml(item.value || '')}" placeholder="Введите значение" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
           }
 
           fieldsRowsHtml += `
-            <div class="bc-field-row" data-field="${item.field}" style="display:grid;grid-template-columns:190px 1fr 28px;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-color);align-items:center;">
-              <div style="font-size:13px;color:var(--text-secondary);padding:0 8px;">${fl}</div>
+            <div class="bc-field-row" data-field="${item.field}" style="display:grid;grid-template-columns:minmax(170px,210px) 1fr 32px;gap:10px;padding:12px;border:1px solid var(--border-color);border-radius:8px;align-items:center;background:var(--bg-primary);margin-bottom:8px;">
+              <div style="padding-right:4px;"><div style="font-size:13px;font-weight:600;color:var(--text-primary);">${fl}</div>${FIELD_HINTS_BULK[item.field] ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.35;">${FIELD_HINTS_BULK[item.field]}</div>` : ''}</div>
               <div>${controlHtml}</div>
-              <button class="bc-field-remove" data-field="${item.field}" style="width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center;border-radius:4px;">✕</button>
+              <button class="bc-field-remove" data-field="${item.field}" title="Убрать поле" aria-label="Убрать поле ${fl}" style="width:32px;height:32px;border:1px solid var(--border-color);background:var(--bg-secondary);cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center;border-radius:6px;">✕</button>
             </div>
           `;
         }
 
         const addFieldBtn = `
-          <button id="bc-add-field" style="width:100%;padding:10px;border:1px dashed var(--border-color);border-radius:8px;background:none;cursor:pointer;color:var(--text-secondary);font-size:13px;margin-top:12px;">+ Добавить поле</button>
+          <button id="bc-add-field" class="btn btn-secondary btn-sm" style="width:100%;padding:10px;border-style:dashed;margin-top:4px;justify-content:center;">+ Добавить ещё одно поле</button>
         `;
 
         const fieldPickerHtml = `
           <div id="bc-field-picker" class="hidden" style="margin-top:12px;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);">
             <input type="text" id="bc-field-search" placeholder="Найти поле по названию…" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;margin-bottom:10px;">
-            <div id="bc-field-list" style="max-height:240px;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;"></div>
+            <div id="bc-field-list" style="max-height:280px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;"></div>
           </div>
         `;
 
-        const summaryText = selectedFields.length === 0
-          ? '<span style="color:var(--text-muted);font-size:13px;">Пока нечего применять — добавьте хотя бы одно поле со значением</span>'
-          : `<span style="font-size:13px;">Будет изменено ${selectedFields.length} ${pluralize(selectedFields.length, 'поле', 'поля', 'полей')} у <strong>${selected}</strong> ${pluralize(selected, 'задачи', 'задач', 'задач')}: ${selectedFields.map(f => FIELD_LABELS_BULK[f.field] || f.field).join(', ')}</span>`;
+        const summaryText = renderBulkSummary(selectedFields, selected);
 
         bodyContent = `
           <div style="display:flex;flex-direction:column;padding:12px 16px 16px 16px;flex:1;min-height:0;">
-            <p style="margin:0 0 12px 0;font-size:13px;color:var(--text-secondary);line-height:1.5;">Изменения применятся к <strong>${selected}</strong> ${pluralize(selected, 'задаче', 'задачам', 'задачам')}. Добавьте поля, которые нужно изменить — значение будет одинаковым у всех выбранных задач.</p>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;padding:12px;background:var(--bg-tertiary);border-radius:8px;">
+              <div><div style="font-size:14px;font-weight:600;color:var(--text-primary);">Настройте изменения</div><div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">Новое значение будет одинаковым у всех выбранных задач.</div></div>
+              <span style="white-space:nowrap;padding:5px 9px;border-radius:999px;background:var(--accent);color:white;font-size:12px;font-weight:600;">${selected} ${pluralize(selected, 'задача', 'задачи', 'задач')}</span>
+            </div>
             <div style="flex:1;overflow-y:auto;min-height:0;">
-              <div id="bc-fields-list" style="border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);padding:4px 8px;margin-bottom:12px;">
+              <div id="bc-fields-list" style="border-radius:8px;background:var(--bg-secondary);padding:8px;margin-bottom:8px;">
                 ${fieldsRowsHtml || '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">Поля не выбраны</div>'}
               </div>
               ${addFieldBtn}
@@ -3114,11 +3734,20 @@ export function showBulkOpsModal(app, scope, tasks) {
         document.querySelectorAll('.bc-field-val').forEach(input => {
           input.addEventListener('input', () => {
             const field = input.dataset.field;
-            const val = input.type === 'checkbox' ? input.checked : input.value;
+            const val = FIELD_TYPES_BULK[field] === 'tags'
+              ? input.value.split(',').map(tag => tag.trim()).filter(Boolean)
+              : (input.type === 'checkbox' ? input.checked : input.value);
             const item = selectedFields.find(f => f.field === field);
             if (item) item.value = val;
             fieldValues[field] = val;
             updateSummary();
+          });
+        });
+
+        document.querySelectorAll('.bc-comment-mentions').forEach(select => {
+          select.addEventListener('change', () => {
+            const item = selectedFields.find(field => field.field === select.dataset.field);
+            if (item) item.mentionedUserIds = [...select.selectedOptions].map(option => Number(option.value));
           });
         });
 
@@ -3161,7 +3790,7 @@ export function showBulkOpsModal(app, scope, tasks) {
             opt.addEventListener('click', () => {
               const field = opt.dataset.field;
               if (!selectedFields.some(f => f.field === field)) {
-                selectedFields.push({ field, value: '' });
+                selectedFields.push({ field, value: '', mentionedUserIds: [] });
                 fieldValues[field] = '';
               }
               fieldPicker?.classList.add('hidden');
@@ -3172,10 +3801,22 @@ export function showBulkOpsModal(app, scope, tasks) {
 
         nextBtn?.addEventListener('click', async () => {
           const fieldsPayload = {};
+          const commentItem = selectedFields.find(item => item.field === 'comment_add' && hasBulkValue(item.value));
+          const otherConfiguredItems = selectedFields.filter(item => item.field !== 'comment_add' && hasBulkValue(item.value));
+          if (commentItem && otherConfiguredItems.length) {
+            window.toast?.('Добавление комментария выполняется отдельной операцией', 'warning');
+            return;
+          }
+          const bulkAction = commentItem ? 'comment' : 'update';
           let hasReason = true;
           for (const item of selectedFields) {
-            if (item.value === '' || item.value === null || item.value === undefined) continue;
-            fieldsPayload[item.field] = item.value;
+            if (item.value === '' || item.value === null || item.value === undefined || (Array.isArray(item.value) && item.value.length === 0)) continue;
+            if (item.field === 'comment_add') {
+              fieldsPayload.comment_text = item.value;
+              fieldsPayload.mentioned_user_ids = item.mentionedUserIds || [];
+            } else {
+              fieldsPayload[item.field] = item.value;
+            }
             if (item.field === 'status_id') {
               const statusOpt = (window.app?.statuses || []).find(s => s.id == item.value);
               if (statusOpt && REQUIRES_REASON_STATUSES_BULK.includes(statusOpt.name) && !fieldsPayload.rejection_reason) {
@@ -3197,8 +3838,35 @@ export function showBulkOpsModal(app, scope, tasks) {
             return;
           }
           const selected = getSelectedCount();
+          const taskIds = tasks.filter(t => !excluded.has(t.id)).map(t => t.id);
+          const configured = selectedFields.filter(item => hasBulkValue(item.value));
+          const changesText = configured
+            .map(item => `${FIELD_LABELS_BULK[item.field] || item.field}: ${formatBulkValue(item.field, item.value)}`)
+            .join('; ');
+          let preview;
+          try {
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'Проверяю…';
+            preview = await app.api.post('/tasks/bulk/preview', {
+              action: bulkAction, task_ids: taskIds, fields: fieldsPayload
+            });
+          } catch (e) {
+            window.toast?.('Не удалось проверить массовую операцию: ' + (e.message || 'ошибка сервера'), 'error');
+            nextBtn.disabled = false;
+            nextBtn.textContent = `Применить к ${selected} ${pluralize(selected, 'задаче', 'задачам', 'задачам')}`;
+            return;
+          }
+          nextBtn.disabled = false;
+          nextBtn.textContent = `Применить к ${selected} ${pluralize(selected, 'задаче', 'задачам', 'задачам')}`;
+          if (!preview.can_apply) {
+            const reasons = [...(preview.errors || [])];
+            if (preview.inaccessible_tasks > 0) reasons.push(`Нет прав: ${preview.inaccessible_tasks}`);
+            window.toast?.(`Операцию нельзя применить. ${reasons.join('. ')}`, 'error');
+            return;
+          }
+          const previewText = `Изменятся задачи: ${preview.changed_tasks}; без изменений: ${preview.unchanged_tasks}; изменений полей: ${preview.applied_changes}; пропущено совпадающих значений: ${preview.skipped_changes}; уведомлений: ${preview.notifications}.`;
           const confirmed = await showConfirmModal(
-            `Применить изменения? У ${selected} ${pluralize(selected, 'задачи', 'задач', 'задач')} будет изменено: ${selectedFields.map(f => FIELD_LABELS_BULK[f.field]).join(', ')}.`,
+            `${previewText} ${changesText}.`,
             'Подтверждение',
             `Применить к ${selected} ${pluralize(selected, 'задаче', 'задачам', 'задачам')}`,
             'Отмена'
@@ -3206,16 +3874,25 @@ export function showBulkOpsModal(app, scope, tasks) {
           if (!confirmed) return;
           try {
             const result = await app.api.post('/tasks/bulk', {
-              action: 'update',
-              task_ids: tasks.filter(t => !excluded.has(t.id)).map(t => t.id),
+              action: bulkAction,
+              task_ids: taskIds,
               fields: fieldsPayload
             });
             closeBulkModal();
-            resolve({ success: true, count: selected });
-            window.toast?.(`Изменено ${selected} ${pluralize(selected, 'задача', 'задачи', 'задач')}`, 'success');
+            resolve({ success: true, count: result?.changed_tasks ?? selected, result });
+            showBulkResultModal(result, tasks);
+            const changed = result?.changed_tasks ?? selected;
+            const unchanged = result?.unchanged_tasks ?? 0;
+            const operationLabel = result?.operation_id ? ` · операция ${result.operation_id.slice(0, 8)}` : '';
+            const unchangedLabel = unchanged > 0 ? `, без изменений: ${unchanged}` : '';
+            window.toast?.(`Изменено задач: ${changed}${unchangedLabel}${operationLabel}`, 'success');
           } catch (e) {
             window.toast?.('Ошибка: ' + (e.message || 'Не удалось выполнить массовое изменение'), 'error');
             closeBulkModal();
+            showBulkResultModal({
+              changed_task_ids: [], unchanged_task_ids: [], error_task_ids: taskIds,
+              errors: [e.message || 'Не удалось выполнить массовое изменение'],
+            }, tasks, e.message);
             resolve({ success: false, error: e });
           }
         });
@@ -3226,11 +3903,7 @@ export function showBulkOpsModal(app, scope, tasks) {
       const summaryEl = overlay.querySelector('#bc-summary');
       if (!summaryEl) return;
       const count = getSelectedCount();
-      if (selectedFields.length === 0) {
-        summaryEl.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">Пока нечего применять — добавьте хотя бы одно поле со значением</span>';
-      } else {
-        summaryEl.innerHTML = `<span style="font-size:13px;">Будет изменено ${selectedFields.length} ${pluralize(selectedFields.length, 'поле', 'поля', 'полей')} у <strong>${count}</strong> ${pluralize(count, 'задачи', 'задач', 'задач')}: ${selectedFields.map(f => FIELD_LABELS_BULK[f.field] || f.field).join(', ')}</span>`;
-      }
+      summaryEl.innerHTML = renderBulkSummary(selectedFields, count);
     }
 
     async function handleClose() {
@@ -3866,8 +4539,8 @@ export function importTasksFromExcel(app, onSuccess) {
 }
 
 // ============================================================
-//  КАРТОЧКА ЗАДАЧИ v18 (порт референса «Карточка задачи NEW»)
-//  Структура, классы и логика соответствуют референсу v18,
+//  КАРТОЧКА ЗАДАЧИ v30 (порт референса «Карточка задачи последняя»)
+//  Структура, классы и логика соответствуют референсу v30,
 //  но работают поверх реального API: /tasks/{id}, лок, вьюверы,
 //  409-конфликт, комментарии с @, файлы, история.
 // ============================================================
@@ -3916,10 +4589,8 @@ const CARD_RATES_MAP = {
 
 const CARD_TABS = [
   ['main', 'Основное', 'file'],
-  ['eco', 'Экономика и трудозатраты', 'trend'],
   ['rep', 'Отчётные статусы', 'flag'],
   ['com', 'Комментарии', 'msg'],
-  ['files', 'Файлы', 'folder'],
   ['sys', 'Ссылки и система', 'link'],
   ['log', 'Лог изменений', 'clock'],
 ];
@@ -3932,6 +4603,30 @@ let cardAi = null;
 let cardPs = null;
 let _cardEscHandler = null;
 let _cardToastTimer = null;
+let _cardRouteTabHandler = null;
+
+function cardTabFromRoute() {
+  const query = window.location.hash.slice(1).split('?')[1] || '';
+  const requested = new URLSearchParams(query).get('tab') || 'main';
+  return CARD_TABS.some(tab => tab[0] === requested) ? requested : 'main';
+}
+
+function cardActivateTab(tab, app, syncRoute = true) {
+  const validTab = CARD_TABS.some(item => item[0] === tab) ? tab : 'main';
+  cardState.tab = validTab;
+  cardState.replyFor = null;
+  if (syncRoute) window.app?.router?.updateTaskTabRoute?.(validTab);
+  if (validTab === 'com') {
+    _commentFormInitialized = false;
+    setTimeout(() => { initCommentForm(currentTask?.id, app); renderCommentList(); }, 0);
+  }
+  if (validTab === 'files') {
+    _attachmentFormInitialized = false;
+    setTimeout(() => { initAttachmentForm(currentTask?.id, app); renderAttachmentsList(); }, 0);
+  }
+  cardRenderTabs();
+  cardRenderBody();
+}
 
 function cardCur() { return cardState.editing ? cardState.draft : cardState.current; }
 
@@ -4028,6 +4723,19 @@ function cardStatusCls(s) {
   return 'b-blue';
 }
 function cardPrioCls(p) { return p === 'ВЫСОКИЙ' ? 'b-red' : (p === 'СРЕДНИЙ' ? 'b-amber' : 'b-green'); }
+function cardStatusHex(s) {
+  if (s === 'ВЫПОЛНЕНА') return 'var(--status-done)';
+  if (s === 'ОТКЛОНЕНА' || s === 'НЕ АКТУАЛЬНА' || s === 'ЭСКАЛАЦИЯ НА ЛТ') return 'var(--danger)';
+  if (s === 'ХОЛД' || s === 'ПРИНЯТИЕ РЕШЕНИЯ' || s === 'ЭКСПРЕСС-ОЦЕНКА') return 'var(--warning)';
+  if (s === 'НОВАЯ ЗАДАЧА') return 'var(--status-backlog)';
+  return 'var(--status-progress)';
+}
+function cardGradePill(v) {
+  if (!v) return '—';
+  const cls = ({ A: 'g-a', B: 'g-b', C: 'g-c', D: 'g-d', E: 'g-e' })[v] || 'b-gray';
+  const desc = { A: 'выше всяких ожиданий', B: 'выше ожиданий', C: 'в рамках ожиданий', D: 'ниже ожиданий', E: 'сильно ниже ожиданий, провал' }[v] || '';
+  return '<span class="pill status ' + cls + '" title="' + desc + '">' + escapeHtml(v) + '</span>';
+}
 function cardSel(k, options, v) {
   const opts = options.slice();
   if (v && opts.indexOf(v) === -1) opts.unshift(v);
@@ -4044,6 +4752,10 @@ function cardDateC(k, v) { return '<input type="date" data-k="' + k + '" value="
 function cardF(l, inner, o) {
   o = o || {};
   return '<div class="field ' + (o.span2 ? 'span2 ' : '') + (o.span4 ? 'span4 ' : '') + '"><div class="flabel"><span class="flt">' + escapeHtml(l) + '</span>' + (o.lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="fval">' + inner + '</div></div>';
+}
+function cardIcell(l, inner, o) {
+  o = o || {};
+  return '<div class="icell ' + (o.span2 ? 'span2cell' : '') + '"><div class="ilab"><span class="flt">' + escapeHtml(l) + '</span>' + (o.lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="ival">' + inner + '</div></div>';
 }
 function cardV(v) { return '<div>' + v + '</div>'; }
 function cardROv(v) { return '<div style="display:flex;gap:7px;align-items:center;color:#5A6478">' + v + '</div>'; }
@@ -4086,10 +4798,12 @@ function buildCardState(task) {
     receivedAt: t.date_received || '',
     team: t.team_name || t.team || '',
     channel: t.channel_name || t.source_channel || '',
+    channelId: t.channel_id == null ? null : Number(t.channel_id),
     customer: t.business_customer_name || '',
     customerDept: t.department_name || t.customer_department || '',
     project: t.project_name || t.project || '',
     type: t.task_type_name || t.task_type || '',
+    taskTypeId: t.task_type_id == null ? null : Number(t.task_type_id),
     otherTeams: involved,
     tags: tagNames,
     priority: t.priority_name || t.priority || '',
@@ -4128,33 +4842,40 @@ async function cardLoadDict(app) {
   const api = app?.api || window.app?.api;
   if (!api) return;
   const norm = r => Array.isArray(r) ? r : ((r && r.items) || []);
-  const [teams, users, projects, statuses, priorities, deadlines, taskTypes, channels, customers, departments, tagsR] = await Promise.all([
-    api.get('/teams').catch(() => []),
-    api.get('/users').catch(() => []),
-    api.get('/projects').catch(() => api.get('/admin/projects').catch(() => [])),
-    api.get('/admin/statuses').catch(() => []),
-    api.get('/admin/priorities').catch(() => []),
-    api.get('/admin/deadlines').catch(() => []),
+  const [ref, legacyTaskTypes, legacyChannels] = await Promise.all([
+    api.get('/tasks/reference').catch(() => null),
     api.get('/admin/task-types').catch(() => []),
     api.get('/admin/channels').catch(() => []),
-    api.get('/admin/business-customers').catch(() => []),
-    api.get('/admin/departments').catch(() => []),
-    api.get('/admin/tags').catch(() => api.get('/tags').catch(() => [])),
   ]);
+  const cached = app || window.app || {};
   cardDict = {
-    teams: norm(teams),
-    users: norm(users).filter(u => u.is_active !== false),
-    projects: norm(projects),
-    statuses: norm(statuses),
-    priorities: norm(priorities),
-    deadlines: norm(deadlines),
-    taskTypes: norm(taskTypes),
-    channels: norm(channels),
-    customers: norm(customers),
-    departments: norm(departments),
-    tags: norm(tagsR),
+    teams: norm(ref?.teams || cached.teams),
+    users: norm(ref?.users || cached.users).filter(u => u.is_active !== false),
+    projects: norm(ref?.projects || cached.projects),
+    statuses: norm(ref?.statuses || cached.statuses),
+    priorities: norm(ref?.priorities || cached.priorities),
+    deadlines: norm(ref?.deadlines || cached.deadlines),
+    taskTypes: norm(ref?.task_types || cached.taskTypes),
+    channels: norm(ref?.channels || cached.channels),
+    customers: norm(ref?.business_customers || cached.businessCustomers),
+    departments: norm(ref?.departments || cached.departments),
+    tags: norm(ref?.tags || cached.tags),
   };
   cardBuildMaps();
+  const recoverLegacyRef = (state, nameKey, idKey, legacyItems, canonicalItems) => {
+    if (!state || state[nameKey] || state[idKey] == null) return;
+    const legacy = norm(legacyItems).find(x => Number(x?.id) === Number(state[idKey]));
+    if (!legacy?.name) return;
+    const key = String(legacy.name).trim().toLocaleLowerCase('ru-RU');
+    const canonical = norm(canonicalItems).find(x => String(x?.name || '').trim().toLocaleLowerCase('ru-RU') === key);
+    if (!canonical) return;
+    state[nameKey] = canonical.name;
+    state[idKey] = Number(canonical.id);
+  };
+  recoverLegacyRef(cardState.current, 'type', 'taskTypeId', legacyTaskTypes, cardDict.taskTypes);
+  recoverLegacyRef(cardState.current, 'channel', 'channelId', legacyChannels, cardDict.channels);
+  recoverLegacyRef(cardState.draft, 'type', 'taskTypeId', legacyTaskTypes, cardDict.taskTypes);
+  recoverLegacyRef(cardState.draft, 'channel', 'channelId', legacyChannels, cardDict.channels);
 }
 function cardNameList(key) {
   return (cardDict && cardDict[key] ? cardDict[key] : []).map(x => (x && (x.name || x.login || x.email)) || '').filter(Boolean);
@@ -4185,23 +4906,15 @@ function cardRenderHeader() {
   const el = document.getElementById('mhead');
   if (!el) return;
   const t = cardCur();
-  let h = '<div class="row1">';
-  h += '<button class="tid" data-action="copy-id" title="Скопировать ID">#' + t.id + ' ' + cardIcon('copy') + '</button>';
-  h += '<span class="badge nodot b-violet" id="hType">' + escapeHtml(t.type) + '</span>';
-  h += cardState.editing
-    ? '<input class="title-input" data-k="title" maxlength="255" value="' + escapeHtml(t.title) + '" id="titleInput"><span class="tcount" id="titleCount"></span>'
-    : '<h1 class="mtitle">' + escapeHtml(t.title) + '</h1>';
-  h += '<span class="badge ' + cardStatusCls(t.status) + '" id="hStatus">' + escapeHtml(t.status) + '</span>';
-  h += '<span class="badge ' + cardPrioCls(t.priority) + '" id="hPrio">' + escapeHtml(t.priority) + '</span>';
+  let h = '<div class="head-row1"><div class="row-badges">';
+  h += '<button class="tid" data-action="copy-id" title="Скопировать ID">#' + t.id + cardIcon('copy') + '</button>';
+  h += '<span class="task-head-chip task-head-chip--type" id="hType">' + escapeHtml(t.type) + '</span>';
   if (cardState.editing) h += '<span class="editbadge">Редактирование</span>';
-  h += '<button class="iconbtn close" data-action="close" title="Закрыть (Esc)">' + cardIcon('x') + '</button>';
-  h += '</div><div class="row2">';
-  h += '<span class="mchip"><span class="mi g">' + cardIcon('team') + '</span><span><span class="k">Команда</span><br><b id="hTeam">' + escapeHtml(t.team) + '</b></span></span>';
-  h += '<span class="mchip"><span class="ava24">' + getInitials(t.assignee) + '</span><span><span class="k">Исполнитель</span><br><b id="hAssignee">' + escapeHtml(cardPerson(t.assignee)) + '</b></span></span>';
-  h += '<span class="mchip"><span class="mi a">' + cardIcon('cal') + '</span><span><span class="k">Срок</span><br><b id="hDeadline">' + escapeHtml(t.deadline) + '</b></span></span>';
-  h += '<span class="mchip"><span class="mi v">' + cardIcon('folder') + '</span><span><span class="k">Проект</span><br><b id="hProject">' + escapeHtml(t.project) + '</b></span></span>';
-  h += '<span class="ringwrap"><svg class="ring" viewBox="0 0 36 36"><circle class="rbg" cx="18" cy="18" r="15"/><circle class="rfg" id="ringFg" cx="18" cy="18" r="15" stroke-dasharray="94.25" stroke-dashoffset="94.25"/></svg><span class="ringtxt" id="ringTxt"></span></span>';
-  h += '</div>';
+  h += '</div><div class="row-status">';
+  h += '<span class="task-head-chip task-head-chip--status ' + cardStatusCls(t.status) + '" id="hStatus">' + escapeHtml(t.status) + '</span>';
+  h += '<span class="task-head-chip task-head-chip--priority ' + cardPrioCls(t.priority) + '" id="hPrio">' + escapeHtml(t.priority) + '</span>';
+  h += '</div><div class="row-actions"><button class="iconbtn" data-action="copy-link" title="Копировать ссылку на задачу" aria-label="Копировать ссылку на задачу">' + cardIcon('link') + '</button><button class="iconbtn close" data-action="close" title="Закрыть (Esc)">' + cardIcon('x') + '</button></div></div>';
+  h += '<div class="head-title" id="headerTitle" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</div>';
   el.innerHTML = h;
 }
 
@@ -4257,6 +4970,26 @@ function cardKpiBlock(t, e) {
   h += '</div></div>';
   return h;
 }
+function cardStatV30(label, value) {
+  return '<div class="stat"><div class="slab">' + label + '<span class="lk" title="Только чтение">' + cardIcon('lock') + '</span></div><div class="sval">' + value + '</div></div>';
+}
+function cardKpiBlockV30(t, e) {
+  const cost = cardCalcCost(t.eo), fcost = cardCalcCost(t.ftz), eo = cardCalcSum(t.eo), ftz = cardCalcSum(t.ftz);
+  const cvE = (t.cv == null || t.cv === '') ? cardCvCalc(cost, t.finEffect) : Number(t.cv), cvF = cardCvCalc(fcost, t.finEffect);
+  let h = '<div class="stats"><div class="stats-half"><div class="stats-title">План (ЭО)</div>'
+    + cardStatV30('Оценка трудозатрат', '<span data-dyn="eo">' + cardFmtNum(eo) + '</span> <small>ч/д</small>')
+    + cardStatV30('Стоимость по ЭО', '<span data-dyn="cost">' + cardFmtMoney(cost) + '</span>')
+    + cardStatV30('C/V по ЭО', '<span data-dyn="cvE" class="' + cardCvCls(cvE) + '">' + (cvE == null ? '—' : cvE.toLocaleString('ru-RU')) + '</span>')
+    + '</div><div class="stats-half"><div class="stats-title">Факт (ФТЗ)</div>'
+    + cardStatV30('Фактические трудозатраты', '<span data-dyn="ftz">' + cardFmtNum(ftz) + '</span> <small>ч/д</small>')
+    + cardStatV30('Стоимость по ФТЗ', '<span data-dyn="fcost">' + cardFmtMoney(fcost) + '</span>')
+    + cardStatV30('C/V по ФТЗ', '<span data-dyn="cvF" class="' + cardCvCls(cvF) + '">' + (cvF == null ? '—' : cvF.toLocaleString('ru-RU')) + '</span>') + '</div></div>';
+  h += '<div class="psrow"><div class="bigcard"><div class="bc-head"><span class="bc-title">Priority Score</span><span class="lk" title="Автоматически">' + cardIcon('lock') + '</span><button class="btn ai" data-action="ps-calc">' + cardIcon('spark') + 'AI-расчет</button></div><div class="bc-value"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div><div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование агента</summary><div class="jtxt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</div></details><div class="aipop" id="psPop"></div></div>';
+  h += '<div class="bigcard"><div class="bc-head"><span class="bc-title">Финансовый эффект</span><button class="btn ai" data-action="ai-calc-fin">' + cardIcon('spark') + 'AI-расчет</button></div>';
+  if (e) h += '<div class="bc-value" style="font-size:18px"><input type="number" step="0.1" min="0" data-k="finEffect" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:150px;display:inline-block"> <small>млн ₽</small></div><div class="bc-div"></div><div class="jlab">Обоснование расчёта</div><div class="jtxt">' + cardTaC('finJust', t.finJust, 3) + '</div>';
+  else h += '<div class="bc-value"><span data-dyn="fin">' + cardFmtNum(t.finEffect, 2) + '</span> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование расчёта</summary><div class="jtxt">' + (t.finJust ? cardNl2br(t.finJust) : '—') + '</div></details>';
+  return h + '<div class="aipop" id="finPop"></div></div></div>';
+}
 
 function cardBodyMain(t, e) {
   const teams = cardNameList('teams');
@@ -4275,7 +5008,7 @@ function cardBodyMain(t, e) {
     cardF('Статус задачи', e ? cardSel('status', statuses, t.status) : cardV('<span class="badge ' + cardStatusCls(t.status) + '">' + escapeHtml(t.status) + '</span>')),
     cardF('Приоритет', e ? cardSel('priority', priorities, t.priority) : cardV('<span class="badge ' + cardPrioCls(t.priority) + '">' + escapeHtml(t.priority) + '</span>')),
     cardF('Срок выполнения', e ? cardSel('deadline', deadlines, t.deadline) : cardV('<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>')),
-    cardF('Прогресс', e ? '<div class="prog-edit"><input type="range" min="0" max="100" data-k="progress" value="' + t.progress + '"><input type="number" class="pnum" min="0" max="100" data-k="progress" value="' + t.progress + '"></div>' : cardV('<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%')),
+    cardF('Прогресс', e ? '<div class="prog-edit"><input type="range" min="0" max="100" step="5" data-k="progress" value="' + (Math.round((+t.progress || 0) / 5) * 5) + '"><input type="number" class="pnum" min="0" max="100" step="5" data-k="progress" value="' + (Math.round((+t.progress || 0) / 5) * 5) + '"></div>' : cardV('<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%')),
     cardF('Ответственная команда', e ? cardSel('team', teams, t.team) : cardV('<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>')),
     cardF('Исполнитель', e ? cardSel('assignee', users, t.assignee) : cardV('<span class="vchip"><span class="ava24">' + getInitials(t.assignee) + '</span>' + escapeHtml(cardPerson(t.assignee)) + '</span>')),
     cardF('Проект', e ? cardSel('project', projects, t.project) : cardV('<span class="vchip">' + cardIcon('folder') + escapeHtml(t.project) + '</span>')),
@@ -4306,6 +5039,34 @@ function cardBodyMain(t, e) {
   return h;
 }
 
+function cardBodyMainV30(t, e) {
+  const teams = cardNameList('teams'), users = cardNameList('users'), projects = cardNameList('projects');
+  const types = cardNameList('taskTypes'), priorities = cardNameList('priorities'), statuses = cardNameList('statuses');
+  const deadlines = cardNameList('deadlines'), channels = cardNameList('channels'), customers = cardNameList('customers'), tags = cardNameList('tags');
+  let h = '<div class="task-top"><div class="task-title-card"><div class="desc-label">' + taskFormLabel('title') + '</div><div class="task-title-row">';
+  h += e ? '<div class="title-edit-wrap"><input class="title-input" data-k="title" maxlength="255" value="' + escapeHtml(t.title) + '"><span class="tcount" id="titleCount"></span></div>' : '<h1 class="task-title">' + escapeHtml(t.title) + '</h1>';
+  h += '</div></div><div class="task-desc"><div class="desc-label">' + taskFormLabel('description') + '</div><div class="desc-val">' + (e ? taskFormEditControl('description', t.description) : '<span class="txt">' + cardNl2br(t.description) + '</span>') + '</div></div></div>';
+  h += cardSec('Паспорт задачи', 'file') + '<div class="bento">';
+  h += '<div class="cl sp3" id="clExec" style="border-left:3px solid ' + cardStatusHex(t.status) + '"><div class="cl-h">' + cardIcon('trend') + '<span>Исполнение</span></div><div class="cl-grid exec">'
+    + cardIcell('Статус задачи', e ? cardSel('status', statuses, t.status) : '<span class="pill status ' + cardStatusCls(t.status) + '">' + escapeHtml(t.status) + '</span>')
+    + cardIcell(taskFormLabel('priority'), e ? taskFormEditControl('priority', t.priority) : '<span class="pill priority ' + cardPrioCls(t.priority) + '">' + escapeHtml(t.priority) + '</span>')
+    + cardIcell(taskFormLabel('deadline'), e ? taskFormEditControl('deadline', t.deadline) : '<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>')
+    + cardIcell('Прогресс', e ? '<div class="prog-edit"><input type="range" min="0" max="100" step="5" data-k="progress" value="' + (Math.round((+t.progress || 0) / 5) * 5) + '"><input type="number" class="pnum" min="0" max="100" step="5" data-k="progress" value="' + (Math.round((+t.progress || 0) / 5) * 5) + '"></div>' : '<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%') + '</div></div>';
+  h += '<div class="cl half"><div class="cl-h">' + cardIcon('team') + '<span>Команда</span></div><div class="cl-grid duo">'
+    + '<div class="icell"><div class="ilab"><span class="flt">' + taskFormLabel('assignee') + '</span></div><div class="ival person-ival"><span class="ava32">' + getInitials(t.assignee) + '</span>' + (e ? taskFormEditControl('assignee', t.assignee) : escapeHtml(cardPerson(t.assignee))) + '</div></div>'
+    + cardIcell(taskFormLabel('team'), e ? taskFormEditControl('team', t.team) : '<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>')
+    + cardIcell('Другие вовлечённые команды · ' + t.otherTeams.length, e ? cardChipsTeams(teams, t.otherTeams, 'otherTeams') : cardChipsStatic(t.otherTeams), { span2: true }) + '</div></div>';
+  h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Заказчик</span></div><div class="cl-grid duo"><div class="icell"><div class="ilab"><span class="flt">' + taskFormLabel('customer') + '</span></div><div class="ival person-cell"><span class="ava32" id="custAva">' + getInitials(t.customer) + '</span><div class="person-controls">' + (e ? taskFormEditControl('customer', t.customer) : '<span class="person-name">' + escapeHtml(cardPerson(t.customer)) + '</span>') + '<span class="person-sub" id="custDept">' + escapeHtml(t.customerDept || '—') + '</span></div></div></div>'
+    + cardIcell(taskFormLabel('channel'), e ? taskFormEditControl('channel', t.channel) : cardV(escapeHtml(t.channel)))
+    + cardIcell(taskFormLabel('receivedAt'), e ? taskFormEditControl('receivedAt', t.receivedAt) : cardV(cardFmtDate(t.receivedAt)))
+    + '<div class="icell"><div class="ilab"><span class="flt">Оценки</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="ival grades"><span class="grade-wrap">Hard ' + cardGradePill(t.hardScore) + '</span><span class="grade-wrap">Soft ' + cardGradePill(t.softScore) + '</span></div></div></div></div>';
+  h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('tag') + '<span>Классификация</span></div><div class="cl-grid classify">'
+    + cardIcell(taskFormLabel('project'), e ? taskFormEditControl('project', t.project) : '<span class="vchip">' + cardIcon('folder') + escapeHtml(t.project) + '</span>')
+    + cardIcell(taskFormLabel('type'), e ? taskFormEditControl('type', t.type) : '<span class="ttype">' + escapeHtml(t.type) + '</span>')
+    + cardIcell('Метки', cardChipsTags(tags, t.tags, 'tags', e)) + '</div></div></div>';
+  return h + cardSec('Ключевые показатели', 'trend') + cardKpiBlockV30(t, e) + cardEffortDisclosure(t, e);
+}
+
 function cardEffortTable(t, e) {
   let rows = '';
   CARD_ROLES.forEach(r => {
@@ -4318,14 +5079,13 @@ function cardEffortTable(t, e) {
   const eoSum = cardCalcSum(t.eo), ftzSum = cardCalcSum(t.ftz), dt = cardDiffPct(eoSum, ftzSum);
   return '<table class="tbl"><colgroup><col style="width:23%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:15%"><col style="width:15%"><col style="width:14%"></colgroup><thead><tr><th>Компетенция</th><th class="num">Ставка, ₽/ч-д</th><th class="num">ЭО, ч/д</th><th class="num">ФТЗ, ч/д</th><th class="num">ЭО, ₽</th><th class="num">ФТЗ, ₽</th><th class="num">Разница</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td>Итого</td><td class="num">—</td><td class="num">' + cardFmtNum(eoSum) + '</td><td class="num">' + cardFmtNum(ftzSum) + '</td><td class="num"><span data-dyn="costTotal">' + cardFmtMoney(cardCalcCost(t.eo)) + '</span></td><td class="num"><span data-dyn="fcostTotal">' + cardFmtMoney(cardCalcCost(t.ftz)) + '</span></td><td class="num"><span class="diff ' + dt.cls + '" data-dyn="diffTotal">' + dt.txt + '</span></td></tr></tfoot></table>';
 }
-function cardBodyEco(t, e) {
-  let h = cardSec('Сводка', 'trend') + cardKpiBlock(t, e);
-  h += cardSec('Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)', 'edit');
-  h += cardEffortTable(t, e);
-  h += '<div class="field" style="margin-top:10px"><div class="flabel"><span class="flt">Источник ФТЗ</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">Фактические трудозатраты тянутся из внешней БД, связанной с Jira. Разница &lt; 0 — факт ниже оценки (хорошо), &gt; 0 — перерасход.</span></div></div>';
-  return h;
+function cardEffortDisclosure(t, e) {
+  return '<details class="effort-disclosure">'
+    + '<summary><span class="effort-disclosure-title">' + cardIcon('edit') + 'Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)</span><span class="effort-disclosure-hint">Развернуть</span></summary>'
+    + '<div class="effort-disclosure-body">' + cardEffortTable(t, e)
+    + '<div class="field effort-source"><div class="flabel"><span class="flt">Источник ФТЗ</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">Фактические трудозатраты поступают из внешней БД, связанной с Jira. Разница &lt; 0 — факт ниже оценки, &gt; 0 — перерасход.</span></div></div>'
+    + '</div></details>';
 }
-
 function cardRepCard(title, color, icon, group, t, e, extra) {
   const g = t.statuses[group];
   let h = '<div class="repcard"><div class="rc-head"><span class="ric" style="background:' + color + '22;color:' + color + '">' + cardIcon(icon) + '</span><h4>' + escapeHtml(title) + '</h4></div><div class="stack">';
@@ -4409,17 +5169,22 @@ function cardRenderBody() {
   if (!el) return;
   const t = cardCur(), e = cardState.editing;
   let h = '';
-  if (cardState.tab === 'main') h = cardBodyMain(t, e);
-  else if (cardState.tab === 'eco') h = cardBodyEco(t, e);
+  if (cardState.tab === 'main') h = cardBodyMainV30(t, e);
   else if (cardState.tab === 'rep') h = cardBodyRep(t, e);
   else if (cardState.tab === 'com') h = cardBodyCom();
   else if (cardState.tab === 'files') h = cardBodyFiles();
-  else if (cardState.tab === 'sys') h = cardBodySys(t, e);
+  else if (cardState.tab === 'sys') h = cardBodySys(t, e) + cardBodyFiles();
   else h = cardBodyLog();
-  el.innerHTML = '<div id="td-lock-banner" style="display:none;"></div><div id="td-viewer-banner" style="display:none;"></div>' + h;
+  el.innerHTML = '<div id="td-lock-banner" style="display:none;"></div><div id="td-viewer-banner" style="display:none;"></div><div class="form-error-summary" id="card-form-error-summary" role="alert" hidden></div>' + h;
   cardRefreshDynamic();
   renderLockBanner();
   renderViewerBanner();
+  if (e) attachDictionarySearch(el, [
+    { selector: '[data-k="team"]', label: 'Ответственная команда' },
+    { selector: '[data-k="project"]', label: 'Проект' },
+    { selector: '[data-k="customer"]', label: 'Бизнес-заказчик' },
+    { selector: '[data-k="assignee"]', label: 'Исполнитель', preferredValues: userValuesForTeam(cardDict?.users, cardMaps?.teamId(t.team), true) },
+  ]);
 }
 
 function cardRenderFooter() {
@@ -4450,8 +5215,10 @@ function cardRefreshDynamic() {
   const ftzT = cardCalcSum(t.ftz), eoSum = cardCalcSum(t.eo);
   const cvE = cardCvCalc(cost, t.finEffect), cvF = cardCvCalc(fcost, t.finEffect);
   const set = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
-  set('hStatus', el => { el.textContent = t.status; el.className = 'badge ' + cardStatusCls(t.status); });
-  set('hPrio', el => { el.textContent = t.priority; el.className = 'badge ' + cardPrioCls(t.priority); });
+  set('headerTitle', el => { el.textContent = t.title; el.title = t.title; });
+  set('hType', el => { el.textContent = t.type || '—'; });
+  set('hStatus', el => { el.textContent = t.status; el.className = 'task-head-chip task-head-chip--status ' + cardStatusCls(t.status); });
+  set('hPrio', el => { el.textContent = t.priority; el.className = 'task-head-chip task-head-chip--priority ' + cardPrioCls(t.priority); });
   set('hTeam', el => { el.textContent = t.team; });
   set('hAssignee', el => { el.textContent = cardPerson(t.assignee); });
   set('hDeadline', el => { el.textContent = t.deadline; });
@@ -4491,7 +5258,32 @@ function cardRefreshDynamic() {
 }
 function cardUpdateDirty() {
   const d = document.getElementById('dirty');
-  if (d) d.style.display = cardState.dirty ? 'inline-flex' : 'none';
+  const changesCount = cardState.editing && cardState.draft
+    ? cardDiffChanges(cardState.current, cardState.draft).length
+    : 0;
+  if (d) {
+    d.style.display = cardState.dirty ? 'inline-flex' : 'none';
+    d.innerHTML = '<i></i>Не сохранено · ' + changesCount;
+  }
+  document.querySelectorAll('#task-detail-overlay .field-modified').forEach(field => field.classList.remove('field-modified'));
+  if (!cardState.editing || !cardState.draft) return;
+  document.querySelectorAll('#task-detail-overlay [data-k]').forEach(control => {
+    if (!cardStatePathChanged(control.dataset.k)) return;
+    control.closest('.icell, .field, .task-title-card, .task-desc')?.classList.add('field-modified');
+  });
+  [['otherTeams', 'otherTeams'], ['tags', 'tags']].forEach(([toggle, key]) => {
+    if (!cardStatePathChanged(key)) return;
+    document.querySelector(`#task-detail-overlay [data-toggle="${toggle}"]`)?.closest('.icell, .field')?.classList.add('field-modified');
+  });
+}
+
+function cardStatePathValue(source, path) {
+  return String(path || '').split('.').reduce((value, part) => value == null ? undefined : value[part], source);
+}
+
+function cardStatePathChanged(path) {
+  return JSON.stringify(cardStatePathValue(cardState.current, path) ?? null)
+    !== JSON.stringify(cardStatePathValue(cardState.draft, path) ?? null);
 }
 
 function cardSetPath(o, p, v) {
@@ -4510,12 +5302,43 @@ function cardToast(msg, type) {
   _cardToastTimer = setTimeout(() => { t.classList.remove('show'); }, 2800);
 }
 
-function cardRequestClose() {
-  if (cardState.editing || cardState.dirty) {
-    cardToast('Сохраните или отмените изменения, чтобы закрыть карточку', 'warn');
-    return;
+export async function confirmTaskCardDiscard(message = 'Все несохранённые изменения карточки будут потеряны. Продолжить?') {
+  if (!hasUnsavedTaskChanges()) return true;
+  if (_discardPromptPromise) return _discardPromptPromise;
+  _discardPromptPromise = showConfirmModal(
+    message,
+    'Несохранённые изменения',
+    'Потерять изменения',
+    'Остаться',
+    true
+  );
+  try {
+    return await _discardPromptPromise;
+  } finally {
+    _discardPromptPromise = null;
   }
+}
+
+export async function confirmAndCloseTaskFormsForNavigation() {
+  const taskOverlay = document.getElementById('task-detail-overlay');
+  const createOverlay = document.getElementById('create-task-overlay');
+  if (!taskOverlay && !createOverlay) return true;
+  const confirmed = await confirmTaskCardDiscard(
+    createOverlay
+      ? 'Все введённые данные новой задачи будут потеряны. Перейти на другую страницу?'
+      : 'Все несохранённые изменения карточки будут потеряны. Перейти на другую страницу?'
+  );
+  if (!confirmed) return false;
+  if (createOverlay) closeCreateTaskModal();
+  if (taskOverlay) closeTaskDetailModal();
+  return true;
+}
+
+async function cardRequestClose() {
+  const confirmed = await confirmTaskCardDiscard();
+  if (!confirmed) return false;
   closeTaskDetailModal();
+  return true;
 }
 
 function cardAiSuggest(t) {
@@ -4572,6 +5395,16 @@ async function cardStartEdit(app) {
 }
 
 async function cardCancelEdit(app) {
+  if (cardState.dirty) {
+    const confirmed = await showConfirmModal(
+      'Все несохранённые изменения будут потеряны. Это действие нельзя отменить.',
+      'Отменить изменения?',
+      'Отменить изменения',
+      'Продолжить редактирование',
+      true
+    );
+    if (!confirmed) return;
+  }
   if (currentTask?.id) releaseLock(currentTask.id);
   _lockInfo = null;
   cardState.editing = false;
@@ -4586,9 +5419,27 @@ async function cardCancelEdit(app) {
 }
 
 function cardValidate(d) {
-  if (!String(d.title || '').trim()) return 'Укажите название задачи — поле обязательно (NOT NULL)';
-  if (d.mockupUrl && !cardUrlOk(d.mockupUrl)) return 'Некорректная ссылка на макеты (ожидается http(s)://…)';
+  if (!String(d.title || '').trim()) return { message: 'Укажите название задачи — поле обязательно.', key: 'title' };
+  if (d.mockupUrl && !cardUrlOk(d.mockupUrl)) return { message: 'Некорректная ссылка на макеты (ожидается http(s)://…).', key: 'mockupUrl' };
+  if (d.channel !== cardState.current.channel && !(cardMaps?.channelId?.(d.channel) != null)) return { message: 'Не удалось определить выбранный канал. Обновите карточку и повторите.', key: 'channel' };
+  if (d.type !== cardState.current.type && !(cardMaps?.typeId?.(d.type) != null)) return { message: 'Не удалось определить выбранный тип задачи. Обновите карточку и повторите.', key: 'type' };
   return null;
+}
+
+function cardApiErrorInfo(error) {
+  const first = Array.isArray(error?.data?.detail) ? error.data.detail[0] : null;
+  const apiField = Array.isArray(first?.loc) ? first.loc[first.loc.length - 1] : null;
+  const keyByApiField = {
+    title: 'title', team_id: 'team', task_type_id: 'type', channel_id: 'channel',
+    date_received: 'receivedAt', project_id: 'project', priority_id: 'priority',
+    deadline_id: 'deadline', business_customer_id: 'customer', owner_id: 'assignee',
+    link_mockups: 'mockupUrl', description: 'description', comment: 'comment',
+  };
+  const key = keyByApiField[apiField] || 'title';
+  return {
+    message: first?.msg ? `Проверьте поле: ${first.msg}` : 'Ошибка: ' + (error?.message || 'не удалось сохранить'),
+    target: document.querySelector(`[data-k="${key}"]`),
+  };
 }
 
 const CARD_DIFF_TRACK = [
@@ -4611,8 +5462,8 @@ function cardDiffChanges(a, b) {
   return ch;
 }
 
-function cardPayload() {
-  const d = cardState.draft;
+function cardPayload(source = cardState.draft) {
+  const d = source;
   const m = cardMaps || {};
   const p = {
     title: String(d.title || '').trim(),
@@ -4624,13 +5475,13 @@ function cardPayload() {
     deadline_id: m.deadlineId ? m.deadlineId(d.deadline) : null,
     team_id: m.teamId ? m.teamId(d.team) : null,
     project_id: m.projectId ? m.projectId(d.project) : null,
-    task_type_id: m.typeId ? m.typeId(d.type) : null,
-    channel_id: m.channelId ? m.channelId(d.channel) : null,
+    task_type_id: (m.typeId && m.typeId(d.type) != null) ? m.typeId(d.type) : (d.type === cardState.current.type ? cardState.current.taskTypeId : null),
+    channel_id: (m.channelId && m.channelId(d.channel) != null) ? m.channelId(d.channel) : (d.channel === cardState.current.channel ? cardState.current.channelId : null),
     business_customer_id: m.customerId ? m.customerId(d.customer) : null,
     owner_id: m.userId ? m.userId(d.assignee) : null,
     involved_teams: d.otherTeams.map(n => (m.teamId ? m.teamId(n) : null)).filter(id => id != null),
     tags: d.tags,
-    progress: Math.max(0, Math.min(100, Math.round(+d.progress || 0))),
+    progress: Math.max(0, Math.min(100, Math.round((+d.progress || 0) / 5) * 5)),
     financial_effect: d.finEffect != null && d.finEffect !== '' ? Math.round(+d.finEffect) : null,
     financial_effect_justification: d.finJust || null,
     financial_effect_ai: d.finEffectAi != null && d.finEffectAi !== '' ? Math.round(+d.finEffectAi) : null,
@@ -4654,11 +5505,25 @@ function cardPayload() {
   return p;
 }
 
+function cardPatchPayload() {
+  const currentPayload = cardPayload(cardState.current);
+  const draftPayload = cardPayload(cardState.draft);
+  const patch = { version: currentTask?.version || 0 };
+  Object.keys(draftPayload).forEach(field => {
+    if (field === 'version') return;
+    if (JSON.stringify(currentPayload[field] ?? null) !== JSON.stringify(draftPayload[field] ?? null)) {
+      patch[field] = draftPayload[field];
+    }
+  });
+  return patch;
+}
+
 async function cardReloadTask(app) {
   const api = app?.api || window.app?.api;
   if (!api || !currentTask?.id) return;
   const data = await api.get(`/tasks/${currentTask.id}`);
   currentTask = data;
+  setTaskModalDocumentTitle(data);
   cardState.current = buildCardState(data);
   cardState.history = [];
   await cardLoadHistory(app);
@@ -4681,17 +5546,32 @@ async function cardSaveEdit(app) {
   if (!api || !currentTask?.id) return;
   const err = cardValidate(cardState.draft);
   if (err) {
-    cardToast(err, 'err');
-    const ti = document.querySelector('[data-k="title"]');
-    if (ti) ti.focus();
+    const target = document.querySelector(`[data-k="${err.key}"]`);
+    showTaskFormErrorSummary('card-form-error-summary', err.message, target);
+    cardToast(err.message, 'err');
+    target?.focus();
     return;
   }
   const changes = cardDiffChanges(cardState.current, cardState.draft);
+  if (!changes.length) {
+    if (currentTask?.id) releaseLock(currentTask.id);
+    _lockInfo = null;
+    cardState.editing = false;
+    cardState.draft = null;
+    cardState.dirty = false;
+    cardState.replyFor = null;
+    cardAi = null;
+    cardPs = null;
+    modalMode = 'view';
+    cardRender();
+    cardToast('Изменений нет', 'info');
+    return;
+  }
   cardState.saving = true;
   const btn = document.getElementById('saveBtn');
   if (btn) btn.classList.add('loading');
   try {
-    await api.put(`/tasks/${currentTask.id}`, cardPayload());
+    await api.patch(`/tasks/${currentTask.id}`, cardPatchPayload());
     if (currentTask?.id) releaseLock(currentTask.id);
     _lockInfo = null;
     await cardReloadTask(app);
@@ -4703,18 +5583,18 @@ async function cardSaveEdit(app) {
     cardPs = null;
     modalMode = 'view';
     cardRender();
-    cardToast(changes.length ? 'Сохранено · изменений: ' + changes.length : 'Сохранено · без изменений', 'ok');
+    cardToast('Сохранено · изменений: ' + changes.length, 'ok');
   } catch (e) {
     if (e && e.status === 409) {
       cardShowConflict(e.data && e.data.detail, app);
     } else if (e && e.status === 423) {
-      cardToast('Задача уже редактируется другим пользователем', 'warn');
-      await cardReloadTask(app);
-      cardState.editing = false; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null; cardPs = null;
-      modalMode = 'view';
-      cardRender();
+      const message = 'Задача уже редактируется другим пользователем. Ваши изменения сохранены в форме.';
+      showTaskFormErrorSummary('card-form-error-summary', message, document.querySelector('[data-k="title"]'));
+      cardToast(message, 'warn');
     } else {
-      cardToast('Ошибка: ' + (e.message || 'не удалось сохранить'), 'err');
+      const info = cardApiErrorInfo(e);
+      showTaskFormErrorSummary('card-form-error-summary', info.message, info.target);
+      cardToast(info.message, 'err');
     }
   } finally {
     cardState.saving = false;
@@ -4772,7 +5652,7 @@ function cardShowConflict(detail, app) {
 }
 
 function cardConflictRows(serverTask) {
-  const payload = cardPayload();
+  const payload = cardPatchPayload();
   const labels = {
     title: 'Название', status_id: 'Статус', priority_id: 'Приоритет', deadline_id: 'Срок',
     team_id: 'Команда', owner_id: 'Исполнитель', project_id: 'Проект', task_type_id: 'Тип',
@@ -4813,7 +5693,7 @@ async function cardDoSave(payload, app) {
   const btn = document.getElementById('saveBtn');
   if (btn) btn.classList.add('loading');
   try {
-    await api.put(`/tasks/${currentTask.id}`, payload);
+    await api.patch(`/tasks/${currentTask.id}`, payload);
     if (currentTask?.id) releaseLock(currentTask.id);
     _lockInfo = null;
     await cardReloadTask(app);
@@ -4833,17 +5713,17 @@ async function cardDoSave(payload, app) {
   }
 }
 async function cardConflictMerge(serverTask, app, currentVer) {
-  const payload = cardPayload();
+  const payload = cardPatchPayload();
   document.querySelectorAll('#card-conflict-overlay .diff-radio:checked').forEach(r => {
     const field = r.dataset.field;
-    if (r.value === 'server' && serverTask[field] !== undefined) payload[field] = serverTask[field];
+    if (r.value === 'server') delete payload[field];
   });
   payload.version = currentVer;
   cardConflictClose();
   await cardDoSave(payload, app);
 }
 async function cardConflictForce(app, currentVer) {
-  const payload = cardPayload();
+  const payload = cardPatchPayload();
   payload.version = currentVer;
   cardConflictClose();
   await cardDoSave(payload, app);
@@ -4930,23 +5810,31 @@ function cardOnField(ev) {
   const el = ev.target;
   const k = el.dataset && el.dataset.k;
   if (!k) return;
+  clearTaskFormErrorSummary('card-form-error-summary');
   let v = el.value;
   if (el.type === 'checkbox') v = el.checked;
   else if (el.type === 'number' || el.type === 'range') {
     v = (v === '') ? null : Math.max(0, +v);
-    if (k === 'progress') v = Math.min(100, Math.round(v));
+    if (k === 'progress') v = Math.min(100, Math.round(v / 5) * 5);
   }
   cardSetPath(cardState.draft, k, v);
-  cardState.dirty = true;
+  cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
   cardUpdateDirty();
   if (k === 'progress') {
     document.querySelectorAll('#task-detail-overlay [data-k="progress"]').forEach(el2 => { if (el2 !== el) el2.value = v; });
   }
-  if (k === 'demoDid') cardRenderBody();
+  if (k === 'team') {
+    const teamId = cardMaps?.teamId(v);
+    document.querySelector('#task-detail-overlay [data-k="assignee"]')?._dictionarySearchRefresh?.(userValuesForTeam(cardDict?.users, teamId, true));
+  }
+  if (k === 'demoDid') {
+    cardRenderBody();
+    cardUpdateDirty();
+  }
   cardRefreshDynamic();
 }
 
-function cardOnClick(ev, app) {
+async function cardOnClick(ev, app) {
   const actEl = ev.target.closest('[data-action]');
   if (actEl) {
     const a = actEl.dataset.action;
@@ -4957,6 +5845,26 @@ function cardOnClick(ev, app) {
     if (a === 'copy-id') {
       try { navigator.clipboard.writeText(String(currentTask.id)); cardToast('ID ' + currentTask.id + ' скопирован', 'ok'); }
       catch (_) { cardToast('ID: ' + currentTask.id, 'ok'); }
+      return;
+    }
+    if (a === 'copy-link') {
+      const url = new URL(window.location.href);
+      const currentPath = window.location.hash.slice(1).split('?')[0] || '/backlog';
+      const params = new URLSearchParams({ task: String(currentTask.id) });
+      if (cardState.tab !== 'main') params.set('tab', cardState.tab);
+      url.hash = `${currentPath}?${params.toString()}`;
+      try {
+        await navigator.clipboard.writeText(url.toString());
+        cardToast('Ссылка на задачу скопирована', 'ok');
+      } catch (_) {
+        const helper = document.createElement('textarea');
+        helper.value = url.toString();
+        helper.style.position = 'fixed'; helper.style.opacity = '0';
+        document.body.appendChild(helper); helper.select();
+        const copied = document.execCommand('copy');
+        helper.remove();
+        cardToast(copied ? 'Ссылка на задачу скопирована' : url.toString(), copied ? 'ok' : 'warn');
+      }
       return;
     }
     if (a === 'ai-calc') { cardShowAi('finAi', app); return; }
@@ -4998,18 +5906,7 @@ function cardOnClick(ev, app) {
   }
   const tabEl = ev.target.closest('[data-tab]');
   if (tabEl) {
-    cardState.tab = tabEl.dataset.tab;
-    cardState.replyFor = null;
-    if (cardState.tab === 'com') {
-      _commentFormInitialized = false;
-      setTimeout(() => { initCommentForm(currentTask?.id, app); renderCommentList(); }, 0);
-    }
-    if (cardState.tab === 'files') {
-      _attachmentFormInitialized = false;
-      setTimeout(() => { initAttachmentForm(currentTask?.id, app); renderAttachmentsList(); }, 0);
-    }
-    cardRenderTabs();
-    cardRenderBody();
+    cardActivateTab(tabEl.dataset.tab, app);
     return;
   }
   const chip = ev.target.closest('[data-toggle]');
@@ -5030,6 +5927,7 @@ function cardReset() {
   cardState = { tab: 'main', editing: false, dirty: false, saving: false, replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
   cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
   if (_cardEscHandler) { document.removeEventListener('keydown', _cardEscHandler); _cardEscHandler = null; }
+  if (_cardRouteTabHandler) { document.removeEventListener('task-tab-change', _cardRouteTabHandler); _cardRouteTabHandler = null; }
 }
 
 async function cardInit(app) {
@@ -5058,13 +5956,13 @@ export function renderTaskDetailModal(task, app) {
   currentTask = task;
   modalMode = task ? 'view' : 'edit';
   cardState.current = buildCardState(task || {});
-  cardState.tab = 'main';
+  cardState.tab = cardTabFromRoute();
   cardState.editing = false; cardState.dirty = false; cardState.saving = false; cardState.replyFor = null;
   cardState.history = []; cardState.commentsCount = 0; cardState.filesCount = 0;
   cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
   return `
     <div class="modal-overlay" id="task-detail-overlay">
-      <div class="task-detail-modal" id="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="mhead">
+      <div class="task-detail-modal modal" id="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="mhead">
         <div class="mhead" id="mhead"></div>
         <div class="tabs" id="tabs"><span id="tabInd"></span></div>
         <div class="mbody" id="mbody"></div>
@@ -5077,6 +5975,8 @@ export function renderTaskDetailModal(task, app) {
 export function initTaskDetailModal(app) {
   const overlay = document.getElementById('task-detail-overlay');
   if (!overlay) return;
+  activateTaskModalFocusTrap(overlay);
+  ensureTaskBeforeUnloadGuard();
 
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) { cardRequestClose(); return; }
@@ -5091,8 +5991,22 @@ export function initTaskDetailModal(app) {
   }
 
   if (_cardEscHandler) document.removeEventListener('keydown', _cardEscHandler);
-  _cardEscHandler = (e) => { if (e.key === 'Escape') cardRequestClose(); };
+  _cardEscHandler = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && cardState.editing) {
+      e.preventDefault();
+      cardSaveEdit(app);
+      return;
+    }
+    if (e.key === 'Escape') cardRequestClose();
+  };
   document.addEventListener('keydown', _cardEscHandler);
+
+  if (_cardRouteTabHandler) document.removeEventListener('task-tab-change', _cardRouteTabHandler);
+  _cardRouteTabHandler = event => {
+    if (Number(event.detail?.taskId) !== Number(currentTask?.id)) return;
+    cardActivateTab(event.detail?.tab || 'main', app, false);
+  };
+  document.addEventListener('task-tab-change', _cardRouteTabHandler);
 
   cardInit(app);
 

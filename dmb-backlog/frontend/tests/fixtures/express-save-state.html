@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Express estimate save states</title>
+  <link rel="stylesheet" href="../../css/tokens.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <style>
+    body { margin:0; padding:32px; background:var(--bg-primary); color:var(--text-primary); font-family:Inter,system-ui,sans-serif; }
+    .preview { max-width:1180px; margin:auto; padding:20px; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:8px; }
+    .preview h1 { margin:0 0 18px; font-size:18px; }
+    .preview-row { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--bg-secondary); border-radius:6px; overflow:hidden; }
+    .preview-title { width:280px; font-size:13px; font-weight:600; }
+    .preview-fields { display:grid; grid-template-columns:repeat(8,48px); gap:6px; flex:1; }
+    .preview-field { height:26px; border:1px solid var(--border-color); border-radius:4px; background:var(--bg-primary); }
+    .preview-total { min-width:60px; text-align:right; font-weight:600; font-size:13px; }
+    .preview .qe-save-state { opacity:1; }
+    .preview-row { position:relative; margin-bottom:8px; overflow:visible; }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <h1>Состояния автосохранения</h1>
+    <div class="qe-epic-block" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:10px;">
+      <div class="preview-row">
+        <div class="preview-title">Эпик: Личный кабинет</div><div class="preview-fields"><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span></div><span class="preview-total">12.5</span><span class="qe-save-state" data-state="saving">Сохраняется…</span>
+      </div>
+    </div>
+    <div class="qe-story-block" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:10px;">
+      <div class="preview-row">
+        <div class="preview-title">История: Авторизация</div><div class="preview-fields"><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span></div><span class="preview-total">5.0</span><span class="qe-save-state" data-state="saved">Сохранено</span>
+      </div>
+    </div>
+    <div class="qe-story-block" style="border:1px solid var(--border-color);border-radius:6px;">
+      <div class="preview-row">
+        <div class="preview-title">История: Восстановление доступа</div><div class="preview-fields"><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span><span class="preview-field"></span></div><span class="preview-total">3.0</span><span class="qe-save-state" data-state="error">Не сохранено</span>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

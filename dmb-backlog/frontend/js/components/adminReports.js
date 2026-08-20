@@ -56,7 +56,7 @@ const REPORT_SORT_FIELDS = [
   { value: 'created_at', label: 'По дате создания' },
 ];
 
-export const scriptManagedReportKeys = ['directorate', 'did-operational', 'pip'];
+export const scriptManagedReportKeys = ['directorate', 'did-operational', 'pip', 'progress'];
 const BOOLEAN_REPORT_FIELDS = ['did_demo'];
 
 export function parseReportJson(str) {

@@ -80,8 +80,10 @@ const reportConfig = {
     inDevelopment: true,
     isDb: true,
     key: 'progress',
+    managedFields: true,
+    hideCharts: true,
     filters: [],
-    fields: ['id','title','team_name','status_name','priority_name','progress','deadline_name','owner_name'],
+    fields: ['id','title','task_type_name','team_name','progress'],
     group: null,
     sort: null
   }
@@ -157,17 +159,21 @@ export function renderStatus(status) {
   return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${escapeHtml(raw || 'СБОР ТРЕБОВАНИЙ')}</span>`;
 }
 
-function renderProgress(progress) {
+function renderProgress(progress, task = null) {
   const p = progress || 0;
-  let colorClass = '';
-  if (p >= 100) colorClass = 'success';
-  else if (p > 0) colorClass = 'warning';
+  const indicator = task?.progress_indicator;
+  const colors = { green: '#16a34a', yellow: '#f59e0b', red: '#dc2626' };
+  const indicatorColor = colors[indicator];
+  let colorClass = !indicatorColor && p >= 100 ? 'success' : (!indicatorColor && p > 0 ? 'warning' : '');
+  const planText = task?.planned_progress != null ? ` · план ${task.planned_progress}%` : '';
+  const deviationText = task?.progress_deviation_percent != null ? `Относительное отставание: ${task.progress_deviation_percent}%` : '';
   return `
-    <div style="display:flex;align-items:center;gap:8px;min-width:100px;">
+    <div style="display:flex;align-items:center;gap:8px;min-width:160px;" title="${escapeHtml(deviationText)}">
+      ${indicatorColor ? `<span style="width:10px;height:10px;border-radius:50%;background:${indicatorColor};box-shadow:0 0 0 3px ${indicatorColor}22;flex-shrink:0"></span>` : ''}
       <div class="progress-bar" style="flex:1;">
-        <div class="progress-fill ${colorClass}" style="width:${p}%"></div>
+        <div class="progress-fill ${colorClass}" style="width:${p}%;${indicatorColor ? `background:${indicatorColor}` : ''}"></div>
       </div>
-      <span style="font-size:var(--text-xs);color:var(--text-secondary);min-width:30px;text-align:right;">${p}%</span>
+      <span style="font-size:var(--text-xs);color:var(--text-secondary);min-width:82px;text-align:right;white-space:nowrap">${p}%${planText}</span>
     </div>`;
 }
 
@@ -179,7 +185,7 @@ function renderCell(task, field) {
     case 'status_name': return renderStatus(task.status_name || task.status);
     case 'priority': return renderPriority(task.priority_name || task.priority);
     case 'priority_name': return renderPriority(task.priority_name || task.priority);
-    case 'progress': return renderProgress(task.progress);
+    case 'progress': return renderProgress(task.progress, task);
     case 'team_name': return `<span class="badge badge-info">${escapeHtml(task.team_name || '—')}</span>`;
     case 'project': return escapeHtml(task.project_name || task.project || '—');
     case 'project_name': return escapeHtml(task.project_name || task.project || '—');
@@ -462,7 +468,7 @@ function renderReportTable(list, fields) {
   const widths = {
     id: 90, title: 320, task_type_name: 170, team_name: 190,
     effort_days: 155, effort_rub: 165, financial_effect: 135,
-    cv: 90, priority_score: 115,
+    cv: 90, priority_score: 115, progress: 235,
   };
   const tableWidth = fields.reduce((sum, field) => sum + (widths[field] || 140), 0)
     + (canMakePipDecision ? 205 : 0);
@@ -625,6 +631,22 @@ function renderReportContent(config, reportKey, data) {
   const riskStatuses = reportKey === 'directorate' ? ['Риск','На контроле'] : reportKey === 'did' ? ['Блокировано','Требует решения'] : ['Холд','Эскалация на ЛТ','Отклонена','Не актуальна'];
   const risk = tasks.filter(t => riskStatuses.some(s => String(t[statusField] || '').toUpperCase() === s.toUpperCase())).length;
   const avg = total ? Math.round(tasks.reduce((s, t) => s + (t.progress || 0), 0) / total) : 0;
+
+  if (reportKey === 'progress') {
+    const yellow = tasks.filter(t => t.progress_indicator === 'yellow').length;
+    const red = tasks.filter(t => t.progress_indicator === 'red').length;
+    const progressCounts = {
+      'progress-total': total,
+      'progress-deviations': yellow + red,
+      'progress-yellow': yellow,
+      'progress-red': red,
+    };
+    Object.entries(progressCounts).forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    });
+    updateProgressWidgetState();
+  }
 
   if (!config.isCustom && !config.hideCharts) renderReportCharts(tasks);
 
@@ -820,6 +842,21 @@ export async function initReports(app) {
       window.lucide?.createIcons();
     }
   }
+}
+
+function updateProgressWidgetState() {
+  const active = reportColumnFilters.progress_indicator || [];
+  document.querySelectorAll('.progress-widget').forEach(widget => {
+    const filter = widget.dataset.progressFilter;
+    const isActive = filter === 'all'
+      ? active.length === 0
+      : filter === 'deviations'
+        ? active.length === 2 && active.includes('yellow') && active.includes('red')
+        : active.length === 1 && active[0] === filter;
+    widget.setAttribute('aria-pressed', String(isActive));
+    widget.style.outline = isActive ? '2px solid var(--accent)' : 'none';
+    widget.style.outlineOffset = isActive ? '-2px' : '';
+  });
 }
 
 const reportChartInstances = {};
@@ -1054,7 +1091,30 @@ export function renderReportPage(app) {
         </div>
       </div>
 
-      ${!config.isCustom && !config.isPlaceholder ? `
+      ${currentReport === 'progress' ? `
+      <div class="dashboard-stats" id="progress-widgets" style="margin-bottom:var(--space-6);">
+        <button type="button" class="stat-card progress-widget" data-progress-filter="all" style="text-align:left;cursor:pointer;font-family:inherit">
+          <div class="stat-icon" style="background:var(--info-light);color:var(--info);"><i data-lucide="list"></i></div>
+          <div class="stat-value" id="progress-total">0</div>
+          <div class="stat-label">Всего задач</div>
+        </button>
+        <button type="button" class="stat-card progress-widget" data-progress-filter="deviations" style="text-align:left;cursor:pointer;font-family:inherit">
+          <div class="stat-icon" style="background:var(--warning-light);color:var(--warning);"><i data-lucide="activity"></i></div>
+          <div class="stat-value" id="progress-deviations">0</div>
+          <div class="stat-label">Есть отклонения</div>
+        </button>
+        <button type="button" class="stat-card progress-widget" data-progress-filter="yellow" style="text-align:left;cursor:pointer;font-family:inherit">
+          <div class="stat-icon" style="background:#f59e0b20;color:#f59e0b;"><i data-lucide="circle"></i></div>
+          <div class="stat-value" id="progress-yellow">0</div>
+          <div class="stat-label">Жёлтый светофор</div>
+        </button>
+        <button type="button" class="stat-card progress-widget" data-progress-filter="red" style="text-align:left;cursor:pointer;font-family:inherit">
+          <div class="stat-icon" style="background:var(--danger-light);color:var(--danger);"><i data-lucide="circle"></i></div>
+          <div class="stat-value" id="progress-red">0</div>
+          <div class="stat-label">Красный светофор</div>
+        </button>
+      </div>
+      ` : !config.isCustom && !config.isPlaceholder ? `
       <div class="dashboard-stats" style="margin-bottom:var(--space-6);">
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--info-light);color:var(--info);">
@@ -1132,6 +1192,19 @@ export function initReportPage(app) {
 
   document.getElementById('report-refresh')?.addEventListener('click', () => {
     loadReportData(app);
+  });
+
+  document.getElementById('progress-widgets')?.addEventListener('click', (e) => {
+    const widget = e.target.closest('.progress-widget');
+    if (!widget || currentReport !== 'progress' || !cachedReportData) return;
+    const filter = widget.dataset.progressFilter;
+    const current = reportColumnFilters.progress_indicator || [];
+    const requested = filter === 'deviations' ? ['yellow', 'red'] : (filter === 'all' ? [] : [filter]);
+    const alreadyActive = requested.length === current.length && requested.every(value => current.includes(value));
+    if (alreadyActive && filter !== 'all') delete reportColumnFilters.progress_indicator;
+    else if (requested.length) reportColumnFilters.progress_indicator = requested;
+    else delete reportColumnFilters.progress_indicator;
+    renderReportContent(reportConfig.progress, 'progress', cachedReportData);
   });
 
   document.getElementById('report-excel')?.addEventListener('click', () => {

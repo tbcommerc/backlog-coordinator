@@ -1,4 +1,4 @@
-import { showConfirmModal, showErrorModal } from './modal.js?v=47';
+import { showConfirmModal, showErrorModal } from './modal.js?v=71';
 import { updateStickyOffsets } from './filterToolbar.js?v=47';
 
 console.log('[DMB] quickEdit.js v20260804 loaded');
@@ -32,7 +32,7 @@ const states = {};
 const scopeOpts = {};
 
 function getState(scope) {
-  if (!states[scope]) states[scope] = { mode: false, changes: {}, history: [], historyIndex: -1 };
+  if (!states[scope]) states[scope] = { mode: false, changes: {}, errors: {}, history: [], historyIndex: -1 };
   return states[scope];
 }
 
@@ -55,6 +55,7 @@ export function renderQuickEditToolbar(scope) {
         <button class="btn btn-secondary btn-sm" id="qe-undo-${scope}" title="Отменить 1 шаг" disabled>↩</button>
         <button class="btn btn-secondary btn-sm" id="qe-redo-${scope}" title="Вернуть изменения" disabled>↪</button>
         <button class="btn btn-secondary btn-sm" id="qe-cancel-${scope}">Отменить все</button>
+        <button class="btn btn-secondary btn-sm" id="qe-retry-${scope}" style="display:none;">Повторить неуспешные</button>
         <button class="btn btn-primary btn-sm" id="qe-save-${scope}">Сохранить</button>
       </div>
     </div>
@@ -66,6 +67,7 @@ export function initQuickEdit(scope, opts = {}) {
   const st = getState(scope);
   st.mode = false;
   st.changes = {};
+  st.errors = {};
   st.history = [];
   st.historyIndex = -1;
 
@@ -76,6 +78,7 @@ export function initQuickEdit(scope, opts = {}) {
   document.getElementById(`qe-cancel-${scope}`)?.addEventListener('click', () => { cancelAll(scope); });
   document.getElementById(`qe-undo-${scope}`)?.addEventListener('click', () => { undo(scope); });
   document.getElementById(`qe-redo-${scope}`)?.addEventListener('click', () => { redo(scope); });
+  document.getElementById(`qe-retry-${scope}`)?.addEventListener('click', () => { saveQuickEditChanges(scope); });
 
   bindStickySupport(scope);
 
@@ -164,6 +167,7 @@ export function exitQuickEdit(scope) {
   const st = getState(scope);
   st.mode = false;
   st.changes = {};
+  st.errors = {};
   st.history = [];
   st.historyIndex = -1;
   const toolbar = document.getElementById(`qe-toolbar-${scope}`);
@@ -192,6 +196,7 @@ export function updateQuickEditCount(scope) {
   const undoBtn = document.getElementById(`qe-undo-${scope}`);
   const redoBtn = document.getElementById(`qe-redo-${scope}`);
   const saveBtn = document.getElementById(`qe-save-${scope}`);
+  const retryBtn = document.getElementById(`qe-retry-${scope}`);
   if (countEl) {
     const taskCount = Object.keys(st.changes).length;
     const fieldCount = Object.keys(st.changes).reduce((acc, tid) => acc + Object.keys(st.changes[tid]).length, 0);
@@ -200,6 +205,7 @@ export function updateQuickEditCount(scope) {
   if (undoBtn) undoBtn.disabled = st.historyIndex < 0;
   if (redoBtn) redoBtn.disabled = st.historyIndex >= st.history.length - 1;
   if (saveBtn) saveBtn.disabled = Object.keys(st.changes).length === 0;
+  if (retryBtn) retryBtn.style.display = Object.keys(st.errors || {}).length > 0 ? '' : 'none';
   updateStickyOffsets();
 }
 
@@ -232,6 +238,7 @@ function handleCellChange(scope, el) {
   }
 
   const st = getState(scope);
+  delete st.errors[taskId];
   if (String(newValue) === String(oldValue)) {
     if (st.changes[taskId] && st.changes[taskId][field]) {
       delete st.changes[taskId][field];
@@ -307,6 +314,7 @@ async function cancelAll(scope) {
   const confirmed = await showConfirmModal('Отменить все изменения? Значения вернутся к исходным. Пошаговый откат будет недоступен.', 'Отменить все изменения?');
   if (!confirmed) return;
   st.changes = {};
+  st.errors = {};
   st.history = [];
   st.historyIndex = -1;
   updateQuickEditCount(scope);
@@ -325,7 +333,9 @@ async function saveQuickEditChanges(scope) {
   let saved = 0;
   let errors = 0;
   const errorDetails = [];
-  for (const [taskId, fields] of Object.entries(st.changes)) {
+  const pendingEntries = Object.entries(st.changes);
+  st.errors = {};
+  for (const [taskId, fields] of pendingEntries) {
     const task = tasks.find(t => t.id == taskId);
     if (!task) continue;
     const data = {};
@@ -342,6 +352,7 @@ async function saveQuickEditChanges(scope) {
       if (resp && resp.version !== undefined) {
         task.version = resp.version;
       }
+      delete st.changes[taskId];
     } catch (e) {
       errors++;
       const errorMsg = e.message || String(e);
@@ -352,6 +363,7 @@ async function saveQuickEditChanges(scope) {
         httpStatus: e.status || '?',
         error: errorMsg,
       });
+      st.errors[taskId] = errorMsg;
     }
   }
   if (saveBtn) {
@@ -359,15 +371,24 @@ async function saveQuickEditChanges(scope) {
     saveBtn.disabled = false;
   }
   if (errors > 0) {
+    st.history = [];
+    st.historyIndex = -1;
     await showErrorModal(saved, errors, errorDetails);
+    updateQuickEditCount(scope);
+    if (opts.renderView) opts.renderView();
   } else {
     window.toast?.(`Сохранено ${saved} ${pluralize(saved, 'задача', 'задачи', 'задач')}`, 'success');
+    st.changes = {};
+    st.errors = {};
+    st.history = [];
+    st.historyIndex = -1;
+    exitQuickEdit(scope);
+    if (opts.afterSave) await opts.afterSave();
   }
-  st.changes = {};
-  st.history = [];
-  st.historyIndex = -1;
-  exitQuickEdit(scope);
-  if (opts.afterSave) await opts.afterSave();
+}
+
+export function getQuickEditError(scope, taskId) {
+  return getState(scope).errors?.[taskId] || '';
 }
 
 export function getQuickEditField(col) {

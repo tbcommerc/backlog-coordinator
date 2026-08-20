@@ -7,19 +7,41 @@ const allTasksCache = { backlog: [], team: [] };
 const columnSettingsRefs = { backlog: null, team: null };
 const columnOrderRefs = { backlog: null, team: null };
 const defaultColumnSettingsRefs = { backlog: null, team: null };
+const SAVED_VIEWS_PREFIX = 'dmb_saved_views_v1_';
 
 const directoryCache = {};
 const directoryLoading = {};
 
-const PERMISSION_LEVELS = { 'none': 0, 'read': 1, 'read_own': 1, 'write_own': 2, 'read_write': 2, 'write_all': 3 };
+const PERMISSION_LEVELS = { 'none': 0, 'read': 1, 'read_own': 1, 'read_all': 1, 'write_own': 2, 'read_write': 2, 'write_all': 3 };
+
+const TEAM_EDITOR_ROLES = new Set(['po/pl/cl', 'ba/участник команды', 'it pl']);
+const GLOBAL_EDITOR_ROLES = new Set(['проектный офис (админ)', 'администратор']);
+
+function currentUser() {
+  return window.app?.store?.get('currentUser') || {};
+}
+
+function normalizedRole(user = currentUser()) {
+  return String(user.role_name || user.role || '').trim().toLocaleLowerCase('ru-RU');
+}
 
 function hasWritePermission(scope) {
-  return true; // TODO: enable permission check when backend returns permissions
-  // const perms = window.app?.store?.get('currentUser')?.permissions || {};
-  // const backlogLevel = PERMISSION_LEVELS[perms.backlog_dmb] || 0;
-  // const teamLevel = PERMISSION_LEVELS[perms.backlog_team] || 0;
-  // if (scope === 'backlog') { return backlogLevel >= 2; }
-  // return teamLevel >= 2;
+  const user = currentUser();
+  const role = normalizedRole(user);
+  const roleCanEdit = GLOBAL_EDITOR_ROLES.has(role) || TEAM_EDITOR_ROLES.has(role);
+  if (!roleCanEdit) return false;
+  const perms = user.permissions || {};
+  const permission = scope === 'backlog' ? perms.backlog_dmb : perms.backlog_team;
+  if (permission == null) return roleCanEdit;
+  return (PERMISSION_LEVELS[permission] || 0) >= 2;
+}
+
+export function canEditTaskForScope(scope, task) {
+  if (!hasWritePermission(scope)) return false;
+  const user = currentUser();
+  const role = normalizedRole(user);
+  if (GLOBAL_EDITOR_ROLES.has(role)) return true;
+  return TEAM_EDITOR_ROLES.has(role) && user.team_id != null && Number(task?.team_id) === Number(user.team_id);
 }
 
 const columnDirectoryMap = {
@@ -114,6 +136,226 @@ function isLastQuarterTask(task) {
 function $(id) {
   const el = document.getElementById(id);
   return el;
+}
+
+function escapeAttr(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+}
+
+function readSavedViews(scope) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SAVED_VIEWS_PREFIX + scope) || '{"items":[]}');
+    return { items: Array.isArray(parsed.items) ? parsed.items : [], defaultId: parsed.defaultId || null };
+  } catch {
+    return { items: [], defaultId: null };
+  }
+}
+
+function writeSavedViews(scope, data) {
+  localStorage.setItem(SAVED_VIEWS_PREFIX + scope, JSON.stringify(data));
+}
+
+function renderSavedViewsControl(scope) {
+  return `<div class="relative saved-view-control" id="${scope}-saved-view-control" style="display:flex;align-items:center;gap:4px;">
+    <div class="saved-view-picker" style="position:relative;display:flex;align-items:center;">
+      <button type="button" id="${scope}-saved-view-trigger" class="btn btn-secondary btn-sm saved-view-trigger" title="Пользовательские представления" aria-expanded="false">
+        <svg class="saved-view-trigger-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10h10V2Z"></path><path d="M22 12H12v10h10V12Z"></path><path d="M12 12H2v10h10V12Z"></path><path d="M22 2H12v10h10V2Z"></path></svg>
+        <span id="${scope}-saved-view-label" class="saved-view-trigger-label">Представление…</span>
+        <span id="${scope}-saved-view-dirty" class="saved-view-dirty" style="display:none;" title="Текущее отображение отличается от сохранённого">●</span>
+        <svg class="saved-view-chevron" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg>
+      </button>
+      <div id="${scope}-saved-view-dropdown" class="saved-view-dropdown" style="display:none;"></div>
+    </div>
+    <button class="btn btn-secondary btn-sm square-icon saved-view-save-btn" id="${scope}-saved-view-save" title="Сохранить текущее представление" aria-label="Сохранить представление"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path><path d="M12 7v6"></path><path d="M9 10h6"></path></svg></button>
+    <div id="${scope}-saved-view-editor" style="display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:130;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:10px;padding:12px;width:280px;box-shadow:0 8px 24px rgba(0,0,0,.22);">
+      <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:5px;">Название представления</label>
+      <input id="${scope}-saved-view-name" maxlength="80" placeholder="Например, Мои активные" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);">
+      <label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;color:var(--text-secondary);"><input type="checkbox" id="${scope}-saved-view-default"> Открывать по умолчанию</label>
+      <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:12px;"><button class="btn btn-secondary btn-sm" id="${scope}-saved-view-cancel">Отмена</button><button class="btn btn-primary btn-sm" id="${scope}-saved-view-confirm">Сохранить</button></div>
+    </div>
+  </div>`;
+}
+
+export function getToolbarViewState(scope) {
+  const filters = {};
+  Object.entries(columnFilters[scope] || {}).forEach(([key, values]) => { filters[key] = [...values]; });
+  return { search: searchValues[scope] || '', sort: sortValues[scope] || 'id-desc', filters };
+}
+
+export function applyToolbarViewState(scope, state = {}) {
+  searchValues[scope] = state.search || '';
+  sortValues[scope] = state.sort || 'id-desc';
+  columnFilters[scope] = {};
+  Object.entries(state.filters || {}).forEach(([key, values]) => { columnFilters[scope][key] = new Set(Array.isArray(values) ? values : []); });
+  const searchInput = $(`f-${scope}-search`);
+  if (searchInput) searchInput.value = searchValues[scope];
+  renderFilterButtons(scope, allTasksCache[scope] || []);
+  document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+    const active = !!columnFilters[scope]?.[`_${btn.dataset.filter}`]?.size;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function initSavedViews(scope, getPageState, applyPageState) {
+  const trigger = $(`${scope}-saved-view-trigger`);
+  const dropdown = $(`${scope}-saved-view-dropdown`);
+  const label = $(`${scope}-saved-view-label`);
+  const dirtyIndicator = $(`${scope}-saved-view-dirty`);
+  if (!trigger || !dropdown) return;
+  const saveBtn = $(`${scope}-saved-view-save`);
+  const editor = $(`${scope}-saved-view-editor`);
+  const nameInput = $(`${scope}-saved-view-name`);
+  const defaultInput = $(`${scope}-saved-view-default`);
+  let activeViewId = '';
+
+  const stableStringify = value => JSON.stringify(value, (_key, nested) => {
+    if (!nested || Array.isArray(nested) || typeof nested !== 'object') return nested;
+    return Object.keys(nested).sort().reduce((result, key) => { result[key] = nested[key]; return result; }, {});
+  });
+
+  const currentState = () => ({ toolbar: getToolbarViewState(scope), page: getPageState?.() || {} });
+
+  const updateDirtyIndicator = () => {
+    const view = readSavedViews(scope).items.find(item => item.id === activeViewId);
+    const dirty = !!view && stableStringify(view.state || {}) !== stableStringify(currentState());
+    if (dirtyIndicator) dirtyIndicator.style.display = dirty ? '' : 'none';
+    trigger.classList.toggle('is-dirty', dirty);
+    dropdown.querySelector('.saved-view-revert')?.toggleAttribute('disabled', !dirty);
+  };
+
+  const refreshOptions = selectedId => {
+    const data = readSavedViews(scope);
+    activeViewId = selectedId || '';
+    const active = data.items.find(view => view.id === activeViewId);
+    if (label) label.textContent = active?.name || 'Представление…';
+    dropdown.innerHTML = data.items.length
+      ? `<div class="saved-view-list">${data.items.map(view => `<div class="saved-view-item ${view.id === activeViewId ? 'active' : ''}" data-view-id="${escapeAttr(view.id)}"><button type="button" class="saved-view-apply" data-view-id="${escapeAttr(view.id)}"><span>${escapeAttr(view.name)}</span>${view.id === data.defaultId ? '<span title="По умолчанию">★</span>' : ''}</button><button type="button" class="saved-view-delete" data-delete-view-id="${escapeAttr(view.id)}" title="Удалить представление" aria-label="Удалить представление ${escapeAttr(view.name)}"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg></button></div>`).join('')}</div><div class="saved-view-actions"><button type="button" class="saved-view-revert" ${activeViewId ? '' : 'disabled'}>Вернуть сохранённое</button><button type="button" class="saved-view-update" ${activeViewId ? '' : 'disabled'}>Обновить текущими настройками</button></div>`
+      : '<div class="saved-view-empty">Сохранённых представлений пока нет</div>';
+    setTimeout(updateDirtyIndicator, 0);
+  };
+
+  const applyView = id => {
+    const view = readSavedViews(scope).items.find(item => item.id === id);
+    if (!view) return;
+    applyToolbarViewState(scope, view.state?.toolbar || {});
+    applyPageState?.(view.state?.page || {});
+    filterChangeCallbacks[scope]?.();
+  };
+
+  trigger.addEventListener('click', () => {
+    const open = dropdown.style.display !== 'none';
+    if (editor) editor.style.display = 'none';
+    dropdown.style.display = open ? 'none' : 'block';
+    trigger.setAttribute('aria-expanded', open ? 'false' : 'true');
+  });
+  document.addEventListener('click', event => {
+    if (!event.target.closest(`#${scope}-saved-view-control`)) {
+      dropdown.style.display = 'none';
+      if (editor) editor.style.display = 'none';
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  });
+  dropdown.addEventListener('click', event => {
+    const applyButton = event.target.closest('[data-view-id].saved-view-apply');
+    if (applyButton) {
+      activeViewId = applyButton.dataset.viewId;
+      applyView(activeViewId);
+      refreshOptions(activeViewId);
+      dropdown.style.display = 'none';
+      trigger.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    const deleteButton = event.target.closest('[data-delete-view-id]');
+    if (deleteButton) {
+      const deleteId = deleteButton.dataset.deleteViewId;
+      const data = readSavedViews(scope);
+      const view = data.items.find(item => item.id === deleteId);
+      const row = deleteButton.closest('.saved-view-item');
+      dropdown.querySelectorAll('.saved-view-delete-confirm').forEach(element => element.remove());
+      row?.insertAdjacentHTML('beforeend', `<div class="saved-view-delete-confirm"><span>Удалить «${escapeAttr(view?.name || '')}»?</span><div><button type="button" class="saved-view-delete-cancel">Отмена</button><button type="button" class="saved-view-delete-approve" data-confirm-delete-id="${escapeAttr(deleteId)}">Удалить</button></div></div>`);
+      return;
+    }
+    if (event.target.closest('.saved-view-delete-cancel')) {
+      event.target.closest('.saved-view-delete-confirm')?.remove();
+      return;
+    }
+    const approveDeleteButton = event.target.closest('[data-confirm-delete-id]');
+    if (approveDeleteButton) {
+      const deleteId = approveDeleteButton.dataset.confirmDeleteId;
+      const data = readSavedViews(scope);
+      data.items = data.items.filter(item => item.id !== deleteId);
+      if (data.defaultId === deleteId) data.defaultId = null;
+      writeSavedViews(scope, data);
+      refreshOptions(activeViewId === deleteId ? '' : activeViewId);
+      window.toast?.('Представление удалено', 'success');
+      return;
+    }
+    if (event.target.closest('.saved-view-update')) {
+      if (!activeViewId) return;
+      if (!window.confirm('Обновить выбранное представление текущими настройками?')) { refreshOptions(activeViewId); return; }
+      const data = readSavedViews(scope);
+      data.items = data.items.map(view => view.id === activeViewId
+        ? { ...view, state: { toolbar: getToolbarViewState(scope), page: getPageState?.() || {} }, updatedAt: new Date().toISOString() }
+        : view);
+      writeSavedViews(scope, data);
+      refreshOptions(activeViewId);
+      window.toast?.('Представление обновлено', 'success');
+      updateDirtyIndicator();
+      return;
+    }
+    if (event.target.closest('.saved-view-revert')) {
+      if (!activeViewId) return;
+      applyView(activeViewId);
+      refreshOptions(activeViewId);
+      dropdown.style.display = 'none';
+      trigger.setAttribute('aria-expanded', 'false');
+      window.toast?.('Сохранённое представление восстановлено', 'success');
+    }
+  });
+  saveBtn?.addEventListener('click', () => {
+    if (!editor || !nameInput) return;
+    dropdown.style.display = 'none';
+    trigger.setAttribute('aria-expanded', 'false');
+    nameInput.value = '';
+    if (defaultInput) defaultInput.checked = false;
+    editor.style.display = 'block';
+    nameInput.focus();
+  });
+  $(`${scope}-saved-view-cancel`)?.addEventListener('click', () => { editor.style.display = 'none'; });
+  $(`${scope}-saved-view-confirm`)?.addEventListener('click', () => {
+    const name = nameInput?.value.trim();
+    if (!name) { window.toast?.('Введите название представления', 'warning'); return; }
+    const data = readSavedViews(scope);
+    if (data.items.some(view => view.name.trim().toLocaleLowerCase('ru-RU') === name.toLocaleLowerCase('ru-RU'))) {
+      window.toast?.('Представление с таким названием уже существует', 'warning');
+      return;
+    }
+    const id = globalThis.crypto?.randomUUID?.() || `view-${Date.now()}`;
+    const item = { id, name, state: { toolbar: getToolbarViewState(scope), page: getPageState?.() || {} }, updatedAt: new Date().toISOString() };
+    data.items = [...data.items, item];
+    if (defaultInput?.checked) data.defaultId = id;
+    writeSavedViews(scope, data);
+    editor.style.display = 'none';
+    refreshOptions(id);
+    window.toast?.('Представление сохранено', 'success');
+  });
+  const defaultId = readSavedViews(scope).defaultId;
+  if (defaultId) {
+    refreshOptions(defaultId);
+    applyView(defaultId);
+  } else {
+    refreshOptions('');
+  }
+
+  document.__savedViewDirtyCallbacks ||= {};
+  document.__savedViewDirtyCallbacks[scope] = () => setTimeout(updateDirtyIndicator, 0);
+  if (!document.__savedViewDirtyBound) {
+    document.__savedViewDirtyBound = true;
+    ['input', 'change', 'click', 'pointerup'].forEach(eventName => document.addEventListener(eventName, () => {
+      Object.values(document.__savedViewDirtyCallbacks || {}).forEach(callback => callback());
+    }));
+  }
 }
 
 function getUniqueValues(scope, key, allTasks) {
@@ -253,15 +495,15 @@ export function renderToolbar(scope, opts = {}) {
       </div>
     </div>`;
 
-  const addTaskHtml = opts.addTask ? `<button class="btn btn-primary btn-sm toolbar-add-task" id="${scope}-add-task-btn" title="Добавить задачу" aria-label="Добавить задачу"><i data-lucide="plus" style="width:15px;height:15px;flex-shrink:0;"></i><span class="toolbar-add-task-label">Добавить задачу</span></button>` : '';
-
   const title = opts.title || '';
   const subtitle = opts.subtitle || '';
   const canWrite = hasWritePermission(scope);
+  const addTaskHtml = (canWrite && opts.addTask) ? `<button class="btn btn-primary btn-sm toolbar-add-task" id="${scope}-add-task-btn" title="Добавить задачу" aria-label="Добавить задачу"><i data-lucide="plus" style="width:15px;height:15px;flex-shrink:0;"></i><span class="toolbar-add-task-label">Добавить задачу</span></button>` : '';
+  const savedViewsHtml = opts.savedViews ? renderSavedViewsControl(scope) : '';
 
-  const bulkOpsBtn = (canWrite && opts.onBulkOps) ? `<button class="btn btn-secondary btn-sm square-icon qe-toggle" id="${scope}-bulk-open" title="Массовые операции" style="white-space:nowrap;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg></button>` : '';
+  const bulkOpsBtn = opts.onBulkOps ? `<button class="btn btn-secondary btn-sm square-icon qe-toggle" id="${scope}-bulk-open" title="Массовые операции" style="white-space:nowrap;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg></button>` : '';
 
-  const quickEditBtn = (canWrite && opts.onQuickEdit) ? `<button class="btn btn-secondary btn-sm square-icon qe-toggle" id="${scope}-inline-edit" title="Быстрое редактирование" style="white-space:nowrap;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>` : '';
+  const quickEditBtn = opts.onQuickEdit ? `<button class="btn btn-secondary btn-sm square-icon qe-toggle" id="${scope}-inline-edit" title="Быстрое редактирование" style="white-space:nowrap;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>` : '';
 
   const importBtn = (canWrite && opts.onImport) ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-import-excel" title="Импорт из Excel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button>` : '';
 
@@ -270,6 +512,7 @@ export function renderToolbar(scope, opts = {}) {
   const actionsHtml = hasActions ? `
     <div class="toolbar-actions">
       ${addTaskHtml}
+      ${savedViewsHtml}
       ${bulkOpsBtn}
       ${quickEditBtn}
       ${opts.viewToggle !== false ? viewToggleHtml : ''}
@@ -282,7 +525,7 @@ export function renderToolbar(scope, opts = {}) {
   return `
     <div class="sticky-toolbar" data-version="3">
       <div style="display:flex;flex-direction:column;gap:var(--space-2);">
-        <div class="toolbar-title-row">
+          <div class="toolbar-title-row">
           ${title ? `
           <div class="toolbar-title-wrap">
             <h2 class="toolbar-title">${title}</h2>
@@ -335,6 +578,8 @@ export function initToolbarControls(scope, opts = {}) {
     onColumnOrderChange,
     onQuickEdit,
     onBulkOps,
+    getSavedViewState,
+    applySavedViewState,
   } = opts;
 
   columnSettingsRefs[scope] = columnSettings;
@@ -342,6 +587,7 @@ export function initToolbarControls(scope, opts = {}) {
   defaultColumnSettingsRefs[scope] = defaultColumnSettings || null;
 
   const getLabel = (k) => columnLabels[k] || k;
+  initSavedViews(scope, getSavedViewState, applySavedViewState);
 
   const viewGroup = document.getElementById(`${scope}-view-toggle-group`);
   if (viewGroup) {

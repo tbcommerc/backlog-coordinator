@@ -1,8 +1,8 @@
 console.log('[DMB] teamBacklog.js v20260806.1 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast } from './filterToolbar.js?v=52';
-import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=47';
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=52';
+import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=71';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=47';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=47';
 import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=49';
 import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=47';
 import { safeExternalUrl } from '../urlUtils.js';
@@ -34,12 +34,28 @@ const TEAM_PAGE_SIZE = 100;
 const TEAM_COLUMNS_STORAGE_KEY = 'dmb_team_columns_v1';
 let teamAutoRefreshTimer = null;
 let teamKeyboardHandler = null;
+let teamTasksLoadInProgress = false;
+let teamTasksReloadQueued = false;
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
 
 export function renderTeamBacklog(app) {
     const user = app.store.get('currentUser');
-    const teamName = user?.team_name || 'Pre-Trade';
+    if (!user?.team_id) {
+      return `
+        <div style="margin-bottom:var(--space-6);">
+          <h1 style="margin:0 0 var(--space-2);">Бэклог команды</h1>
+          <p class="text-secondary" style="margin:0;">Задачи и планирование вашей команды</p>
+        </div>
+        <div id="team-tasks-container">
+          ${renderViewState({
+            kind: 'empty',
+            title: 'Команда не назначена',
+            message: 'Вы не привязаны к команде. Обратитесь к администратору.',
+          })}
+        </div>`;
+    }
+    const teamName = user.team_name || `#${user.team_id}`;
     COLUMN_LABELS = { ...buildColumnLabels(window.app?.fieldLabels || {}) };
 
     return `
@@ -54,11 +70,13 @@ export function renderTeamBacklog(app) {
       excel: true,
       onQuickEdit: true,
       onBulkOps: true,
+      savedViews: true,
       quickFilters: renderQuickFilters(),
     })}
 
     <div id="bulk-actions" class="flex items-center gap-3" style="margin-bottom: var(--space-4); display: none;">
         <span class="text-secondary">Выбрано: <strong id="selected-count">0</strong></span>
+        <button class="btn btn-secondary btn-sm" id="team-bulk-selected">Массовые операции (0)</button>
     </div>
 
     ${renderQuickEditToolbar('team')}
@@ -118,6 +136,19 @@ async function applyTeamDefaultDisplaySettings(app) {
 
 export async function initTeamBacklog(app) {
     teamCurrentApp = app;
+    const user = app.store.get('currentUser');
+    if (!user?.team_id) {
+      teamTasksCache = { items: [], total: 0, page: 1, per_page: TEAM_PAGE_SIZE, pages: 0 };
+      if (teamAutoRefreshTimer) {
+        clearInterval(teamAutoRefreshTimer);
+        teamAutoRefreshTimer = null;
+      }
+      if (teamKeyboardHandler) {
+        window.removeEventListener('keydown', teamKeyboardHandler);
+        teamKeyboardHandler = null;
+      }
+      return;
+    }
     await applyTeamDefaultDisplaySettings(app);
     loadTeamColumnState();
     await loadTeamTasks(app);
@@ -143,7 +174,16 @@ export async function initTeamBacklog(app) {
     onAddTask: () => openCreateTaskModal(app),
     onRefresh: () => loadTeamTasks(app),
     onQuickEdit: () => { if (teamCurrentView === 'table') { if (isQuickEdit('team')) { requestExitQuickEdit('team'); } else { enterQuickEdit('team'); } } },
-    onBulkOps: () => { if (teamCurrentView === 'table') { showBulkOpsModal(app, 'team', getTeamFilteredList()); } },
+    onBulkOps: () => { if (teamCurrentView === 'table') openTeamBulkOps(app); },
+    getSavedViewState: () => ({
+      view: teamCurrentView,
+      columns: { ...teamColumnSettings },
+      columnOrder: [...teamColumnOrder],
+      widths: { ...teamColumnWidths },
+      fixed: { ...teamColumnFixed },
+      columnSort: { ...teamSort },
+    }),
+    applySavedViewState: applyTeamSavedViewState,
   });
 
     initToolbar('team', tasks, onFilterChange);
@@ -162,7 +202,12 @@ export async function initTeamBacklog(app) {
 
     if (teamAutoRefreshTimer) clearInterval(teamAutoRefreshTimer);
     teamAutoRefreshTimer = setInterval(() => {
-        if (!isQuickEdit('team')) loadTeamTasks(app);
+        if (!isTeamBacklogRouteActive()) {
+            clearInterval(teamAutoRefreshTimer);
+            teamAutoRefreshTimer = null;
+            return;
+        }
+        if (!isTeamBacklogInteractionActive()) loadTeamTasks(app);
     }, 60000);
 
     if (teamKeyboardHandler) window.removeEventListener('keydown', teamKeyboardHandler);
@@ -199,17 +244,48 @@ export async function initTeamBacklog(app) {
     });
 }
 
+function isTeamBacklogRouteActive() {
+    return (window.location.hash.slice(1).split('?')[0] || '/') === '/team-backlog';
+}
+
+function isTeamBacklogInteractionActive() {
+    return isQuickEdit('team')
+        || document.querySelector('.task-checkbox:checked') !== null
+        || document.getElementById('task-detail-overlay') !== null
+        || document.getElementById('create-task-overlay') !== null
+        || document.getElementById('bulk-modal-overlay') !== null;
+}
+
+function applyTeamSavedViewState(state = {}) {
+    if (state.view === 'table' || state.view === 'cards') teamCurrentView = state.view;
+    if (state.columns) {
+        Object.keys(teamColumnSettings).forEach(key => { teamColumnSettings[key] = !!state.columns[key]; });
+    }
+    if (Array.isArray(state.columnOrder)) {
+        const valid = new Set(getAllColumnKeys());
+        teamColumnOrder.splice(0, teamColumnOrder.length, ...state.columnOrder.filter(key => valid.has(key)));
+    }
+    teamColumnWidths = state.widths ? { ...state.widths } : {};
+    Object.keys(teamColumnFixed).forEach(key => delete teamColumnFixed[key]);
+    Object.assign(teamColumnFixed, state.fixed || {});
+    teamSort.key = state.columnSort?.key || null;
+    teamSort.dir = state.columnSort?.dir || 'asc';
+    document.querySelectorAll('#team-view-toggle-group [data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === teamCurrentView));
+    saveTeamColumnState();
+    renderTeamCurrentView();
+}
+
 async function loadTeamTasks(app) {
+    if (teamTasksLoadInProgress) {
+        teamTasksReloadQueued = true;
+        return;
+    }
+    teamTasksLoadInProgress = true;
     try {
         const user = app.store.get('currentUser');
-        const teamsResp = await app.api.get('/teams');
-        const teams = teamsResp.items || [];
         const teamId = user?.team_id || null;
 
-        let url = '/tasks?per_page=500';
-        if (teamId) url += `&team_id=${teamId}`;
-
-        const data = await app.api.get(url);
+        const data = await loadAllTeamTaskPages(app, teamId);
         teamTasksCache = data;
         renderTeamCurrentView();
         const countEl = document.getElementById('team-tasks-count');
@@ -226,7 +302,29 @@ async function loadTeamTasks(app) {
             bindViewStateAction(container, () => loadTeamTasks(app));
             window.lucide?.createIcons();
         }
+    } finally {
+        teamTasksLoadInProgress = false;
+        if (teamTasksReloadQueued) {
+            teamTasksReloadQueued = false;
+            if (isTeamBacklogRouteActive()) await loadTeamTasks(app);
+        }
     }
+}
+
+async function loadAllTeamTaskPages(app, teamId) {
+    const perPage = 1000;
+    const teamQuery = teamId ? `&team_id=${encodeURIComponent(teamId)}` : '';
+    const first = await app.api.get(`/tasks?page=1&per_page=${perPage}${teamQuery}`);
+    const pages = Math.max(1, Number(first.pages) || 1);
+    if (pages === 1) return first;
+
+    const requests = [];
+    for (let page = 2; page <= pages; page++) {
+        requests.push(app.api.get(`/tasks?page=${page}&per_page=${perPage}${teamQuery}`));
+    }
+    const rest = await Promise.all(requests);
+    const items = [first, ...rest].flatMap(part => part.items || []);
+    return { ...first, items, total: Number(first.total) || items.length, page: 1, per_page: items.length, pages: 1 };
 }
 
 function getTeamFilteredList() {
@@ -279,7 +377,7 @@ function renderTeamTableView(list) {
     if (!container) return;
 
     const visibleCols = teamColumnOrder.filter(k => teamColumnSettings[k]);
-    const showCheckbox = !isQuickEdit('team') && colHasCheckbox(visibleCols);
+    const showCheckbox = !isQuickEdit('team') && colHasCheckbox(visibleCols) && list.some(task => canEditTaskForScope('team', task));
     const hasWidths = visibleCols.every(c => teamColumnWidths[c]);
 
     const headerHtml = visibleCols.map(col =>
@@ -384,7 +482,7 @@ function loadTeamColumnState() {
 
 function renderTeamCell(col, task) {
   const field = getQuickEditField(col);
-  if (isQuickEdit('team') && isEditableField(col)) {
+  if (isQuickEdit('team') && canEditTaskForScope('team', task) && isEditableField(col)) {
     return renderQuickEditCell('team', col, task);
   }
 
@@ -452,6 +550,7 @@ function renderTeamCell(col, task) {
 }
 
 function renderTeamTableRow(task, cols, showCheckbox) {
+    const saveError = getQuickEditError('team', task.id);
     const cells = cols.map(col => {
         const field = getQuickEditField(col);
         const change = getQuickEditChanges('team')[task.id]?.[field];
@@ -460,13 +559,20 @@ function renderTeamTableRow(task, cols, showCheckbox) {
         return `<td style="${cellStyle}">${renderTeamCell(col, task)}</td>`;
     });
     const hasChanges = getQuickEditChanges('team')[task.id] && Object.keys(getQuickEditChanges('team')[task.id]).length > 0;
-    const rowStyle = hasChanges
+    const rowStyle = saveError
+        ? `cursor:default;border-left:3px solid var(--danger);background:rgba(239,68,68,.06);`
+        : hasChanges
         ? `cursor:default;border-left:3px solid var(--warning);`
         : (isQuickEdit('team') ? 'cursor:default;' : 'cursor:pointer;');
-    const checkboxHtml = showCheckbox ? `<td><input type="checkbox" class="task-checkbox" value="${task.id}"></td>` : '';
-    return `<tr data-task-id="${task.id}" style="${rowStyle}">
+    const checkboxHtml = showCheckbox ? `<td>${canEditTaskForScope('team', task) ? `<input type="checkbox" class="task-checkbox" value="${task.id}" aria-label="Выбрать задачу ${task.id}">` : '<span title="Нет прав на изменение этой задачи" style="color:var(--text-muted);">—</span>'}</td>` : '';
+    const errorCells = saveError && cells.length > 0
+        ? cells.map((cell, index) => index === 0
+            ? cell.replace('>', ` title="${escapeHtml(saveError)}">⚠ `).replace('</td>', `<div style="margin-top:4px;color:var(--danger);font-size:11px;white-space:normal;">${escapeHtml(saveError)}</div></td>`)
+            : cell)
+        : cells;
+    return `<tr data-task-id="${task.id}" style="${rowStyle}" ${saveError ? `aria-label="Ошибка сохранения: ${escapeHtml(saveError)}"` : ''}>
         ${checkboxHtml}
-        ${cells.join('')}
+        ${errorCells.join('')}
     </tr>`;
 }
 
@@ -486,6 +592,7 @@ function renderTeamCards(list) {
             if (t) openTaskModal(t);
         });
     });
+    updateBulkBar();
 }
 
 async function populateTeamSelect(selectedTeamId) {
@@ -528,7 +635,7 @@ function setupTaskFormSave(modal, task, app) {
             if (task) {
                 await app.api.put(`/tasks/${task.id}`, data);
             } else {
-                await app.api.post('/tasks', data);
+                await app.api.post('/tasks/', data);
             }
             document.querySelector('.modal-close')?.click();
             await loadTeamTasks(app);
@@ -546,6 +653,8 @@ function bindSelectAll() {
     document.querySelectorAll('.task-checkbox').forEach(cb => {
         cb.addEventListener('change', updateBulkBar);
     });
+    document.getElementById('team-bulk-selected')?.addEventListener('click', () => openTeamBulkOps(teamCurrentApp));
+    updateBulkBar();
 }
 
 function updateBulkBar() {
@@ -555,6 +664,22 @@ function updateBulkBar() {
         bar.style.display = checked > 0 ? 'flex' : 'none';
         document.getElementById('selected-count').textContent = checked;
     }
+    const action = document.getElementById('team-bulk-selected');
+    if (action) action.textContent = `Массовые операции (${checked})`;
+    const toolbarAction = document.getElementById('team-bulk-open');
+    if (toolbarAction) toolbarAction.title = checked > 0 ? `Массовые операции (${checked} выбрано)` : 'Массовые операции';
+}
+
+function getTeamSelectedTasks() {
+    const ids = new Set([...document.querySelectorAll('.task-checkbox:checked')].map(cb => Number(cb.value)));
+    return (teamTasksCache?.items || []).filter(task => ids.has(task.id));
+}
+
+async function openTeamBulkOps(app) {
+    const selected = getTeamSelectedTasks();
+    const editable = getTeamFilteredList().filter(task => canEditTaskForScope('team', task));
+    const result = await showBulkOpsModal(app, 'team', selected.length > 0 ? selected : editable);
+    if (result?.success) await loadTeamTasks(app);
 }
 
 function metricFormat(val) {

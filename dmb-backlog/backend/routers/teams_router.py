@@ -73,7 +73,10 @@ def get_teams(
 
 # ==================== TEAM RESOURCES (Экспресс-оценка) ====================
 
-COMPETENCIES = ['Designee', 'Аналитика', 'Разработка BE', 'Разработка FE', 'Tester', 'Tester Auto']
+COMPETENCIES = [
+    'Designee', 'Аналитика', 'Разработка BE', 'Разработка python BE',
+    'Разработка FE', 'Tester', 'Tester Auto', 'Delivery'
+]
 COMPETENCY_FIELD_MAP = {
     'Designee': 'effort_designee',
     'Аналитика': 'effort_analytics',

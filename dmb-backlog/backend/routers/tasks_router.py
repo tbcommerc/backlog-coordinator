@@ -6,15 +6,42 @@ from datetime import date, datetime, timezone
 import json
 import logging
 import re
+import threading
+import uuid
+from functools import wraps
 
 
 logger = logging.getLogger("dmb_backlog.tasks")
 
+
+_task_creation_lock = threading.Lock()
+
+
+def _serialize_task_creation(func):
+    """Serialize ID allocation for the legacy SQLite tasks table."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with _task_creation_lock:
+            return func(*args, **kwargs)
+    return wrapper
+
+
+def _require_reference(db, model, value, field_name, label):
+    if db.query(model).filter(model.id == value).first() is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=[{
+                "loc": ["body", field_name],
+                "msg": f"Выбранное значение «{label}» больше не существует. Обновите форму.",
+                "type": "value_error.reference",
+            }],
+        )
+
 from database import get_db
-from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, CompetencyCostHistory, FieldLabel, Tag, IssueTag
+from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, CompetencyCostHistory, FieldLabel, Tag, IssueTag, DictionaryItem, TaskComment
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
-    BulkActionRequest, SuccessResponse, TaskHistoryResponse, TaskLinkUpdate,
+    BulkActionRequest, SuccessResponse, BulkActionResponse, BulkPreviewResponse, TaskHistoryResponse, TaskLinkUpdate,
     PipDecisionRequest,
 )
 from auth import (
@@ -23,8 +50,11 @@ from auth import (
     require_bulk_task_edit_access,
     require_backlog_page_access,
     authorize_task,
+    can_edit_task,
+    is_task_global_editor,
+    can_comment_task,
 )
-from notifications import notify_status_change, notify_assignment
+from notifications import notify_status_change, notify_assignment, notify_comment, notify_mention
 from routers.task_collaboration_router import is_task_lock_active
 
 router = APIRouter(dependencies=[Depends(require_backlog_page_access)])
@@ -57,6 +87,44 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
     """Convert Task ORM object to TaskResponse schema"""
     cv = task.cv
 
+    resolved_task_type_id = task.task_type_id
+    resolved_task_type_name = task.task_type.name if task.task_type else None
+    resolved_channel_id = task.channel_id
+    resolved_channel_name = task.channel.name if task.channel else None
+
+    # Совместимость с задачами, которые ранее получили ID из legacy-таблицы
+    # dictionary_items вместо канонических task_types/channels. Нормализация
+    # выполняется только в ответе API и не изменяет данные в БД.
+    if db is not None and task.task_type_id is not None and not resolved_task_type_name:
+        legacy = db.query(DictionaryItem).filter(
+            DictionaryItem.id == task.task_type_id,
+            DictionaryItem.dict_type == "task_type",
+        ).first()
+        if legacy and legacy.name:
+            legacy_name = legacy.name.strip().casefold()
+            canonical = next(
+                (item for item in db.query(TaskType).all() if (item.name or "").strip().casefold() == legacy_name),
+                None,
+            )
+            if canonical:
+                resolved_task_type_id = canonical.id
+                resolved_task_type_name = canonical.name
+
+    if db is not None and task.channel_id is not None and not resolved_channel_name:
+        legacy = db.query(DictionaryItem).filter(
+            DictionaryItem.id == task.channel_id,
+            DictionaryItem.dict_type == "channel",
+        ).first()
+        if legacy and legacy.name:
+            legacy_name = legacy.name.strip().casefold()
+            canonical = next(
+                (item for item in db.query(Channel).all() if (item.name or "").strip().casefold() == legacy_name),
+                None,
+            )
+            if canonical:
+                resolved_channel_id = canonical.id
+                resolved_channel_name = canonical.name
+
     involved_team_names = None
     if task.involved_teams:
         team_ids = [t for t in task.involved_teams if isinstance(t, int)]
@@ -73,12 +141,12 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         title=task.title,
         description=task.description,
         date_received=task.date_received,
-        channel_id=task.channel_id,
+        channel_id=resolved_channel_id,
         business_customer_id=task.business_customer_id,
         department_id=task.department_id,
         project_id=task.project_id,
-        task_type_id=task.task_type_id,
-        task_type_name=task.task_type.name if task.task_type else None,
+        task_type_id=resolved_task_type_id,
+        task_type_name=resolved_task_type_name,
         involved_teams=task.involved_teams,
         priority_id=task.priority_id,
         status_id=task.status_id,
@@ -142,7 +210,7 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         created_at=task.created_at,
         updated_at=task.updated_at,
         team_name=task.team.name if task.team else None,
-        channel_name=task.channel.name if task.channel else None,
+        channel_name=resolved_channel_name,
         department_name=task.department.name if task.department else None,
         project_name=task.project.name if task.project else None,
         priority_name=task.priority.name if task.priority else None,
@@ -524,7 +592,7 @@ def get_task_reference(
         "channels": [{"id": c.id, "name": c.name} for c in channels],
         "departments": [{"id": d.id, "name": d.name} for d in departments],
         "business_customers": [{"id": b.id, "name": b.name, "department_id": b.department_id} for b in business_customers],
-        "users": [{"id": u.id, "name": u.name} for u in users],
+        "users": [{"id": u.id, "name": u.name, "team_id": u.team_id} for u in users],
         "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in db.query(Tag).order_by(Tag.name).all()]
     }
 
@@ -657,20 +725,50 @@ def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = D
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+@_serialize_task_creation
 def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Create new task with auto-calculations and audit logging"""
     if not check_permission(current_user, "backlog_team", "write_own"):
         raise HTTPException(status_code=403, detail="Permission denied")
+
+    _require_reference(db, Team, task_data.team_id, "team_id", "Ответственная команда")
+    _require_reference(db, TaskType, task_data.task_type_id, "task_type_id", "Тип задачи")
+    _require_reference(db, Channel, task_data.channel_id, "channel_id", "Канал поступления")
+    optional_references = (
+        (Project, task_data.project_id, "project_id", "Проект"),
+        (BusinessCustomer, task_data.business_customer_id, "business_customer_id", "Бизнес-заказчик"),
+        (User, task_data.owner_id, "owner_id", "Исполнитель"),
+        (Deadline, task_data.deadline_id, "deadline_id", "Срок выполнения"),
+    )
+    for model, value, field_name, label in optional_references:
+        if value is not None:
+            _require_reference(db, model, value, field_name, label)
 
     # 1. Calculate C/V if both financial_effect and effort_rub are provided
     cv = None
     if task_data.financial_effect is not None and task_data.effort_rub is not None and task_data.effort_rub > 0:
         cv = round(task_data.financial_effect / task_data.effort_rub, 2)
 
-    # 2. Default status = НОВАЯ ЗАДАЧА (status_id = 1)
+    # 2. Defaults are resolved by stable dictionary values, never by magic IDs.
     status_id = task_data.status_id
     if status_id is None:
-        status_id = 1
+        default_status = db.query(TaskStatus).filter(TaskStatus.code == "new").first()
+        if default_status is None:
+            default_status = next((item for item in db.query(TaskStatus).all() if item.name.casefold() == "новая задача"), None)
+        if default_status is None:
+            raise HTTPException(status_code=500, detail="В справочнике отсутствует статус «Новая задача»")
+        status_id = default_status.id
+    else:
+        _require_reference(db, TaskStatus, status_id, "status_id", "Статус")
+
+    priority_id = task_data.priority_id
+    if priority_id is None:
+        default_priority = next((item for item in db.query(Priority).all() if item.name.casefold() == "средний"), None)
+        if default_priority is None:
+            raise HTTPException(status_code=500, detail="В справочнике отсутствует приоритет «Средний»")
+        priority_id = default_priority.id
+    else:
+        _require_reference(db, Priority, priority_id, "priority_id", "Приоритет")
 
     # Auto-calculate effort cost from role estimates x competency rates
     effort_rub = compute_effort_rub(db, task_data.model_dump(), task_data.effort_rub)
@@ -682,7 +780,15 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
         if customer and customer.department_id is not None:
             department_id = customer.department_id
 
+    # The current SQLite database was imported with a typeless `tasks.id`
+    # column and therefore cannot provide ROWID autoincrement. Assign the ID
+    # explicitly. The process-wide lock above keeps concurrent allocations
+    # unique without rewriting the existing table or its data.
+    next_task_id = (db.query(func.max(Task.id)).scalar() or 0) + 1
+    created_now = datetime.now(timezone.utc)
+
     task = Task(
+        id=next_task_id,
         team_id=task_data.team_id,
         title=task_data.title,
         description=task_data.description,
@@ -693,7 +799,7 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
         project_id=task_data.project_id,
         task_type_id=task_data.task_type_id,
         involved_teams=task_data.involved_teams,
-        priority_id=task_data.priority_id,
+        priority_id=priority_id,
         status_id=status_id,
         deadline_id=task_data.deadline_id,
         effort_days=task_data.effort_days,
@@ -740,7 +846,9 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
         metric_kr_fact=task_data.metric_kr_fact,
         metric_kr_unit=task_data.metric_kr_unit,
         did_demo=task_data.did_demo,
-        created_by=current_user.id
+        created_by=current_user.id,
+        created_at=created_now,
+        updated_at=created_now,
     )
 
     db.add(task)
@@ -853,6 +961,7 @@ def apply_pip_decision(
     return task_to_response(task, db)
 
 
+@router.patch("/{task_id}", response_model=TaskResponse)
 @router.put("/{task_id}", response_model=TaskResponse)
 def update_task(
     task_id: int,
@@ -894,6 +1003,23 @@ def update_task(
         update_data.pop('actual_effort_days', None)
         # tags — обрабатываются отдельно через issue_tags (не колонка ORM)
         tag_names = update_data.pop('tags', None)
+
+        reference_fields = {
+            'team_id': (Team, 'Ответственная команда'),
+            'task_type_id': (TaskType, 'Тип задачи'),
+            'channel_id': (Channel, 'Канал поступления'),
+            'priority_id': (Priority, 'Приоритет'),
+            'status_id': (TaskStatus, 'Статус'),
+            'project_id': (Project, 'Проект'),
+            'business_customer_id': (BusinessCustomer, 'Бизнес-заказчик'),
+            'owner_id': (User, 'Исполнитель'),
+            'deadline_id': (Deadline, 'Срок выполнения'),
+        }
+        for field_name, (model, label) in reference_fields.items():
+            value = update_data.get(field_name)
+            if value is not None:
+                _require_reference(db, model, value, field_name, label)
+
         if submitted_version is not None and submitted_version != (task.version or 0):
             current = task_to_response(task, db)
             raise HTTPException(
@@ -1164,7 +1290,8 @@ ALLOWED_BULK_FIELDS = {
     'directorate_status', 'did_status',
     'effort_days', 'effort_rub', 'financial_effect',
     'rejection_reason',
-    'comment', 'link_jira', 'link_mockups', 'date_received'
+    'link_jira', 'link_mockups', 'date_received',
+    'tags_add', 'tags_remove'
 }
 
 FORBIDDEN_BULK_FIELDS = {
@@ -1180,21 +1307,126 @@ FORBIDDEN_BULK_FIELDS = {
 
 REQUIRES_REASON_STATUSES = {'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА', 'ХОЛД', 'ЭСКАЛАЦИЯ НА ЛТ'}
 
-@router.post("/bulk", response_model=SuccessResponse)
+
+def _load_bulk_tasks(db: Session, task_ids: List[int]) -> tuple[list[int], list[Task]]:
+    requested_ids = list(dict.fromkeys(task_ids))
+    tasks = []
+    for start in range(0, len(requested_ids), 500):
+        id_chunk = requested_ids[start:start + 500]
+        tasks.extend(db.query(Task).filter(Task.id.in_(id_chunk), Task.is_deleted == False).all())
+    return requested_ids, tasks
+
+
+@router.post("/bulk/preview", response_model=BulkPreviewResponse)
+def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Validate and calculate a bulk action without changing database state."""
+    errors = []
+    if request.action not in {"close", "hold", "delete", "update", "comment"}:
+        errors.append(f"Неизвестная массовая операция: {request.action}")
+
+    requested_ids, tasks = _load_bulk_tasks(db, request.task_ids)
+    if len(tasks) != len(requested_ids):
+        errors.append("Часть задач не найдена")
+
+    fields = request.fields or request.updates or {}
+    if request.action == 'comment':
+        comment_text = str(fields.get('comment_text') or '').strip()
+        mentioned_ids = list(dict.fromkeys(fields.get('mentioned_user_ids') or []))
+        if not comment_text: errors.append('Введите текст комментария')
+        if len(comment_text) > 5000: errors.append('Комментарий не должен превышать 5000 символов')
+        active_ids = {uid for (uid,) in db.query(User.id).filter(User.id.in_(mentioned_ids), User.is_active == True).all()} if mentioned_ids else set()
+        if set(mentioned_ids) != active_ids: errors.append('Упомянуты несуществующие или неактивные пользователи')
+    else:
+        for field in fields:
+            if field in FORBIDDEN_BULK_FIELDS:
+                errors.append(f"Поле '{field}' нельзя менять массово")
+            elif field not in ALLOWED_BULK_FIELDS:
+                errors.append(f"Поле '{field}' не поддерживается для массового изменения")
+    for tag_field in ('tags_add', 'tags_remove'):
+        if tag_field in fields and not isinstance(fields.get(tag_field), list):
+            errors.append(f"Поле '{tag_field}' должно быть списком")
+
+    status_obj = db.query(TaskStatus).filter(TaskStatus.id == fields.get('status_id')).first() if fields.get('status_id') else None
+    if status_obj and status_obj.name in REQUIRES_REASON_STATUSES and not fields.get('rejection_reason'):
+        errors.append(f"Для статуса '{status_obj.name}' требуется указать причину")
+
+    target_team_id = fields.get('team_id') if 'team_id' in fields else None
+    accessible = []
+    inaccessible = []
+    for task in tasks:
+        allowed = can_comment_task(current_user) if request.action == 'comment' else (is_task_global_editor(current_user) if request.action == 'delete' else can_edit_task(current_user, task.team_id, target_team_id))
+        (accessible if allowed else inaccessible).append(task)
+
+    done_status = db.query(TaskStatus).filter(TaskStatus.name == "ВЫПОЛНЕНА").first() if request.action == 'close' else None
+    hold_status = db.query(TaskStatus).filter(TaskStatus.name == "ХОЛД").first() if request.action == 'hold' else None
+    changed_tasks = applied_changes = skipped_changes = notifications = 0
+    for task in accessible:
+        task_changes = 0
+        old_status_id = task.status_id
+        old_owner_id = task.owner_id
+        planned = {}
+        if request.action == 'close':
+            planned = {'status_id': done_status.id if done_status else task.status_id, 'progress': 100}
+        elif request.action == 'hold':
+            planned = {'status_id': hold_status.id if hold_status else task.status_id}
+        elif request.action == 'delete':
+            planned = {'is_deleted': True}
+        elif request.action == 'comment':
+            task_changes = 1
+            applied_changes += 1
+            mentioned_ids = list(dict.fromkeys(fields.get('mentioned_user_ids') or []))
+            notifications += len([uid for uid in mentioned_ids if uid != current_user.id])
+            if task.owner_id and task.owner_id != current_user.id and task.owner_id not in mentioned_ids:
+                notifications += 1
+        elif request.action == 'update':
+            planned = {key: value for key, value in fields.items() if key not in {'tags_add', 'tags_remove'} and hasattr(task, key)}
+            if 'tags_add' in fields or 'tags_remove' in fields:
+                current_tags = [tag.name for tag in (task.tags or []) if tag and tag.name]
+                next_tags = list(current_tags)
+                known = {name.casefold() for name in next_tags}
+                for raw in fields.get('tags_add') or []:
+                    name = str(raw).strip()
+                    if name and name.casefold() not in known:
+                        next_tags.append(name); known.add(name.casefold())
+                removals = {str(raw).strip().casefold() for raw in (fields.get('tags_remove') or []) if str(raw).strip()}
+                next_tags = [name for name in next_tags if name.casefold() not in removals]
+                if next_tags != current_tags: task_changes += 1; applied_changes += 1
+                else: skipped_changes += 1
+        for field, value in planned.items():
+            if getattr(task, field) == value: skipped_changes += 1
+            else: task_changes += 1; applied_changes += 1
+        if task_changes:
+            changed_tasks += 1
+            planned_status_id = planned.get('status_id', old_status_id)
+            planned_owner_id = planned.get('owner_id', old_owner_id)
+            if planned_status_id != old_status_id: notifications += 1
+            if planned_owner_id != old_owner_id and planned_owner_id: notifications += 1
+
+    return BulkPreviewResponse(
+        requested_tasks=len(requested_ids), found_tasks=len(tasks), accessible_tasks=len(accessible),
+        inaccessible_tasks=len(inaccessible), changed_tasks=changed_tasks,
+        unchanged_tasks=len(accessible) - changed_tasks, applied_changes=applied_changes,
+        skipped_changes=skipped_changes, notifications=notifications,
+        can_apply=not errors and not inaccessible and bool(accessible), errors=errors,
+    )
+
+@router.post("/bulk", response_model=BulkActionResponse)
 def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Perform bulk actions on multiple tasks"""
-    if len(request.task_ids) > 500:
-        raise HTTPException(status_code=400, detail="Лимит 500 задач за запрос")
-
-    if request.action not in {"close", "hold", "delete", "update"}:
+    if request.action not in {"close", "hold", "delete", "update", "comment"}:
         raise HTTPException(status_code=400, detail=f"Неизвестная массовая операция: {request.action}")
 
-    tasks = db.query(Task).filter(Task.id.in_(request.task_ids), Task.is_deleted == False).all()
+    requested_ids, tasks = _load_bulk_tasks(db, request.task_ids)
 
     if not tasks:
-        return SuccessResponse(message="No tasks found")
+        return BulkActionResponse(
+            detail="Задачи не найдены", operation_id=str(uuid.uuid4()),
+            requested_tasks=len(requested_ids), changed_tasks=0,
+            unchanged_tasks=len(requested_ids), applied_changes=0, skipped_changes=0,
+            error_task_ids=requested_ids, errors=["Задачи не найдены"],
+        )
 
-    requested_ids = set(request.task_ids)
+    requested_ids = set(requested_ids)
     found_ids = {task.id for task in tasks}
     if found_ids != requested_ids:
         raise HTTPException(
@@ -1205,18 +1437,31 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
     fields_to_update = request.fields or request.updates or {}
 
     target_team_id = fields_to_update.get("team_id") if "team_id" in fields_to_update else None
-    require_bulk_task_edit_access(
-        current_user,
-        [task.team_id for task in tasks],
-        target_team_id=target_team_id,
-        is_delete=request.action == "delete",
-    )
+    if request.action == 'comment':
+        if not can_comment_task(current_user):
+            raise HTTPException(status_code=403, detail='Недостаточно прав для комментирования задач')
+    else:
+        require_bulk_task_edit_access(
+            current_user,
+            [task.team_id for task in tasks],
+            target_team_id=target_team_id,
+            is_delete=request.action == "delete",
+        )
 
-    for field in fields_to_update.keys():
-        if field in FORBIDDEN_BULK_FIELDS:
-            raise HTTPException(status_code=400, detail=f"Поле '{field}' нельзя менять массово")
-        if field not in ALLOWED_BULK_FIELDS:
-            raise HTTPException(status_code=400, detail=f"Поле '{field}' не поддерживается для массового изменения")
+    if request.action == 'comment':
+        comment_text = str(fields_to_update.get('comment_text') or '').strip()
+        mentioned_ids = list(dict.fromkeys(fields_to_update.get('mentioned_user_ids') or []))
+        if not comment_text or len(comment_text) > 5000:
+            raise HTTPException(status_code=400, detail='Комментарий должен содержать от 1 до 5000 символов')
+        active_ids = {uid for (uid,) in db.query(User.id).filter(User.id.in_(mentioned_ids), User.is_active == True).all()} if mentioned_ids else set()
+        if set(mentioned_ids) != active_ids:
+            raise HTTPException(status_code=422, detail='Упомянуты несуществующие или неактивные пользователи')
+    else:
+        for field in fields_to_update.keys():
+            if field in FORBIDDEN_BULK_FIELDS:
+                raise HTTPException(status_code=400, detail=f"Поле '{field}' нельзя менять массово")
+            if field not in ALLOWED_BULK_FIELDS:
+                raise HTTPException(status_code=400, detail=f"Поле '{field}' не поддерживается для массового изменения")
 
     status_id = fields_to_update.get('status_id')
     if status_id:
@@ -1225,33 +1470,176 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
             if not fields_to_update.get('rejection_reason'):
                 raise HTTPException(status_code=400, detail=f"Для статуса '{status_obj.name}' требуется указать причину")
 
+    for tag_field in ('tags_add', 'tags_remove'):
+        if tag_field not in fields_to_update:
+            continue
+        tag_values = fields_to_update.get(tag_field)
+        if not isinstance(tag_values, list):
+            raise HTTPException(status_code=400, detail=f"Поле '{tag_field}' должно быть списком")
+        if len(tag_values) > 50:
+            raise HTTPException(status_code=400, detail="За одну операцию можно указать не более 50 тегов")
+        if any(len(str(value).strip()) > 100 for value in tag_values):
+            raise HTTPException(status_code=400, detail="Название тега не должно превышать 100 символов")
+
+    operation_id = str(uuid.uuid4())
+    changed_tasks = 0
+    changed_task_ids = []
+    unchanged_task_ids = []
+    applied_changes = 0
+    skipped_changes = 0
+
+    def history_value(value):
+        if value is None:
+            return None
+        if isinstance(value, (list, dict)):
+            return json.dumps(value, ensure_ascii=False)
+        if isinstance(value, (date, datetime)):
+            return value.isoformat()
+        return str(value)
+
+    done_status = db.query(TaskStatus).filter(TaskStatus.name == "ВЫПОЛНЕНА").first() if request.action == "close" else None
+    hold_status = db.query(TaskStatus).filter(TaskStatus.name == "ХОЛД").first() if request.action == "hold" else None
+
     for task in tasks:
-        old_status_name = task.status.name if task.status else str(task.status_id)
+        task_change_count = 0
+        old_status_id = task.status_id
+        old_owner_id = task.owner_id
+        old_status_name = task.status.name if task.status else str(task.status_id or "Не установлен")
         if request.action == "close":
-            done_status = db.query(TaskStatus).filter(TaskStatus.name == "ВЫПОЛНЕНА").first()
+            changes = {'status_id': done_status.id if done_status else task.status_id, 'progress': 100}
+            for field, value in changes.items():
+                old_value = getattr(task, field)
+                if old_value == value:
+                    skipped_changes += 1
+                    continue
+                setattr(task, field, value)
+                db.add(TaskHistory(task_id=task.id, changed_by=current_user.id, field_name=field, old_value=history_value(old_value), new_value=history_value(value)))
+                task_change_count += 1
+                applied_changes += 1
             if done_status:
                 task.status_id = done_status.id
-            task.progress = 100
             new_status_name = "ВЫПОЛНЕНА"
         elif request.action == "hold":
-            hold_status = db.query(TaskStatus).filter(TaskStatus.name == "ХОЛД").first()
-            if hold_status:
+            new_status_id = hold_status.id if hold_status else task.status_id
+            if task.status_id != new_status_id:
+                db.add(TaskHistory(task_id=task.id, changed_by=current_user.id, field_name='status_id', old_value=history_value(task.status_id), new_value=history_value(new_status_id)))
                 task.status_id = hold_status.id
+                task_change_count += 1
+                applied_changes += 1
+            else:
+                skipped_changes += 1
             new_status_name = "ХОЛД"
         elif request.action == "delete":
-            task.is_deleted = True
+            if not task.is_deleted:
+                db.add(TaskHistory(task_id=task.id, changed_by=current_user.id, field_name='is_deleted', old_value='False', new_value='True'))
+                task.is_deleted = True
+                task_change_count += 1
+                applied_changes += 1
+            else:
+                skipped_changes += 1
+            new_status_name = None
+        elif request.action == "comment":
+            db.add(TaskComment(
+                task_id=task.id, user_id=current_user.id, text=comment_text,
+                mentioned_user_ids=json.dumps(mentioned_ids) if mentioned_ids else None,
+            ))
+            db.add(TaskHistory(
+                task_id=task.id, changed_by=current_user.id, field_name='comment',
+                old_value=None, new_value=comment_text[:200],
+            ))
+            if mentioned_ids:
+                notify_mention(db, task, mentioned_ids, current_user.name, current_user.id)
+            notify_comment(db, task, current_user.id, excluded_recipient_ids=set(mentioned_ids))
+            task_change_count = 1
+            applied_changes += 1
             new_status_name = None
         elif request.action == "update" and fields_to_update:
+            current_tag_names = [tag.name for tag in (task.tags or []) if tag and tag.name]
+            next_tag_names = list(current_tag_names)
+            if 'tags_add' in fields_to_update:
+                additions = fields_to_update.get('tags_add') or []
+                known = {name.casefold() for name in next_tag_names}
+                for raw in additions:
+                    name = str(raw).strip()
+                    if name and name.casefold() not in known:
+                        next_tag_names.append(name)
+                        known.add(name.casefold())
+            if 'tags_remove' in fields_to_update:
+                removals = fields_to_update.get('tags_remove') or []
+                remove_keys = {str(raw).strip().casefold() for raw in removals if str(raw).strip()}
+                next_tag_names = [name for name in next_tag_names if name.casefold() not in remove_keys]
+            if next_tag_names != current_tag_names:
+                _apply_tags(db, task, next_tag_names, current_user.id)
+                db.add(TaskHistory(
+                    task_id=task.id,
+                    changed_by=current_user.id,
+                    field_name='tags',
+                    old_value=', '.join(current_tag_names) or None,
+                    new_value=', '.join(next_tag_names) or None,
+                ))
+                task_change_count += 1
+                applied_changes += 1
+            elif 'tags_add' in fields_to_update or 'tags_remove' in fields_to_update:
+                skipped_changes += 1
             for field, value in fields_to_update.items():
+                if field in {'tags_add', 'tags_remove'}:
+                    continue
                 if hasattr(task, field):
+                    old_value = getattr(task, field)
+                    if old_value == value:
+                        skipped_changes += 1
+                        continue
                     setattr(task, field, value)
+                    db.add(TaskHistory(
+                        task_id=task.id, changed_by=current_user.id, field_name=field,
+                        old_value=history_value(old_value), new_value=history_value(value),
+                    ))
+                    task_change_count += 1
+                    applied_changes += 1
             new_status_name = None
 
-        if new_status_name:
-            notify_status_change(db, task, old_status_name, new_status_name, current_user.id)
+        if task_change_count > 0 and request.action != 'comment':
+            task.version = (task.version or 0) + 1
+        if task_change_count > 0:
+            changed_tasks += 1
+            changed_task_ids.append(task.id)
+        else:
+            unchanged_task_ids.append(task.id)
+        if old_status_id != task.status_id:
+            resolved_status = db.query(TaskStatus).filter(TaskStatus.id == task.status_id).first() if task.status_id else None
+            notify_status_change(db, task, old_status_name, resolved_status.name if resolved_status else (new_status_name or "Не установлен"), current_user.id)
+        if old_owner_id != task.owner_id and task.owner_id:
+            notify_assignment(db, task, task.owner_id, current_user.id)
+
+    db.add(AuditLog(
+        user_id=current_user.id,
+        action='BULK_UPDATE',
+        entity_type='tasks_bulk',
+        entity_id=None,
+        details=json.dumps({
+            'operation_id': operation_id,
+            'action': request.action,
+            'task_ids': sorted(requested_ids),
+            'fields': list(fields_to_update.keys()),
+            'changed_tasks': changed_tasks,
+            'unchanged_tasks': len(tasks) - changed_tasks,
+            'applied_changes': applied_changes,
+            'skipped_changes': skipped_changes,
+        }, ensure_ascii=False),
+    ))
 
     db.commit()
-    return SuccessResponse(message=f"Action '{request.action}' applied to {len(tasks)} tasks")
+    return BulkActionResponse(
+        detail=f"Массовая операция применена к {changed_tasks} задачам",
+        operation_id=operation_id,
+        requested_tasks=len(tasks),
+        changed_tasks=changed_tasks,
+        unchanged_tasks=len(tasks) - changed_tasks,
+        applied_changes=applied_changes,
+        skipped_changes=skipped_changes,
+        changed_task_ids=sorted(changed_task_ids),
+        unchanged_task_ids=sorted(unchanged_task_ids),
+    )
 
 
 @router.post("/import")
