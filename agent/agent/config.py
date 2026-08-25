@@ -29,9 +29,6 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
-    # agentic: LLM chooses facts and next question; legacy is rollback only.
-    AGENT_DIALOGUE_ENGINE: str = "agentic"
-
     # Security
     AGENT_SECRET: str = "dmb-agent-local-secret-2026"
 

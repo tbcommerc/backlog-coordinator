@@ -28,9 +28,7 @@ class FakeLLM:
 def test_agentic_decision_extracts_multiple_facts_and_question(monkeypatch):
     state = DialogueState(session_id="s", user_id=1)
     monkeypatch.setattr("agent.dialogue.agentic.get_llm", lambda: FakeLLM())
-    monkeypatch.setattr("agent.dialogue.agentic.settings.AGENT_DIALOGUE_ENGINE", "agentic")
-
-    decision = AgenticBA().decide(state, "ИНН нужен бэк-офицеру в карточке сделки")
+    decision = AgenticBA().decide_strict(state, "ИНН нужен бэк-офицеру в карточке сделки")
     updated = AgenticBA.apply(state, decision)
 
     assert updated == ["role", "process"]

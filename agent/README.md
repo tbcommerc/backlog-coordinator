@@ -26,7 +26,6 @@ python tests/e2e_scenarios.py --quick
 
 Конфигурация — `.env` (см. `.env.example`) или переменные окружения:
 `LLM_PROVIDER` (`mock` по умолчанию | `openai_compat`),
-`AGENT_DIALOGUE_ENGINE` (`agentic` по умолчанию | `legacy` для отката),
 `AGENT_SECRET`, `AGENT_PORT`, `SESSION_DB`. Полный перечень и значения для
 локального запуска приведены в `.env.example`.
 

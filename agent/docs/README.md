@@ -26,7 +26,9 @@
 
 Исходники PlantUML находятся в [`diagrams/`](diagrams/):
 
-- `high_level_architecture.puml` — верхнеуровневая архитектура;
+- `high_level_architecture_explained.puml` — подробная техническая AS-IS архитектура со статусами реализации;
+- `high_level_architecture_business.puml` — компактная схема текущей архитектуры для нетехнической аудитории;
+- `high_level_architecture.puml` — исходная расширенная схема, включающая legacy- и целевые компоненты;
 - `component_architecture.puml` — компоненты;
 - `message_flow.puml` — обработка сообщения;
 - `state_machine.puml` — состояния диалога.

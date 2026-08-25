@@ -773,7 +773,7 @@ class AgentOrchestrator:
                           confidence=0.7, source="assumption", assumption=True)
 
     def _apply_opportunistic(self, state: DialogueState, message: str, ctx):
-        decision = agentic_ba.decide(state, message)
+        decision = agentic_ba.decide_strict(state, message)
         agentic_updates = agentic_ba.apply(state, decision)
         state.last_agent_decision = decision.as_dict()
         opp = extractor.opportunistic(state, message, ctx)
@@ -1043,9 +1043,6 @@ def get_orchestrator(store=None) -> AgentOrchestrator:
         if store is None:
             from .session import session_store
             store = session_store
-        if settings.AGENT_DIALOGUE_ENGINE == "agentic":
-            from .agentic_orchestrator import AgenticOrchestrator
-            _orchestrator_singleton = AgenticOrchestrator(store)
-        else:
-            _orchestrator_singleton = AgentOrchestrator(store)
+        from .agentic_orchestrator import AgenticOrchestrator
+        _orchestrator_singleton = AgenticOrchestrator(store)
     return _orchestrator_singleton

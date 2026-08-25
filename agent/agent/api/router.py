@@ -99,7 +99,7 @@ def config(_=Depends(_check_secret)):
     return ConfigResponse(
         provider=settings.LLM_PROVIDER,
         provider_available=bool(settings.OPENAI_API_KEY),
-        dialogue_engine=settings.AGENT_DIALOGUE_ENGINE,
+        dialogue_engine="agentic",
         intents=INTENTS,
         kb_stats=kb.stats(),
         mcp_servers=mcp_registry.servers,

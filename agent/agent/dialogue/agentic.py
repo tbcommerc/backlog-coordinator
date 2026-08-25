@@ -13,7 +13,7 @@ import re
 
 from ..config import settings
 from ..llm.factory import get_llm
-from .state import COLLECTION_SLOTS, MANDATORY_HARD, SLOT_LABELS, DialogueState
+from .state import COLLECTION_SLOTS, SLOT_LABELS, DialogueState
 
 logger = logging.getLogger("agentic_ba")
 
@@ -137,20 +137,8 @@ def _validate(data: dict) -> TurnDecision:
 
 
 class AgenticBA:
-    def enabled(self) -> bool:
-        return settings.AGENT_DIALOGUE_ENGINE == "agentic"
-
-    def decide(self, state: DialogueState, message: str) -> TurnDecision:
-        """Compatibility entry point used by the explicitly selected legacy runtime."""
-        try:
-            return self.decide_strict(state, message)
-        except LLMUnavailable:
-            return self._fallback(state, message)
-
     def decide_strict(self, state: DialogueState, message: str) -> TurnDecision:
         """Return an LLM decision or fail closed. No conversational fallback."""
-        if not self.enabled():
-            raise LLMUnavailable("agentic dialogue engine is disabled")
         llm = get_llm()
         if getattr(llm, "name", "mock") == "mock" or not llm.available():
             raise LLMUnavailable("LLM provider is not configured")
@@ -173,43 +161,6 @@ class AgenticBA:
         except Exception as exc:
             logger.error("Agentic BA LLM decision failed: %s", exc)
             raise LLMUnavailable(str(exc)) from exc
-
-    def _fallback(self, state: DialogueState, message: str = "") -> TurnDecision:
-        """Minimal resilience path; production dialogue is model-driven."""
-        low_message = message.lower().strip()
-        if not state.get("need_statement") and low_message.endswith("?") and not any(
-            marker in low_message for marker in ("добав", "измен", "нужно", "хочу", "требуется")
-        ):
-            return TurnDecision(
-                next_action="answer", focus="",
-                reply="Конечно, помогу. Опишите задачу своими словами — я разберу детали и подготовлю требование.",
-            )
-        need = (state.get("need_statement") or "").lower()
-        if state.requirement_shape == "field_change" and any(
-            marker in need for marker in ("цвет", "перекрас", "кнопк", "дизайн")
-        ) and not state.slots["business_rules"].handled:
-            return TurnDecision(
-                next_action="ask", focus="business_rules",
-                reply="В какой цвет нужно перекрасить кнопки?",
-            )
-        focus = next((slot for slot in MANDATORY_HARD if not state.slots[slot].handled), "")
-        if not focus:
-            focus = next((slot for slot in ("acceptance_criteria", "data_integrations", "risks")
-                          if not state.slots[slot].handled), "")
-        prompts = {
-            "need_statement": "Опишите, пожалуйста, какую проблему или изменение нужно проработать.",
-            "role": "Кто должен видеть это изменение или пользоваться им?",
-            "process": "В каком бизнес-процессе возникает эта потребность?",
-            "to_be": "Как должен выглядеть ожидаемый результат для пользователя?",
-            "acceptance_criteria": "По каким наблюдаемым условиям поймём, что решение работает правильно?",
-            "data_integrations": "Откуда берутся необходимые данные и какие системы их используют?",
-            "risks": "Какие ошибки и нежелательные последствия важно предусмотреть?",
-        }
-        if not focus:
-            return TurnDecision(next_action="summarize", reply="Основные сведения собраны. Проверим итоговую формулировку.")
-        return TurnDecision(next_action="ask", focus=focus, reply=prompts.get(
-            focus, f"Уточните, пожалуйста: {SLOT_LABELS.get(focus, focus)}."
-        ))
 
     def fallback_question(self, state: DialogueState, focus: str) -> str:
         prompts = {

@@ -1,0 +1,176 @@
+@startuml Knowledge_Base_Architecture
+
+title Knowledge Base AI Business Analyst Agent
+
+skinparam backgroundColor transparent
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam ArrowColor #52606D
+skinparam ArrowThickness 1.2
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam noteBackgroundColor #FFF8DB
+skinparam noteBorderColor #D6A93B
+skinparam noteFontColor #3D3523
+
+skinparam rectangle {
+  BackgroundColor #F7F9FC
+  BorderColor #8A99A8
+  FontColor #1F2933
+}
+skinparam component {
+  BackgroundColor #EAF3FF
+  BorderColor #4E7EAC
+  FontColor #172B3A
+}
+skinparam database {
+  BackgroundColor #F1EBFF
+  BorderColor #7759A6
+  FontColor #2D2040
+}
+skinparam actor {
+  BackgroundColor #FFF0D6
+  BorderColor #B7791F
+  FontColor #3D2B0D
+}
+
+actor "Пользователь" as User
+
+package "1. Исходные материалы — kb_seed/" as Sources #F3F7FC {
+  component "manifest.json\n---\nРеестр документов\n• id и название\n• domain\n• approved / draft\n• priority\n• тематические метки" as Manifest #DCEBFF
+
+  package "Курируемые Markdown-документы" as MarkdownDocs #EDF5FF {
+    component "business_context.md\nБизнес-контекст, цели\nи границы платформы" as BusinessContext
+    component "products.md\n9 инвестиционных продуктов,\nжизненный цикл, риски и учёт" as Products
+    component "modules.md\n8 модулей платформы,\nфункции и интеграции" as Modules
+    component "processes.md\n7 бизнес-процессов\nсопровождения сделок" as Processes
+    component "roles.md\n7 пользовательских ролей,\nзадачи и рабочие модули" as Roles
+    component "regulations.md\nРегуляторные и\nвнутренние правила" as Regulations
+    component "architecture.md\nСистемная архитектура,\nкомпоненты и интеграции" as Architecture
+    component "settlement_statuses.md\nСтатусы расчётов\nи смысл переходов" as SettlementStatuses
+  }
+
+  database "requirements_history.json\n---\n7 прошлых требований\n• решение и статус\n• обоснование\n• product / module / process" as RequirementsHistory
+}
+
+package "2. Загрузка и представление в памяти" as Loading #F6F0FF {
+  component "loader.py\nKnowledgeBase" as Loader #E8DFFF
+  component "Разбиение Markdown\nпо заголовкам ##" as Splitter #E8DFFF
+  component "Document\n---\nid, title, domain, status,\npriority, metadata, content" as Document #F0E9FF
+  component "Chunk\n---\ndoc_id, section, text,\nstatus, priority, source_label" as Chunk #F0E9FF
+  database "KB в памяти\n8 документов\n57 чанков\n57 approved" as MemoryKB #E8DFFF
+}
+
+package "3. Сервисы Knowledge Base — agent/kb/" as KBServices #EAF8F1 {
+  component "ontology.py\nOntology" as Ontology #DDF5E9
+  component "search.py\nKBSearch" as Search #DDF5E9
+  component "requirements_history.py\nRequirementsHistory" as HistorySearch #DDF5E9
+  component "retrieval.py\nRetrievalService" as Retrieval #CFEFDF
+
+  note right of Ontology
+    Формируется из заголовков:
+    • products.md → продукты
+    • modules.md → модули
+    • processes.md → процессы
+    • roles.md → роли
+
+    Алиасы берутся из скобок.
+    Для словоформ используется
+    упрощённый русский стеммер.
+  end note
+
+  note right of Search
+    Поиск выполняется только
+    по approved-чанкам.
+
+    Ранжирование учитывает:
+    • совпадения токенов;
+    • название секции;
+    • приоритет документа.
+
+    Текущая реализация лексическая:
+    embedding и vector DB не работают.
+  end note
+
+  note right of HistorySearch
+    Запрос сравнивается с title,
+    summary, product, module и process
+    прошлых требований.
+
+    Сходство рассчитывается по
+    пересечению токенов (Jaccard).
+  end note
+}
+
+package "4. Потребители знаний внутри агента" as AgentConsumers #FFF5E3 {
+  component "input_harness.py\nПроверка предметной\nпринадлежности сообщения" as InputHarness #FFF0D6
+  component "extractor.py / planner.py\nИзвлечение продукта, модуля,\nпроцесса и роли" as Extractor #FFF0D6
+  component "qa_handler.py / orchestrator.py\nОтветы на вопросы и\nобогащение диалога фактами" as QA #FFF0D6
+  component "composer.py\nПодготовка требования\nи проверка дублей" as Composer #FFF0D6
+  component "api/router.py\nПубликация статистики KB" as API #FFF0D6
+}
+
+package "5. Результаты" as Results #F0F9EA {
+  rectangle "Grounded Q&A\nОтвет на основе approved-источников\nс указанием происхождения фактов" as GroundedAnswer #E3F5D9
+  rectangle "Черновик требования\nКонтекст + предметные атрибуты\n+ источники + возможные дубли" as RequirementDraft #E3F5D9
+  rectangle "Статистика KB\ndocuments / chunks / approved" as KBStats #E3F5D9
+}
+
+' Загрузка исходных материалов
+Manifest --> Loader : определяет состав,\nстатус и приоритет
+BusinessContext --> Loader
+Products --> Loader
+Modules --> Loader
+Processes --> Loader
+Roles --> Loader
+Regulations --> Loader
+Architecture --> Loader
+SettlementStatuses --> Loader
+
+Loader --> Splitter : передаёт текст Markdown
+Splitter --> Document : создаёт документ
+Splitter --> Chunk : создаёт секции
+Document --> MemoryKB
+Chunk --> MemoryKB
+
+' Построение сервисов KB
+MemoryKB --> Ontology : читает 4 предметных документа
+MemoryKB --> Search : получает approved_chunks()
+RequirementsHistory --> HistorySearch : загружается отдельно
+Search --> Retrieval : top-k чанков\nс doc_id и source
+
+' Пользовательские сценарии
+User --> InputHarness : сообщение
+User --> Extractor : текст требования
+User --> QA : вопрос
+
+Ontology --> InputHarness : предметный словарь
+Ontology --> Extractor : match product / module /\nprocess / role
+Retrieval --> QA : подтверждающий контекст
+Retrieval --> Composer : факты и источники
+HistorySearch --> Composer : похожие требования\nи прошлые решения
+Extractor --> Composer : структурированные атрибуты
+MemoryKB --> API : stats()
+
+QA --> GroundedAnswer
+Composer --> RequirementDraft
+API --> KBStats
+
+note bottom of Loading
+  KB создаётся при импорте модулей во время запуска сервиса.
+  После изменения manifest.json или Markdown-файлов сервис
+  необходимо перезапустить, чтобы глобальные объекты пересобрались.
+end note
+
+legend bottom
+  |= Обозначение |= Смысл |
+  | Голубой | Исходные документы и их метаданные |
+  | Фиолетовый | Загрузка и представление данных в памяти |
+  | Зелёный | Поиск, онтология и retrieval-сервисы |
+  | Жёлтый | Компоненты агента, использующие знания |
+  | Светло-зелёный | Результаты работы Knowledge Base |
+endlegend
+
+@enduml

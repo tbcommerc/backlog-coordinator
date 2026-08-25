@@ -1,0 +1,127 @@
+@startuml
+!theme plain
+
+left to right direction
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam roundCorner 14
+skinparam ArrowColor #546E7A
+skinparam ArrowThickness 1.4
+skinparam linetype polyline
+skinparam nodesep 65
+skinparam ranksep 75
+skinparam wrapWidth 200
+
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #90A4AE
+  FontColor #263238
+}
+
+skinparam component {
+  BackgroundColor<<product>> #E3F2FD
+  BorderColor<<product>> #1565C0
+  FontColor<<product>> #0D2C4A
+
+  BackgroundColor<<agent>> #E8F5E9
+  BorderColor<<agent>> #2E7D32
+  FontColor<<agent>> #17451B
+
+  BackgroundColor<<security>> #FCE4EC
+  BorderColor<<security>> #C62828
+  FontColor<<security>> #5F1420
+
+  BackgroundColor<<dependency>> #FFF3E0
+  BorderColor<<dependency>> #E65100
+  FontColor<<dependency>> #632000
+
+  BackgroundColor<<limited>> #FFF8E1
+  BorderColor<<limited>> #F9A825
+  FontColor<<limited>> #5C4600
+
+  BackgroundColor<<stub>> #FFEBEE
+  BorderColor<<stub>> #D32F2F
+  FontColor<<stub>> #6B1515
+}
+
+skinparam database {
+  BackgroundColor #FFFDE7
+  BorderColor #F9A825
+  FontColor #5C4600
+}
+
+skinparam cloud {
+  BackgroundColor #F5F5F5
+  BorderColor #757575
+  FontColor #333333
+}
+
+title AI-агент подготовки бизнес-требований — компактная архитектура AS-IS\n<size:12>Упрощённое представление для нетехнической аудитории · август 2026</size>
+
+actor "Пользователь" as User
+actor "BA / PO\nревьюер" as Reviewer
+
+package "DMB Backlog" as DMB {
+  component "<b>Web-интерфейс</b>\nЧат и просмотр\nподготовленного требования" as UI <<product>>
+
+  component "<b>Backend</b>\nАвторизация, передача контекста\nи связь с AI-агентом" as Backend <<product>>
+
+  database "<b>DMB Database</b>\nЗапросы на ревью\nRequirementRequest" as DMBDB
+}
+
+package "AI Agent Service :9000" as AgentService {
+  component "<b>API и безопасность</b>\nHTTP API, X-Agent-Secret,\nвходные ограничения" as API <<security>>
+
+  component "<b>Agentic Core</b>\nПонимает диалог, извлекает факты\nи выбирает следующий вопрос" as Core <<agent>>
+
+  component "<b>Draft & Quality</b>\nСобирает бизнес-требование,\nпроверяет полноту и противоречия" as Draft <<agent>>
+
+  database "<b>Локальные данные агента</b>\nСессии — SQLite\nАудит — JSONL" as AgentData
+}
+
+package "Интеллектуальные источники" as Intelligence {
+  component "<b>Языковая модель</b>\nOpenAI-compatible provider\n<size:11>работает после настройки</size>" as LLM <<dependency>>
+
+  component "<b>База знаний</b>\nТермины, процессы и история\n<size:11><color:#B45309>синтетические данные</color></size>" as KB <<limited>>
+}
+
+package "Расширения вне рабочего контура" as Extensions {
+  component "<b>MCP</b>\nКаркас обнаружения инструментов\n<size:11>не подключён к Agentic Core</size>" as MCP <<stub>>
+
+  component "<b>Внешние системы</b>\nJira, Confluence, CRM и другие\n<size:11>интеграции-заглушки</size>" as External <<stub>>
+}
+
+User --> UI
+Reviewer --> UI
+UI --> Backend
+Backend --> API
+API --> Core
+Core --> Draft
+Core --> AgentData
+Draft --> AgentData
+
+Core --> LLM
+Core --> KB
+Draft --> KB
+
+Backend --> DMBDB
+
+Core ..> MCP
+Draft ..> External
+
+legend bottom
+  |= Обозначение |= Состояние компонента |
+  |<#E3F2FD> DMB Backlog | Основной продукт и пользовательский интерфейс |
+  |<#E8F5E9> AI Agent Core | Реализованные функции агента |
+  |<#FCE4EC> Безопасность | Защищённая граница Agent Service |
+  |<#FFF3E0> Внешняя зависимость | Требует отдельной конфигурации и доступа |
+  |<#FFF8E1> Ограниченный источник | Работает, но данные или возможности неполны |
+  |<#FFEBEE> Заглушка | Не участвует в рабочем сценарии |
+  | сплошная стрелка | Фактическая связь компонентов |
+  | пунктирная стрелка | Неподключённая или целевая интеграция |
+endlegend
+
+@enduml

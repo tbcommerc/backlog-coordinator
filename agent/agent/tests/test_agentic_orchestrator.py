@@ -66,6 +66,15 @@ def test_primary_runtime_has_no_legacy_dialogue_dependencies():
         assert forbidden not in source
 
 
+def test_runtime_factory_always_returns_agentic_orchestrator(tmp_path, monkeypatch):
+    import agent.orchestrator as runtime
+
+    monkeypatch.setattr(runtime, "_orchestrator_singleton", None)
+    instance = runtime.get_orchestrator(SessionStore(str(tmp_path / "factory.db")))
+
+    assert isinstance(instance, AgenticOrchestrator)
+
+
 def test_primary_runtime_fails_closed_when_llm_is_unavailable(orch, monkeypatch):
     from agent.dialogue.agentic import LLMUnavailable
     monkeypatch.setattr(
