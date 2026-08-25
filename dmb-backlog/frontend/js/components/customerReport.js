@@ -1,5 +1,5 @@
 console.log('[DMB] customerReport.js loaded');
-import { openTaskModal } from './modal.js?v=71';
+import { openTaskModal } from './modal.js?v=90';
 
 let tasksCache = null;
 

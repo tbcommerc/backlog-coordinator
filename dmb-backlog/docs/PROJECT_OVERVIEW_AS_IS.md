@@ -1,6 +1,8 @@
 # DMB Platform: документация фактического состояния
 
-Дата актуализации: 19 августа 2026 года. Этот документ описывает **реализованное As-Is**, а не целевую архитектуру.
+Дата проверки: 24 августа 2026 года. Статус: **AS-IS VERIFIED** в пределах перечисленных ниже источников. Документ описывает реализованное состояние, а не целевую архитектуру.
+
+Основные источники проверки: `backend/main.py`, `backend/config.py`, `backend/models.py`, `backend/routers/`, `backend/rate_limit.py`, `frontend/js/`, `agent/agent/`, профильные тесты и `.github/workflows/quality.yml`. При расхождении с кодом приоритет имеет исполняемая реализация.
 
 ## Назначение
 
@@ -16,14 +18,14 @@ DMB Platform состоит из двух FastAPI-приложений:
 ```text
 Browser SPA
   └─ /api/v1/* → DMB Backlog FastAPI :8000
-       ├─ SQLAlchemy → SQLite (dev) / заявленный PostgreSQL
+       ├─ SQLAlchemy → DATABASE_URL (SQLite по умолчанию)
        ├─ filesystem → backend/uploads
-       ├─ hourly in-process notification scheduler
+       ├─ опциональный hourly notification scheduler
        └─ HTTP + X-Agent-Secret → Agent FastAPI :9000
-                                   ├─ in-process session store
+                                   ├─ локальный SQLite session store
                                    ├─ local Markdown/JSON knowledge base
                                    ├─ mock или OpenAI-compatible LLM
-                                   └─ optional HTTP/MCP integrations
+                                   └─ реестры HTTP/MCP-интеграций; активность зависит от конфигурации
 ```
 
 ## Технологии
@@ -64,25 +66,29 @@ Browser SPA
 - `agent/run.py` — локальный запуск.
 - `agent/agent/main.py` — FastAPI assembly.
 - `agent/agent/api/router.py` — internal API.
-- `agent/agent/orchestrator.py` — основной dialogue workflow.
-- `agent/agent/dialogue/` — state machine и обработчики.
+- `agent/agent/agentic_orchestrator.py` — основной model-driven dialogue runtime.
+- `agent/agent/orchestrator.py` — legacy runtime и общие детерминированные операции workflow.
+- `agent/agent/dialogue/agentic.py` — structured model decision и применение фактов.
+- `agent/agent/dialogue/` — agentic-компоненты и модули legacy rollback.
 - `agent/agent/kb/` — загрузка и поиск по базе знаний.
 - `agent/agent/llm/` — provider abstraction.
 
 ## Фактический runtime backlog
 
-При старте backend:
+При каждом старте backend:
 
 1. Создаются отсутствующие таблицы.
 2. Недостающие колонки добавляются через динамический `ALTER TABLE`.
-3. Выполняются seed справочников, пользователей, ресурсов и field labels.
-4. Выполняется data migration team FK.
-5. Пересчитываются вычисляемые трудозатраты.
-6. Синхронизируются стандартные отчёты.
-7. Стартует hourly scheduler уведомлений.
-8. Монтируются frontend и публичный каталог uploads.
+3. Проверяется целостность схемы БД.
+4. Монтируется frontend.
 
-Это важно учитывать: обычный restart не является read-only операцией.
+Дополнительные операции управляются настройками:
+
+- `RUN_STARTUP_SEED` — seed справочников, пользователей, ресурсов, field labels и миграция team FK;
+- `RUN_STARTUP_MAINTENANCE` — пересчёт вычисляемых трудозатрат и синхронизация стандартных отчётов;
+- `RUN_NOTIFICATION_SCHEDULER` — встроенный hourly scheduler уведомлений.
+
+Если соответствующий флаг не задан, каждая операция наследует значение `DEBUG`: включена в dev-режиме и выключена при `DEBUG=false`. Поэтому dev-restart по умолчанию не является read-only. Каталог uploads не публикуется как static: скачивание выполняется через авторизованный API endpoint.
 
 ## API-группы backlog
 
@@ -100,7 +106,7 @@ Browser SPA
 | `/api/v1/timeline` | события timeline |
 | `/api/v1/agent` | proxy и persisted requirement requests |
 
-Источником подробной схемы запросов остаётся автоматически создаваемый `/docs`, но перед публикацией необходимо устранить дубли маршрутов.
+Источником фактической схемы запросов остаётся автоматически создаваемый `/docs`. Отсутствие дублирующихся method/path пар admin-router контролируется `backend/tests/test_route_uniqueness.py`.
 
 ## Основные frontend routes
 
@@ -110,29 +116,30 @@ Browser SPA
 
 ## Данные и владение
 
-Ключевые сущности: User, Role, Team, Task, TaskHistory, TaskComment, TaskAttachment, TaskViewer, справочники статуса/приоритета/дедлайна/проекта, Notification, Report, TimelineEvent, Epic, Story и RequirementRequest.
+Ключевые сущности: User, Role, RefreshSession, Team, Task, TaskHistory, TaskComment, TaskAttachment, TaskViewer, справочники статуса/приоритета/дедлайна/проекта, Notification, Report, TimelineEvent, Epic, Story и RequirementRequest.
 
 Файлы хранятся отдельно от БД в `backend/uploads/{task_id}`; БД содержит metadata. Нужны согласованный backup и orphan cleanup.
 
 ## Аутентификация
 
-1. Login выдаёт access и refresh JWT.
-2. SPA хранит оба токена в `localStorage`.
-3. API client добавляет access как Bearer.
-4. При 401 выполняется refresh и повтор исходного запроса.
-5. Logout удаляет локальные токены; серверной revocation нет.
+1. Login возвращает короткоживущий access JWT и устанавливает refresh-токен в cookie `dmb_refresh`.
+2. Access-токен хранится только в памяти SPA; в `localStorage` сохраняется профиль пользователя, но не действующие токены.
+3. Refresh cookie имеет `HttpOnly`, `SameSite=Strict`, ограниченный path `/api/v1/auth` и `Secure` при `DEBUG=false`.
+4. API client добавляет access-токен как Bearer.
+5. При 401 выполняются rotation серверной refresh-сессии, получение нового access-токена и повтор исходного запроса.
+6. Logout отзывает текущую refresh-сессию в БД и удаляет cookie.
 
-Роли содержат строковые уровни доступа. Применение этих уровней пока не единообразно; актуальные риски описаны в `CODE_REVIEW_2026-08-19.md`.
+Роли содержат строковые уровни доступа. Применение этих уровней пока не единообразно; риски на дату аудита описаны в `archive/reviews/CODE_REVIEW_2026-08-19.md`.
 
 ## Конфигурация
 
 ### Backlog
 
-`APP_NAME`, `DEBUG`, `DATABASE_URL`, `SECRET_KEY`, `ALGORITHM`, сроки JWT, `CORS_ORIGINS`, `AGENT_BASE_URL`, `AGENT_SECRET`.
+`APP_NAME`, `APP_VERSION`, `DEBUG`, `RUN_STARTUP_SEED`, `RUN_STARTUP_MAINTENANCE`, `RUN_NOTIFICATION_SCHEDULER`, `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `ALGORITHM`, сроки JWT, `CORS_ORIGINS`, `AGENT_BASE_URL`, `AGENT_SECRET`.
 
 ### Agent
 
-`LLM_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `AGENT_PORT`, `DEBUG`, `AGENT_SECRET`, `MCP_SERVERS_JSON`, `TOOLS_CONFIG_JSON`.
+`LLM_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_EMBEDDING_MODEL`, `AGENT_DIALOGUE_ENGINE`, `SESSION_DB`, `AGENT_PORT`, `DEBUG`, `AGENT_SECRET`, `MCP_SERVERS_JSON`, `TOOLS_CONFIG_JSON`.
 
 Production должен запускаться только с явно заданными уникальными secret’ами и `DEBUG=false`.
 
@@ -145,6 +152,9 @@ cd D:\Проект\dmb-backlog\backend
 $env:DATABASE_URL = 'sqlite:///./dmb_backlog.dev.db'
 $env:SECRET_KEY = '<случайное-dev-значение>'
 $env:AGENT_SECRET = '<одинаковое-значение-для-двух-сервисов>'
+$env:RUN_STARTUP_SEED = 'false'
+$env:RUN_STARTUP_MAINTENANCE = 'false'
+$env:RUN_NOTIFICATION_SCHEDULER = 'false'
 uvicorn main:app --reload --port 8000
 ```
 
@@ -157,14 +167,14 @@ $env:LLM_PROVIDER = 'mock'
 python run.py
 ```
 
-Production worker плановых уведомлений (запускать в одном экземпляре):
+Отдельный production worker плановых уведомлений (запускать в одном экземпляре при `DEBUG=false` и безопасной конфигурации):
 
 ```powershell
 cd D:\Проект\dmb-backlog\backend
 python run_notification_scheduler.py
 ```
 
-Внимание: даже с отдельной dev БД backlog startup выполняет schema/seed/recalculation.
+Внимание: создание таблиц и добавление отсутствующих колонок выполняются всегда. Seed, maintenance и встроенный scheduler отключаются указанными выше флагами.
 
 ## Проверки
 
@@ -177,26 +187,26 @@ cd D:\Проект\dmb-backlog\backend
 pytest tests -v
 ```
 
-Минимальный будущий pipeline: Python compile + Ruff + pytest, JavaScript syntax/ESLint, browser smoke, authorization matrix, проверка совместимости моделей с чистой и существующей схемой, dependency audit и secret scan.
+Фактический GitHub Actions workflow `.github/workflows/quality.yml` выполняет Python compile, backend pytest, проверку синтаксиса JavaScript, frontend unit tests и `pip-audit`. Ruff, ESLint, browser smoke и secret scan в этом workflow не подтверждены.
 
 ## Эксплуатационные ограничения As-Is
 
-- SQLite и process-local state не подходят для нескольких workers.
-- Scheduler запускается в каждом worker.
-- Rate limit хранится в памяти процесса.
+- SQLite-файлы backlog и agent session store ограничивают безопасное горизонтальное масштабирование и требуют отдельной оценки многопроцессного режима.
+- Встроенный scheduler запускается в каждом worker, если `RUN_NOTIFICATION_SCHEDULER=true`; для production предусмотрен отдельный worker.
+- Rate limit использует Redis при заданном `REDIS_URL`, иначе process-local memory fallback.
 - Upload storage локален конкретному host.
-- Agent sessions process-local.
+- Agent sessions сохраняются в локальном SQLite-файле `SESSION_DB`.
 - Health endpoint проверяет только процесс, а не DB/agent/storage.
-- Нет готовых Docker/Kubernetes/CI manifests в актуальном дереве.
+- Есть GitHub Actions quality workflow; Docker/Kubernetes manifests в проверенном дереве не найдены.
 - Observability ограничена файловым логом и stdout.
 
 ## Связанные документы
 
-- `CODE_REVIEW_2026-08-19.md` — риски и план исправлений.
-- `ARCHITECTURE.md` — расширенное архитектурное описание, частично target-state.
+- `archive/reviews/CODE_REVIEW_2026-08-19.md` — исторический аудит рисков и исправлений на 19.08.2026.
+- `ARCHITECTURE.md` — расширенное архитектурное описание; утверждения сверять с реализацией.
 - `API_SPEC.md` — ручная спецификация API.
 - `DATA_MODEL.md` и `db-schema.dbml` — модель данных.
 - `SECURITY.md` — заявленные security practices.
-- `DEPLOYMENT.md` — целевые сценарии развёртывания.
+- `DEPLOYMENT.md` — локальные и целевые сценарии развёртывания.
 - `TESTING.md` — стратегия тестирования.
 - `agent/docs/` — отдельная документация AI-агента.

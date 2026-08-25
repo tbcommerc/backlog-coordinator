@@ -71,12 +71,13 @@ export class API {
      * @param {*} [data]
      * @returns {Promise<*>}
      */
-    async request(method, path, data = null) {
+    async request(method, path, data = null, requestOptions = {}) {
         const url = `${this.baseURL}${path}`;
         const options = {
             method,
             headers: this.getHeaders(),
-            credentials: 'same-origin'
+            credentials: 'same-origin',
+            signal: requestOptions.signal
         };
         
         if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
@@ -167,7 +168,7 @@ export class API {
      * @param {*} data
      * @returns {Promise<*>}
      */
-    async post(path, data) { return this.request('POST', path, data); }
+    async post(path, data, requestOptions = {}) { return this.request('POST', path, data, requestOptions); }
     /**
      * @param {string} path
      * @param {*} data
@@ -184,7 +185,7 @@ export class API {
      * @param {*} data
      * @returns {Promise<*>}
      */
-    async patch(path, data) { return this.request('PATCH', path, data); }
+    async patch(path, data, requestOptions = {}) { return this.request('PATCH', path, data, requestOptions); }
 
     /**
      * Download an authenticated file without exposing a public storage URL.

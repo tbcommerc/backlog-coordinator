@@ -1,10 +1,10 @@
-console.log('[DMB] taskTable.js v20260806 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=52';
-import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=71';
+console.log('[DMB] taskTable.js v20260807 loaded');
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=81';
+import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=90';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=47';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=49';
-import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=47';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=71';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=66';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=48';
 import { safeExternalUrl } from '../urlUtils.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { bindViewStateAction, renderViewState } from './viewState.js';
@@ -59,23 +59,25 @@ export function renderTasksPage(app) {
       quickFilters: renderQuickFilters(),
     })}
 
-    ${renderQuickEditToolbar('backlog')}
+    <div id="tasks-content">
+      <div id="backlog-bulk-actions" class="flex items-center gap-3" style="margin-bottom:var(--space-4);display:none;">
+        <span class="text-secondary">Выбрано: <strong id="backlog-selected-count">0</strong></span>
+        <button class="btn btn-secondary btn-sm" id="backlog-bulk-selected">Массовые операции (0)</button>
+      </div>
 
-    <div id="backlog-bulk-actions" class="flex items-center gap-3" style="margin-bottom:var(--space-4);display:none;">
-      <span class="text-secondary">Выбрано: <strong id="backlog-selected-count">0</strong></span>
-      <button class="btn btn-secondary btn-sm" id="backlog-bulk-selected">Массовые операции (0)</button>
-    </div>
+      ${renderQuickEditToolbar('backlog')}
 
-    <div id="tasks-container">
-      <div class="table-container" style="overflow-x:auto;">
-        <table class="table" id="tasks-table">
-          <thead>
-            <tr id="table-header-row"></tr>
-          </thead>
-          <tbody id="tasks-tbody">
-            ${renderSkeletonRows(8)}
-          </tbody>
-        </table>
+      <div id="tasks-container">
+        <div class="table-container" style="overflow-x:auto;">
+          <table class="table" id="tasks-table">
+            <thead>
+              <tr id="table-header-row"></tr>
+            </thead>
+            <tbody id="tasks-tbody">
+              ${renderSkeletonRows(8)}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -140,6 +142,7 @@ export async function initTasksPage(app) {
     onRefresh: () => loadTasks(app),
     onQuickEdit: () => { if (currentView === 'table') { if (isQuickEdit('backlog')) { requestExitQuickEdit('backlog'); } else { enterQuickEdit('backlog'); } } },
     onBulkOps: () => { if (currentView === 'table') openBacklogBulkOps(app); },
+    showSavedViewRevert: false,
     getSavedViewState: () => ({
       view: currentView,
       columns: { ...columnSettings },
@@ -192,6 +195,7 @@ export async function initTasksPage(app) {
     getMinWidths: () => columnMinWidths,
     getLayout: () => ({ cols: columnOrder.filter(k => columnSettings[k]), offset: isQuickEdit('backlog') ? 0 : 1 }),
     getFixed: () => columnFixed,
+    onResizeEnd: saveBacklogColumnState,
     onUnfix: () => { saveBacklogColumnState(); renderCurrentView(); },
     onSort: (key) => {
       toggleSortState(columnSort, key);
@@ -309,7 +313,8 @@ function applyBacklogSavedViewState(state = {}) {
   }
   if (Array.isArray(state.columnOrder)) {
     const valid = new Set(getAllColumnKeys());
-    columnOrder.splice(0, columnOrder.length, ...state.columnOrder.filter(key => valid.has(key)));
+    const savedOrder = state.columnOrder.filter(key => valid.has(key));
+    columnOrder.splice(0, columnOrder.length, ...savedOrder, ...getAllColumnKeys().filter(key => !savedOrder.includes(key)));
   }
   columnWidths = state.widths ? { ...state.widths } : {};
   Object.keys(columnFixed).forEach(key => delete columnFixed[key]);
@@ -324,13 +329,13 @@ function applyBacklogSavedViewState(state = {}) {
 async function loadAllTaskPages(app, extraQuery) {
   const perPage = 1000;
   const suffix = extraQuery ? `&${extraQuery}` : '';
-  const first = await app.api.get(`/tasks?page=1&per_page=${perPage}${suffix}`);
+  const first = await app.api.get(`/tasks/?page=1&per_page=${perPage}${suffix}`);
   const pages = Math.max(1, Number(first.pages) || 1);
   if (pages === 1) return first;
 
   const requests = [];
   for (let page = 2; page <= pages; page++) {
-    requests.push(app.api.get(`/tasks?page=${page}&per_page=${perPage}${suffix}`));
+    requests.push(app.api.get(`/tasks/?page=${page}&per_page=${perPage}${suffix}`));
   }
   const rest = await Promise.all(requests);
   const items = [first, ...rest].flatMap(part => part.items || []);
@@ -461,7 +466,7 @@ function renderCell(col, task) {
     case 'department': return `<span>${escapeHtml(task.department_name || '—')}</span>`;
     case 'project': return `<span>${escapeHtml(task.project_name || '—')}</span>`;
     case 'task_type': return `<span>${escapeHtml(task.task_type_name || '—')}</span>`;
-    case 'involved_teams': return `<span class="cell-truncate">${escapeHtml(Array.isArray(task.involved_teams) ? task.involved_teams.join(', ') : task.involved_teams || '—')}</span>`;
+    case 'involved_teams': return `<span class="cell-truncate">${escapeHtml(resolveInvolvedTeams(task.involved_team_names || task.involved_teams))}</span>`;
     case 'deadline': return `<span>${renderDeadline(task)}</span>`;
     case 'deadline_po': return `<span>${escapeHtml(task.deadline_po_name || '—')}</span>`;
     case 'effort_days': return `<span>${task.effort_days != null ? task.effort_days + ' дн' : '—'}</span>`;
@@ -503,6 +508,32 @@ function renderCell(col, task) {
     case 'tags': return renderTags(task.tags);
     default: return '';
   }
+}
+
+function resolveInvolvedTeams(teams) {
+  if (!teams || !teams.length) return '—';
+  const items = Array.isArray(teams) ? teams : (() => {
+    if (typeof teams === 'string') {
+      const trimmed = teams.trim();
+      if (!trimmed) return [];
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (_) {}
+      }
+      return trimmed.split(',').map(x => x.trim()).filter(Boolean);
+    }
+    return [teams];
+  })();
+  if (!items.length) return '—';
+  if (!Array.isArray(items)) return '—';
+  const teamNames = (window.app?.teams || []).map(team => ({ id: Number(team.id), name: team.name || '' }));
+  const map = new Map(teamNames.map(x => [x.id, x.name]));
+  return items.map(v => {
+    const key = Number(v);
+    return Number.isNaN(key) ? String(v) : (map.get(key) || String(v));
+  }).join(', ');
 }
 
 function renderTableRow(task, cols, showCheckbox) {

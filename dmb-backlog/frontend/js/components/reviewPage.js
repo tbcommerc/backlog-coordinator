@@ -136,11 +136,7 @@ export async function renderReviewDetailPage(app, requestId) {
   }
 
   const user = app.store.get('currentUser');
-  const role = (user?.role_name || '').toLowerCase();
-  const canReview = [
-    'po/pl/cl', 'ba/участник команды', 'ba/бизнес-аналитик',
-    'лидер трайба', 'проектный офис (админ)', 'администратор',
-  ].includes(role);
+  const canReview = (user?.permissions?.review || 'none') !== 'none';
 
   return `
     <div class="page-header animate-fade-in" style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:var(--space-3);">

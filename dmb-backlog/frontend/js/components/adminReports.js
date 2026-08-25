@@ -58,26 +58,47 @@ const REPORT_SORT_FIELDS = [
 
 export const scriptManagedReportKeys = ['directorate', 'did-operational', 'pip', 'progress'];
 const BOOLEAN_REPORT_FIELDS = ['did_demo'];
+const NUMBER_REPORT_FIELDS = new Set(['id','progress','effort_days','effort_rub','financial_effect','cv','priority_score']);
+const DATE_REPORT_FIELDS = new Set(['date_received','created_at','updated_at']);
+
+function reportFieldType(field) {
+  if (BOOLEAN_REPORT_FIELDS.includes(field)) return 'boolean';
+  if (NUMBER_REPORT_FIELDS.has(field)) return 'number';
+  if (DATE_REPORT_FIELDS.has(field)) return 'date';
+  return 'text';
+}
+
+function reportOperators(field) {
+  const type = reportFieldType(field);
+  if (type === 'number' || type === 'date') return [['equals','Равно'],['not_equals','Не равно'],['gt','Больше/позже'],['lt','Меньше/раньше']];
+  if (type === 'boolean') return [['equals','Равно'],['not_equals','Не равно']];
+  return [['equals','Равно'],['not_equals','Не равно'],['contains','Содержит'],['in','В списке']];
+}
 
 export function parseReportJson(str) {
   if (!str) return null;
   try { return typeof str === 'string' ? JSON.parse(str) : str; } catch { return null; }
 }
 
+function escapeReportValue(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
+}
+
 export function renderReportForm(data, mode, escapeHtml) {
-  const isEdit = mode === 'edit';
   const existingFields = parseReportJson(data.fields) || [];
   const existingFilters = parseReportJson(data.filters) || [];
-
-  const fieldCheckboxes = getReportFields().map(f => {
-    const checked = existingFields.includes(f.key) ? ' checked' : '';
-    return `<label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-      <input type="checkbox" class="report-field-cb" value="${f.key}"${checked} style="width:14px;height:14px">
-      ${f.label}
-    </label>`;
-  }).join('');
-
-  const filterRows = existingFilters.map((f, i) => renderFilterRow(f, i)).join('');
+  const fields = getReportFields();
+  const selected = existingFields.map(key => fields.find(field => field.key === key) || { key, label: `Неизвестное поле: ${key}`, legacy: true });
+  const availableFields = fields.map(field => `<label class="report-field-option" data-search="${escapeReportValue(field.label.toLowerCase())}">
+    <input type="checkbox" class="report-field-cb" value="${field.key}"${existingFields.includes(field.key) ? ' checked' : ''}> <span>${escapeReportValue(field.label)}</span>
+  </label>`).join('');
+  const selectedFields = selected.map(field => `<div class="report-selected-field${field.legacy ? ' is-legacy' : ''}" data-field="${escapeReportValue(field.key)}">
+    <span class="report-selected-drag" aria-hidden="true">⋮⋮</span><span>${escapeReportValue(field.label)}</span>
+    <span class="report-selected-actions"><button type="button" class="report-field-up" aria-label="Переместить вверх">↑</button><button type="button" class="report-field-down" aria-label="Переместить вниз">↓</button></span>
+  </div>`).join('');
+  const filterRows = existingFilters.map((filter, index) => renderFilterRow(filter, index)).join('');
 
   const groupOpts = REPORT_GROUP_OPTIONS.map(g =>
     `<option value="${g.value}"${data.group_by === g.value ? ' selected' : ''}>${g.label}</option>`
@@ -87,81 +108,31 @@ export function renderReportForm(data, mode, escapeHtml) {
     `<option value="${s.value}"${data.sort_by === s.value ? ' selected' : ''}>${s.label}</option>`
   ).join('');
 
-  const standardBadge = data.type === 'standard' ? `
-    <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <span style="font-size:11px;background:var(--bg-tertiary);color:var(--text-muted);padding:3px 8px;border-radius:6px">Стандартный отчёт</span>
-      ${data.key ? `<span style="font-size:11px;background:var(--accent-dim);color:var(--accent);padding:3px 8px;border-radius:6px;font-family:monospace">key: ${data.key}</span>` : ''}
-    </div>` : '';
-
   const isScriptManaged = scriptManagedReportKeys.includes(data.key);
-  const scriptNotice = isScriptManaged ? `
-    <div style="margin-bottom:16px;padding:10px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-muted);font-size:12px;line-height:1.5">
-      Отчёт выполняется по сценарию страницы «Статусы для встреч» — со своей квартальной фильтрацией и группировкой.
-      Поля, фильтры и группировка заданы этим сценарием и вручную не настраиваются. Доступно изменение названия и описания.
-    </div>` : '';
-
   return `
-    ${standardBadge}
-    ${scriptNotice}
-    <div class="form-group">
-      <label class="form-label">Название отчёта <span class="required">*</span></label>
-      <input class="input modal-field" id="report-name" value="${escapeHtml(data.name || '')}" placeholder="Например: Задачи команды">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Описание</label>
-      <textarea class="input modal-field" id="report-description" rows="2" placeholder="Описание назначения отчёта">${escapeHtml(data.description || '')}</textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Видимость</label>
-      <select class="input modal-field" id="report-is-public">
-        <option value="false"${data.is_public !== true ? ' selected' : ''}>Только я</option>
-        <option value="true"${data.is_public === true ? ' selected' : ''}>Все пользователи</option>
-      </select>
-    </div>
-
-    ${isScriptManaged ? `
-    <div style="margin-top:16px;padding:14px;background:var(--bg-tertiary);border:1px dashed var(--border-color);border-radius:8px;color:var(--text-muted);font-size:12px;text-align:center">
-      Настройка полей, фильтров и группировки для этого отчёта недоступна.
-    </div>` : `
-    <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
-      <strong style="font-size:13px">Поля для отображения</strong>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Отметьте галочками колонки, которые будут видны в отчёте</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;max-height:200px;overflow-y:auto;padding:4px 0">
-      ${fieldCheckboxes}
-    </div>
-
-    <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
-      <strong style="font-size:13px">Фильтры</strong>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Настройте условия фильтрации задач. Для оператора «В списке» значения указываются через запятую</div>
-    </div>
-    <div id="report-filters-container">
-      ${filterRows}
-    </div>
-    <button class="btn btn-secondary btn-sm" id="report-add-filter" style="margin-top:8px">
-      <i data-lucide="plus" style="width:12px;height:12px"></i> Добавить фильтр
-    </button>
-
-    <div style="margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-color)">
-      <strong style="font-size:13px">Группировка и сортировка</strong>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group">
-        <label class="form-label">Группировка</label>
-        <select class="input modal-field" id="report-group-by">${groupOpts}</select>
+    <div class="report-wizard" data-step="1" data-script-managed="${isScriptManaged}">
+      ${data.type === 'standard' ? `<div class="report-system-badge">Системный отчёт${data.key ? ` · ${escapeReportValue(data.key)}` : ''}</div>` : ''}
+      <div class="report-wizard-steps" role="tablist" aria-label="Шаги настройки отчёта">
+        ${['Основное','Поля','Фильтры','Сортировка'].map((label,index) => `<button type="button" class="report-step${index === 0 ? ' active' : ''}" data-report-step="${index + 1}"${isScriptManaged && index > 0 ? ' disabled' : ''}>${index + 1}. ${label}</button>`).join('')}
       </div>
-      <div class="form-group">
-        <label class="form-label">Сортировка по</label>
-        <select class="input modal-field" id="report-sort-by">${sortOpts}</select>
-      </div>
+      <div class="report-wizard-layout"><div class="report-wizard-main">
+        <section class="report-step-panel active" data-report-panel="1">
+          <div id="report-form-error" class="report-form-error" hidden></div>
+          <div class="form-group"><label class="form-label" for="report-name">Название отчёта <span class="required">*</span></label><input class="input modal-field" id="report-name" value="${escapeHtml(data.name || '')}" placeholder="Например: Задачи команды"></div>
+          <div class="form-group"><label class="form-label" for="report-description">Описание</label><textarea class="input modal-field" id="report-description" rows="3" placeholder="Для чего нужен отчёт">${escapeHtml(data.description || '')}</textarea></div>
+          <div class="form-group"><label class="form-label" for="report-is-public">Видимость</label><select class="input modal-field" id="report-is-public"><option value="false"${data.is_public !== true ? ' selected' : ''}>Только я</option><option value="true"${data.is_public === true ? ' selected' : ''}>Все пользователи</option></select></div>
+          ${isScriptManaged ? '<div class="report-managed-notice">Поля, фильтры и группировка управляются системным сценарием. Можно изменить только название, описание и видимость.</div>' : ''}
+        </section>
+        <section class="report-step-panel" data-report-panel="2"${isScriptManaged ? ' hidden' : ''}>
+          <input class="input" id="report-field-search" placeholder="Найти поле…" aria-label="Поиск полей">
+          <div class="report-fields-actions"><button type="button" class="btn btn-ghost btn-sm" id="report-fields-all">Выбрать всё</button><button type="button" class="btn btn-ghost btn-sm" id="report-fields-clear">Очистить</button></div>
+          <div class="report-fields-layout"><div class="report-fields-available">${availableFields}</div><div><h4>Выбранные поля и порядок</h4><div id="report-selected-fields" class="report-selected-fields">${selectedFields || '<p class="text-muted report-no-fields">Поля не выбраны</p>'}</div></div></div>
+        </section>
+        <section class="report-step-panel" data-report-panel="3"${isScriptManaged ? ' hidden' : ''}><p class="text-muted">Условия объединяются оператором «И».</p><div id="report-filters-container">${filterRows}</div><button type="button" class="btn btn-secondary btn-sm" id="report-add-filter"><i data-lucide="plus"></i> Добавить фильтр</button></section>
+        <section class="report-step-panel" data-report-panel="4"${isScriptManaged ? ' hidden' : ''}><div class="report-sort-grid"><div class="form-group"><label class="form-label">Группировка</label><select class="input modal-field" id="report-group-by">${groupOpts}</select></div><div class="form-group"><label class="form-label">Сортировка</label><select class="input modal-field" id="report-sort-by">${sortOpts}</select></div></div><div class="form-group" id="report-sort-order-group" style="${data.sort_by ? '' : 'display:none'}"><label class="form-label">Направление</label><select class="input modal-field" id="report-sort-order"><option value="asc"${data.sort_order !== 'desc' ? ' selected' : ''}>По возрастанию</option><option value="desc"${data.sort_order === 'desc' ? ' selected' : ''}>По убыванию</option></select></div></section>
+      </div><aside class="report-wizard-preview"><h4>Структура отчёта</h4><div id="report-preview-summary"></div></aside></div>
+      <div class="report-wizard-nav"><button type="button" class="btn btn-secondary" id="report-step-prev" disabled>Назад</button><button type="button" class="btn btn-primary" id="report-step-next"${isScriptManaged ? ' hidden' : ''}>Далее</button></div>
     </div>
-    <div class="form-group" id="report-sort-order-group" style="${data.sort_by ? '' : 'display:none'}">
-      <label class="form-label">Направление сортировки</label>
-      <select class="input modal-field" id="report-sort-order">
-        <option value="asc"${data.sort_order !== 'desc' ? ' selected' : ''}>По возрастанию (А→Я)</option>
-        <option value="desc"${data.sort_order === 'desc' ? ' selected' : ''}>По убыванию (Я→А)</option>
-      </select>
-    </div>`}
   `;
 }
 
@@ -169,22 +140,16 @@ export function renderFilterRow(filter, index) {
   const fieldOpts = getReportFields().map(f =>
     `<option value="${f.key}"${filter.field === f.key ? ' selected' : ''}>${f.label}</option>`
   ).join('');
-  const opOpts = [
-    { value: 'equals', label: 'Равно' },
-    { value: 'not_equals', label: 'Не равно' },
-    { value: 'contains', label: 'Содержит' },
-    { value: 'gt', label: 'Больше' },
-    { value: 'lt', label: 'Меньше' },
-    { value: 'in', label: 'В списке' },
-  ].map(o => `<option value="${o.value}"${filter.operator === o.value ? ' selected' : ''}>${o.label}</option>`).join('');
+  const field = filter.field || getReportFields()[0].key;
+  const opOpts = reportOperators(field).map(([value,label]) => `<option value="${value}"${filter.operator === value ? ' selected' : ''}>${label}</option>`).join('');
 
   const value = Array.isArray(filter.value) ? filter.value.join(', ') : (filter.value || '');
 
   return `
-    <div class="report-filter-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px" data-filter-index="${index}">
+    <div class="report-filter-row" data-filter-index="${index}" data-field-type="${reportFieldType(field)}">
       <select class="input report-filter-field" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px">${fieldOpts}</select>
       <select class="input report-filter-op" style="width:100px;font-size:12px;padding:5px 8px">${opOpts}</select>
-      <input class="input report-filter-value" value="${value.replace(/"/g, '&quot;')}" placeholder="Значение" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px">
+      ${reportFieldType(field) === 'boolean' ? `<select class="input report-filter-value"><option value="true"${value === true || value === 'true' ? ' selected' : ''}>Да</option><option value="false"${value === false || value === 'false' ? ' selected' : ''}>Нет</option></select>` : `<input type="${reportFieldType(field)}" class="input report-filter-value" value="${escapeReportValue(value)}" placeholder="Значение">`}
       <button class="report-filter-remove" style="padding:4px;border:none;background:transparent;cursor:pointer;color:#f43f5e;border-radius:4px" title="Удалить фильтр">
         <i data-lucide="x" style="width:14px;height:14px"></i>
       </button>
@@ -194,7 +159,8 @@ export function renderFilterRow(filter, index) {
 
 export function getReportPayload(modalData, documentRef = document) {
   const isScriptManaged = scriptManagedReportKeys.includes(modalData && modalData.key);
-  const selectedFields = Array.from(documentRef.querySelectorAll('.report-field-cb:checked')).map(cb => cb.value);
+  const orderedFields = Array.from(documentRef.querySelectorAll('.report-selected-field[data-field]')).map(row => row.dataset.field);
+  const selectedFields = orderedFields.length ? orderedFields : Array.from(documentRef.querySelectorAll('.report-field-cb:checked')).map(cb => cb.value);
   const filterRows = documentRef.querySelectorAll('.report-filter-row');
   const filters = Array.from(filterRows).map(row => {
     const field = row.querySelector('.report-filter-field')?.value;
@@ -203,7 +169,7 @@ export function getReportPayload(modalData, documentRef = document) {
     let value = rawValue;
     if (operator === 'in') {
       value = rawValue.split(',').map(s => s.trim()).filter(Boolean);
-    } else if (operator === 'gt' || operator === 'lt') {
+    } else if ((operator === 'gt' || operator === 'lt') && reportFieldType(field) === 'number') {
       const num = parseFloat(rawValue);
       value = Number.isNaN(num) ? rawValue : num;
     } else if (BOOLEAN_REPORT_FIELDS.includes(field) && typeof rawValue === 'string') {
@@ -242,6 +208,35 @@ export function getReportPayload(modalData, documentRef = document) {
     sort_by: documentRef.getElementById('report-sort-by')?.value || null,
     sort_order: documentRef.getElementById('report-sort-order')?.value || 'asc',
   };
+}
+
+export function validateReportForm(modalData, documentRef = document) {
+  const errors = [];
+  if (!(documentRef.getElementById('report-name')?.value || '').trim()) errors.push({ step: 1, message: 'Введите название отчёта' });
+  if (!scriptManagedReportKeys.includes(modalData?.key)) {
+    const fields = Array.from(documentRef.querySelectorAll('.report-selected-field[data-field]'));
+    if (!fields.length) errors.push({ step: 2, message: 'Выберите хотя бы одно поле' });
+    for (const row of documentRef.querySelectorAll('.report-filter-row')) {
+      const field = row.querySelector('.report-filter-field')?.value;
+      const type = reportFieldType(field);
+      const operator = row.querySelector('.report-filter-op')?.value || 'equals';
+      const value = row.querySelector('.report-filter-value')?.value ?? '';
+      if (!String(value).trim()) errors.push({ step: 3, message: 'Заполните или удалите пустой фильтр' });
+      if (type === 'number' && value !== '' && !Number.isFinite(Number(value))) errors.push({ step: 3, message: 'Числовой фильтр содержит некорректное значение' });
+      if (!reportOperators(field).some(([candidate]) => candidate === operator)) errors.push({ step: 3, message: 'Оператор не соответствует типу поля' });
+    }
+  }
+  return errors;
+}
+
+export function updateReportFilterRow(row) {
+  if (!row) return;
+  const field = row.querySelector('.report-filter-field')?.value || 'id';
+  const previousValue = row.querySelector('.report-filter-value')?.value || '';
+  const replacement = renderFilterRow({ field, operator: 'equals', value: previousValue }, Number(row.dataset.filterIndex || 0));
+  const holder = document.createElement('div');
+  holder.innerHTML = replacement.trim();
+  row.replaceWith(holder.firstElementChild);
 }
 
 function adminReportCell(f, item) {
@@ -290,7 +285,7 @@ export async function executeAdminReport(reportId, app, report, escapeHtml) {
     let html = '';
 
     if (grouped && data.groups) {
-      html = `<div style="padding:8px 0;font-size:12px;color:var(--text-muted)">${items.length} задач · ${data.groups.length} групп · Группировка по «${data.group_field}»</div>`;
+      html = `<div style="padding:8px 0;font-size:12px;color:var(--text-muted)">${items.length} задач · ${data.groups.length} групп · Группировка по «${escapeReportValue(data.group_field)}»</div>`;
       data.groups.forEach(grp => {
         html += `
           <div class="card" style="margin-bottom:12px;overflow:hidden">

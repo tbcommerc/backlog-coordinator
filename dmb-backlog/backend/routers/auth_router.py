@@ -8,7 +8,7 @@ from datetime import datetime
 from database import get_db
 from models import User
 from schemas import LoginRequest, TokenResponse, UserResponse
-from auth import verify_password, create_access_token, get_current_user
+from auth import verify_password, create_access_token, get_current_user, get_request_review_access, is_customer_portal_only, get_task_action_scope, can_make_pip_decision
 from rate_limit import get_rate_limiter, rate_limit_key
 from refresh_sessions import issue_refresh_session, revoke_refresh_session, rotate_refresh_session, cleanup_expired_sessions
 from config import settings
@@ -105,6 +105,12 @@ async def login(request: Request, response: Response, login_data: LoginRequest, 
                 "customer": user.role.customer_access if user.role else "none",
                 "settings": user.role.settings_access if user.role else "none",
                 "admin": user.role.admin_access if user.role else "none",
+                "customer_portal_mode": "only" if is_customer_portal_only(user) else "standard",
+                "review": get_request_review_access(user),
+                "task_edit": get_task_action_scope(user, "edit"),
+                "task_comment": get_task_action_scope(user, "comment"),
+                "task_delete": get_task_action_scope(user, "delete"),
+                "pip_decision": "available" if can_make_pip_decision(user) else "none",
             }
         }
     )
@@ -153,6 +159,12 @@ async def refresh_token(request: Request, response: Response, db: Session = Depe
                 "customer": user.role.customer_access if user.role else "none",
                 "settings": user.role.settings_access if user.role else "none",
                 "admin": user.role.admin_access if user.role else "none",
+                "customer_portal_mode": "only" if is_customer_portal_only(user) else "standard",
+                "review": get_request_review_access(user),
+                "task_edit": get_task_action_scope(user, "edit"),
+                "task_comment": get_task_action_scope(user, "comment"),
+                "task_delete": get_task_action_scope(user, "delete"),
+                "pip_decision": "available" if can_make_pip_decision(user) else "none",
             }
         }
     )
@@ -177,6 +189,21 @@ def get_me(current_user: User = Depends(get_current_user)):
         can_edit=current_user.can_edit,
         can_delete=current_user.can_delete,
         can_export=current_user.can_export,
+        permissions={
+            "backlog_dmb": current_user.role.backlog_dmb_access if current_user.role else "none",
+            "backlog_team": current_user.role.backlog_team_access if current_user.role else "none",
+            "reports": current_user.role.reports_access if current_user.role else "none",
+            "analytics": current_user.role.analytics_access if current_user.role else "none",
+            "customer": current_user.role.customer_access if current_user.role else "none",
+            "settings": current_user.role.settings_access if current_user.role else "none",
+            "admin": current_user.role.admin_access if current_user.role else "none",
+            "customer_portal_mode": "only" if is_customer_portal_only(current_user) else "standard",
+            "review": get_request_review_access(current_user),
+            "task_edit": get_task_action_scope(current_user, "edit"),
+            "task_comment": get_task_action_scope(current_user, "comment"),
+            "task_delete": get_task_action_scope(current_user, "delete"),
+            "pip_decision": "available" if can_make_pip_decision(current_user) else "none",
+        },
     )
 
 

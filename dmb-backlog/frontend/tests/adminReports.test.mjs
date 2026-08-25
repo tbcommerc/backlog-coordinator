@@ -4,6 +4,7 @@ import {
   parseReportJson,
   renderFilterRow,
   renderReportForm,
+  validateReportForm,
 } from '../js/components/adminReports.js';
 
 const escapeHtml = value => String(value)
@@ -23,6 +24,9 @@ const form = renderReportForm({
 assert.match(form, /&lt;Отчёт&gt;/);
 assert.match(form, /&lt;Описание&gt;/);
 assert.ok(!form.includes('<Отчёт>'));
+assert.match(form, /class="report-wizard"/);
+assert.match(form, /data-report-panel="4"/);
+assert.match(form, /data-field="title"/);
 
 const filter = renderFilterRow({ field: 'title', operator: 'contains', value: 'Тест' }, 0);
 assert.match(filter, /data-filter-index="0"/);
@@ -49,3 +53,14 @@ assert.equal(payload.name, 'Мой отчёт');
 assert.equal(payload.fields, '["title"]');
 assert.equal(payload.group_by, 'team_name');
 assert.equal(payload.sort_order, 'desc');
+
+const orderedDocument = {
+  ...fakeDocument,
+  querySelectorAll: selector => {
+    if (selector === '.report-selected-field[data-field]') return [{ dataset: { field: 'status_name' } }, { dataset: { field: 'title' } }];
+    if (selector === '.report-filter-row') return [];
+    return [];
+  },
+};
+assert.equal(getReportPayload({}, orderedDocument).fields, '["status_name","title"]');
+assert.deepEqual(validateReportForm({}, orderedDocument), []);

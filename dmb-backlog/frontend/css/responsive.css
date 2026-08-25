@@ -71,8 +71,25 @@
   .sidebar .sidebar-item,
   .sidebar.collapsed .sidebar-item {
     justify-content: center;
-    padding: 10px 0;
+    min-height: 40px;
+    padding: 8px 0;
     gap: 0;
+  }
+
+  .sidebar .sidebar-item .item-badge,
+  .sidebar.collapsed .sidebar-item .item-badge {
+    position: absolute;
+    top: 2px;
+    right: 1px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    border: 2px solid var(--bg-secondary);
+    font-size: 8px;
+    line-height: 1;
   }
 
   .sidebar .sidebar-item-sub,
@@ -221,7 +238,8 @@
   .sidebar .sidebar-item,
   .sidebar.collapsed .sidebar-item {
     justify-content: flex-start;
-    padding: 10px var(--space-3);
+    min-height: 40px;
+    padding: 8px 10px;
     gap: var(--space-3);
   }
 
@@ -347,6 +365,7 @@
     max-height: min(360px, 55dvh);
     margin: 6px 0 0 !important;
     padding: 0;
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     border: 0;

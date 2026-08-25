@@ -8,6 +8,7 @@ NOT created automatically - final decisions stay with PO/BA (human-in-the-loop).
 """
 import json
 import logging
+import threading
 import urllib.request
 import urllib.error
 
@@ -15,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from auth import get_current_user
+from auth import get_current_user, get_request_review_access, is_customer_portal_only
 from config import settings
 from database import get_db
 from models import AgentSession, RequirementRequest, User, Team
@@ -23,6 +24,16 @@ from notifications import notify_new_request, notify_request_rejected, notify_re
 
 logger = logging.getLogger("agent_integration")
 router = APIRouter()
+
+# Serialises submissions for the same dialogue inside a worker. The database
+# constraint on RequirementRequest is the cross-worker safety net.
+_submission_locks: dict[str, threading.Lock] = {}
+_submission_locks_guard = threading.Lock()
+
+
+def _submission_lock(session_id: str) -> threading.Lock:
+    with _submission_locks_guard:
+        return _submission_locks.setdefault(session_id, threading.Lock())
 
 
 class AgentChatRequest(BaseModel):
@@ -34,6 +45,12 @@ class AgentSendForReviewRequest(BaseModel):
     session_id: str
     title: str = ""
     team_id: int = None
+
+
+class AgentDraftSectionEditRequest(BaseModel):
+    session_id: str
+    field: str = Field(min_length=1, max_length=64)
+    value: str = Field(min_length=1, max_length=5000)
 
 
 class AgentRequestStatusUpdate(BaseModel):
@@ -59,11 +76,11 @@ GLOBAL_REQUEST_REVIEWER_ROLES = {
 
 def can_review_request(user: User, request_team_id: int | None) -> bool:
     """Проверить область ревью запроса по актуальной матрице ролей."""
-    role = (user.role_name or "").strip().casefold()
-    if role in GLOBAL_REQUEST_REVIEWER_ROLES:
+    scope = get_request_review_access(user)
+    if scope == "all":
         return True
     return (
-        role in TEAM_REQUEST_REVIEWER_ROLES
+        scope == "team"
         and user.team_id is not None
         and user.team_id == request_team_id
     )
@@ -138,6 +155,8 @@ def _user_session_ids(db: Session, user: User) -> set[str]:
 def _render_request(draft: dict) -> str:
     lines = []
     lines.append(f"**Проблема:** {draft.get('problem_statement') or '—'}")
+    if draft.get("current_process"):
+        lines.append(f"**Текущий процесс (As-Is):** {draft['current_process']}")
     if draft.get("target_process"):
         lines.append(f"**Целевой процесс (To-Be):** {draft['target_process']}")
     if draft.get("business_value"):
@@ -145,6 +164,8 @@ def _render_request(draft: dict) -> str:
     roles = draft.get("user_roles") or []
     if roles:
         lines.append(f"**Пользователи:** {', '.join(roles)}")
+    if draft.get("department"):
+        lines.append(f"**Подразделение:** {draft['department']}")
     if draft.get("product"):
         lines.append(f"**Продукт:** {draft['product']}")
     if draft.get("module"):
@@ -272,6 +293,32 @@ def agent_new_dialog(
     return resp
 
 
+@router.post("/agent/session/{session_id}/activate")
+def agent_activate_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Make one of the current user's dialogues active across reloads."""
+    if session_id not in _user_session_ids(db, current_user):
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+    _set_active_agent_session(db, current_user, session_id)
+    return {"success": True, "session_id": session_id, "active": True}
+
+
+@router.post("/agent/session/{session_id}/archive")
+def agent_archive_session(
+    session_id: str,
+    archived: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Move a dialogue to or from the user's archive."""
+    if session_id not in _user_session_ids(db, current_user):
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+    return _call_agent("POST", f"/api/agent/session/{session_id}/archive?archived={str(archived).lower()}")
+
+
 @router.get("/agent/session")
 def agent_session_state(
     db: Session = Depends(get_db),
@@ -313,37 +360,78 @@ def agent_send_for_review(
     current_user: User = Depends(get_current_user),
 ):
     """Create a RequirementRequest from the agent draft (no Task is created)."""
-    state = _call_agent("GET", f"/api/agent/session/{req.session_id}")
-    draft = state.get("draft")
-    if not draft:
-        raise HTTPException(status_code=400, detail="Драфт ещё не готов — продолжите диалог")
+    if req.session_id not in _user_session_ids(db, current_user):
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+    with _submission_lock(req.session_id):
+        existing = db.query(RequirementRequest).filter(
+            RequirementRequest.agent_session_id == req.session_id,
+            RequirementRequest.is_deleted.is_(False),
+        ).first()
+        if existing:
+            # The ownership check above prevents disclosure of another user's request.
+            return {
+                "success": True,
+                "session_id": req.session_id,
+                "action": "sent",
+                "message": "Этот диалог уже отправлен на ревью.",
+                "request_id": existing.id,
+                "request_url": f"#/customer/request/{existing.id}",
+                "duplicate": True,
+            }
+        state = _call_agent("GET", f"/api/agent/session/{req.session_id}")
+        draft = state.get("draft")
+        if not draft:
+            raise HTTPException(status_code=400, detail="Драфт ещё не готов — продолжите диалог")
 
-    request = RequirementRequest(
-        user_id=current_user.id,
-        title=(draft.get("title") or "Запрос на доработку платформы")[:255],
-        description=_render_request(draft),
-        draft=draft,
-        status="submitted",
-        agent_session_id=req.session_id,
-        team_id=req.team_id or current_user.team_id,
-    )
-    db.add(request)
-    try:
-        db.flush()
-        resp = _call_agent("POST", "/api/agent/send-for-review", {
-            "session_id": req.session_id,
-            "task_id": request.id,
-            "title": req.title or draft.get("title") or "",
-        })
-        notify_new_request(db, request.id, request.team_id, request.title, current_user.name)
-        db.commit()
-        db.refresh(request)
-        resp["request_id"] = request.id
-        resp["request_url"] = f"#/customer/request/{request.id}"
-        return resp
-    except Exception:
-        db.rollback()
-        raise
+        request = RequirementRequest(
+            user_id=current_user.id,
+            title=(draft.get("title") or "Запрос на доработку платформы")[:255],
+            description=_render_request(draft),
+            draft=draft,
+            status="submitted",
+            agent_session_id=req.session_id,
+            team_id=req.team_id or current_user.team_id,
+        )
+        db.add(request)
+        try:
+            db.flush()
+            resp = _call_agent("POST", "/api/agent/send-for-review", {
+                "session_id": req.session_id,
+                "task_id": request.id,
+                "title": req.title or draft.get("title") or "",
+                "user_id": current_user.id,
+            })
+            if resp.get("action") != "sent" or resp.get("success") is False:
+                message = resp.get("message") or "Агент не подтвердил отправку черновика"
+                raise HTTPException(status_code=409, detail=message)
+            notify_new_request(db, request.id, request.team_id, request.title, current_user.name)
+            db.commit()
+            db.refresh(request)
+            resp["request_id"] = request.id
+            resp["request_url"] = f"#/customer/request/{request.id}"
+            return resp
+        except Exception:
+            db.rollback()
+            raise
+
+
+@router.post("/agent/edit-draft-section")
+def agent_edit_draft_section(
+    req: AgentDraftSectionEditRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if req.session_id not in _user_session_ids(db, current_user):
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+    resp = _call_agent("POST", "/api/agent/edit-draft-section", {
+        "session_id": req.session_id,
+        "field": req.field,
+        "value": req.value,
+        "user_id": current_user.id,
+    })
+    if resp.get("action") == "error" or resp.get("success") is False:
+        raise HTTPException(status_code=400, detail=resp.get("message") or "Не удалось изменить черновик")
+    return resp
 
 
 @router.get("/agent/requests")
@@ -368,15 +456,15 @@ def agent_requests_review(
     current_user: User = Depends(get_current_user),
 ):
     """Запросы для ревью в разрешённой пользователю области."""
-    role = (current_user.role_name or "").strip().casefold()
-    if role not in TEAM_REQUEST_REVIEWER_ROLES | GLOBAL_REQUEST_REVIEWER_ROLES:
+    review_access = get_request_review_access(current_user)
+    if review_access == "none":
         raise HTTPException(status_code=403, detail="Доступ запрещён")
 
     query = db.query(RequirementRequest).filter(
         RequirementRequest.is_deleted.is_(False),
         RequirementRequest.status.in_(["submitted", "in_review", "in_progress", "returned"]),
     )
-    if role not in GLOBAL_REQUEST_REVIEWER_ROLES:
+    if review_access != "all":
         query = query.filter(RequirementRequest.team_id == current_user.team_id)
 
     rows = query.order_by(RequirementRequest.created_at.desc()).all()
@@ -409,8 +497,7 @@ def agent_request_status(
     current_user: User = Depends(get_current_user),
 ):
     """Update the request lifecycle status with optional reject_reason or assignee."""
-    role = (current_user.role_name or "").strip().casefold()
-    if role == "бизнес-заказчик":
+    if is_customer_portal_only(current_user):
         raise HTTPException(
             status_code=403,
             detail="Бизнес-заказчик не может изменять статус запроса после отправки на ревью",
@@ -455,8 +542,7 @@ def agent_request_delete(
     ).first()
     if not req:
         raise HTTPException(status_code=404, detail="Запрос не найден")
-    role = (current_user.role_name or "").strip().casefold()
-    if req.user_id != current_user.id and role not in GLOBAL_REQUEST_REVIEWER_ROLES:
+    if req.user_id != current_user.id and get_request_review_access(current_user) != "all":
         raise HTTPException(status_code=403, detail="Доступ запрещён")
     req.is_deleted = True
     db.commit()

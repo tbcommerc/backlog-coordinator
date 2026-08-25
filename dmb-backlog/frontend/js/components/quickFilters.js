@@ -1,6 +1,6 @@
 console.log('[DMB] quickFilters.js loaded');
 
-import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask } from './filterToolbar.js?v=52';
+import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask, updateStickyOffsets } from './filterToolbar.js?v=81';
 
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
@@ -72,7 +72,7 @@ export function renderQuickFilters() {
         <span class="quick-filters-active-count hidden" id="quick-filters-active-count">0</span>
         <i data-lucide="chevron-down" class="quick-filters-toggle-chevron" aria-hidden="true"></i>
       </button>
-      <div id="quick-filters" class="flex gap-2" style="margin-bottom:var(--space-4);flex-wrap:wrap;">
+      <div id="quick-filters" class="flex gap-2" style="margin-bottom:var(--space-4);">
         ${QUICK_FILTERS.map(f => `
           <button class="quick-filter-btn" data-filter="${f.key}" aria-pressed="false">
             <span class="quick-filter-icon" style="${f.iconBg}">${f.icon}</span>
@@ -98,12 +98,32 @@ function setMobilePanelOpen(open) {
 }
 
 export function initQuickFilters(scope, getTasks) {
+  function syncDesktopFilterWidth() {
+    const panel = document.getElementById('quick-filters');
+    const buttons = Array.from(panel?.querySelectorAll('.quick-filter-btn') || []);
+    if (!panel || buttons.length === 0) return;
+    panel.style.removeProperty('--quick-filter-item-width');
+    requestAnimationFrame(() => {
+      const widths = buttons.map(btn => {
+        const previousWidth = btn.style.width;
+        btn.style.width = 'max-content';
+        const width = btn.getBoundingClientRect().width;
+        btn.style.width = previousWidth;
+        return width;
+      });
+      const widest = Math.ceil(Math.max(...widths));
+      panel.style.setProperty('--quick-filter-item-width', `${widest}px`);
+      updateStickyOffsets();
+    });
+  }
+
   function updateCounts() {
     const tasks = getTasks ? getTasks() : [];
     QUICK_FILTERS.forEach(f => {
       const el = document.getElementById(`qf-${f.key}-count`);
       if (el) el.textContent = tasks.filter(f.test).length;
     });
+    syncDesktopFilterWidth();
   }
 
   function applyFilter(key) {

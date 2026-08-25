@@ -15,6 +15,8 @@ logger = logging.getLogger("dmb_backlog.tasks")
 
 
 _task_creation_lock = threading.Lock()
+_task_creation_idempotency = {}
+_task_update_idempotency = {}
 
 
 def _serialize_task_creation(func):
@@ -50,9 +52,11 @@ from auth import (
     require_bulk_task_edit_access,
     require_backlog_page_access,
     authorize_task,
+    can_access_task,
     can_edit_task,
     is_task_global_editor,
     can_comment_task,
+    can_make_pip_decision,
 )
 from notifications import notify_status_change, notify_assignment, notify_comment, notify_mention
 from routers.task_collaboration_router import is_task_lock_active
@@ -731,6 +735,13 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
     if not check_permission(current_user, "backlog_team", "write_own"):
         raise HTTPException(status_code=403, detail="Permission denied")
 
+    request_key = str(task_data.client_request_id or '').strip()
+    cache_key = (current_user.id, request_key) if request_key else None
+    if cache_key and cache_key in _task_creation_idempotency:
+        existing = db.query(Task).filter(Task.id == _task_creation_idempotency[cache_key], Task.is_deleted == False).first()
+        if existing:
+            return task_to_response(existing, db)
+
     _require_reference(db, Team, task_data.team_id, "team_id", "Ответственная команда")
     _require_reference(db, TaskType, task_data.task_type_id, "task_type_id", "Тип задачи")
     _require_reference(db, Channel, task_data.channel_id, "channel_id", "Канал поступления")
@@ -901,6 +912,11 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
     db.commit()
     db.refresh(task)
 
+    if cache_key:
+        _task_creation_idempotency[cache_key] = task.id
+        if len(_task_creation_idempotency) > 1000:
+            _task_creation_idempotency.pop(next(iter(_task_creation_idempotency)))
+
     return task_to_response(task, db)
 
 
@@ -912,8 +928,7 @@ def apply_pip_decision(
     current_user: User = Depends(get_current_user),
 ):
     """Перевести задачу из PI-решения в один из двух разрешённых статусов."""
-    role_name = (current_user.role_name or "").strip().casefold()
-    if role_name not in PIP_DECISION_ROLES:
+    if not can_make_pip_decision(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="PI-решение доступно только Лидеру трайба и проектному офису",
@@ -980,6 +995,11 @@ def update_task(
         requested_team_id = task_data.team_id if "team_id" in task_data.model_fields_set else None
         authorize_task("edit", task, current_user, requested_team_id)
 
+        request_key = str(task_data.client_request_id or '').strip()
+        cache_key = (current_user.id, task_id, request_key) if request_key else None
+        if cache_key and cache_key in _task_update_idempotency:
+            return task_to_response(task, db)
+
         if is_task_lock_active(task) and task.lock_owner_id != current_user.id:
             owner = db.query(User).filter(User.id == task.lock_owner_id).first()
             raise HTTPException(
@@ -995,7 +1015,12 @@ def update_task(
         old_key_status = task.key_project_status
 
         update_data = task_data.model_dump(exclude_unset=True)
+        update_data.pop('client_request_id', None)
         logger.info(f"[update_task] task_id={task_id}, update_data={update_data}")
+
+        requested_actual_fields = set(update_data) & set(ACTUAL_EFFORT_FIELDS)
+        if requested_actual_fields and not is_task_global_editor(current_user):
+            raise HTTPException(status_code=403, detail="Фактические трудозатраты может корректировать только администратор")
 
         # Optimistic lock: extract and check version before applying changes
         submitted_version = update_data.pop('version', None)
@@ -1136,6 +1161,11 @@ def update_task(
         task.version = (task.version or 0) + 1
         db.commit()
         db.refresh(task)
+
+        if cache_key:
+            _task_update_idempotency[cache_key] = task.version
+            if len(_task_update_idempotency) > 2000:
+                _task_update_idempotency.pop(next(iter(_task_update_idempotency)))
 
         return task_to_response(task, db)
 
@@ -1329,6 +1359,8 @@ def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db
         errors.append("Часть задач не найдена")
 
     fields = request.fields or request.updates or {}
+    if set(fields) & set(ACTUAL_EFFORT_FIELDS) and not is_task_global_editor(current_user):
+        errors.append("Фактические трудозатраты может корректировать только администратор")
     if request.action == 'comment':
         comment_text = str(fields.get('comment_text') or '').strip()
         mentioned_ids = list(dict.fromkeys(fields.get('mentioned_user_ids') or []))
@@ -1354,7 +1386,7 @@ def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db
     accessible = []
     inaccessible = []
     for task in tasks:
-        allowed = can_comment_task(current_user) if request.action == 'comment' else (is_task_global_editor(current_user) if request.action == 'delete' else can_edit_task(current_user, task.team_id, target_team_id))
+        allowed = can_comment_task(current_user, task.team_id) if request.action == 'comment' else (can_access_task('delete', task, current_user) if request.action == 'delete' else can_edit_task(current_user, task.team_id, target_team_id))
         (accessible if allowed else inaccessible).append(task)
 
     done_status = db.query(TaskStatus).filter(TaskStatus.name == "ВЫПОЛНЕНА").first() if request.action == 'close' else None
@@ -1436,9 +1468,12 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
 
     fields_to_update = request.fields or request.updates or {}
 
+    if set(fields_to_update) & set(ACTUAL_EFFORT_FIELDS) and not is_task_global_editor(current_user):
+        raise HTTPException(status_code=403, detail="Фактические трудозатраты может корректировать только администратор")
+
     target_team_id = fields_to_update.get("team_id") if "team_id" in fields_to_update else None
     if request.action == 'comment':
-        if not can_comment_task(current_user):
+        if any(not can_comment_task(current_user, task.team_id) for task in tasks):
             raise HTTPException(status_code=403, detail='Недостаточно прав для комментирования задач')
     else:
         require_bulk_task_edit_access(

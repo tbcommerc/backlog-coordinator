@@ -1,8 +1,7 @@
-"""Question planner - picks the next question using the deterministic machine.
+"""Question planner - picks the next conversational focus.
 
-Adapts the language to the user's style (business vs technical) and attaches
-quick-answer chips when available. A "skip" chip is offered for optional
-blocks so the dialogue never drags on.
+The user always answers in free form.  UI choices are deliberately not part
+of the dialogue contract: the planner returns a question and metadata only.
 
 Now uses Policy Engine to decide the next action and prioritizes slots based
 on mandatory status, risk, and confidence.
@@ -13,8 +12,8 @@ from .state import (
     DialogueState, PHASE_ORDER, MANDATORY_HARD, MANDATORY_SOFT, OPTIONAL,
 )
 from .machine import compute_phase, next_slot
-from .question_bank import question_for, chips_for, skip_chip, OPTIONAL_SLOTS
 from .policy import policy_engine, ASK_QUESTION, REQUEST_CLARIFICATION
+from .agentic import agentic_ba
 
 
 class QuestionPlanner:
@@ -24,7 +23,6 @@ class QuestionPlanner:
         "business_rules": ("scenarios", "Ограничение важно — его учёл."),
         "data_integrations": ("acceptance_criteria", "Связь с данными и системами учтена."),
         "value": ("acceptance_criteria", "Понимаю ожидаемый бизнес-эффект."),
-        "role": ("scenarios", "Пользовательская роль понятна."),
     }
 
     def contextual_slot(self, state: DialogueState) -> tuple[str | None, str]:
@@ -37,6 +35,23 @@ class QuestionPlanner:
 
     def next_question(self, state: DialogueState, ctx=None, force_slot: str | None = None):
         style = style_for(ctx)
+
+        cached = state.last_agent_decision or {}
+        cached_focus = cached.get("focus") or ""
+        cached_focus_is_open = not cached_focus or (
+            cached_focus in state.slots and not state.slots[cached_focus].handled
+        )
+        if agentic_ba.enabled() and cached.get("reply") and not force_slot and cached_focus_is_open:
+            slot = cached_focus or next_slot(state)
+            question = cached["reply"]
+            state.last_agent_decision = {}
+            state.last_user_signal = ""
+            state.last_extracted_slots = []
+            return {
+                "slot": slot, "question": question, "chips": [],
+                "phase": compute_phase(state), "priority": 10.0,
+                "reason": "agentic_decision",
+            }
 
         bridge = ""
         contextual_slot, contextual_bridge = self.contextual_slot(state)
@@ -55,14 +70,10 @@ class QuestionPlanner:
             slot = force_slot
         
         if slot:
-            chips = chips_for(slot)
-            if slot in OPTIONAL_SLOTS:
-                chips = chips + [skip_chip(slot)]
-            
             # Get priority from policy engine
             priority = policy_engine.get_slot_priority(slot, state)
             
-            question = question_for(slot, style)
+            question = agentic_ba.fallback_question(state, slot)
             if bridge:
                 question = f"{bridge} {question}"
             elif state.last_user_signal and len(state.last_user_signal.split()) >= 6:
@@ -72,7 +83,7 @@ class QuestionPlanner:
             result = {
                 "slot": slot,
                 "question": question,
-                "chips": chips,
+                "chips": [],
                 "phase": compute_phase(state),
                 "priority": priority,
                 "reason": f"priority={priority:.2f}",

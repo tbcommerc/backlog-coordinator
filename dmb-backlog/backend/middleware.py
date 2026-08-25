@@ -60,17 +60,27 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
 class AuditMiddleware(BaseHTTPMiddleware):
     """Record write operations to audit log"""
+
+    _SENSITIVE_FIELDS = {"password", "password_hash", "token", "access_token", "refresh_token", "secret", "authorization"}
     
     async def dispatch(self, request: Request, call_next):
+        changed_fields = []
+        if request.method in ["POST", "PUT", "DELETE", "PATCH"] and "/api/" in request.url.path:
+            try:
+                payload = json.loads((await request.body()).decode("utf-8") or "{}")
+                if isinstance(payload, dict):
+                    changed_fields = sorted(key for key in payload if key.lower() not in self._SENSITIVE_FIELDS)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                changed_fields = []
         response = await call_next(request)
         
         if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
             if "/api/" in request.url.path:
-                await self._safe_log_action(request, response)
+                await self._safe_log_action(request, response, changed_fields)
         
         return response
     
-    async def _safe_log_action(self, request: Request, response: Response):
+    async def _safe_log_action(self, request: Request, response: Response, changed_fields=None):
         """Log action with retry logic"""
         db = None
         try:
@@ -92,14 +102,20 @@ class AuditMiddleware(BaseHTTPMiddleware):
             }
             action = action_map.get(request.method, request.method)
             
-            path_parts = request.url.path.split("/")
+            path_parts = [part for part in request.url.path.split("/") if part]
             entity_type = "unknown"
             entity_id = None
-            
-            if len(path_parts) >= 4:
-                entity_type = path_parts[3]
-                if len(path_parts) >= 5 and path_parts[4].isdigit():
-                    entity_id = int(path_parts[4])
+            try:
+                api_index = path_parts.index("api")
+                resource_index = api_index + 2
+                if len(path_parts) > resource_index and path_parts[resource_index] == "admin":
+                    resource_index += 1
+                if len(path_parts) > resource_index:
+                    entity_type = path_parts[resource_index]
+                if len(path_parts) > resource_index + 1 and path_parts[resource_index + 1].isdigit():
+                    entity_id = int(path_parts[resource_index + 1])
+            except ValueError:
+                pass
             
             audit_entry = AuditLog(
                 user_id=int(user_id) if user_id else None,
@@ -109,7 +125,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 details=json.dumps({
                     "method": request.method,
                     "path": request.url.path,
-                    "status_code": response.status_code
+                    "status_code": response.status_code,
+                    "success": 200 <= response.status_code < 400,
+                    "failure_reason": None if response.status_code < 400 else f"HTTP {response.status_code}",
+                    "changed_fields": changed_fields or [],
                 }),
                 ip_address=request.client.host if request.client else None,
                 created_at=datetime.utcnow()

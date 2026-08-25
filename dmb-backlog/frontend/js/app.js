@@ -1,14 +1,14 @@
-/**
+﻿/**
  * DMB Backlog - Main Application
  * Entry point, initializes router and store
  */
 console.log('[DMB] app.js v20260727 notif-v2 loaded');
 
-import { Router } from './router.js?v=57';
+import { Router } from './router.js?v=95';
 import { Store } from './store.js';
-import { API } from './api.js';
+import { API } from './api.js?v=2';
 import { Auth } from './auth.js';
-import { renderSidebar, initSidebar } from './components/sidebar.js?v=49';
+import { renderSidebar, initSidebar } from './components/sidebar.js?v=54';
 import { safeExternalUrl } from './urlUtils.js';
 import { confirmAction, formatErrorMessage, showFieldError, showToast } from './uiFeedback.js';
 import { initModalAccessibility } from './modalAccessibility.js';
@@ -264,7 +264,7 @@ async function handleSearch(query, app) {
   }
   try {
     if (!searchTasksCache) {
-      const res = await app.api.get(`/tasks?per_page=${SEARCH_PAGE_SIZE}`);
+      const res = await app.api.get(`/tasks/?per_page=${SEARCH_PAGE_SIZE}`);
       searchTasksCache = res.items || res.tasks || [];
     }
     const tasks = searchTasksCache;
@@ -322,7 +322,7 @@ async function handleSearch(query, app) {
 }
 
 async function handleLogout() {
-  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=47');
+  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=69');
   const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
   if (!ok) return;
   clearQuickEditState();
@@ -350,22 +350,23 @@ export function renderAppShell(content) {
     <div class="sidebar-backdrop"></div>
     <div class="main-wrapper">
       <header class="navbar">
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="navbar-heading">
           <button class="btn-hamburger" id="sidebar-toggle-mobile" title="Меню">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           </button>
-          <nav id="breadcrumb-nav" style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
-            <a href="#/dashboard" style="color: var(--text-muted); text-decoration: none;">DMB Backlog</a>
-            <span style="color: var(--text-muted);">/</span>
-            <span id="breadcrumb-current" style="color: var(--text-primary); font-weight: 500;">Главная</span>
+          <nav id="breadcrumb-nav" class="navbar-breadcrumb" aria-label="Хлебные крошки">
+            <span id="breadcrumb-current" class="breadcrumb-current">Главная</span>
           </nav>
         </div>
-        <div class="search-wrap" style="position: relative; flex: 1; max-width: 400px; margin: 0 16px;">
-          <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted); pointer-events: none;"></i>
-          <input type="text" id="global-search" placeholder="Поиск задач..." class="search-input" style="padding-left: 36px;">
+        <div class="search-wrap navbar-search">
+          <i data-lucide="search" class="navbar-search-icon"></i>
+          <input type="text" id="global-search" placeholder="Поиск задач…" class="search-input navbar-search-input">
           <div id="search-results" class="search-dropdown hidden"></div>
         </div>
-        <div class="navbar-right" style="display: flex; align-items: center; gap: 4px;">
+        <div class="navbar-right">
+          <button id="mobile-search-toggle" class="navbar-icon-button mobile-search-toggle" type="button" title="Поиск" aria-label="Открыть поиск" aria-expanded="false">
+            <i data-lucide="search"></i>
+          </button>
           <div style="position:relative;" id="notif-bell-wrap">
             <button id="notif-bell-btn" style="position: relative; padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer;">
               <i data-lucide="bell" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"></i>
@@ -378,21 +379,23 @@ export function renderAppShell(content) {
               </div>
             </div>
           </div>
-          <div style="width:1px;height:24px;background:var(--border-color);margin:0 4px;"></div>
+          <div class="navbar-separator" aria-hidden="true"></div>
           <button id="theme-toggle" style="padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer; color: var(--text-muted);" title="Переключить тему">
             <i data-lucide="${isDark ? 'sun' : 'moon'}" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"></i>
           </button>
-          <button id="logout-btn" style="padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer; color: var(--text-muted);" title="Выйти">
-            <i data-lucide="log-out" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"></i>
-          </button>
-          <div style="width:1px;height:24px;background:var(--border-color);margin:0 4px;"></div>
-          <div style="position: relative;">
-            <button id="user-avatar-btn" style="display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: 8px; border: none; background: transparent; cursor: pointer;">
+          <div class="navbar-separator" aria-hidden="true"></div>
+          <div class="user-menu-wrap">
+            <button id="user-avatar-btn" class="user-menu-trigger" aria-haspopup="menu" aria-expanded="false">
               <div style="width: 28px; height: 28px; border-radius: 50%; background: ${avatarColor}; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0;">${initials}</div>
-              <span style="font-size: 14px; font-weight: 500; color: var(--text-primary);">${shortName}</span>
+              <span class="user-menu-name">${shortName}</span>
+              <i data-lucide="chevron-down" class="user-menu-chevron"></i>
             </button>
-            <div id="user-dropdown" class="dropdown-menu hidden">
+            <div id="user-dropdown" class="dropdown-menu user-menu-dropdown hidden" role="menu">
+              <div class="user-menu-summary">
+                <span class="user-menu-full-name">${userName}</span>
+              </div>
               <button onclick="app.router.navigate('/settings')" class="dropdown-item"><i data-lucide="settings" style="width: 16px; height: 16px;"></i> Настройки</button>
+              <button id="logout-btn" class="dropdown-item danger" role="menuitem"><i data-lucide="log-out" style="width: 16px; height: 16px;"></i> Выйти</button>
             </div>
           </div>
         </div>
@@ -478,11 +481,26 @@ export async function initApp(app) {
     });
   }
 
+  const mobileSearchToggle = document.getElementById('mobile-search-toggle');
+  const navbarSearch = document.querySelector('.navbar-search');
+  mobileSearchToggle?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = navbarSearch?.classList.toggle('mobile-open') === true;
+    mobileSearchToggle.setAttribute('aria-expanded', String(isOpen));
+    mobileSearchToggle.setAttribute('aria-label', isOpen ? 'Закрыть поиск' : 'Открыть поиск');
+    if (isOpen) requestAnimationFrame(() => searchInput?.focus());
+  });
+
   document.addEventListener('click', (e) => {
     const container = document.getElementById('search-results');
     const wrap = document.querySelector('.search-wrap');
     if (container && wrap && !wrap.contains(e.target)) {
       container.classList.add('hidden');
+      if (!e.target.closest('#mobile-search-toggle')) {
+        wrap.classList.remove('mobile-open');
+        mobileSearchToggle?.setAttribute('aria-expanded', 'false');
+        mobileSearchToggle?.setAttribute('aria-label', 'Открыть поиск');
+      }
     }
   });
 
@@ -491,7 +509,8 @@ export async function initApp(app) {
   if (avatarBtn && dropdown) {
     avatarBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      dropdown.classList.toggle('hidden');
+      const isOpen = dropdown.classList.toggle('hidden') === false;
+      avatarBtn.setAttribute('aria-expanded', String(isOpen));
     });
   }
 
@@ -499,6 +518,7 @@ export async function initApp(app) {
     const dd = document.getElementById('user-dropdown');
     if (dd && !dd.contains(e.target) && !e.target.closest('#user-avatar-btn')) {
       dd.classList.add('hidden');
+      avatarBtn?.setAttribute('aria-expanded', 'false');
     }
   });
 
@@ -507,7 +527,7 @@ export async function initApp(app) {
     if (!taskId) return;
     try {
       const task = await app.api.get(`/tasks/${taskId}`);
-        const { openTaskModal } = await import('./components/modal.js?v=71');
+        const { openTaskModal } = await import('./components/modal.js?v=90');
       openTaskModal(task);
     } catch (err) {
       console.error('Failed to open task', err);
@@ -594,10 +614,10 @@ class App {
       await this.loadReferenceData();
       this.renderAppLayout();
       this.router.onBeforeNavigate = async (toPath, fromHash) => {
-        const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=71');
+        const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=90');
         const taskCardOk = await confirmAndCloseTaskFormsForNavigation();
         if (!taskCardOk) return false;
-        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=47');
+        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=69');
         const ok = await confirmDiscardChanges('Продолжить', 'Есть несохранённые изменения в режиме массового редактирования. Перейти и потерять их?');
         if (ok) clearQuickEditState();
         return ok;
@@ -621,6 +641,11 @@ class App {
   async loadUser() {
     try {
       const user = await this.api.get('/auth/me');
+      const restoredUser = this.auth.getCurrentUser();
+      if (!user.permissions && restoredUser?.permissions) {
+        user.permissions = restoredUser.permissions;
+      }
+      localStorage.setItem('dmb_user', JSON.stringify(user));
       this.store.set('currentUser', user);
     } catch (e) {
       await this.auth.logout();
@@ -681,7 +706,7 @@ class App {
                   <i data-lucide="layers" style="width: 20px; height: 20px;"></i>
                 </div>
                 <div>
-                  <div style="font-weight: 700; color: #0f172a; font-size: 18px;">DMB Backlog</div>
+                  <div style="font-weight: 700; color: #0f172a; font-size: 18px;">Backlog Coordinator</div>
                 </div>
               </div>
               <h2 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0;">Добро пожаловать</h2>
@@ -727,7 +752,7 @@ class App {
               </form>
             </div>
             <div style="padding: 16px 32px; border-top: 1px solid #e2e8f0; text-align: center; background: #f8fafc;">
-              <p style="font-size: 12px; color: #64748b; margin: 0;">© 2026 DMB Backlog · <a style="color: #6366f1; font-weight: 600; cursor: pointer;">Поддержка</a></p>
+              <p style="font-size: 12px; color: #64748b; margin: 0;">© 2026 Backlog Coordinator · <a style="color: #6366f1; font-weight: 600; cursor: pointer;">Поддержка</a></p>
             </div>
           </div>
         </div>

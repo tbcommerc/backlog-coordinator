@@ -4,6 +4,7 @@ Event-driven notifications + scheduled scanning
 """
 import json
 import logging
+import re
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
@@ -323,6 +324,27 @@ def notify_lock_acquired(
 
 # ==================== SCHEDULED CHECK ====================
 
+def resolve_deadline_date(value):
+    """Resolve a real date or a Deadline dictionary item into its period end."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    candidates = [str(getattr(value, "code", "") or ""), str(getattr(value, "name", "") or "")]
+    for text in candidates:
+        normalized = text.strip().upper()
+        quarter = re.fullmatch(r"(?:Q([1-4])[_\s-]?(\d{4})|([1-4])Q\s*(\d{4}))", normalized)
+        if quarter:
+            number = int(quarter.group(1) or quarter.group(3))
+            year = int(quarter.group(2) or quarter.group(4))
+            return date(year + (1 if number == 4 else 0), 1 if number == 4 else number * 3 + 1, 1) - timedelta(days=1)
+        annual = re.fullmatch(r"Y(?:EAR)?[_\s-]?(\d{4})", normalized)
+        if annual:
+            return date(int(annual.group(1)), 12, 31)
+    return None
+
 def check_scheduled_notifications(db: Session):
     now = datetime.utcnow()
     current_quarter = (now.month - 1) // 3 + 1
@@ -355,19 +377,10 @@ def check_scheduled_notifications(db: Session):
             if days_since > 5:
                 stale_tasks.append((task, days_since))
 
-        if task.deadline:
-            try:
-                dl = task.deadline if isinstance(task.deadline, date) else task.deadline.date()
-                if q_start <= dl <= q_end:
-                    days_left = (dl - date.today()).days
-                    deadline_tasks.append((task, days_left))
-            except (AttributeError, TypeError, ValueError):
-                logger.warning(
-                    "Skipping task %s with invalid deadline value %r",
-                    task.id,
-                    task.deadline,
-                    exc_info=True,
-                )
+        dl = resolve_deadline_date(task.deadline)
+        if dl and q_start <= dl <= q_end:
+            days_left = (dl - date.today()).days
+            deadline_tasks.append((task, days_left))
 
         if not task.description or len(task.description) < 20:
             attrs_tasks.append((task, "no_description"))

@@ -36,7 +36,7 @@ const MIN_RESIZE = 90;
 const MIN_LABEL_PX = 32;
 const MAX_SAMPLES = 25;
 
-const registered = { sort: {}, widths: {}, minWidths: {}, layout: {}, fixed: {}, unfix: {} };
+const registered = { sort: {}, widths: {}, minWidths: {}, layout: {}, fixed: {}, unfix: {}, resizeEnd: {} };
 let bound = false;
 let suppressClick = false;
 
@@ -136,6 +136,7 @@ export function registerTableInteractions(tableId, opts = {}) {
   if (opts.getLayout) registered.layout[tableId] = opts.getLayout;
   if (opts.getFixed) registered.fixed[tableId] = opts.getFixed;
   if (opts.onUnfix) registered.unfix[tableId] = opts.onUnfix;
+  if (opts.onResizeEnd) registered.resizeEnd[tableId] = opts.onResizeEnd;
   if (!bound) {
     bound = true;
     document.addEventListener('click', onHeaderClick);
@@ -198,14 +199,17 @@ function onHeaderDblClick(e) {
 function startResize(e, th, table) {
   const key = th.dataset.sort;
   const colEls = table.querySelectorAll('colgroup > col');
-  const colEl = colEls[th.cellIndex];
-  if (!colEl) return;
   const getFixed = registered.fixed[table.id];
   const fixed = getFixed ? getFixed() : null;
   const widths = registered.widths[table.id]();
   const layout = registered.layout[table.id] ? registered.layout[table.id]() : null;
   const cols = layout?.cols || [];
-  const offset = layout?.offset || 0;
+  // The selection column is conditional, so its offset can differ from the
+  // value captured by the page callback. Derive it from the rendered colgroup.
+  const offset = Math.max(0, colEls.length - cols.length);
+  const columnIndex = cols.indexOf(key);
+  const colEl = columnIndex >= 0 ? colEls[columnIndex + offset] : null;
+  if (!colEl) return;
   const minWidths = registered.minWidths[table.id] ? registered.minWidths[table.id]() : null;
   const minW = Math.max(MIN_RESIZE, (key && minWidths && minWidths[key]) || 0);
   const startX = e.clientX;
@@ -225,6 +229,7 @@ function startResize(e, th, table) {
     document.body.classList.remove('resizing-table');
     if (moved) {
       suppressClick = true;
+      if (registered.resizeEnd[table.id]) registered.resizeEnd[table.id](key, fixed?.[key]);
     }
   };
   document.addEventListener('mousemove', onMove);

@@ -168,13 +168,14 @@ uvicorn main:app --reload --port 8000
 | Документ | Описание |
 |----------|----------|
 | [PROJECT_OVERVIEW_AS_IS.md](docs/PROJECT_OVERVIEW_AS_IS.md) | Актуальная карта фактически реализованной системы (As-Is) |
-| [CODE_REVIEW_2026-08-19.md](docs/CODE_REVIEW_2026-08-19.md) | Комплексный аудит: ошибки, безопасность, недоделки и UX/UI |
+| [CODE_REVIEW_2026-08-19.md](docs/archive/reviews/CODE_REVIEW_2026-08-19.md) | Исторический аудит: ошибки, безопасность, недоделки и UX/UI на 19.08.2026 |
 | [SYSTEM_SPEC.md](docs/SYSTEM_SPEC.md) | Системная спецификация: жизненный цикл, обработка ошибок, роли |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура: C4-диаграммы, безопасность, деплой, мониторинг |
 | [DATA_MODEL.md](docs/DATA_MODEL.md) | Модели данных: ER-диаграмма, 20+ таблиц, индексы, сохранность |
 | [API_SPEC.md](docs/API_SPEC.md) | API: OpenAPI, rate limiting, пагинация, примеры ошибок |
 | [PAGE_LOGIC.md](docs/PAGE_LOGIC.md) | Логика страниц: состояния загрузки/ошибки/пусто, сценарии |
 | [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Дизайн-система: состояния компонентов, микро-взаимодействия |
+| [STICKY_BACKLOG_TABLES.md](docs/STICKY_BACKLOG_TABLES.md) | Закрепление панелей и заголовков таблиц: инварианты, координаты, типовые поломки и чек-лист |
 | [BUSINESS_REQUIREMENTS.md](docs/BUSINESS_REQUIREMENTS.md) | Бизнес-требования: функциональные/нагрузочные критерии приемки |
 | [CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md) | Гайд по коду: тестирование, CI/CD, обработка ошибок, глоссарий |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Развертывание: dev/staging/prod, Docker, Nginx, backup |

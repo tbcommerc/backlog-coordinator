@@ -7,8 +7,6 @@ export function renderNavbar() {
     <header class="navbar">
         <div class="navbar-left">
             <nav class="breadcrumb">
-                <a href="#/dashboard">DMB Backlog</a>
-                <span class="separator">/</span>
                 <span class="current" id="breadcrumb-current">Главная</span>
             </nav>
         </div>

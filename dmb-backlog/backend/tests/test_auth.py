@@ -62,3 +62,4 @@ def test_me_returns_user(auth_headers):
         response = c.get("/api/v1/auth/me", headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["email"] == "test@dmb.ru"
+        assert response.json()["permissions"]["admin"] == "full"

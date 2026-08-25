@@ -783,7 +783,7 @@ export async function initAnalytics(type, app) {
 
   let tasks = [];
   try {
-    const response = await app.api.get('/tasks?per_page=1000');
+    const response = await app.api.get('/tasks/?per_page=1000');
     tasks = response.items || [];
   } catch (e) {
     console.error('Analytics data load error:', e);

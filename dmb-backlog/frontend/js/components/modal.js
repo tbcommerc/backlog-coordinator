@@ -16,18 +16,57 @@ let _createTaskInitialSnapshot = '';
 let _createTaskSaving = false;
 let _createReferenceUsers = [];
 const CREATE_TASK_DRAFT_VERSION = 1;
+const EDIT_TASK_DRAFT_VERSION = 1;
 let _discardPromptPromise = null;
 let _taskBeforeUnloadBound = false;
+let _taskExternalLinkGuardBound = false;
 let _taskFocusTrapRoot = null;
 let _taskFocusTrapHandler = null;
 let _taskModalReturnFocus = null;
 let _taskModalBaseDocumentTitle = null;
 let _createTaskKeyHandler = null;
+let _createTaskRequestId = null;
+let _statusProgressSuggestionPending = false;
+let _createDuplicateOverrideSignature = null;
+let _cardSaveRequestId = null;
+let _taskNetworkStateBound = false;
+
+function newTaskRequestId() {
+  return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function isTaskNetworkOffline() {
+  return navigator.onLine === false;
+}
+
+function updateTaskNetworkState() {
+  const offline = isTaskNetworkOffline();
+  document.querySelectorAll('.task-network-status').forEach(status => {
+    status.hidden = !offline;
+    status.textContent = offline ? 'Нет подключения' : '';
+  });
+  document.querySelectorAll('.form-error-retry').forEach(button => { button.disabled = offline; });
+  if (document.getElementById('create-task-overlay')) updateCreateFormReadiness();
+  const cardSaveButton = document.getElementById('saveBtn');
+  if (cardSaveButton) {
+    cardSaveButton.disabled = offline || cardState.saving;
+    cardSaveButton.setAttribute('aria-disabled', cardSaveButton.disabled ? 'true' : 'false');
+  }
+}
+
+function ensureTaskNetworkState() {
+  if (!_taskNetworkStateBound) {
+    window.addEventListener('online', updateTaskNetworkState);
+    window.addEventListener('offline', updateTaskNetworkState);
+    _taskNetworkStateBound = true;
+  }
+  updateTaskNetworkState();
+}
 
 function setTaskModalDocumentTitle(task) {
   if (!task?.id) return;
   if (_taskModalBaseDocumentTitle === null) {
-    _taskModalBaseDocumentTitle = document.title || 'DMB Backlog';
+    _taskModalBaseDocumentTitle = document.title || 'Backlog Coordinator';
   }
   const rawTitle = String(task.title || task.name || 'Без названия').trim() || 'Без названия';
   const compactTitle = rawTitle.length > 70 ? `${rawTitle.slice(0, 67)}…` : rawTitle;
@@ -52,6 +91,38 @@ function ensureTaskBeforeUnloadGuard() {
     event.returnValue = '';
   });
   _taskBeforeUnloadBound = true;
+}
+
+function ensureTaskExternalLinkGuard() {
+  if (_taskExternalLinkGuardBound) return;
+  document.addEventListener('click', async event => {
+    const link = event.target.closest?.('a[href]');
+    if (!link || event.defaultPrevented || event.button !== 0 || !hasUnsavedTaskChanges()) return;
+    let destination;
+    try { destination = new URL(link.href, window.location.href); } catch (_) { return; }
+    if (!/^https?:$/.test(destination.protocol) || destination.origin === window.location.origin) return;
+    event.preventDefault();
+    if (cardState.saving || _createTaskSaving) {
+      window.toast?.('Дождитесь завершения сохранения', 'info');
+      return;
+    }
+    const confirmed = await confirmTaskCardDiscard('Есть несохранённые изменения. Открыть внешнюю ссылку?');
+    if (!confirmed) return;
+    const opensSeparately = link.target === '_blank' || event.ctrlKey || event.metaKey || event.shiftKey;
+    if (opensSeparately) {
+      window.open(destination.href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const createOverlay = document.getElementById('create-task-overlay');
+    const taskOverlay = document.getElementById('task-detail-overlay');
+    if (createOverlay) closeCreateTaskModal();
+    if (taskOverlay) {
+      clearCardEditDraft();
+      closeTaskDetailModal();
+    }
+    window.location.assign(destination.href);
+  }, true);
+  _taskExternalLinkGuardBound = true;
 }
 
 function activateTaskModalFocusTrap(root) {
@@ -130,6 +201,20 @@ function createTaskDraftStorageKey() {
   return `dmb:create-task-draft:v${CREATE_TASK_DRAFT_VERSION}:user:${userId}`;
 }
 
+function updateCreateDraftSavedStatus(savedAt = null) {
+  const status = document.getElementById('create-draft-saved-status');
+  if (!status) return;
+  if (!savedAt) {
+    status.hidden = true;
+    status.textContent = '';
+    return;
+  }
+  const date = new Date(savedAt);
+  if (Number.isNaN(date.getTime())) return;
+  status.textContent = `Черновик сохранён в ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+  status.hidden = false;
+}
+
 function saveCreateTaskDraft() {
   const snapshot = createTaskFormSnapshot();
   if (!snapshot || snapshot === _createTaskInitialSnapshot) {
@@ -137,12 +222,15 @@ function saveCreateTaskDraft() {
     return;
   }
   try {
-    localStorage.setItem(createTaskDraftStorageKey(), JSON.stringify({ snapshot, savedAt: new Date().toISOString() }));
+    const savedAt = new Date().toISOString();
+    localStorage.setItem(createTaskDraftStorageKey(), JSON.stringify({ snapshot, savedAt }));
+    updateCreateDraftSavedStatus(savedAt);
   } catch (_) { /* localStorage can be unavailable in private/restricted mode */ }
 }
 
 function clearCreateTaskDraft() {
   try { localStorage.removeItem(createTaskDraftStorageKey()); } catch (_) { /* no-op */ }
+  updateCreateDraftSavedStatus();
 }
 
 function applyCreateTaskSnapshot(snapshot) {
@@ -165,6 +253,7 @@ function restoreCreateTaskDraft() {
   try {
     const draft = JSON.parse(localStorage.getItem(createTaskDraftStorageKey()) || 'null');
     if (!draft?.snapshot || !applyCreateTaskSnapshot(draft.snapshot)) return false;
+    updateCreateDraftSavedStatus(draft.savedAt);
     return createTaskFormSnapshot() !== _createTaskInitialSnapshot;
   } catch (_) {
     clearCreateTaskDraft();
@@ -174,7 +263,145 @@ function restoreCreateTaskDraft() {
 
 function updateCreateTaskDirty() {
   _createTaskDirty = createTaskFormSnapshot() !== _createTaskInitialSnapshot;
+  updateHeaderUnsavedIndicator('create-unsaved-indicator', _createTaskDirty, _createTaskSaving, createTaskChangedFieldNames().length);
   saveCreateTaskDraft();
+}
+
+function updateHeaderUnsavedIndicator(id, dirty, saving = false, count = 0) {
+  const indicator = document.getElementById(id);
+  if (!indicator) return;
+  indicator.hidden = !dirty && !saving;
+  indicator.classList.toggle('is-saving', saving);
+  indicator.innerHTML = `<i aria-hidden="true"></i>${saving ? 'Сохраняем…' : `Не сохранено${count ? ` · ${count}` : ''}`}`;
+}
+
+function taskTitleSimilarity(left, right) {
+  const normalize = value => String(value || '').toLocaleLowerCase('ru-RU').replace(/[^a-zа-яё0-9]+/gi, ' ').trim();
+  const a = normalize(left), b = normalize(right);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (a.includes(b) || b.includes(a)) return Math.min(a.length, b.length) / Math.max(a.length, b.length);
+  const bigrams = value => {
+    const result = new Map();
+    for (let i = 0; i < value.length - 1; i++) result.set(value.slice(i, i + 2), (result.get(value.slice(i, i + 2)) || 0) + 1);
+    return result;
+  };
+  const aa = bigrams(a), bb = bigrams(b);
+  let overlap = 0;
+  aa.forEach((count, pair) => { overlap += Math.min(count, bb.get(pair) || 0); });
+  return (2 * overlap) / Math.max(1, a.length + b.length - 2);
+}
+
+function showCreateDuplicateWarning(tasks) {
+  return new Promise(resolve => {
+    document.getElementById('confirm-modal-overlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'confirm-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '1200';
+    const dialog = document.createElement('div');
+    dialog.className = 'create-duplicate-dialog';
+    const title = document.createElement('h3');
+    title.textContent = 'Возможные дубликаты';
+    const text = document.createElement('p');
+    text.textContent = 'Найдены задачи с похожими названиями. Проверьте их перед созданием новой.';
+    const list = document.createElement('div');
+    list.className = 'create-duplicate-list';
+    const currentPath = window.location.hash.slice(1).split('?')[0] || '/backlog';
+    tasks.forEach(task => {
+      const link = document.createElement('a');
+      link.className = 'create-duplicate-item';
+      link.href = `#${currentPath}?task=${task.id}`;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      const id = document.createElement('b');
+      id.textContent = `#${task.id}`;
+      const name = document.createElement('span');
+      name.textContent = task.title || 'Без названия';
+      link.append(id, name);
+      list.appendChild(link);
+    });
+    const actions = document.createElement('div');
+    actions.className = 'create-duplicate-actions';
+    const back = document.createElement('button');
+    back.type = 'button'; back.className = 'btn btn-secondary btn-sm'; back.textContent = 'Вернуться к названию';
+    const proceed = document.createElement('button');
+    proceed.type = 'button'; proceed.className = 'btn btn-primary btn-sm'; proceed.textContent = 'Всё равно создать';
+    actions.append(back, proceed);
+    dialog.append(title, text, list, actions);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    const finish = result => { overlay.remove(); document.removeEventListener('keydown', onKeydown); resolve(result); };
+    const onKeydown = event => { if (event.key === 'Escape') finish(false); };
+    back.addEventListener('click', () => finish(false));
+    proceed.addEventListener('click', () => finish(true));
+    overlay.addEventListener('click', event => { if (event.target === overlay) finish(false); });
+    document.addEventListener('keydown', onKeydown);
+    back.focus();
+  });
+}
+
+async function confirmCreateTaskIsNotDuplicate(app, title) {
+  const signature = String(title || '').trim().toLocaleLowerCase('ru-RU');
+  if (!signature || signature === _createDuplicateOverrideSignature) return true;
+  const words = signature.split(/\s+/).filter(word => word.length >= 4).sort((a, b) => b.length - a.length);
+  const query = words[0] || signature;
+  try {
+    const api = app?.api || window.app?.api;
+    const result = await api.get(`/tasks/?search=${encodeURIComponent(query)}&page=1&per_page=50`);
+    const candidates = (result?.items || [])
+      .map(task => ({ ...task, similarity: taskTitleSimilarity(signature, task.title) }))
+      .filter(task => task.similarity >= 0.48)
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 5);
+    if (!candidates.length) return true;
+    const proceed = await showCreateDuplicateWarning(candidates);
+    if (proceed) _createDuplicateOverrideSignature = signature;
+    return proceed;
+  } catch (error) {
+    console.warn('Duplicate task check failed:', error);
+    return true;
+  }
+}
+
+function cardEditDraftStorageKey(taskId = currentTask?.id) {
+  const userId = window.app?.store?.get('currentUser')?.id || 'anonymous';
+  return `dmb:edit-task-draft:v${EDIT_TASK_DRAFT_VERSION}:user:${userId}:task:${taskId}`;
+}
+
+function saveCardEditDraft() {
+  if (!cardState.editing || !cardState.dirty || !cardState.draft || !currentTask?.id) return;
+  try {
+    localStorage.setItem(cardEditDraftStorageKey(), JSON.stringify({
+      taskVersion: currentTask.version || 0,
+      draft: cardState.draft,
+      savedAt: new Date().toISOString(),
+    }));
+  } catch (_) { /* localStorage can be unavailable in private/restricted mode */ }
+}
+
+function clearCardEditDraft(taskId = currentTask?.id) {
+  if (!taskId) return;
+  try { localStorage.removeItem(cardEditDraftStorageKey(taskId)); } catch (_) { /* no-op */ }
+}
+
+function restoreCardEditDraft() {
+  if (!currentTask?.id) return false;
+  try {
+    const saved = JSON.parse(localStorage.getItem(cardEditDraftStorageKey()) || 'null');
+    if (!saved?.draft) return false;
+    if (Number(saved.taskVersion || 0) !== Number(currentTask.version || 0)) {
+      clearCardEditDraft();
+      cardToast('Черновик редактирования устарел и не был восстановлен', 'warn');
+      return false;
+    }
+    cardState.draft = saved.draft;
+    cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
+    return cardState.dirty;
+  } catch (_) {
+    clearCardEditDraft();
+    return false;
+  }
 }
 
 function createRequiredControls() {
@@ -198,8 +425,8 @@ function updateCreateFormReadiness(changedControl = null) {
   const ready = requiredControls.length > 0 && requiredControls.every(control => String(control.value || '').trim());
   const saveButton = document.getElementById('create-save-btn');
   if (saveButton) {
-    saveButton.disabled = !ready || _createTaskSaving;
-    saveButton.setAttribute('aria-disabled', ready && !_createTaskSaving ? 'false' : 'true');
+    saveButton.disabled = !ready || _createTaskSaving || isTaskNetworkOffline();
+    saveButton.setAttribute('aria-disabled', ready && !_createTaskSaving && !isTaskNetworkOffline() ? 'false' : 'true');
     saveButton.title = ready ? '' : 'Заполните обязательные поля';
   }
   return ready;
@@ -290,17 +517,61 @@ function showTaskFormErrorSummary(summaryId, message, target) {
     link.className = 'form-error-summary-link';
     link.textContent = 'Перейти к полю';
     link.addEventListener('click', () => {
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      target.focus();
+      focusTaskFormErrorTarget(target);
     });
     summary.appendChild(link);
   }
   summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+function focusTaskFormErrorTarget(target) {
+  if (!target) return;
+  const highlight = target.closest('.icell, .field, .task-title-card, .task-desc, .b-edit-field') || target;
+  highlight.classList.remove('task-error-attention');
+  void highlight.offsetWidth;
+  highlight.classList.add('task-error-attention');
+  target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+  window.setTimeout(() => target.focus({ preventScroll: true }), 260);
+  window.setTimeout(() => highlight.classList.remove('task-error-attention'), 2200);
+}
+
 function clearTaskFormErrorSummary(summaryId) {
   const summary = document.getElementById(summaryId);
   if (summary) summary.hidden = true;
+}
+
+function isRetryableTaskSaveError(error) {
+  const status = Number(error?.status || 0);
+  return status === 0 || status >= 500;
+}
+
+function addTaskSaveRetryAction(summaryId, onRetry) {
+  const summary = document.getElementById(summaryId);
+  if (!summary || summary.hidden) return;
+  summary.querySelector('.form-error-retry')?.remove();
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.className = 'form-error-summary-link form-error-retry';
+  retry.textContent = 'Повторить сохранение';
+  retry.disabled = isTaskNetworkOffline();
+  retry.addEventListener('click', () => {
+    retry.disabled = true;
+    onRetry();
+  }, { once: true });
+  summary.appendChild(retry);
+}
+
+async function runTaskSaveWithSingleRetry(operation, onRetry) {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isRetryableTaskSaveError(error)) throw error;
+    if (error?.code === 'SAVE_TIMEOUT') throw error;
+    if (isTaskNetworkOffline()) throw error;
+    onRetry?.();
+    await new Promise(resolve => setTimeout(resolve, 650));
+    return operation();
+  }
 }
 
 // === LOCK STATE ===
@@ -2015,11 +2286,11 @@ async function populateSelects(app) {
     }
   }
 
-  populateSelect('/teams', 'edit-team', t.team_id, t.team_name || t.team);
+  populateSelect('/teams/', 'edit-team', t.team_id, t.team_name || t.team);
   populateSelect('/projects', 'edit-project', t.project_id, t.project_name || t.project);
   populateSelect('/admin/departments', 'edit-department', t.department_id, t.department_name || t.customer_department);
   populateSelect('/admin/business-customers', 'edit-business-customer', t.business_customer_id, t.business_customer_name || t.business_customer);
-  populateSelect('/users', 'edit-owner', t.owner_id, t.owner_name || t.owner);
+  populateSelect('/users/', 'edit-owner', t.owner_id, t.owner_name || t.owner);
 
   const customerSelect = document.getElementById('edit-business-customer');
   if (customerSelect) {
@@ -2263,6 +2534,7 @@ export function openCreateTaskModal(app) {
   _createTaskDirty = false;
   _createTaskInitialSnapshot = '';
   ensureTaskBeforeUnloadGuard();
+  ensureTaskExternalLinkGuard();
 
   const html = renderCreateTaskForm();
   const wrapper = document.createElement('div');
@@ -2271,6 +2543,7 @@ export function openCreateTaskModal(app) {
   document.body.appendChild(currentModal);
 
   initCreateTaskModal(app);
+  ensureTaskNetworkState();
 
   if (window.lucide) {
     window.lucide.createIcons();
@@ -2286,7 +2559,7 @@ function renderCreateTaskForm() {
         
         <!-- Modal Header -->
         <div class="mhead">
-          <div class="head-row1"><div class="row-badges"><span class="task-head-chip task-head-chip--type">Новая задача</span></div>
+          <div class="head-row1"><div class="row-badges"><span class="task-head-chip task-head-chip--type">Новая задача</span><span class="header-unsaved-indicator" id="create-unsaved-indicator" role="status" aria-live="polite" hidden><i aria-hidden="true"></i>Не сохранено</span></div>
           <div class="row-actions">
             <button class="iconbtn close" id="create-close-btn" title="Закрыть">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2305,6 +2578,8 @@ function renderCreateTaskForm() {
           <div class="fmeta"><b>*</b> Обязательные поля</div>
           <div class="factions">
             <button class="btn ghost" id="create-clear-draft-btn" type="button">Очистить форму</button>
+            <span class="create-draft-saved-status" id="create-draft-saved-status" role="status" aria-live="polite" hidden></span>
+            <span class="task-network-status" role="status" hidden></span>
             <button class="btn ghost" id="create-cancel-btn" onclick="document.getElementById('create-close-btn')?.click()">Отмена</button>
             <button class="btn primary" id="create-save-btn" disabled aria-disabled="true" title="Заполните обязательные поля">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
@@ -2318,8 +2593,8 @@ function renderCreateTaskForm() {
 }
 
 const TASK_FORM_SCHEMA = Object.freeze({
-  title: { label: 'Название', required: true, createId: 'create-title', type: 'text' },
-  description: { label: 'Описание', createId: 'create-description', type: 'textarea' },
+  title: { label: 'Название', required: true, createId: 'create-title', type: 'text', maxLength: 255 },
+  description: { label: 'Описание', createId: 'create-description', type: 'textarea', maxLength: 10000 },
   team: { label: 'Ответственная команда', required: true, createId: 'create-team', type: 'select', dict: 'teams' },
   type: { label: 'Тип задачи', required: true, createId: 'create-task-type', type: 'select', dict: 'taskTypes' },
   channel: { label: 'Канал поступления', required: true, createId: 'create-channel', type: 'select', dict: 'channels' },
@@ -2329,7 +2604,7 @@ const TASK_FORM_SCHEMA = Object.freeze({
   deadline: { label: 'Срок выполнения', createId: 'create-deadline', type: 'select', dict: 'deadlines' },
   customer: { label: 'Бизнес-заказчик', createId: 'create-business-customer', type: 'select', dict: 'customers' },
   assignee: { label: 'Исполнитель', createId: 'create-owner', type: 'select', dict: 'users' },
-  comment: { label: 'Комментарий', createId: 'create-comment', type: 'textarea' },
+  comment: { label: 'Комментарий', createId: 'create-comment', type: 'textarea', maxLength: 5000 },
   mockupUrl: { label: 'Макеты', createId: 'create-link-mockups', type: 'url' },
   jiraLinks: { label: 'Jira', createId: 'create-link-jira', type: 'url' },
 });
@@ -2346,7 +2621,7 @@ function taskFormLabel(key, requiredMark = '') {
 function taskFormCreateControl(key, opts = {}) {
   const meta = taskFormMeta(key), id = meta.createId;
   if (meta.type === 'select') return '<select id="' + id + '"><option value="">' + escapeHtml(opts.placeholder || 'Загрузка...') + '</option></select>';
-  if (meta.type === 'textarea') return '<textarea id="' + id + '" rows="' + (opts.rows || 4) + '" placeholder="' + escapeHtml(opts.placeholder || '') + '"></textarea>';
+  if (meta.type === 'textarea') return '<textarea id="' + id + '" rows="' + (opts.rows || 4) + '" maxlength="' + meta.maxLength + '" placeholder="' + escapeHtml(opts.placeholder || '') + '"></textarea>';
   const value = opts.value == null ? '' : String(opts.value);
   return '<input type="' + meta.type + '" id="' + id + '" value="' + escapeHtml(value) + '"' + (key === 'title' ? ' class="title-input" maxlength="255" required autofocus' : '') + (meta.required ? ' required' : '') + ' placeholder="' + escapeHtml(opts.placeholder || '') + '">';
 }
@@ -2355,7 +2630,7 @@ function taskFormEditControl(key, value) {
   const meta = taskFormMeta(key);
   if (meta.type === 'select') return cardSel(key, cardNameList(meta.dict), value);
   if (meta.type === 'date') return cardDateC(key, value);
-  if (meta.type === 'textarea') return cardTaC(key, value, key === 'comment' ? 3 : 4);
+  if (meta.type === 'textarea') return '<div class="character-count-wrap">' + cardTaC(key, value, key === 'comment' ? 3 : 4, meta.maxLength) + taskCharacterCounter(key, 'edit') + '</div>';
   if (meta.type === 'url') return '<input type="url" data-k="' + key + '" value="' + escapeHtml(value || '') + '" placeholder="https://...">';
   return '<input type="text" data-k="' + key + '" value="' + escapeHtml(value || '') + '">';
 }
@@ -2365,8 +2640,8 @@ function renderCreateTaskFormFieldsV30() {
   const error = (id, text) => '<div class="create-field-error" id="' + id + '-error" hidden>' + escapeHtml(text) + '</div>';
   const field = (label, control, opts = {}) => '<div class="icell ' + (opts.span2 ? 'span2cell' : '') + '"><label class="ilab" for="' + opts.forId + '"><span class="flt">' + label + '</span></label><div class="ival">' + control + '</div>' + (opts.error ? error(opts.forId, opts.error) : '') + '</div>';
   let h = '<div class="task-top">'
-    + '<div class="task-title-card"><label class="desc-label" for="create-title">' + taskFormLabel('title', req) + '</label>' + taskFormCreateControl('title', { placeholder: 'Введите название задачи' }) + error('create-title', 'Введите название задачи') + '</div>'
-    + '<div class="task-desc"><label class="desc-label" for="create-description">' + taskFormLabel('description') + '</label>' + taskFormCreateControl('description', { placeholder: 'Опишите задачу' }) + '</div></div>';
+    + '<div class="task-title-card"><label class="desc-label" for="create-title">' + taskFormLabel('title', req) + '</label><div class="character-count-wrap">' + taskFormCreateControl('title', { placeholder: 'Введите название задачи' }) + taskCharacterCounter('title') + '</div>' + error('create-title', 'Введите название задачи') + '</div>'
+    + '<div class="task-desc"><label class="desc-label" for="create-description">' + taskFormLabel('description') + '</label><div class="character-count-wrap">' + taskFormCreateControl('description', { placeholder: 'Опишите задачу' }) + taskCharacterCounter('description') + '</div></div></div>';
 
   h += cardSec('Паспорт задачи', 'file') + '<div class="bento">';
   h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('team') + '<span>Регистрация</span></div><div class="cl-grid exec">'
@@ -2385,7 +2660,7 @@ function renderCreateTaskFormFieldsV30() {
   h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Участники</span></div><div class="cl-grid duo">'
     + field(taskFormLabel('customer'), taskFormCreateControl('customer', { placeholder: 'Не выбран' }), { forId: 'create-business-customer' })
     + field(taskFormLabel('assignee'), taskFormCreateControl('assignee', { placeholder: 'Не назначен' }), { forId: 'create-owner' })
-    + field(taskFormLabel('comment'), taskFormCreateControl('comment', { rows: 3, placeholder: 'Общий комментарий' }), { forId: 'create-comment', span2: true })
+    + field(taskFormLabel('comment'), '<div class="character-count-wrap">' + taskFormCreateControl('comment', { rows: 3, placeholder: 'Общий комментарий' }) + taskCharacterCounter('comment') + '</div>', { forId: 'create-comment', span2: true })
     + '</div></div></div>';
 
   h += cardSec('Ссылки', 'link') + cardGrid(
@@ -2523,8 +2798,19 @@ async function initCreateTaskModal(app) {
 
   document.getElementById('create-close-btn')?.addEventListener('click', requestCloseCreateTaskModal);
   const handleCreateFormChange = event => {
-    clearTaskFormErrorSummary('create-form-error-summary');
+    if (!_createTaskSaving) _createTaskRequestId = null;
+    if (event.target?.id === 'create-title') _createDuplicateOverrideSignature = null;
+    const control = event.target;
+    if (event.type === 'change' && control?.type === 'url') control.value = trimTaskLinkEdges(control.value);
+    if (control?.classList.contains('input-error')) {
+      control.classList.remove('input-error');
+      control.setAttribute('aria-invalid', 'false');
+      const fieldError = document.getElementById(control.id + '-error');
+      if (fieldError) fieldError.hidden = true;
+    }
+    if (!overlay.querySelector('.input-error')) clearTaskFormErrorSummary('create-form-error-summary');
     updateCreateTaskDirty();
+    updateTaskCharacterCounters(overlay);
     updateCreateFormReadiness(event.target);
     if (event.target?.id === 'create-team') {
       document.getElementById('create-owner')?._dictionarySearchRefresh?.(userValuesForTeam(_createReferenceUsers, event.target.value));
@@ -2542,6 +2828,7 @@ async function initCreateTaskModal(app) {
     applyCreateTaskSnapshot(_createTaskInitialSnapshot);
     clearCreateApiErrors();
     _createTaskDirty = false;
+    updateHeaderUnsavedIndicator('create-unsaved-indicator', false);
     updateCreateFormReadiness();
     document.getElementById('create-title')?.focus();
     window.toast?.('Форма очищена', 'info');
@@ -2568,6 +2855,8 @@ async function initCreateTaskModal(app) {
   await populateCreateSelects(app);
   _createTaskInitialSnapshot = createTaskFormSnapshot();
   _createTaskDirty = restoreCreateTaskDraft();
+  updateTaskCharacterCounters(overlay);
+  updateHeaderUnsavedIndicator('create-unsaved-indicator', _createTaskDirty, false, createTaskChangedFieldNames().length);
   updateCreateFormReadiness();
   attachDictionarySearch(overlay, [
     { selector: '#create-team', label: 'Ответственная команда' },
@@ -2630,11 +2919,40 @@ function validateCreateForm() {
     if (error) error.hidden = !empty;
     if (empty) firstInvalid ||= control;
   });
-  firstInvalid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  firstInvalid?.focus();
+  if (firstInvalid) focusTaskFormErrorTarget(firstInvalid);
   updateCreateFormReadiness();
   if (firstInvalid) showTaskFormErrorSummary('create-form-error-summary', 'Заполните обязательные поля перед созданием задачи.', firstInvalid);
-  return !firstInvalid;
+  if (firstInvalid) return false;
+
+  const receivedAt = document.getElementById('create-date-received')?.value || '';
+  if (receivedAt && isTaskDateInFuture(receivedAt)) {
+    const dateControl = showCreateApiFieldError('create-date-received', 'Дата поступления не может быть в будущем.');
+    focusTaskFormErrorTarget(dateControl);
+    showTaskFormErrorSummary('create-form-error-summary', 'Проверьте дату поступления задачи.', dateControl);
+    return false;
+  }
+  return true;
+}
+
+function taskCharacterCounter(key, mode = 'create') {
+  const meta = taskFormMeta(key);
+  const selector = mode === 'create' ? `#${meta.createId}` : `[data-k="${key}"]`;
+  return `<span class="task-character-counter" data-character-counter="${escapeHtml(selector)}" aria-live="polite">0 / ${meta.maxLength}</span>`;
+}
+
+function updateTaskCharacterCounters(root = document) {
+  root?.querySelectorAll?.('[data-character-counter]').forEach(counter => {
+    const control = root.querySelector(counter.dataset.characterCounter);
+    if (!control) return;
+    const length = String(control.value || '').length;
+    const limit = Number(control.maxLength || 0);
+    counter.textContent = `${length} / ${limit}`;
+    counter.classList.toggle('near-limit', limit > 0 && length >= limit * 0.9);
+  });
+}
+
+function trimTaskLinkEdges(value) {
+  return String(value || '').trim();
 }
 
 const CREATE_API_FIELD_IDS = Object.freeze({
@@ -2687,15 +3005,20 @@ function applyCreateApiErrors(error) {
     const id = CREATE_API_FIELD_IDS[fieldName];
     if (id) firstInvalid ||= showCreateApiFieldError(id, item.msg || 'Проверьте значение');
   });
-  firstInvalid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  firstInvalid?.focus();
+  if (firstInvalid) focusTaskFormErrorTarget(firstInvalid);
   if (firstInvalid) showTaskFormErrorSummary('create-form-error-summary', 'Исправьте отмеченные поля и повторите создание.', firstInvalid);
   return Boolean(firstInvalid);
 }
 
 async function saveCreateTask(app) {
   if (_createTaskSaving) return;
+  if (isTaskNetworkOffline()) {
+    window.toast?.('Нет подключения. Сохранение станет доступно после восстановления сети.', 'info');
+    updateTaskNetworkState();
+    return;
+  }
   clearCreateApiErrors();
+  clearTaskFormErrorSummary('create-form-error-summary');
   if (!validateCreateForm()) {
     window.toast?.('Заполните обязательные поля', 'error');
     return;
@@ -2708,8 +3031,10 @@ async function saveCreateTask(app) {
   const originalHtml = saveBtn?.innerHTML || 'Создать задачу';
   if (saveBtn) {
     _createTaskSaving = true;
+    updateHeaderUnsavedIndicator('create-unsaved-indicator', _createTaskDirty, true, createTaskChangedFieldNames().length);
     saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></span>Создание...';
+    saveBtn.setAttribute('aria-busy', 'true');
+    saveBtn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Создаём…';
   }
 
   function getVal(id) {
@@ -2735,6 +3060,7 @@ async function saveCreateTask(app) {
   }
 
   const data = {
+    client_request_id: _createTaskRequestId || (_createTaskRequestId = newTaskRequestId()),
     title: document.getElementById('create-title')?.value?.trim() || '',
     team_id: getInt('create-team'),
     priority_id: getInt('create-priority'),
@@ -2749,8 +3075,8 @@ async function saveCreateTask(app) {
     effort_days: getInt('create-effort-days'),
     effort_rub: getFloat('create-effort-rub'),
     financial_effect: getFloat('create-financial-effect'),
-    link_mockups: document.getElementById('create-link-mockups')?.value || null,
-    link_jira: document.getElementById('create-link-jira')?.value || null,
+    link_mockups: trimTaskLinkEdges(document.getElementById('create-link-mockups')?.value) || null,
+    link_jira: trimTaskLinkEdges(document.getElementById('create-link-jira')?.value) || null,
     comment: document.getElementById('create-comment')?.value || null,
   };
 
@@ -2760,8 +3086,19 @@ async function saveCreateTask(app) {
   });
 
   try {
-    const createdTask = await api.post('/tasks/', data);
+    if (saveBtn) saveBtn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Проверяем дубликаты…';
+    const proceedAfterDuplicateCheck = await confirmCreateTaskIsNotDuplicate(app, data.title);
+    if (!proceedAfterDuplicateCheck) {
+      document.getElementById('create-title')?.focus();
+      return;
+    }
+    if (saveBtn) saveBtn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Создаём…';
+    const createdTask = await runTaskSaveWithSingleRetry(
+      () => taskSaveRequestWithTimeout(signal => api.post('/tasks/', data, { signal })),
+      () => { if (saveBtn) saveBtn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Повторяем…'; }
+    );
     clearCreateTaskDraft();
+    _createTaskRequestId = null;
     _createTaskDirty = false;
     closeCreateTaskModal();
     if (onSaveCallback) {
@@ -2780,12 +3117,15 @@ async function saveCreateTask(app) {
     else {
       const message = 'Не удалось создать задачу: ' + (e.message || 'ошибка сервера');
       showTaskFormErrorSummary('create-form-error-summary', message, document.getElementById('create-title'));
+      if (isRetryableTaskSaveError(e)) addTaskSaveRetryAction('create-form-error-summary', () => saveCreateTask(app));
       window.toast?.(message, 'error');
     }
   } finally {
     _createTaskSaving = false;
+    updateHeaderUnsavedIndicator('create-unsaved-indicator', _createTaskDirty, false, createTaskChangedFieldNames().length);
     if (saveBtn) {
       saveBtn.innerHTML = originalHtml;
+      saveBtn.removeAttribute('aria-busy');
     }
     updateCreateFormReadiness();
   }
@@ -2821,7 +3161,7 @@ async function loadComments(taskId, app) {
   try {
     const [commentsData, usersData] = await Promise.allSettled([
       api.get(`/tasks/${taskId}/comments`),
-      api.get('/users'),
+      api.get('/users/'),
     ]);
     if (commentsData.status === 'fulfilled') {
       _commentsCache = commentsData.value.items || [];
@@ -3002,6 +3342,10 @@ async function submitComment(taskId, app) {
 }
 
 async function requestCloseCreateTaskModal() {
+  if (_createTaskSaving) {
+    window.toast?.('Дождитесь завершения создания задачи', 'info');
+    return false;
+  }
   if (_createTaskDirty) {
     const confirmed = await confirmTaskCardDiscard('Форма будет закрыта. Введённые данные сохранятся в черновике. Закрыть форму?');
     if (!confirmed) return false;
@@ -4604,6 +4948,7 @@ let cardPs = null;
 let _cardEscHandler = null;
 let _cardToastTimer = null;
 let _cardRouteTabHandler = null;
+let _cardSavedHighlightTimer = null;
 
 function cardTabFromRoute() {
   const query = window.location.hash.slice(1).split('?')[1] || '';
@@ -4747,7 +5092,7 @@ function cardSelScore(k, v) {
 }
 function cardNumC(k, v, s) { return '<input type="number" step="' + (s || 1) + '" min="0" data-k="' + k + '" value="' + (v == null ? '' : v) + '">'; }
 function cardTxtC(k, v) { return '<input type="text" data-k="' + k + '" value="' + escapeHtml(v) + '">'; }
-function cardTaC(k, v, r) { return '<textarea rows="' + (r || 4) + '" data-k="' + k + '">' + escapeHtml(v) + '</textarea>'; }
+function cardTaC(k, v, r, maxLength) { return '<textarea rows="' + (r || 4) + '" data-k="' + k + '"' + (maxLength ? ' maxlength="' + maxLength + '"' : '') + '>' + escapeHtml(v) + '</textarea>'; }
 function cardDateC(k, v) { return '<input type="date" data-k="' + k + '" value="' + (v || '') + '">'; }
 function cardF(l, inner, o) {
   o = o || {};
@@ -4910,6 +5255,7 @@ function cardRenderHeader() {
   h += '<button class="tid" data-action="copy-id" title="Скопировать ID">#' + t.id + cardIcon('copy') + '</button>';
   h += '<span class="task-head-chip task-head-chip--type" id="hType">' + escapeHtml(t.type) + '</span>';
   if (cardState.editing) h += '<span class="editbadge">Редактирование</span>';
+  h += '<span class="header-unsaved-indicator" id="card-unsaved-indicator" role="status" aria-live="polite" hidden><i aria-hidden="true"></i>Не сохранено</span>';
   h += '</div><div class="row-status">';
   h += '<span class="task-head-chip task-head-chip--status ' + cardStatusCls(t.status) + '" id="hStatus">' + escapeHtml(t.status) + '</span>';
   h += '<span class="task-head-chip task-head-chip--priority ' + cardPrioCls(t.priority) + '" id="hPrio">' + escapeHtml(t.priority) + '</span>';
@@ -5044,7 +5390,7 @@ function cardBodyMainV30(t, e) {
   const types = cardNameList('taskTypes'), priorities = cardNameList('priorities'), statuses = cardNameList('statuses');
   const deadlines = cardNameList('deadlines'), channels = cardNameList('channels'), customers = cardNameList('customers'), tags = cardNameList('tags');
   let h = '<div class="task-top"><div class="task-title-card"><div class="desc-label">' + taskFormLabel('title') + '</div><div class="task-title-row">';
-  h += e ? '<div class="title-edit-wrap"><input class="title-input" data-k="title" maxlength="255" value="' + escapeHtml(t.title) + '"><span class="tcount" id="titleCount"></span></div>' : '<h1 class="task-title">' + escapeHtml(t.title) + '</h1>';
+  h += e ? '<div class="title-edit-wrap"><input class="title-input" data-k="title" maxlength="255" value="' + escapeHtml(t.title) + '"><span class="tcount task-character-counter" id="titleCount"></span></div>' : '<h1 class="task-title">' + escapeHtml(t.title) + '</h1>';
   h += '</div></div><div class="task-desc"><div class="desc-label">' + taskFormLabel('description') + '</div><div class="desc-val">' + (e ? taskFormEditControl('description', t.description) : '<span class="txt">' + cardNl2br(t.description) + '</span>') + '</div></div></div>';
   h += cardSec('Паспорт задачи', 'file') + '<div class="bento">';
   h += '<div class="cl sp3" id="clExec" style="border-left:3px solid ' + cardStatusHex(t.status) + '"><div class="cl-h">' + cardIcon('trend') + '<span>Исполнение</span></div><div class="cl-grid exec">'
@@ -5192,7 +5538,7 @@ function cardRenderFooter() {
   if (!el) return;
   const t = cardCur();
   const lockedByOther = _lockInfo && _lockInfo.locked && !_lockInfo.is_mine;
-  let h = '<div class="fmeta"><b>Автор:</b> ' + escapeHtml(cardPerson(t.author)) + ' · <b>Создана:</b> ' + cardFmtDT(t.createdAt) + ' · <b>Изменена:</b> ' + cardFmtDT(t.updatedAt) + '</div><div class="factions"><span class="dirty" id="dirty"><i></i>Не сохранено</span>';
+  let h = '<div class="fmeta"><b>Автор:</b> ' + escapeHtml(cardPerson(t.author)) + ' · <b>Создана:</b> ' + cardFmtDT(t.createdAt) + ' · <b>Изменена:</b> ' + cardFmtDT(t.updatedAt) + '</div><div class="factions"><span class="task-network-status" role="status" hidden></span><span class="dirty" id="dirty"><i></i>Не сохранено</span>';
   h += cardState.editing
     ? '<button class="btn ghost" data-action="cancel">' + cardIcon('x') + 'Отменить</button><button class="btn primary" id="saveBtn" data-action="save">' + cardIcon('check') + 'Сохранить</button>'
     : '<button class="btn primary" data-action="edit"' + (lockedByOther ? ' disabled style="opacity:.45;cursor:not-allowed" title="Задача редактируется другим пользователем"' : '') + '>' + cardIcon('edit') + 'Редактировать</button>';
@@ -5226,7 +5572,8 @@ function cardRefreshDynamic() {
   set('custAva', el => { el.textContent = getInitials(t.customer); });
   set('ringFg', el => { el.style.strokeDashoffset = (94.25 * (1 - (+t.progress || 0) / 100)).toFixed(2); });
   set('ringTxt', el => { el.textContent = t.progress + '%'; });
-  set('titleCount', el => { el.textContent = (255 - String(t.title || '').length); });
+  set('titleCount', el => { const length = String(t.title || '').length; el.textContent = length + ' / 255'; el.classList.toggle('near-limit', length >= 230); });
+  updateTaskCharacterCounters(document.getElementById('task-detail-overlay'));
   set('psBar', el => { el.style.width = (t.priorityScore || 0) + '%'; });
   document.querySelectorAll('#task-detail-overlay [data-dyn]').forEach(el => {
     const k = el.dataset.dyn;
@@ -5275,6 +5622,58 @@ function cardUpdateDirty() {
     if (!cardStatePathChanged(key)) return;
     document.querySelector(`#task-detail-overlay [data-toggle="${toggle}"]`)?.closest('.icell, .field')?.classList.add('field-modified');
   });
+  if (cardState.editing) {
+    if (cardState.dirty) saveCardEditDraft();
+    else clearCardEditDraft();
+  }
+  updateHeaderUnsavedIndicator('card-unsaved-indicator', cardState.dirty, cardState.saving, changesCount);
+}
+
+async function taskSaveRequestWithTimeout(request, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort('save-timeout'), timeoutMs);
+  try {
+    return await request(controller.signal);
+  } catch (error) {
+    if (controller.signal.aborted) {
+      const timeoutError = new Error('Сервер не ответил за 15 секунд. Повторите сохранение.');
+      timeoutError.name = 'TaskSaveTimeoutError';
+      timeoutError.code = 'SAVE_TIMEOUT';
+      timeoutError.status = 0;
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function cardHighlightSavedFields(changes) {
+  clearTimeout(_cardSavedHighlightTimer);
+  document.querySelectorAll('#task-detail-overlay .field-saved').forEach(el => el.classList.remove('field-saved'));
+  const aliases = {
+    title: 'Название', description: 'Описание', receivedAt: 'Дата получения', channel: 'Канал поступления',
+    customer: 'Бизнес-заказчик', project: 'Проект', type: 'Тип задачи', priority: 'Приоритет',
+    status: 'Статус задачи', deadline: 'Срок выполнения', team: 'Ответственная команда', assignee: 'Исполнитель',
+    progress: 'Прогресс', finEffect: 'Финансовый эффект', finJust: 'Обоснование расчёта',
+    mockupUrl: 'Ссылка на макеты', statuses: 'Отчётные статусы', demoDid: 'Демо для ДИД',
+    tags: 'Метки', otherTeams: 'Другие вовлечённые команды', jiraLinks: 'Jira', reqLinks: 'бизнес-требования',
+  };
+  const labelElements = Array.from(document.querySelectorAll('#task-detail-overlay .flt, #task-detail-overlay .ilab, #task-detail-overlay .flabel, #task-detail-overlay .jlab, #task-detail-overlay .bc-title, #task-detail-overlay .slab'));
+  changes.forEach(change => {
+    let target = null;
+    if (change.key === 'title') target = document.querySelector('#task-detail-overlay .task-title-card');
+    else if (change.key === 'description') target = document.querySelector('#task-detail-overlay .task-desc');
+    else {
+      const expected = String(aliases[change.key] || change.field.replace(' (ЭО)', '')).toLocaleLowerCase('ru-RU');
+      const label = labelElements.find(el => el.textContent.trim().toLocaleLowerCase('ru-RU').includes(expected));
+      target = label?.closest('.icell, .field, .task-title-card, .task-desc, .repcard, .bigcard, .cl');
+    }
+    target?.classList.add('field-saved');
+  });
+  _cardSavedHighlightTimer = setTimeout(() => {
+    document.querySelectorAll('#task-detail-overlay .field-saved').forEach(el => el.classList.remove('field-saved'));
+  }, 2400);
 }
 
 function cardStatePathValue(source, path) {
@@ -5284,6 +5683,36 @@ function cardStatePathValue(source, path) {
 function cardStatePathChanged(path) {
   return JSON.stringify(cardStatePathValue(cardState.current, path) ?? null)
     !== JSON.stringify(cardStatePathValue(cardState.draft, path) ?? null);
+}
+
+function cardFirstChangedPath() {
+  if (!cardState.editing || !cardState.draft) return null;
+  const paths = CARD_DIFF_TRACK.flatMap(([path]) => {
+    if (path === 'statuses') return ['statuses.directorate.cur', 'statuses.did.cur', 'statuses.key.cur'];
+    return [path];
+  });
+  paths.push(...CARD_ROLES.map(role => `eo.${role.key}`));
+  return paths.find(cardStatePathChanged) || null;
+}
+
+async function cardRevealFirstChangedField(app) {
+  const path = cardFirstChangedPath();
+  if (!path) return;
+  const tab = path.startsWith('statuses.') || path === 'demoDid' ? 'rep'
+    : (path === 'jiraLinks' || path === 'reqLinks' ? 'sys' : 'main');
+  if (cardState.tab !== tab) cardActivateTab(tab, app);
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  let target = Array.from(document.querySelectorAll('#task-detail-overlay [data-k]'))
+    .find(control => control.dataset.k === path);
+  if (!target && (path === 'otherTeams' || path === 'tags')) {
+    target = document.querySelector(`#task-detail-overlay [data-toggle="${path}"]`);
+  }
+  if (!target) return;
+  const details = target.closest('details');
+  if (details) details.open = true;
+  target.closest('.icell, .field, .task-title-card, .task-desc')?.classList.add('field-modified');
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (typeof target.focus === 'function') target.focus({ preventScroll: true });
 }
 
 function cardSetPath(o, p, v) {
@@ -5302,11 +5731,50 @@ function cardToast(msg, type) {
   _cardToastTimer = setTimeout(() => { t.classList.remove('show'); }, 2800);
 }
 
+function createTaskChangedFieldNames() {
+  if (!_createTaskInitialSnapshot) return [];
+  try {
+    const initial = new Map(JSON.parse(_createTaskInitialSnapshot));
+    const current = new Map(JSON.parse(createTaskFormSnapshot()));
+    const extraLabels = {
+      'create-effort-days': 'Трудозатраты',
+      'create-effort-rub': 'Стоимость',
+      'create-financial-effect': 'Финансовый эффект',
+    };
+    const labelsById = Object.values(TASK_FORM_SCHEMA).reduce((labels, field) => {
+      labels[field.createId] = field.label;
+      return labels;
+    }, extraLabels);
+    return Array.from(current.entries())
+      .filter(([id, value]) => initial.get(id) !== value)
+      .map(([id]) => labelsById[id] || 'Дополнительное поле')
+      .filter((label, index, labels) => labels.indexOf(label) === index);
+  } catch (_) {
+    return [];
+  }
+}
+
+function taskUnsavedChangeNames() {
+  if (_createTaskDirty) return createTaskChangedFieldNames();
+  if (cardState.editing && cardState.current && cardState.draft) {
+    return cardDiffChanges(cardState.current, cardState.draft).map(change => change.field);
+  }
+  return [];
+}
+
+function appendUnsavedChangesSummary(message) {
+  const fields = taskUnsavedChangeNames();
+  if (!fields.length) return message;
+  const shown = fields.slice(0, 3).join(', ');
+  const remaining = fields.length - 3;
+  return `${message} Изменено полей: ${fields.length}. ${shown}${remaining > 0 ? ` и ещё ${remaining}` : ''}.`;
+}
+
 export async function confirmTaskCardDiscard(message = 'Все несохранённые изменения карточки будут потеряны. Продолжить?') {
   if (!hasUnsavedTaskChanges()) return true;
   if (_discardPromptPromise) return _discardPromptPromise;
   _discardPromptPromise = showConfirmModal(
-    message,
+    appendUnsavedChangesSummary(message),
     'Несохранённые изменения',
     'Потерять изменения',
     'Остаться',
@@ -5323,6 +5791,11 @@ export async function confirmAndCloseTaskFormsForNavigation() {
   const taskOverlay = document.getElementById('task-detail-overlay');
   const createOverlay = document.getElementById('create-task-overlay');
   if (!taskOverlay && !createOverlay) return true;
+  if (cardState.saving || _createTaskSaving) {
+    window.toast?.(createOverlay ? 'Дождитесь завершения создания задачи' : 'Дождитесь завершения сохранения', 'info');
+    return false;
+  }
+  if (taskOverlay && cardState.dirty) await cardRevealFirstChangedField(window.app);
   const confirmed = await confirmTaskCardDiscard(
     createOverlay
       ? 'Все введённые данные новой задачи будут потеряны. Перейти на другую страницу?'
@@ -5330,13 +5803,22 @@ export async function confirmAndCloseTaskFormsForNavigation() {
   );
   if (!confirmed) return false;
   if (createOverlay) closeCreateTaskModal();
-  if (taskOverlay) closeTaskDetailModal();
+  if (taskOverlay) {
+    clearCardEditDraft();
+    closeTaskDetailModal();
+  }
   return true;
 }
 
 async function cardRequestClose() {
+  if (cardState.saving) {
+    cardToast('Дождитесь завершения сохранения', 'warn');
+    return false;
+  }
+  if (cardState.dirty) await cardRevealFirstChangedField(window.app);
   const confirmed = await confirmTaskCardDiscard();
   if (!confirmed) return false;
+  clearCardEditDraft();
   closeTaskDetailModal();
   return true;
 }
@@ -5383,18 +5865,22 @@ async function cardStartEdit(app) {
   renderLockBanner();
   cardState.draft = JSON.parse(JSON.stringify(cardState.current));
   cardState.editing = true;
-  cardState.dirty = false;
+  cardState.dirty = restoreCardEditDraft();
   cardState.replyFor = null;
   cardAi = null;
   cardPs = null;
   modalMode = 'edit';
   cardRender();
-  cardToast('Режим редактирования включён', 'ok');
+  cardToast(cardState.dirty ? 'Черновик редактирования восстановлен' : 'Режим редактирования включён', 'ok');
   const ti = document.getElementById('titleInput');
   if (ti) { ti.focus(); ti.setSelectionRange(ti.value.length, ti.value.length); }
 }
 
 async function cardCancelEdit(app) {
+  if (cardState.saving) {
+    cardToast('Дождитесь завершения сохранения', 'warn');
+    return;
+  }
   if (cardState.dirty) {
     const confirmed = await showConfirmModal(
       'Все несохранённые изменения будут потеряны. Это действие нельзя отменить.',
@@ -5406,6 +5892,7 @@ async function cardCancelEdit(app) {
     if (!confirmed) return;
   }
   if (currentTask?.id) releaseLock(currentTask.id);
+  clearCardEditDraft();
   _lockInfo = null;
   cardState.editing = false;
   cardState.draft = null;
@@ -5418,28 +5905,81 @@ async function cardCancelEdit(app) {
   cardToast('Изменения отменены', 'warn');
 }
 
+function isTaskDateInFuture(value) {
+  if (!value) return false;
+  const selected = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(selected.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return selected > today;
+}
+
+function normalizedTaskStatus(value) {
+  return String(value || '').trim().toLocaleUpperCase('ru-RU');
+}
+
 function cardValidate(d) {
   if (!String(d.title || '').trim()) return { message: 'Укажите название задачи — поле обязательно.', key: 'title' };
+  if (!String(d.type || '').trim() || d.type === '—') return { message: 'Укажите тип задачи — поле обязательно.', key: 'type' };
+  if (!String(d.team || '').trim() || d.team === '—') return { message: 'Укажите ответственную команду — поле обязательно.', key: 'team' };
+  if (isTaskDateInFuture(d.receivedAt)) return { message: 'Дата поступления не может быть в будущем.', key: 'receivedAt' };
+  const status = normalizedTaskStatus(d.status);
+  const progress = Math.max(0, Math.min(100, Math.round((+d.progress || 0) / 5) * 5));
+  if (status === 'ВЫПОЛНЕНА' && progress !== 100) return { message: 'Для выполненной задачи прогресс должен быть равен 100%.', key: 'progress' };
+  if (progress === 100 && status !== 'ВЫПОЛНЕНА') return { message: 'Прогресс 100% допустим только для статуса «Выполнена».', key: 'status' };
   if (d.mockupUrl && !cardUrlOk(d.mockupUrl)) return { message: 'Некорректная ссылка на макеты (ожидается http(s)://…).', key: 'mockupUrl' };
   if (d.channel !== cardState.current.channel && !(cardMaps?.channelId?.(d.channel) != null)) return { message: 'Не удалось определить выбранный канал. Обновите карточку и повторите.', key: 'channel' };
   if (d.type !== cardState.current.type && !(cardMaps?.typeId?.(d.type) != null)) return { message: 'Не удалось определить выбранный тип задачи. Обновите карточку и повторите.', key: 'type' };
   return null;
 }
 
-function cardApiErrorInfo(error) {
-  const first = Array.isArray(error?.data?.detail) ? error.data.detail[0] : null;
-  const apiField = Array.isArray(first?.loc) ? first.loc[first.loc.length - 1] : null;
+function cardApiErrorInfos(error) {
+  const details = Array.isArray(error?.data?.detail) ? error.data.detail : [];
   const keyByApiField = {
     title: 'title', team_id: 'team', task_type_id: 'type', channel_id: 'channel',
     date_received: 'receivedAt', project_id: 'project', priority_id: 'priority',
     deadline_id: 'deadline', business_customer_id: 'customer', owner_id: 'assignee',
     link_mockups: 'mockupUrl', description: 'description', comment: 'comment',
   };
-  const key = keyByApiField[apiField] || 'title';
-  return {
-    message: first?.msg ? `Проверьте поле: ${first.msg}` : 'Ошибка: ' + (error?.message || 'не удалось сохранить'),
-    target: document.querySelector(`[data-k="${key}"]`),
-  };
+  return details.map(item => {
+    const apiField = Array.isArray(item?.loc) ? item.loc[item.loc.length - 1] : null;
+    const key = keyByApiField[apiField];
+    return key ? { key, message: item.msg || 'Проверьте значение' } : null;
+  }).filter(Boolean);
+}
+
+function cardClearFieldError(key) {
+  document.querySelectorAll('#task-detail-overlay [data-k]').forEach(control => {
+    if (control.dataset.k !== key) return;
+    control.classList.remove('input-error');
+    control.removeAttribute('aria-invalid');
+  });
+  document.querySelectorAll('#task-detail-overlay .card-field-error').forEach(field => {
+    if (field.dataset.errorKey !== key) return;
+    field.classList.remove('card-field-error');
+    delete field.dataset.errorKey;
+    field.querySelector('.card-field-error-message')?.remove();
+  });
+}
+
+function cardShowFieldError(key, message) {
+  const controls = Array.from(document.querySelectorAll('#task-detail-overlay [data-k]')).filter(control => control.dataset.k === key);
+  const target = controls[0] || null;
+  controls.forEach(control => {
+    control.classList.add('input-error');
+    control.setAttribute('aria-invalid', 'true');
+  });
+  const field = target?.closest('.icell, .field, .task-title-card, .task-desc');
+  if (field) {
+    field.classList.add('card-field-error');
+    field.dataset.errorKey = key;
+    field.querySelector('.card-field-error-message')?.remove();
+    const errorText = document.createElement('div');
+    errorText.className = 'card-field-error-message';
+    errorText.textContent = message;
+    field.appendChild(errorText);
+  }
+  return target;
 }
 
 const CARD_DIFF_TRACK = [
@@ -5456,9 +5996,9 @@ const CARD_DIFF_TRACK = [
 function cardDiffChanges(a, b) {
   const ch = [];
   CARD_DIFF_TRACK.forEach(p => {
-    if (JSON.stringify(a[p[0]]) !== JSON.stringify(b[p[0]])) ch.push({ field: p[1], old: cardPretty(a[p[0]]), nw: cardPretty(b[p[0]]) });
+    if (JSON.stringify(a[p[0]]) !== JSON.stringify(b[p[0]])) ch.push({ key: p[0], field: p[1], old: cardPretty(a[p[0]]), nw: cardPretty(b[p[0]]) });
   });
-  CARD_ROLES.forEach(r => { if (+a.eo[r.key] !== +b.eo[r.key]) ch.push({ field: r.name + ' (ЭО)', old: cardPretty(a.eo[r.key]), nw: cardPretty(b.eo[r.key]) }); });
+  CARD_ROLES.forEach(r => { if (+a.eo[r.key] !== +b.eo[r.key]) ch.push({ key: `eo.${r.key}`, field: r.name + ' (ЭО)', old: cardPretty(a.eo[r.key]), nw: cardPretty(b.eo[r.key]) }); });
   return ch;
 }
 
@@ -5542,19 +6082,26 @@ async function cardLoadHistory(app) {
 
 async function cardSaveEdit(app) {
   if (cardState.saving) return;
+  if (isTaskNetworkOffline()) {
+    cardToast('Нет подключения. Сохранение станет доступно после восстановления сети.', 'warn');
+    updateTaskNetworkState();
+    return;
+  }
   const api = app?.api || window.app?.api;
   if (!api || !currentTask?.id) return;
   const err = cardValidate(cardState.draft);
   if (err) {
-    const target = document.querySelector(`[data-k="${err.key}"]`);
+    const target = cardShowFieldError(err.key, err.message);
     showTaskFormErrorSummary('card-form-error-summary', err.message, target);
     cardToast(err.message, 'err');
-    target?.focus();
+    focusTaskFormErrorTarget(target);
     return;
   }
+  clearTaskFormErrorSummary('card-form-error-summary');
   const changes = cardDiffChanges(cardState.current, cardState.draft);
   if (!changes.length) {
     if (currentTask?.id) releaseLock(currentTask.id);
+    clearCardEditDraft();
     _lockInfo = null;
     cardState.editing = false;
     cardState.draft = null;
@@ -5568,13 +6115,26 @@ async function cardSaveEdit(app) {
     return;
   }
   cardState.saving = true;
+  cardUpdateDirty();
   const btn = document.getElementById('saveBtn');
-  if (btn) btn.classList.add('loading');
+  const originalButtonHtml = btn?.innerHTML || '';
+  if (btn) {
+    btn.classList.add('loading');
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Сохраняем…';
+  }
   try {
-    await api.patch(`/tasks/${currentTask.id}`, cardPatchPayload());
+    const patchPayload = { ...cardPatchPayload(), client_request_id: _cardSaveRequestId || (_cardSaveRequestId = newTaskRequestId()) };
+    await runTaskSaveWithSingleRetry(
+      () => taskSaveRequestWithTimeout(signal => api.patch(`/tasks/${currentTask.id}`, patchPayload, { signal })),
+      () => { if (btn) btn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Повторяем…'; }
+    );
     if (currentTask?.id) releaseLock(currentTask.id);
     _lockInfo = null;
     await cardReloadTask(app);
+    _cardSaveRequestId = null;
+    clearCardEditDraft();
     cardState.editing = false;
     cardState.draft = null;
     cardState.dirty = false;
@@ -5583,6 +6143,7 @@ async function cardSaveEdit(app) {
     cardPs = null;
     modalMode = 'view';
     cardRender();
+    cardHighlightSavedFields(changes);
     cardToast('Сохранено · изменений: ' + changes.length, 'ok');
   } catch (e) {
     if (e && e.status === 409) {
@@ -5592,14 +6153,26 @@ async function cardSaveEdit(app) {
       showTaskFormErrorSummary('card-form-error-summary', message, document.querySelector('[data-k="title"]'));
       cardToast(message, 'warn');
     } else {
-      const info = cardApiErrorInfo(e);
-      showTaskFormErrorSummary('card-form-error-summary', info.message, info.target);
-      cardToast(info.message, 'err');
+      const infos = cardApiErrorInfos(e);
+      const targets = infos.map(info => cardShowFieldError(info.key, info.message)).filter(Boolean);
+      const message = infos.length
+        ? `Исправьте отмеченные поля (${infos.length}) и повторите сохранение.`
+        : 'Ошибка: ' + (e?.message || 'не удалось сохранить');
+      showTaskFormErrorSummary('card-form-error-summary', message, targets[0] || null);
+      if (isRetryableTaskSaveError(e)) addTaskSaveRetryAction('card-form-error-summary', () => cardSaveEdit(app));
+      focusTaskFormErrorTarget(targets[0]);
+      cardToast(message, 'err');
     }
   } finally {
     cardState.saving = false;
+    cardUpdateDirty();
     const btn2 = document.getElementById('saveBtn');
-    if (btn2) btn2.classList.remove('loading');
+    if (btn2) {
+      btn2.classList.remove('loading');
+      btn2.disabled = false;
+      btn2.removeAttribute('aria-busy');
+      if (originalButtonHtml) btn2.innerHTML = originalButtonHtml;
+    }
   }
 }
 
@@ -5697,6 +6270,7 @@ async function cardDoSave(payload, app) {
     if (currentTask?.id) releaseLock(currentTask.id);
     _lockInfo = null;
     await cardReloadTask(app);
+    clearCardEditDraft();
     cardState.editing = false; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
     modalMode = 'view';
     cardRender();
@@ -5735,6 +6309,7 @@ function cardConflictRefresh(serverTask, app) {
   cardState.editing = false; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
   modalMode = 'view';
   if (currentTask?.id) releaseLock(currentTask.id);
+  clearCardEditDraft();
   _lockInfo = null;
   cardReloadTask(app).then(() => cardRender());
   cardToast('Данные обновлены с сервера', 'info');
@@ -5805,12 +6380,52 @@ function cardApplyPs() {
   cardToast('Priority Score применён — сохраните изменения', 'ok');
 }
 
+async function cardSuggestStatusProgressSync(changedKey, changedValue) {
+  if (_statusProgressSuggestionPending || !cardState.editing || !cardState.draft) return;
+  const draft = cardState.draft;
+  const status = normalizedTaskStatus(draft.status);
+  const progress = Math.max(0, Math.min(100, Math.round((+draft.progress || 0) / 5) * 5));
+  let targetKey = null;
+  let targetValue = null;
+  let message = '';
+  if (changedKey === 'status' && status === 'ВЫПОЛНЕНА' && progress !== 100) {
+    targetKey = 'progress';
+    targetValue = 100;
+    message = 'Для статуса «Выполнена» требуется прогресс 100%. Установить его автоматически?';
+  } else if (changedKey === 'progress' && progress === 100 && status !== 'ВЫПОЛНЕНА') {
+    targetKey = 'status';
+    targetValue = 'ВЫПОЛНЕНА';
+    message = 'Прогресс достиг 100%. Изменить статус задачи на «Выполнена»?';
+  }
+  if (!targetKey) return;
+
+  _statusProgressSuggestionPending = true;
+  try {
+    const confirmed = await showConfirmModal(message, 'Согласовать статус и прогресс', 'Изменить', 'Оставить как есть');
+    if (!confirmed || !cardState.editing || !cardState.draft) return;
+    if (changedKey === 'status' && normalizedTaskStatus(cardState.draft.status) !== normalizedTaskStatus(changedValue)) return;
+    if (changedKey === 'progress' && Number(cardState.draft.progress) !== Number(changedValue)) return;
+    cardSetPath(cardState.draft, targetKey, targetValue);
+    document.querySelectorAll(`#task-detail-overlay [data-k="${targetKey}"]`).forEach(control => { control.value = String(targetValue); });
+    cardClearFieldError(targetKey);
+    cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
+    cardUpdateDirty();
+    cardRefreshDynamic();
+    cardToast(targetKey === 'progress' ? 'Прогресс установлен на 100%' : 'Статус изменён на «Выполнена»', 'ok');
+  } finally {
+    _statusProgressSuggestionPending = false;
+  }
+}
+
 function cardOnField(ev) {
   if (!cardState.editing) return;
   const el = ev.target;
   const k = el.dataset && el.dataset.k;
   if (!k) return;
-  clearTaskFormErrorSummary('card-form-error-summary');
+  if (!cardState.saving) _cardSaveRequestId = null;
+  cardClearFieldError(k);
+  if (!document.querySelector('#task-detail-overlay .card-field-error')) clearTaskFormErrorSummary('card-form-error-summary');
+  if (ev.type === 'change' && el.type === 'url') el.value = trimTaskLinkEdges(el.value);
   let v = el.value;
   if (el.type === 'checkbox') v = el.checked;
   else if (el.type === 'number' || el.type === 'range') {
@@ -5822,6 +6437,9 @@ function cardOnField(ev) {
   cardUpdateDirty();
   if (k === 'progress') {
     document.querySelectorAll('#task-detail-overlay [data-k="progress"]').forEach(el2 => { if (el2 !== el) el2.value = v; });
+  }
+  if (ev.type === 'change' && (k === 'status' || k === 'progress')) {
+    void cardSuggestStatusProgressSync(k, v);
   }
   if (k === 'team') {
     const teamId = cardMaps?.teamId(v);
@@ -5926,6 +6544,7 @@ async function cardOnClick(ev, app) {
 function cardReset() {
   cardState = { tab: 'main', editing: false, dirty: false, saving: false, replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
   cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
+  _statusProgressSuggestionPending = false;
   if (_cardEscHandler) { document.removeEventListener('keydown', _cardEscHandler); _cardEscHandler = null; }
   if (_cardRouteTabHandler) { document.removeEventListener('task-tab-change', _cardRouteTabHandler); _cardRouteTabHandler = null; }
 }
@@ -5977,6 +6596,8 @@ export function initTaskDetailModal(app) {
   if (!overlay) return;
   activateTaskModalFocusTrap(overlay);
   ensureTaskBeforeUnloadGuard();
+  ensureTaskExternalLinkGuard();
+  ensureTaskNetworkState();
 
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) { cardRequestClose(); return; }

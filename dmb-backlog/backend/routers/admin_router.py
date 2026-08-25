@@ -3,10 +3,11 @@ DMB Backlog - Admin Router (CRUD for roles, teams, users, dictionaries)
 """
 import json
 import logging
+import re
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import case as sql_case, desc
+from sqlalchemy import case as sql_case, desc, or_, func
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 
@@ -14,24 +15,184 @@ from datetime import datetime, timezone, timedelta
 logger = logging.getLogger("dmb_backlog.admin")
 
 from database import get_db
-from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, FieldLabel, Project, BusinessCustomer, Department, AuditLog, CompetencyCostHistory, Tag, IssueTag, ProjectTag
+from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, FieldLabel, Project, BusinessCustomer, Department, AuditLog, CompetencyCostHistory, Tag, IssueTag, ProjectTag, RefreshSession, Report, NotificationTemplate
 from schemas import (
     RoleCreate, RoleUpdate, RoleResponse,
     TeamCreate, TeamUpdate, TeamResponse,
     UserCreate, UserUpdate, UserResponse,
     DictionaryItemCreate, DictionaryItemUpdate, DictionaryItemResponse,
+    DictionaryBatchUpdate,
     DictLockResponse,
     CompetencyCostHistoryCreate, CompetencyCostHistoryUpdate, CompetencyCostHistoryResponse,
+    CompetencyCostBatchUpdate,
     DisplaySettingUpdate, DisplaySettingResponse,
     ColumnLabelUpdate, ColumnLabelResponse,
     ProjectCreate, ProjectUpdate, ProjectResponse,
     BusinessCustomerCreate, BusinessCustomerUpdate, BusinessCustomerResponse,
     TagCreate, TagResponse,
+    NotificationTemplateCreate, NotificationTemplateUpdate, NotificationTemplateResponse,
 )
 from auth import get_current_user, require_permission, get_password_hash
 from routers.tasks_router import recalculate_effort_rub_for_all
 
 router = APIRouter(tags=["admin"])
+
+NOTIFICATION_TEMPLATE_VARIABLES = {
+    "task_id", "title", "status", "deadline", "owner", "team", "project", "days_left",
+}
+
+
+def _notification_template_payload(template: NotificationTemplate) -> dict:
+    try:
+        recipients = json.loads(template.recipients or "[]")
+    except (TypeError, ValueError):
+        recipients = []
+    return {
+        "id": template.id, "name": template.name, "event_type": template.event_type,
+        "text": template.text, "recipients": recipients,
+        "deadline_days": template.deadline_days, "repeat_frequency": template.repeat_frequency,
+        "repeat_day": template.repeat_day, "is_active": bool(template.is_active),
+        "created_at": template.created_at, "updated_at": template.updated_at,
+    }
+
+
+def _validate_notification_template_policy(values: dict) -> None:
+    variables = set(re.findall(r"\{([a-z_][a-z0-9_]*)\}", values.get("text") or ""))
+    unknown = sorted(variables - NOTIFICATION_TEMPLATE_VARIABLES)
+    if unknown:
+        raise HTTPException(status_code=422, detail=[{
+            "loc": ["body", "text"], "msg": f"Недопустимые переменные: {', '.join(unknown)}", "type": "value_error.template_variable",
+        }])
+    frequency = values.get("repeat_frequency")
+    repeat_day = values.get("repeat_day")
+    if frequency == "daily" and repeat_day is not None:
+        raise HTTPException(status_code=422, detail=[{
+            "loc": ["body", "repeat_day"], "msg": "Для ежедневного повтора день не указывается", "type": "value_error.repeat_day",
+        }])
+    if frequency == "weekly" and repeat_day is not None and repeat_day > 7:
+        raise HTTPException(status_code=422, detail=[{
+            "loc": ["body", "repeat_day"], "msg": "Для еженедельного повтора укажите день от 1 до 7", "type": "value_error.repeat_day",
+        }])
+
+
+@router.get("/notification-templates", response_model=List[NotificationTemplateResponse])
+def get_notification_templates(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "read")),
+):
+    return [_notification_template_payload(item) for item in db.query(NotificationTemplate).order_by(NotificationTemplate.name).all()]
+
+
+@router.post("/notification-templates", response_model=NotificationTemplateResponse, status_code=status.HTTP_201_CREATED)
+def create_notification_template(
+    data: NotificationTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial")),
+):
+    values = data.model_dump()
+    _validate_notification_template_policy(values)
+    if db.query(NotificationTemplate).filter(func.lower(NotificationTemplate.name) == values["name"].strip().lower()).first():
+        raise HTTPException(status_code=400, detail="Шаблон с таким названием уже существует")
+    values["name"] = values["name"].strip()
+    values["text"] = values["text"].strip()
+    values["recipients"] = json.dumps(values["recipients"], ensure_ascii=False)
+    template = NotificationTemplate(**values)
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return _notification_template_payload(template)
+
+
+@router.put("/notification-templates/{template_id}", response_model=NotificationTemplateResponse)
+def update_notification_template(
+    template_id: int,
+    data: NotificationTemplateUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial")),
+):
+    template = db.query(NotificationTemplate).filter(NotificationTemplate.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Шаблон уведомления не найден")
+    update = data.model_dump(exclude_unset=True)
+    merged = _notification_template_payload(template)
+    merged.update(update)
+    _validate_notification_template_policy(merged)
+    if "name" in update:
+        duplicate = db.query(NotificationTemplate).filter(
+            func.lower(NotificationTemplate.name) == update["name"].strip().lower(), NotificationTemplate.id != template_id,
+        ).first()
+        if duplicate:
+            raise HTTPException(status_code=400, detail="Шаблон с таким названием уже существует")
+        update["name"] = update["name"].strip()
+    if "text" in update:
+        update["text"] = update["text"].strip()
+    if "recipients" in update:
+        update["recipients"] = json.dumps(update["recipients"], ensure_ascii=False)
+    for field, value in update.items():
+        setattr(template, field, value)
+    db.commit()
+    db.refresh(template)
+    return _notification_template_payload(template)
+
+
+@router.delete("/notification-templates/{template_id}")
+def delete_notification_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial")),
+):
+    template = db.query(NotificationTemplate).filter(NotificationTemplate.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Шаблон уведомления не найден")
+    db.delete(template)
+    db.commit()
+    return {"message": "Notification template deleted"}
+
+
+def _validate_role_policy(values: dict) -> None:
+    """Reject combinations that cannot produce a safe, coherent interface."""
+    errors = []
+    portal_only = bool(values.get("customer_portal_only"))
+    if portal_only and values.get("customer_access", "none") == "none":
+        errors.append({"loc": ["body", "customer_access"], "msg": "Для режима бизнес-заказчика разрешите доступ к порталу", "type": "value_error.role_policy"})
+    incompatible = {
+        "admin_access": ("none", "В режиме бизнес-заказчика административный доступ должен быть запрещён"),
+        "review_access": ("none", "В режиме бизнес-заказчика ревью запросов должно быть запрещено"),
+        "task_edit_scope": ("none", "В режиме бизнес-заказчика редактирование задач должно быть запрещено"),
+        "task_comment_scope": ("none", "В режиме бизнес-заказчика комментирование задач должно быть запрещено"),
+        "task_delete_scope": ("none", "В режиме бизнес-заказчика удаление задач должно быть запрещено"),
+        "pip_decision_access": (False, "В режиме бизнес-заказчика PIP-решения должны быть запрещены"),
+    }
+    if portal_only:
+        for field, (expected, message) in incompatible.items():
+            if values.get(field, expected) != expected:
+                errors.append({"loc": ["body", field], "msg": message, "type": "value_error.role_policy"})
+    scope_rank = {"none": 0, "team": 1, "all": 2}
+    if scope_rank.get(values.get("task_delete_scope") or "none", 0) > scope_rank.get(values.get("task_edit_scope") or "none", 0):
+        errors.append({"loc": ["body", "task_delete_scope"], "msg": "Область удаления не может быть шире области редактирования", "type": "value_error.role_policy"})
+    if values.get("pip_decision_access") and values.get("reports_access", "none") == "none":
+        errors.append({"loc": ["body", "pip_decision_access"], "msg": "Для PIP-решений нужен доступ к разделу статусов для встреч", "type": "value_error.role_policy"})
+    if errors:
+        raise HTTPException(status_code=422, detail=errors)
+
+
+def _active_full_admin_count(db: Session, exclude_user_id: Optional[int] = None) -> int:
+    query = db.query(User).join(Role).filter(User.is_active == True, Role.admin_access == "full")
+    if exclude_user_id is not None:
+        query = query.filter(User.id != exclude_user_id)
+    return query.count()
+
+
+def _protect_admin_identity_change(db: Session, actor: User, target: User, *, next_active=None, next_role_id=None) -> None:
+    """Prevent self-deactivation and removal of the last active full admin."""
+    if next_active is False and actor.id == target.id:
+        raise HTTPException(status_code=400, detail="Нельзя деактивировать собственную учётную запись")
+    current_is_full = bool(target.role and target.role.admin_access == "full" and target.is_active)
+    next_role = target.role if next_role_id is None else db.query(Role).filter(Role.id == next_role_id).first()
+    will_be_active = target.is_active if next_active is None else next_active
+    will_be_full = bool(next_role and next_role.admin_access == "full" and will_be_active)
+    if current_is_full and not will_be_full and _active_full_admin_count(db, target.id) == 0:
+        raise HTTPException(status_code=400, detail="В системе должен остаться хотя бы один активный полный администратор")
 
 
 # ==================== AUDIT LOG ====================
@@ -45,10 +206,11 @@ def get_audit_log(
     entity_type: Optional[str] = Query(None),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    search: Optional[str] = Query(None, max_length=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "read"))
+    current_user: User = Depends(require_permission("admin", "full"))
 ):
-    query = db.query(AuditLog)
+    query = db.query(AuditLog).outerjoin(User, AuditLog.user_id == User.id)
 
     if user_id is not None:
         query = query.filter(AuditLog.user_id == user_id)
@@ -61,6 +223,9 @@ def get_audit_log(
     if date_to:
         from datetime import datetime, timedelta
         query = query.filter(AuditLog.created_at < datetime.combine(date_to, datetime.max.time()))
+    if search and search.strip():
+        pattern = f"%{search.strip()}%"
+        query = query.filter(or_(User.name.ilike(pattern), AuditLog.action.ilike(pattern), AuditLog.entity_type.ilike(pattern), AuditLog.details.ilike(pattern), AuditLog.ip_address.ilike(pattern)))
 
     total = query.count()
     items = query.order_by(desc(AuditLog.created_at)).offset((page - 1) * per_page).limit(per_page).all()
@@ -99,7 +264,7 @@ def get_audit_log(
 @router.get("/audit-log/filters")
 def get_audit_log_filters(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "read"))
+    current_user: User = Depends(require_permission("admin", "full"))
 ):
     actions = db.query(AuditLog.action).distinct().all()
     entity_types = db.query(AuditLog.entity_type).distinct().all()
@@ -144,17 +309,94 @@ def _resolve_team_names(team, db: Session) -> dict:
 @router.get("/roles", response_model=List[RoleResponse])
 def get_roles(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission("admin", "read"))
 ):
     roles = db.query(Role).all()
     return roles
+
+
+@router.get("/deletion-impact/{entity_type}/{entity_id}")
+def get_deletion_impact(
+    entity_type: str,
+    entity_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "read")),
+):
+    """Read-only dependency preview used before destructive admin actions."""
+    dependencies = []
+    recommendations = []
+    action = "delete"
+
+    def dependency(key: str, label: str, count: int, blocking: bool = True):
+        dependencies.append({"key": key, "label": label, "count": int(count or 0), "blocking": blocking})
+
+    if entity_type == "team":
+        target = db.query(Team).filter(Team.id == entity_id).first()
+        if not target:
+            raise HTTPException(status_code=404, detail="Team not found")
+        dependency("users", "Пользователи команды", db.query(User).filter(User.team_id == entity_id).count())
+        dependency("tasks", "Задачи команды", db.query(Task).filter(Task.team_id == entity_id).count())
+        recommendations.append("Переназначьте пользователей и задачи в другую команду.")
+    elif entity_type == "role":
+        target = db.query(Role).filter(Role.id == entity_id).first()
+        if not target:
+            raise HTTPException(status_code=404, detail="Role not found")
+        dependency("users", "Пользователи с этой ролью", db.query(User).filter(User.role_id == entity_id).count())
+        recommendations.append("Назначьте пользователям другую роль.")
+    elif entity_type == "project":
+        target = db.query(Project).filter(Project.id == entity_id).first()
+        if not target:
+            raise HTTPException(status_code=404, detail="Project not found")
+        dependency("tasks", "Задачи проекта", db.query(Task).filter(Task.project_id == entity_id).count())
+        recommendations.append("Перенесите задачи в другой проект или снимите привязку к проекту.")
+    elif entity_type == "bc":
+        target = db.query(BusinessCustomer).filter(BusinessCustomer.id == entity_id).first()
+        if not target:
+            raise HTTPException(status_code=404, detail="Business customer not found")
+        dependency("tasks", "Задачи заказчика", db.query(Task).filter(Task.business_customer_id == entity_id).count())
+        dependency("users", "Пользователи заказчика", db.query(User).filter(User.business_customer_id == entity_id).count())
+        recommendations.append("Переназначьте связанные задачи и пользователей другому заказчику.")
+    elif entity_type == "user":
+        target = db.query(User).filter(User.id == entity_id).first()
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found")
+        action = "deactivate"
+        dependency("owned_tasks", "Задачи во владении", db.query(Task).filter(Task.owner_id == entity_id).count(), False)
+        dependency("created_tasks", "Созданные задачи", db.query(Task).filter(Task.created_by == entity_id).count(), False)
+        dependency("projects", "Проекты под ответственностью", db.query(Project).filter(Project.responsible_pl == entity_id).count(), False)
+        dependency("reports", "Созданные отчёты", db.query(Report).filter(Report.created_by == entity_id).count(), False)
+        lead_count = db.query(Team).filter(or_(Team.pl_id == entity_id, Team.po_id == entity_id, Team.cl_id == entity_id, Team.it_pl_id == entity_id)).count()
+        dependency("team_leadership", "Команды, где пользователь руководитель", lead_count, False)
+        recommendations.append("Деактивация сохранит историю и связи. При необходимости заранее назначьте новых владельцев и руководителей.")
+        blocked_reason = None
+        try:
+            _protect_admin_identity_change(db, current_user, target, next_active=False)
+        except HTTPException as error:
+            blocked_reason = str(error.detail)
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported entity type")
+
+    blocking_count = sum(item["count"] for item in dependencies if item["blocking"])
+    blocked_reason = locals().get("blocked_reason")
+    if blocking_count:
+        blocked_reason = "Сущность используется и не может быть удалена, пока существуют обязательные связи."
+    return {
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "name": target.name,
+        "action": action,
+        "can_proceed": not blocked_reason,
+        "blocked_reason": blocked_reason,
+        "dependencies": dependencies,
+        "recommendations": recommendations,
+    }
 
 
 @router.get("/roles/{role_id}", response_model=RoleResponse)
 def get_role(
     role_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission("admin", "read"))
 ):
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
@@ -166,12 +408,14 @@ def get_role(
 def create_role(
     role_data: RoleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
+    current_user: User = Depends(require_permission("admin", "full"))
 ):
+    values = role_data.model_dump()
+    _validate_role_policy(values)
     existing = db.query(Role).filter(Role.name == role_data.name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Role name already exists")
-    role = Role(**role_data.model_dump())
+    role = Role(**values)
     db.add(role)
     db.commit()
     db.refresh(role)
@@ -183,15 +427,25 @@ def update_role(
     role_id: int,
     role_data: RoleUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
+    current_user: User = Depends(require_permission("admin", "full"))
 ):
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
 
     update = role_data.model_dump(exclude_unset=True)
+    merged = {column.name: getattr(role, column.name) for column in Role.__table__.columns}
+    merged.update(update)
+    _validate_role_policy(merged)
     if current_user.role_id == role_id and update.get("admin_access") == "none":
         raise HTTPException(status_code=400, detail="Cannot revoke your own admin access")
+    if role.admin_access == "full" and update.get("admin_access") not in (None, "full"):
+        other_admins = db.query(User).join(Role).filter(
+            User.is_active == True, Role.admin_access == "full", User.role_id != role_id
+        ).count()
+        users_on_role = db.query(User).filter(User.is_active == True, User.role_id == role_id).count()
+        if users_on_role and other_admins == 0:
+            raise HTTPException(status_code=400, detail="Нельзя понизить роль последнего активного полного администратора")
 
     for field, value in update.items():
         setattr(role, field, value)
@@ -204,7 +458,7 @@ def update_role(
 def delete_role(
     role_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
+    current_user: User = Depends(require_permission("admin", "full"))
 ):
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
@@ -324,7 +578,7 @@ def admin_get_users(
 def admin_create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
+    current_user: User = Depends(require_permission("admin", "full"))
 ):
     existing_email = db.query(User).filter(User.email == user_data.email).first()
     if existing_email:
@@ -363,11 +617,17 @@ def admin_update_user(
     user_id: int,
     user_data: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
+    current_user: User = Depends(require_permission("admin", "full"))
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    _protect_admin_identity_change(
+        db, current_user, user,
+        next_active=user_data.is_active,
+        next_role_id=user_data.role_id if "role_id" in user_data.model_fields_set else None,
+    )
 
     if user_data.name is not None and user_data.name != user.name:
         existing_name = db.query(User).filter(User.name == user_data.name, User.id != user_id).first()
@@ -383,8 +643,14 @@ def admin_update_user(
         if not db.query(BusinessCustomer).filter(BusinessCustomer.id == user_data.business_customer_id).first():
             raise HTTPException(status_code=422, detail="Business customer not found")
 
+    was_active = user.is_active
     for field, value in user_data.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
+    if was_active and not user.is_active:
+        db.query(RefreshSession).filter(
+            RefreshSession.user_id == user.id,
+            RefreshSession.revoked_at.is_(None),
+        ).update({"revoked_at": datetime.now(timezone.utc)}, synchronize_session=False)
     db.commit()
     db.refresh(user)
     return user
@@ -394,14 +660,19 @@ def admin_update_user(
 def admin_delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "partial"))
+    current_user: User = Depends(require_permission("admin", "full"))
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user)
+    _protect_admin_identity_change(db, current_user, user, next_active=False)
+    user.is_active = False
+    db.query(RefreshSession).filter(
+        RefreshSession.user_id == user.id,
+        RefreshSession.revoked_at.is_(None),
+    ).update({"revoked_at": datetime.now(timezone.utc)}, synchronize_session=False)
     db.commit()
-    return {"message": "User deleted"}
+    return {"message": "User deactivated", "id": user.id, "is_active": False}
 
 
 # ==================== DICTIONARIES CRUD ====================
@@ -410,7 +681,7 @@ DICT_LOCK_MINUTES = 15
 
 VALID_DICT_TYPES = [
     "priority", "status", "task_type", "channel", "deadline",
-    "department", "team_type", "project_status", "competency_cost",
+    "department", "team_type", "project_status", "competency_cost", "tag",
 ]
 
 
@@ -419,6 +690,8 @@ def _dict_items_for_lock(dict_type: str, db: Session):
     dedicated `departments` table, other dictionaries in `dictionary_items`."""
     if dict_type == "department":
         return db.query(Department).filter(Department.is_active == True).all()
+    if dict_type == "tag":
+        return db.query(Tag).filter(Tag.is_active == True).all()
     return db.query(DictionaryItem).filter(
         DictionaryItem.dict_type == dict_type,
         DictionaryItem.is_active == True,
@@ -498,7 +771,7 @@ def _release_dict_lock(dict_type: str, user: User, db: Session) -> DictLockRespo
 @router.get("/dict-locks")
 def get_all_dict_locks(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("admin", "read")),
 ):
     """Get lock status for all dictionary types (for card indicators)."""
     result = {}
@@ -511,7 +784,7 @@ def get_all_dict_locks(
 def get_dict_lock(
     dict_type: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("admin", "read")),
 ):
     """Check lock status for a specific dictionary type."""
     if dict_type not in VALID_DICT_TYPES:
@@ -552,6 +825,49 @@ def get_dict_items(dict_type: str, db: Session):
     return items
 
 
+def _dictionary_usage_count(dict_type: str, item_id: int, db: Session) -> int:
+    task_fields = {
+        "priority": [Task.priority_id], "status": [Task.status_id, Task.previous_status_id],
+        "task_type": [Task.task_type_id], "channel": [Task.channel_id], "deadline": [Task.deadline_id],
+    }
+    if dict_type in task_fields:
+        return db.query(func.count(Task.id)).filter(or_(*[field == item_id for field in task_fields[dict_type]])).scalar() or 0
+    if dict_type == "department":
+        tasks = db.query(func.count(Task.id)).filter(Task.department_id == item_id).scalar() or 0
+        customers = db.query(func.count(BusinessCustomer.id)).filter(BusinessCustomer.department_id == item_id).scalar() or 0
+        return tasks + customers
+    if dict_type == "team_type":
+        return db.query(func.count(Team.id)).filter(Team.team_type_id == item_id).scalar() or 0
+    if dict_type == "project_status":
+        return db.query(func.count(Project.id)).filter(Project.status_id == item_id).scalar() or 0
+    if dict_type == "tag":
+        issues = db.query(func.count(IssueTag.id)).filter(IssueTag.tag_id == item_id).scalar() or 0
+        projects = db.query(func.count(ProjectTag.id)).filter(ProjectTag.tag_id == item_id).scalar() or 0
+        return issues + projects
+    return 0
+
+
+@router.get("/dictionaries/{dict_type}/workspace")
+def get_dictionary_workspace(
+    dict_type: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "read")),
+):
+    supported = {"priority", "status", "task_type", "channel", "deadline", "department", "team_type", "project_status", "tag"}
+    if dict_type not in supported:
+        raise HTTPException(status_code=400, detail="Рабочее представление для этого справочника не поддерживается")
+    model = Department if dict_type == "department" else Tag if dict_type == "tag" else DictionaryItem
+    query = db.query(model)
+    if model is DictionaryItem:
+        query = query.filter(DictionaryItem.dict_type == dict_type)
+    items = query.order_by(model.is_active.desc(), model.sort_order, model.name).all()
+    return {"items": [{
+        "id": item.id, "name": item.name, "code": item.code, "color": item.color,
+        "sort_order": item.sort_order or 0, "is_active": bool(item.is_active),
+        "usage_count": _dictionary_usage_count(dict_type, item.id, db),
+    } for item in items]}
+
+
 def _check_dict_lock(dict_type: str, user: User, db: Session):
     """Check if dictionary is locked by another user; raise 423 if so."""
     info = _get_dict_lock_info(dict_type, db)
@@ -560,6 +876,103 @@ def _check_dict_lock(dict_type: str, user: User, db: Session):
             status_code=423,
             detail=f"Справочник редактируется администратором {info['lock_owner_name']}. Доступен просмотр.",
         )
+
+
+@router.put("/dictionaries/{dict_type}/batch")
+def save_dictionary_batch(
+    dict_type: str,
+    data: DictionaryBatchUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial")),
+):
+    """Atomically replace an editable dictionary snapshot.
+
+    Missing rows are archived rather than deleted so existing foreign-key
+    references keep their labels. The editor lock and optimistic version are
+    checked before any mutation is flushed.
+    """
+    supported = {"priority", "status", "task_type", "channel", "deadline", "department", "team_type", "project_status", "tag"}
+    if dict_type not in supported:
+        raise HTTPException(status_code=400, detail="Пакетное сохранение для этого справочника не поддерживается")
+    items = _dict_items_for_lock(dict_type, db)
+    first = items[0] if items else None
+    if not first or not _is_dict_lock_active(first) or first.lock_owner_id != current_user.id:
+        raise HTTPException(status_code=423, detail="Требуется активная блокировка редактирования справочника")
+    current_version = first.version or 0
+    if data.version != current_version:
+        raise HTTPException(status_code=409, detail="Справочник был изменён другим администратором")
+    if not data.items:
+        raise HTTPException(status_code=422, detail="В справочнике должно остаться хотя бы одно активное значение")
+
+    names = [item.name.strip().casefold() for item in data.items]
+    codes = [item.code.strip().casefold() for item in data.items if item.code and item.code.strip()]
+    if len(names) != len(set(names)):
+        raise HTTPException(status_code=422, detail="Названия элементов справочника должны быть уникальными")
+    if len(codes) != len(set(codes)):
+        raise HTTPException(status_code=422, detail="Коды элементов справочника должны быть уникальными")
+    for item in data.items:
+        if item.color and not __import__("re").fullmatch(r"#[0-9a-fA-F]{6}", item.color):
+            raise HTTPException(status_code=422, detail=f"Некорректный цвет для значения «{item.name}»")
+
+    model = Department if dict_type == "department" else Tag if dict_type == "tag" else DictionaryItem
+    existing_query = db.query(model)
+    if dict_type not in {"department", "tag"}:
+        existing_query = existing_query.filter(DictionaryItem.dict_type == dict_type)
+    existing = {item.id: item for item in existing_query.all()}
+    submitted_ids = {item.id for item in data.items if item.id is not None}
+    unknown_ids = submitted_ids - set(existing)
+    if unknown_ids:
+        raise HTTPException(status_code=409, detail="Справочник изменился после открытия; обновите данные")
+
+    added = updated = archived = 0
+    next_version = current_version + 1
+    try:
+        for position, payload in enumerate(data.items):
+            values = {
+                "name": payload.name.strip(), "code": (payload.code or "").strip() or None,
+                "color": payload.color, "sort_order": payload.sort_order if payload.sort_order is not None else position,
+                "is_active": True, "version": next_version,
+                "lock_owner_id": current_user.id, "lock_until": first.lock_until,
+            }
+            if dict_type == "department" and not values["code"]:
+                values["code"] = f"DEPT_{payload.id or ('NEW_' + str(position + 1))}"
+            if payload.id is None:
+                if dict_type not in {"department", "tag"}:
+                    values["dict_type"] = dict_type
+                db.add(model(**values))
+                added += 1
+            else:
+                target = existing[payload.id]
+                for field, value in values.items():
+                    setattr(target, field, value)
+                target.is_active = True
+                updated += 1
+        for item_id, target in existing.items():
+            if target.is_active and item_id not in submitted_ids:
+                target.is_active = False
+                target.version = next_version
+                target.lock_owner_id = None
+                target.lock_until = None
+                archived += 1
+        db.flush()
+        active = db.query(model).filter(
+            model.is_active == True if dict_type in {"department", "tag"} else (
+                (DictionaryItem.dict_type == dict_type) & (DictionaryItem.is_active == True)
+            )
+        ).order_by(model.sort_order, model.name).all()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    serialized = []
+    for item in active:
+        serialized.append({
+            "id": item.id, "dict_type": dict_type, "name": item.name, "code": item.code,
+            "color": item.color, "sort_order": item.sort_order or 0, "is_active": item.is_active,
+            "version": item.version or next_version,
+        })
+    return {"items": serialized, "version": next_version, "added": added, "updated": updated, "archived": archived}
 
 
 @router.get("/priorities", response_model=List[DictionaryItemResponse])
@@ -1110,6 +1523,61 @@ def delete_project_status(
 
 # ==================== COMPETENCY COSTS (history: competency x year) ====================
 
+@router.put("/competency-costs/batch")
+def save_competency_costs_batch(
+    data: CompetencyCostBatchUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "partial")),
+):
+    lock_items = _dict_items_for_lock("competency_cost", db)
+    first = lock_items[0] if lock_items else None
+    if not first or not _is_dict_lock_active(first) or first.lock_owner_id != current_user.id:
+        raise HTTPException(status_code=423, detail="Требуется активная блокировка редактирования справочника")
+    if data.version != (first.version or 0):
+        raise HTTPException(status_code=409, detail="Справочник был изменён другим администратором")
+    keys = [(item.competency.strip().casefold(), item.year) for item in data.items]
+    if len(keys) != len(set(keys)):
+        raise HTTPException(status_code=422, detail="Комбинация компетенции и года должна быть уникальной")
+    existing = {
+        (item.competency.casefold(), item.year): item
+        for item in db.query(CompetencyCostHistory).filter(CompetencyCostHistory.is_active == True).all()
+    }
+    submitted = set(keys)
+    added = updated = archived = 0
+    try:
+        for payload, key in zip(data.items, keys):
+            target = existing.get(key)
+            if target:
+                target.competency = payload.competency.strip()
+                target.rate = payload.rate
+                updated += 1
+            else:
+                db.add(CompetencyCostHistory(
+                    competency=payload.competency.strip(), year=payload.year,
+                    rate=payload.rate, is_active=True,
+                ))
+                added += 1
+        for key, target in existing.items():
+            if key not in submitted:
+                target.is_active = False
+                archived += 1
+        next_version = (first.version or 0) + 1
+        for lock_item in lock_items:
+            lock_item.version = next_version
+        recalculate_effort_rub_for_all(db)
+        db.commit()
+        result = db.query(CompetencyCostHistory).filter(
+            CompetencyCostHistory.is_active == True
+        ).order_by(CompetencyCostHistory.competency, CompetencyCostHistory.year).all()
+    except Exception:
+        db.rollback()
+        raise
+    return {
+        "items": [CompetencyCostHistoryResponse.model_validate(item).model_dump(mode="json") for item in result],
+        "version": next_version, "added": added, "updated": updated, "archived": archived,
+    }
+
+
 @router.get("/competency-costs", response_model=List[CompetencyCostHistoryResponse])
 def get_competency_costs(
     db: Session = Depends(get_db),
@@ -1440,6 +1908,13 @@ def delete_business_customer(
     customer = db.query(BusinessCustomer).filter(BusinessCustomer.id == item_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Business customer not found")
+    tasks_count = db.query(Task).filter(Task.business_customer_id == item_id).count()
+    users_count = db.query(User).filter(User.business_customer_id == item_id).count()
+    if tasks_count or users_count:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete business customer linked to {tasks_count} tasks and {users_count} users",
+        )
     db.delete(customer)
     db.commit()
     return {"message": "Business customer deleted"}
@@ -1452,7 +1927,7 @@ def get_tags(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return db.query(Tag).order_by(Tag.name).all()
+    return db.query(Tag).filter(Tag.is_active == True).order_by(Tag.sort_order, Tag.name).all()
 
 
 @router.post("/tags", response_model=TagResponse, status_code=status.HTTP_201_CREATED)
@@ -1500,8 +1975,6 @@ def delete_tag(
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
-    db.query(IssueTag).filter(IssueTag.tag_id == tag_id).delete()
-    db.query(ProjectTag).filter(ProjectTag.tag_id == tag_id).delete()
-    db.delete(tag)
+    tag.is_active = False
     db.commit()
-    return {"message": "Tag deleted"}
+    return {"message": "Tag archived"}

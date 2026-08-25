@@ -81,6 +81,7 @@ class UserResponse(UserBase):
     can_edit: bool = True
     can_delete: bool = False
     can_export: bool = True
+    permissions: Optional[Dict[str, str]] = None
 
     class Config:
         from_attributes = True
@@ -150,6 +151,12 @@ class RoleBase(BaseModel):
     customer_access: str = Field(default="read", max_length=20)
     settings_access: str = Field(default="available", max_length=20)
     admin_access: str = Field(default="none", max_length=20)
+    customer_portal_only: Optional[bool] = None
+    review_access: Optional[str] = Field(None, pattern="^(none|team|all)$")
+    task_edit_scope: Optional[str] = Field(None, pattern="^(none|team|all)$")
+    task_comment_scope: Optional[str] = Field(None, pattern="^(none|team|all)$")
+    task_delete_scope: Optional[str] = Field(None, pattern="^(none|team|all)$")
+    pip_decision_access: Optional[bool] = None
     can_edit_tasks: bool = True
     can_delete_tasks: bool = False
     can_export: bool = True
@@ -170,6 +177,12 @@ class RoleUpdate(BaseModel):
     customer_access: Optional[str] = Field(None, max_length=20)
     settings_access: Optional[str] = Field(None, max_length=20)
     admin_access: Optional[str] = Field(None, max_length=20)
+    customer_portal_only: Optional[bool] = None
+    review_access: Optional[str] = Field(None, pattern="^(none|team|all)$")
+    task_edit_scope: Optional[str] = Field(None, pattern="^(none|team|all)$")
+    task_comment_scope: Optional[str] = Field(None, pattern="^(none|team|all)$")
+    task_delete_scope: Optional[str] = Field(None, pattern="^(none|team|all)$")
+    pip_decision_access: Optional[bool] = None
     can_edit_tasks: Optional[bool] = None
     can_delete_tasks: Optional[bool] = None
     can_export: Optional[bool] = None
@@ -201,23 +214,23 @@ class TaskBase(BaseModel):
     deadline_id: Optional[int] = None
     effort_days: Optional[int] = Field(None, ge=0, le=10000)
     effort_rub: Optional[float] = Field(None, ge=0)
-    effort_designee: Optional[float] = None
-    effort_analytics: Optional[float] = None
-    effort_be: Optional[float] = None
-    effort_python_be: Optional[float] = None
-    effort_fe: Optional[float] = None
-    effort_test: Optional[float] = None
-    effort_test_auto: Optional[float] = None
-    effort_delivery: Optional[float] = None
+    effort_designee: Optional[float] = Field(None, ge=0)
+    effort_analytics: Optional[float] = Field(None, ge=0)
+    effort_be: Optional[float] = Field(None, ge=0)
+    effort_python_be: Optional[float] = Field(None, ge=0)
+    effort_fe: Optional[float] = Field(None, ge=0)
+    effort_test: Optional[float] = Field(None, ge=0)
+    effort_test_auto: Optional[float] = Field(None, ge=0)
+    effort_delivery: Optional[float] = Field(None, ge=0)
     actual_effort_days: Optional[float] = None
-    actual_effort_designee: Optional[float] = None
-    actual_effort_analytics: Optional[float] = None
-    actual_effort_be: Optional[float] = None
-    actual_effort_python_be: Optional[float] = None
-    actual_effort_fe: Optional[float] = None
-    actual_effort_test: Optional[float] = None
-    actual_effort_test_auto: Optional[float] = None
-    actual_effort_delivery: Optional[float] = None
+    actual_effort_designee: Optional[float] = Field(None, ge=0)
+    actual_effort_analytics: Optional[float] = Field(None, ge=0)
+    actual_effort_be: Optional[float] = Field(None, ge=0)
+    actual_effort_python_be: Optional[float] = Field(None, ge=0)
+    actual_effort_fe: Optional[float] = Field(None, ge=0)
+    actual_effort_test: Optional[float] = Field(None, ge=0)
+    actual_effort_test_auto: Optional[float] = Field(None, ge=0)
+    actual_effort_delivery: Optional[float] = Field(None, ge=0)
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
     financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (руб)')
@@ -277,6 +290,7 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
+    client_request_id: Optional[str] = Field(None, min_length=8, max_length=64)
     title: str = Field(min_length=1, max_length=255)
     team_id: int
     task_type_id: int
@@ -295,6 +309,7 @@ class TaskCreate(TaskBase):
 
 
 class TaskUpdate(BaseModel):
+    client_request_id: Optional[str] = Field(None, min_length=8, max_length=64)
     team_id: Optional[int] = None
     title: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
@@ -310,23 +325,23 @@ class TaskUpdate(BaseModel):
     deadline_id: Optional[int] = None
     effort_days: Optional[int] = Field(None, ge=0, le=10000)
     effort_rub: Optional[float] = Field(None, ge=0)
-    effort_designee: Optional[float] = None
-    effort_analytics: Optional[float] = None
-    effort_be: Optional[float] = None
-    effort_python_be: Optional[float] = None
-    effort_fe: Optional[float] = None
-    effort_test: Optional[float] = None
-    effort_test_auto: Optional[float] = None
-    effort_delivery: Optional[float] = None
+    effort_designee: Optional[float] = Field(None, ge=0)
+    effort_analytics: Optional[float] = Field(None, ge=0)
+    effort_be: Optional[float] = Field(None, ge=0)
+    effort_python_be: Optional[float] = Field(None, ge=0)
+    effort_fe: Optional[float] = Field(None, ge=0)
+    effort_test: Optional[float] = Field(None, ge=0)
+    effort_test_auto: Optional[float] = Field(None, ge=0)
+    effort_delivery: Optional[float] = Field(None, ge=0)
     actual_effort_days: Optional[float] = None
-    actual_effort_designee: Optional[float] = None
-    actual_effort_analytics: Optional[float] = None
-    actual_effort_be: Optional[float] = None
-    actual_effort_python_be: Optional[float] = None
-    actual_effort_fe: Optional[float] = None
-    actual_effort_test: Optional[float] = None
-    actual_effort_test_auto: Optional[float] = None
-    actual_effort_delivery: Optional[float] = None
+    actual_effort_designee: Optional[float] = Field(None, ge=0)
+    actual_effort_analytics: Optional[float] = Field(None, ge=0)
+    actual_effort_be: Optional[float] = Field(None, ge=0)
+    actual_effort_python_be: Optional[float] = Field(None, ge=0)
+    actual_effort_fe: Optional[float] = Field(None, ge=0)
+    actual_effort_test: Optional[float] = Field(None, ge=0)
+    actual_effort_test_auto: Optional[float] = Field(None, ge=0)
+    actual_effort_delivery: Optional[float] = Field(None, ge=0)
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
     financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (руб)')
@@ -616,6 +631,93 @@ class NotificationPreferencesUpdate(BaseModel):
     preferences: dict
 
 
+NOTIFICATION_TEMPLATE_EVENTS = {
+    "task_deadline", "task_overdue", "task_status_changed", "task_assigned",
+    "mention", "review_requested", "periodic_digest",
+}
+NOTIFICATION_TEMPLATE_FREQUENCIES = {"daily", "weekly", "monthly", "quarterly"}
+
+
+class NotificationTemplateBase(BaseModel):
+    name: str = Field(min_length=1, max_length=150)
+    event_type: str
+    text: str = Field(min_length=1, max_length=4000)
+    recipients: List[str] = Field(min_length=1)
+    deadline_days: Optional[int] = Field(None, ge=0, le=365)
+    repeat_frequency: Optional[str] = None
+    repeat_day: Optional[int] = Field(None, ge=1, le=31)
+    is_active: bool = True
+
+    @field_validator("event_type")
+    @classmethod
+    def validate_event_type(cls, value):
+        if value not in NOTIFICATION_TEMPLATE_EVENTS:
+            raise ValueError("Неизвестное событие уведомления")
+        return value
+
+    @field_validator("repeat_frequency")
+    @classmethod
+    def validate_repeat_frequency(cls, value):
+        if value is not None and value not in NOTIFICATION_TEMPLATE_FREQUENCIES:
+            raise ValueError("Неизвестная периодичность")
+        return value
+
+    @field_validator("recipients")
+    @classmethod
+    def validate_recipients(cls, value):
+        cleaned = list(dict.fromkeys(item.strip() for item in value if item and item.strip()))
+        if not cleaned:
+            raise ValueError("Укажите хотя бы одного получателя")
+        if any(len(item) > 50 for item in cleaned):
+            raise ValueError("Код получателя не должен превышать 50 символов")
+        return cleaned
+
+
+class NotificationTemplateCreate(NotificationTemplateBase):
+    pass
+
+
+class NotificationTemplateUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=150)
+    event_type: Optional[str] = None
+    text: Optional[str] = Field(None, min_length=1, max_length=4000)
+    recipients: Optional[List[str]] = None
+    deadline_days: Optional[int] = Field(None, ge=0, le=365)
+    repeat_frequency: Optional[str] = None
+    repeat_day: Optional[int] = Field(None, ge=1, le=31)
+    is_active: Optional[bool] = None
+
+    @field_validator("event_type")
+    @classmethod
+    def validate_event_type(cls, value):
+        if value is not None and value not in NOTIFICATION_TEMPLATE_EVENTS:
+            raise ValueError("Неизвестное событие уведомления")
+        return value
+
+    @field_validator("repeat_frequency")
+    @classmethod
+    def validate_repeat_frequency(cls, value):
+        if value is not None and value not in NOTIFICATION_TEMPLATE_FREQUENCIES:
+            raise ValueError("Неизвестная периодичность")
+        return value
+
+    @field_validator("recipients")
+    @classmethod
+    def validate_recipients(cls, value):
+        if value is None:
+            return value
+        cleaned = list(dict.fromkeys(item.strip() for item in value if item and item.strip()))
+        if not cleaned:
+            raise ValueError("Укажите хотя бы одного получателя")
+        return cleaned
+
+
+class NotificationTemplateResponse(NotificationTemplateBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
 # ==================== ANALYTICS ====================
 
 class DashboardStats(BaseModel):
@@ -669,6 +771,27 @@ class DictionaryItemResponse(DictionaryItemBase):
         from_attributes = True
 
 
+class DictionaryBatchItem(BaseModel):
+    id: Optional[int] = None
+    name: str = Field(min_length=1, max_length=100)
+    code: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=20)
+    sort_order: int = Field(default=0, ge=0)
+
+
+class DictionaryBatchUpdate(BaseModel):
+    version: int = Field(ge=0)
+    items: List[DictionaryBatchItem]
+
+
+class DictionaryBatchResponse(BaseModel):
+    items: List[DictionaryItemResponse]
+    version: int
+    added: int = 0
+    updated: int = 0
+    archived: int = 0
+
+
 # ==================== COMPETENCY COST HISTORY ====================
 
 class CompetencyCostHistoryBase(BaseModel):
@@ -684,6 +807,11 @@ class CompetencyCostHistoryCreate(CompetencyCostHistoryBase):
 class CompetencyCostHistoryUpdate(BaseModel):
     rate: Optional[float] = Field(None, ge=0)
     is_active: Optional[bool] = None
+
+
+class CompetencyCostBatchUpdate(BaseModel):
+    version: int = Field(ge=0)
+    items: List[CompetencyCostHistoryBase]
 
 
 class CompetencyCostHistoryResponse(CompetencyCostHistoryBase):

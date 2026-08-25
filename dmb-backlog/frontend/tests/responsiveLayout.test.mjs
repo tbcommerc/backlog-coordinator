@@ -12,7 +12,7 @@ const fixture = read('tests/fixtures/responsive-shell.html');
 const filterToolbar = read('js/components/filterToolbar.js');
 const quickFilters = read('js/components/quickFilters.js');
 
-assert.match(index, /responsive\.css\?v=11/, 'responsive stylesheet must be loaded');
+assert.match(index, /responsive\.css\?v=\d+/, 'responsive stylesheet must be loaded');
 for (const breakpoint of ['1279px', '1024px', '640px', '420px']) {
   assert.ok(css.includes(breakpoint), `responsive layer must cover ${breakpoint}`);
 }
@@ -27,13 +27,13 @@ assert.match(app, /matchMedia\('\(max-width: 640px\)'\)/, 'drawer state must be 
 assert.doesNotMatch(fixture, /task-card-grid/, 'table fixture must not contain task cards');
 assert.match(filterToolbar, /class="filter-toolbar-controls"/, 'filter and reset buttons must share a right-aligned group');
 assert.match(filterToolbar, /new ResizeObserver\(\(\) => updateStickyOffsets\(\)\)/, 'content offset must follow toolbar height changes');
-assert.match(filterToolbar, /toolbarIsFixed[\s\S]*?marginTop[\s\S]*?'0px'/, 'flow toolbar must not leave a synthetic table offset');
+assert.match(filterToolbar, /baseContentMargin\s*=\s*toolbarIsFixed[\s\S]*?:\s*0;[\s\S]*?marginTop\s*=\s*baseContentMargin/, 'flow toolbar must not leave a synthetic table offset');
 assert.match(filterToolbar, /class="toolbar-add-task-label"/, 'add-task text must be independently hideable');
 assert.match(css, /\.toolbar-title,[\s\S]*?white-space:\s*nowrap/, 'toolbar title must stay on one line');
 assert.match(css, /@media \(max-width: 1024px\)[\s\S]*?\.sticky-toolbar\s*\{[\s\S]*?position:\s*sticky/, 'compact toolbar must participate in scrolling');
 assert.match(css, /top:\s*calc\(-1 \* var\(--space-5\)\)/, 'tablet sticky toolbar must cover the main-content top padding');
 assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.sticky-toolbar\s*\{[\s\S]*?top:\s*calc\(-1 \* var\(--space-3\)\)/, 'mobile sticky toolbar must cover the mobile top padding');
-assert.match(filterToolbar, /position:\s*fixed;[\s\S]*?z-index:\s*24;/, 'cloned table header must stay below the toolbar layer');
+assert.match(filterToolbar, /position:\s*fixed;[\s\S]*?z-index:\s*20;/, 'cloned table header must stay below the toolbar layer');
 assert.match(css, /\.toolbar-title-row\s*\{[\s\S]*?align-items:\s*center\s*!important/, 'toolbar actions must keep stable vertical alignment at the compact breakpoint');
 assert.match(css, /\.toolbar-add-task-label\s*\{[\s\S]*?display:\s*none/, 'compact add-task button must hide its text');
 assert.match(css, /\.filter-search-wrap[\s\S]*?grid-row:\s*1[\s\S]*?\.filter-toolbar-controls[\s\S]*?grid-row:\s*1/, 'search and filter controls must share the first row');

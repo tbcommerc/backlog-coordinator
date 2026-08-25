@@ -38,6 +38,8 @@ def test_build_draft_full():
     assert draft.title
     assert draft.intent == "feature"
     assert draft.created_by["user_id"] == 9
+    assert draft.quality_profile == "feature"
+    assert 0 <= draft.quality_score <= 100
 
 
 def test_draft_passes_validation():

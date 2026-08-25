@@ -1,294 +1,146 @@
+---
+title: Безопасность DMB Backlog
+scope: as-is
+status: verified
+last_verified: 2026-08-24
+evidence:
+  - backend/auth.py
+  - backend/routers/auth_router.py
+  - backend/refresh_sessions.py
+  - backend/rate_limit.py
+  - backend/middleware.py
+  - backend/config.py
+  - frontend/js/api.js
+  - frontend/js/auth.js
+  - frontend/js/htmlUtils.js
+  - backend/tests/test_security_contracts.py
+  - backend/tests/test_auth_cookie_policy.py
+  - frontend/tests/htmlUtils.test.mjs
+---
+
 # Безопасность DMB Backlog
 
-**Версия:** 1.0  
-**Дата:** 2026-06-29
+Документ фиксирует реализованные механизмы. Он не подтверждает внешнюю инфраструктуру, регламенты организации или production-процессы, которых нет в репозитории.
 
----
+## Аутентификация
 
-## 1. Аутентификация
+- Пароли хэшируются и проверяются через passlib/bcrypt.
+- Access JWT подписывается `SECRET_KEY` алгоритмом `ALGORITHM` (`HS256` по умолчанию).
+- Срок access-токена задаёт `ACCESS_TOKEN_EXPIRE_MINUTES`.
+- Access-токен хранится только в памяти SPA и передаётся как `Authorization: Bearer`.
+- Refresh-токен хранится в cookie `dmb_refresh`, недоступной JavaScript (`HttpOnly`).
+- Cookie имеет `SameSite=Strict`, path `/api/v1/auth` и `Secure` при `DEBUG=false`.
+- Refresh-сессии хранятся в таблице `refresh_sessions`; токены ротируются, а семейство может быть отозвано при повторном использовании старого токена.
+- Logout отзывает текущую refresh-сессию и удаляет cookie.
 
-### 1.1 Механизм
+Login, refresh и logout вызывают `_require_trusted_origin`. При `DEBUG=false` запрос должен иметь HTTPS Origin из `CORS_ORIGINS`; отсутствие или несовпадение Origin отклоняется.
 
-Система использует **JWT (JSON Web Token)** с двумя типами токенов:
+## Защита конфигурации
 
-| Токен | Время жизни | Назначение |
-|-------|------------|------------|
-| **Access Token** | 60 минут | Доступ к защищённым эндпоинтам |
-| **Refresh Token** | 7 дней | Обновление access token |
+При `DEBUG=false` `validate_runtime_settings()` останавливает запуск, если:
 
-### 1.2 Хранение
+- `SECRET_KEY` отсутствует, равен известному dev-значению или короче 32 символов;
+- `AGENT_SECRET` отсутствует или равен известному dev-значению;
+- не настроен `REDIS_URL`.
 
-- **Хэши паролей**: bcrypt (через passlib)
-- **JWT-ключ**: SECRET_KEY из переменных окружения
-- **Токены не хранятся в БД** — проверка через JWT-подпись
+Файл `.env` исключён из Git. Реальный процесс управления и ротации секретов вне репозитория не подтверждён.
 
-### 1.3 Rate Limiting
+## Rate limiting
 
-| Эндпоинт | Лимит | Окно | Хранилище |
-|----------|-------|------|-----------|
-| `POST /auth/login` | 5 запросов | 60 сек | In-memory (словарь) |
-| `POST /auth/refresh` | 10 запросов | 60 сек | In-memory (словарь) |
+| Операция | Ключи | Лимит |
+|---|---|---|
+| Login | IP и хэш нормализованного email | 5 запросов за 60 секунд |
+| Refresh | IP | 10 запросов за 60 секунд |
 
-*In-memory хранилище сбрасывается при перезапуске. Для multi-instance требуется Redis.*
+Ключи хэшируются SHA-256, поэтому email и IP не записываются в ключ rate limiter открытым текстом. После превышения применяется увеличивающийся период блокировки до 15 минут.
 
-### 1.4 Cookie vs Header
+При наличии `REDIS_URL` используется Redis. Без него включается ограниченный process-local memory fallback, предназначенный для разработки.
 
-Токены передаются через заголовок `Authorization: Bearer <token>`. Куки не используются (API-first подход).
+## Авторизация
 
----
+Backend использует несколько уровней проверок:
 
-## 2. Авторизация
+- `get_current_user` валидирует access JWT и загружает активного пользователя;
+- `require_permission` проверяет разрешения разделов;
+- `require_non_business_customer_access` и `require_backlog_page_access` разделяют портал заказчика и внутренний интерфейс;
+- `authorize_task` выполняет объектную проверку чтения, редактирования, комментирования и удаления задачи;
+- bulk-операции имеют отдельную проверку области доступа;
+- admin endpoints используют собственные dependencies и проверки.
 
-### 2.1 Ролевая модель
+Точная матрица ролей не фиксируется здесь вручную: источниками являются `backend/auth.py`, зарегистрированные dependencies роутеров и `backend/tests/test_security_contracts.py`. Клиентское скрытие меню и маршрутов не является авторизацией.
 
-| Роль | Права |
-|------|-------|
-| **Администратор** (admin:full) | Полный доступ ко всем функциям |
-| **Лидер Трайба** (admin:partial) | Всё, кроме создания пользователей |
-| **IT PL** (user) | Полный CRUD задач своей команды |
-| **PO** (user) | Просмотр + комментирование задач своей команды |
-| **BA** (user) | Создание и редактирование задач |
-| **Бизнес-заказчик** (user) | Создание задач через портал клиента |
+## Refresh cookie и CSRF
 
-### 2.2 Уровни доступа к задачам
+Система использует cookie только для refresh-токена, поэтому утверждение «cookie не используются» неверно. Риск CSRF для auth endpoints снижается сочетанием:
 
-Эндпоинты задач (`/tasks`) проверяют:
-1. **Наличие токена** → 401
-2. **Права роли** → 403 (низкоуровневые права)
-3. **Принадлежность к команде задачи** → 403 (user не из команды задачи)
-4. **can_edit / can_delete** (на уровне задачи) → 403 для индивидуальных ограничений
+- `SameSite=Strict`;
+- ограниченного cookie path;
+- проверки доверенного HTTPS Origin при `DEBUG=false`;
+- требования access Bearer для остальных защищённых API.
 
-### 2.3 Защищённые операции
+Отдельный универсальный CSRF token не реализован.
 
-| Операция | Требуемая роль | Дополнительная проверка |
-|----------|---------------|------------------------|
-| Создание пользователя | admin:full | — |
-| Создание команды | admin:full, admin:partial | — |
-| Bulk-операции | admin:full, admin:partial | — |
-| Удаление задачи | admin или создатель задачи | can_delete флаг задачи |
-| Редактирование задачи | admin или участник команды | can_edit флаг задачи |
-| Просмотр отчётов | admin:full, admin:partial, IT PL | — |
+## CORS
 
----
+`CORSMiddleware` использует `CORS_ORIGINS` и разрешает credentials. В текущем коде разрешены все методы и заголовки (`allow_methods=["*"]`, `allow_headers=["*"]`), а не только вручную перечисленный набор.
 
-## 3. Защита данных
+CORS не заменяет backend-авторизацию и не является защитой для не-браузерных клиентов.
 
-### 3.1 SQL Injection
+## XSS и недоверенный HTML
 
-Все запросы к БД выполняются через **SQLAlchemy ORM** с параметризованными запросами. Прямые SQL-запросы отсутствуют в production-коде.
+Frontend активно использует `innerHTML`, поэтому нельзя утверждать, что XSS исключён архитектурно. Для недоверенных значений предусмотрены `escapeHtml`, `escapeHtmlAttribute`, безопасная установка через `textContent` и проверка внешних URL.
 
-### 3.2 XSS (Cross-Site Scripting)
+Наличие экранирования подтверждается unit-тестами, включая `frontend/tests/htmlUtils.test.mjs` и контрактные проверки модулей. При добавлении нового HTML-шаблона каждое динамическое значение должно быть явно экранировано или назначено через безопасное DOM API.
 
-- API возвращает только JSON (не HTML)
-- Frontend использует Vanilla JS без innerHTML для пользовательского контента
-- Поля задач (name, description, comment) экранируются на клиенте перед отображением
-- **Рекомендация**: добавить CSP-заголовки через Nginx
+Политика CSP в приложении не подтверждена. Пример Nginx из исторического документа не является реализованной защитой.
 
-### 3.3 CSRF (Cross-Site Request Forgery)
+## SQL и схема БД
 
-API не использует cookie-аутентификацию, поэтому CSRF-атаки невозможны (токен передаётся в заголовке).
+Прикладные операции преимущественно используют SQLAlchemy ORM. Утверждение об полном отсутствии raw SQL неверно: `database.ensure_schema()` формирует аддитивный `ALTER TABLE ADD COLUMN` для обслуживания схемы.
 
-### 3.4 CORS
+Изменение схемы ограничено правилами `SCHEMA_CHANGES.md`. Защита данных также зависит от корректной объектной авторизации, а не только от параметризации запросов.
 
-Настройка CORS задаётся переменной `CORS_ORIGINS`:
+## Вложения
 
-```env
-# Разработка — несколько источников
-CORS_ORIGINS=["http://localhost:5500","http://127.0.0.1:5500"]
+- Файлы сохраняются под сгенерированным именем в `backend/uploads/{task_id}`.
+- Размер загрузки ограничен 50 MiB.
+- Скачивание выполняется через авторизованный endpoint с проверкой доступа к задаче.
+- Путь скачивания нормализуется и проверяется через `os.path.commonpath`.
+- MIME type берётся из данных загрузки; антивирусная проверка содержимого не подтверждена.
 
-# Production — только домен приложения
-CORS_ORIGINS=["https://backlog.dmb.ru"]
-```
+## Аудит и журналы
 
-FastAPI middleware проверяет:
-- Origin заголовок
-- Разрешённые методы: GET, POST, PUT, DELETE, OPTIONS
-- Разрешённые заголовки: Authorization, Content-Type
-- Credentials: true
+`AuditMiddleware` обрабатывает изменяющие `/api/` запросы и создаёт `AuditLog` со следующими данными:
 
-### 3.5 Rate Limiting (детали реализации)
+- user ID из Bearer-токена, если он доступен;
+- метод, путь, HTTP status и признак успеха;
+- тип и ID сущности, извлечённые из URL;
+- список имён изменённых полей без значений;
+- IP-адрес и timestamp.
 
-Реализован через middleware в `backend/main.py`:
+Чувствительные имена полей (`password`, токены, secret, authorization) исключаются из списка changed fields. Ошибка записи аудита логируется, но не отменяет основной запрос; поэтому аудит является best-effort, а не гарантированной транзакционной записью.
 
-```python
-rate_limit_storage: Dict[str, list] = {}
+`LoggingMiddleware` пишет метод, путь, статус, длительность и IP в `backend/logs/app.log` и stderr. Централизованное хранение, retention и защита журналов вне процесса не подтверждены.
 
-def check_rate_limit(key: str, max_requests: int, window: int) -> bool:
-    now = time.time()
-    if key not in rate_limit_storage:
-        rate_limit_storage[key] = []
-    rate_limit_storage[key] = [
-        t for t in rate_limit_storage[key]
-        if now - t < window
-    ]
-    if len(rate_limit_storage[key]) >= max_requests:
-        return False
-    rate_limit_storage[key].append(now)
-    return True
-```
-
-**Недостатки текущей реализации:**
-- Хранилище в памяти — сбрасывается при перезапуске
-- Нет персистентности между инстансами
-- Рекомендуется заменить на Redis для production
-
----
-
-## 4. Безопасность БД
-
-### 4.1 Пароли
-
-- Хэшируются bcrypt (cost factor 12)
-- Не хранятся в открытом виде
-- Не логируются
-
-### 4.2 Seed-данные
-
-При первом запуске создаются тестовые учётные записи:
-
-| Email | Пароль | Действие при деплое |
-|-------|--------|---------------------|
-| `admin@dmb.ru` | `dmb2026` | **Сменить пароль!** |
-| `t.babiak@dmb.ru` | `dmb2026` | **Сменить пароль!** |
-| `d.fomin@dmb.ru` | `dmb2026` | **Сменить пароль!** |
-
-### 4.3 Мягкое удаление (Soft Delete)
-
-- Задачи не удаляются физически — устанавливается флаг `is_deleted = True`
-- Удалённые задачи исключаются из стандартных запросов (`filter(is_deleted=False)`)
-- Администратор может просмотреть/восстановить удалённые задачи
-
-### 4.4 Аудит
-
-**Сбор данных:**
-Middleware (`backend/middleware.py`) автоматически логирует:
-- Все write-операции (POST, PUT, DELETE, PATCH) к `/api/*`
-- IP-адрес запроса
-- User ID (из JWT-токена)
-- Timestamp
-- Path запроса, HTTP-метод, статус-код ответа
-- Тип сущности (извлекается из URL: `/api/v1/{entity_type}/...`)
-- ID сущности (извлекается из URL: 4-й сегмент пути)
-
-Данные записываются в таблицу `audit_log` в БД.
-
-**Просмотр журнала:**
-Администраторы (`admin: read`) могут просматривать журнал аудита через интерфейс `#/audit-log` (отдельная страница в sidebar). Реализованы фильтры:
-- По пользователю (select)
-- По типу действия: CREATE, UPDATE, DELETE (select)
-- По типу сущности: tasks, teams, users, roles и др. (select)
-- По диапазону дат (date pickers)
-- Пагинация: 50 записей на страницу
-
-**API-эндпоинты:**
-- `GET /admin/audit-log` — получение записей с фильтрами и пагинацией
-- `GET /admin/audit-log/filters` — получение доступных значений фильтров
-
-**Хранение:**
-- Записи хранятся в таблице `audit_log` БД (SQLite)
-- Логи приложения — в `backend/logs/`
-
-**Защита:**
-- Доступ к просмотру журнала — только для ролей с `admin: read` или `admin: partial`
-
----
-
-## 5. Инфраструктурная безопасность
-
-### 5.1 HTTPS
-
-**Рекомендация:** настроить HTTPS через Let's Encrypt + Nginx:
-
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d backlog.dmb.ru
-```
-
-### 5.2 Firewall
-
-```bash
-# Разрешить только необходимые порты
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow 80/tcp   # HTTP (редирект на HTTPS)
-sudo ufw allow 443/tcp  # HTTPS
-sudo ufw allow 22/tcp   # SSH
-sudo ufw enable
-```
-
-### 5.3 Nginx hardening
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name backlog.dmb.ru;
-
-    # SSL
-    ssl_certificate /etc/letsencrypt/live/backlog.dmb.ru/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/backlog.dmb.ru/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    # Security headers
-    add_header X-Content-Type-Options nosniff;
-    add_header X-Frame-Options DENY;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;";
-
-    # Ограничение методов
-    if ($request_method !~ ^(GET|POST|PUT|DELETE|OPTIONS)$) {
-        return 405;
-    }
-
-    # Защита от ботов
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-    }
-
-    # Скрыть /docs и /redoc в production (опционально)
-    # location /docs { return 403; }
-    # location /redoc { return 403; }
-    # location /openapi.json { return 403; }
-}
-```
-
-### 5.4 Обновление зависимостей
-
-```bash
-# Проверка уязвимостей (рекомендуется)
-pip-audit
-pip install --upgrade pip-audit
-pip-audit
-
-# Обновление всех зависимостей
-pip list --outdated
-pip install --upgrade -r requirements.txt
-```
-
----
-
-## 6. Процедуры безопасности
-
-### 6.1 Что делать при утечке SECRET_KEY
-
-1. **Немедленно** сменить SECRET_KEY в .env
-2. Перезапустить сервер
-3. Все существующие JWT-токены станут невалидными — пользователи должны заново войти
-4. Проверить логи на подозрительную активность
-
-### 6.2 Что делать при подозрении на взлом
-
-1. Заблокировать доступ к серверу (ufw deny from <ip>)
-2. Сменить все пароли
-3. Сменить SECRET_KEY
-4. Восстановить БД из последнего бекапа
-5. Провести аудит логов
-6. Уведомить команду
-
-### 6.3 Регулярные действия
-
-- Еженедельная проверка логов на аномалии
-- Ежемесячное обновление зависимостей (pip-audit)
-- Ежеквартальный аудит прав пользователей
-- Ежегодное обновление SSL-сертификатов
+## Подтверждённые ограничения
+
+- Нет универсального CSP в коде приложения.
+- Нет подтверждённого antivirus/content scanning для вложений.
+- Memory rate limiter не подходит для multi-instance.
+- Audit middleware не атомарен с бизнес-транзакцией.
+- Health endpoint не проверяет зависимости.
+- Nginx, firewall, TLS termination, SIEM, backup и incident-response процессы не представлены исполняемой конфигурацией репозитория.
+
+## Проверки
+
+Основные security-тесты находятся в:
+
+- `backend/tests/test_security_contracts.py`;
+- `backend/tests/test_auth.py`;
+- `backend/tests/test_auth_cookie_policy.py`;
+- `backend/tests/test_rate_limit.py`;
+- `backend/tests/test_admin_safety.py`;
+- `frontend/tests/htmlUtils.test.mjs`;
+- `frontend/tests/moduleContracts.test.mjs`.
+
+Исторический документ со смешанными реализованными и рекомендуемыми мерами сохранён в `archive/legacy/SECURITY_MIXED_2026-06-29.md` и не является источником текущего состояния.

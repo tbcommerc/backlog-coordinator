@@ -1,0 +1,32 @@
+# Зависимости, сборка и кэши
+node_modules/
+dist/
+build/
+coverage/
+**/__pycache__/
+**/.pytest_cache/
+
+# Локальные данные, резервные копии и журналы
+*.db
+*.db.*
+*.log
+*.xlsx.bak
+uploads/
+
+# Крупные сторонние библиотеки frontend
+**/frontend/**/lib/*.min.js
+**/frontend/static/js/lib/
+
+# Временные диагностические и тестовые выгрузки
+dmb-backlog/backend/_diag*.py
+dmb-backlog/backend/_debug*.py
+dmb-backlog/backend/_inspect*.py
+dmb-backlog/backend/test_import_200.csv
+dmb-backlog/backend/test_import_200.xlsx
+dmb-backlog/backend/test_import_200_errors.txt
+
+# Старые отчёты прогонов и визуальные референсы
+/agent/docs/archive/
+/dmb-backlog/docs/archive/
+/*.html
+/dmb-backlog/*.html

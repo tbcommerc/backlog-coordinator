@@ -37,11 +37,53 @@ def _task_team_id(task) -> Optional[int]:
     return getattr(task, "team_id", None)
 
 
+def is_customer_portal_only(user: User) -> bool:
+    """Explicit role policy; name fallback only supports roles not saved since migration."""
+    value = getattr(getattr(user, "role", None), "customer_portal_only", None)
+    if value is not None:
+        return bool(value)
+    return (user.role_name or "").strip().casefold() in BUSINESS_CUSTOMER_ROLES
+
+
+def get_request_review_access(user: User) -> str:
+    """Return none/team/all, with a temporary fallback for pre-migration roles."""
+    value = getattr(getattr(user, "role", None), "review_access", None)
+    if value in {"none", "team", "all"}:
+        return value
+    name = (user.role_name or "").strip().casefold()
+    if name in {"проектный офис (админ)", "администратор"}:
+        return "all"
+    if name in {"po/pl/cl", "ba/участник команды", "ba/бизнес-аналитик", "лидер трайба"}:
+        return "team"
+    return "none"
+
+
+def get_task_action_scope(user: User, action: Literal["edit", "comment", "delete"]) -> str:
+    """Return explicit task-operation scope, falling back for pre-migration roles."""
+    field = {"edit": "task_edit_scope", "comment": "task_comment_scope", "delete": "task_delete_scope"}[action]
+    value = getattr(getattr(user, "role", None), field, None)
+    if value in {"none", "team", "all"}:
+        return value
+    name = (user.role_name or "").strip().casefold()
+    if action == "edit":
+        if name in TASK_GLOBAL_EDITOR_ROLES: return "all"
+        if name in TASK_TEAM_EDITOR_ROLES: return "team"
+    if action == "comment" and name in TASK_COMMENT_ROLES: return "all"
+    if action == "delete" and name in TASK_GLOBAL_EDITOR_ROLES: return "all"
+    return "none"
+
+
+def can_make_pip_decision(user: User) -> bool:
+    value = getattr(getattr(user, "role", None), "pip_decision_access", None)
+    if value is not None:
+        return bool(value)
+    return (user.role_name or "").strip().casefold() in {"лидер трайба", "проектный офис (админ)", "администратор"}
+
+
 def can_access_task(action: TaskAction, task, user: User, target_team_id: Optional[int] = None) -> bool:
     """Единая policy-функция объектного доступа к задаче."""
-    role_name = (user.role_name or "").strip().casefold()
     task_team_id = _task_team_id(task)
-    if role_name in BUSINESS_CUSTOMER_ROLES:
+    if is_customer_portal_only(user):
         return False
     if action == "read":
         return check_permission(user, "backlog_dmb", "read") or (
@@ -50,9 +92,9 @@ def can_access_task(action: TaskAction, task, user: User, target_team_id: Option
     if action == "edit":
         return can_edit_task(user, task_team_id, target_team_id)
     if action == "comment":
-        return can_comment_task(user)
+        return can_comment_task(user, task_team_id)
     if action == "delete":
-        return role_name in TASK_GLOBAL_EDITOR_ROLES
+        return _scope_allows(get_task_action_scope(user, "delete"), user, task_team_id)
     return False
 
 
@@ -74,10 +116,10 @@ def can_edit_task(user: User, task_team_id: Optional[int], target_team_id: Optio
     Командные редакторы могут менять только задачи своей команды и не могут
     переносить их в другую команду. Проектный офис (админ) не ограничен командой.
     """
-    role_name = (user.role_name or "").strip().casefold()
-    if role_name in TASK_GLOBAL_EDITOR_ROLES:
+    scope = get_task_action_scope(user, "edit")
+    if scope == "all":
         return True
-    if role_name not in TASK_TEAM_EDITOR_ROLES:
+    if scope != "team":
         return False
     if user.team_id is None or task_team_id != user.team_id:
         return False
@@ -86,7 +128,7 @@ def can_edit_task(user: User, task_team_id: Optional[int], target_team_id: Optio
 
 def is_task_global_editor(user: User) -> bool:
     """Пользователь может редактировать задачи без ограничения по команде."""
-    return (user.role_name or "").strip().casefold() in TASK_GLOBAL_EDITOR_ROLES
+    return get_task_action_scope(user, "edit") == "all"
 
 
 def require_task_edit_access(user: User, task_team_id: Optional[int], target_team_id: Optional[int] = None) -> None:
@@ -95,9 +137,14 @@ def require_task_edit_access(user: User, task_team_id: Optional[int], target_tea
     authorize_task("edit", scope, user, target_team_id)
 
 
-def can_comment_task(user: User) -> bool:
-    """Проверить право комментировать любую задачу независимо от команды."""
-    return (user.role_name or "").strip().casefold() in TASK_COMMENT_ROLES
+def _scope_allows(scope: str, user: User, task_team_id: Optional[int]) -> bool:
+    return scope == "all" or (scope == "team" and user.team_id is not None and user.team_id == task_team_id)
+
+
+def can_comment_task(user: User, task_team_id: Optional[int] = None) -> bool:
+    """Проверить явно заданную область комментирования."""
+    scope = get_task_action_scope(user, "comment")
+    return scope == "all" if task_team_id is None else _scope_allows(scope, user, task_team_id)
 
 
 def require_task_comment_access(user: User) -> None:
@@ -113,12 +160,11 @@ def require_bulk_task_edit_access(
     is_delete: bool = False,
 ) -> None:
     """Атомарно проверить область массового изменения задач."""
-    if is_delete and not is_task_global_editor(user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Массовое удаление задач доступно только проектному офису (админу)",
-        )
-    if any(not can_edit_task(user, team_id, target_team_id) for team_id in task_team_ids):
+    if is_delete:
+        allowed = all(_scope_allows(get_task_action_scope(user, "delete"), user, team_id) for team_id in task_team_ids)
+    else:
+        allowed = all(can_edit_task(user, team_id, target_team_id) for team_id in task_team_ids)
+    if not allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Массовая операция содержит задачи недоступной команды",
@@ -204,7 +250,7 @@ def get_current_user_optional(
 
 def require_non_business_customer_access(current_user: User = Depends(get_current_user)) -> User:
     """Закрыть предметный API для роли, ограниченной customer/agent API."""
-    if (current_user.role_name or "").strip().casefold() in BUSINESS_CUSTOMER_ROLES:
+    if is_customer_portal_only(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Бизнес-заказчику доступен только портал «Мои задачи» и ИИ-ассистент",

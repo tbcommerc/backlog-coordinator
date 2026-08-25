@@ -26,6 +26,13 @@ class SendForReviewRequest(BaseModel):
     user_id: Optional[int] = None
 
 
+class EditDraftSectionRequest(BaseModel):
+    session_id: str = ""
+    field: str = Field(min_length=1, max_length=64)
+    value: str = Field(min_length=1, max_length=5000)
+    user_id: Optional[int] = None
+
+
 class AgentResponse(BaseModel):
     success: bool = True
     session_id: str = ""
@@ -38,11 +45,15 @@ class AgentResponse(BaseModel):
     draft: Optional[dict] = None
     can_generate_draft: bool = False
     history: list = Field(default_factory=list)
+    quality: dict = Field(default_factory=dict)
+    request_id: Optional[int] = None
+    expected_slot: str = ""
 
 
 class ConfigResponse(BaseModel):
     provider: str = ""
     provider_available: bool = False
+    dialogue_engine: str = ""
     intents: dict = Field(default_factory=dict)
     kb_stats: dict = Field(default_factory=dict)
     mcp_servers: list = Field(default_factory=list)

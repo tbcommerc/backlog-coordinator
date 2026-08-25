@@ -172,6 +172,12 @@ class Role(Base):
     customer_access = Column(String(20), default="read")
     settings_access = Column(String(20), default="available")
     admin_access = Column(String(20), default="none")
+    customer_portal_only = Column(Boolean, nullable=True, default=None)
+    review_access = Column(String(20), nullable=True, default=None)
+    task_edit_scope = Column(String(20), nullable=True, default=None)
+    task_comment_scope = Column(String(20), nullable=True, default=None)
+    task_delete_scope = Column(String(20), nullable=True, default=None)
+    pip_decision_access = Column(Boolean, nullable=True, default=None)
     can_edit_tasks = Column(Boolean, default=True)
     can_delete_tasks = Column(Boolean, default=False)
     can_export = Column(Boolean, default=True)
@@ -474,6 +480,22 @@ class Notification(Base):
     user = relationship("User")
 
 
+class NotificationTemplate(Base):
+    __tablename__ = "notification_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(150), nullable=False, unique=True)
+    event_type = Column(String(50), nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    recipients = Column(Text, nullable=False, default="[]", comment="JSON array of recipient role codes")
+    deadline_days = Column(Integer, nullable=True)
+    repeat_frequency = Column(String(20), nullable=True)
+    repeat_day = Column(Integer, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class Report(Base):
     __tablename__ = "reports"
 
@@ -560,6 +582,9 @@ class RequirementRequest(Base):
     draft (created during the assistant dialogue) and its review lifecycle.
     """
     __tablename__ = "requirement_requests"
+    __table_args__ = (
+        UniqueConstraint("agent_session_id", "is_deleted", name="uq_requirement_request_session_active"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
@@ -656,6 +681,12 @@ class Tag(Base):
     name = Column(String(100), nullable=False)
     color = Column(String(20), nullable=True)
     description = Column(Text, nullable=True)
+    code = Column(String(50), nullable=True)
+    sort_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    version = Column(Integer, default=0)
+    lock_owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    lock_until = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     creator = Column(Integer, ForeignKey("users.id"), nullable=True)
 

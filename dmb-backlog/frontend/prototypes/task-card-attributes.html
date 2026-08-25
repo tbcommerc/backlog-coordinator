@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Прототип карточки задачи — атрибуты</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #eef1f7;
+      --surface: #ffffff;
+      --surface-soft: #f7f8fb;
+      --text: #182033;
+      --muted: #667085;
+      --line: #e0e5ee;
+      --accent: #4f46e5;
+      --accent-soft: #eeedff;
+      --blue: #2563eb;
+      --blue-soft: #eaf3ff;
+      --red: #d92d20;
+      --red-soft: #fff0ef;
+      --green: #15803d;
+      --green-soft: #ecfdf3;
+      --shadow: 0 24px 70px rgba(15, 23, 42, .18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 32px 20px;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(79, 70, 229, .12), transparent 30%),
+        var(--page);
+      color: var(--text);
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    button { font: inherit; }
+
+    .prototype-shell {
+      width: min(960px, 100%);
+      margin: 0 auto;
+    }
+
+    .prototype-note {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .task-modal {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .task-modal::before {
+      display: block;
+      height: 3px;
+      background: var(--accent);
+      content: "";
+    }
+
+    .task-header {
+      padding: 15px 20px 0;
+      background: var(--surface);
+    }
+
+    .header-line {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .identity,
+    .header-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .header-actions { margin-left: auto; }
+
+    .task-id,
+    .chip {
+      display: inline-flex;
+      min-height: 25px;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .task-id {
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      color: var(--muted);
+    }
+
+    .chip-type { background: var(--accent-soft); color: var(--accent); }
+    .chip-status { background: var(--blue-soft); color: var(--blue); }
+    .chip-priority { background: var(--red-soft); color: var(--red); }
+
+    .icon-button {
+      display: inline-grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .icon-button:hover { border-color: #c8cfdb; color: var(--text); }
+
+    .task-title {
+      margin: 10px 0 13px;
+      font-size: clamp(18px, 2.2vw, 24px);
+      font-weight: 750;
+      line-height: 1.25;
+      letter-spacing: -.02em;
+    }
+
+    .primary-attributes {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--line);
+      gap: 1px;
+    }
+
+    .primary-attribute {
+      min-width: 0;
+      padding: 10px 12px;
+      background: var(--surface-soft);
+    }
+
+    .attribute-label {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+
+    .attribute-value {
+      display: block;
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .attribute-value.deadline { color: var(--red); }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .progress-track {
+      height: 5px;
+      flex: 1;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #dce1e9;
+    }
+
+    .progress-fill { width: 65%; height: 100%; background: var(--accent); }
+
+    .tabs {
+      display: flex;
+      gap: 24px;
+      overflow-x: auto;
+      margin: 15px -20px 0;
+      padding: 0 20px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: none;
+    }
+
+    .tab {
+      position: relative;
+      flex: 0 0 auto;
+      padding: 11px 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .tab.active { color: var(--text); }
+    .tab.active::after {
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 2px;
+      background: var(--accent);
+      content: "";
+    }
+
+    .task-body {
+      display: grid;
+      gap: 12px;
+      padding: 16px 20px 20px;
+      background: var(--page);
+    }
+
+    .content-card {
+      padding: 14px 15px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .content-card p { margin: 4px 0 0; color: #475467; }
+
+    .secondary-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .secondary-header h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .secondary-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      padding: 5px 8px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .secondary-toggle:hover { background: var(--surface-soft); color: var(--text); }
+    .secondary-toggle svg { transition: transform .18s ease; }
+    .secondary-toggle[aria-expanded="false"] svg { transform: rotate(180deg); }
+
+    .secondary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .secondary-grid[hidden] { display: none; }
+
+    .secondary-attribute {
+      min-width: 0;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface-soft);
+    }
+
+    .task-footer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .saved-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .button {
+      min-height: 34px;
+      padding: 7px 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .button.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+    svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+
+    @media (max-width: 680px) {
+      body { padding: 12px; }
+      .task-header { padding-inline: 14px; }
+      .header-line { align-items: flex-start; }
+      .identity { padding-right: 4px; }
+      .primary-attributes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tabs { margin-inline: -14px; padding-inline: 14px; gap: 18px; }
+      .task-body { padding: 14px; }
+      .secondary-grid { grid-template-columns: 1fr; }
+      .task-footer { align-items: stretch; padding: 12px 14px; }
+    }
+
+    @media (max-width: 430px) {
+      .chip-type { display: none; }
+      .header-actions { gap: 4px; }
+      .icon-button { width: 29px; height: 29px; }
+      .primary-attributes { grid-template-columns: 1fr; }
+      .task-footer { flex-direction: column; }
+      .footer-actions { margin-left: 0; }
+      .footer-actions .button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="prototype-shell">
+    <p class="prototype-note">Интерактивный прототип рекомендуемой компоновки «Два уровня»</p>
+
+    <article class="task-modal" aria-labelledby="task-title">
+      <header class="task-header">
+        <div class="header-line">
+          <div class="identity">
+            <span class="task-id">#250</span>
+            <span class="chip chip-type">Разработка</span>
+            <span class="chip chip-status">В работе</span>
+            <span class="chip chip-priority">Высокий</span>
+          </div>
+
+          <div class="header-actions">
+            <button class="icon-button" type="button" aria-label="Копировать ссылку">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1"/></svg>
+            </button>
+            <button class="icon-button" type="button" aria-label="Закрыть">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <h1 class="task-title" id="task-title">Интеграция с сервисом расчёта рисков</h1>
+
+        <section class="primary-attributes" aria-label="Ключевые атрибуты">
+          <div class="primary-attribute">
+            <span class="attribute-label">Команда</span>
+            <strong class="attribute-value">Core Platform</strong>
+          </div>
+          <div class="primary-attribute">
+            <span class="attribute-label">Исполнитель</span>
+            <strong class="attribute-value">Анна Смирнова</strong>
+          </div>
+          <div class="primary-attribute">
+            <span class="attribute-label">Срок</span>
+            <strong class="attribute-value deadline">30 сентября</strong>
+          </div>
+          <div class="primary-attribute">
+            <span class="attribute-label">Прогресс</span>
+            <span class="progress-row"><span class="progress-track"><span class="progress-fill"></span></span><strong>65%</strong></span>
+          </div>
+        </section>
+
+        <nav class="tabs" aria-label="Разделы карточки">
+          <span class="tab active">Обзор</span>
+          <span class="tab">Комментарии · 4</span>
+          <span class="tab">Файлы · 2</span>
+          <span class="tab">Лог изменений</span>
+        </nav>
+      </header>
+
+      <div class="task-body">
+        <section class="content-card">
+          <span class="attribute-label">Описание</span>
+          <p>Подключить расчёт риск-профиля и вывод результата в карточке клиента. Сохранять результат и историю изменений.</p>
+        </section>
+
+        <section class="content-card">
+          <div class="secondary-header">
+            <h2>Остальные атрибуты</h2>
+            <button class="secondary-toggle" id="secondary-toggle" type="button" aria-expanded="true" aria-controls="secondary-grid">
+              <span>Свернуть</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+            </button>
+          </div>
+
+          <div class="secondary-grid" id="secondary-grid">
+            <div class="secondary-attribute"><span class="attribute-label">Проект</span><strong class="attribute-value">Risk Engine</strong></div>
+            <div class="secondary-attribute"><span class="attribute-label">Заказчик</span><strong class="attribute-value">Розничный бизнес</strong></div>
+            <div class="secondary-attribute"><span class="attribute-label">Канал</span><strong class="attribute-value">Внутренний портал</strong></div>
+            <div class="secondary-attribute"><span class="attribute-label">Priority Score</span><strong class="attribute-value">82</strong></div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="task-footer">
+        <span class="saved-state">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg>
+          Все изменения сохранены
+        </span>
+        <div class="footer-actions">
+          <button class="button" type="button">Отмена</button>
+          <button class="button primary" type="button">Редактировать</button>
+        </div>
+      </footer>
+    </article>
+  </main>
+
+  <script>
+    const toggle = document.getElementById('secondary-toggle');
+    const grid = document.getElementById('secondary-grid');
+
+    toggle.addEventListener('click', () => {
+      const expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!expanded));
+      toggle.querySelector('span').textContent = expanded ? 'Развернуть' : 'Свернуть';
+      grid.hidden = expanded;
+    });
+  </script>
+</body>
+</html>

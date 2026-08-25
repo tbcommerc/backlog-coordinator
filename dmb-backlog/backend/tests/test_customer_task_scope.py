@@ -108,3 +108,10 @@ def test_project_office_can_review_all_requests(role_name):
     user = SimpleNamespace(role_name=role_name, team_id=None)
     assert can_review_request(user, request_team_id=10)
     assert can_review_request(user, request_team_id=11)
+
+
+def test_explicit_review_access_survives_role_rename():
+    role = SimpleNamespace(review_access="all", customer_portal_only=False)
+    user = SimpleNamespace(role_name="Переименованная роль", role=role, team_id=None)
+    assert can_review_request(user, request_team_id=10)
+    assert can_review_request(user, request_team_id=11)

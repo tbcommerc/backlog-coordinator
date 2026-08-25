@@ -1,3 +1,5 @@
+import { confirmAction } from '../uiFeedback.js';
+
 console.log('[DMB] filterToolbar.js v20260804.2 loaded');
 const columnFilters = { backlog: {}, team: {} };
 const sortValues = { backlog: 'id-desc', team: 'id-desc' };
@@ -170,6 +172,7 @@ function renderSavedViewsControl(scope) {
     <div id="${scope}-saved-view-editor" style="display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:130;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:10px;padding:12px;width:280px;box-shadow:0 8px 24px rgba(0,0,0,.22);">
       <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:5px;">Название представления</label>
       <input id="${scope}-saved-view-name" maxlength="80" placeholder="Например, Мои активные" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);">
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.4;margin-top:8px;">Сохранятся фильтры, сортировка, видимость и порядок столбцов.</div>
       <label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;color:var(--text-secondary);"><input type="checkbox" id="${scope}-saved-view-default"> Открывать по умолчанию</label>
       <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:12px;"><button class="btn btn-secondary btn-sm" id="${scope}-saved-view-cancel">Отмена</button><button class="btn btn-primary btn-sm" id="${scope}-saved-view-confirm">Сохранить</button></div>
     </div>
@@ -197,7 +200,7 @@ export function applyToolbarViewState(scope, state = {}) {
   });
 }
 
-function initSavedViews(scope, getPageState, applyPageState) {
+function initSavedViews(scope, getPageState, applyPageState, options = {}) {
   const trigger = $(`${scope}-saved-view-trigger`);
   const dropdown = $(`${scope}-saved-view-dropdown`);
   const label = $(`${scope}-saved-view-label`);
@@ -208,6 +211,7 @@ function initSavedViews(scope, getPageState, applyPageState) {
   const nameInput = $(`${scope}-saved-view-name`);
   const defaultInput = $(`${scope}-saved-view-default`);
   let activeViewId = '';
+  const showRevertAction = options.showRevertAction !== false;
 
   const stableStringify = value => JSON.stringify(value, (_key, nested) => {
     if (!nested || Array.isArray(nested) || typeof nested !== 'object') return nested;
@@ -230,7 +234,7 @@ function initSavedViews(scope, getPageState, applyPageState) {
     const active = data.items.find(view => view.id === activeViewId);
     if (label) label.textContent = active?.name || 'Представление…';
     dropdown.innerHTML = data.items.length
-      ? `<div class="saved-view-list">${data.items.map(view => `<div class="saved-view-item ${view.id === activeViewId ? 'active' : ''}" data-view-id="${escapeAttr(view.id)}"><button type="button" class="saved-view-apply" data-view-id="${escapeAttr(view.id)}"><span>${escapeAttr(view.name)}</span>${view.id === data.defaultId ? '<span title="По умолчанию">★</span>' : ''}</button><button type="button" class="saved-view-delete" data-delete-view-id="${escapeAttr(view.id)}" title="Удалить представление" aria-label="Удалить представление ${escapeAttr(view.name)}"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg></button></div>`).join('')}</div><div class="saved-view-actions"><button type="button" class="saved-view-revert" ${activeViewId ? '' : 'disabled'}>Вернуть сохранённое</button><button type="button" class="saved-view-update" ${activeViewId ? '' : 'disabled'}>Обновить текущими настройками</button></div>`
+      ? `<div class="saved-view-list">${data.items.map(view => `<div class="saved-view-item ${view.id === activeViewId ? 'active' : ''}" data-view-id="${escapeAttr(view.id)}"><button type="button" class="saved-view-apply" data-view-id="${escapeAttr(view.id)}"><span>${escapeAttr(view.name)}</span></button><button type="button" class="saved-view-default ${view.id === data.defaultId ? 'is-default' : ''}" data-default-view-id="${escapeAttr(view.id)}" title="${view.id === data.defaultId ? 'Снять вид по умолчанию' : 'Установить как вид по умолчанию'}" aria-label="${view.id === data.defaultId ? 'Снять вид по умолчанию' : 'Установить как вид по умолчанию'}: ${escapeAttr(view.name)}" aria-pressed="${view.id === data.defaultId ? 'true' : 'false'}">${view.id === data.defaultId ? '★' : '☆'}</button><button type="button" class="saved-view-rename" data-rename-view-id="${escapeAttr(view.id)}" title="Переименовать представление" aria-label="Переименовать представление ${escapeAttr(view.name)}"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg></button><button type="button" class="saved-view-delete" data-delete-view-id="${escapeAttr(view.id)}" title="Удалить представление" aria-label="Удалить представление ${escapeAttr(view.name)}"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg></button></div>`).join('')}</div><div class="saved-view-actions">${showRevertAction ? `<button type="button" class="saved-view-revert" ${activeViewId ? '' : 'disabled'}>Вернуть сохранённое</button>` : ''}<button type="button" class="saved-view-update" ${activeViewId ? '' : 'disabled'}>Обновить текущими настройками</button></div>`
       : '<div class="saved-view-empty">Сохранённых представлений пока нет</div>';
     setTimeout(updateDirtyIndicator, 0);
   };
@@ -240,12 +244,18 @@ function initSavedViews(scope, getPageState, applyPageState) {
     if (!view) return;
     applyToolbarViewState(scope, view.state?.toolbar || {});
     applyPageState?.(view.state?.page || {});
+    syncColumnControls(scope);
     filterChangeCallbacks[scope]?.();
+  };
+
+  const clearInlineEditors = () => {
+    dropdown.querySelectorAll('.saved-view-rename-editor, .saved-view-delete-confirm').forEach(element => element.remove());
   };
 
   trigger.addEventListener('click', () => {
     const open = dropdown.style.display !== 'none';
     if (editor) editor.style.display = 'none';
+    if (open) clearInlineEditors();
     dropdown.style.display = open ? 'none' : 'block';
     trigger.setAttribute('aria-expanded', open ? 'false' : 'true');
   });
@@ -253,10 +263,11 @@ function initSavedViews(scope, getPageState, applyPageState) {
     if (!event.target.closest(`#${scope}-saved-view-control`)) {
       dropdown.style.display = 'none';
       if (editor) editor.style.display = 'none';
+      clearInlineEditors();
       trigger.setAttribute('aria-expanded', 'false');
     }
   });
-  dropdown.addEventListener('click', event => {
+  dropdown.addEventListener('click', async event => {
     const applyButton = event.target.closest('[data-view-id].saved-view-apply');
     if (applyButton) {
       activeViewId = applyButton.dataset.viewId;
@@ -266,13 +277,54 @@ function initSavedViews(scope, getPageState, applyPageState) {
       trigger.setAttribute('aria-expanded', 'false');
       return;
     }
+    const defaultButton = event.target.closest('[data-default-view-id]');
+    if (defaultButton) {
+      const defaultId = defaultButton.dataset.defaultViewId;
+      const data = readSavedViews(scope);
+      data.defaultId = data.defaultId === defaultId ? null : defaultId;
+      writeSavedViews(scope, data);
+      refreshOptions(activeViewId);
+      window.toast?.(data.defaultId ? 'Вид установлен по умолчанию' : 'Вид по умолчанию снят', 'success');
+      return;
+    }
+    const renameButton = event.target.closest('[data-rename-view-id]');
+    if (renameButton) {
+      const renameId = renameButton.dataset.renameViewId;
+      const view = readSavedViews(scope).items.find(item => item.id === renameId);
+      const row = renameButton.closest('.saved-view-item');
+      dropdown.querySelectorAll('.saved-view-rename-editor, .saved-view-delete-confirm').forEach(element => element.remove());
+      row?.insertAdjacentHTML('beforeend', `<div class="saved-view-rename-editor"><input maxlength="80" value="${escapeAttr(view?.name || '')}" aria-label="Новое название представления"><div><button type="button" class="saved-view-rename-cancel">Отмена</button><button type="button" class="saved-view-rename-confirm" data-confirm-rename-id="${escapeAttr(renameId)}">Сохранить</button></div></div>`);
+      const input = row?.querySelector('.saved-view-rename-editor input');
+      input?.focus(); input?.select();
+      return;
+    }
+    if (event.target.closest('.saved-view-rename-cancel')) {
+      event.target.closest('.saved-view-rename-editor')?.remove();
+      return;
+    }
+    const confirmRenameButton = event.target.closest('[data-confirm-rename-id]');
+    if (confirmRenameButton) {
+      const renameId = confirmRenameButton.dataset.confirmRenameId;
+      const name = confirmRenameButton.closest('.saved-view-rename-editor')?.querySelector('input')?.value.trim() || '';
+      if (!name) { window.toast?.('Введите название представления', 'warning'); return; }
+      const data = readSavedViews(scope);
+      if (data.items.some(view => view.id !== renameId && view.name.trim().toLocaleLowerCase('ru-RU') === name.toLocaleLowerCase('ru-RU'))) {
+        window.toast?.('Представление с таким названием уже существует', 'warning');
+        return;
+      }
+      data.items = data.items.map(view => view.id === renameId ? { ...view, name, updatedAt: new Date().toISOString() } : view);
+      writeSavedViews(scope, data);
+      refreshOptions(activeViewId);
+      window.toast?.('Представление переименовано', 'success');
+      return;
+    }
     const deleteButton = event.target.closest('[data-delete-view-id]');
     if (deleteButton) {
       const deleteId = deleteButton.dataset.deleteViewId;
       const data = readSavedViews(scope);
       const view = data.items.find(item => item.id === deleteId);
       const row = deleteButton.closest('.saved-view-item');
-      dropdown.querySelectorAll('.saved-view-delete-confirm').forEach(element => element.remove());
+      dropdown.querySelectorAll('.saved-view-rename-editor, .saved-view-delete-confirm').forEach(element => element.remove());
       row?.insertAdjacentHTML('beforeend', `<div class="saved-view-delete-confirm"><span>Удалить «${escapeAttr(view?.name || '')}»?</span><div><button type="button" class="saved-view-delete-cancel">Отмена</button><button type="button" class="saved-view-delete-approve" data-confirm-delete-id="${escapeAttr(deleteId)}">Удалить</button></div></div>`);
       return;
     }
@@ -293,7 +345,12 @@ function initSavedViews(scope, getPageState, applyPageState) {
     }
     if (event.target.closest('.saved-view-update')) {
       if (!activeViewId) return;
-      if (!window.confirm('Обновить выбранное представление текущими настройками?')) { refreshOptions(activeViewId); return; }
+      const confirmed = await confirmAction({
+        title: 'Обновить представление?',
+        message: 'Сохранённые настройки выбранного представления будут заменены текущими.',
+        confirmText: 'Обновить',
+      });
+      if (!confirmed) { refreshOptions(activeViewId); return; }
       const data = readSavedViews(scope);
       data.items = data.items.map(view => view.id === activeViewId
         ? { ...view, state: { toolbar: getToolbarViewState(scope), page: getPageState?.() || {} }, updatedAt: new Date().toISOString() }
@@ -312,6 +369,11 @@ function initSavedViews(scope, getPageState, applyPageState) {
       trigger.setAttribute('aria-expanded', 'false');
       window.toast?.('Сохранённое представление восстановлено', 'success');
     }
+  });
+  dropdown.addEventListener('keydown', event => {
+    if (!event.target.matches('.saved-view-rename-editor input')) return;
+    if (event.key === 'Enter') { event.preventDefault(); event.target.closest('.saved-view-rename-editor')?.querySelector('[data-confirm-rename-id]')?.click(); }
+    if (event.key === 'Escape') { event.preventDefault(); event.target.closest('.saved-view-rename-editor')?.remove(); }
   });
   saveBtn?.addEventListener('click', () => {
     if (!editor || !nameInput) return;
@@ -356,6 +418,25 @@ function initSavedViews(scope, getPageState, applyPageState) {
       Object.values(document.__savedViewDirtyCallbacks || {}).forEach(callback => callback());
     }));
   }
+}
+
+function syncColumnControls(scope) {
+  const settings = columnSettingsRefs[scope];
+  const order = columnOrderRefs[scope];
+  const list = $(`${scope}-column-settings-list`);
+  if (!settings || !list) return;
+  list.querySelectorAll('.col-drag-item').forEach(item => {
+    const key = item.dataset.col;
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    if (checkbox) checkbox.checked = !!settings[key];
+  });
+  if (!Array.isArray(order)) return;
+  const items = new Map(Array.from(list.querySelectorAll('.col-drag-item')).map(item => [item.dataset.col, item]));
+  order.forEach(key => {
+    const item = items.get(key);
+    if (item) list.appendChild(item);
+  });
+  items.forEach((item, key) => { if (!order.includes(key)) list.appendChild(item); });
 }
 
 function getUniqueValues(scope, key, allTasks) {
@@ -578,6 +659,7 @@ export function initToolbarControls(scope, opts = {}) {
     onColumnOrderChange,
     onQuickEdit,
     onBulkOps,
+    showSavedViewRevert = true,
     getSavedViewState,
     applySavedViewState,
   } = opts;
@@ -587,7 +669,9 @@ export function initToolbarControls(scope, opts = {}) {
   defaultColumnSettingsRefs[scope] = defaultColumnSettings || null;
 
   const getLabel = (k) => columnLabels[k] || k;
-  initSavedViews(scope, getSavedViewState, applySavedViewState);
+  initSavedViews(scope, getSavedViewState, applySavedViewState, {
+    showRevertAction: showSavedViewRevert,
+  });
 
   const viewGroup = document.getElementById(`${scope}-view-toggle-group`);
   if (viewGroup) {
@@ -1180,6 +1264,7 @@ let toolbarOffsetObserver = null;
 let observedToolbar = null;
 
 export function updateStickyOffsets() {
+  // Architecture and regression checklist: docs/STICKY_BACKLOG_TABLES.md
   requestAnimationFrame(() => {
     const toolbar = document.querySelector('.sticky-toolbar');
     if (!toolbar) return;
@@ -1190,18 +1275,48 @@ export function updateStickyOffsets() {
       toolbarOffsetObserver.observe(toolbar);
     }
     const style = getComputedStyle(document.documentElement);
-    const navbarHeight = parseFloat(style.getPropertyValue('--navbar-height'));
-    const offset = navbarHeight + toolbar.offsetHeight;
-    document.documentElement.style.setProperty('--sticky-thead-offset', offset + 'px');
+    const navbarHeight = parseFloat(style.getPropertyValue('--navbar-height')) || 64;
     const mainContent = document.querySelector('.main-content');
     const toolbarIsFixed = getComputedStyle(toolbar).position === 'fixed';
+    const toolbarBottom = Math.max(navbarHeight, toolbar.getBoundingClientRect().bottom);
+
+    const qe = Array.from(document.querySelectorAll('.qe-toolbar'))
+      .find(el => getComputedStyle(el).display !== 'none');
+    if (qe) qe.style.top = 'auto';
+
+    // .qe-toolbar is sticky inside .main-content, so its `top` is relative to
+    // the scroll container's padding box rather than to the viewport used by
+    // fixed headers.
+    const mainContentTop = mainContent?.getBoundingClientRect().top || navbarHeight;
     const mainPaddingTop = mainContent ? parseFloat(getComputedStyle(mainContent).paddingTop) || 0 : 0;
-    const contentContainers = document.querySelectorAll('#tasks-container, #team-tasks-container');
-    contentContainers.forEach(el => {
-      el.style.marginTop = toolbarIsFixed
-        ? Math.max(0, toolbar.offsetHeight - mainPaddingTop) + 'px'
-        : '0px';
+    const qeStickyTop = toolbarIsFixed
+      ? Math.max(0, toolbarBottom - mainContentTop - mainPaddingTop)
+      : toolbar.offsetHeight;
+    document.documentElement.style.setProperty('--qe-sticky-top', qeStickyTop + 'px');
+
+    const offset = (qe && getComputedStyle(qe).position === 'sticky')
+      ? Math.ceil(Math.max(toolbarBottom, qe.getBoundingClientRect().bottom))
+      : Math.ceil(toolbarBottom);
+    document.documentElement.style.setProperty('--sticky-thead-offset', offset + 'px');
+
+    const contentWrappers = document.querySelectorAll('#tasks-content, #team-backlog-content');
+    const baseContentMargin = toolbarIsFixed
+      ? Math.max(0, toolbarBottom - mainContentTop - mainPaddingTop)
+      : 0;
+    contentWrappers.forEach(el => {
+      el.style.marginTop = baseContentMargin + 'px';
     });
+    if (qe && toolbarIsFixed) {
+      const naturalQuickEditTopAtOrigin = qe.getBoundingClientRect().top
+        + (mainContent?.scrollTop || window.scrollY || 0);
+      const flowCorrection = Math.max(0, toolbarBottom - naturalQuickEditTopAtOrigin);
+      if (flowCorrection > 0) {
+        contentWrappers.forEach(el => {
+          el.style.marginTop = (baseContentMargin + flowCorrection) + 'px';
+        });
+      }
+    }
+    if (qe) qe.style.top = 'var(--qe-sticky-top, 0px)';
     if (resizeHandler) resizeHandler();
   });
 }
@@ -1211,16 +1326,26 @@ let stickyHeaderTable = null;
 let stickyHeaderObserver = null;
 let scrollHandler = null;
 let resizeHandler = null;
+let observedScrollContainer = null;
+let observedMainContent = null;
 
 export function initStickyTableHeader(tableId) {
+  if (stickyHeaderTable) {
+    const previousThead = stickyHeaderTable.querySelector('thead');
+    if (previousThead) previousThead.style.visibility = '';
+  }
   if (stickyHeaderObserver) {
     stickyHeaderObserver.disconnect();
     stickyHeaderObserver = null;
   }
   if (scrollHandler) {
     window.removeEventListener('scroll', scrollHandler);
+    observedScrollContainer?.removeEventListener('scroll', scrollHandler);
+    observedMainContent?.removeEventListener('scroll', scrollHandler);
     scrollHandler = null;
   }
+  observedScrollContainer = null;
+  observedMainContent = null;
   if (resizeHandler) {
     window.removeEventListener('resize', resizeHandler);
     resizeHandler = null;
@@ -1241,29 +1366,50 @@ export function initStickyTableHeader(tableId) {
   if (!container) return;
 
   stickyHeaderTable = table;
+  const mainContent = document.querySelector('.main-content');
 
   function getOffsetTop() {
     const style = getComputedStyle(document.documentElement);
     const navbarHeight = parseFloat(style.getPropertyValue('--navbar-height')) || 64;
     const toolbar = document.querySelector('.sticky-toolbar');
-    const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 0;
-    return navbarHeight + toolbarHeight;
+    const baseOffset = toolbar
+      ? Math.max(navbarHeight, Math.ceil(toolbar.getBoundingClientRect().bottom))
+      : navbarHeight;
+    const qe = Array.from(document.querySelectorAll('.qe-toolbar'))
+      .find(el => {
+        const cs = getComputedStyle(el);
+        return cs.display !== 'none' && cs.position === 'sticky';
+      });
+    return qe
+      ? Math.max(baseOffset, Math.ceil(qe.getBoundingClientRect().bottom))
+      : baseOffset;
   }
 
   function update() {
     if (!stickyHeaderTable) return;
     const tableRect = stickyHeaderTable.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
+    const verticalScrollTop = Math.max(
+      window.scrollY || document.documentElement.scrollTop || 0,
+      mainContent?.scrollTop || 0,
+    );
+    const activeQuickEditToolbar = Array.from(document.querySelectorAll('.qe-toolbar'))
+      .find(el => getComputedStyle(el).display !== 'none');
+    if (activeQuickEditToolbar) {
+      // Keep one inset before and after scrolling. Switching from `auto` on the
+      // first scroll tick makes both the toolbar and header visibly jump.
+      activeQuickEditToolbar.style.top = 'var(--qe-sticky-top, 0px)';
+    }
     const offsetTop = getOffsetTop();
     const theadHeight = thead.offsetHeight;
 
-    if (tableRect.top < offsetTop && tableRect.bottom > offsetTop + theadHeight) {
+    if (verticalScrollTop > 0.5 && tableRect.top < offsetTop - 0.5 && tableRect.bottom > offsetTop + theadHeight) {
       if (!stickyHeaderWrapper) {
         stickyHeaderWrapper = document.createElement('div');
         stickyHeaderWrapper.id = 'sticky-header-wrapper';
         stickyHeaderWrapper.style.cssText = `
           position: fixed;
-          z-index: 24;
+          z-index: 20;
           overflow: hidden;
           background: var(--bg-tertiary);
           box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -1272,7 +1418,10 @@ export function initStickyTableHeader(tableId) {
         const clonedTable = document.createElement('table');
         clonedTable.className = table.className;
         clonedTable.dataset.sourceTable = tableId;
-        clonedTable.style.cssText = 'margin: 0; border-collapse: collapse;';
+        clonedTable.style.cssText = 'margin: 0; border-collapse: collapse; table-layout: fixed;';
+
+        const sourceColgroup = table.querySelector('colgroup');
+        if (sourceColgroup) clonedTable.appendChild(sourceColgroup.cloneNode(true));
         
         const clonedThead = thead.cloneNode(true);
         clonedTable.appendChild(clonedThead);
@@ -1280,56 +1429,81 @@ export function initStickyTableHeader(tableId) {
         document.body.appendChild(stickyHeaderWrapper);
       }
 
+      thead.style.visibility = 'hidden';
+
       const clonedThs = stickyHeaderWrapper.querySelectorAll('th');
       const origThs = thead.querySelectorAll('th');
-      
-      clonedThs.forEach((th, i) => {
-        if (origThs[i]) {
-          const origRect = origThs[i].getBoundingClientRect();
-          th.style.width = origRect.width + 'px';
-          th.style.minWidth = origRect.width + 'px';
-          th.style.maxWidth = origRect.width + 'px';
+      const clonedCols = stickyHeaderWrapper.querySelectorAll('colgroup col');
+
+      origThs.forEach((th, i) => {
+        const width = th.getBoundingClientRect().width + 'px';
+        if (clonedCols[i]) {
+          clonedCols[i].style.width = width;
+          clonedCols[i].style.minWidth = width;
+          clonedCols[i].style.maxWidth = width;
+        } else if (clonedThs[i]) {
+          clonedThs[i].style.width = width;
+          clonedThs[i].style.minWidth = width;
+          clonedThs[i].style.maxWidth = width;
         }
       });
 
       const scrollLeft = container.scrollLeft;
-      const visibleWidth = containerRect.width;
+      const tableOriginLeft = tableRect.left + scrollLeft;
+      // Include the container's right border in the clipping area. clientWidth
+      // starts at the padding edge while tableOriginLeft starts after the left
+      // border, so using it directly cuts one pixel from the header on the right.
+      const visibleWidth = Math.max(0, containerRect.right - tableOriginLeft);
+      // Fixed and sticky geometry can land on different fractional pixels. A
+      // one-pixel overlap prevents the scrolling rows from showing through.
+      const stickyOverlap = 1;
       
-      stickyHeaderWrapper.style.left = containerRect.left + 'px';
+      stickyHeaderWrapper.style.left = tableOriginLeft + 'px';
       stickyHeaderWrapper.style.width = visibleWidth + 'px';
-      stickyHeaderWrapper.style.top = offsetTop + 'px';
-      stickyHeaderWrapper.style.height = theadHeight + 'px';
+      stickyHeaderWrapper.style.top = (offsetTop - stickyOverlap) + 'px';
+      stickyHeaderWrapper.style.height = (theadHeight + stickyOverlap) + 'px';
       
       const innerTable = stickyHeaderWrapper.querySelector('table');
       if (innerTable) {
         innerTable.style.transform = `translateX(-${scrollLeft}px)`;
         innerTable.style.width = tableRect.width + 'px';
       }
-    } else if (stickyHeaderWrapper) {
-      stickyHeaderWrapper.remove();
-      stickyHeaderWrapper = null;
+    } else {
+      if (stickyHeaderWrapper) {
+        stickyHeaderWrapper.remove();
+        stickyHeaderWrapper = null;
+      }
+      thead.style.visibility = '';
     }
   }
 
   scrollHandler = () => update();
   resizeHandler = () => update();
   
-  const mainContent = document.querySelector('.main-content');
   window.addEventListener('scroll', scrollHandler, { passive: true });
   window.addEventListener('resize', resizeHandler, { passive: true });
   container.addEventListener('scroll', scrollHandler, { passive: true });
   if (mainContent) mainContent.addEventListener('scroll', scrollHandler, { passive: true });
+  observedScrollContainer = container;
+  observedMainContent = mainContent;
 
   stickyHeaderObserver = new ResizeObserver(() => {
     if (stickyHeaderWrapper) {
       stickyHeaderWrapper.remove();
       stickyHeaderWrapper = null;
+      thead.style.visibility = '';
     }
     update();
   });
   stickyHeaderObserver.observe(table);
 
   update();
+
+  // updateStickyOffsets() applies the fixed-toolbar compensation in the next
+  // animation frame. Recalculate once that layout change has landed; otherwise
+  // the table can be mistaken for already scrolled under the toolbar on first
+  // render, leaving its original thead hidden until the user starts scrolling.
+  requestAnimationFrame(update);
 }
 
 export function setToolbarSortValue(scope, value) {

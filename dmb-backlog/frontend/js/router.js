@@ -1,9 +1,9 @@
 import { renderDashboard, initDashboard } from './components/dashboard.js';
-import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=55';
-import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=54';
+import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=92';
+import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=91';
 import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js';
 import { renderKanban, initKanban } from './components/kanbanBoard.js?v=4';
-import { renderReports, initReports, renderReportPage, initReportPage } from './components/reports.js?v=2';
+import { renderReports, initReports, renderReportPage, initReportPage } from './components/reports.js?v=3';
 import { renderAnalytics, initAnalytics } from './components/analytics.js';
 import { renderNotifications, initNotifications } from './components/notifications.js?v=6';
 import { renderSettings, initSettings } from './components/settings.js';
@@ -116,13 +116,21 @@ export class Router {
         const from = this.lastHash;
 
         const user = this.app?.store?.get('currentUser');
-        const roleName = String(user?.role_name || user?.role || '').trim().toLocaleLowerCase('ru-RU');
         const businessCustomerAllowedPaths = new Set(['/customer', '/customer/create']);
-        if (roleName === 'бизнес-заказчик' && !businessCustomerAllowedPaths.has(path)) {
+        if (user?.permissions?.customer_portal_mode === 'only' && !businessCustomerAllowedPaths.has(path)) {
             if (window.location.hash !== '#/customer') {
                 history.replaceState(null, '', '#/customer');
             }
             return this.handleRoute();
+        }
+        const adminAccess = user?.permissions?.admin || 'none';
+        if ((path === '/admin' || path === '/audit-log') && adminAccess === 'none') {
+            const container = document.getElementById('page-content');
+            if (container) {
+                container.innerHTML = `<div class="state-page state-forbidden"><h1>Недостаточно прав</h1><p>Раздел доступен пользователям с административным доступом.</p><a class="btn btn-primary" href="#/dashboard">Вернуться на главную</a></div>`;
+            }
+            this.updateSidebarActive(path);
+            return;
         }
 
         if (this.onBeforeNavigate && from !== null && hash !== from) {
@@ -200,9 +208,7 @@ export class Router {
                     const segments = path.split('/').filter(Boolean);
                     if (segments.length <= 1 || !names[path]) {
                         bc.innerHTML = `
-                            <a href="#/dashboard" style="color: var(--text-muted); text-decoration: none;">DMB Backlog</a>
-                            <span style="color: var(--text-muted);">/</span>
-                            <span style="color: var(--text-primary); font-weight: 500;">${pageName}</span>`;
+                            <span class="breadcrumb-current">${pageName}</span>`;
                     } else {
                         // Build intermediate links only for named parent paths
                         let path = '';
@@ -210,15 +216,13 @@ export class Router {
                         for (let i = 0; i < segments.length; i++) {
                             path += '/' + segments[i];
                             if (i === segments.length - 1) {
-                                links.push(`<span style="color: var(--text-primary); font-weight: 500;">${pageName}</span>`);
+                                links.push(`<span class="breadcrumb-current">${pageName}</span>`);
                             } else if (names[path]) {
-                                links.push(`<a href="#${path}" style="color: var(--text-muted); text-decoration: none;">${names[path]}</a>`);
+                                links.push(`<a href="#${path}" class="breadcrumb-parent">${names[path]}</a>`);
                             }
                         }
                         bc.innerHTML = `
-                            <a href="#/dashboard" style="color: var(--text-muted); text-decoration: none;">DMB Backlog</a>
-                            <span style="color: var(--text-muted);">/</span>
-                            ${links.join('<span style="color: var(--text-muted);">/</span>')}`;
+                            ${links.join('<span class="breadcrumb-separator">/</span>')}`;
                     }
                 }
 

@@ -924,7 +924,7 @@ export async function initDashboard(app) {
             await initTeamDashboard(app);
         }
 
-        const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=71');
+        const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=90');
         setOnTaskSaved(() => initDashboard(app));
 
     } catch (e) {

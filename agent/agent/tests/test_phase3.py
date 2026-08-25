@@ -160,6 +160,6 @@ class TestSummaryGenerator:
         state.set("role", "test")
         
         progress = generate_progress_indicator(state)
-        assert "Собрано:" in progress
+        assert "Качество проработки:" in progress
         assert "/" in progress
         assert "%" in progress

@@ -103,6 +103,10 @@ OPTIONAL = [
     "business_rules", "acceptance_criteria", "data_integrations", "priority",
     "dependencies", "risks", "open_questions",
 ]
+OPTIONAL_INTERVIEW_SLOTS = {
+    "department", "module", "scenarios", "business_rules",
+    "regulatory_flags", "dependencies", "risks",
+}
 
 # All slots in collection order (used by planner / progress UI)
 COLLECTION_SLOTS = [
@@ -110,6 +114,13 @@ COLLECTION_SLOTS = [
     "module", "as_is", "to_be", "users", "scenarios", "business_rules",
     "acceptance_criteria", "data_integrations", "value", "priority",
     "regulatory_flags", "dependencies", "risks",
+]
+
+# What the user sees as requirement quality progress.  This is intentionally
+# aligned with composer/scores.py instead of exposing every internal slot.
+QUALITY_PROGRESS_SLOTS = [
+    "need_statement", "to_be", "role", "process", "product",
+    "acceptance_criteria", "module", "value", "regulatory_flags",
 ]
 
 
@@ -144,7 +155,9 @@ class DialogueState:
     escalation: bool = False
     domain_asked: bool = False
     domain_confirmed: bool = False
+    pending_domain_message: str = ""
     finished: bool = False
+    archived: bool = False
     incident_only: bool = False
     incident_triage_done: bool = False
     need_reflected: bool = False
@@ -162,6 +175,9 @@ class DialogueState:
     draft: Optional[dict] = None
     review_status: str = ""         # "" | draft | needs_review
     review_task_id: Optional[int] = None
+    quality_assessment: dict = field(default_factory=dict)
+    pending_quality_slot: Optional[str] = None
+    quality_asked_codes: List[str] = field(default_factory=list)
     
     # Phase 3: Q&A and Repair
     pending_question: Optional[str] = None  # Slot we're waiting to return to
@@ -204,6 +220,8 @@ class DialogueState:
     # Conversation continuity: what was understood from the latest message.
     last_user_signal: str = ""
     last_extracted_slots: List[str] = field(default_factory=list)
+    last_agent_decision: dict = field(default_factory=dict)
+    requirement_shape: str = ""
 
     # Phase 4: Escalation
     escalation_reason: str = ""  # Why escalated
@@ -262,13 +280,17 @@ class DialogueState:
 
     def progress(self) -> List[dict]:
         items = []
-        for key in COLLECTION_SLOTS:
+        for key in QUALITY_PROGRESS_SLOTS:
             slot = self.slots.get(key)
             if not slot:
                 continue
             label = SLOT_LABELS.get(key, key)
             filled = slot.handled and slot.status == "filled"
-            items.append({"key": key, "label": label, "filled": filled, "skipped": slot.status == "skipped"})
+            items.append({
+                "key": key, "label": label, "filled": filled,
+                "skipped": slot.status == "skipped", "confidence": slot.confidence,
+                "needs_review": slot.needs_review,
+            })
         return items
 
     def current_phase_required_missing(self) -> List[str]:
@@ -276,11 +298,9 @@ class DialogueState:
         return [k for k in required if not self.slots[k].handled]
 
     def all_required_handled(self) -> bool:
-        for phase in PHASE_ORDER:
-            for k in PHASE_REQUIRED_SLOTS.get(phase, []):
-                if not self.slots[k].handled:
-                    return False
-        return True
+        # The hard minimum is stable across modes.  Other gaps may be carried
+        # into the draft as explicit open questions.
+        return self.all_mandatory_hard_filled()
     
     def all_mandatory_hard_filled(self) -> bool:
         for k in MANDATORY_HARD:

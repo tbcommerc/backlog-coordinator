@@ -94,6 +94,15 @@ def test_task_write_handler_keeps_object_guard(handler, guard):
     assert guard in source, f"{handler.__name__} должен вызывать {guard}"
 
 
+def test_actual_effort_correction_is_admin_only():
+    update_source = inspect.getsource(tasks_router.update_task)
+    bulk_source = inspect.getsource(tasks_router.bulk_action)
+    preview_source = inspect.getsource(tasks_router.preview_bulk_action)
+    assert "requested_actual_fields" in update_source and "is_task_global_editor" in update_source
+    assert "set(fields_to_update) & set(ACTUAL_EFFORT_FIELDS)" in bulk_source
+    assert "set(fields) & set(ACTUAL_EFFORT_FIELDS)" in preview_source
+
+
 @pytest.mark.parametrize(
     "handler",
     [

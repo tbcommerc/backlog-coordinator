@@ -19,9 +19,11 @@ class RequirementDraft(BaseModel):
     title: str
     intent: str = ""
     problem_statement: str = ""
+    current_process: str = ""
     target_process: str = ""
     business_value: str = ""
     user_roles: list[str] = Field(default_factory=list)
+    department: str = ""
     product: str = ""
     module: str = ""
     scenarios: list[str] = Field(default_factory=list)
@@ -29,6 +31,7 @@ class RequirementDraft(BaseModel):
     data_integrations: list[str] = Field(default_factory=list)
     acceptance_criteria: list[str] = Field(default_factory=list)
     open_questions: list[str] = Field(default_factory=list)
+    open_question_details: list[dict] = Field(default_factory=list)
     dependencies: list[str] = Field(default_factory=list)
     risks: list[str] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
@@ -36,8 +39,15 @@ class RequirementDraft(BaseModel):
     priority: str = "Средний"
     duplicates: list[dict] = Field(default_factory=list)
     sources: list[DraftSource] = Field(default_factory=list)
+    field_provenance: dict[str, dict] = Field(default_factory=dict)
+    field_confidence: dict[str, float] = Field(default_factory=dict)
     completeness_score: int = 0
     confidence: str = "low"          # low | medium | high
+    quality_score: int = 0
+    quality_level: str = "low"
+    quality_profile: str = ""
+    quality_issues: list[dict] = Field(default_factory=list)
+    conflicts: list[dict] = Field(default_factory=list)
     status: str = "Draft"            # Draft / Needs Review / Approved
     created_by: dict = Field(default_factory=dict)
 
@@ -46,12 +56,15 @@ def to_markdown(draft: RequirementDraft) -> str:
     """Render the draft as text for the task description."""
     L = []
     L.append(f"# {draft.title}")
-    L.append(f"**Статус:** {draft.status} · **Полнота:** {draft.completeness_score}% · **Уверенность:** {draft.confidence}")
+    L.append(f"**Статус:** {draft.status} · **Полнота:** {draft.completeness_score}% · **Качество:** {draft.quality_score}% · **Уверенность:** {draft.confidence}")
     if draft.intent:
         L.append(f"**Тип обращения:** {draft.intent}")
     L.append("")
     L.append("## Проблема")
     L.append(draft.problem_statement or "—")
+    L.append("")
+    L.append("## Текущий процесс (As-Is)")
+    L.append(draft.current_process or "—")
     L.append("")
     L.append("## Целевой процесс")
     L.append(draft.target_process or "—")
@@ -61,6 +74,8 @@ def to_markdown(draft: RequirementDraft) -> str:
     L.append("")
     L.append("## Пользователи")
     L.append(", ".join(draft.user_roles) if draft.user_roles else "—")
+    if draft.department:
+        L.append(f"**Подразделение:** {draft.department}")
     L.append("")
     L.append(f"**Продукт:** {draft.product or '—'}  **Модуль:** {draft.module or '—'}  **Приоритет:** {draft.priority}")
     L.append("")
@@ -94,6 +109,10 @@ def to_markdown(draft: RequirementDraft) -> str:
     if draft.open_questions:
         L.append("## Открытые вопросы")
         L.extend(f"- {q}" for q in draft.open_questions)
+        L.append("")
+    if draft.conflicts:
+        L.append("## Обнаруженные противоречия")
+        L.extend(f"- {c.get('message', '')}" for c in draft.conflicts)
         L.append("")
     if draft.assumptions:
         L.append("## Допущения")

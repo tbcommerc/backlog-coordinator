@@ -111,7 +111,7 @@ function resolveReportFields(config) {
 
 async function fetchDbReports(app) {
   try {
-    const reports = await app.api.get('/reports');
+    const reports = await app.api.get('/reports/');
     (Array.isArray(reports) ? reports : (reports.items || [])).forEach(rep => {
       if (rep.key) dbReportsCache[rep.key] = rep;
     });
@@ -461,10 +461,7 @@ function renderReportTable(list, fields) {
     </th>`;
   }).join('');
 
-  const roleName = String(window.app?.store?.get('currentUser')?.role_name || '').trim().toLocaleLowerCase('ru-RU');
-  const canMakePipDecision = currentReport === 'pip' && [
-    'лидер трайба', 'проектный офис (админ)', 'администратор'
-  ].includes(roleName);
+  const canMakePipDecision = currentReport === 'pip' && window.app?.store?.get('currentUser')?.permissions?.pip_decision === 'available';
   const widths = {
     id: 90, title: 320, task_type_name: 170, team_name: 190,
     effort_days: 155, effort_rub: 165, financial_effect: 135,
@@ -569,7 +566,7 @@ async function loadReportData(app) {
       cachedReportData = data;
       renderReportContent(config, currentReport, data);
     } else {
-      const data = await app.api.get('/tasks?per_page=1000');
+      const data = await app.api.get('/tasks/?per_page=1000');
       tasksCache = data.items || [];
       reportSortField = null;
       reportSortDir = 'asc';
@@ -784,7 +781,7 @@ export function renderReports(app) {
 
 export async function initReports(app) {
   try {
-    const data = await app.api.get('/tasks?per_page=1000');
+    const data = await app.api.get('/tasks/?per_page=1000');
     tasksCache = data.items || [];
 
     await fetchDbReports(app);
@@ -1176,11 +1173,9 @@ export function initReportPage(app) {
     const bc = document.getElementById('breadcrumb-nav');
     if (bc) {
       bc.innerHTML = `
-        <a href="#/dashboard" style="color: var(--text-muted); text-decoration: none;">DMB Backlog</a>
-        <span style="color: var(--text-muted);">/</span>
-        <a href="#/reports" style="color: var(--text-muted); text-decoration: none;">Статусы для встреч</a>
-        <span style="color: var(--text-muted);">/</span>
-        <span style="color: var(--text-primary); font-weight: 500;">${config.name}</span>`;
+        <a href="#/reports" class="breadcrumb-parent">Статусы для встреч</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">${config.name}</span>`;
     }
   }
 

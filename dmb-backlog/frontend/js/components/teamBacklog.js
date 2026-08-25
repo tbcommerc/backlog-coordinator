@@ -1,10 +1,10 @@
 console.log('[DMB] teamBacklog.js v20260806.1 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=52';
-import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=71';
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=81';
+import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=90';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=47';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=49';
-import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=47';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=71';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=66';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=48';
 import { safeExternalUrl } from '../urlUtils.js';
 import { bindViewStateAction, renderViewState } from './viewState.js';
 
@@ -74,24 +74,26 @@ export function renderTeamBacklog(app) {
       quickFilters: renderQuickFilters(),
     })}
 
-    <div id="bulk-actions" class="flex items-center gap-3" style="margin-bottom: var(--space-4); display: none;">
-        <span class="text-secondary">Выбрано: <strong id="selected-count">0</strong></span>
-        <button class="btn btn-secondary btn-sm" id="team-bulk-selected">Массовые операции (0)</button>
-    </div>
+    <div id="team-backlog-content">
+      <div id="bulk-actions" class="flex items-center gap-3" style="margin-bottom: var(--space-4); display: none;">
+          <span class="text-secondary">Выбрано: <strong id="selected-count">0</strong></span>
+          <button class="btn btn-secondary btn-sm" id="team-bulk-selected">Массовые операции (0)</button>
+      </div>
 
-    ${renderQuickEditToolbar('team')}
+      ${renderQuickEditToolbar('team')}
 
-    <div id="team-tasks-container">
-        <div class="table-container" style="overflow-x:auto;">
-            <table class="table" id="team-tasks-table">
-                <thead>
-                    <tr id="team-table-header-row"></tr>
-                </thead>
-                <tbody id="team-tasks-tbody">
-                    ${renderTeamSkeletonRows(6)}
-                </tbody>
-            </table>
-        </div>
+      <div id="team-tasks-container">
+          <div class="table-container" style="overflow-x:auto;">
+              <table class="table" id="team-tasks-table">
+                  <thead>
+                      <tr id="team-table-header-row"></tr>
+                  </thead>
+                  <tbody id="team-tasks-tbody">
+                      ${renderTeamSkeletonRows(6)}
+                  </tbody>
+              </table>
+          </div>
+      </div>
     </div>
 
     <div class="flex justify-between items-center" style="margin-top: var(--space-6);">
@@ -175,6 +177,7 @@ export async function initTeamBacklog(app) {
     onRefresh: () => loadTeamTasks(app),
     onQuickEdit: () => { if (teamCurrentView === 'table') { if (isQuickEdit('team')) { requestExitQuickEdit('team'); } else { enterQuickEdit('team'); } } },
     onBulkOps: () => { if (teamCurrentView === 'table') openTeamBulkOps(app); },
+    showSavedViewRevert: false,
     getSavedViewState: () => ({
       view: teamCurrentView,
       columns: { ...teamColumnSettings },
@@ -233,6 +236,7 @@ export async function initTeamBacklog(app) {
         return { cols, offset: (!isQuickEdit('team') && colHasCheckbox(cols)) ? 1 : 0 };
       },
       getFixed: () => teamColumnFixed,
+      onResizeEnd: saveTeamColumnState,
       onUnfix: () => { saveTeamColumnState(); renderTeamCurrentView(); },
       onSort: (key) => {
         toggleSortState(teamSort, key);
@@ -263,7 +267,8 @@ function applyTeamSavedViewState(state = {}) {
     }
     if (Array.isArray(state.columnOrder)) {
         const valid = new Set(getAllColumnKeys());
-        teamColumnOrder.splice(0, teamColumnOrder.length, ...state.columnOrder.filter(key => valid.has(key)));
+        const savedOrder = state.columnOrder.filter(key => valid.has(key));
+        teamColumnOrder.splice(0, teamColumnOrder.length, ...savedOrder, ...getAllColumnKeys().filter(key => !savedOrder.includes(key)));
     }
     teamColumnWidths = state.widths ? { ...state.widths } : {};
     Object.keys(teamColumnFixed).forEach(key => delete teamColumnFixed[key]);
@@ -314,13 +319,13 @@ async function loadTeamTasks(app) {
 async function loadAllTeamTaskPages(app, teamId) {
     const perPage = 1000;
     const teamQuery = teamId ? `&team_id=${encodeURIComponent(teamId)}` : '';
-    const first = await app.api.get(`/tasks?page=1&per_page=${perPage}${teamQuery}`);
+    const first = await app.api.get(`/tasks/?page=1&per_page=${perPage}${teamQuery}`);
     const pages = Math.max(1, Number(first.pages) || 1);
     if (pages === 1) return first;
 
     const requests = [];
     for (let page = 2; page <= pages; page++) {
-        requests.push(app.api.get(`/tasks?page=${page}&per_page=${perPage}${teamQuery}`));
+        requests.push(app.api.get(`/tasks/?page=${page}&per_page=${perPage}${teamQuery}`));
     }
     const rest = await Promise.all(requests);
     const items = [first, ...rest].flatMap(part => part.items || []);
@@ -599,7 +604,7 @@ async function populateTeamSelect(selectedTeamId) {
     const select = document.getElementById('task-team');
     if (!select) return;
     try {
-        const teams = await window.app?.api?.get('/teams') || [];
+        const teams = await window.app?.api?.get('/teams/') || [];
         select.innerHTML = teams.map(t =>
             `<option value="${t.id}" ${t.id === selectedTeamId ? 'selected' : ''}>${escapeHtml(t.name)}</option>`
         ).join('');
@@ -807,7 +812,27 @@ function teamExportExcel(list) {
 
 function renderInvolvedTeams(teams) {
   if (!teams || !teams.length) return '—';
-  return Array.isArray(teams) ? teams.join(', ') : teams;
+  const items = Array.isArray(teams) ? teams : (() => {
+    if (typeof teams === 'string') {
+      const trimmed = teams.trim();
+      if (!trimmed) return [];
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (_) {}
+      }
+      return trimmed.split(',').map(x => x.trim()).filter(Boolean);
+    }
+    return [teams];
+  })();
+  if (!items.length) return '—';
+  if (!Array.isArray(items)) return '—';
+  const teamMap = new Map((window.app?.teams || []).map(team => [Number(team.id), team.name || '']));
+  return items.map(v => {
+    const key = Number(v);
+    return Number.isNaN(key) ? String(v) : (teamMap.get(key) || String(v));
+  }).join(', ');
 }
 
 function parseLinkList(links) {

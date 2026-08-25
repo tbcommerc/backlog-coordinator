@@ -355,13 +355,25 @@ def seed_initial_data():
     # --- Roles ---
     roles = {}
     role_data = [
-        ("Администратор", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_all", "reports_access": "read_write", "analytics_access": "read_write", "customer_access": "read_write", "settings_access": "available", "admin_access": "full", "can_edit_tasks": True, "can_delete_tasks": True, "can_export": True}),
-        ("PO/PL/CL", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "write_own", "reports_access": "read", "analytics_access": "read", "customer_access": "read", "settings_access": "available", "admin_access": "none", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
-        ("BA/Участник команды", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "read_own", "reports_access": "read", "analytics_access": "read", "customer_access": "read", "settings_access": "none", "admin_access": "none", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
-        ("IT PL", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_own", "reports_access": "read", "analytics_access": "read_write", "customer_access": "read", "settings_access": "available", "admin_access": "none", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
-        ("Бизнес-заказчик", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "read_own", "reports_access": "read", "analytics_access": "none", "customer_access": "read_write", "settings_access": "none", "admin_access": "none", "can_edit_tasks": False, "can_delete_tasks": False, "can_export": False}),
-        ("Лидер трайба", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_all", "reports_access": "read_write", "analytics_access": "read_write", "customer_access": "read", "settings_access": "available", "admin_access": "partial", "can_edit_tasks": True, "can_delete_tasks": True, "can_export": True}),
+        ("Администратор", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_all", "reports_access": "read_write", "analytics_access": "read_write", "customer_access": "read_write", "settings_access": "available", "admin_access": "full", "customer_portal_only": False, "review_access": "all", "can_edit_tasks": True, "can_delete_tasks": True, "can_export": True}),
+        ("PO/PL/CL", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "write_own", "reports_access": "read", "analytics_access": "read", "customer_access": "read", "settings_access": "available", "admin_access": "none", "customer_portal_only": False, "review_access": "team", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
+        ("BA/Участник команды", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "read_own", "reports_access": "read", "analytics_access": "read", "customer_access": "read", "settings_access": "none", "admin_access": "none", "customer_portal_only": False, "review_access": "team", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
+        ("IT PL", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_own", "reports_access": "read", "analytics_access": "read_write", "customer_access": "read", "settings_access": "available", "admin_access": "none", "customer_portal_only": False, "review_access": "none", "can_edit_tasks": True, "can_delete_tasks": False, "can_export": True}),
+        ("Бизнес-заказчик", {"status": "active", "backlog_dmb_access": "read", "backlog_team_access": "read_own", "reports_access": "read", "analytics_access": "none", "customer_access": "read_write", "settings_access": "none", "admin_access": "none", "customer_portal_only": True, "review_access": "none", "can_edit_tasks": False, "can_delete_tasks": False, "can_export": False}),
+        ("Лидер трайба", {"status": "active", "backlog_dmb_access": "read_write", "backlog_team_access": "write_all", "reports_access": "read_write", "analytics_access": "read_write", "customer_access": "read", "settings_access": "available", "admin_access": "partial", "customer_portal_only": False, "review_access": "team", "can_edit_tasks": True, "can_delete_tasks": True, "can_export": True}),
     ]
+    task_policy_defaults = {
+        "Администратор": ("all", "all", "all", True),
+        "PO/PL/CL": ("team", "all", "none", False),
+        "BA/Участник команды": ("team", "all", "none", False),
+        "IT PL": ("team", "all", "none", False),
+        "Бизнес-заказчик": ("none", "none", "none", False),
+        "Лидер трайба": ("none", "all", "none", True),
+    }
+    for role_name, attrs in role_data:
+        edit_scope, comment_scope, delete_scope, pip_access = task_policy_defaults[role_name]
+        attrs.update(task_edit_scope=edit_scope, task_comment_scope=comment_scope,
+                     task_delete_scope=delete_scope, pip_decision_access=pip_access)
     for name, attrs in role_data:
         r = get_or_create(Role, [Role.name == name], attrs)
         roles[name] = r

@@ -45,7 +45,9 @@ def state_to_dict(state: DialogueState) -> dict:
         "escalation": state.escalation,
         "domain_asked": state.domain_asked,
         "domain_confirmed": state.domain_confirmed,
+        "pending_domain_message": state.pending_domain_message,
         "finished": state.finished,
+        "archived": state.archived,
         "incident_only": state.incident_only,
         "incident_triage_done": state.incident_triage_done,
         "need_reflected": state.need_reflected,
@@ -63,6 +65,9 @@ def state_to_dict(state: DialogueState) -> dict:
         "draft": state.draft,
         "review_status": state.review_status,
         "review_task_id": state.review_task_id,
+        "quality_assessment": state.quality_assessment,
+        "pending_quality_slot": state.pending_quality_slot,
+        "quality_asked_codes": state.quality_asked_codes,
         # Phase 3 fields
         "pending_question": state.pending_question,
         "in_qa_mode": state.in_qa_mode,
@@ -93,6 +98,8 @@ def state_to_dict(state: DialogueState) -> dict:
         "fatigue_offer_pending": state.fatigue_offer_pending,
         "last_user_signal": state.last_user_signal,
         "last_extracted_slots": state.last_extracted_slots,
+        "last_agent_decision": state.last_agent_decision,
+        "requirement_shape": state.requirement_shape,
     }
 
 
@@ -107,7 +114,9 @@ def state_from_dict(data: dict) -> DialogueState:
         escalation=data.get("escalation", False),
         domain_asked=data.get("domain_asked", False),
         domain_confirmed=data.get("domain_confirmed", False),
+        pending_domain_message=data.get("pending_domain_message", ""),
         finished=data.get("finished", False),
+        archived=data.get("archived", False),
         incident_only=data.get("incident_only", False),
         incident_triage_done=data.get("incident_triage_done", False),
         need_reflected=data.get("need_reflected", False),
@@ -125,6 +134,9 @@ def state_from_dict(data: dict) -> DialogueState:
         draft=data.get("draft"),
         review_status=data.get("review_status", ""),
         review_task_id=data.get("review_task_id"),
+        quality_assessment=data.get("quality_assessment", {}),
+        pending_quality_slot=data.get("pending_quality_slot"),
+        quality_asked_codes=data.get("quality_asked_codes", []),
         # Phase 3 fields
         pending_question=data.get("pending_question"),
         in_qa_mode=data.get("in_qa_mode", False),
@@ -155,6 +167,8 @@ def state_from_dict(data: dict) -> DialogueState:
         fatigue_offer_pending=data.get("fatigue_offer_pending", False),
         last_user_signal=data.get("last_user_signal", ""),
         last_extracted_slots=data.get("last_extracted_slots", []),
+        last_agent_decision=data.get("last_agent_decision", {}),
+        requirement_shape=data.get("requirement_shape", ""),
     )
     slots = {}
     for key, slot_data in (data.get("slots") or {}).items():
@@ -226,9 +240,11 @@ class SessionStore:
         for session_id, state_json, updated_at in rows:
             title = "Новый диалог"
             phase = ""
+            archived = False
             try:
                 state = state_from_dict(json.loads(state_json))
                 phase = state.phase
+                archived = state.archived
                 for entry in state.history:
                     if entry.get("role") == "user" and entry.get("content"):
                         title = entry["content"].strip().replace("\n", " ")[:80]
@@ -240,8 +256,17 @@ class SessionStore:
                 "title": title,
                 "phase": phase,
                 "updated_at": updated_at,
+                "archived": archived,
             })
         return result
+
+    def set_archived(self, session_id: str, archived: bool) -> DialogueState | None:
+        state = self.get(session_id)
+        if state is None:
+            return None
+        state.archived = bool(archived)
+        self.save(state)
+        return state
 
 
 session_store = SessionStore()

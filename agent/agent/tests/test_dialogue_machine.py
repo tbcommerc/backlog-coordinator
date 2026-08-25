@@ -1,5 +1,6 @@
 from agent.dialogue.state import (
     DialogueState,
+    MODE_EXPERT,
     PHASE_BUSINESS_CONTEXT,
     PHASE_DRAFT_READY,
     PHASE_NEED_STATEMENT,
@@ -45,6 +46,7 @@ def test_all_required_handled_reaches_summarize():
         "as_is": "Ручной контроль",
         "to_be": "Автоматический контроль",
         "users": "Бэк-офицеры",
+        "scenarios": "Повторная отправка после неуспешного расчёта",
         "acceptance_criteria": "Оповещение при сбое",
         "data_integrations": "API расчётной системы",
         "value": "Экономия времени",
@@ -58,3 +60,20 @@ def test_draft_then_confirm_then_draft_ready():
     assert compute_phase(s) == "confirm"
     s.confirmed = True
     assert compute_phase(s) == PHASE_DRAFT_READY
+
+
+def test_expert_mode_uses_short_outcome_oriented_path():
+    s = _st(intent="change")
+    s.set_mode(MODE_EXPERT)
+    for key, value in {
+        "need_statement": "Ручная сверка занимает много времени",
+        "role": "Бэк-офис",
+        "process": "Расчёты",
+        "to_be": "Автоматическая сверка",
+        "acceptance_criteria": "Сверка завершается без ручных операций",
+    }.items():
+        s.set(key, value)
+
+    assert compute_phase(s) == PHASE_SUMMARIZE
+    assert not s.slots["product"].handled
+    assert not s.slots["data_integrations"].handled

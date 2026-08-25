@@ -6,7 +6,8 @@ import uuid
 from datetime import datetime, timezone
 
 from ..context import UserContext
-from ..dialogue.state import DialogueState
+from ..dialogue.state import DialogueState, SLOT_LABELS, QUALITY_PROGRESS_SLOTS
+from ..dialogue.quality import assess_quality
 from ..guardrails.output_harness import validate_draft_schema
 from ..kb.requirements_history import history
 from .schema import RequirementDraft, DraftSource, to_markdown
@@ -50,14 +51,22 @@ def check_duplicates(state: DialogueState) -> list[dict]:
 def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDraft:
     completeness = completeness_score(state)
     confidence = confidence_level(state, completeness)
+    quality = assess_quality(state)
+    state.quality_assessment = quality.as_dict()
 
     open_questions = []
-    for key in _OPEN_QUESTION_SLOTS:
+    open_question_slots = list(dict.fromkeys(_OPEN_QUESTION_SLOTS + QUALITY_PROGRESS_SLOTS))
+    for key in open_question_slots:
         if state.slots[key].status == "skipped":
-            open_questions.append(f"Не уточнено: {key}")
+            open_questions.append(f"Не уточнено: {SLOT_LABELS.get(key, key)}")
     for key in ("dependencies", "risks", "regulatory_flags"):
         if state.slots[key].status != "filled":
-            open_questions.append(f"Требуется уточнение: {key}")
+            question = f"Требуется уточнение: {SLOT_LABELS.get(key, key)}"
+            if question not in open_questions:
+                open_questions.append(question)
+    for issue in quality.issues:
+        if issue.question and issue.question not in open_questions:
+            open_questions.append(issue.question)
 
     assumptions = []
     if completeness < MIN_COMPLETENESS:
@@ -72,14 +81,48 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
     if state.slots["department"].status == "skipped":
         regulatory_flags.append("Требуется проверка комплаенс/риск-менеджмента")
 
+    field_slots = {
+        "problem_statement": "need_statement", "current_process": "as_is", "target_process": "to_be",
+        "business_value": "value", "user_roles": "users", "product": "product",
+        "department": "department",
+        "module": "module", "scenarios": "scenarios", "business_rules": "business_rules",
+        "data_integrations": "data_integrations", "acceptance_criteria": "acceptance_criteria",
+        "dependencies": "dependencies", "risks": "risks", "regulatory_flags": "regulatory_flags",
+    }
+    field_provenance = {}
+    field_confidence = {}
+    for field, slot_key in field_slots.items():
+        slot = state.slots.get(slot_key)
+        if slot and slot.status == "filled":
+            field_provenance[field] = {
+                "source": slot.source or "unknown", "assumption": slot.assumption,
+                "confirmed": slot.confirmed or state.confirmed,
+            }
+            field_confidence[field] = round(float(slot.confidence), 2)
+
+    blocking_slots = set(profile_for_slot for profile_for_slot in (
+        "need_statement", "to_be", "role", "process", "acceptance_criteria"
+    ))
+    open_question_details = []
+    for question in open_questions:
+        matching_slot = next((key for key in QUALITY_PROGRESS_SLOTS
+                              if SLOT_LABELS.get(key, key) in question), "")
+        open_question_details.append({
+            "text": question,
+            "blocking": matching_slot in blocking_slots or question.startswith("Уточните:"),
+            "slot": matching_slot,
+        })
+
     draft = RequirementDraft(
         id=f"DRAFT-{uuid.uuid4().hex[:8].upper()}",
         title=_make_title(state),
         intent=state.get("intent") or "",
         problem_statement=state.get("need_statement") or "",
+        current_process=state.get("as_is") or "",
         target_process=state.get("to_be") or "",
         business_value=state.get("value") or "",
         user_roles=_list(state.get("role")) + _list(state.get("users")),
+        department=state.get("department") or "",
         product=product,
         module=state.get("module") or "",
         scenarios=_list(state.get("scenarios")),
@@ -87,6 +130,7 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
         data_integrations=_list(state.get("data_integrations")),
         acceptance_criteria=_list(state.get("acceptance_criteria")),
         open_questions=open_questions,
+        open_question_details=open_question_details,
         dependencies=_list(state.get("dependencies")),
         risks=_list(state.get("risks")),
         assumptions=assumptions,
@@ -94,8 +138,15 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
         priority=state.get("priority") or "Средний",
         duplicates=state.duplicates,
         sources=[DraftSource(**s) for s in state.sources],
+        field_provenance=field_provenance,
+        field_confidence=field_confidence,
         completeness_score=completeness,
         confidence=confidence,
+        quality_score=quality.score,
+        quality_level=quality.level,
+        quality_profile=quality.profile,
+        quality_issues=[issue.as_dict() for issue in quality.issues],
+        conflicts=[issue.as_dict() for issue in quality.conflicts],
         status="Draft",
         created_by={
             "user_id": ctx.user_id if ctx else None,
@@ -122,14 +173,18 @@ def build_defect_draft(state: DialogueState, ctx: UserContext | None) -> Require
     """Short defect draft for the incident path (intentionally minimal)."""
     completeness = min(completeness_score(state), 45)
     need = state.get("need_statement") or ""
+    quality = assess_quality(state)
+    state.quality_assessment = quality.as_dict()
     return RequirementDraft(
         id=f"DRAFT-{uuid.uuid4().hex[:8].upper()}",
         title=(need.split(".")[0].strip()[:180] or "Дефект платформы"),
         intent="incident",
         problem_statement=need,
+        current_process="",
         target_process="",
         business_value="",
         user_roles=_list(state.get("role")),
+        department=state.get("department") or "",
         product=state.get("product") or "",
         module=state.get("module") or "",
         scenarios=[],
@@ -146,6 +201,11 @@ def build_defect_draft(state: DialogueState, ctx: UserContext | None) -> Require
         sources=[DraftSource(**s) for s in state.sources],
         completeness_score=completeness,
         confidence="low",
+        quality_score=quality.score,
+        quality_level=quality.level,
+        quality_profile=quality.profile,
+        quality_issues=[issue.as_dict() for issue in quality.issues],
+        conflicts=[issue.as_dict() for issue in quality.conflicts],
         status="Draft",
         created_by={
             "user_id": ctx.user_id if ctx else None,

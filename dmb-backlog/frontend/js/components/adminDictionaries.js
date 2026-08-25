@@ -66,6 +66,7 @@ export function renderDictionariesTab(adminData, dictLocks, escapeHtml) {
   }).join('');
 
   return `
+    <div class="admin-action-row admin-list-action-row"><div><strong style="font-size:13px;color:var(--text-primary)">Справочники системы</strong><div style="margin-top:2px;font-size:11px;color:var(--text-muted)">${dicts.length} групп значений</div></div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">${cards}</div>
   `;
 }
@@ -86,21 +87,33 @@ export const DICTIONARY_CONFIG = Object.freeze({
 export function renderDictionaryForm(data, helpers) {
   if (data.dictKey === 'competencyCosts') return renderCompetencyCostDictionaryForm(data, helpers.escapeHtml);
   const { escapeHtml, safeHexColor, autoDictColor, dictCodePlaceholder } = helpers;
-  const list = (data.items || []).map(item => {
+  const escapeAttr = value => escapeHtml(String(value ?? '')).replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+  const renderRow = item => {
     const color = safeHexColor(item.color, autoDictColor(item.name));
+    const active = item.is_active !== false;
+    const usage = Number(item.usage_count || 0);
     return `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" data-item-id="${item.id || ''}">
+      <div class="dict-editor-row${active ? '' : ' is-archived'}" draggable="${active}" data-item-id="${item.id || ''}" data-active="${active}" data-usage="${usage}" data-original-name="${escapeAttr(item.name)}" data-original-code="${escapeAttr(item.code || '')}">
+        <button type="button" class="dict-drag-handle" title="Перетащить для сортировки" aria-label="Изменить порядок"${active ? '' : ' disabled'}><i data-lucide="grip-vertical"></i></button>
         <input type="hidden" class="dict-color-input" value="${color}">
-        <span class="dict-color-swatch" style="display:inline-block;width:28px;height:28px;border-radius:6px;background:${color};cursor:pointer;border:1px solid var(--border-color);flex-shrink:0;" onclick="openDictColorPalette(this)"></span>
-        <input class="input dict-value-input" value="${escapeHtml(item.name)}" placeholder="Значение" style="flex:1" oninput="autoFillDictRow(this)">
-        <input class="input dict-code-input" value="${escapeHtml(item.code || '')}" placeholder="${escapeHtml(dictCodePlaceholder(data.dictKey))}" style="width:100px" oninput="markDictEdited(this)">
-        <button class="dict-remove-btn" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;color:#f43f5e" title="Удалить"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+        <button type="button" class="dict-color-swatch" style="background:${color}" title="Выбрать цвет"${active ? '' : ' disabled'}></button>
+        <div class="dict-editor-field"><label>Название</label><input class="input dict-value-input" value="${escapeAttr(item.name)}" placeholder="Значение"${active ? '' : ' disabled'}><span class="dict-row-error"></span></div>
+        <div class="dict-editor-field dict-code-field"><label>Код</label><input class="input dict-code-input" value="${escapeAttr(item.code || '')}" placeholder="${escapeAttr(dictCodePlaceholder(data.dictKey))}"${active ? '' : ' disabled'}></div>
+        <span class="dict-usage-badge" title="Количество связанных записей"><i data-lucide="link"></i>${usage}</span>
+        <span class="dict-row-state">${active ? '' : 'В архиве'}</span>
+        <button type="button" class="${active ? 'dict-remove-btn' : 'dict-restore-btn'} dict-row-action" title="${active ? 'Архивировать' : 'Восстановить'}"><i data-lucide="${active ? 'archive' : 'archive-restore'}"></i></button>
       </div>`;
-  }).join('');
+  };
+  const activeItems = (data.items || []).filter(item => item.is_active !== false).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const archivedItems = (data.items || []).filter(item => item.is_active === false).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  const list = activeItems.map(renderRow).join('');
+  const archive = archivedItems.map(renderRow).join('');
   return `
-    <h4 style="font-size:14px;font-weight:600;margin-bottom:12px">${escapeHtml(data.dictLabel)}</h4>
-    <div id="dict-items-container">${list || '<p class="text-muted" style="font-size:13px">Нет значений</p>'}</div>
-    <button class="btn btn-primary btn-sm" id="dict-add-value" style="margin-top:8px"><i data-lucide="plus" style="width:14px;height:14px"></i> Добавить значение</button>`;
+    <div class="dict-editor-head"><div><h4>${escapeHtml(data.dictLabel)}</h4><p>Изменения сохраняются одной атомарной операцией. Перетащите строки, чтобы изменить порядок.</p></div><div class="dict-editor-stats" role="status" aria-live="polite"><span><strong id="dict-active-count">${activeItems.length}</strong> активных</span><span><strong id="dict-archive-count">${archivedItems.length}</strong> в архиве</span><span><strong id="dict-pending-count">0</strong> изменений</span></div></div>
+    <div class="dict-editor-toolbar"><div class="admin-list-search"><i data-lucide="search"></i><input class="input" id="dict-search" value="${escapeAttr(data.viewSearch || '')}" placeholder="Поиск по названию или коду" autocomplete="off"></div><button type="button" class="btn btn-primary btn-sm" id="dict-add-value"><i data-lucide="plus"></i> Добавить значение</button></div>
+    <div class="dict-validation-summary" id="dict-validation-summary" role="alert" hidden></div>
+    <div id="dict-items-container" class="dict-editor-list">${list || '<p class="dict-empty-state">Нет активных значений</p>'}</div>
+    <details class="dict-archive"${data.archiveOpen ? ' open' : ''}${archivedItems.length ? '' : ' hidden'} id="dict-archive"><summary>Архив <span id="dict-archive-summary-count">${archivedItems.length}</span></summary><div id="dict-archive-container" class="dict-editor-list">${archive}</div></details>`;
 }
 
 export function renderCompetencyCostDictionaryForm(data, escapeHtml = String) {
@@ -111,7 +124,7 @@ export function renderCompetencyCostDictionaryForm(data, escapeHtml = String) {
   const rows = competencies.map(comp => {
     const cells = years.map(year => {
       const item = items.find(candidate => candidate.competency === comp && candidate.year === year);
-      return `<td style="padding:4px"><input class="input comp-cost-input" data-comp="${escapeHtml(comp)}" data-year="${year}" data-id="${item ? item.id : ''}" value="${item ? item.rate : ''}" placeholder="0" style="width:90px" oninput="markDictEdited(this)"></td>`;
+      return `<td style="padding:4px"><input class="input comp-cost-input" data-comp="${escapeHtml(comp)}" data-year="${year}" data-id="${item ? item.id : ''}" value="${item ? item.rate : ''}" placeholder="0" style="width:90px"></td>`;
     }).join('');
     return `<tr><td style="padding:8px;font-weight:500;font-size:13px">${escapeHtml(comp)}</td>${cells}</tr>`;
   }).join('');
@@ -119,7 +132,16 @@ export function renderCompetencyCostDictionaryForm(data, escapeHtml = String) {
     <h4 style="font-size:14px;font-weight:600;margin-bottom:8px">${escapeHtml(data.dictLabel)}</h4>
     <p class="text-muted" style="font-size:12px;margin-bottom:12px">Ставки (руб/день) по годам. Для задачи берётся ставка года её дедлайна; без дедлайна — ставка последнего (актуального) года. Очистка ячейки удаляет ставку, сохранённые effort_rub задач пересчитаются.</p>
     <div style="overflow-x:auto"><table id="comp-cost-table" style="border-collapse:collapse;min-width:100%"><thead><tr style="border-bottom:1px solid var(--border-color)">${header}</tr></thead><tbody>${rows || '<tr><td style="padding:8px" class="text-muted">Нет значений</td></tr>'}</tbody></table></div>
-    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-secondary btn-sm" id="cc-add-year"><i data-lucide="plus" style="width:14px;height:14px"></i> Добавить год</button><button class="btn btn-secondary btn-sm" id="cc-add-competency"><i data-lucide="plus" style="width:14px;height:14px"></i> Добавить компетенцию</button></div>`;
+    <div class="cc-inline-editor" id="cc-inline-editor" hidden>
+      <label class="form-label" id="cc-inline-label" for="cc-inline-value"></label>
+      <div class="cc-inline-editor-row">
+        <input class="input" id="cc-inline-value" aria-describedby="cc-inline-error">
+        <button type="button" class="btn btn-primary btn-sm" id="cc-inline-confirm">Добавить</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="cc-inline-cancel">Отмена</button>
+      </div>
+      <p class="cc-inline-error" id="cc-inline-error" role="alert" aria-live="polite"></p>
+    </div>
+    <div class="cc-add-actions"><button type="button" class="btn btn-secondary btn-sm" id="cc-add-year"><i data-lucide="plus" style="width:14px;height:14px"></i> Добавить год</button><button type="button" class="btn btn-secondary btn-sm" id="cc-add-competency"><i data-lucide="plus" style="width:14px;height:14px"></i> Добавить компетенцию</button></div>`;
 }
 
 export function getDictionaryChanges(items, originalItems) {
@@ -129,22 +151,26 @@ export function getDictionaryChanges(items, originalItems) {
   return { validItems, deleteIds: [...originalIds].filter(id => !retainedIds.has(id)) };
 }
 
-export async function persistDictionaryItems(app, dictKey, validItems, deleteIds) {
+export async function persistDictionaryItems(app, dictKey, validItems, version) {
   const config = DICTIONARY_CONFIG[dictKey];
   if (!config) throw new Error('Неизвестный справочник');
-  for (const item of validItems) {
-    const payload = { dict_type: config.type, name: item.name, code: item.code, color: item.color || '#6366f1', sort_order: 1 };
-    if (item.id) await app.api.put(`/admin/${config.endpoint}/${item.id}`, payload);
-    else await app.api.post(`/admin/${config.endpoint}`, payload);
-  }
-  for (const id of deleteIds) await app.api.delete(`/admin/${config.endpoint}/${id}`);
+  return app.api.put(`/admin/dictionaries/${config.type}/batch`, {
+    version,
+    items: validItems.map((item, index) => ({
+      id: item.id || null,
+      name: item.name.trim(),
+      code: (item.code || '').trim() || null,
+      color: item.color || '#6366f1',
+      sort_order: index,
+    })),
+  });
 }
 
 export async function acquireDictionaryLock(app, dictKey) {
   const config = DICTIONARY_CONFIG[dictKey];
   if (!config) throw new Error('Неизвестный справочник');
-  await app.api.post(`/admin/${config.type}/lock`);
-  return config.type;
+  const lock = await app.api.post(`/admin/${config.type}/lock`);
+  return { type: config.type, version: lock.version || 0 };
 }
 
 export async function releaseDictionaryLock(app, dictType) {

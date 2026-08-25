@@ -1,14 +1,33 @@
 /**
- * DMB Backlog - Sidebar Component
+ * Backlog Coordinator - Sidebar Component
  */
 
 export function renderSidebar() {
     const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    const user = window.app?.store?.get('currentUser');
+    const adminAccess = user?.permissions?.admin || 'none';
+    const adminLinks = adminAccess !== 'none' ? `
+                <a href="#/admin" class="sidebar-item" aria-label="Администрирование">
+                    <i data-lucide="shield"></i>
+                    <span>Администрирование</span>
+                </a>
+                <a href="#/audit-log" class="sidebar-item" aria-label="Аудит действий">
+                    <i data-lucide="scroll-text"></i>
+                    <span>Аудит действий</span>
+                </a>` : '';
     return `
     <aside class="sidebar${collapsed ? ' collapsed' : ''}">
         <div class="sidebar-logo">
-            <div class="logo-icon">D</div>
-            <span class="logo-text">DMB Backlog</span>
+            <div class="logo-icon" aria-hidden="true">
+                <svg viewBox="0 0 36 36" focusable="false">
+                    <rect class="brand-card-back" x="4" y="5" width="23" height="24" rx="6" />
+                    <rect class="brand-card-front" x="9" y="8" width="23" height="24" rx="6" />
+                    <path class="brand-list-lines" d="M14 14h11M14 19h8" />
+                    <circle class="brand-check-bg" cx="24" cy="25" r="5.5" />
+                    <path class="brand-check" d="m21.5 25 1.7 1.7 3.4-3.7" />
+                </svg>
+            </div>
+            <span class="logo-text">Backlog Coordinator</span>
         </div>
         
         <nav class="sidebar-nav">
@@ -86,14 +105,7 @@ export function renderSidebar() {
                     <i data-lucide="settings"></i>
                     <span>Настройки</span>
                 </a>
-                <a href="#/admin" class="sidebar-item" aria-label="Администрирование">
-                    <i data-lucide="shield"></i>
-                    <span>Администрирование</span>
-                </a>
-                <a href="#/audit-log" class="sidebar-item" aria-label="Аудит действий">
-                    <i data-lucide="scroll-text"></i>
-                    <span>Аудит действий</span>
-                </a>
+                ${adminLinks}
             </div>
         </nav>
         <button class="sidebar-toggle" title="Свернуть/развернуть" aria-label="Свернуть или развернуть боковую панель">
@@ -121,8 +133,7 @@ export function initSidebar() {
     setTimeout(() => {
         const user = window.app?.store?.get('currentUser');
         const perms = user?.permissions;
-        const roleName = String(user?.role_name || user?.role || '').trim().toLocaleLowerCase('ru-RU');
-        if (roleName === 'бизнес-заказчик') {
+        if (perms?.customer_portal_mode === 'only') {
             const allowedLabels = new Set(['Мои задачи', 'Создать задачу']);
             document.querySelectorAll('.sidebar-item').forEach(el => {
                 if (!allowedLabels.has(el.getAttribute('aria-label'))) {
@@ -159,10 +170,7 @@ export function initSidebar() {
                 el.style.display = 'none';
             }
             if (label === 'Ревью запросов') {
-                const canReview = [
-                    'po/pl/cl', 'ba/участник команды', 'ba/бизнес-аналитик',
-                    'лидер трайба', 'проектный офис (админ)', 'администратор',
-                ].includes(roleName);
+                const canReview = (perms.review || 'none') !== 'none';
                 if (!canReview) {
                     el.style.display = 'none';
                 }

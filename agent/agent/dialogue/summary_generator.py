@@ -7,7 +7,7 @@ shows an intermediate summary to:
 3. Reduce feeling of "endless questionnaire"
 4. Build trust in the system
 """
-from .state import DialogueState, SLOT_LABELS, MANDATORY_HARD, MANDATORY_SOFT
+from .state import DialogueState, SLOT_LABELS, QUALITY_PROGRESS_SLOTS
 
 
 def generate_intermediate_summary(state: DialogueState) -> str:
@@ -92,12 +92,12 @@ def should_show_intermediate_summary(state: DialogueState, question_count: int) 
 
 def generate_progress_indicator(state: DialogueState) -> str:
     """Generate progress indicator showing completion."""
-    total_mandatory = len(MANDATORY_HARD) + len(MANDATORY_SOFT)
+    total_mandatory = len(QUALITY_PROGRESS_SLOTS)
     filled_mandatory = sum(
-        1 for slot in MANDATORY_HARD + MANDATORY_SOFT
+        1 for slot in QUALITY_PROGRESS_SLOTS
         if state.slots.get(slot) and state.slots[slot].status == "filled"
     )
     
     percentage = int((filled_mandatory / total_mandatory) * 100) if total_mandatory > 0 else 0
     
-    return f"Собрано: {filled_mandatory}/{total_mandatory} обязательных полей ({percentage}%)"
+    return f"Качество проработки: {filled_mandatory}/{total_mandatory} ключевых блоков ({percentage}%)"

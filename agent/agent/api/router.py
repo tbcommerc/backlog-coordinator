@@ -19,6 +19,7 @@ from .schemas import (
     AgentResponse,
     ChatRequest,
     ConfigResponse,
+    EditDraftSectionRequest,
     NewSessionRequest,
     ResetRequest,
     SendForReviewRequest,
@@ -46,6 +47,8 @@ def _to_ctx(raw: dict | None) -> UserContext | None:
 
 @router.post("/chat", response_model=AgentResponse)
 def chat(req: ChatRequest, _=Depends(_check_secret)):
+    if not req.session_id or _orchestrator.store.get(req.session_id) is None:
+        raise HTTPException(status_code=404, detail="Session not found")
     return _orchestrator.handle_message(req.session_id, req.message, _to_ctx(req.context))
 
 
@@ -73,9 +76,22 @@ def sessions(user_id: int = 0, _=Depends(_check_secret)):
     return {"sessions": _orchestrator.store.list_for_user(user_id)}
 
 
+@router.post("/session/{session_id}/archive")
+def archive_session(session_id: str, archived: bool = True, _=Depends(_check_secret)):
+    state = _orchestrator.store.set_archived(session_id, archived)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"success": True, "session_id": session_id, "archived": state.archived}
+
+
 @router.post("/send-for-review", response_model=AgentResponse)
 def send_for_review(req: SendForReviewRequest, _=Depends(_check_secret)):
     return _orchestrator.confirm_and_send(req.session_id, req.task_id, req.title, req.user_id)
+
+
+@router.post("/edit-draft-section", response_model=AgentResponse)
+def edit_draft_section(req: EditDraftSectionRequest, _=Depends(_check_secret)):
+    return _orchestrator.edit_draft_section(req.session_id, req.field, req.value, req.user_id)
 
 
 @router.get("/config", response_model=ConfigResponse)
@@ -83,6 +99,7 @@ def config(_=Depends(_check_secret)):
     return ConfigResponse(
         provider=settings.LLM_PROVIDER,
         provider_available=bool(settings.OPENAI_API_KEY),
+        dialogue_engine=settings.AGENT_DIALOGUE_ENGINE,
         intents=INTENTS,
         kb_stats=kb.stats(),
         mcp_servers=mcp_registry.servers,

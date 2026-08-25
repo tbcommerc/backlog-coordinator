@@ -31,6 +31,8 @@ class ModeSelector:
 
     def select_mode(self, state: DialogueState, ctx=None) -> ModeDecision:
         """Select the best dialogue mode for current state and context."""
+        if state.requirement_shape == "field_change":
+            return ModeDecision(MODE_FREE_FORM, "focused_field_change", 0.9)
         
         # Check for explicit user role (BA/PO -> expert mode)
         if ctx and self._is_expert_user(ctx):

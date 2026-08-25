@@ -1,6 +1,20 @@
 from pathlib import Path
 
 import notifications
+from datetime import date, datetime
+from types import SimpleNamespace
+
+
+def test_deadline_dictionary_periods_resolve_to_period_end():
+    assert notifications.resolve_deadline_date(SimpleNamespace(code="Q3_2026", name="3Q 2026")) == date(2026, 9, 30)
+    assert notifications.resolve_deadline_date(SimpleNamespace(code="", name="4Q 2026")) == date(2026, 12, 31)
+    assert notifications.resolve_deadline_date(SimpleNamespace(code="Y2026", name="2026")) == date(2026, 12, 31)
+
+
+def test_deadline_resolution_accepts_dates_and_ignores_no_deadline():
+    assert notifications.resolve_deadline_date(date(2026, 8, 24)) == date(2026, 8, 24)
+    assert notifications.resolve_deadline_date(datetime(2026, 8, 24, 15, 30)) == date(2026, 8, 24)
+    assert notifications.resolve_deadline_date(SimpleNamespace(code="no_deadline", name="БЕЗ СРОКА")) is None
 
 
 def test_send_to_users_deduplicates_and_excludes_actor(monkeypatch):

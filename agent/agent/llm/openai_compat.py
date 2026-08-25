@@ -4,12 +4,22 @@ Configured via OPENAI_API_KEY / OPENAI_BASE_URL / OPENAI_MODEL in .env.
 Uses only the standard library to avoid extra runtime dependencies.
 """
 import json
+import logging
+import socket
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import List, Optional
 
 from ..config import settings
 from .base import LLMProvider
+
+logger = logging.getLogger("agent.llm.openai_compat")
+
+
+class LLMRateLimitError(RuntimeError):
+    """The provider kept rate-limiting the request after bounded retries."""
 
 
 class OpenAICompatProvider:
@@ -20,18 +30,64 @@ class OpenAICompatProvider:
 
     def _post(self, path: str, payload: dict, timeout: float = 60.0) -> dict:
         url = settings.OPENAI_BASE_URL.rstrip("/") + path
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        body = json.dumps(payload).encode("utf-8")
+        host = (urllib.parse.urlparse(url).hostname or "").lower()
+        is_opencode_zen = host == "opencode.ai" and "/zen/" in url
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+            "User-Agent": (
+                "opencode/latest/1.18.21/cli" if is_opencode_zen else
+                "DMB-AI-Business-Analyst/1.0"
+            ),
+        }
+        if is_opencode_zen:
+            # Zen applies a separate free-model policy to OpenCode clients.
+            # Keep these headers aligned with the locally installed CLI.
+            headers["x-opencode-client"] = "cli"
+        # OpenCode may return a short burst-limit response even when the account
+        # quota is available. Retry only that transient status; auth and other
+        # errors must remain visible immediately.
+        for attempt in range(3):
+            req = urllib.request.Request(
+                url,
+                data=body,
+                headers=headers,
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as exc:
+                if exc.code not in {429, 502, 503, 504}:
+                    raise
+                if attempt == 2:
+                    detail = exc.read().decode("utf-8", errors="replace")[:500]
+                    raise LLMRateLimitError(
+                        f"LLM provider HTTP {exc.code} persisted after 3 attempts: {detail}"
+                    ) from exc
+                retry_after = exc.headers.get("Retry-After") if exc.headers else None
+                try:
+                    delay = min(10.0, max(0.5, float(retry_after)))
+                except (TypeError, ValueError):
+                    delay = float(2 ** attempt)
+                logger.warning(
+                    "LLM provider returned HTTP %d; retrying in %.1fs (%d/3)",
+                    exc.code, delay, attempt + 1,
+                )
+                time.sleep(delay)
+            except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+                if attempt == 2:
+                    raise RuntimeError(
+                        f"LLM provider network failure persisted after 3 attempts: {exc}"
+                    ) from exc
+                delay = float(2 ** attempt)
+                logger.warning(
+                    "LLM provider network failure; retrying in %.1fs (%d/3)",
+                    delay, attempt + 1,
+                )
+                time.sleep(delay)
+        raise RuntimeError("unreachable")
 
     def chat(
         self,

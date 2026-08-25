@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Макет карточки задачи — DMB Backlog</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --canvas: #eef2f7;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --surface-tint: #f5f7ff;
+      --text: #172033;
+      --text-soft: #526078;
+      --text-faint: #8792a6;
+      --line: #dfe5ee;
+      --line-strong: #cbd5e1;
+      --brand: #4f46e5;
+      --brand-hover: #4338ca;
+      --brand-soft: #eef2ff;
+      --success: #0f9f6e;
+      --success-soft: #e9fbf4;
+      --warning: #c47a09;
+      --warning-soft: #fff7e6;
+      --danger: #d64242;
+      --danger-soft: #fff0f0;
+      --shadow: 0 28px 90px rgba(15, 23, 42, .23), 0 4px 14px rgba(15, 23, 42, .08);
+      --radius-xl: 20px;
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--canvas); color: var(--text); font-size: 14px; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+      outline: 3px solid rgba(79, 70, 229, .22); outline-offset: 2px;
+    }
+
+    .app-shell { min-height: 100vh; padding: 22px 26px; }
+    .app-toolbar { display: flex; align-items: center; gap: 20px; padding: 0 0 18px; color: #64748b; }
+    .app-logo { display: flex; align-items: center; gap: 10px; color: #1e293b; font-weight: 800; }
+    .app-logo-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: #4f46e5; color: white; }
+    .fake-search { width: 280px; height: 36px; border: 1px solid #dbe2eb; border-radius: 10px; background: white; }
+    .fake-table { overflow: hidden; border: 1px solid #dfe5ee; border-radius: 14px; background: white; opacity: .64; }
+    .fake-row { display: grid; grid-template-columns: 70px 2fr 1fr 1fr 130px; gap: 20px; padding: 16px 18px; border-bottom: 1px solid #edf0f5; }
+    .fake-row:first-child { background: #f8fafc; font-weight: 700; color: #64748b; }
+    .fake-line { height: 9px; border-radius: 999px; background: #dce3ec; }
+    .prototype-hint { position: fixed; left: 24px; bottom: 22px; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 13px; border: 1px solid #dbe2eb; border-radius: 11px; background: rgba(255,255,255,.92); box-shadow: 0 8px 30px rgba(15,23,42,.12); color: #526078; font-size: 12px; }
+    .reopen { border: 0; border-radius: 8px; padding: 7px 10px; background: var(--brand); color: white; font-weight: 700; }
+
+    .overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: rgba(24, 33, 52, .46); backdrop-filter: blur(5px); }
+    .overlay[hidden] { display: none; }
+    .modal { display: flex; flex-direction: column; width: min(1240px, 100%); height: min(900px, calc(100vh - 48px)); overflow: hidden; border: 1px solid rgba(255,255,255,.65); border-radius: var(--radius-xl); background: var(--surface); box-shadow: var(--shadow); animation: enter .18s ease-out; }
+    @keyframes enter { from { opacity: 0; transform: translateY(10px) scale(.99); } }
+
+    .modal-header { flex: none; padding: 0; border-bottom: 1px solid var(--line); background: linear-gradient(125deg, #111a35 0%, #252356 58%, #34307a 100%); }
+    .title-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: start; padding: 17px 20px 15px; }
+    .eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .id-button, .chip, .icon-button, .button, .tab { border: 0; }
+    .id-button { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(255,255,255,.09); color: #dce3ff; font-size: 12px; font-weight: 800; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .chip.type { border-radius: 8px; background: rgba(177,156,255,.17); color: #d8ceff; }
+    .chip.type::before { display: none; }
+    .chip.status { background: #eaf2ff; color: #2366c4; }
+    .eyebrow .chip.status { background: rgba(115,184,255,.16); color: #a9d3ff; }
+    .chip.priority { background: var(--warning-soft); color: var(--warning); }
+    .eyebrow .chip.priority { background: rgba(255,191,73,.16); color: #ffd687; }
+    .chip.editing { background: var(--brand-soft); color: var(--brand); }
+    .chip.editing[hidden] { display: none; }
+    h1 { overflow: hidden; margin: 0; color: #ffffff; font-size: clamp(18px, 2vw, 23px); line-height: 1.28; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
+    .title-editor { display:none; width:100%; max-width:900px; height:40px; padding:0 12px; border:1px solid rgba(255,255,255,.28); border-radius:10px; background:rgba(255,255,255,.10); color:#fff; font-size:20px; font-weight:800; }
+    .title-editor:focus { border-color:#aaa7ff; outline:0; box-shadow:0 0 0 3px rgba(164,159,255,.2); }
+    .is-editing h1 { display:none; }
+    .is-editing .title-editor { display:block; }
+    .subtitle { margin-top: 5px; color: #9ea9cc; font-size: 12px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .icon-button { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--text-soft); }
+    .icon-button:hover { border-color: var(--line-strong); background: var(--surface-soft); color: var(--text); }
+    .header-actions .icon-button { border-color:rgba(255,255,255,.16); background:rgba(255,255,255,.08); color:#cdd5f4; }
+    .header-actions .icon-button:hover { border-color:rgba(255,255,255,.30); background:rgba(255,255,255,.15); color:#fff; }
+    .icon-button.danger:hover { border-color: #f0c5c5; background: var(--danger-soft); color: var(--danger); }
+    .icon { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+    .tabs { position: relative; display: flex; gap: 4px; margin: 0; padding: 0 12px; overflow-x: auto; border-radius: 14px 14px 0 0; background: #fff; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 10px 12px 11px; background: transparent; color: var(--text-soft); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--brand); }
+    .tab.active::after { content: ""; position: absolute; right: 10px; bottom: -1px; left: 10px; height: 2px; border-radius: 2px 2px 0 0; background: var(--brand); }
+    .counter { min-width: 19px; padding: 1px 6px; border-radius: 999px; background: var(--surface-soft); color: var(--text-faint); font-size: 10px; text-align: center; }
+    .tab.active .counter { background: var(--brand-soft); color: var(--brand); }
+
+    .modal-body { flex: 1; min-height: 0; overflow: auto; background: #f7f9fc; }
+    .tab-panel { display: none; min-height: 100%; }
+    .tab-panel.active { display: block; }
+    .overview-layout { display: flex; flex-direction: column; min-height: 100%; }
+    .main-column { min-width: 0; padding: 18px 20px 28px; }
+    .side-column { order: -1; display: grid; grid-template-columns: minmax(0,1fr) 290px; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg,#f3f5fa 0%,#f7f8ff 100%); }
+    .execution-band { min-width:0; padding:11px 12px 12px; border:1px solid #d9dfeb; border-radius:13px; background:#fff; box-shadow:0 4px 14px rgba(15,23,42,.035); }
+    .execution-band-title { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; color:#4d5a70; font-size:10px; font-weight:900; letter-spacing:.075em; text-transform:uppercase; }
+    .execution-fields { display:grid; grid-template-columns:1.2fr 1fr 1.05fr 1.2fr 1fr 1fr; gap:0; }
+    .execution-field { min-width:0; padding:2px 11px; border-left:1px solid #edf0f5; }
+    .execution-field:first-child { padding-left:0; border-left:0; }
+    .execution-label { margin-bottom:5px; color:var(--text-faint); font-size:9px; font-weight:750; letter-spacing:.045em; text-transform:uppercase; }
+    .execution-value { min-height:27px; display:flex; align-items:center; min-width:0; color:#263247; font-size:12px; font-weight:800; }
+    .execution-value .control { height:30px; font-size:11px; }
+    .execution-progress { width:100%; }
+    .execution-progress-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
+    .execution-progress-head b { font-size:13px; }
+    .execution-progress .progress-track { margin:0; height:6px; }
+    .execution-progress .progress-edit { margin-top:5px; }
+    .metrics-band { padding:11px 12px 12px; border:1px solid #d9ddf7; border-radius:13px; background:linear-gradient(145deg,#fff 0%,#f1f2ff 100%); box-shadow:0 4px 14px rgba(15,23,42,.035); }
+    .metrics-band .rail-title { padding:0 0 8px; }
+
+    .section { margin-bottom: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+    .section:last-child { margin-bottom: 0; }
+    .section-heading { display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 10px 14px; border-bottom: 1px solid var(--line); background:linear-gradient(90deg,#fff 0%,#fbfbff 100%); }
+    .section-title { display: flex; align-items: center; gap: 8px; margin: 0; color: #38445a; font-size: 11px; font-weight: 800; letter-spacing: .065em; text-transform: uppercase; }
+    .section-title .icon { width: 15px; height: 15px; color: #738096; }
+    .section-index { display:inline-grid; place-items:center; width:23px; height:23px; border-radius:7px; background:var(--brand-soft); color:var(--brand); font-size:9px; font-weight:900; letter-spacing:0; }
+    .section-note { color: var(--text-faint); font-size: 11px; }
+    .section-content { padding: 13px 14px 14px; }
+    .description { margin: 0; color: #334155; line-height: 1.62; }
+    .description-edit { display: none; }
+
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; }
+    .field { display: grid; grid-template-columns: minmax(120px, 42%) minmax(0, 1fr); align-items: center; min-height: 42px; border-bottom: 1px solid #edf1f5; }
+    .field:nth-last-child(-n+2) { border-bottom: 0; }
+    .field.full { grid-column: 1 / -1; grid-template-columns: minmax(120px, 20.4%) minmax(0, 1fr); }
+    .field.full:last-child { border-bottom: 0; }
+    .field-label { padding-right: 12px; color: var(--text-faint); font-size: 11px; font-weight: 650; line-height: 1.25; }
+    .field-value { min-width: 0; color: #263247; font-size: 13px; font-weight: 650; line-height: 1.35; }
+    .field-value.muted { color: var(--text-soft); font-weight: 550; }
+    .person { display: flex; align-items: center; gap: 8px; }
+    .avatar { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 8px; background: #e9edff; color: #4f46e5; font-size: 10px; font-weight: 850; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag { padding: 3px 7px; border: 1px solid #dbe1f4; border-radius: 6px; background: #f7f8ff; color: #526078; font-size: 11px; font-weight: 650; }
+
+    .control, .textarea { display: none; width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; background: white; color: var(--text); transition: border-color .14s, box-shadow .14s; }
+    .control { height: 34px; padding: 0 9px; font-size: 12px; }
+    select.control { padding-right: 26px; }
+    .textarea { min-height: 94px; padding: 9px 10px; resize: vertical; line-height: 1.5; }
+    .control:hover, .textarea:hover { border-color: #aeb9ca; }
+    .control:focus, .textarea:focus { border-color: var(--brand); outline: 0; box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+    .is-editing .view-value, .is-editing .description { display: none; }
+    .is-editing .control, .is-editing .textarea, .is-editing .description-edit { display: block; }
+    .is-editing .field { min-height: 50px; }
+    .is-editing .field-label { color: #66748a; }
+    .is-editing .section { border-color: #d8deeb; }
+    .required::after { content: " *"; color: var(--danger); }
+
+    .effort-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .effort-table th { padding: 0 9px 8px; color: var(--text-faint); font-size: 10px; letter-spacing: .04em; text-align: right; text-transform: uppercase; }
+    .effort-table th:first-child, .effort-table td:first-child { width: 34%; text-align: left; }
+    .effort-table td { height: 34px; padding: 6px 9px; border-top: 1px solid #edf1f5; color: #425069; font-size: 12px; text-align: right; }
+    .effort-table td:nth-child(2), .effort-table td:nth-child(3) { font-variant-numeric: tabular-nums; }
+    .effort-table .total td { background: #fafbfe; color: #263247; font-weight: 800; }
+    .table-input { display: none; width: 74px; height: 30px; margin-left: auto; border: 1px solid var(--line-strong); border-radius: 7px; text-align: right; }
+    .is-editing .table-input { display: block; }
+    .is-editing .effort-number { display: none; }
+
+    .rail-card { border: 1px solid var(--line); border-radius: var(--radius-lg); background: white; }
+    .rail-card.primary { border-color: #d9ddf7; background: linear-gradient(145deg, #fbfbff 0%, #f4f6ff 100%); }
+    .rail-title { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px 8px; color: #536078; font-size: 10px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+    .rail-content { padding: 0 12px 12px; }
+    .status-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .progress-value { color: #28344a; font-size: 20px; font-weight: 850; font-variant-numeric: tabular-nums; }
+    .progress-track { height: 7px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #e5e9f1; }
+    .progress-fill { display: block; width: 60%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--brand), #7c73ef); transition: width .2s; }
+    .progress-edit { display: none; margin-top: 9px; }
+    .progress-edit input { width: 100%; accent-color: var(--brand); }
+    .is-editing .progress-edit { display: block; }
+    .rail-list { display: grid; }
+    .rail-row { display: grid; grid-template-columns: 98px minmax(0,1fr); align-items: center; min-height: 38px; border-top: 1px solid #edf1f5; }
+    .rail-row:first-child { border-top: 0; }
+    .rail-label { color: var(--text-faint); font-size: 10px; font-weight: 650; }
+    .rail-value { min-width: 0; color: #2d394f; font-size: 12px; font-weight: 700; }
+    .rail-row .control { height: 31px; font-size: 11px; }
+    .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    .metric { min-width: 0; padding: 9px 8px; border-radius: 9px; background: var(--surface-soft); }
+    .metric-label { min-height: 25px; color: var(--text-faint); font-size: 9px; font-weight: 700; line-height: 1.25; }
+    .metric-value { margin-top: 3px; color: #243047; font-size: 15px; font-weight: 850; white-space: nowrap; }
+    .metric-value.good { color: var(--success); }
+    .metric small { font-size: 9px; font-weight: 650; }
+    .signal-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    .signal-card { position:relative; overflow:hidden; min-height:96px; padding:13px 14px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+    .signal-card::after { content:""; position:absolute; right:-24px; bottom:-28px; width:74px; height:74px; border-radius:50%; background:var(--brand-soft); }
+    .signal-card:nth-child(2)::after { background:var(--success-soft); }
+    .signal-card:nth-child(3)::after { background:var(--warning-soft); }
+    .signal-card:nth-child(4)::after { background:#f3eefe; }
+    .signal-label { color:var(--text-faint); font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+    .signal-value { position:relative; z-index:1; margin-top:8px; color:#212c43; font-size:24px; font-weight:900; letter-spacing:-.035em; }
+    .signal-value small { font-size:10px; font-weight:700; letter-spacing:0; }
+    .signal-caption { position:relative; z-index:1; margin-top:3px; color:var(--text-faint); font-size:10px; }
+    .score-edit { display:none; margin-top:8px; }
+    .is-editing .score-edit { display:block; }
+    .is-editing .score-view { display:none; }
+    .score-edit .control { display:block; }
+    .insight-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+    .insight-card { padding:14px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+    .insight-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .insight-head strong { font-size:12px; }
+    .ai-badge { padding:3px 7px; border-radius:6px; background:#f0ecff; color:#6d47c8; font-size:9px; font-weight:900; letter-spacing:.06em; }
+    .insight-number { margin-bottom:9px; font-size:22px; font-weight:900; color:#263247; }
+    .insight-text { margin:0; color:var(--text-soft); font-size:11px; line-height:1.55; }
+    .is-editing .insight-text { display:none; }
+    .insight-card .textarea { min-height:72px; }
+    .effort-scroll { overflow-x:auto; }
+    .effort-table.full { min-width:840px; }
+    .effort-source { display:flex; gap:8px; align-items:flex-start; margin-top:12px; padding:10px 12px; border-radius:9px; background:#f7f8fb; color:var(--text-faint); font-size:10px; line-height:1.45; }
+    .report-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .report-card { overflow:hidden; border:1px solid var(--line); border-radius:13px; background:#fff; }
+    .report-top { display:flex; align-items:center; gap:9px; padding:12px 13px; border-bottom:1px solid var(--line); }
+    .report-mark { width:8px; height:28px; border-radius:99px; background:var(--brand); }
+    .report-card:nth-child(2) .report-mark { background:var(--success); }
+    .report-card:nth-child(3) .report-mark { background:#8b5cf6; }
+    .report-top strong { font-size:12px; }
+    .report-field { padding:11px 13px; border-top:1px solid #edf1f5; }
+    .report-field:first-child { border-top:0; }
+    .report-label { margin-bottom:5px; color:var(--text-faint); font-size:9px; font-weight:800; letter-spacing:.055em; text-transform:uppercase; }
+    .report-value { color:#3c4960; font-size:11px; line-height:1.5; }
+    .report-card .textarea { min-height:90px; }
+    .toggle-row { display:flex; align-items:center; justify-content:space-between; }
+    .switch { position:relative; width:36px; height:20px; }
+    .switch input { opacity:0; width:0; height:0; }
+    .switch span { position:absolute; inset:0; border-radius:99px; background:#d7dde7; transition:.2s; }
+    .switch span::after { content:""; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(15,23,42,.25); transition:.2s; }
+    .switch input:checked + span { background:var(--brand); }
+    .switch input:checked + span::after { transform:translateX(16px); }
+    .attachment-zone { display:grid; place-items:center; min-height:118px; margin-top:14px; border:1.5px dashed #cbd3e3; border-radius:12px; background:#fafbfe; color:var(--text-faint); text-align:center; }
+    .attachment-zone strong { display:block; margin-top:6px; color:var(--text-soft); font-size:11px; }
+    .attachment-list { display:grid; gap:7px; margin-top:10px; }
+    .attachment { display:grid; grid-template-columns:30px 1fr auto; align-items:center; gap:9px; padding:8px 10px; border:1px solid var(--line); border-radius:9px; }
+    .file-mark { display:grid; place-items:center; width:28px; height:28px; border-radius:7px; background:var(--brand-soft); color:var(--brand); font-size:9px; font-weight:900; }
+    .file-name { font-size:11px; font-weight:750; }
+    .file-meta { color:var(--text-faint); font-size:9px; }
+    .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .quick-action { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--text-soft); font-size: 11px; font-weight: 750; }
+    .quick-action:hover { border-color: #c8cdf5; background: var(--brand-soft); color: var(--brand); }
+
+    .generic-panel { padding: 20px; }
+    .panel-card { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); background: white; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .panel-header h2 { margin: 0; font-size: 15px; }
+    .panel-body { padding: 16px; }
+    .status-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .status-card { padding: 14px; border: 1px solid var(--line); border-left: 3px solid var(--brand); border-radius: 10px; }
+    .status-card:nth-child(2) { border-left-color: var(--success); }
+    .status-card:nth-child(3) { border-left-color: #8b5cf6; }
+    .status-card strong { display: block; margin-bottom: 7px; font-size: 12px; }
+    .status-card p { min-height: 38px; margin: 0 0 8px; color: var(--text-soft); font-size: 12px; line-height: 1.45; }
+    .status-card time { color: var(--text-faint); font-size: 10px; }
+    .comment-compose { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: end; margin-bottom: 16px; }
+    .comment-compose textarea { min-height: 70px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 10px; resize: vertical; }
+    .comment { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 13px 0; border-top: 1px solid #edf1f5; }
+    .comment-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+    .comment-head strong { font-size: 12px; }
+    .comment-head time { color: var(--text-faint); font-size: 10px; }
+    .comment p { margin: 0; color: #425069; font-size: 12px; line-height: 1.55; }
+    .link-list { display: grid; gap: 8px; }
+    .link-row { display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+    .link-kind { color: var(--text-faint); font-size: 10px; font-weight: 800; }
+    .link-row a { overflow: hidden; color: var(--brand); font-size: 12px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+    .add-link { display: flex; gap: 8px; margin-top: 12px; }
+    .add-link input { flex: 1; height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 9px; }
+    .history { width: 100%; border-collapse: collapse; }
+    .history th, .history td { padding: 10px 12px; border-bottom: 1px solid #edf1f5; font-size: 11px; text-align: left; }
+    .history th { background: var(--surface-soft); color: var(--text-faint); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+    .history td { color: #425069; }
+
+    .modal-footer { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 58px; padding: 10px 20px; border-top: 1px solid var(--line); background: white; }
+    .footer-meta { color: var(--text-faint); font-size: 11px; }
+    .footer-meta b { color: var(--text-soft); }
+    .footer-actions { display: flex; align-items: center; gap: 8px; }
+    .unsaved { display: none; align-items: center; gap: 6px; margin-right: 4px; color: var(--warning); font-size: 11px; font-weight: 750; }
+    .unsaved::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .is-editing .unsaved { display: inline-flex; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 13px; border-radius: 9px; font-size: 12px; font-weight: 800; transition: background .14s, border-color .14s, transform .14s; }
+    .button:hover { transform: translateY(-1px); }
+    .button.secondary { border: 1px solid var(--line); background: white; color: var(--text-soft); }
+    .button.secondary:hover { border-color: var(--line-strong); background: var(--surface-soft); color: var(--text); }
+    .button.primary { background: var(--brand); color: white; }
+    .button.primary:hover { background: var(--brand-hover); }
+    .button.small { min-height: 32px; padding: 0 10px; font-size: 11px; }
+    [data-mode="edit"] { display: none; }
+    .is-editing [data-mode="view"] { display: none; }
+    .is-editing [data-mode="edit"] { display: inline-flex; }
+
+    .toast { position: fixed; right: 24px; bottom: 24px; z-index: 30; display: flex; align-items: center; gap: 9px; max-width: 360px; padding: 11px 14px; border: 1px solid #cde7dc; border-radius: 11px; background: #f2fcf8; box-shadow: 0 14px 35px rgba(15,23,42,.16); color: #166b4e; font-size: 12px; font-weight: 700; transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s; }
+    .toast.show { transform: none; opacity: 1; }
+
+    @media (max-width: 980px) {
+      .overlay { padding: 0; }
+      .modal { width: 100%; height: 100vh; max-height: none; border-radius: 0; }
+      .side-column { grid-template-columns:1fr; }
+      .execution-fields { grid-template-columns:repeat(3,1fr); row-gap:10px; }
+      .execution-field:nth-child(4) { padding-left:0; border-left:0; }
+      .status-cards { grid-template-columns: 1fr; }
+      .signal-grid { grid-template-columns:repeat(2,1fr); }
+      .report-grid { grid-template-columns:1fr; }
+    }
+    @media (max-width: 680px) {
+      .modal-header { padding-right: 12px; padding-left: 12px; }
+      .title-line { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+      .subtitle, .header-actions .icon-button:first-child { display: none; }
+      .main-column, .generic-panel { padding: 12px; }
+      .side-column { padding: 12px; }
+      .execution-fields { grid-template-columns:1fr 1fr; }
+      .execution-field { padding:7px 8px; border-left:0; border-top:1px solid #edf0f5; }
+      .execution-field:nth-child(-n+2) { border-top:0; }
+      .execution-field:nth-child(odd) { padding-left:0; }
+      .field-grid { grid-template-columns: 1fr; }
+      .field:nth-last-child(-n+2) { border-bottom: 1px solid #edf1f5; }
+      .field:last-child { border-bottom: 0; }
+      .field, .field.full { grid-template-columns: minmax(110px, 40%) minmax(0,1fr); }
+      .modal-footer { align-items: flex-end; padding: 9px 12px; }
+      .footer-meta { display: none; }
+      .footer-actions { width: 100%; justify-content: flex-end; }
+      .status-cards { grid-template-columns: 1fr; }
+      .signal-grid, .insight-grid { grid-template-columns:1fr; }
+      .history { min-width: 650px; }
+      .panel-body.history-wrap { overflow-x: auto; padding: 0; }
+      .comment-compose { grid-template-columns: 30px 1fr; }
+      .comment-compose .button { grid-column: 2; justify-self: end; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell" aria-label="Фон прототипа">
+    <div class="app-toolbar">
+      <div class="app-logo"><span class="app-logo-mark">D</span>DMB Backlog</div>
+      <div class="fake-search"></div>
+    </div>
+    <div class="fake-table">
+      <div class="fake-row"><span>ID</span><span>Задача</span><span>Команда</span><span>Статус</span><span>Срок</span></div>
+      <div class="fake-row"><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div></div>
+      <div class="fake-row"><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div></div>
+      <div class="fake-row"><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div></div>
+      <div class="fake-row"><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div><div class="fake-line"></div></div>
+    </div>
+  </main>
+
+  <div class="prototype-hint">Интерактивный макет <button class="reopen" id="reopen">Открыть карточку</button></div>
+
+  <div class="overlay" id="overlay">
+    <article class="modal" id="taskCard" role="dialog" aria-modal="true" aria-labelledby="taskTitle">
+      <header class="modal-header">
+        <div class="title-line">
+          <div>
+            <div class="eyebrow">
+              <button class="id-button" id="copyId" title="Скопировать ID">#1428
+                <svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <span class="chip type">Развитие</span>
+              <span class="chip status" id="headerStatus">Сбор требований</span>
+              <span class="chip priority" id="headerPriority">Высокий</span>
+              <span class="chip editing" id="editChip" hidden>Редактирование</span>
+            </div>
+            <h1 id="taskTitle" data-display="title">Автоматизация сверки лимитов перед запуском кредитной заявки</h1>
+            <input class="title-editor" data-input="title" maxlength="255" value="Автоматизация сверки лимитов перед запуском кредитной заявки" aria-label="Название задачи">
+            <div class="subtitle">Последнее изменение сегодня, 14:32 · версия 12</div>
+          </div>
+          <div class="header-actions">
+            <button class="icon-button" id="copyLink" aria-label="Копировать ссылку" title="Копировать ссылку">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </button>
+            <button class="icon-button danger" id="closeModal" aria-label="Закрыть" title="Закрыть">
+              <svg class="icon" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <nav class="tabs" aria-label="Разделы карточки">
+          <button class="tab active" data-tab="overview"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Основное</button>
+          <button class="tab" data-tab="estimate"><svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 5-8"/></svg>Оценка</button>
+          <button class="tab" data-tab="reports"><svg class="icon" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></svg>Отчётные статусы</button>
+          <button class="tab" data-tab="comments"><svg class="icon" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>Комментарии <span class="counter" id="commentCount">3</span></button>
+          <button class="tab" data-tab="links"><svg class="icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Ссылки и система</button>
+          <button class="tab" data-tab="history"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>История <span class="counter">12</span></button>
+        </nav>
+      </header>
+
+      <div class="modal-body">
+        <section class="tab-panel active" data-panel="overview">
+          <div class="overview-layout">
+            <div class="main-column">
+              <section class="section">
+                <div class="section-heading">
+                  <h2 class="section-title"><span class="section-index">01</span><svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2.5 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>Описание</h2>
+                  <span class="section-note">Цель и ожидаемый результат</span>
+                </div>
+                <div class="section-content">
+                  <p class="description view-value" data-display="description">Сократить время ручной сверки кредитных лимитов и исключить запуск заявки при наличии критичных расхождений. Перед отправкой заявки система должна автоматически проверить доступный лимит, показать найденные ограничения и предложить дальнейшее действие.</p>
+                  <textarea class="textarea description-edit" data-input="description">Сократить время ручной сверки кредитных лимитов и исключить запуск заявки при наличии критичных расхождений. Перед отправкой заявки система должна автоматически проверить доступный лимит, показать найденные ограничения и предложить дальнейшее действие.</textarea>
+                </div>
+              </section>
+
+              <section class="section">
+                <div class="section-heading">
+                  <h2 class="section-title"><span class="section-index">02</span><svg class="icon" viewBox="0 0 24 24"><path d="M3 21h18M6 18V8m4 10V3m4 15v-7m4 7V6"/></svg>Контекст задачи</h2>
+                  <span class="section-note">8 атрибутов</span>
+                </div>
+                <div class="section-content field-grid">
+                  <div class="field"><span class="field-label required">Проект</span><div class="field-value"><span class="view-value" data-display="project">Кредитный конвейер 2.0</span><select class="control" data-input="project"><option>Кредитный конвейер 2.0</option><option>Единый профиль клиента</option></select></div></div>
+                  <div class="field"><span class="field-label required">Тип задачи</span><div class="field-value"><span class="view-value" data-display="type">Развитие</span><select class="control" data-input="type"><option>Развитие</option><option>Регуляторика</option><option>Техдолг</option></select></div></div>
+                  <div class="field"><span class="field-label">Канал поступления</span><div class="field-value"><span class="view-value" data-display="channel">Бизнес-заказчик</span><select class="control" data-input="channel"><option>Бизнес-заказчик</option><option>Руководство</option><option>ИТ-команда</option></select></div></div>
+                  <div class="field"><span class="field-label">Дата поступления</span><div class="field-value"><span class="view-value" data-display="received">12 августа 2026</span><input class="control" type="date" value="2026-08-12" data-input="received"></div></div>
+                  <div class="field"><span class="field-label required">Бизнес-заказчик</span><div class="field-value"><span class="person view-value"><span class="avatar">АМ</span><span data-display="customer">А. Морозова</span></span><select class="control" data-input="customer"><option>А. Морозова</option><option>И. Волков</option></select></div></div>
+                  <div class="field"><span class="field-label">Подразделение</span><div class="field-value muted"><span class="view-value" data-display="department">Розничные кредитные продукты</span><input class="control" value="Розничные кредитные продукты" data-input="department" disabled></div></div>
+                  <div class="field full"><span class="field-label">Вовлечённые команды</span><div class="field-value"><span class="tag-list view-value" data-display="otherTeams"><span class="tag">Кредитный конвейер</span><span class="tag">Интеграционная платформа</span></span><input class="control" value="Кредитный конвейер, Интеграционная платформа" data-input="otherTeams" aria-label="Вовлечённые команды"></div></div>
+                  <div class="field full"><span class="field-label">Метки</span><div class="field-value"><span class="tag-list view-value" data-display="tags"><span class="tag">кредитование</span><span class="tag">автоматизация</span><span class="tag">Q3</span></span><input class="control" value="кредитование, автоматизация, Q3" data-input="tags" aria-label="Метки"></div></div>
+                </div>
+              </section>
+
+              <section class="section">
+                <div class="section-heading">
+                  <h2 class="section-title"><span class="section-index">03</span><svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 5-8"/></svg>Оценка результата</h2>
+                  <span class="section-note">Критерии качества и прогноз</span>
+                </div>
+                <div class="section-content field-grid">
+                  <div class="field"><span class="field-label">Вес оценки</span><div class="field-value"><span class="view-value" data-display="weightPercent">25%</span><input class="control" type="number" min="0" max="100" value="25" data-input="weightPercent"></div></div>
+                  <div class="field"><span class="field-label">Прогноз выполнения</span><div class="field-value"><span class="view-value" data-display="forecastPercent">82%</span><input class="control" type="number" min="0" max="100" value="82" data-input="forecastPercent"></div></div>
+                  <div class="field"><span class="field-label">Завершённость (Hard)</span><div class="field-value"><span class="view-value" data-display="hardScore">B — выше ожиданий</span><select class="control" data-input="hardScore"><option>A — выше всяких ожиданий</option><option selected>B — выше ожиданий</option><option>C — в рамках ожиданий</option><option>D — ниже ожиданий</option><option>E — провал</option></select></div></div>
+                  <div class="field"><span class="field-label">Взаимодействие (Soft)</span><div class="field-value"><span class="view-value" data-display="softScore">C — в рамках ожиданий</span><select class="control" data-input="softScore"><option>A — выше всяких ожиданий</option><option>B — выше ожиданий</option><option selected>C — в рамках ожиданий</option><option>D — ниже ожиданий</option><option>E — провал</option></select></div></div>
+                </div>
+              </section>
+
+              <section class="section">
+                <div class="section-heading">
+                  <h2 class="section-title"><span class="section-index">04</span><svg class="icon" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>Рабочий комментарий</h2>
+                  <span class="section-note">Виден участникам команды</span>
+                </div>
+                <div class="section-content">
+                  <p class="description view-value" data-display="comment">Ожидаем финальное описание API лимитов от интеграционной платформы. Демо логики запланировано на 28 августа.</p>
+                  <textarea class="textarea description-edit" data-input="comment">Ожидаем финальное описание API лимитов от интеграционной платформы. Демо логики запланировано на 28 августа.</textarea>
+                </div>
+              </section>
+            </div>
+
+            <aside class="side-column" aria-label="Сводка задачи">
+              <section class="execution-band">
+                <div class="execution-band-title"><span>Исполнение задачи</span><span>Основные рабочие атрибуты</span></div>
+                <div class="execution-fields">
+                  <div class="execution-field"><div class="execution-label required">Статус</div><div class="execution-value"><span class="view-value" data-display="status">Сбор требований</span><select class="control" data-input="status"><option>Новая задача</option><option selected>Сбор требований</option><option>Экспресс-оценка</option><option>В работе</option><option>Выполнена</option></select></div></div>
+                  <div class="execution-field"><div class="execution-label required">Приоритет</div><div class="execution-value"><span class="view-value" data-display="priority">Высокий</span><select class="control" data-input="priority"><option selected>Высокий</option><option>Средний</option><option>Низкий</option></select></div></div>
+                  <div class="execution-field"><div class="execution-label">Срок</div><div class="execution-value"><span class="view-value" data-display="deadline">30 сентября 2026</span><input class="control" type="date" value="2026-09-30" data-input="deadline"></div></div>
+                  <div class="execution-field"><div class="execution-progress"><div class="execution-progress-head"><span class="execution-label" style="margin:0">Прогресс</span><b id="progressValue">60%</b></div><div class="progress-track"><span class="progress-fill" id="progressFill"></span></div><div class="progress-edit"><input id="progressRange" type="range" min="0" max="100" step="5" value="60" aria-label="Прогресс"></div></div></div>
+                  <div class="execution-field"><div class="execution-label required">Команда</div><div class="execution-value"><span class="view-value" data-display="team">DMB Core</span><select class="control" data-input="team"><option>DMB Core</option><option>Data Platform</option></select></div></div>
+                  <div class="execution-field"><div class="execution-label">Исполнитель</div><div class="execution-value"><span class="view-value" data-display="assignee">Н. Орлов</span><select class="control" data-input="assignee"><option>Н. Орлов</option><option>Е. Кузнецова</option></select></div></div>
+                </div>
+              </section>
+
+              <section class="metrics-band">
+                <div class="rail-title"><span>Ключевые показатели</span><span title="Рассчитываются автоматически">↗</span></div>
+                <div class="metric-grid">
+                  <div class="metric"><div class="metric-label">Priority Score</div><div class="metric-value">78<small>/100</small></div></div>
+                  <div class="metric"><div class="metric-label">Эффект</div><div class="metric-value">12,5<small> млн</small></div></div>
+                  <div class="metric"><div class="metric-label">C/V</div><div class="metric-value good">0,24</div></div>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="tab-panel generic-panel" data-panel="estimate">
+          <div class="signal-grid">
+            <article class="signal-card"><div class="signal-label">План (ЭО)</div><div class="signal-value">82 <small>ч/д</small></div><div class="signal-caption">2 950 000 ₽ · C/V 0,24</div></article>
+            <article class="signal-card"><div class="signal-label">Факт (ФТЗ)</div><div class="signal-value">46 <small>ч/д</small></div><div class="signal-caption">1 650 000 ₽ · C/V 0,13</div></article>
+            <article class="signal-card"><div class="signal-label">Priority Score</div><div class="signal-value score-view" data-display="priorityScore">78 <small>/ 100</small></div><div class="signal-caption">Рассчитано агентом</div></article>
+            <article class="signal-card"><div class="signal-label">Финансовый эффект</div><div class="signal-value score-view"><span data-display="finEffect">12,5</span> <small>млн ₽</small></div><div class="score-edit"><input class="control" type="number" step="0.1" value="12.5" data-input="finEffect"></div><div class="signal-caption">AI-оценка: 14,2 млн ₽</div></article>
+          </div>
+
+          <div class="insight-grid">
+            <article class="insight-card">
+              <div class="insight-head"><strong>Обоснование Priority Score</strong><span class="ai-badge">AI AGENT</span></div>
+              <p class="insight-text" data-display="priorityJust">Высокий охват клиентских заявок и снижение операционного риска. Зависимость от одного внешнего API контролируема, эффект достижим в текущем квартале.</p>
+              <textarea class="textarea" data-input="priorityJust">Высокий охват клиентских заявок и снижение операционного риска. Зависимость от одного внешнего API контролируема, эффект достижим в текущем квартале.</textarea>
+            </article>
+            <article class="insight-card">
+              <div class="insight-head"><strong>Обоснование финансового эффекта</strong><span class="ai-badge">РАСЧЁТ</span></div>
+              <p class="insight-text" data-display="finJust">Экономия 7 минут на каждой из 180 000 заявок в год и предотвращение ошибок ручной сверки лимита.</p>
+              <textarea class="textarea" data-input="finJust">Экономия 7 минут на каждой из 180 000 заявок в год и предотвращение ошибок ручной сверки лимита.</textarea>
+            </article>
+            <article class="insight-card">
+              <div class="insight-head"><strong>AI-финансовый эффект</strong><span class="ai-badge">AI AGENT</span></div>
+              <div class="insight-number"><span data-display="finEffectAi">14,2</span> млн ₽</div>
+              <p class="insight-text" data-display="finJustAi">Модель учитывает экономию времени операций и снижение потерь от ошибочно запущенных заявок.</p>
+              <textarea class="textarea" data-input="finJustAi">Модель учитывает экономию времени операций и снижение потерь от ошибочно запущенных заявок.</textarea>
+              <input type="hidden" value="14.2" data-input="finEffectAi">
+            </article>
+            <article class="insight-card">
+              <div class="insight-head"><strong>Контроль оценки</strong><span class="ai-badge">QUALITY</span></div>
+              <div class="field-grid">
+                <div class="field"><span class="field-label">Вес</span><div class="field-value" data-display="weightPercent">25%</div></div>
+                <div class="field"><span class="field-label">Прогноз</span><div class="field-value" data-display="forecastPercent">82%</div></div>
+                <div class="field"><span class="field-label">Hard</span><div class="field-value" data-display="hardScore">B</div></div>
+                <div class="field"><span class="field-label">Soft</span><div class="field-value" data-display="softScore">C</div></div>
+              </div>
+            </article>
+          </div>
+
+          <div class="panel-card" style="margin-top:14px">
+            <div class="panel-header"><h2>Трудозатраты и стоимость: план / факт</h2><span class="section-note">ФТЗ и ставки доступны только для чтения</span></div>
+            <div class="panel-body effort-scroll">
+              <table class="effort-table full">
+                <thead><tr><th>Компетенция</th><th>Ставка, ₽/ч-д</th><th>ЭО, ч/д</th><th>ФТЗ, ч/д</th><th>ЭО, ₽</th><th>ФТЗ, ₽</th><th>Разница</th></tr></thead>
+                <tbody>
+                  <tr><td>Designee</td><td>38 000</td><td><span class="effort-number">4</span><input class="table-input" data-input="effortDesignee" type="number" step="0.5" value="4"></td><td>2</td><td>152 000</td><td>76 000</td><td style="color:var(--success)">−50%</td></tr>
+                  <tr><td>Аналитика</td><td>34 000</td><td><span class="effort-number">18</span><input class="table-input" data-input="effortAnalytics" type="number" step="0.5" value="18"></td><td>12</td><td>612 000</td><td>408 000</td><td style="color:var(--success)">−33%</td></tr>
+                  <tr><td>Разработка BE</td><td>42 000</td><td><span class="effort-number">24</span><input class="table-input" data-input="effortBe" type="number" step="0.5" value="24"></td><td>16</td><td>1 008 000</td><td>672 000</td><td style="color:var(--success)">−33%</td></tr>
+                  <tr><td>Разработка python BE</td><td>43 000</td><td><span class="effort-number">5</span><input class="table-input" data-input="effortPython" type="number" step="0.5" value="5"></td><td>3</td><td>215 000</td><td>129 000</td><td style="color:var(--success)">−40%</td></tr>
+                  <tr><td>Разработка FE</td><td>39 000</td><td><span class="effort-number">10</span><input class="table-input" data-input="effortFe" type="number" step="0.5" value="10"></td><td>6</td><td>390 000</td><td>234 000</td><td style="color:var(--success)">−40%</td></tr>
+                  <tr><td>Test</td><td>31 000</td><td><span class="effort-number">12</span><input class="table-input" data-input="effortTest" type="number" step="0.5" value="12"></td><td>4</td><td>372 000</td><td>124 000</td><td style="color:var(--success)">−67%</td></tr>
+                  <tr><td>Test Auto</td><td>35 000</td><td><span class="effort-number">5</span><input class="table-input" data-input="effortTestAuto" type="number" step="0.5" value="5"></td><td>2</td><td>175 000</td><td>70 000</td><td style="color:var(--success)">−60%</td></tr>
+                  <tr><td>Delivery</td><td>29 000</td><td><span class="effort-number">4</span><input class="table-input" data-input="effortDelivery" type="number" step="0.5" value="4"></td><td>1</td><td>116 000</td><td>29 000</td><td style="color:var(--success)">−75%</td></tr>
+                  <tr class="total"><td>Итого</td><td>—</td><td>82</td><td>46</td><td>3 040 000</td><td>1 742 000</td><td>−44%</td></tr>
+                </tbody>
+              </table>
+              <div class="effort-source">ⓘ <span><b>Источник ФТЗ:</b> фактические трудозатраты поступают из внешней БД, связанной с Jira. Отрицательная разница означает, что факт ниже оценки.</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel generic-panel" data-panel="reports">
+          <div class="panel-card">
+            <div class="panel-header"><h2>Отчётные статусы для встреч</h2><span class="section-note">Предыдущий статус и дата изменения сохранены полностью</span></div>
+            <div class="panel-body report-grid">
+              <article class="report-card">
+                <div class="report-top"><span class="report-mark"></span><strong>Директорская оперативка</strong></div>
+                <div class="report-field"><div class="report-label">Статус предыдущей встречи · только чтение</div><div class="report-value">Сформирован черновик целевого процесса, открыты вопросы по ограничениям.</div></div>
+                <div class="report-field"><div class="report-label">Текущий статус</div><div class="report-value view-value" data-display="directorateStatus">Согласован целевой процесс. Ожидаем финальный контракт API лимитов.</div><textarea class="textarea" data-input="directorateStatus">Согласован целевой процесс. Ожидаем финальный контракт API лимитов.</textarea></div>
+                <div class="report-field"><div class="report-label">Дата изменения · только чтение</div><div class="report-value">21 августа 2026, 16:40</div></div>
+              </article>
+              <article class="report-card">
+                <div class="report-top"><span class="report-mark"></span><strong>Оперативка ДИД</strong></div>
+                <div class="report-field"><div class="report-label">Статус предыдущей встречи · только чтение</div><div class="report-value">Жёлтый статус: не подтверждён срок поставки интеграционного метода.</div></div>
+                <div class="report-field"><div class="report-label">Текущий статус</div><div class="report-value view-value" data-display="didStatus">Зелёный статус. Контрольная дата подтверждена, критичных рисков нет.</div><textarea class="textarea" data-input="didStatus">Зелёный статус. Контрольная дата подтверждена, критичных рисков нет.</textarea></div>
+                <div class="report-field"><div class="report-label">Дата изменения · только чтение</div><div class="report-value">22 августа 2026, 11:15</div></div>
+                <div class="report-field toggle-row"><div><div class="report-label">Демо для ДИД</div><div class="report-value view-value" data-display="didDemo">Да</div></div><label class="switch"><input id="didDemo" data-input="didDemo" type="checkbox" checked><span></span></label></div>
+              </article>
+              <article class="report-card">
+                <div class="report-top"><span class="report-mark"></span><strong>Встреча по ключевым проектам</strong></div>
+                <div class="report-field"><div class="report-label">Статус предыдущей встречи · только чтение</div><div class="report-value">Уточнялся состав MVP и критерии допуска к пилоту.</div></div>
+                <div class="report-field"><div class="report-label">Текущий статус</div><div class="report-value view-value" data-display="keyStatus">В работе. Демо проверки нескольких активных ограничений — 28 августа.</div><textarea class="textarea" data-input="keyStatus">В работе. Демо проверки нескольких активных ограничений — 28 августа.</textarea></div>
+                <div class="report-field"><div class="report-label">Дата изменения · только чтение</div><div class="report-value">Сегодня, 14:32</div></div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel generic-panel" data-panel="comments">
+          <div class="panel-card">
+            <div class="panel-header"><h2>Комментарии</h2><span class="section-note">Используйте @ для упоминания</span></div>
+            <div class="panel-body">
+              <div class="comment-compose"><span class="avatar">ТК</span><textarea id="newComment" placeholder="Добавить комментарий…"></textarea><button class="button primary small" id="sendComment">Отправить</button></div>
+              <div id="commentList">
+                <article class="comment"><span class="avatar">НО</span><div><div class="comment-head"><strong>Николай Орлов</strong><time>сегодня, 14:32</time></div><p>Получили черновик контракта. Основные методы совпадают с ожиданиями, остался вопрос по таймаутам.</p></div></article>
+                <article class="comment"><span class="avatar">АМ</span><div><div class="comment-head"><strong>Анна Морозова</strong><time>вчера, 17:05</time></div><p>@Николай Орлов, добавьте, пожалуйста, на демо сценарий с несколькими активными ограничениями.</p></div></article>
+                <article class="comment"><span class="avatar">ЕК</span><div><div class="comment-head"><strong>Елена Кузнецова</strong><time>20 августа, 10:18</time></div><p>Макеты предупреждений готовы, ссылка добавлена во вкладку «Ссылки и система».</p></div></article>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel generic-panel" data-panel="links">
+          <div class="panel-card">
+            <div class="panel-header"><h2>Ссылки и артефакты</h2><span class="section-note">Макеты, Jira и бизнес-требования</span></div>
+            <div class="panel-body">
+              <div class="link-list" id="linkList">
+                <div class="link-row"><span class="link-kind">МАКЕТЫ</span><a href="#" data-display="mockupUrl">https://figma.example.com/dmb/credit-limits</a><button class="icon-button danger remove-link" aria-label="Удалить ссылку"><svg class="icon" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></svg></button></div>
+                <div class="link-row"><span class="link-kind">JIRA</span><a href="#">https://jira.example.com/browse/DMB-1428</a><button class="icon-button danger remove-link" aria-label="Удалить ссылку"><svg class="icon" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></svg></button></div>
+                <div class="link-row"><span class="link-kind">БИЗНЕС-ТРЕБОВАНИЯ</span><a href="#">https://docs.example.com/requirements/limit-check</a><button class="icon-button danger remove-link" aria-label="Удалить ссылку"><svg class="icon" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></svg></button></div>
+              </div>
+              <div class="add-link"><select class="control" id="linkType" style="display:block;max-width:190px"><option>Ссылка на макеты</option><option>Ссылка на Jira</option><option>Ссылка на бизнес-требования</option></select><input id="newLink" type="url" placeholder="https://…"><button class="button secondary" id="addLink">Добавить ссылку</button></div>
+            </div>
+          </div>
+          <div class="panel-card" style="margin-top:14px">
+            <div class="panel-header"><h2>Файлы <span class="counter">3</span></h2><span class="section-note">Максимальный размер одного файла — 50 МБ</span></div>
+            <div class="panel-body">
+              <button class="attachment-zone" id="attachmentZone" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/></svg><span><strong>Перетащите файлы сюда или выберите</strong>PDF, DOCX, XLSX, PNG и другие рабочие форматы</span></button>
+              <div class="attachment-list">
+                <div class="attachment"><span class="file-mark">PDF</span><div><div class="file-name">Требования_к_проверке_лимитов_v4.pdf</div><div class="file-meta">1,8 МБ · Елена Кузнецова · 20 августа</div></div><button class="icon-button danger" aria-label="Удалить файл"><svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15"/></svg></button></div>
+                <div class="attachment"><span class="file-mark">XLS</span><div><div class="file-name">Расчёт_эффекта.xlsx</div><div class="file-meta">420 КБ · Николай Орлов · 19 августа</div></div><button class="icon-button danger" aria-label="Удалить файл"><svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15"/></svg></button></div>
+                <div class="attachment"><span class="file-mark">PNG</span><div><div class="file-name">Схема_целевого_процесса.png</div><div class="file-meta">860 КБ · Анна Морозова · 18 августа</div></div><button class="icon-button danger" aria-label="Удалить файл"><svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15"/></svg></button></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel-card" style="margin-top:14px">
+            <div class="panel-header"><h2>Системная информация</h2><span class="section-note">Только чтение</span></div>
+            <div class="panel-body field-grid">
+              <div class="field"><span class="field-label">Автор задачи</span><div class="field-value person"><span class="avatar">АМ</span>А. Морозова</div></div>
+              <div class="field"><span class="field-label">Дата создания</span><div class="field-value">12 августа 2026, 09:42</div></div>
+              <div class="field full"><span class="field-label">Последнее изменение</span><div class="field-value">24 августа 2026, 14:32</div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel generic-panel" data-panel="history">
+          <div class="panel-card">
+            <div class="panel-header"><h2>История изменений</h2><span class="section-note">12 событий</span></div>
+            <div class="panel-body history-wrap">
+              <table class="history"><thead><tr><th>Дата</th><th>Пользователь</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead><tbody>
+                <tr><td>Сегодня, 14:32</td><td>Н. Орлов</td><td>Прогресс</td><td>55%</td><td>60%</td></tr>
+                <tr><td>22 авг., 11:15</td><td>Е. Кузнецова</td><td>Статус ДиД</td><td>—</td><td>Зелёный статус</td></tr>
+                <tr><td>21 авг., 16:40</td><td>Н. Орлов</td><td>Срок</td><td>15.09.2026</td><td>30.09.2026</td></tr>
+                <tr><td>20 авг., 10:18</td><td>Е. Кузнецова</td><td>Ссылка на макеты</td><td>—</td><td>Добавлена</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="modal-footer">
+        <div class="footer-meta"><b>Автор:</b> Анна Морозова · <b>Создана:</b> 12 августа 2026</div>
+        <div class="footer-actions">
+          <span class="unsaved">Есть изменения</span>
+          <button class="button secondary" id="cancelEdit" data-mode="edit"><svg class="icon" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></svg>Отменить</button>
+          <button class="button primary" id="saveEdit" data-mode="edit"><svg class="icon" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg>Сохранить</button>
+          <button class="button primary" id="startEdit" data-mode="view"><svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Редактировать</button>
+        </div>
+      </footer>
+    </article>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">✓ <span>Готово</span></div>
+
+  <script>
+    const overlay = document.getElementById('overlay');
+    const card = document.getElementById('taskCard');
+    const toast = document.getElementById('toast');
+    let toastTimer;
+    let snapshot = {};
+
+    function notify(message) {
+      toast.querySelector('span').textContent = message;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2300);
+    }
+
+    function openTab(name) {
+      document.querySelectorAll('.tab').forEach(button => button.classList.toggle('active', button.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.dataset.panel === name));
+      document.querySelector('.modal-body').scrollTop = 0;
+    }
+
+    document.querySelectorAll('.tab').forEach(button => button.addEventListener('click', () => openTab(button.dataset.tab)));
+    document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => openTab(button.dataset.go)));
+
+    function collectInputs() {
+      const state = {};
+      document.querySelectorAll('[data-input]').forEach(input => state[input.dataset.input] = input.type === 'checkbox' ? input.checked : input.value);
+      state.progress = document.getElementById('progressRange').value;
+      return state;
+    }
+
+    function restoreInputs(state) {
+      document.querySelectorAll('[data-input]').forEach(input => {
+        if (!Object.prototype.hasOwnProperty.call(state, input.dataset.input)) return;
+        if (input.type === 'checkbox') input.checked = Boolean(state[input.dataset.input]);
+        else input.value = state[input.dataset.input];
+      });
+      if (state.progress != null) updateProgress(state.progress);
+    }
+
+    function formatDate(value) {
+      if (!value) return '—';
+      return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value + 'T12:00:00'));
+    }
+
+    function updateProgress(value) {
+      const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+      document.getElementById('progressRange').value = safeValue;
+      document.getElementById('progressValue').textContent = safeValue + '%';
+      document.getElementById('progressFill').style.width = safeValue + '%';
+    }
+
+    function setEditing(editing) {
+      card.classList.toggle('is-editing', editing);
+      document.getElementById('editChip').hidden = !editing;
+      document.getElementById('didDemo').disabled = !editing;
+      if (editing) openTab('overview');
+    }
+
+    document.getElementById('startEdit').addEventListener('click', () => {
+      snapshot = collectInputs();
+      setEditing(true);
+      document.querySelector('[data-input="project"]').focus();
+    });
+
+    document.getElementById('cancelEdit').addEventListener('click', () => {
+      restoreInputs(snapshot);
+      setEditing(false);
+      notify('Изменения отменены');
+    });
+
+    document.getElementById('saveEdit').addEventListener('click', () => {
+      document.querySelectorAll('[data-input]').forEach(input => {
+        const displays = document.querySelectorAll('[data-display="' + input.dataset.input + '"]');
+        let value = input.type === 'checkbox' ? (input.checked ? 'Да' : 'Нет') : (input.type === 'date' ? formatDate(input.value) : input.value || '—');
+        if (input.dataset.input === 'weightPercent' || input.dataset.input === 'forecastPercent') value = String(input.value || '0') + '%';
+        displays.forEach(display => display.textContent = value);
+      });
+      const status = document.querySelector('[data-input="status"]').value;
+      const priority = document.querySelector('[data-input="priority"]').value;
+      document.getElementById('headerStatus').textContent = status;
+      document.getElementById('headerPriority').textContent = priority;
+      snapshot = collectInputs();
+      setEditing(false);
+      notify('Задача #1428 сохранена');
+    });
+
+    document.getElementById('progressRange').addEventListener('input', event => updateProgress(event.target.value));
+    document.getElementById('closeModal').addEventListener('click', () => { overlay.hidden = true; });
+    document.getElementById('reopen').addEventListener('click', () => { overlay.hidden = false; });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !overlay.hidden) {
+        if (card.classList.contains('is-editing')) notify('Сначала сохраните или отмените изменения');
+        else overlay.hidden = true;
+      }
+    });
+
+    document.getElementById('copyId').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText('1428'); } catch (_) {}
+      notify('ID задачи скопирован');
+    });
+    document.getElementById('copyLink').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText('https://dmb.local/#/backlog?task=1428'); } catch (_) {}
+      notify('Ссылка на задачу скопирована');
+    });
+
+    document.getElementById('sendComment').addEventListener('click', () => {
+      const input = document.getElementById('newComment');
+      const text = input.value.trim();
+      if (!text) { notify('Введите текст комментария'); return; }
+      const article = document.createElement('article');
+      article.className = 'comment';
+      article.innerHTML = '<span class="avatar">ТК</span><div><div class="comment-head"><strong>Текущий пользователь</strong><time>только что</time></div><p></p></div>';
+      article.querySelector('p').textContent = text;
+      document.getElementById('commentList').prepend(article);
+      input.value = '';
+      const counter = document.getElementById('commentCount');
+      counter.textContent = Number(counter.textContent) + 1;
+      notify('Комментарий добавлен');
+    });
+
+    document.getElementById('addLink').addEventListener('click', () => {
+      const input = document.getElementById('newLink');
+      const value = input.value.trim();
+      if (!/^https?:\/\//i.test(value)) { notify('Укажите ссылку, начинающуюся с http:// или https://'); return; }
+      const row = document.createElement('div');
+      row.className = 'link-row';
+      row.innerHTML = '<span class="link-kind"></span><a target="_blank" rel="noopener"></a><button class="icon-button danger remove-link" aria-label="Удалить ссылку"><svg class="icon" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></svg></button>';
+      row.querySelector('.link-kind').textContent = document.getElementById('linkType').value.replace('Ссылка на ', '').toUpperCase();
+      row.querySelector('a').href = value;
+      row.querySelector('a').textContent = value;
+      document.getElementById('linkList').append(row);
+      input.value = '';
+      notify('Ссылка добавлена');
+    });
+    document.getElementById('linkList').addEventListener('click', event => {
+      const button = event.target.closest('.remove-link');
+      if (!button) return;
+      button.closest('.link-row').remove();
+      notify('Ссылка удалена из макета');
+    });
+
+    document.getElementById('attachmentZone').addEventListener('click', () => notify('В рабочей версии откроется выбор файлов'));
+    document.querySelectorAll('.attachment .icon-button').forEach(button => button.addEventListener('click', () => {
+      button.closest('.attachment').remove();
+      notify('Файл удалён из макета');
+    }));
+
+    snapshot = collectInputs();
+    setEditing(false);
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 console.log('[DMB] kanbanBoard.js v20260626.7 loaded');
-import { renderTaskCard } from './modal.js?v=71';
+import { renderTaskCard } from './modal.js?v=90';
 
 let kanbanCurrentTasks = [];
 let statusNameToId = {};
@@ -189,13 +189,13 @@ export async function initKanban(app) {
             teamFilter = `&team_id=${user.team_id}`;
         } else if (user?.team) {
             try {
-                const teamsResp = await app.api.get('/teams');
+                const teamsResp = await app.api.get('/teams/');
                 const teams = teamsResp.items || [];
                 const userTeam = teams.find(t => t.name === user.team);
                 if (userTeam) teamFilter = `&team_id=${userTeam.id}`;
             } catch {}
         }
-        const data = await app.api.get(`/tasks?per_page=500${teamFilter}`);
+        const data = await app.api.get(`/tasks/?per_page=500${teamFilter}`);
         const items = data.items || data.tasks || data || [];
         kanbanCurrentTasks = items;
         // Строим statusNameToId: базовый маппинг + из задач (перетирает при совпадении)
@@ -218,7 +218,7 @@ export async function initKanban(app) {
         }
         renderKanbanCards(app, items);
 
-        const { openTaskModal, openCreateTaskModal, setOnTaskSaved } = await import('./modal.js?v=71');
+        const { openTaskModal, openCreateTaskModal, setOnTaskSaved } = await import('./modal.js?v=90');
         setOnTaskSaved(() => initKanban(app));
 
         document.getElementById('kanban-add-task-btn')?.addEventListener('click', async () => {
@@ -241,13 +241,13 @@ async function reloadTasksFromServer(app) {
         teamFilter = `&team_id=${user.team_id}`;
     } else if (user?.team) {
         try {
-            const teamsResp = await app.api.get('/teams');
+            const teamsResp = await app.api.get('/teams/');
             const teams = teamsResp.items || [];
             const userTeam = teams.find(t => t.name === user.team);
             if (userTeam) teamFilter = `&team_id=${userTeam.id}`;
         } catch { /* ignore */ }
     }
-    const data = await app.api.get(`/tasks?per_page=500${teamFilter}`);
+    const data = await app.api.get(`/tasks/?per_page=500${teamFilter}`);
     const items = data.items || data.tasks || data || [];
     kanbanCurrentTasks = items;
     // Перестраиваем statusNameToId: базовый маппинг + из свежих задач
@@ -399,7 +399,7 @@ function renderKanbanCards(app, tasks) {
                 if (e.target.closest('.btn-icon, .btn')) return;
                 const t = tasks.find(x => String(x.id) === String(card.dataset.id));
                 if (t) {
-                    import('./modal.js?v=71').then(mod => mod.openTaskModal(t));
+                    import('./modal.js?v=90').then(mod => mod.openTaskModal(t));
                 }
             });
             card.addEventListener('dragstart', (e) => {
