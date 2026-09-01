@@ -16,22 +16,32 @@ DMB Backend обращается к нему через HTTP API с секрет
 
 ## Запуск
 
+Штатный запуск всей платформы выполняется из корня репозитория через
+`scripts/start-project.ps1`. Для диагностики только Agent:
+
 ```bash
 pip install -r requirements.txt
 python run.py              # агент на http://127.0.0.1:9000
-python -m pytest agent/tests -q
+python -m pytest agent/tests -q -p no:cacheprovider
 # Отдельный E2E-прогон против уже запущенного сервиса:
 python tests/e2e_scenarios.py --quick
 ```
 
 Конфигурация — `.env` (см. `.env.example`) или переменные окружения:
 `LLM_PROVIDER` (`mock` по умолчанию | `openai_compat`),
-`AGENT_SECRET`, `AGENT_PORT`, `SESSION_DB`. Полный перечень и значения для
+`AGENT_SECRET`, `AGENT_PORT`, `SESSION_DATABASE_URL` (`SESSION_DB` остаётся
+SQLite-fallback для изолированных тестов). Полный перечень и значения для
 локального запуска приведены в `.env.example`.
+Провайдер `mock` подходит для health-check и детерминированных тестов;
+полный агентный диалог требует доступного `openai_compat` endpoint.
+
+При `DEBUG=false` валидатор требует PostgreSQL session store, нестандартный
+`AGENT_SECRET`, `LLM_PROVIDER=openai_compat` и непустой ключ провайдера.
 
 ## API
 
-Все эндпоинты требуют заголовок `X-Agent-Secret`.
+Все бизнес-эндпоинты требуют заголовок `X-Agent-Secret`; health-check
+остаётся публичным для оркестратора.
 
 | Метод | Путь | Назначение |
 |---|---|---|
@@ -42,6 +52,7 @@ python tests/e2e_scenarios.py --quick
 | GET  | `/api/agent/sessions?user_id=…` | Получить сессии пользователя |
 | POST | `/api/agent/session/{session_id}/archive?archived=…` | Архивировать или восстановить сессию |
 | POST | `/api/agent/send-for-review` | Подтвердить отправку драфта на ревью (`session_id`, `task_id`, `title`) |
+| POST | `/api/agent/reopen-review` | Вернуть отправленный запрос в диалог с комментарием ревьюера |
 | POST | `/api/agent/edit-draft-section` | Изменить поле готового драфта (`session_id`, `field`, `value`) |
 | GET  | `/api/agent/config` | Провайдер, интенты, статистика KB, MCP-серверы, инструменты |
 
@@ -81,7 +92,8 @@ agent/
   workflow/       ревью-воркфлоу (заглушки)
   kb_seed/        исходные документы БЗ (products, modules, processes, roles, …)
   prompts/        системный промпт для LLM-провайдера
-  tests/          pytest (160 проверок)
+  telemetry.py    OpenTelemetry tracing и X-Trace-ID
+  tests/          pytest (230 тестов собрано 01.09.2026)
 ```
 
 Каталог верхнего уровня `tests/` содержит отдельный live E2E-сценарий. Он не

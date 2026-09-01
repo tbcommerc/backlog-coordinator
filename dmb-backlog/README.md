@@ -5,11 +5,11 @@
 
 ## Технологический стек
 
-- **Backend**: Python 3.11+, FastAPI, SQLAlchemy 2.0, SQLite/PostgreSQL
+- **Backend**: Python 3.11+, FastAPI, SQLAlchemy 2.0, PostgreSQL 16 + Alembic
 - **Frontend**: Vanilla JavaScript (ES6 modules), CSS Custom Properties (dark/light theme)
 - **Auth**: JWT (HS256, access + refresh tokens), bcrypt
 - **Библиотеки**: Chart.js 4.4.0 (локально), Lucide Icons 0.263.0 (локально)
-- **Rate Limiting**: slowapi (5 запросов/мин на login, 10 запросов/мин на refresh)
+- **Rate Limiting**: Redis в штатном runtime, process-local fallback только для разработки
 - **Тестирование**: pytest + httpx
 
 ## Структура проекта
@@ -19,11 +19,15 @@ dmb-backlog/
 ├── backend/               # FastAPI приложение
 │   ├── main.py            # Точка входа, lifespan, CORS, роутеры
 │   ├── config.py          # Pydantic Settings (из .env)
-│   ├── database.py        # SQLAlchemy engine, session, init_db
-│   ├── models.py          # 10 ORM-моделей (User, Task, Team, Role, NotificationTemplate и др.)
+│   ├── database.py        # SQLAlchemy engine и session
+│   ├── alembic/           # production-миграции PostgreSQL
+│   ├── models.py          # ORM-схема (45 таблиц metadata на 01.09.2026)
 │   ├── schemas.py         # Pydantic схемы (request/response)
 │   ├── auth.py            # JWT, password hashing, permission check
-│   ├── middleware.py       # LoggingMiddleware + AuditMiddleware
+│   ├── middleware.py       # request ID, logging, audit и metrics middleware
+│   ├── event_outbox.py     # transactional outbox → Redis Stream
+│   ├── idempotency.py      # cross-worker идемпотентность
+│   ├── telemetry.py        # OpenTelemetry tracing
 │   ├── seed.py            # Инициализация тестовых данных
 │   ├── requirements.txt
 │   ├── routers/
@@ -32,7 +36,10 @@ dmb-backlog/
 │   │   ├── teams_router.py     # /api/v1/teams
 │   │   ├── users_router.py     # /api/v1/users
 │   │   ├── reports_router.py   # /api/v1/reports
-│   │   └── admin_router.py     # /api/v1/admin (roles, teams, users, dicts, notification-templates)
+│   │   ├── reporting_meetings_router.py # календарь отчётных встреч
+│   │   ├── prioritiser_router.py # вызов Task Prioritiser
+│   │   ├── events_router.py    # авторизованный SSE
+│   │   └── admin_router.py     # /api/v1/admin
 │   └── logs/              # Файлы логов
 ├── frontend/              # SPA на ванильном JS
 │   ├── index.html
@@ -108,20 +115,19 @@ bash:
 cp .env.example .env
 ```
 
-```env
-DEBUG=true
-DATABASE_URL=sqlite:///./dmb_backlog.db
-SECRET_KEY=your-secret-key-change-in-production-dmb2026
-```
+Штатные значения PostgreSQL и Redis уже приведены в `.env.example`.
 
 ### 4. Запуск
 
-```bash
-cd backend
-uvicorn main:app --reload --port 8000
+Из корня репозитория:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 ```
 
-При первом запуске автоматически создадутся таблицы БД и заполнятся тестовыми данными (18 пользователей, 9 команд, 44 задачи).
+Сценарий поднимает PostgreSQL, Redis, применяет Alembic, запускает AI-агента,
+Task Prioritiser и backend. Автоматический seed защищённых данных выключен. Подробности находятся в
+`docs/LOCAL_DEVELOPMENT.md`.
 
 ### 5. Доступ
 
@@ -129,15 +135,11 @@ uvicorn main:app --reload --port 8000
 - **API**: http://localhost:8000/api/v1/
 - **Swagger**: http://localhost:8000/docs
 
-### 6. Демо-доступ
+### 6. Учётные записи
 
-Любой пользователь из тестовых данных: пароль `dmb2026`
-
-Рекомендуемый вход:
-- **Admin**: `a@dmb.ru` / `dmb2026`
-- **Tribe Leader**: `t.babiak@dmb.ru` / `dmb2026`
-- **PO/PL**: `d.fomin@dmb.ru` / `dmb2026`
-- **Developer**: `a.smirnov@dmb.ru` / `dmb2026`
+Штатный запуск не создаёт и не изменяет пользователей, роли, команды и
+справочники. Доступы выдаются владельцем конкретного окружения; в документации
+не фиксируются рабочие логины и пароли.
 
 ## API Endpoints (все под `/api/v1`)
 
@@ -148,18 +150,19 @@ uvicorn main:app --reload --port 8000
 | `/teams` | CRUD команд |
 | `/users` | CRUD пользователей |
 | `/reports` | CRUD отчётов, выполнение |
+| `/reporting-meetings` | Календарь и проведение отчётных встреч |
+| `/notifications` | Уведомления и пользовательские настройки |
+| `/events` | Авторизованный SSE поток инвалидаций |
+| `/agent` | Proxy к AI Business Analyst и persisted requests |
 | `/admin` | Управление ролями, командами, пользователями, справочниками, шаблонами уведомлений |
 
 Полная спецификация: [docs/API_SPEC.md](docs/API_SPEC.md)
 
 ## Ролевая модель
 
-| Роль | Описание |
-|------|----------|
-| Администратор | Полный доступ ко всем функциям |
-| Лидер Трайба | Аналитика, управление портфелем, частичный admin |
-| PO/PL/CL | Управление задачами своей команды |
-| Бизнес-заказчик | Просмотр задач |
+Права задаются полями роли и object-level scope, а не только названием роли.
+Точную матрицу определяют `backend/auth.py`, dependencies роутеров и security
+tests; клиентское меню не является авторизацией.
 
 Подробнее: [docs/SYSTEM_SPEC.md](docs/SYSTEM_SPEC.md)
 
@@ -184,10 +187,9 @@ uvicorn main:app --reload --port 8000
 
 ## Статусы задач (13 состояний)
 
-1. **Бэклог**: NEW → TEAM_ASSIGNED → COLLECT → CHECK_REQUIREMENTS → CLARIFY_REQUIREMENTS → ESTIMATE → DECISION
-2. **В работе**: WORK
-3. **Закрыто**: DONE / REJECTED / NOT_RELEVANT
-4. **Заморожено**: HOLD / ESCALATION
+Каталог содержит 13 упорядоченных статусов, но backend не задаёт единую строгую
+state machine для обычного обновления задачи. Актуальные коды и локальные
+правила специализированных операций описаны в [docs/SYSTEM_SPEC.md](docs/SYSTEM_SPEC.md).
 
 Подробная диаграмма переходов: [docs/SYSTEM_SPEC.md](docs/SYSTEM_SPEC.md)
 
@@ -219,15 +221,10 @@ uvicorn main:app --reload --port 8000
 
 ## Изменение схемы базы данных
 
-Единственный поддерживаемый источник схемы — `backend/models.py`. При добавлении
-колонки измените SQLAlchemy-модель и перезапустите сервер: `database.ensure_schema()`
-создаст отсутствующую таблицу или добавит отсутствующую колонку.
-
-Не запускайте Alembic, ручные `ALTER TABLE` и скрипты из `backend/migrations/` в
-обычном процессе разработки или развёртывания. Эти файлы сохранены только как
-исторические артефакты. `ensure_schema()` поддерживает лишь аддитивные изменения;
-переименование, удаление, преобразование колонок и перенос данных требуют отдельного
-плана обслуживания, резервной копии и явного согласования.
+Целевую схему описывает `backend/models.py`, а поддерживаемую историю изменений —
+`backend/alembic/versions/`. Любое изменение модели требует новой проверенной
+Alembic-ревизии. `database.ensure_schema()` оставлен только для изолированной
+SQLite-совместимости и не заменяет миграции PostgreSQL.
 
 Подробнее: [docs/SCHEMA_CHANGES.md](docs/SCHEMA_CHANGES.md).
 

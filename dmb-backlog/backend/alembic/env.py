@@ -6,15 +6,9 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from config import settings
 from database import Base
-from models import (
-    Channel, Deadline, Department, Priority, TaskType, TeamType,
-    ProjectStatus, TaskStatus,
-    Team, Role, User, Project, Task, TaskHistory,
-    Notification, Report, DictionaryItem,
-    UserNotificationPreference, AuditLog,
-    Tag, IssueTag, ProjectTag
-)
+import models  # noqa: F401 - registers every model in Base.metadata
 
 config = context.config
 
@@ -22,6 +16,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
@@ -46,6 +41,8 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            compare_type=True,
+            compare_server_default=True,
         )
         with context.begin_transaction():
             context.run_migrations()

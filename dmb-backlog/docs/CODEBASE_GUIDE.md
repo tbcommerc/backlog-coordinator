@@ -1,6 +1,6 @@
 # Путеводитель по кодовой базе — AS-IS
 
-> Статус: проверено по структуре репозитория и точкам входа на 2026-08-24.
+> Статус: проверено по структуре репозитория и точкам входа на 2026-09-01.
 
 ## Быстрый маршрут
 
@@ -9,12 +9,17 @@
 - `backend/main.py` — создание приложения, middleware и регистрация роутеров.
 - `backend/models.py` — SQLAlchemy-модели.
 - `backend/schemas.py` — входные и выходные Pydantic-схемы.
-- `backend/database.py` — подключение БД и `ensure_schema()`.
+- `backend/database.py` — SQLAlchemy engine/session; PostgreSQL-схема меняется Alembic.
+- `backend/alembic/versions/` — последовательность production-миграций.
+- `backend/event_outbox.py`, `idempotency.py`, `worker_lock.py` — гарантии многопользовательского режима.
+- `backend/metrics.py`, `telemetry.py`, `audit_context.py` — наблюдаемость и корреляция запросов.
 - `backend/routers/` — HTTP-операции по функциональным областям.
 - `frontend/index.html` — оболочка SPA.
 - `frontend/js/app.js` — инициализация клиента.
 - `frontend/js/router.js` — клиентские маршруты.
 - `frontend/js/api.js` — HTTP-клиент и обновление сессии.
+- `frontend/js/eventStream.js` — авторизованный SSE и переподключение по cursor.
+- `frontend/js/taskPublicId.js`, `taskMetrics.js` — единое отображение ID и расчётных метрик задачи.
 - `frontend/js/components/` — страницы, таблицы и модальные окна.
 - `frontend/css/tokens.css` — дизайн-токены.
 - `frontend/css/base.css`, `components.css`, `pages.css`, `responsive.css` — стили.
@@ -24,10 +29,10 @@
 
 ## Запуск
 
-Из `dmb-backlog/backend`:
+Для штатного локального запуска из корня:
 
 ```powershell
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
+powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 ```
 
 Backend также раздаёт frontend. Зависимости перечислены в
@@ -38,8 +43,9 @@ Backend также раздаёт frontend. Зависимости перечи�
 
 - API или бизнес-операция: соответствующий файл `backend/routers/`, затем схемы,
   модели и тесты только при реальной зависимости.
-- Поля БД: сначала `backend/models.py`, затем осторожно `database.ensure_schema()`;
-  правила — в [SCHEMA_CHANGES.md](SCHEMA_CHANGES.md).
+- Поля БД: `backend/models.py` и новая Alembic-ревизия; правила — в
+  [SCHEMA_CHANGES.md](SCHEMA_CHANGES.md). `ensure_schema()` не является
+  production-механизмом миграции.
 - Страница SPA: маршрут в `frontend/js/router.js` и компонент в
   `frontend/js/components/`.
 - Общая таблица/фильтры: `taskTable.js`, `teamBacklog.js`, `filterToolbar.js`,

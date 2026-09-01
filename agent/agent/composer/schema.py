@@ -12,6 +12,17 @@ class DraftSource(BaseModel):
     doc_id: str = ""
     source: str = ""
     text: str = ""
+    record_id: str = ""
+    source_type: str = ""
+    title: str = ""
+    section: Optional[str] = None
+    uri: Optional[str] = None
+    score: Optional[float] = None
+    raw_score: Optional[float] = None
+    provider: str = ""
+    rank: Optional[int] = None
+    version: Optional[str] = None
+    metadata: dict = Field(default_factory=dict)
 
 
 class RequirementDraft(BaseModel):
@@ -48,6 +59,9 @@ class RequirementDraft(BaseModel):
     quality_profile: str = ""
     quality_issues: list[dict] = Field(default_factory=list)
     conflicts: list[dict] = Field(default_factory=list)
+    gaps: list[dict] = Field(default_factory=list)
+    review_findings: list[dict] = Field(default_factory=list)
+    review_blocked: bool = False
     status: str = "Draft"            # Draft / Needs Review / Approved
     created_by: dict = Field(default_factory=dict)
 
@@ -109,6 +123,15 @@ def to_markdown(draft: RequirementDraft) -> str:
     if draft.open_questions:
         L.append("## Открытые вопросы")
         L.extend(f"- {q}" for q in draft.open_questions)
+        L.append("")
+    if draft.gaps:
+        L.append("## Реестр пробелов")
+        for gap in draft.gaps:
+            L.append(f"- [{gap.get('criticality', 'low')}] {gap.get('question', '')}")
+        L.append("")
+    if draft.review_findings:
+        L.append("## Независимая проверка")
+        L.extend(f"- [{f.get('severity', 'warning')}] {f.get('message', '')}" for f in draft.review_findings)
         L.append("")
     if draft.conflicts:
         L.append("## Обнаруженные противоречия")

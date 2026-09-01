@@ -1,7 +1,7 @@
 # Импорт задач из CSV — AS-IS
 
 > Статус: проверено по `backend/import_service.py`,
-> `backend/routers/tasks_router.py` и `frontend/js/components/modal.js` на 2026-08-24.
+> `backend/routers/tasks_router.py` и `frontend/js/components/modal.js` на 2026-09-01.
 
 ## Контракт
 

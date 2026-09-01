@@ -1,12 +1,15 @@
 console.log('[DMB] teamBacklog.js v20260806.1 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=81';
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=91';
 import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=90';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=71';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=66';
-import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=48';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=81';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=76';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=50';
 import { safeExternalUrl } from '../urlUtils.js';
 import { bindViewStateAction, renderViewState } from './viewState.js';
+import { formatTaskPublicId } from '../taskPublicId.js';
+import { getSelectedItems, reconcileSelection, setAllSelection } from './tableSelection.js';
+import { calculateTaskCv, cvZone } from '../taskMetrics.js';
 
 function renderExternalTeamLink(value, label) {
   const url = safeExternalUrl(value);
@@ -36,6 +39,7 @@ let teamAutoRefreshTimer = null;
 let teamKeyboardHandler = null;
 let teamTasksLoadInProgress = false;
 let teamTasksReloadQueued = false;
+const teamSelectedTaskIds = new Set();
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
 
@@ -137,6 +141,7 @@ async function applyTeamDefaultDisplaySettings(app) {
 }
 
 export async function initTeamBacklog(app) {
+    teamSelectedTaskIds.clear();
     teamCurrentApp = app;
     const user = app.store.get('currentUser');
     if (!user?.team_id) {
@@ -254,7 +259,7 @@ function isTeamBacklogRouteActive() {
 
 function isTeamBacklogInteractionActive() {
     return isQuickEdit('team')
-        || document.querySelector('.task-checkbox:checked') !== null
+        || teamSelectedTaskIds.size > 0
         || document.getElementById('task-detail-overlay') !== null
         || document.getElementById('create-task-overlay') !== null
         || document.getElementById('bulk-modal-overlay') !== null;
@@ -340,6 +345,7 @@ function getTeamFilteredList() {
 
 function renderTeamCurrentView() {
     const list = getTeamFilteredList();
+    reconcileSelection(teamSelectedTaskIds, list, task => canEditTaskForScope('team', task));
     const countEl = document.getElementById('team-tasks-count');
     if (countEl) countEl.textContent = `Найдено: ${list.length} задач`;
     const totalPages = Math.max(1, Math.ceil(list.length / TEAM_PAGE_SIZE));
@@ -403,7 +409,7 @@ function renderTeamTableView(list) {
                 <colgroup>${checkboxCol}${colgroupHtml}</colgroup>
                 <thead>
                     <tr>
-                        ${showCheckbox ? '<th><input type="checkbox" id="select-all"></th>' : ''}
+                        ${showCheckbox ? '<th class="table-selection-cell"><input type="checkbox" id="select-all" aria-label="Выбрать все отфильтрованные задачи"></th>' : ''}
                         ${headerHtml}
                     </tr>
                 </thead>
@@ -492,7 +498,7 @@ function renderTeamCell(col, task) {
   }
 
     switch (col) {
-        case 'id': return `<span class="font-mono text-muted">#${task.id}</span>`;
+        case 'id': return `<span class="font-mono text-muted">${formatTaskPublicId(task)}</span>`;
         case 'title': return `<strong class="cell-truncate">${escapeHtml(task.title)}</strong>`;
         case 'description': return `<span class="cell-truncate">${escapeHtml(task.description || '—')}</span>`;
         case 'date_received': return `<span>${escapeHtml(task.date_received || '—')}</span>`;
@@ -569,7 +575,7 @@ function renderTeamTableRow(task, cols, showCheckbox) {
         : hasChanges
         ? `cursor:default;border-left:3px solid var(--warning);`
         : (isQuickEdit('team') ? 'cursor:default;' : 'cursor:pointer;');
-    const checkboxHtml = showCheckbox ? `<td>${canEditTaskForScope('team', task) ? `<input type="checkbox" class="task-checkbox" value="${task.id}" aria-label="Выбрать задачу ${task.id}">` : '<span title="Нет прав на изменение этой задачи" style="color:var(--text-muted);">—</span>'}</td>` : '';
+    const checkboxHtml = showCheckbox ? `<td class="table-selection-cell">${canEditTaskForScope('team', task) ? `<input type="checkbox" class="task-checkbox" value="${task.id}" aria-label="Выбрать задачу ${task.id}" ${teamSelectedTaskIds.has(Number(task.id)) ? 'checked' : ''}>` : '<span title="Нет прав на изменение этой задачи" style="color:var(--text-muted);">—</span>'}</td>` : '';
     const errorCells = saveError && cells.length > 0
         ? cells.map((cell, index) => index === 0
             ? cell.replace('>', ` title="${escapeHtml(saveError)}">⚠ `).replace('</td>', `<div style="margin-top:4px;color:var(--danger);font-size:11px;white-space:normal;">${escapeHtml(saveError)}</div></td>`)
@@ -616,6 +622,7 @@ async function populateTeamSelect(selectedTeamId) {
 function setupTaskFormSave(modal, task, app) {
     document.getElementById('modal-confirm')?.addEventListener('click', async () => {
         const data = {
+            version: task?.version ?? 0,
             team_id: parseInt(document.getElementById('task-team').value),
             title: document.getElementById('task-title').value,
             description: document.getElementById('task-description')?.value || '',
@@ -652,18 +659,26 @@ function setupTaskFormSave(modal, task, app) {
 
 function bindSelectAll() {
     document.getElementById('select-all')?.addEventListener('change', function () {
-        document.querySelectorAll('.task-checkbox').forEach(cb => cb.checked = this.checked);
+        setAllSelection(teamSelectedTaskIds, getTeamFilteredList(), this.checked, task => canEditTaskForScope('team', task));
+        document.querySelectorAll('.task-checkbox').forEach(cb => { cb.checked = teamSelectedTaskIds.has(Number(cb.value)); });
         updateBulkBar();
     });
     document.querySelectorAll('.task-checkbox').forEach(cb => {
-        cb.addEventListener('change', updateBulkBar);
+        cb.addEventListener('change', function () {
+            const id = Number(this.value);
+            if (this.checked) teamSelectedTaskIds.add(id);
+            else teamSelectedTaskIds.delete(id);
+            updateBulkBar();
+        });
     });
     document.getElementById('team-bulk-selected')?.addEventListener('click', () => openTeamBulkOps(teamCurrentApp));
     updateBulkBar();
 }
 
 function updateBulkBar() {
-    const checked = document.querySelectorAll('.task-checkbox:checked').length;
+    const editable = getTeamFilteredList().filter(task => canEditTaskForScope('team', task));
+    reconcileSelection(teamSelectedTaskIds, editable);
+    const checked = teamSelectedTaskIds.size;
     const bar = document.getElementById('bulk-actions');
     if (bar) {
         bar.style.display = checked > 0 ? 'flex' : 'none';
@@ -673,18 +688,25 @@ function updateBulkBar() {
     if (action) action.textContent = `Массовые операции (${checked})`;
     const toolbarAction = document.getElementById('team-bulk-open');
     if (toolbarAction) toolbarAction.title = checked > 0 ? `Массовые операции (${checked} выбрано)` : 'Массовые операции';
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.checked = editable.length > 0 && checked === editable.length;
+        selectAll.indeterminate = checked > 0 && checked < editable.length;
+    }
 }
 
 function getTeamSelectedTasks() {
-    const ids = new Set([...document.querySelectorAll('.task-checkbox:checked')].map(cb => Number(cb.value)));
-    return (teamTasksCache?.items || []).filter(task => ids.has(task.id));
+    return getSelectedItems(teamSelectedTaskIds, getTeamFilteredList());
 }
 
 async function openTeamBulkOps(app) {
     const selected = getTeamSelectedTasks();
     const editable = getTeamFilteredList().filter(task => canEditTaskForScope('team', task));
     const result = await showBulkOpsModal(app, 'team', selected.length > 0 ? selected : editable);
-    if (result?.success) await loadTeamTasks(app);
+    if (result?.success) {
+        teamSelectedTaskIds.clear();
+        await loadTeamTasks(app);
+    }
 }
 
 function metricFormat(val) {
@@ -721,11 +743,11 @@ function excelValue(val) {
 }
 
 function renderCV(task) {
-  const cv = task.financial_effect && task.effort_rub && task.effort_rub > 0
-    ? (task.financial_effect / task.effort_rub).toFixed(2) : null;
-  if (cv === null) return '<span class="badge badge-low">—</span>';
-  const cls = parseFloat(cv) > 1.5 ? 'badge-high' : parseFloat(cv) > 1.0 ? 'badge-warning' : 'badge-danger';
-  return `<span class="badge ${cls}">${cv}</span>`;
+  const cv = calculateTaskCv(task);
+  const zone = cvZone(cv);
+  if (zone === 'missing') return '<span class="badge badge-danger">Нет данных</span>';
+  const cls = zone === 'good' ? 'badge-status-done' : zone === 'warning' ? 'badge-warning' : 'badge-danger';
+  return `<span class="badge ${cls}">${cv.toFixed(2)}</span>`;
 }
 
 function renderTeamDeadline(task) {
@@ -785,8 +807,8 @@ function teamExportExcel(list) {
         const row = fields.map(f => {
             let val = t[f] ?? '';
             if (f === 'cv') {
-                val = t.financial_effect && t.effort_rub && t.effort_rub > 0
-                    ? (t.financial_effect / t.effort_rub).toFixed(2) : '—';
+                const cv = calculateTaskCv(t);
+                val = cv == null ? 'Нет данных' : cv.toFixed(2);
             } else if (f === 'involved_teams') {
                 val = (t.involved_team_names || t.involved_teams || []).join(', ');
             } else if (f === 'link_jira') {

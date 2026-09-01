@@ -1,6 +1,7 @@
 console.log('[DMB] quickFilters.js loaded');
 
-import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask, updateStickyOffsets } from './filterToolbar.js?v=81';
+import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask } from './filterToolbar.js?v=91';
+import { calculateTaskCv } from '../taskMetrics.js';
 
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
@@ -56,10 +57,13 @@ const QUICK_FILTERS = [
   },
   {
     key: 'high_cv',
-    label: 'C/V > 1',
+    label: 'Проблемный C/V',
     icon: '<i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>',
     iconBg: 'background:var(--danger-light);color:var(--danger);',
-    test: (t) => t.financial_effect != null && t.effort_rub > 0 && (t.financial_effect / t.effort_rub) > 1,
+    test: (t) => {
+      const cv = calculateTaskCv(t);
+      return cv == null || cv > 1;
+    },
   },
 ];
 
@@ -98,32 +102,12 @@ function setMobilePanelOpen(open) {
 }
 
 export function initQuickFilters(scope, getTasks) {
-  function syncDesktopFilterWidth() {
-    const panel = document.getElementById('quick-filters');
-    const buttons = Array.from(panel?.querySelectorAll('.quick-filter-btn') || []);
-    if (!panel || buttons.length === 0) return;
-    panel.style.removeProperty('--quick-filter-item-width');
-    requestAnimationFrame(() => {
-      const widths = buttons.map(btn => {
-        const previousWidth = btn.style.width;
-        btn.style.width = 'max-content';
-        const width = btn.getBoundingClientRect().width;
-        btn.style.width = previousWidth;
-        return width;
-      });
-      const widest = Math.ceil(Math.max(...widths));
-      panel.style.setProperty('--quick-filter-item-width', `${widest}px`);
-      updateStickyOffsets();
-    });
-  }
-
   function updateCounts() {
     const tasks = getTasks ? getTasks() : [];
     QUICK_FILTERS.forEach(f => {
       const el = document.getElementById(`qf-${f.key}-count`);
       if (el) el.textContent = tasks.filter(f.test).length;
     });
-    syncDesktopFilterWidth();
   }
 
   function applyFilter(key) {

@@ -1,0 +1,29 @@
+# Runtime dependencies for the prototype. Python 3.11+.
+# Pinned so a clean clone reproduces the same numbers.
+
+SQLAlchemy==2.0.36
+pydantic==2.9.2
+pydantic-settings==2.6.1
+PyYAML==6.0.2
+python-dateutil==2.9.0.post0
+
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+httpx==0.27.2
+
+# LLM-провайдеры. anthropic нужен только при LLM_PROVIDER=anthropic,
+# GigaChat работает поверх httpx и отдельного пакета не требует.
+anthropic==0.75.0
+
+streamlit==1.40.2
+pandas==2.2.3
+
+# RAG: лексический и плотный слои. sentence-transformers тянет torch (~2.5 ГБ) —
+# это цена полноценного семантического поиска. Без них поиск не падает, а
+# деградирует до BM25; проверить, какой режим активен, можно командой
+# `python -m app.cli rag-status`.
+rank-bm25==0.2.2
+faiss-cpu==1.15.0
+sentence-transformers==5.7.0
+
+pytest==8.3.4

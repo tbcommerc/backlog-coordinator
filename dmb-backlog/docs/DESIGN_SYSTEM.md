@@ -2,7 +2,7 @@
 title: Дизайн-система DMB Backlog
 scope: as-is
 status: verified-index
-last_verified: 2026-08-24
+last_verified: 2026-09-01
 source_of_truth:
   - frontend/css/tokens.css
   - frontend/css/base.css

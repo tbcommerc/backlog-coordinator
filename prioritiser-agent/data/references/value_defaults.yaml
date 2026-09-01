@@ -1,0 +1,73 @@
+# Типовые вводные для расчёта Value, когда атрибуты задачи их не содержат
+# (ТЗ v2.0, Ф2 и Ф5). Использование типового значения вместо явного понижает
+# уровень уверенности — именно поэтому каждый параметр помечен `typical: true`.
+#
+# Цифры — консервативные модельные допущения прототипа, а не выверенная
+# статистика трайба. Методологу следует заменить их фактическими данными;
+# до этого момента любой авторасчёт Value имеет уверенность не выше «Средний».
+version: 1
+
+# --- Зарабатывающие команды: доходный метод ---------------------------------
+# value_internal = N_сделок_за_3_года × стоимость_сделки × дисконт_фактор
+earning:
+  default_deals_per_year:
+    value: 1
+    typical: true
+    comment: "Одна дополнительная сделка в год — нижняя граница правдоподобия."
+  by_team:
+    "IB":
+      deals_per_year: 1
+      typical: true
+    "Pre-Trade":
+      deals_per_year: 2
+      typical: true
+      comment: "Pre-Trade работает с воронкой, эффект размазан по большему числу сделок."
+
+# --- Обслуживающие команды: метод экономии времени --------------------------
+# value_internal = N_польз × минут × частота_в_год × стоимость_минуты × горизонт × дисконт
+serving:
+  defaults:
+    users:
+      value: 20
+      typical: true
+      comment: "Типовое число пользователей внутренней витрины/процесса."
+    minutes_per_operation:
+      value: 15
+      typical: true
+    operations_per_year:
+      value: 50
+      typical: true
+  by_team:
+    "ИТ ЛТ":
+      users: 50
+      minutes_per_operation: 10
+      operations_per_year: 100
+      typical: true
+    "Post-Trade (Products & Service)":
+      users: 30
+      minutes_per_operation: 20
+      operations_per_year: 60
+      typical: true
+    "Post-Trade (Finance)":
+      users: 15
+      minutes_per_operation: 30
+      operations_per_year: 40
+      typical: true
+    "Methodology":
+      users: 10
+      minutes_per_operation: 30
+      operations_per_year: 20
+      typical: true
+    "AI":
+      users: 40
+      minutes_per_operation: 15
+      operations_per_year: 80
+      typical: true
+
+# --- Задачи с нулевым Value --------------------------------------------------
+zero_value:
+  categories: ["regulatory", "rnd"]
+  comment: >-
+    Регуляторные и RnD/L2P-задачи получают value_internal = 0 и флаг
+    zero_value_reason. В скор они входят не через F1/F2, а через
+    правила-овверрайды (ТЗ Ф2, Ф14).

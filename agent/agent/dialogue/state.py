@@ -144,6 +144,20 @@ class Slot:
 
 
 @dataclass
+class Gap:
+    """A traceable unresolved question carried through dialogue and review."""
+
+    id: str
+    category: str  # business | technical | user_requirement | quality
+    criticality: str  # high | medium | low
+    question: str
+    source: str = ""
+    slot: str = ""
+    status: str = "open"  # open | resolved | deferred
+    resolution: str = ""
+
+
+@dataclass
 class DialogueState:
     session_id: str = ""
     user_id: int = 0
@@ -176,6 +190,7 @@ class DialogueState:
     review_status: str = ""         # "" | draft | needs_review
     review_task_id: Optional[int] = None
     quality_assessment: dict = field(default_factory=dict)
+    gaps: List[Gap] = field(default_factory=list)
     pending_quality_slot: Optional[str] = None
     quality_asked_codes: List[str] = field(default_factory=list)
     
@@ -275,8 +290,11 @@ class DialogueState:
             return [str(v) for v in val]
         return [v.strip() for v in str(val).split(";") if v.strip()]
 
-    def add_message(self, role: str, content: str):
-        self.history.append({"role": role, "content": content[:4000]})
+    def add_message(self, role: str, content: str, message_id: str = ""):
+        entry = {"role": role, "content": content}
+        if message_id:
+            entry["message_id"] = message_id
+        self.history.append(entry)
 
     def progress(self) -> List[dict]:
         items = []

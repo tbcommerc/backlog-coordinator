@@ -80,6 +80,7 @@ def test_business_customer_cannot_change_agent_request_status(target_status):
     user = SimpleNamespace(role_name="Бизнес-заказчик")
     body = AgentRequestStatusUpdate(
         status=target_status,
+        version=0,
         reject_reason="Причина" if target_status == "rejected" else "",
     )
 

@@ -44,6 +44,10 @@ MEASURABLE_MARKERS = (
     "когда ", "отображается", "формируется", "сохраняется", "запрещено", "доступно",
 )
 VAGUE_MARKERS = ("удобно", "быстро", "корректно", "качественно", "оптимально", "гибко")
+NON_VALUE_MARKERS = (
+    "требование руководства", "поручение руководства", "надо сделать",
+    "попросило руководство", "решение руководства",
+)
 
 
 @dataclass
@@ -90,6 +94,11 @@ def acceptance_is_measurable(value: str) -> bool:
     low = (value or "").lower()
     return bool(re.search(r"\d", low) or any(marker in low for marker in MEASURABLE_MARKERS)) \
         and not (len(low.split()) <= 4 and any(marker in low for marker in VAGUE_MARKERS))
+
+
+def business_value_is_effect(value: str) -> bool:
+    low = (value or "").strip().lower()
+    return bool(low) and not any(marker in low for marker in NON_VALUE_MARKERS)
 
 
 def _conflicts(state: DialogueState) -> list[QualityIssue]:
@@ -141,8 +150,17 @@ def assess_quality(state: DialogueState) -> QualityAssessment:
         ))
         score = max(0, score - 10)
 
+    value = state.get("value") or ""
+    if value and not business_value_is_effect(value):
+        issues.append(QualityIssue(
+            "value_is_driver_not_effect",
+            "Указан источник инициативы, но не раскрыт ожидаемый бизнес-эффект.",
+            "warning", "value",
+            "Какой бизнес-эффект даст изменение или какой риск оно снизит?",
+        ))
+        score = max(0, score - 10)
+
     conflicts = _conflicts(state)
     score = max(0, score - 20 * len(conflicts))
     level = "high" if score >= 80 and not conflicts else "medium" if score >= 55 else "low"
     return QualityAssessment(score, level, intent, issues, conflicts)
-

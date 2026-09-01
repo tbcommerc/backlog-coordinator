@@ -1,21 +1,24 @@
 """
 DMB Backlog - Reports Router
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy import func
 from sqlalchemy.types import String, Text, Unicode
 from typing import List
 from datetime import date
 import json
 
-from database import get_db
+from database import get_db, db_lower
 from models import (
     Report, Task, User, Team, Priority, TaskStatus, Project, Department,
     TaskType, Deadline, BusinessCustomer, Channel,
 )
-from schemas import ReportCreate, ReportResponse
-from auth import get_current_user
+from schemas import ReportCreate, ReportResponse, ReportUpdate
+from auth import get_current_user, task_read_scope_clause
+from idempotency import reserve_idempotency
+from services.task_metrics import calculate_cost_value_ratio
 
 router = APIRouter()
 
@@ -34,8 +37,20 @@ def _report_to_response(report: Report) -> ReportResponse:
         sort_order=report.sort_order or "asc",
         is_public=report.is_public,
         created_by=report.created_by,
-        created_at=report.created_at
+        created_at=report.created_at,
+        updated_at=report.updated_at,
+        version=report.version or 0,
     )
+
+
+def _report_version_conflict(report: Report, expected_version: int) -> HTTPException:
+    return HTTPException(status_code=409, detail={
+        "code": "report_version_conflict",
+        "message": "Отчёт уже изменён другим пользователем",
+        "report_id": report.id,
+        "expected_version": expected_version,
+        "current_version": report.version or 0,
+    })
 
 
 # ==================== ДВИЖОК ФИЛЬТРОВ И СОРТИРОВКИ ====================
@@ -108,12 +123,12 @@ def _apply_value_filter(query, column, operator, value):
     """Применить оператор к конкретной колонке (прямой или через join).
 
     - Строки сравниваются регистронезависимо (SQLite lower() не знает кириллицу,
-      поэтому используется функция lower_unicode, зарегистрированная в database.py).
+      поэтому используется переносимое выражение db_lower из database.py).
     - equals "" / not_equals "" трактуются как «пусто или NULL» / «не пусто».
     - not_equals с непустым значением включает NULL (задачи без значения).
     """
     text_col = isinstance(value, str) and _is_text_column(column)
-    expr = func.lower_unicode(column) if text_col else column
+    expr = db_lower(column) if text_col else column
     cval = _ci(value) if text_col else value
 
     if operator == "equals":
@@ -296,9 +311,9 @@ DEFAULT_STANDARD_REPORTS = [
     },
     {
         "key": "progress",
-        "name": "Прогресс по задачам",
+        "name": "Светофоры по квартальным задачам",
         "description": "Текущий прогресс по выполнению задач текущего квартала, отклонения, риски",
-        "legacy_names": [],
+        "legacy_names": ["Прогресс по задачам"],
         "filters": None,
         "fields": '["id","title","task_type_name","team_name","progress"]',
         "group_by": None,
@@ -395,6 +410,7 @@ def did_operational_report(
 
     query = db.query(Task).filter(
         Task.is_deleted == False,
+        task_read_scope_clause(current_user, Task),
         Task.did_status.isnot(None),
         Task.did_status != "",
         Task.deadline_id.in_(deadline_ids),
@@ -435,6 +451,7 @@ def did_operational_report(
 
         teams_data[team_name]["tasks"].append({
             "id": task.id,
+            "public_id": task.public_id,
             "title": task.title,
             "team_name": team_name,
             "involved_teams": task.involved_teams or "",
@@ -481,6 +498,7 @@ def directorate_report(
 
     query = db.query(Task).filter(
         Task.is_deleted == False,
+        task_read_scope_clause(current_user, Task),
         Task.deadline_id.in_(deadline_ids),
         (Task.priority_id.in_(high_priority_ids)) |
         (Task.directorate_status.in_(["Риск", "На контроле"]))
@@ -510,6 +528,7 @@ def directorate_report(
 
         teams_data[team_name]["tasks"].append({
             "id": task.id,
+            "public_id": task.public_id,
             "title": task.title,
             "directorate_status": task.directorate_status or "",
             "directorate_status_updated_at": task.directorate_status_updated_at.isoformat() if task.directorate_status_updated_at else None,
@@ -565,6 +584,18 @@ def create_report(
         report_data.group_by,
         report_data.sort_by,
     )
+    idempotency, is_new_request = reserve_idempotency(
+        db,
+        operation="report.create",
+        user_id=current_user.id,
+        request_key=report_data.client_request_id,
+        request_data=report_data.model_dump(mode="json", exclude={"client_request_id"}),
+    )
+    if idempotency and not is_new_request:
+        existing = db.query(Report).filter(Report.id == idempotency.resource_id).first()
+        if existing:
+            return _report_to_response(existing)
+        raise HTTPException(status_code=409, detail="Результат повторного запроса больше недоступен")
     report = Report(
         name=report_data.name,
         description=report_data.description,
@@ -578,6 +609,11 @@ def create_report(
         is_public=report_data.is_public
     )
     db.add(report)
+    db.flush()
+    if idempotency:
+        idempotency.resource_type = "report"
+        idempotency.resource_id = report.id
+        idempotency.resource_version = report.version or 0
     db.commit()
     db.refresh(report)
 
@@ -587,7 +623,7 @@ def create_report(
 @router.put("/{report_id}", response_model=ReportResponse)
 def update_report(
     report_id: int,
-    report_data: ReportCreate,
+    report_data: ReportUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -602,6 +638,18 @@ def update_report(
     elif report.created_by != current_user.id:
         if not (current_user.role and current_user.role.admin_access in ("partial", "full")):
             raise HTTPException(status_code=403, detail="Access denied")
+
+    idempotency, is_new_request = reserve_idempotency(
+        db,
+        operation=f"report.update:{report_id}",
+        user_id=current_user.id,
+        request_key=report_data.client_request_id,
+        request_data=report_data.model_dump(mode="json", exclude={"client_request_id"}),
+    )
+    if idempotency and not is_new_request:
+        return _report_to_response(report)
+    if (report.version or 0) != report_data.version:
+        raise _report_version_conflict(report, report_data.version)
 
     _validate_report_config(
         report_data.filters,
@@ -618,8 +666,20 @@ def update_report(
     report.sort_by = report_data.sort_by
     report.sort_order = report_data.sort_order
     report.is_public = report_data.is_public
+    report.version = (report.version or 0) + 1
+    if idempotency:
+        idempotency.resource_type = "report"
+        idempotency.resource_id = report.id
+        idempotency.resource_version = report.version
 
-    db.commit()
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        current = db.query(Report).filter(Report.id == report_id).first()
+        if current:
+            raise _report_version_conflict(current, report_data.version)
+        raise HTTPException(status_code=404, detail="Report not found")
     db.refresh(report)
 
     return _report_to_response(report)
@@ -628,10 +688,21 @@ def update_report(
 @router.delete("/{report_id}")
 def delete_report(
     report_id: int,
+    version: int = Query(..., ge=0),
+    client_request_id: str | None = Query(None, min_length=8, max_length=64),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Delete custom report (only owner or admin)"""
+    idempotency, is_new_request = reserve_idempotency(
+        db,
+        operation=f"report.delete:{report_id}",
+        user_id=current_user.id,
+        request_key=client_request_id,
+        request_data={"report_id": report_id, "version": version},
+    )
+    if idempotency and not is_new_request:
+        return {"message": "Report deleted"}
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -643,8 +714,22 @@ def delete_report(
         if not (current_user.role and current_user.role.admin_access in ("partial", "full")):
             raise HTTPException(status_code=403, detail="Access denied")
 
+    if (report.version or 0) != version:
+        raise _report_version_conflict(report, version)
+
     db.delete(report)
-    db.commit()
+    if idempotency:
+        idempotency.resource_type = "report_delete"
+        idempotency.resource_id = report_id
+        idempotency.resource_version = version
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        current = db.query(Report).filter(Report.id == report_id).first()
+        if current:
+            raise _report_version_conflict(current, version)
+        raise HTTPException(status_code=409, detail="Отчёт уже удалён другим пользователем")
 
     return {"message": "Report deleted"}
 
@@ -669,7 +754,10 @@ def execute_report(
             detail="Отчёт выполняется по сценарию страницы «Статусы для встреч» и недоступен через execute",
         )
 
-    query = db.query(Task).filter(Task.is_deleted == False)
+    query = db.query(Task).filter(
+        Task.is_deleted == False,
+        task_read_scope_clause(current_user, Task),
+    )
 
     # PI-отчёт — системный срез. Не зависим от устаревшей
     # конфигурации стандартного отчёта в БД.
@@ -699,13 +787,12 @@ def execute_report(
     items = []
     progress_plan = _current_quarter_progress(date.today())[1] if report.key == "progress" else None
     for task in tasks:
-        cv = None
-        if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
-            cv = round(task.financial_effect / task.effort_rub, 2)
+        cv = calculate_cost_value_ratio(task.effort_rub, task.financial_effect)
 
         progress_indicator, progress_deviation = _progress_indicator(task.progress, progress_plan) if progress_plan is not None else (None, None)
         items.append({
             "id": task.id,
+            "public_id": task.public_id,
             "title": task.title,
             "description": task.description,
             "team_id": task.team_id,

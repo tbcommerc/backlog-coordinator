@@ -98,3 +98,17 @@ def test_retries_transient_upstream_503(monkeypatch):
 
     assert OpenAICompatProvider().chat([{"role": "user", "content": "test"}]) == "ok"
     assert outcomes == []
+
+
+def test_chat_json_requests_json_object(monkeypatch):
+    captured = {}
+
+    def post(_path, payload, timeout=60.0):
+        captured.update(payload)
+        return {"choices": [{"message": {"content": '{"ok":true}'}}]}
+
+    provider = OpenAICompatProvider()
+    monkeypatch.setattr(provider, "_post", post)
+
+    assert provider.chat_json([{"role": "user", "content": "test"}]) == '{"ok":true}'
+    assert captured["response_format"] == {"type": "json_object"}

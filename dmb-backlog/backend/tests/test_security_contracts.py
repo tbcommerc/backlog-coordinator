@@ -235,6 +235,7 @@ def test_task_analytics_routes_are_registered_in_dedicated_router():
         "/analytics/effort-by-type",
         "/analytics/tribe-dashboard",
         "/analytics/lt-reports",
+        "/analytics/po-pl-reports",
     }
     assert not any(route.path.startswith("/analytics") for route in tasks_router.router.routes)
 

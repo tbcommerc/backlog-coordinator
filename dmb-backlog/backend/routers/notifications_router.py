@@ -18,7 +18,7 @@ from auth import get_current_user
 from notifications import (
     get_notifications, get_unread_count,
     get_notification_summary,
-    mark_read, mark_all_read, dismiss_notification,
+    mark_read, mark_all_read, dismiss_notification, restore_notification,
     resolve_notification,
     DEFAULT_PREFERENCES,
 )
@@ -31,6 +31,9 @@ def list_notifications(
     category: Optional[str] = None,
     unread_only: bool = False,
     importance: Optional[str] = None,
+    resolved: Optional[bool] = None,
+    requires_action: bool = False,
+    search: Optional[str] = None,
     page: int = 1,
     per_page: int = 20,
     db: Session = Depends(get_db),
@@ -41,6 +44,9 @@ def list_notifications(
         category=category,
         unread_only=unread_only,
         importance=importance,
+        resolved=resolved,
+        requires_action=requires_action,
+        search=search,
         page=page,
         per_page=per_page,
     )
@@ -99,6 +105,17 @@ def delete_notification(
     current_user: User = Depends(get_current_user),
 ):
     dismiss_notification(db, notification_id, current_user.id)
+    db.commit()
+    return {"message": "ok"}
+
+
+@router.put("/notifications/{notification_id}/restore")
+def restore_user_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    restore_notification(db, notification_id, current_user.id)
     db.commit()
     return {"message": "ok"}
 

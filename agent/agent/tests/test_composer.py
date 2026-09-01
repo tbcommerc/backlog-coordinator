@@ -1,6 +1,7 @@
 from agent.composer.composer import build_draft, build_defect_draft, validate
 from agent.context import UserContext
 from agent.dialogue.state import DialogueState
+from agent.composer.reviewer import has_blocking_findings, review_draft
 
 FULL_SLOTS = {
     "intent": "feature",
@@ -61,3 +62,52 @@ def test_defect_draft_intent_incident():
     draft = build_defect_draft(s, None)
     assert draft.intent == "incident"
     assert draft.priority == "Высокий"
+
+
+def test_regular_draft_does_not_invent_medium_priority():
+    draft = build_draft(_full_state(), None)
+
+    assert draft.priority == ""
+
+
+def test_summary_confirmation_does_not_confirm_inferred_field():
+    state = _full_state()
+    state.confirmed = True
+    state.slots["to_be"].confirmed = False
+    draft = build_draft(state, None)
+
+    assert draft.field_provenance["target_process"]["confirmed"] is False
+
+
+def test_slot_assumption_is_visible_in_draft():
+    state = _full_state()
+    state.slots["data_integrations"].assumption = True
+    draft = build_draft(state, None)
+
+    assert any("Данные и интеграции" in item for item in draft.assumptions)
+
+
+def test_draft_contains_typed_gap_registry_and_read_only_review():
+    state = _full_state()
+    state.skip("dependencies")
+
+    draft = build_draft(state, None)
+
+    gap = next(item for item in draft.gaps if item["slot"] == "dependencies")
+    assert gap["category"] == "technical"
+    assert gap["status"] == "deferred"
+    before = draft.model_dump()
+    findings = review_draft(draft)
+    assert draft.model_dump() == before
+    assert not has_blocking_findings(findings)
+
+
+def test_independent_review_blocks_critical_conflict():
+    state = _full_state()
+    state.set("as_is", "Одинаковый процесс")
+    state.set("to_be", "Одинаковый процесс")
+
+    draft = build_draft(state, None)
+
+    assert draft.review_blocked is True
+    assert any(item["code"] == "as_is_equals_to_be" for item in draft.review_findings)

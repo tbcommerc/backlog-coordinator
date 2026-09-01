@@ -3,6 +3,9 @@
  * Personalized by role: Team mode (PO/PL/IT PL) vs Tribe mode (ЛТ)
  */
 
+import { formatTaskPublicId } from '../taskPublicId.js';
+import { calculateTaskCv } from '../taskMetrics.js';
+
 const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 const MONTH_NAMES_SHORT = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 const EVENT_TYPE_ICONS = { milestone: 'flag', planned_event: 'calendar-check', cyclic: 'refresh-cw', event: 'circle' };
@@ -592,7 +595,7 @@ function renderAttentionList(tasks, user) {
                 <i data-lucide="${icon}" style="width:16px;height:16px;"></i>
             </div>
             <div class="dash-attention-body">
-                <div class="dash-attention-title">#${t.id} ${escapeHtml(t.title)}</div>
+                <div class="dash-attention-title">${formatTaskPublicId(t)} ${escapeHtml(t.title)}</div>
                 <div class="dash-attention-meta">${renderStatus(getStatus(t))}${getDeadline(t) ? ' · ' + escapeHtml(getDeadline(t)) : ''}</div>
             </div>
         </div>`;
@@ -738,13 +741,9 @@ function renderCvTop(tasks) {
     const el = document.getElementById('dash-cv-top');
     if (!el) return;
 
-    const withCv = tasks
-        .filter(t => t.financial_effect != null && t.effort_rub != null && t.effort_rub > 0)
-        .map(t => ({ ...t, cv: Math.round((t.financial_effect / t.effort_rub) * 100) / 100 }))
-        .sort((a, b) => b.cv - a.cv);
-
-    const high = withCv.filter(t => t.cv >= 1).slice(0, 3);
-    const low = withCv.filter(t => t.cv < 1).slice(-3).reverse();
+    const evaluated = tasks.map(t => ({ ...t, cv: calculateTaskCv(t) }));
+    const high = evaluated.filter(t => t.cv != null && t.cv <= 0.3).sort((a, b) => a.cv - b.cv).slice(0, 3);
+    const low = evaluated.filter(t => t.cv == null || t.cv > 1).sort((a, b) => (b.cv ?? Infinity) - (a.cv ?? Infinity)).slice(0, 3);
 
     if (high.length === 0 && low.length === 0) {
         el.innerHTML = '<p class="text-muted text-center" style="padding:var(--space-4);">Нет данных для расчёта C/V</p>';
@@ -754,28 +753,28 @@ function renderCvTop(tasks) {
     el.innerHTML = `
         ${high.length > 0 ? `
             <div class="dash-cv-section">
-                <div class="dash-cv-section-title"><i data-lucide="trending-up" style="width:14px;height:14px;color:var(--success);"></i> Высокий C/V</div>
+                <div class="dash-cv-section-title"><i data-lucide="trending-down" style="width:14px;height:14px;color:var(--success);"></i> Эффективный C/V</div>
                 ${high.map(t => `
                     <div class="dash-cv-item" data-task-id="${t.id}" style="cursor:pointer;">
                         <div class="dash-cv-body">
-                            <div class="dash-cv-title">#${t.id} ${escapeHtml(t.title).substring(0, 35)}${t.title?.length > 35 ? '…' : ''}</div>
+                            <div class="dash-cv-title">${formatTaskPublicId(t)} ${escapeHtml(t.title).substring(0, 35)}${t.title?.length > 35 ? '…' : ''}</div>
                             <div class="dash-cv-meta">${escapeHtml(t.team_name || '')}</div>
                         </div>
-                        <div class="dash-cv-value dash-cv-high">${t.cv.toFixed(1)}x</div>
+                        <div class="dash-cv-value dash-cv-high">${t.cv.toFixed(2)}</div>
                     </div>
                 `).join('')}
             </div>
         ` : ''}
         ${low.length > 0 ? `
             <div class="dash-cv-section">
-                <div class="dash-cv-section-title"><i data-lucide="trending-down" style="width:14px;height:14px;color:var(--danger);"></i> Низкий C/V</div>
+                <div class="dash-cv-section-title"><i data-lucide="alert-triangle" style="width:14px;height:14px;color:var(--danger);"></i> Красная зона C/V</div>
                 ${low.map(t => `
                     <div class="dash-cv-item" data-task-id="${t.id}" style="cursor:pointer;">
                         <div class="dash-cv-body">
-                            <div class="dash-cv-title">#${t.id} ${escapeHtml(t.title).substring(0, 35)}${t.title?.length > 35 ? '…' : ''}</div>
+                            <div class="dash-cv-title">${formatTaskPublicId(t)} ${escapeHtml(t.title).substring(0, 35)}${t.title?.length > 35 ? '…' : ''}</div>
                             <div class="dash-cv-meta">${escapeHtml(t.team_name || '')}</div>
                         </div>
-                        <div class="dash-cv-value dash-cv-low">${t.cv.toFixed(2)}x</div>
+                        <div class="dash-cv-value dash-cv-low">${t.cv == null ? 'Нет данных' : t.cv.toFixed(2)}</div>
                     </div>
                 `).join('')}
             </div>

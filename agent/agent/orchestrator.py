@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from .audit import log_dialogue, log_refusal, log_draft, log_event
 from .composer import composer
+from .composer.schema import RequirementDraft
 from .config import settings
 from .context import UserContext
 from .dialogue import confinement
@@ -153,7 +154,8 @@ class AgentOrchestrator:
         log_event("session_start", {"session_id": state.session_id, "user_id": user_id})
         return self._build_response(state, "welcome", gen_welcome(ctx))
 
-    def handle_message(self, session_id: str, message: str, ctx: UserContext | None = None) -> AgentResponse:
+    def handle_message(self, session_id: str, message: str, ctx: UserContext | None = None,
+                       message_id: str = "") -> AgentResponse:
         state = self.store.get(session_id)
         if state is None:
             return AgentResponse(
@@ -177,6 +179,17 @@ class AgentOrchestrator:
                 "Начинаем заново. Опишите новую бизнес-проблему или доработку своими словами.",
             )
 
+        # Persist the accepted user turn before any classification, extraction,
+        # or LLM work. A browser disconnect or processing failure must not make
+        # an already sent message disappear from the restored dialogue.
+        already_recorded = bool(message_id) and any(
+            item.get("role") == "user" and item.get("message_id") == message_id
+            for item in state.history
+        )
+        if not already_recorded:
+            state.add_message("user", message, message_id=message_id)
+            self.store.save(state)
+
         if normalized in SMALL_TALK and not state.slots["need_statement"].handled:
             return self._build_response(
                 state, "welcome",
@@ -184,7 +197,8 @@ class AgentOrchestrator:
             )
 
         # Phase 4: Track user message metrics
-        state.record_user_answer(message)
+        if not already_recorded:
+            state.record_user_answer(message)
         
         # Phase 4: Analyze user profile from message
         profile_detector.update_state(state, message)
@@ -239,7 +253,6 @@ class AgentOrchestrator:
         # ---------------- reflection correction (not domain-gated) -----------
         if state.reflect_correction_pending:
             state.reflect_correction_pending = False
-            state.add_message("user", message)
             self._apply_opportunistic(state, message, ctx)
             if message.strip() and len(message.strip()) > 2:
                 state.edit_notes.append(message.strip()[:1000])
@@ -311,7 +324,6 @@ class AgentOrchestrator:
             state.pending_domain_message = ""
 
         state.domain_asked = False
-        state.add_message("user", message)
 
         if self._wants_draft_now(message):
             if not state.all_mandatory_hard_filled():
@@ -655,6 +667,12 @@ class AgentOrchestrator:
         return self._build_response(state, "summarize", state.summary_text, self._confirm_chips())
 
     def _handle_draft_ready(self, state: DialogueState, message: str, ctx) -> AgentResponse:
+        if state.review_status == "needs_review" and state.review_task_id:
+            return self._build_response(
+                state,
+                "sent",
+                gen_sent(state.review_task_id, state.draft.get("title", "") if state.draft else ""),
+            )
         low = message.strip().lower().rstrip("!. ")
         if low in NO_WORDS or "правк" in low or "исправ" in low or "редакт" in low:
             state.draft = None
@@ -985,6 +1003,23 @@ class AgentOrchestrator:
             return AgentResponse(session_id=session_id, action="error", message="Нет доступа к этой сессии.")
         if not state.draft or not state.confirmed:
             return AgentResponse(session_id=session_id, action="error", message="Сначала сформируйте и подтвердите черновик.")
+        from .composer.reviewer import has_blocking_findings, review_draft
+        reviewed_draft = RequirementDraft(
+            id=state.draft.get("id") or f"DRAFT-{session_id[:8].upper()}",
+            **{key: value for key, value in state.draft.items() if key != "id"},
+        )
+        findings = review_draft(reviewed_draft)
+        reviewed_draft.review_findings = [finding.as_dict() for finding in findings]
+        reviewed_draft.review_blocked = has_blocking_findings(findings)
+        state.draft = reviewed_draft.model_dump()
+        if reviewed_draft.review_blocked:
+            self.store.save(state)
+            return AgentResponse(
+                session_id=session_id,
+                action="validation_error",
+                message="Черновик не отправлен: независимая проверка обнаружила критические проблемы.",
+                draft=state.draft,
+            )
         if task_id <= 0:
             return AgentResponse(session_id=session_id, action="error", message="Некорректный идентификатор задачи.")
         if state.review_status == "needs_review":
@@ -994,6 +1029,29 @@ class AgentOrchestrator:
         self.store.save(state)
         log_event("sent_for_review", {"session_id": session_id, "task_id": task_id})
         return self._build_response(state, "sent", gen_sent(task_id, title))
+
+    def reopen_for_revision(self, session_id: str, user_id: int | None = None,
+                            comment: str = "") -> AgentResponse:
+        """Return a submitted draft to the owner for an explicit revision."""
+        state = self.store.get(session_id)
+        if state is None:
+            return AgentResponse(session_id=session_id, action="error", message="Сессия не найдена.")
+        if user_id is not None and state.user_id != user_id:
+            return AgentResponse(session_id=session_id, action="error", message="Нет доступа к этой сессии.")
+        if not state.draft:
+            return AgentResponse(session_id=session_id, action="error", message="Черновик запроса не найден.")
+        state.review_status = ""
+        state.review_task_id = None
+        note = (comment or "").strip()
+        if note:
+            state.history.append({"role": "assistant", "content": f"Ревьюер попросил уточнить запрос: {note}"})
+        state.history.append({"role": "assistant", "content": "Запрос возвращён на уточнение. Измените нужные разделы и отправьте его повторно."})
+        self.store.save(state)
+        draft = state.draft
+        return self._build_response(
+            state, "draft_ready", "Запрос открыт для уточнения.",
+            self._draft_blocks(RequirementDraft(**draft)),
+        )
 
     def edit_draft_section(self, session_id: str, field: str, value: str,
                            user_id: int | None = None) -> AgentResponse:

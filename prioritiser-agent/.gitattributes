@@ -1,0 +1,3 @@
+# Точки входа должны попадать на macOS и Linux с LF: CRLF-чекаут
+# отправил бы сотруднику `bad interpreter: /usr/bin/env bash^M`.
+*.sh text eol=lf

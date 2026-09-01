@@ -7,6 +7,8 @@ uploads/
 
 # Local opencode config and dependencies
 .opencode/
+!prioritiser-agent/.opencode/
+!prioritiser-agent/.opencode/**
 
 # Temporary test data / credentials (never commit)
 fl.json
@@ -17,5 +19,16 @@ tasks_all.json
 
 # Secrets
 .env
+.env.*
 !.env.example
-
+!.env.*.example
+.venv/
+.venv-prioritiser/
+.runtime/
+.pytest_cache/
+.test-tmp-agent/
+.tmp/
+.tmp_pytest/
+graphify-out/
+*.db.bak*
+*.xlsx.bak

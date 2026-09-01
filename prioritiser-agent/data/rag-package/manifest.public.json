@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "package_version": "2026.07.15.1",
+  "corpus_id": "k3-dmb-c2",
+  "classification": "K3",
+  "encrypted_file": "k3-rag-current.age",
+  "encrypted_sha256": "EDA344F1E4BC63DFAA1C60560136866B58C3E7BE4CCD282EDE426045A6FD5455",
+  "encryption": "age",
+  "source_count": 9,
+  "minimum_chunk_count": 583,
+  "embedding_family": "multilingual-e5",
+  "chunking_version": "2-semantic-headings",
+  "regression_baseline": "0097ea553098a1ec0f5c",
+  "created_at": "2026-07-15T11:09:52+00:00"
+}

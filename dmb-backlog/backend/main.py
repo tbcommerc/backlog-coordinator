@@ -4,7 +4,7 @@ DMB Backlog - FastAPI Application Entry Point
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from contextlib import asynccontextmanager
 import asyncio
 import logging
@@ -12,6 +12,7 @@ import mimetypes
 from contextlib import suppress
 import os
 import stat
+from datetime import datetime, timezone
 
 from config import (
     settings,
@@ -20,7 +21,7 @@ from config import (
     should_run_startup_maintenance,
     should_run_notification_scheduler,
 )
-from database import init_db
+from database import engine, init_db
 from middleware import LoggingMiddleware, AuditMiddleware
 from routers import auth_router, tasks_router, teams_router, users_router, reports_router
 from routers.task_collaboration_router import router as task_collaboration_router
@@ -30,6 +31,12 @@ from routers import express_router
 from routers import notifications_router
 from routers import timeline_router
 from routers import agent_router
+from routers import prioritiser_router
+from routers.events_router import router as events_router
+from routers.reporting_meetings_router import (
+    router as reporting_meetings_router,
+    task_router as task_reporting_router,
+)
 from auth import require_non_business_customer_access
 
 
@@ -101,6 +108,14 @@ async def lifespan(app: FastAPI):
         logger.exception("Startup database verification failed")
 
     scheduler_task = None
+    outbox_task = None
+    if settings.REDIS_URL:
+        from event_outbox import event_outbox_dispatcher_loop
+        outbox_task = asyncio.create_task(event_outbox_dispatcher_loop())
+        logger.info("Transactional outbox dispatcher started")
+    else:
+        logger.warning("Transactional outbox dispatcher disabled: REDIS_URL is not configured")
+
     if should_run_notification_scheduler():
         from notification_scheduler import notification_scheduler_loop
         scheduler_task = asyncio.create_task(notification_scheduler_loop())
@@ -114,6 +129,10 @@ async def lifespan(app: FastAPI):
         scheduler_task.cancel()
         with suppress(asyncio.CancelledError):
             await scheduler_task
+    if outbox_task is not None:
+        outbox_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await outbox_task
 
 
 app = FastAPI(
@@ -136,27 +155,108 @@ app.add_middleware(
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(AuditMiddleware)
 
+from telemetry import configure_telemetry
+configure_telemetry(app, engine=engine, settings=settings)
+
 # Routers
 non_customer_dependencies = [Depends(require_non_business_customer_access)]
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
+# Static analytics paths must be registered before ``/{task_id}``, otherwise
+# FastAPI treats ``analytics`` as a task id and returns a validation error.
+app.include_router(task_analytics_router, prefix="/api/v1/tasks", tags=["Task analytics"], dependencies=non_customer_dependencies)
 app.include_router(tasks_router, prefix="/api/v1/tasks", tags=["Tasks"], dependencies=non_customer_dependencies)
 app.include_router(task_collaboration_router, prefix="/api/v1/tasks", tags=["Task collaboration"], dependencies=non_customer_dependencies)
-app.include_router(task_analytics_router, prefix="/api/v1/tasks", tags=["Task analytics"], dependencies=non_customer_dependencies)
 app.include_router(teams_router, prefix="/api/v1/teams", tags=["Teams"], dependencies=non_customer_dependencies)
 app.include_router(users_router, prefix="/api/v1/users", tags=["Users"], dependencies=non_customer_dependencies)
 app.include_router(reports_router, prefix="/api/v1/reports", tags=["Reports"], dependencies=non_customer_dependencies)
+app.include_router(reporting_meetings_router, prefix="/api/v1/reporting-meetings", tags=["Reporting meetings"], dependencies=non_customer_dependencies)
+app.include_router(task_reporting_router, prefix="/api/v1/tasks", tags=["Task reporting statuses"], dependencies=non_customer_dependencies)
 app.include_router(admin_router.router, prefix="/api/v1/admin", dependencies=non_customer_dependencies)
 app.include_router(customer_router, prefix="/api/v1/customer", tags=["Customer Portal"])
 app.include_router(express_router, prefix="/api/v1", tags=["Express Estimate"], dependencies=non_customer_dependencies)
 app.include_router(notifications_router.router, prefix="/api/v1", tags=["Notifications"], dependencies=non_customer_dependencies)
+app.include_router(events_router, prefix="/api/v1", tags=["Events"])
 app.include_router(timeline_router, prefix="/api/v1/timeline", tags=["Timeline"], dependencies=non_customer_dependencies)
 app.include_router(agent_router.router, prefix="/api/v1", tags=["AI Assistant"])
+app.include_router(prioritiser_router.router, prefix="/api/v1/tasks", tags=["Task prioritiser"], dependencies=non_customer_dependencies)
 
 
 # Health check
 @app.get("/api/v1/health")
 async def health_check():
     return {"status": "ok", "version": settings.APP_VERSION}
+
+
+@app.get("/metrics", include_in_schema=False)
+def prometheus_metrics():
+    """Prometheus text exposition; intended for an internal scrape endpoint."""
+    from metrics import render_prometheus
+    return Response(content=render_prometheus(), media_type="text/plain; version=0.0.4; charset=utf-8")
+
+
+@app.get("/api/v1/health/ready")
+async def readiness_check():
+    """Read-only readiness checks for a multi-worker deployment."""
+    checks = {}
+    ready = True
+    try:
+        from database import SessionLocal
+        from models import EventOutbox
+        from sqlalchemy import func
+        db = SessionLocal()
+        try:
+            pending_filter = (
+                EventOutbox.processed_at.is_(None),
+                EventOutbox.dead_lettered_at.is_(None),
+            )
+            pending = db.query(EventOutbox).filter(*pending_filter).count()
+            oldest_pending_at = db.query(func.min(EventOutbox.created_at)).filter(
+                *pending_filter
+            ).scalar()
+            dead_lettered = db.query(EventOutbox).filter(
+                EventOutbox.dead_lettered_at.is_not(None)
+            ).count()
+        finally:
+            db.close()
+        checks["database"] = "ok"
+        checks["outbox_pending"] = pending
+        checks["outbox_dead_lettered"] = dead_lettered
+        if oldest_pending_at is None:
+            checks["outbox_oldest_seconds"] = 0
+        else:
+            now = datetime.now(timezone.utc) if oldest_pending_at.tzinfo else datetime.utcnow()
+            checks["outbox_oldest_seconds"] = max(0, int((now - oldest_pending_at).total_seconds()))
+    except Exception as exc:
+        ready = False
+        checks["database"] = f"error:{type(exc).__name__}"
+
+    if settings.REDIS_URL:
+        try:
+            from redis.asyncio import Redis
+            redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=True)
+            try:
+                await redis_client.ping()
+            finally:
+                await redis_client.aclose()
+            checks["redis"] = "ok"
+        except Exception as exc:
+            ready = False
+            checks["redis"] = f"error:{type(exc).__name__}"
+    else:
+        checks["redis"] = "disabled"
+        if not settings.DEBUG:
+            ready = False
+
+    storage = settings.ATTACHMENT_STORAGE_DIR
+    storage_ready = storage.exists() and storage.is_dir() and os.access(storage, os.W_OK)
+    checks["attachment_storage"] = "ok" if storage_ready else "unavailable"
+    if not storage_ready:
+        ready = False
+
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={"status": "ready" if ready else "not_ready", "checks": checks},
+    )
 
 
 # Disable caching for static files during development
@@ -180,7 +280,5 @@ if os.path.exists(frontend_path):
 
 if __name__ == "__main__":
     import uvicorn
-    # Autoreload cannot safely watch this project directory: SQLite creates
-    # journal/WAL files during writes and watchfiles restarts the worker in the
-    # middle of POST requests. Run the working server without a reloader.
+    # The unified local launcher owns process restarts and keeps logs in .runtime.
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

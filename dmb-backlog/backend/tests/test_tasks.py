@@ -71,10 +71,21 @@ def test_update_task(client, auth_headers, db):
     response = client.put(
         f"/api/v1/tasks/{task.id}",
         headers=auth_headers,
-        json={"title": "New Title", "status_id": 2}
+        json={"title": "New Title", "status_id": 2, "version": task.version or 0}
     )
     assert response.status_code == 200
     assert response.json()["title"] == "New Title"
+
+
+def test_history_reference_values_are_human_readable():
+    from routers.tasks_router import _resolve_history_value
+
+    reference_values = {"priority_id": {1: "Высокий", 3: "Низкий"}}
+
+    assert _resolve_history_value("priority_id", "3", reference_values) == "Низкий"
+    assert _resolve_history_value("priority_id", "1", reference_values) == "Высокий"
+    assert _resolve_history_value("title", "1", reference_values) == "1"
+    assert _resolve_history_value("priority_id", "999", reference_values) == "999"
 
 
 def test_delete_task(client, auth_headers, db):
@@ -185,6 +196,7 @@ def test_update_task_tags_and_metric_kr_unit(client, auth_headers, db):
         json={
             "metric_kr_unit": "шт",
             "tags": ["Новый тег"],
+            "version": task.version or 0,
         }
     )
     assert response.status_code == 200
@@ -208,7 +220,7 @@ def test_update_task_removes_all_tags(client, auth_headers, db):
     resp = client.put(
         f"/api/v1/tasks/{task.id}",
         headers=auth_headers,
-        json={"tags": ["temp"]}
+        json={"tags": ["temp"], "version": task.version or 0}
     )
     assert resp.status_code == 200
     assert [t["name"] for t in (resp.json().get("tags") or [])] == ["temp"]
@@ -216,7 +228,7 @@ def test_update_task_removes_all_tags(client, auth_headers, db):
     resp2 = client.put(
         f"/api/v1/tasks/{task.id}",
         headers=auth_headers,
-        json={"tags": []}
+        json={"tags": [], "version": resp.json()["version"]}
     )
     assert resp2.status_code == 200
     assert (resp2.json().get("tags") or []) == []

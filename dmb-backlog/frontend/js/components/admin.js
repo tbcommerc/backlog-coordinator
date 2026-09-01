@@ -24,6 +24,12 @@ function getAdminAccess(app) {
 let adminTab = 'teams';
 let adminData = { teams: [], users: [], roles: [], priorities: [], statuses: [], taskTypes: [], businessCustomers: [], channels: [], deadlines: [], departments: [], teamTypes: [], projectStatuses: [], competencyCosts: [], projects: [], reports: [], teamTypeRefs: [], tags: [], auditLog: { items: [], total: 0, pages: 0 }, auditFilters: { actions: [], entity_types: [], users: [] } };
 let adminModal = { show: false, mode: 'add', type: 'team', data: {} };
+const adminDeleteRequestIds = new Map();
+
+function newAdminRequestId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
 let currentAdminUser = null;
 let userSort = { field: 'role', dir: 'asc' };
 let userSearch = '';
@@ -1037,7 +1043,7 @@ function getRolePreview(role) {
     ['Бэклог команды и экспресс-оценка', !isCustomer && access('backlog_team') !== 'none', getAccessLabel(access('backlog_team'))],
     ['Статусы для встреч', !isCustomer && access('reports') !== 'none', getAccessLabel(access('reports'))],
     ['Аналитика', !isCustomer && access('analytics') !== 'none', getAccessLabel(access('analytics'))],
-    ['Мои задачи и ИИ-ассистент', isCustomer || access('customer') !== 'none', isCustomer ? 'Специальный режим роли' : getAccessLabel(access('customer'))],
+    ['Мои запросы и ИИ-ассистент', isCustomer || access('customer') !== 'none', isCustomer ? 'Специальный режим роли' : getAccessLabel(access('customer'))],
     ['Ревью запросов', !isCustomer && canReview, reviewAccess === 'all' ? 'Все команды' : reviewAccess === 'team' ? 'Своя команда' : 'Нет доступа'],
     ['Мои уведомления', !isCustomer, 'Базовый раздел'],
     ['Настройки', !isCustomer && access('settings') !== 'none', getAccessLabel(access('settings'))],
@@ -1157,8 +1163,9 @@ function renderAuditTab() {
     const details = auditDetails(item.details);
     const fields = Array.isArray(details.changed_fields) && details.changed_fields.length ? details.changed_fields.join(', ') : '—';
     const success = details.success !== false && Number(details.status_code || 200) < 400;
-    return `<tr><td>${escapeHtml(item.created_at ? new Date(item.created_at).toLocaleString('ru-RU') : '—')}</td><td>${escapeHtml(item.user_name || 'Система')}</td><td><span class="badge ${success ? 'badge-success' : 'badge-danger'}">${success ? 'Успешно' : 'Ошибка'}</span></td><td>${escapeHtml(item.action)}</td><td>${escapeHtml(item.entity_type)}${item.entity_id ? ` #${item.entity_id}` : ''}</td><td class="audit-fields" title="${escapeHtmlAttribute(fields)}">${escapeHtml(fields)}</td><td>${escapeHtml(item.ip_address || '—')}</td></tr>`;
-  }).join('') : '<tr><td colspan="7" class="admin-empty-cell">По заданным условиям ничего не найдено</td></tr>';
+    const correlationId = item.trace_id || item.request_id || '';
+    return `<tr><td>${escapeHtml(item.created_at ? new Date(item.created_at).toLocaleString('ru-RU') : '—')}</td><td>${escapeHtml(item.user_name || 'Система')}</td><td><span class="badge ${success ? 'badge-success' : 'badge-danger'}">${success ? 'Успешно' : 'Ошибка'}</span></td><td>${escapeHtml(item.action)}</td><td>${escapeHtml(item.entity_type)}${item.entity_id ? ` #${item.entity_id}` : ''}</td><td class="audit-fields" title="${escapeHtmlAttribute(fields)}">${escapeHtml(fields)}</td><td><code title="${escapeHtmlAttribute(correlationId)}">${escapeHtml(correlationId || '—')}</code></td><td>${escapeHtml(item.ip_address || '—')}</td></tr>`;
+  }).join('') : '<tr><td colspan="8" class="admin-empty-cell">По заданным условиям ничего не найдено</td></tr>';
   const option = (value, label, selected) => `<option value="${escapeHtmlAttribute(value)}"${String(value) === String(selected) ? ' selected' : ''}>${escapeHtml(label)}</option>`;
   return `<div class="admin-action-row audit-toolbar">
     <input class="input" id="audit-search" value="${escapeHtmlAttribute(auditState.search)}" placeholder="Поиск по журналу" aria-label="Поиск по журналу">
@@ -1169,7 +1176,7 @@ function renderAuditTab() {
     <input class="input audit-filter" type="date" id="audit-date-to" value="${escapeHtmlAttribute(auditState.dateTo)}" aria-label="Дата по">
     <span class="admin-list-count" role="status" aria-live="polite">Записей: ${data.total || 0}</span>
     <button type="button" class="btn btn-ghost btn-sm" id="audit-reset">Сбросить</button>
-  </div><div class="admin-section audit-table-wrap"><table class="admin-table audit-table"><thead><tr><th>Дата</th><th>Пользователь</th><th>Результат</th><th>Действие</th><th>Сущность</th><th>Изменённые поля</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div><div class="admin-section audit-table-wrap"><table class="admin-table audit-table"><thead><tr><th>Дата</th><th>Пользователь</th><th>Результат</th><th>Действие</th><th>Сущность</th><th>Изменённые поля</th><th>Trace / Request ID</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table></div>
   ${renderAdminPagination('audit', data.page || 1, data.pages || 1, data.total || 0, auditState.perPage)}`;
 }
 
@@ -1840,7 +1847,7 @@ function updateNotificationTemplatePreview() {
   const title = document.getElementById('notification-template-preview-title');
   const preview = document.getElementById('notification-template-preview-text');
   if (!title || !preview) return;
-  const samples = { task_id: '142', title: 'Интеграция с MOEX API', status: 'В работе', deadline: '30.09.2026', owner: 'Анна Смирнова', team: 'Core', project: 'Core Integrations', days_left: '3' };
+  const samples = { task_id: 'TASK-000-142', title: 'Интеграция с MOEX API', status: 'В работе', deadline: '30.09.2026', owner: 'Анна Смирнова', team: 'Core', project: 'Core Integrations', days_left: '3' };
   title.textContent = getFieldVal('notification-template-name') || 'Название уведомления';
   preview.textContent = (getFieldVal('notification-template-text') || 'Здесь появится текст уведомления').replace(/\{([a-z_][a-z0-9_]*)\}/g, (match, key) => samples[key] || match);
 }
@@ -2064,7 +2071,7 @@ function renderRoleForm(data) {
     </div>
     ${permHtml}
     <div style="margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border-color)"><strong style="font-size:14px">Сценарии интерфейса</strong><div style="font-size:11px;color:var(--text-muted);margin-top:4px">Эти настройки не зависят от названия роли.</div></div>
-    <div class="form-group"><label class="form-label" for="modal-customer-portal-only">Режим бизнес-заказчика</label><select class="input modal-field" id="modal-customer-portal-only"><option value="0"${!portalOnly ? ' selected' : ''}>Обычный интерфейс</option><option value="1"${portalOnly ? ' selected' : ''}>Только «Мои задачи» и ИИ-ассистент</option></select></div>
+    <div class="form-group"><label class="form-label" for="modal-customer-portal-only">Режим бизнес-заказчика</label><select class="input modal-field" id="modal-customer-portal-only"><option value="0"${!portalOnly ? ' selected' : ''}>Обычный интерфейс</option><option value="1"${portalOnly ? ' selected' : ''}>Только «Мои запросы» и ИИ-ассистент</option></select></div>
     <div class="form-group"><label class="form-label" for="modal-review-access">Ревью запросов</label><select class="input modal-field" id="modal-review-access"><option value="none"${reviewAccess === 'none' ? ' selected' : ''}>Нет доступа</option><option value="team"${reviewAccess === 'team' ? ' selected' : ''}>Только запросы своей команды</option><option value="all"${reviewAccess === 'all' ? ' selected' : ''}>Запросы всех команд</option></select></div>
     <div style="margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border-color)"><strong style="font-size:14px">Операции с задачами</strong></div>
     <div class="form-group"><label class="form-label" for="modal-task-edit-scope">Редактирование</label><select class="input modal-field" id="modal-task-edit-scope">${scopeOptions(taskScopes.edit)}</select></div>
@@ -2906,6 +2913,10 @@ async function saveEntity(type, data, app) {
   };
   const endpoint = endpointMap[type];
   if (!endpoint) return;
+  if (type === 'report') {
+    adminModal.clientRequestId ||= newAdminRequestId();
+    data = { ...data, client_request_id: adminModal.clientRequestId };
+  }
 
   const saveButton = document.querySelector('#admin-modal-overlay .modal-save-btn');
   if (adminFormSaving || saveButton?.disabled) return;
@@ -2919,6 +2930,7 @@ async function saveEntity(type, data, app) {
       await app.api.post(endpoint, data);
     }
     adminModal.show = false;
+    adminModal.clientRequestId = null;
     adminFormInitialSnapshot = '';
     adminFormSaving = false;
     document.getElementById('admin-modal-root').innerHTML = '';
@@ -2988,7 +3000,19 @@ async function confirmDelete(type, id, app) {
     if (!endpoint) return;
 
     try {
-      await app.api.delete(`${endpoint.replace(/\/$/, '')}/${id}`);
+      let deleteUrl = `${endpoint.replace(/\/$/, '')}/${id}`;
+      if (type === 'report') {
+        const requestKey = `report:${id}`;
+        const requestId = adminDeleteRequestIds.get(requestKey) || newAdminRequestId();
+        adminDeleteRequestIds.set(requestKey, requestId);
+        const params = new URLSearchParams({
+          version: String(target?.version ?? 0),
+          client_request_id: requestId,
+        });
+        deleteUrl += `?${params.toString()}`;
+      }
+      await app.api.delete(deleteUrl);
+      if (type === 'report') adminDeleteRequestIds.delete(`report:${id}`);
       toast(type === 'user' ? 'Пользователь деактивирован' : 'Удалено', 'success');
       await initAdmin(app);
     } catch (e) {

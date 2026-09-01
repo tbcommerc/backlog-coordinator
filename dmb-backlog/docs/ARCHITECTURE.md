@@ -2,7 +2,7 @@
 title: Архитектура DMB Backlog
 scope: as-is
 status: verified
-last_verified: 2026-08-24
+last_verified: 2026-09-01
 evidence:
   - backend/main.py
   - backend/config.py
@@ -10,6 +10,10 @@ evidence:
   - backend/models.py
   - backend/routers/
   - backend/rate_limit.py
+  - backend/event_outbox.py
+  - backend/idempotency.py
+  - backend/telemetry.py
+  - backend/metrics.py
   - frontend/js/
   - .github/workflows/quality.yml
 ---
@@ -20,7 +24,7 @@ evidence:
 
 ## Контекст
 
-DMB Backlog — браузерная SPA и FastAPI backend для работы с задачами и связанными данными. Backend также проксирует запросы к отдельному сервису AI Business Analyst Agent и сохраняет `RequirementRequest` в своей БД.
+DMB Backlog — браузерная SPA и FastAPI backend для работы с задачами и связанными данными. Backend проксирует запросы к AI Business Analyst Agent, сохраняет `RequirementRequest` и вызывает отдельный агент расчёта финансового эффекта и приоритета.
 
 ```text
 Browser SPA
@@ -29,12 +33,15 @@ FastAPI backend :8000
     ├── routers + auth dependencies
     ├── logging/audit middleware
     ├── SQLAlchemy ORM → DATABASE_URL
-    ├── filesystem → backend/uploads
+    ├── shared filesystem → ATTACHMENT_STORAGE_DIR
     ├── optional notification scheduler
-    └── HTTP + X-Agent-Secret → AI Agent :9000
+    ├── transactional outbox → Redis Stream → authorized SSE
+    ├── Prometheus metrics + OpenTelemetry traces
+    ├── HTTP + X-Agent-Secret → AI Agent :9000
+    └── HTTP/JSON → Task Prioritiser :9100
 ```
 
-Подтверждённая внешняя граница — HTTP-взаимодействие с AI Agent. Ссылки Jira хранятся как данные; полноценная Jira-интеграция в проверенной реализации не подтверждена.
+Подтверждённые внешние границы — HTTP-взаимодействие с AI Agent и Task Prioritiser. Ссылки Jira хранятся как данные; полноценная Jira-интеграция в проверенной реализации не подтверждена.
 
 ## Runtime-контейнеры
 
@@ -66,6 +73,20 @@ Frontend обслуживается самим FastAPI через `/static`; к�
 
 Backlog вызывает Agent по `AGENT_BASE_URL` и передаёт `X-Agent-Secret`. Agent является отдельным приложением и процессом; его архитектура описана в `../../agent/docs/ARCHITECTURE.md`.
 
+### Task Prioritiser
+
+Backlog вызывает сервис по `PRIORITISER_BASE_URL`. Кнопка финансового эффекта
+использует `/agent/value/full`, кнопка приоритета — `/agent/priority/full`.
+Backend преобразует карточку задачи во внешний контракт, а результат сохраняет
+как новую версию задачи через штатные проверки прав, блокировки и аудит.
+Ручной финансовый эффект имеет приоритет; оценка агента хранится отдельно в
+`financial_effect_ai` и `financial_effect_ai_justification`. Приоритет сохраняется
+в `priority_score` (0–100) и `priority_justification`.
+OpenAI-compatible провайдер, endpoint, модель и учётные данные совпадают с
+настройками AI Business Analyst Agent; локальный launcher синхронизирует их из
+`agent/.env`, а production Compose передаёт обоим сервисам одинаковые `DMB_*`
+переменные.
+
 ## API-границы
 
 В `backend/main.py` зарегистрированы группы:
@@ -86,18 +107,22 @@ Backlog вызывает Agent по `AGENT_BASE_URL` и передаёт `X-Agen
 
 ## Данные
 
-`backend/models.py` — единственный поддерживаемый источник схемы. По умолчанию `DATABASE_URL` указывает на локальную SQLite в `backend/dmb_backlog.db`.
+`backend/models.py` описывает целевую схему, а Alembic хранит её версионируемую
+историю. Штатный `DATABASE_URL` указывает на локальную PostgreSQL из `compose.yaml`.
 
-`database.ensure_schema()`:
+Перед запуском backend единый стартовый сценарий применяет `alembic upgrade head`.
+`database.ensure_schema()` оставлен только для изолированной SQLite-совместимости.
 
-1. создаёт отсутствующие таблицы через SQLAlchemy metadata;
-2. сравнивает колонки существующих таблиц с моделями;
-3. добавляет отсутствующие колонки;
-4. не выполняет переименование, удаление или преобразование колонок.
+Подробности и ограничения находятся в `SCHEMA_CHANGES.md`. PostgreSQL driver
+зафиксирован в runtime-зависимостях. При `DEBUG=false` backend отклоняет SQLite;
+размер пула задаётся через `DB_POOL_SIZE`, `DB_MAX_OVERFLOW` и
+`DB_POOL_TIMEOUT_SECONDS`.
 
-Подробности и ограничения находятся в `SCHEMA_CHANGES.md`. PostgreSQL указан в старых целевых документах, но готовый production-контур и PostgreSQL driver в проверенных runtime-зависимостях не подтверждены.
-
-Вложения сохраняются в `backend/uploads/{task_id}`. Метаданные хранятся в `TaskAttachment`; загрузка и скачивание выполняются через авторизованные task endpoints. Каталог uploads не опубликован как static.
+Вложения сохраняются в `${ATTACHMENT_STORAGE_DIR}/{task_id}`. В production этот
+путь обязан быть общим persistent volume для всех экземпляров backend; локальный
+`backend/uploads` отклоняется startup-валидацией. Метаданные хранятся в
+`TaskAttachment`; загрузка и скачивание выполняются через авторизованные task
+endpoints. Каталог не опубликован как static.
 
 ## Аутентификация и авторизация
 
@@ -109,7 +134,9 @@ Backlog вызывает Agent по `AGENT_BASE_URL` и передаёт `X-Agen
 - Backend применяет auth dependencies и task-level authorization; скрытие маршрутов в SPA не является границей безопасности.
 - Login и refresh используют Redis rate limiter при заданном `REDIS_URL`, иначе process-local memory fallback.
 
-При `DEBUG=false` startup validation требует нестандартные `SECRET_KEY`, `AGENT_SECRET` и настроенный `REDIS_URL`. Refresh cookie в этом режиме получает флаг `Secure`.
+При `DEBUG=false` startup validation требует нестандартные `SECRET_KEY`,
+`AGENT_SECRET`, настроенный `REDIS_URL`, PostgreSQL и общий каталог вложений.
+Refresh cookie в этом режиме получает флаг `Secure`.
 
 ## Startup lifecycle
 
@@ -124,29 +151,63 @@ Backlog вызывает Agent по `AGENT_BASE_URL` и передаёт `X-Agen
 
 | Флаг | Операция | Значение при отсутствии флага |
 |---|---|---|
-| `RUN_STARTUP_SEED` | seed и team FK migration | наследует `DEBUG` |
-| `RUN_STARTUP_MAINTENANCE` | пересчёт трудозатрат и синхронизация стандартных отчётов | наследует `DEBUG` |
+| `RUN_STARTUP_SEED` | seed и team FK migration | `false` |
+| `RUN_STARTUP_MAINTENANCE` | пересчёт трудозатрат и синхронизация стандартных отчётов | `false` |
 | `RUN_NOTIFICATION_SCHEDULER` | встроенный hourly scheduler | наследует `DEBUG` |
 
-В dev-режиме эти операции по умолчанию включены. Для production предусмотрен отдельный `run_notification_scheduler.py`; встроенный scheduler не следует одновременно запускать в нескольких workers.
+Seed и startup maintenance включаются только явно. При `DEBUG=false` они
+дополнительно запрещены runtime-валидацией. Для production
+предусмотрен отдельный `run_notification_scheduler.py`; PostgreSQL advisory lock
+оставляет активным ровно один scheduler и позволяет standby подхватить работу.
+
+## Транзакционные события и live-обновления
+
+Mapper-события `Task`, `TaskComment`, `TaskAttachment`, `Notification`, `Report`
+и `RequirementRequest` записывают
+минимальные события в `event_outbox` тем же DB connection и в той же транзакции,
+что и доменное изменение. Внешний publish до commit отсутствует.
+
+Outbox dispatcher безопасно работает в нескольких backend workers: claim
+выполняется через `FOR UPDATE SKIP LOCKED`, зависшие claims возвращаются в очередь,
+ошибки получают retry/backoff. Некорректное событие после ограниченного числа
+попыток переходит в dead letter. События публикуются в ограниченный Redis Stream,
+обработанные DB-строки удаляются после `OUTBOX_RETENTION_DAYS`.
+
+Повторяемые task create/update, comment/attachment commands и report CRUD используют таблицу `idempotency_records`, а не
+process-local cache. Уникальная DB-запись резервируется в той же транзакции;
+одинаковый ключ с другим payload отклоняется как конфликт.
+
+Авторизованный `/api/v1/events/stream` использует SSE и cursor replay. Долгая
+SSE-сессия не удерживает connection из SQLAlchemy pool. Персональные события
+сопоставляются с пользователем; task, requirement и report events проходят
+соответствующую серверную проверку области доступа. Polling уведомлений раз в
+60 секунд остаётся fallback.
 
 ## Наблюдаемость и поставка
 
 - `LoggingMiddleware` пишет сведения о запросах в журнал и stdout.
-- `AuditMiddleware` обслуживает аудит изменяющих запросов.
-- `/api/v1/health` возвращает статус процесса и версию, но не проверяет БД, Agent или файловое хранилище.
+- `AuditMiddleware` передаёт request/actor context SQLAlchemy hook; audit row
+  коммитится и откатывается вместе с бизнес-изменением.
+- `/api/v1/health` является liveness; `/api/v1/health/ready` проверяет БД, Redis,
+  общий каталог вложений и возвращает размер/возраст pending outbox.
 - `.github/workflows/quality.yml` выполняет compile backend, pytest, JavaScript syntax checks, frontend unit tests и `pip-audit`.
-- Dockerfile, docker-compose и Kubernetes manifests в проверенном дереве не найдены.
-- Prometheus, distributed tracing и настроенные alert rules не подтверждены.
+- Локальные PostgreSQL и Redis описаны в корневом `compose.yaml`; стендовая
+  multi-replica топология Python-сервисов — в `compose.production.yaml`.
+- `/metrics` отдаёт Prometheus-метрики HTTP, DB pool, outbox, SSE, scheduler и
+  backend→agent. Базовые alert rules находятся в `infrastructure/observability/`.
+- OpenTelemetry трассирует FastAPI, SQLAlchemy и backend→agent urllib-вызовы.
+  OTLP Collector отправляет spans в Jaeger; `X-Trace-ID` и `audit_log.trace_id`
+  связывают трассу, HTTP-запрос и транзакционный аудит.
 
 ## Подтверждённые ограничения
 
-- SQLite backlog и SQLite session store агента требуют отдельной оценки перед многопроцессным/многоузловым запуском.
+- Live PostgreSQL smoke зависит от наличия Docker Desktop в локальной среде.
 - Файлы uploads локальны конкретному host.
 - Memory rate limiter не разделяет состояние между процессами; для production конфигурация требует Redis.
-- Встроенный scheduler может дублировать работу при нескольких workers.
+- Реальный failover scheduler и SSE под несколькими процессами требуют стендовой
+  проверки с PostgreSQL и Redis.
 - Значительная часть бизнес-логики находится непосредственно в роутерах.
-- Автомиграция поддерживает только аддитивные изменения схемы.
+- Каждое изменение схемы требует новой проверенной Alembic-ревизии.
 
 ## Связанные документы
 

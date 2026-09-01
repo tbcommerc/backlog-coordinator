@@ -1,5 +1,7 @@
 console.log('[DMB] expressEstimate.js v29 loaded');
 
+import { formatTaskPublicId } from '../taskPublicId.js';
+
 const COMPETENCIES = ['Designee', 'Аналитика', 'Разработка BE', 'Разработка python BE', 'Разработка FE', 'Tester', 'Tester Auto', 'Delivery'];
 const EFFORT_FIELDS = ['effort_designee', 'effort_analytics', 'effort_be', 'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery'];
 const EFFORT_FIELD_MAP = {};
@@ -454,6 +456,7 @@ function applyTaskFilters() {
         const estimated = total > 0;
         const matchesSearch = !normalizedQuery
             || String(task.id).includes(idQuery)
+            || formatTaskPublicId(task).toLowerCase().includes(idQuery)
             || String(task.title || '').toLocaleLowerCase('ru-RU').includes(normalizedQuery);
         const matchesFilter = expressTaskFilter === 'all'
             || (expressTaskFilter === 'estimated' && estimated)
@@ -766,15 +769,15 @@ async function searchBacklogTasks(q, append = false) {
             const div = document.createElement('div');
             div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border-color);border-radius:6px;margin-bottom:6px;';
             div.innerHTML = `
-                <input type="checkbox" class="import-task-check" data-task-id="${t.id}" style="flex-shrink:0;cursor:pointer;">
+                <input type="checkbox" class="import-task-check" data-task-id="${t.id}" data-task-version="${t.version ?? 0}" style="flex-shrink:0;cursor:pointer;">
                 <div style="min-width:0;flex:1;">
-                    <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">#${t.id} ${escHtml(t.title)}</div>
+                    <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${formatTaskPublicId(t)} ${escHtml(t.title)}</div>
                     <div style="font-size:11px;color:var(--text-secondary);">${escHtml(t.status_name || '')} &middot; ${escHtml(t.priority_name || '')}</div>
                 </div>
-                <button class="btn btn-xs btn-secondary import-task-btn" data-task-id="${t.id}" style="flex-shrink:0;">Добавить</button>
+                <button class="btn btn-xs btn-secondary import-task-btn" data-task-id="${t.id}" data-task-version="${t.version ?? 0}" style="flex-shrink:0;">Добавить</button>
             `;
             div.querySelector('.import-task-check').addEventListener('change', updateImportSelection);
-            div.querySelector('.import-task-btn').addEventListener('click', () => importSingleTask(t.id));
+            div.querySelector('.import-task-btn').addEventListener('click', () => importSingleTask(t.id, t.version ?? 0));
             fragment.appendChild(div);
         });
         resultsEl.appendChild(fragment);
@@ -814,7 +817,11 @@ function updateImportSelection() {
 async function importSelectedTasks() {
     const checked = document.querySelectorAll('.import-task-check:checked');
     if (checked.length === 0) return;
-    const ids = Array.from(checked).map(cb => parseInt(cb.dataset.taskId));
+    const selectedTasks = Array.from(checked).map(cb => ({
+        id: parseInt(cb.dataset.taskId),
+        version: Number(cb.dataset.taskVersion || 0),
+    }));
+    const ids = selectedTasks.map(item => item.id);
     const app = expressCurrentApp;
     const total = ids.length;
 
@@ -832,7 +839,9 @@ async function importSelectedTasks() {
     let ok = 0, fail = 0;
     for (let i = 0; i < ids.length; i++) {
         try {
-            await app.api.post(`/quick-estimate/import-task/${ids[i]}`);
+            await app.api.post(`/quick-estimate/import-task/${selectedTasks[i].id}`, {
+                version: selectedTasks[i].version,
+            });
             ok++;
         } catch {
             fail++;
@@ -852,10 +861,10 @@ async function importSelectedTasks() {
     revealImportedTasks(ids);
 }
 
-async function importSingleTask(taskId) {
+async function importSingleTask(taskId, version) {
     const app = expressCurrentApp;
     try {
-        await app.api.post(`/quick-estimate/import-task/${taskId}`);
+        await app.api.post(`/quick-estimate/import-task/${taskId}`, { version: Number(version || 0) });
         window.toast('Задача добавлена', 'success');
         document.getElementById('qe-modal')?.remove();
         expressTaskSearch = '';
@@ -1001,13 +1010,14 @@ function bindHierarchyActions() {
         if (e.target.closest('.qe-exclude-task-btn')) {
             const btn = e.target.closest('.qe-exclude-task-btn');
             const taskId = parseInt(btn.dataset.taskId);
+            const task = (expressData?.tasks || []).find(item => item.id === taskId);
             showConfirm({
                 title: 'Исключить из экспресс-оценки',
                 message: 'Задача не будет удалена. Она вернётся в статус, который был до начала экспресс-оценки.',
                 confirmLabel: 'Исключить',
                 errorMessage: 'не удалось исключить задачу из экспресс-оценки',
                 onConfirm: async () => {
-                    await expressCurrentApp.api.delete(`/quick-estimate/tasks/${taskId}`);
+                    await expressCurrentApp.api.delete(`/quick-estimate/tasks/${taskId}?version=${encodeURIComponent(task?.version ?? 0)}`);
                     window.toast('Задача исключена из экспресс-оценки', 'success');
                     await loadData(expressCurrentApp);
                 }
@@ -1622,7 +1632,10 @@ async function completeEstimate() {
     button.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> Завершаем…';
     if (window.lucide) window.lucide.createIcons();
     try {
-        const result = await expressCurrentApp.api.put('/quick-estimate/complete', {});
+        const versions = Object.fromEntries(
+            (expressData?.tasks || []).map(task => [task.id, Number(task.version || 0)])
+        );
+        const result = await expressCurrentApp.api.put('/quick-estimate/complete', { versions });
         document.getElementById('qe-modal')?.remove();
         window.toast(result?.detail || 'Экспресс-оценка завершена', 'success');
         await loadData(expressCurrentApp);
@@ -1665,16 +1678,16 @@ function exportToExcel() {
         const rows = [['ID задачи', 'Задача', 'Статус', 'Эпик', 'Приоритет эпика', 'История', ...COMPETENCIES, 'Итого, чел./дн.']];
         for (const task of (expressData?.tasks || [])) {
             if ((task.epics || []).length === 0) {
-                rows.push([task.id, task.title, task.status_name || '', '', '', '', ...COMPETENCIES.map(() => 0), 0]);
+                rows.push([formatTaskPublicId(task), task.title, task.status_name || '', '', '', '', ...COMPETENCIES.map(() => 0), 0]);
             }
             for (const epic of (task.epics || [])) {
                 if ((epic.stories || []).length === 0) {
                     const total = COMPETENCIES.reduce((s, c) => s + (parseFloat(epic[EFFORT_FIELD_MAP[c]]) || 0), 0);
-                    rows.push([task.id, task.title, task.status_name || '', epic.title, epic.priority || '', '', ...COMPETENCIES.map(c => parseFloat(epic[EFFORT_FIELD_MAP[c]]) || 0), total]);
+                    rows.push([formatTaskPublicId(task), task.title, task.status_name || '', epic.title, epic.priority || '', '', ...COMPETENCIES.map(c => parseFloat(epic[EFFORT_FIELD_MAP[c]]) || 0), total]);
                 }
                 for (const story of (epic.stories || [])) {
                     const total = COMPETENCIES.reduce((s, c) => s + (parseFloat(story[EFFORT_FIELD_MAP[c]]) || 0), 0);
-                    rows.push([task.id, task.title, task.status_name || '', epic.title, epic.priority || '', story.title, ...COMPETENCIES.map(c => parseFloat(story[EFFORT_FIELD_MAP[c]]) || 0), total]);
+                    rows.push([formatTaskPublicId(task), task.title, task.status_name || '', epic.title, epic.priority || '', story.title, ...COMPETENCIES.map(c => parseFloat(story[EFFORT_FIELD_MAP[c]]) || 0), total]);
                 }
             }
         }

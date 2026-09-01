@@ -1,3 +1,10 @@
+import os
+
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
+os.environ.setdefault("RUN_STARTUP_SEED", "false")
+os.environ.setdefault("RUN_STARTUP_MAINTENANCE", "false")
+os.environ.setdefault("RUN_NOTIFICATION_SCHEDULER", "false")
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event

@@ -1,12 +1,14 @@
 # Тестирование — AS-IS
 
 > Статус: проверено по `backend/tests/`, `frontend/tests/`, зависимостям и
-> `.github/workflows/quality.yml` на 2026-08-24.
+> `.github/workflows/quality.yml` на 2026-09-01.
 
 ## Наборы тестов
 
 - Backend: pytest-тесты в `backend/tests/`.
 - Frontend: Node.js test runner, файлы `frontend/tests/*.test.mjs`.
+- На 01.09.2026 pytest collection содержит 266 backend-тестов, frontend-набор —
+  24 файла. Это снимок состава, а не обещание фиксированного количества.
 - Отдельной настроенной E2E-системы с Playwright в репозитории нет.
 - Метрики покрытия и обязательный процент coverage в CI не настроены.
 

@@ -15,7 +15,7 @@ from datetime import datetime, timezone, timedelta
 logger = logging.getLogger("dmb_backlog.admin")
 
 from database import get_db
-from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, FieldLabel, Project, BusinessCustomer, Department, AuditLog, CompetencyCostHistory, Tag, IssueTag, ProjectTag, RefreshSession, Report, NotificationTemplate
+from models import Role, Team, User, Task, DictionaryItem, DisplaySetting, ColumnLabel, FieldLabel, Project, BusinessCustomer, Department, AuditLog, CompetencyCostHistory, Tag, IssueTag, ProjectTag, RefreshSession, Report, NotificationTemplate, EventOutbox
 from schemas import (
     RoleCreate, RoleUpdate, RoleResponse,
     TeamCreate, TeamUpdate, TeamResponse,
@@ -31,8 +31,12 @@ from schemas import (
     BusinessCustomerCreate, BusinessCustomerUpdate, BusinessCustomerResponse,
     TagCreate, TagResponse,
     NotificationTemplateCreate, NotificationTemplateUpdate, NotificationTemplateResponse,
+    OutboxRequeueRequest,
 )
 from auth import get_current_user, require_permission, get_password_hash
+from audit_context import current_audit_request
+from idempotency import reserve_idempotency
+from outbox_admin import DeadLetterConflict, DeadLetterNotFound, requeue_dead_letter, serialize_dead_letter
 from routers.tasks_router import recalculate_effort_rub_for_all
 
 router = APIRouter(tags=["admin"])
@@ -225,7 +229,15 @@ def get_audit_log(
         query = query.filter(AuditLog.created_at < datetime.combine(date_to, datetime.max.time()))
     if search and search.strip():
         pattern = f"%{search.strip()}%"
-        query = query.filter(or_(User.name.ilike(pattern), AuditLog.action.ilike(pattern), AuditLog.entity_type.ilike(pattern), AuditLog.details.ilike(pattern), AuditLog.ip_address.ilike(pattern)))
+        query = query.filter(or_(
+            User.name.ilike(pattern),
+            AuditLog.action.ilike(pattern),
+            AuditLog.entity_type.ilike(pattern),
+            AuditLog.details.ilike(pattern),
+            AuditLog.ip_address.ilike(pattern),
+            AuditLog.request_id.ilike(pattern),
+            AuditLog.trace_id.ilike(pattern),
+        ))
 
     total = query.count()
     items = query.order_by(desc(AuditLog.created_at)).offset((page - 1) * per_page).limit(per_page).all()
@@ -247,6 +259,8 @@ def get_audit_log(
             "entity_id": item.entity_id,
             "details": item.details,
             "ip_address": item.ip_address,
+            "request_id": item.request_id,
+            "trace_id": item.trace_id,
             "created_at": item.created_at.isoformat() if item.created_at else None,
         })
 
@@ -276,6 +290,79 @@ def get_audit_log_filters(
         "actions": [a[0] for a in actions if a[0]],
         "entity_types": [e[0] for e in entity_types if e[0]],
         "users": [{"id": u[0], "name": u[1]} for u in users],
+    }
+
+
+# ==================== EVENT OUTBOX DEAD LETTER ====================
+
+@router.get("/outbox/dead-letters")
+def get_outbox_dead_letters(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    search: Optional[str] = Query(None, max_length=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "full")),
+):
+    query = db.query(EventOutbox).filter(EventOutbox.dead_lettered_at.is_not(None))
+    if search and search.strip():
+        pattern = f"%{search.strip()}%"
+        query = query.filter(or_(
+            EventOutbox.event_type.ilike(pattern),
+            EventOutbox.aggregate_type.ilike(pattern),
+            EventOutbox.last_error.ilike(pattern),
+        ))
+    total = query.count()
+    rows = query.order_by(desc(EventOutbox.dead_lettered_at), desc(EventOutbox.id)).offset(
+        (page - 1) * per_page
+    ).limit(per_page).all()
+    return {
+        "items": [serialize_dead_letter(row) for row in rows],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": (total + per_page - 1) // per_page,
+    }
+
+
+@router.post("/outbox/dead-letters/{event_id}/requeue")
+def requeue_outbox_dead_letter(
+    event_id: int,
+    data: OutboxRequeueRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "full")),
+):
+    idempotency, is_new_request = reserve_idempotency(
+        db,
+        operation=f"outbox.dead_letter.requeue:{event_id}",
+        user_id=current_user.id,
+        request_key=data.client_request_id,
+        request_data={"event_id": event_id, "expected_attempts": data.expected_attempts},
+    )
+    if idempotency and not is_new_request:
+        return {"message": "Event already requeued", "event_id": event_id}
+    context = current_audit_request()
+    try:
+        result = requeue_dead_letter(
+            db,
+            event_id=event_id,
+            expected_attempts=data.expected_attempts,
+            actor_user_id=current_user.id,
+            request_id=context.request_id if context else None,
+            trace_id=context.trace_id if context else None,
+        )
+    except DeadLetterNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except DeadLetterConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if idempotency:
+        idempotency.resource_type = "event_outbox"
+        idempotency.resource_id = event_id
+    db.commit()
+    return {
+        "message": "Event requeued",
+        "event_id": result.event_id,
+        "event_type": result.event_type,
+        "previous_attempts": result.previous_attempts,
     }
 
 

@@ -233,7 +233,7 @@ class TaskBase(BaseModel):
     actual_effort_delivery: Optional[float] = Field(None, ge=0)
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
-    financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (руб)')
+    financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (млн ₽)')
     financial_effect_ai_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование AI-расчёта финансового эффекта')
     priority_score: Optional[int] = Field(None, ge=0, le=100, description='Priority Score (рейтинг 0-100)')
     priority_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование Priority Score')
@@ -310,6 +310,7 @@ class TaskCreate(TaskBase):
 
 class TaskUpdate(BaseModel):
     client_request_id: Optional[str] = Field(None, min_length=8, max_length=64)
+    version: int = Field(ge=0, description='Обязательная версия задачи для optimistic lock')
     team_id: Optional[int] = None
     title: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
@@ -344,7 +345,7 @@ class TaskUpdate(BaseModel):
     actual_effort_delivery: Optional[float] = Field(None, ge=0)
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
-    financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (руб)')
+    financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (млн ₽)')
     financial_effect_ai_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование AI-расчёта финансового эффекта')
     priority_score: Optional[int] = Field(None, ge=0, le=100, description='Priority Score (рейтинг 0-100)')
     priority_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование Priority Score')
@@ -385,8 +386,6 @@ class TaskUpdate(BaseModel):
         if value is None:
             raise ValueError('Обязательное поле не может быть пустым')
         return value
-    version: Optional[int] = Field(None, description='Версия задачи для optimistic lock')
-
     @field_validator('link_jira', mode='before')
     @classmethod
     def _normalize_link_jira(cls, v):
@@ -415,10 +414,12 @@ class TaskUpdate(BaseModel):
 
 class PipDecisionRequest(BaseModel):
     decision: Literal["reject", "accept"]
+    version: int = Field(ge=0)
 
 
 class TaskResponse(TaskBase):
     id: int
+    public_id: str = Field(pattern=r'^TASK-\d{3}-\d{3}$')
     cv: Optional[float] = None
     created_by: Optional[int] = None
     created_by_name: Optional[str] = None
@@ -460,6 +461,7 @@ class CommentCreate(BaseModel):
     text: str = Field(min_length=1, max_length=5000)
     mentioned_user_ids: Optional[List[int]] = None
     parent_id: Optional[int] = None
+    client_request_id: Optional[str] = Field(None, min_length=8, max_length=64)
 
 
 class CommentResponse(BaseModel):
@@ -504,6 +506,7 @@ class AttachmentListResponse(BaseModel):
 
 
 class TaskLinkUpdate(BaseModel):
+    version: int = Field(ge=0)
     link_mockups: Optional[str] = None
     link_jira: Optional[str] = None
 
@@ -516,6 +519,7 @@ class TaskLinkUpdate(BaseModel):
 class BulkActionRequest(BaseModel):
     action: str = Field(max_length=50)
     task_ids: List[int] = Field(min_length=1)
+    versions: Dict[int, int] = Field(default_factory=dict)
     fields: Optional[Dict[str, Any]] = None
     updates: Optional[Dict[str, Any]] = None  # deprecated, use fields instead
 
@@ -576,7 +580,12 @@ class ReportBase(BaseModel):
 
 
 class ReportCreate(ReportBase):
-    pass
+    client_request_id: Optional[str] = Field(None, min_length=8, max_length=64)
+
+
+class ReportUpdate(ReportBase):
+    version: int = Field(ge=0)
+    client_request_id: Optional[str] = Field(None, min_length=8, max_length=64)
 
 
 class ReportResponse(ReportBase):
@@ -584,6 +593,8 @@ class ReportResponse(ReportBase):
     type: str = "custom"
     created_by: Optional[int] = None
     created_at: datetime
+    updated_at: Optional[datetime] = None
+    version: int = 0
 
     class Config:
         from_attributes = True
@@ -766,6 +777,23 @@ class DictionaryItemResponse(DictionaryItemBase):
     lock_owner_id: Optional[int] = None
     lock_owner_name: Optional[str] = None
     lock_until: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OutboxRequeueRequest(BaseModel):
+    expected_attempts: int = Field(ge=1)
+    client_request_id: str = Field(min_length=8, max_length=64)
+
+
+class UserDirectoryResponse(BaseModel):
+    """Minimal identity projection safe for ordinary authenticated users."""
+    id: int
+    name: str
+    position: Optional[str] = None
+    team_id: Optional[int] = None
+    team_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -1230,6 +1258,14 @@ class SortItem(BaseModel):
 class SortRequest(BaseModel):
     epics: List[SortItem] = []
     stories: List[SortItem] = []
+
+
+class TaskVersionRequest(BaseModel):
+    version: int = Field(ge=0)
+
+
+class TaskVersionsRequest(BaseModel):
+    versions: Dict[int, int]
 
 
 class QuickEstimateTaskResponse(TaskResponse):

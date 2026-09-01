@@ -1,0 +1,60 @@
+groups:
+  - name: dmb-multiuser-readiness
+    rules:
+      - alert: DmbOutboxBacklogOld
+        expr: dmb_outbox_oldest_pending_seconds > 300
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DMB outbox is not draining"
+          description: "The oldest unpublished event is older than five minutes."
+
+      - alert: DmbOutboxDeadLetterPresent
+        expr: dmb_outbox_dead_letter > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DMB has dead-letter events"
+          description: "Inspect event_outbox.last_error before replaying or resolving the event."
+
+      - alert: DmbBackendHighErrorRate
+        expr: sum(rate(dmb_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(dmb_http_requests_total[5m])), 0.001) > 0.02
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DMB backend 5xx rate is above 2%"
+
+      - alert: DmbUnexpectedConflictRate
+        expr: sum(rate(dmb_concurrency_responses_total[10m])) / clamp_min(sum(rate(dmb_http_requests_total[10m])), 0.001) > 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DMB conflict/lock response rate is unusually high"
+
+      - alert: DmbDatabasePoolWaitHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(dmb_db_pool_wait_seconds_bucket[5m]))) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DMB database pool p95 wait exceeds 500 ms"
+
+      - alert: DmbAgentProxyErrors
+        expr: sum(rate(dmb_agent_requests_total{outcome!="success"}[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DMB backend is receiving errors from the AI agent"
+
+      - alert: DmbSseStreamErrors
+        expr: increase(dmb_sse_stream_errors_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DMB realtime streams are repeatedly disconnecting with errors"

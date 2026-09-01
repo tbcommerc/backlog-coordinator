@@ -2,7 +2,7 @@
 title: Закрепление панелей и заголовков таблиц бэклога
 scope: as-is
 status: verified
-last_verified: 2026-08-24
+last_verified: 2026-09-01
 evidence:
   - frontend/js/components/filterToolbar.js
   - frontend/tests/moduleContracts.test.mjs

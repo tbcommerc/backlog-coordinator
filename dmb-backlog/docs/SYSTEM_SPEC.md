@@ -2,7 +2,7 @@
 title: Системная спецификация DMB Backlog
 scope: as-is
 status: verified
-last_verified: 2026-08-24
+last_verified: 2026-09-01
 evidence:
   - backend/main.py
   - backend/models.py
@@ -29,6 +29,8 @@ DMB Backlog объединяет:
 - экспресс-оценку через epics/stories;
 - аналитику и отчёты;
 - уведомления и timeline;
+- отчётные встречи и версионируемые статусы задач для них;
+- AI-расчёт финансового эффекта и приоритета через Task Prioritiser;
 - портал бизнес-заказчика;
 - административный интерфейс;
 - proxy к отдельному AI Business Analyst Agent.
@@ -48,6 +50,7 @@ DMB Backlog объединяет:
 - admin и audit log;
 - customer portal;
 - AI assistant и review requests.
+- dead-letter outbox для полного администратора.
 
 Доступность определяется сочетанием role permissions, специальных role flags и object-level task scopes. Точную матрицу следует получать из `backend/auth.py`, router dependencies и security tests; названия ролей сами по себе не гарантируют права.
 
@@ -146,6 +149,9 @@ Admin API обслуживает роли, пользователей, кома�
 - Redis/memory rate limiting;
 - soft delete задач;
 - optimistic version и locks;
+- cross-worker idempotency для критичных изменяющих операций;
+- transactional outbox, Redis Stream и авторизованный SSE;
+- readiness, Prometheus-метрики и OpenTelemetry trace correlation;
 - backend/frontend tests и CI quality workflow.
 
 Не подтверждено как утверждённый контракт:

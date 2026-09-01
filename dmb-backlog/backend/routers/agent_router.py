@@ -2,43 +2,65 @@
 DMB Backlog - AI Business Analyst Assistant integration.
 
 The DMB backend is the only caller of the agent service. It manages the
-mapping user -> agent session, proxies the chat and turns an approved agent
-draft into a RequirementRequest (a separate entity from a Task). The task is
-NOT created automatically - final decisions stay with PO/BA (human-in-the-loop).
+mapping user -> agent session and keeps the customer Request continuous from
+AI draft through human review into an internal delivery Task.
 """
 import json
 import logging
 import threading
+import time
 import urllib.request
 import urllib.error
+import uuid
+from contextlib import contextmanager
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy.exc import IntegrityError
 
 from auth import get_current_user, get_request_review_access, is_customer_portal_only
 from config import settings
 from database import get_db
-from models import AgentSession, RequirementRequest, User, Team
-from notifications import notify_new_request, notify_request_rejected, notify_request_assigned
+from models import AgentSession, RequirementRequest, Task, TaskStatus, User, Team
+from notifications import (
+    notify_new_request, notify_request_rejected, notify_request_returned,
+    notify_request_assigned, notify_request_in_progress,
+)
+from metrics import inc_counter, observe_histogram
 
 logger = logging.getLogger("agent_integration")
 router = APIRouter()
 
 # Serialises submissions for the same dialogue inside a worker. The database
 # constraint on RequirementRequest is the cross-worker safety net.
-_submission_locks: dict[str, threading.Lock] = {}
+_submission_locks: dict[str, tuple[threading.Lock, int]] = {}
 _submission_locks_guard = threading.Lock()
 
 
-def _submission_lock(session_id: str) -> threading.Lock:
+@contextmanager
+def _submission_lock(session_id: str):
     with _submission_locks_guard:
-        return _submission_locks.setdefault(session_id, threading.Lock())
+        lock, users = _submission_locks.get(session_id, (threading.Lock(), 0))
+        _submission_locks[session_id] = (lock, users + 1)
+    lock.acquire()
+    try:
+        yield
+    finally:
+        lock.release()
+        with _submission_locks_guard:
+            current_lock, users = _submission_locks.get(session_id, (lock, 1))
+            if current_lock is lock and users <= 1:
+                _submission_locks.pop(session_id, None)
+            elif current_lock is lock:
+                _submission_locks[session_id] = (lock, users - 1)
 
 
 class AgentChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=5000)
     session_id: str = ""
+    message_id: str = Field(default_factory=lambda: uuid.uuid4().hex, max_length=64)
 
 
 class AgentSendForReviewRequest(BaseModel):
@@ -55,11 +77,21 @@ class AgentDraftSectionEditRequest(BaseModel):
 
 class AgentRequestStatusUpdate(BaseModel):
     status: str = Field(min_length=1, max_length=20)
+    version: int = Field(ge=0)
     reject_reason: str = ""
     assignee_id: int = None
 
 
 REQUEST_STATUSES = {"draft", "submitted", "in_review", "in_progress", "approved", "rejected", "returned"}
+REQUEST_STATUS_TRANSITIONS = {
+    "submitted": {"in_review"},
+    "returned": {"in_review"},
+    "in_review": {"in_review", "in_progress", "returned", "rejected"},
+    "in_progress": {"approved"},
+    "approved": set(),
+    "rejected": set(),
+    "draft": {"submitted"},
+}
 TEAM_REQUEST_REVIEWER_ROLES = {
     "po/pl/cl",
     "ba/участник команды",
@@ -98,16 +130,30 @@ def _call_agent(method: str, path: str, payload: dict | None = None) -> dict:
     url = f"{settings.AGENT_BASE_URL.rstrip('/')}{path}"
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
     req = urllib.request.Request(url, data=data, headers=_agent_headers(), method=method)
+    started_at = time.monotonic()
+    outcome = "success"
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=settings.AGENT_TIMEOUT_SECONDS) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
+        outcome = f"http_{e.code}"
         body = e.read().decode("utf-8", errors="replace")[:300]
         logger.error("agent %s %s -> %s: %s", method, path, e.code, body)
+        if e.code == 409:
+            try:
+                detail = json.loads(body).get("detail") or "Диалог уже изменён другим запросом"
+            except json.JSONDecodeError:
+                detail = "Диалог уже изменён другим запросом"
+            raise HTTPException(status_code=409, detail=detail)
         raise HTTPException(status_code=502, detail=f"Агент недоступен ({e.code})")
     except (OSError, TimeoutError, UnicodeError, json.JSONDecodeError):
+        outcome = "transport_error"
         logger.exception("agent %s %s failed", method, path)
         raise HTTPException(status_code=502, detail="Сервис аналитика недоступен")
+    finally:
+        labels = {"method": method, "outcome": outcome}
+        inc_counter("dmb_agent_requests_total", labels=labels)
+        observe_histogram("dmb_agent_request_duration_seconds", time.monotonic() - started_at, {"method": method})
 
 
 def _user_context(user: User) -> dict:
@@ -202,6 +248,34 @@ def _render_request(draft: dict) -> str:
     return "\n".join(lines)
 
 
+def _commit_resubmitted_request(db: Session, request: RequirementRequest, resp: dict) -> dict:
+    """Commit one returned-request revision behind a single transaction boundary."""
+    try:
+        db.commit()
+        resp.update({
+            "request_id": request.id,
+            "request_url": f"#/customer/request/{request.id}",
+            "resubmitted": True,
+        })
+        return resp
+    except StaleDataError:
+        db.rollback()
+        current = db.query(RequirementRequest).filter(RequirementRequest.id == request.id).first()
+        return {
+            "success": True,
+            "session_id": request.agent_session_id,
+            "action": "sent",
+            "message": "Этот диалог уже повторно отправлен на ревью.",
+            "request_id": request.id,
+            "request_url": f"#/customer/request/{request.id}",
+            "duplicate": True,
+            "version": current.version if current else None,
+        }
+    except Exception:
+        db.rollback()
+        raise
+
+
 def _request_to_dict(req: RequirementRequest) -> dict:
     return {
         "id": req.id,
@@ -217,7 +291,13 @@ def _request_to_dict(req: RequirementRequest) -> dict:
         "reviewer_name": req.reviewer.name if req.reviewer else None,
         "assignee_id": req.assignee_id,
         "assignee_name": req.assignee.name if req.assignee else None,
+        "task_id": req.task_id,
+        "task_public_id": req.task.public_id if req.task else None,
+        "task_status": req.task.status.name if req.task and req.task.status else None,
+        "task_progress": req.task.progress if req.task else None,
+        "task_deadline": req.task.deadline.name if req.task and req.task.deadline else None,
         "reject_reason": req.reject_reason,
+        "version": req.version or 0,
         "author_name": req.user.name if req.user else None,
         "created_at": req.created_at.isoformat() if req.created_at else None,
         "updated_at": req.updated_at.isoformat() if req.updated_at else None,
@@ -239,6 +319,7 @@ def agent_chat(
         agent_session_id = _get_or_create_agent_session(db, current_user)
     resp = _call_agent("POST", "/api/agent/chat", {
         "session_id": agent_session_id,
+        "message_id": req.message_id,
         "message": req.message,
         "context": _user_context(current_user),
     })
@@ -367,21 +448,39 @@ def agent_send_for_review(
             RequirementRequest.agent_session_id == req.session_id,
             RequirementRequest.is_deleted.is_(False),
         ).first()
-        if existing:
-            # The ownership check above prevents disclosure of another user's request.
-            return {
-                "success": True,
-                "session_id": req.session_id,
-                "action": "sent",
-                "message": "Этот диалог уже отправлен на ревью.",
-                "request_id": existing.id,
-                "request_url": f"#/customer/request/{existing.id}",
-                "duplicate": True,
-            }
         state = _call_agent("GET", f"/api/agent/session/{req.session_id}")
         draft = state.get("draft")
         if not draft:
             raise HTTPException(status_code=400, detail="Драфт ещё не готов — продолжите диалог")
+
+        if existing:
+            if existing.status != "returned":
+                return {
+                    "success": True,
+                    "session_id": req.session_id,
+                    "action": "sent",
+                    "message": "Этот диалог уже отправлен на ревью.",
+                    "request_id": existing.id,
+                    "request_url": f"#/customer/request/{existing.id}",
+                    "duplicate": True,
+                }
+            existing.title = (draft.get("title") or existing.title)[:255]
+            existing.description = _render_request(draft)
+            existing.draft = draft
+            existing.status = "submitted"
+            existing.reject_reason = None
+            existing.reviewer_id = None
+            existing.version = (existing.version or 0) + 1
+            resp = _call_agent("POST", "/api/agent/send-for-review", {
+                "session_id": req.session_id,
+                "task_id": existing.id,
+                "title": req.title or draft.get("title") or "",
+                "user_id": current_user.id,
+            })
+            if resp.get("action") != "sent" or resp.get("success") is False:
+                raise HTTPException(status_code=409, detail=resp.get("message") or "Не удалось повторно отправить запрос")
+            notify_new_request(db, existing.id, existing.team_id, existing.title, current_user.name)
+            return _commit_resubmitted_request(db, existing, resp)
 
         request = RequirementRequest(
             user_id=current_user.id,
@@ -410,6 +509,23 @@ def agent_send_for_review(
             resp["request_id"] = request.id
             resp["request_url"] = f"#/customer/request/{request.id}"
             return resp
+        except IntegrityError:
+            db.rollback()
+            existing = db.query(RequirementRequest).filter(
+                RequirementRequest.agent_session_id == req.session_id,
+                RequirementRequest.is_deleted.is_(False),
+            ).first()
+            if existing:
+                return {
+                    "success": True,
+                    "session_id": req.session_id,
+                    "action": "sent",
+                    "message": "Этот диалог уже отправлен на ревью.",
+                    "request_id": existing.id,
+                    "request_url": f"#/customer/request/{existing.id}",
+                    "duplicate": True,
+                }
+            raise
         except Exception:
             db.rollback()
             raise
@@ -489,6 +605,35 @@ def agent_request_detail(
     return _request_to_dict(req)
 
 
+@router.post("/agent/requests/{request_id}/resume")
+def agent_request_resume(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Open a returned request's original AI dialogue for revision by its owner."""
+    req = db.query(RequirementRequest).filter(
+        RequirementRequest.id == request_id,
+        RequirementRequest.is_deleted.is_(False),
+        RequirementRequest.user_id == current_user.id,
+    ).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Запрос не найден")
+    if req.status != "returned":
+        raise HTTPException(status_code=409, detail="Уточнение сейчас не требуется")
+    if not req.agent_session_id:
+        raise HTTPException(status_code=409, detail="Исходный диалог не найден")
+    resp = _call_agent("POST", "/api/agent/reopen-review", {
+        "session_id": req.agent_session_id,
+        "user_id": current_user.id,
+        "comment": req.reject_reason or "",
+    })
+    if resp.get("action") == "error" or resp.get("success") is False:
+        raise HTTPException(status_code=409, detail=resp.get("message") or "Не удалось открыть запрос для уточнения")
+    _set_active_agent_session(db, current_user, req.agent_session_id)
+    return {"success": True, "session_id": req.agent_session_id, "request_id": req.id, "url": "#/customer/create"}
+
+
 @router.put("/agent/requests/{request_id}/status")
 def agent_request_status(
     request_id: int,
@@ -514,17 +659,91 @@ def agent_request_status(
         raise HTTPException(status_code=403, detail="Доступ запрещён")
     if body.status not in REQUEST_STATUSES:
         raise HTTPException(status_code=422, detail=f"Недопустимый статус: {body.status}")
-    if body.status == "rejected" and not body.reject_reason.strip():
-        raise HTTPException(status_code=422, detail="При отклонении укажите причину")
+    if req.version != body.version:
+        raise HTTPException(status_code=409, detail={
+            "code": "request_version_conflict",
+            "message": "Запрос уже изменён другим пользователем",
+            "request_id": req.id,
+            "expected_version": body.version,
+            "current_version": req.version or 0,
+            "current_status": req.status,
+        })
+    allowed_targets = REQUEST_STATUS_TRANSITIONS.get(req.status, set())
+    if body.status not in allowed_targets:
+        raise HTTPException(status_code=409, detail={
+            "code": "invalid_request_transition",
+            "message": f"Переход {req.status} → {body.status} недопустим",
+            "request_id": req.id,
+            "current_version": req.version or 0,
+            "current_status": req.status,
+        })
+    if req.status == "in_review" and req.reviewer_id not in {None, current_user.id}:
+        raise HTTPException(status_code=409, detail={
+            "code": "request_owned_by_another_reviewer",
+            "message": "Запрос уже закреплён за другим ревьюером",
+            "request_id": req.id,
+            "current_version": req.version or 0,
+            "current_status": req.status,
+            "reviewer_id": req.reviewer_id,
+        })
+    if body.status == "in_review" and req.reviewer_id not in {None, current_user.id}:
+        raise HTTPException(status_code=409, detail={
+            "code": "request_owned_by_another_reviewer",
+            "message": "Запрос уже закреплён за другим ревьюером",
+            "request_id": req.id,
+            "current_version": req.version or 0,
+            "current_status": req.status,
+            "reviewer_id": req.reviewer_id,
+        })
+    if body.status in {"rejected", "returned"} and not body.reject_reason.strip():
+        raise HTTPException(status_code=422, detail="При возврате или отклонении укажите комментарий")
+    if body.status == "in_progress" and not body.assignee_id:
+        raise HTTPException(status_code=422, detail="При передаче в проработку укажите ответственного")
     req.status = body.status
-    if body.status == "rejected":
+    if body.status in {"rejected", "returned"}:
         req.reject_reason = body.reject_reason.strip()
+    if body.status == "rejected":
         notify_request_rejected(db, req.id, req.user_id, req.title, body.reject_reason.strip())
+    if body.status == "returned":
+        notify_request_returned(db, req.id, req.user_id, req.title, body.reject_reason.strip())
+    if body.status == "in_review":
+        req.reviewer_id = current_user.id
+        req.reject_reason = None
     if body.status == "in_progress" and body.assignee_id:
         req.assignee_id = body.assignee_id
         req.reviewer_id = current_user.id
+        if req.task_id is None:
+            initial_status = db.query(TaskStatus).filter(TaskStatus.name == "СБОР ТРЕБОВАНИЙ").first()
+            customer_id = req.user.business_customer_id if req.user else None
+            task = Task(
+                team_id=req.team_id,
+                title=req.title,
+                description=req.description,
+                business_customer_id=customer_id,
+                status_id=initial_status.id if initial_status else None,
+                owner_id=body.assignee_id,
+                created_by=current_user.id,
+                progress=0,
+            )
+            db.add(task)
+            db.flush()
+            req.task_id = task.id
         notify_request_assigned(db, req.id, body.assignee_id, req.title)
-    db.commit()
+        notify_request_in_progress(db, req.id, req.user_id, req.title, req.task_id)
+    req.version = (req.version or 0) + 1
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        current = db.query(RequirementRequest).filter(RequirementRequest.id == request_id).first()
+        raise HTTPException(status_code=409, detail={
+            "code": "request_version_conflict",
+            "message": "Запрос уже изменён другим пользователем",
+            "request_id": request_id,
+            "expected_version": body.version,
+            "current_version": current.version if current else None,
+            "current_status": current.status if current else None,
+        })
     db.refresh(req)
     return _request_to_dict(req)
 

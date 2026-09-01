@@ -1,0 +1,33 @@
+# Классификация команд трайба (ТЗ v2.0, раздел 7; решение итерации 3).
+#
+# earning  — зарабатывающие команды (Фронт): доходный метод,
+#            value_external = value_internal.
+# serving  — обслуживающие команды (Бэк): метод экономии времени во внутреннем
+#            контуре; value_external считается только ex-post атрибуцией (Ф8),
+#            до первого запуска = TBD.
+version: 1
+default_class: serving
+teams:
+  - name: "IB"
+    class: earning
+  - name: "Pre-Trade"
+    class: earning
+
+  - name: "Core"
+    class: serving
+  - name: "Finance"
+    class: serving
+  - name: "Post-Trade (Products & Service)"
+    class: serving
+  - name: "Post-Trade (Finance)"
+    class: serving
+  - name: "Methodology"
+    class: serving
+  - name: "AI"
+    class: serving
+  - name: "Delivery"
+    class: serving
+  - name: "ИТ ЛТ"
+    class: serving
+  - name: "Проектный офис"
+    class: serving

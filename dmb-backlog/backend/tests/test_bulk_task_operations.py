@@ -20,6 +20,7 @@ def test_bulk_tags_preserve_history_version_and_operation_result(db):
         BulkActionRequest(
             action="update",
             task_ids=[task.id],
+            versions={task.id: task.version},
             fields={"tags_add": ["new-tag"], "tags_remove": ["remove-me"]},
         ),
         db=db,
@@ -51,7 +52,7 @@ def test_bulk_update_counts_unchanged_fields_without_bumping_version(db):
 
     user = SimpleNamespace(id=778, role_name="Администратор", team_id=None)
     result = bulk_action(
-        BulkActionRequest(action="update", task_ids=[task.id], fields={"progress": 25}),
+        BulkActionRequest(action="update", task_ids=[task.id], versions={task.id: task.version}, fields={"progress": 25}),
         db=db,
         current_user=user,
     )
@@ -75,7 +76,12 @@ def test_bulk_update_accepts_more_than_500_tasks_in_one_operation(db):
 
     user = SimpleNamespace(id=779, role_name="Администратор", team_id=None)
     result = bulk_action(
-        BulkActionRequest(action="update", task_ids=[task.id for task in tasks], fields={"progress": 10}),
+        BulkActionRequest(
+            action="update",
+            task_ids=[task.id for task in tasks],
+            versions={task.id: task.version for task in tasks},
+            fields={"progress": 10},
+        ),
         db=db,
         current_user=user,
     )
@@ -96,7 +102,7 @@ def test_bulk_preview_calculates_result_without_writes(db):
 
     user = SimpleNamespace(id=780, role_name="Администратор", team_id=None)
     result = preview_bulk_action(
-        BulkActionRequest(action="update", task_ids=[task.id], fields={"progress": 10}),
+        BulkActionRequest(action="update", task_ids=[task.id], versions={task.id: task.version}, fields={"progress": 10}),
         db=db,
         current_user=user,
     )

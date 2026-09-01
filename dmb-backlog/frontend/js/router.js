@@ -1,17 +1,18 @@
 import { renderDashboard, initDashboard } from './components/dashboard.js';
-import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=92';
-import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=91';
+import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=105';
+import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=104';
 import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js';
 import { renderKanban, initKanban } from './components/kanbanBoard.js?v=4';
-import { renderReports, initReports, renderReportPage, initReportPage } from './components/reports.js?v=3';
-import { renderAnalytics, initAnalytics } from './components/analytics.js';
-import { renderNotifications, initNotifications } from './components/notifications.js?v=6';
+import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=4';
+import { renderAnalytics, initAnalytics } from './components/analytics.js?v=4';
+import { renderNotifications, initNotifications } from './components/notifications.js?v=9';
 import { renderSettings, initSettings } from './components/settings.js';
 import { renderAdmin, initAdmin } from './components/admin.js';
 import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage } from './components/customerPortal.js';
-import { renderAgentChat, initAgentChat } from './components/agentChat.js';
+import { renderAgentChat, initAgentChat } from './components/agentChat.js?v=17';
 import { renderAuditLog, initAuditLog } from './components/auditLog.js';
-import { renderReviewPage, initReviewPage, renderReviewDetailPage, initReviewDetailPage } from './components/reviewPage.js';
+import { renderOutboxDeadLetters, initOutboxDeadLetters } from './components/outboxDeadLetters.js';
+import { renderReviewPage, initReviewPage, renderReviewDetailPage, initReviewDetailPage } from './components/reviewPage.js?v=1';
 
 export class Router {
     constructor(app) {
@@ -23,6 +24,7 @@ export class Router {
             '/express-estimate': { render: renderExpressEstimate, init: initExpressEstimate },
             '/kanban': { render: renderKanban, init: initKanban },
             '/reports': { render: renderReports, init: initReports },
+            '/reporting-meetings': { render: renderReportingMeetingsManagement, init: initReportingMeetingsManagement },
             '/reports/detail': { render: renderReportPage, init: initReportPage },
             '/analytics/tribe': { render: (app) => renderAnalytics('tribe', app), init: (app) => initAnalytics('tribe', app) },
             '/analytics/po-pl': { render: (app) => renderAnalytics('po-pl', app), init: (app) => initAnalytics('po-pl', app) },
@@ -31,6 +33,7 @@ export class Router {
             '/settings': { render: renderSettings, init: initSettings },
             '/admin': { render: renderAdmin, init: initAdmin },
             '/audit-log': { render: renderAuditLog, init: initAuditLog },
+            '/outbox-dead-letters': { render: renderOutboxDeadLetters, init: initOutboxDeadLetters },
             '/customer': { render: renderCustomerPortal, init: initCustomerPortal },
             '/customer/create': { render: renderAgentChat, init: initAgentChat },
             '/review': { render: renderReviewPage, init: initReviewPage },
@@ -39,6 +42,7 @@ export class Router {
         this.onBeforeNavigate = null;
         this.lastHash = null;
         this.lastDeepLinkedTask = null;
+        this.focusSidebarWasCollapsed = null;
     }
 
     init() {
@@ -48,6 +52,13 @@ export class Router {
 
     navigate(path) {
         window.location.hash = path;
+    }
+
+    async refreshCurrentRoute() {
+        // Force the active renderer/init pair to run without changing history.
+        // Used by debounced realtime invalidations from other workers.
+        this.lastHash = null;
+        await this.handleRoute();
     }
 
     pushTaskRoute(taskId, tab = 'main') {
@@ -117,14 +128,17 @@ export class Router {
 
         const user = this.app?.store?.get('currentUser');
         const businessCustomerAllowedPaths = new Set(['/customer', '/customer/create']);
-        if (user?.permissions?.customer_portal_mode === 'only' && !businessCustomerAllowedPaths.has(path)) {
+        const isCustomerRequestDetail = /^\/customer\/request\/\d+$/.test(path);
+        if (user?.permissions?.customer_portal_mode === 'only' && !businessCustomerAllowedPaths.has(path) && !isCustomerRequestDetail) {
             if (window.location.hash !== '#/customer') {
                 history.replaceState(null, '', '#/customer');
             }
             return this.handleRoute();
         }
         const adminAccess = user?.permissions?.admin || 'none';
-        if ((path === '/admin' || path === '/audit-log') && adminAccess === 'none') {
+        const requiresAdmin = path === '/admin' || path === '/audit-log';
+        const requiresFullAdmin = path === '/outbox-dead-letters' || path === '/reporting-meetings';
+        if ((requiresAdmin && adminAccess === 'none') || (requiresFullAdmin && adminAccess !== 'full')) {
             const container = document.getElementById('page-content');
             if (container) {
                 container.innerHTML = `<div class="state-page state-forbidden"><h1>Недостаточно прав</h1><p>Раздел доступен пользователям с административным доступом.</p><a class="btn btn-primary" href="#/dashboard">Вернуться на главную</a></div>`;
@@ -143,6 +157,7 @@ export class Router {
             }
         }
         this.lastHash = hash;
+        this.syncAssistantFocusMode(path);
         const fromPath = from?.split('?')[0];
         if (from !== null && path === fromPath) {
             this.openDeepLinkedTask(path, query);
@@ -191,6 +206,7 @@ export class Router {
                         '/express-estimate': 'Экспресс-оценка',
                         '/kanban': 'Канбан-доска',
                         '/reports': 'Статусы для встреч',
+                        '/reporting-meetings': 'Управление отчётными встречами',
                         '/reports/detail': 'Статус-отчёт',
                         '/analytics/tribe': 'Аналитика ЛТ',
                         '/analytics/po-pl': 'Аналитика PO/PL',
@@ -199,7 +215,8 @@ export class Router {
                         '/settings': 'Настройки',
                         '/admin': 'Администрирование',
                         '/audit-log': 'Аудит действий',
-                        '/customer': 'Мои задачи',
+                        '/outbox-dead-letters': 'Ошибки доставки событий',
+                        '/customer': 'Мои запросы',
                         '/customer/create': 'ИИ-ассистент',
                         '/review': 'Ревью запросов',
                     };
@@ -246,5 +263,24 @@ export class Router {
                 item.classList.add('active');
             }
         });
+    }
+
+    syncAssistantFocusMode(path) {
+        const sidebar = document.querySelector('.sidebar');
+        const appRoot = document.getElementById('app');
+        if (!sidebar || !appRoot) return;
+
+        const enteringFocus = path === '/customer/create';
+        if (enteringFocus && this.focusSidebarWasCollapsed === null) {
+            this.focusSidebarWasCollapsed = sidebar.classList.contains('collapsed');
+        }
+
+        appRoot.classList.toggle('assistant-focus-navigation', enteringFocus);
+        if (enteringFocus) {
+            sidebar.classList.add('collapsed');
+        } else if (this.focusSidebarWasCollapsed !== null) {
+            sidebar.classList.toggle('collapsed', this.focusSidebarWasCollapsed);
+            this.focusSidebarWasCollapsed = null;
+        }
     }
 }

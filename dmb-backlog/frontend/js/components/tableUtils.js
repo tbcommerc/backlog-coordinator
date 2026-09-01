@@ -1,4 +1,5 @@
-console.log('[DMB] tableUtils.js v20260806.6 loaded');
+console.log('[DMB] tableUtils.js v20260826.2 loaded');
+import { calculateTaskCv } from '../taskMetrics.js';
 
 const PRIORITY_WEIGHT = { 'ВЫСОКИЙ': 3, 'СРЕДНИЙ': 2, 'НИЗКИЙ': 1 };
 
@@ -15,21 +16,38 @@ const NAME_KEYS = {
   business_customer: 'business_customer_name',
 };
 
-const COLUMN_MAX = {
-  id: 90, title: 320, description: 220, comment: 320, rejection_reason: 280,
-  financial_effect_justification: 280,
-  status: 210, priority: 125, team: 200, channel: 170, business_customer: 190,
-  department: 200, project: 210, task_type: 170, involved_teams: 260,
-  deadline: 135, effort_days: 95, effort_rub: 115, financial_effect: 135,
-  cv: 75, progress: 180, owner: 210, link_mockups: 105, link_jira: 105,
-  date_received: 130, created_at: 155, updated_at: 155, tags: 180,
-  metric_kr_plan: 135, metric_kr_fact: 135, metric_kr_unit: 95,
-  key_project_status: 240, directorate_status: 240, did_status: 240,
-  created_by: 210, did_demo: 95,
-  key_project_status_updated_at: 155, directorate_status_updated_at: 155, did_status_updated_at: 155,
+// Base widths follow rendered value formats rather than potentially long labels.
+const COLUMN_BASE = {
+  id: 105, title: 220, description: 180, comment: 180, rejection_reason: 180,
+  financial_effect_justification: 180,
+  date_received: 110, status: 120, priority: 105, team: 130, channel: 110,
+  business_customer: 150, department: 150, project: 150, task_type: 125,
+  involved_teams: 170, deadline: 110, owner: 140, created_by: 140,
+  created_at: 140, updated_at: 140,
+  effort_days: 95, effort_rub: 115, actual_effort_days: 105,
+  financial_effect: 120, cv: 75, progress: 120,
+  metric_kr_plan: 110, metric_kr_fact: 110, metric_kr_unit: 110,
+  key_project_status: 160, directorate_status: 160, did_status: 160,
+  key_project_status_updated_at: 130, directorate_status_updated_at: 130,
+  did_status_updated_at: 130, did_demo: 80,
+  link_mockups: 90, link_jira: 90, tags: 140,
 };
 
-const COLUMN_MIN = { progress: 115, effort_days: 90, id: 90, cv: 90 };
+const COLUMN_MAX = {
+  id: 110, title: 300, description: 240, comment: 240, rejection_reason: 220,
+  financial_effect_justification: 220,
+  date_received: 120, status: 150, priority: 115, team: 170, channel: 140,
+  business_customer: 180, department: 180, project: 180, task_type: 150,
+  involved_teams: 220, deadline: 120, owner: 170, created_by: 170,
+  created_at: 150, updated_at: 150,
+  effort_days: 105, effort_rub: 130, actual_effort_days: 115,
+  financial_effect: 140, cv: 80, progress: 140,
+  metric_kr_plan: 125, metric_kr_fact: 125, metric_kr_unit: 120,
+  key_project_status: 200, directorate_status: 200, did_status: 200,
+  key_project_status_updated_at: 140, directorate_status_updated_at: 140,
+  did_status_updated_at: 140, did_demo: 90,
+  link_mockups: 100, link_jira: 100, tags: 170,
+};
 const DEFAULT_MAX = 340;
 const DEFAULT_MIN = 90;
 const MIN_RESIZE = 90;
@@ -50,14 +68,15 @@ export function autoSizeColumns(table, cols, widths, minWidths, opts = {}) {
     const col = colEls[i + offset];
     if (!th || !col) return;
     if (widths[key]) return;
-    let w = th.offsetWidth || DEFAULT_MIN;
+    const icon = th.querySelector('.sort-icon');
+    const iconW = icon ? (icon.offsetWidth || 14) : 14;
+    const labelW = th.querySelector('.th-label')?.scrollWidth || 0;
+    let w = Math.max(COLUMN_BASE[key] || DEFAULT_MIN, labelW + iconW + 46);
     const maxCell = Math.max(0, ...sampleRows.map(tr => tr.children[i + offset]?.scrollWidth || 0));
     w = Math.max(w, maxCell);
     const cap = COLUMN_MAX[key] || DEFAULT_MAX;
-    const min = COLUMN_MIN[key] || DEFAULT_MIN;
+    const min = COLUMN_BASE[key] || DEFAULT_MIN;
     widths[key] = Math.min(Math.max(w, min), cap);
-    const icon = th.querySelector('.sort-icon');
-    const iconW = icon ? (icon.offsetWidth || 14) : 14;
     minWidths[key] = Math.max(MIN_RESIZE, iconW + 42 + MIN_LABEL_PX);
   });
 }
@@ -67,17 +86,21 @@ export function applyColumnWidths(table, cols, widths, opts = {}) {
   const fixed = opts.fixed || {};
   const colEls = Array.from(table.querySelectorAll('colgroup > col'));
   const autoCols = cols.filter(k => !fixed[k]);
+  autoCols.forEach(key => {
+    const min = COLUMN_BASE[key] || DEFAULT_MIN;
+    const max = COLUMN_MAX[key] || DEFAULT_MAX;
+    widths[key] = Math.min(Math.max(widths[key] || min, min), max);
+  });
   const baseSumAuto = autoCols.reduce((s, k) => s + (widths[k] || 0), 0);
   const fixedSum = cols.reduce((s, k) => s + (fixed[k] || 0), 0);
   const prefixSum = colEls.slice(0, offset).reduce((s, c) => s + (parseFloat(c.style.width) || c.offsetWidth || 0), 0);
-  const container = table.parentElement?.clientWidth || table.clientWidth || 0;
-  const free = container - fixedSum - baseSumAuto - prefixSum;
-  const extraPer = autoCols.length > 0 ? Math.max(0, free) / autoCols.length : 0;
   cols.forEach((key, i) => {
     const col = colEls[i + offset];
     if (!col) return;
-    col.style.width = (fixed[key] || ((widths[key] || 0) + extraPer)) + 'px';
+    col.style.width = (fixed[key] || widths[key] || COLUMN_BASE[key] || DEFAULT_MIN) + 'px';
   });
+  table.style.width = Math.ceil(prefixSum + fixedSum + baseSumAuto) + 'px';
+  table.style.minWidth = '0';
   table.style.tableLayout = 'fixed';
 }
 
@@ -85,8 +108,7 @@ function sortValue(task, key) {
   if (key === 'priority') return PRIORITY_WEIGHT[task.priority_name] ?? 0;
   if (key === 'progress') return task.progress ?? 0;
   if (key === 'cv') {
-    return task.financial_effect && task.effort_rub > 0
-      ? task.financial_effect / task.effort_rub : null;
+    return calculateTaskCv(task);
   }
   if (key === 'deadline') return task.deadline_id ?? task.deadline_name ?? task.deadline;
   const nameKey = NAME_KEYS[key];

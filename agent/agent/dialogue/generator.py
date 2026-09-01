@@ -42,29 +42,32 @@ def reflect(state: DialogueState) -> str:
 
 
 def summarize(state: DialogueState, notes: list | None = None) -> str:
-    parts = []
-    parts.append("Проверим, что я всё понял правильно. Собранное:")
-    if state.get("need_statement"):
-        parts.append(f"• Потребность: {state.get('need_statement')[:240]}")
-    if state.get("to_be"):
-        parts.append(f"• Целевой результат: {state.get('to_be')[:240]}")
-    if state.get("role"):
-        parts.append(f"• Пользователь: {state.get('role')}")
-    if state.get("process"):
-        parts.append(f"• Процесс: {state.get('process')}")
-    if state.get("product"):
-        parts.append(f"• Продукт / сделки: {state.get('product')}")
-    if state.get("module"):
-        parts.append(f"• Модуль: {state.get('module')}")
-    if state.get("value"):
-        parts.append(f"• Ценность: {state.get('value')[:240]}")
-    if state.get("acceptance_criteria"):
-        parts.append(f"• Критерии приёмки: {state.get('acceptance_criteria')[:240]}")
+    parts = ["Проверим, что я всё понял правильно. Собранное:"]
+    fields = (
+        ("Потребность", "need_statement"),
+        ("Целевой результат", "to_be"),
+        ("Пользователь и доступ", "role"),
+        ("Процесс", "process"),
+        ("Продукт / сделки", "product"),
+        ("Модуль", "module"),
+        ("Основные сценарии", "scenarios"),
+        ("Бизнес-правила и ограничения", "business_rules"),
+        ("Данные и интеграции", "data_integrations"),
+        ("Ценность", "value"),
+        ("Критерии приёмки", "acceptance_criteria"),
+        ("Зависимости", "dependencies"),
+        ("Риски", "risks"),
+        ("Открытые вопросы", "open_questions"),
+    )
+    for label, key in fields:
+        value = state.get(key)
+        if value:
+            parts.append(f"• {label}: {value}")
     for note in notes or []:
         if note.strip():
             parts.append(f"• Правка: {note.strip()[:240]}")
     parts.append("")
-    parts.append("Всё верно? Могу подготовить драфт или вы уточните правки.")
+    parts.append("Всё верно? Подтвердите резюме — после этого я подготовлю драфт. Если нужны изменения, опишите их своими словами.")
     return "\n".join(parts)
 
 

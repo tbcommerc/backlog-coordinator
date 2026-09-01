@@ -3,6 +3,7 @@ DMB Backlog - Express Estimate Router (Экспресс-оценка)
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm.exc import StaleDataError
 from typing import Optional, List
 
 from database import get_db
@@ -11,15 +12,45 @@ from schemas import (
     EpicCreate, EpicUpdate, EpicResponse, EpicListResponse,
     StoryCreate, StoryUpdate, StoryResponse, StoryListResponse,
     SortRequest,
+    TaskVersionRequest, TaskVersionsRequest,
     QuickEstimateTaskResponse, QuickEstimateResponse,
     TaskResponse, SuccessResponse
 )
 from auth import get_current_user, check_permission, authorize_task
 from notifications import notify_express_import, notify_status_change
+from services.task_metrics import calculate_cost_value_ratio
 
 router = APIRouter()
 
 EFFORT_FIELDS = ['effort_designee', 'effort_analytics', 'effort_be', 'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery']
+
+
+def _assert_task_version(task: Task, submitted_version: int) -> None:
+    if submitted_version != (task.version or 0):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Задача была изменена другим пользователем.",
+                "current_version": task.version or 0,
+                "submitted_version": submitted_version,
+            },
+        )
+
+
+def _commit_task_change(db: Session, task_id: int, submitted_version: int) -> None:
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        current = db.query(Task).filter(Task.id == task_id).first()
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Задача изменилась во время выполнения операции.",
+                "current_version": (current.version or 0) if current else None,
+                "submitted_version": submitted_version,
+            },
+        )
 
 # ==================== Helper ====================
 
@@ -80,12 +111,11 @@ def story_to_response(story: Story) -> StoryResponse:
 def task_to_quick_estimate_response(task: Task, epics: list[Epic]) -> QuickEstimateTaskResponse:
     from schemas import TaskResponse
     # Build base TaskResponse
-    cv = None
-    if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
-        cv = round(task.financial_effect / task.effort_rub, 2)
+    cv = calculate_cost_value_ratio(task.effort_rub, task.financial_effect)
 
     return QuickEstimateTaskResponse(
         id=task.id,
+        public_id=task.public_id,
         team_id=task.team_id,
         title=task.title,
         description=task.description,
@@ -123,6 +153,7 @@ def task_to_quick_estimate_response(task: Task, epics: list[Epic]) -> QuickEstim
         created_by=task.created_by,
         created_at=task.created_at,
         updated_at=task.updated_at,
+        version=task.version or 0,
         team_name=task.team.name if task.team else None,
         channel_name=task.channel.name if task.channel else None,
         department_name=task.department.name if task.department else None,
@@ -350,6 +381,7 @@ def delete_story(
 @router.delete("/quick-estimate/tasks/{task_id}", response_model=SuccessResponse)
 def remove_task_from_estimate(
     task_id: int,
+    version: int = Query(..., ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -358,6 +390,7 @@ def remove_task_from_estimate(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     authorize_task("edit", task, current_user)
+    _assert_task_version(task, version)
 
     qe_status = db.query(TaskStatus).filter(TaskStatus.name == "ЭКСПРЕСС-ОЦЕНКА").first()
     if not qe_status or task.status_id != qe_status.id:
@@ -373,12 +406,14 @@ def remove_task_from_estimate(
             raise HTTPException(status_code=500, detail="Default status not found")
 
     task.previous_status_id = None
-    db.commit()
+    task.version = (task.version or 0) + 1
+    _commit_task_change(db, task.id, version)
     return SuccessResponse(success=True, detail="Task removed from express estimation")
 
 
 @router.put("/quick-estimate/complete", response_model=SuccessResponse)
 def complete_quick_estimate(
+    payload: TaskVersionsRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -403,6 +438,27 @@ def complete_quick_estimate(
     for task in tasks:
         authorize_task("edit", task, current_user)
 
+    missing_versions = sorted(task.id for task in tasks if task.id not in payload.versions)
+    if missing_versions:
+        raise HTTPException(
+            status_code=428,
+            detail={"message": "Не переданы версии задач.", "missing_task_ids": missing_versions},
+        )
+    conflicts = [
+        {
+            "task_id": task.id,
+            "submitted_version": payload.versions[task.id],
+            "current_version": task.version or 0,
+        }
+        for task in tasks
+        if payload.versions[task.id] != (task.version or 0)
+    ]
+    if conflicts:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Часть задач изменена другими пользователями.", "conflicts": conflicts},
+        )
+
     try:
         for task in tasks:
             db.add(TaskHistory(
@@ -419,6 +475,12 @@ def complete_quick_estimate(
                 db, task, qe_status.name, decision_status.name, current_user.id,
             )
         db.commit()
+    except StaleDataError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Задачи изменились во время завершения экспресс-оценки",
+        )
     except Exception:
         db.rollback()
         raise
@@ -445,9 +507,18 @@ def update_task_effort(
 
     authorize_task("edit", task, current_user)
 
-    client_version = data.pop('version', None)
-    if client_version is not None and client_version != task.version:
-        raise HTTPException(status_code=409, detail="Conflict: task was modified by another user. Please refresh.")
+    if 'version' not in data:
+        raise HTTPException(status_code=428, detail="Для изменения задачи необходимо передать её версию")
+    client_version = data.pop('version')
+    if client_version != (task.version or 0):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Задача была изменена другим пользователем.",
+                "current_version": task.version or 0,
+                "submitted_version": client_version,
+            },
+        )
 
     allowed_fields = set(EFFORT_FIELDS) | {'title'}
     for key, value in data.items():
@@ -457,7 +528,19 @@ def update_task_effort(
             setattr(task, key, value)
 
     task.version = (task.version or 0) + 1
-    db.commit()
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        current = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Задача была изменена другим пользователем.",
+                "current_version": (current.version or 0) if current else None,
+                "submitted_version": client_version,
+            },
+        )
     db.refresh(task)
 
     epics = db.query(Epic).filter(Epic.task_id == task.id).order_by(Epic.sort_order, Epic.id).all()
@@ -493,12 +576,11 @@ def update_sort_order(
 
 def _task_to_response(task: Task) -> TaskResponse:
     """Convert Task ORM to TaskResponse (for backlog task listing)."""
-    cv = None
-    if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
-        cv = round(task.financial_effect / task.effort_rub, 2)
+    cv = calculate_cost_value_ratio(task.effort_rub, task.financial_effect)
 
     return TaskResponse(
         id=task.id,
+        public_id=task.public_id,
         team_id=task.team_id,
         title=task.title,
         description=task.description,
@@ -536,6 +618,7 @@ def _task_to_response(task: Task) -> TaskResponse:
         created_by=task.created_by,
         created_at=task.created_at,
         updated_at=task.updated_at,
+        version=task.version or 0,
         team_name=task.team.name if task.team else None,
         channel_name=task.channel.name if task.channel else None,
         department_name=task.department.name if task.department else None,
@@ -581,6 +664,7 @@ def get_backlog_tasks(
 @router.post("/quick-estimate/import-task/{task_id}", response_model=QuickEstimateTaskResponse)
 def import_task_to_estimate(
     task_id: int,
+    payload: TaskVersionRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -590,6 +674,7 @@ def import_task_to_estimate(
         raise HTTPException(status_code=404, detail="Task not found")
 
     authorize_task("edit", task, current_user)
+    _assert_task_version(task, payload.version)
 
     qe_status = db.query(TaskStatus).filter(TaskStatus.name == "ЭКСПРЕСС-ОЦЕНКА").first()
     if not qe_status:
@@ -597,8 +682,9 @@ def import_task_to_estimate(
 
     task.previous_status_id = task.status_id
     task.status_id = qe_status.id
+    task.version = (task.version or 0) + 1
     notify_express_import(db, task, current_user.name)
-    db.commit()
+    _commit_task_change(db, task.id, payload.version)
     db.refresh(task)
 
     epics = db.query(Epic).filter(Epic.task_id == task.id).order_by(Epic.sort_order, Epic.id).all()

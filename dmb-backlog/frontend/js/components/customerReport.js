@@ -1,5 +1,6 @@
 console.log('[DMB] customerReport.js loaded');
 import { openTaskModal } from './modal.js?v=90';
+import { formatTaskPublicId } from '../taskPublicId.js';
 
 let tasksCache = null;
 
@@ -156,7 +157,7 @@ function renderTasksTable(tasks, statusFilter) {
 
   tbody.innerHTML = filtered.map(task => `
     <tr data-task-id="${task.id}" style="cursor:pointer;">
-      <td><span class="font-mono text-muted">#${task.id}</span></td>
+      <td><span class="font-mono text-muted">${formatTaskPublicId(task)}</span></td>
       <td><strong>${escapeHtml(task.title)}</strong></td>
       <td>${renderStatus(task.status)}</td>
       <td>${renderPriority(task.priority)}</td>

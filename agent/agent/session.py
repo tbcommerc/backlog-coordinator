@@ -4,13 +4,23 @@ Sessions are owned by the agent service; the DMB backend only passes
 session_id through. Serialization is JSON via dataclass helpers.
 """
 import json
-import sqlite3
 import threading
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
+from pathlib import Path
+
+from sqlalchemy import Column, Integer, MetaData, String, Table, Text, create_engine, delete, inspect, select, text, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from .config import settings
-from .dialogue.state import DialogueState, Slot
+from .dialogue.state import DialogueState, Gap, Slot
+
+
+class SessionConflictError(RuntimeError):
+    """The dialogue was changed after it was loaded."""
 
 
 def _slot_from_dict(d: dict) -> Slot:
@@ -66,6 +76,7 @@ def state_to_dict(state: DialogueState) -> dict:
         "review_status": state.review_status,
         "review_task_id": state.review_task_id,
         "quality_assessment": state.quality_assessment,
+        "gaps": [gap.__dict__.copy() for gap in state.gaps],
         "pending_quality_slot": state.pending_quality_slot,
         "quality_asked_codes": state.quality_asked_codes,
         # Phase 3 fields
@@ -135,6 +146,7 @@ def state_from_dict(data: dict) -> DialogueState:
         review_status=data.get("review_status", ""),
         review_task_id=data.get("review_task_id"),
         quality_assessment=data.get("quality_assessment", {}),
+        gaps=[Gap(**gap) for gap in data.get("gaps", [])],
         pending_quality_slot=data.get("pending_quality_slot"),
         quality_asked_codes=data.get("quality_asked_codes", []),
         # Phase 3 fields
@@ -179,19 +191,65 @@ def state_from_dict(data: dict) -> DialogueState:
 
 
 class SessionStore:
-    def __init__(self, path: str = None):
+    """Persistent dialogue store backed by PostgreSQL or SQLite through SQLAlchemy."""
+
+    def __init__(self, path: str = None, database_url: str = None):
+        target = database_url or path or settings.SESSION_DATABASE_URL or settings.SESSION_DB
+        if "://" not in target:
+            target = f"sqlite:///{Path(target).resolve().as_posix()}"
+
+        self.database_url = target
         self.path = path or settings.SESSION_DB
         self._lock = threading.RLock()
-        self._conn = sqlite3.connect(self.path, check_same_thread=False)
-        self._conn.execute("""
-            CREATE TABLE IF NOT EXISTS sessions (
-                session_id TEXT PRIMARY KEY,
-                user_id INTEGER,
-                state_json TEXT,
-                updated_at TEXT
+        self._session_locks: dict[str, threading.RLock] = {}
+        connect_args = {"check_same_thread": False} if target.startswith("sqlite") else {}
+        engine_options = {"pool_pre_ping": True, "connect_args": connect_args}
+        if not target.startswith("sqlite"):
+            engine_options.update({
+                "pool_size": settings.DB_POOL_SIZE,
+                "max_overflow": settings.DB_MAX_OVERFLOW,
+                "pool_timeout": settings.DB_POOL_TIMEOUT_SECONDS,
+            })
+        self._engine = create_engine(target, **engine_options)
+        self._metadata = MetaData()
+        self._sessions = Table(
+            "sessions",
+            self._metadata,
+            Column("session_id", String(64), primary_key=True),
+            Column("user_id", Integer),
+            Column("state_json", Text, nullable=False),
+            Column("updated_at", String(64), nullable=False),
+            Column("last_message_at", String(64)),
+            Column("version", Integer, nullable=False, default=0),
+        )
+        self._message_receipts = Table(
+            "message_receipts",
+            self._metadata,
+            Column("session_id", String(64), primary_key=True),
+            Column("message_id", String(64), primary_key=True),
+            Column("response_json", Text, nullable=False),
+            Column("created_at", String(64), nullable=False),
+        )
+        self._metadata.create_all(self._engine)
+
+        columns = {col["name"] for col in inspect(self._engine).get_columns("sessions")}
+        if "last_message_at" not in columns:
+            with self._engine.begin() as conn:
+                conn.execute(text("ALTER TABLE sessions ADD COLUMN last_message_at VARCHAR(64)"))
+        if "version" not in columns:
+            with self._engine.begin() as conn:
+                conn.execute(text("ALTER TABLE sessions ADD COLUMN version INTEGER NOT NULL DEFAULT 0"))
+        with self._engine.begin() as conn:
+            conn.execute(
+                update(self._sessions)
+                .where(self._sessions.c.last_message_at.is_(None))
+                .values(last_message_at=self._sessions.c.updated_at)
             )
-        """)
-        self._conn.commit()
+
+    @property
+    def engine(self):
+        """Expose the SQLAlchemy engine for process-wide instrumentation."""
+        return self._engine
 
     def new_session(self, user_id: int) -> DialogueState:
         session_id = uuid.uuid4().hex[:16]
@@ -202,13 +260,18 @@ class SessionStore:
 
     def get(self, session_id: str) -> DialogueState | None:
         with self._lock:
-            row = self._conn.execute(
-                "SELECT state_json FROM sessions WHERE session_id=?", (session_id,)
-            ).fetchone()
+            with self._engine.connect() as conn:
+                row = conn.execute(
+                    select(self._sessions.c.state_json, self._sessions.c.version).where(
+                        self._sessions.c.session_id == session_id
+                    )
+                ).first()
         if not row:
             return None
         try:
-            return state_from_dict(json.loads(row[0]))
+            state = state_from_dict(json.loads(row[0]))
+            state._storage_version = int(row[1] or 0)
+            return state
         except Exception:
             return None
 
@@ -216,28 +279,151 @@ class SessionStore:
         payload = json.dumps(state_to_dict(state), ensure_ascii=False, default=str)
         now = datetime.now(timezone.utc).isoformat()
         with self._lock:
-            self._conn.execute(
-                "INSERT INTO sessions(session_id, user_id, state_json, updated_at) VALUES(?,?,?,?) "
-                "ON CONFLICT(session_id) DO UPDATE SET state_json=excluded.state_json, "
-                "updated_at=excluded.updated_at",
-                (state.session_id, state.user_id, payload, now),
-            )
-            self._conn.commit()
+            with self._engine.begin() as conn:
+                previous = conn.execute(
+                    select(
+                        self._sessions.c.state_json,
+                        self._sessions.c.last_message_at,
+                        self._sessions.c.version,
+                    ).where(self._sessions.c.session_id == state.session_id)
+                ).first()
+                previous_history_size = -1
+                previous_last_message_at = None
+                if previous:
+                    previous_last_message_at = previous[1]
+                    try:
+                        previous_history_size = len(json.loads(previous[0]).get("history") or [])
+                    except Exception:
+                        previous_history_size = -1
+                history_size = len(state.history or [])
+                last_message_at = (
+                    now
+                    if previous is None or history_size != previous_history_size
+                    else (previous_last_message_at or now)
+                )
+                values = {
+                    "session_id": state.session_id,
+                    "user_id": state.user_id,
+                    "state_json": payload,
+                    "updated_at": now,
+                    "last_message_at": last_message_at,
+                }
+                expected_version = getattr(state, "_storage_version", None)
+                if previous is None:
+                    values["version"] = 0
+                    try:
+                        conn.execute(self._sessions.insert().values(**values))
+                    except IntegrityError as exc:
+                        raise SessionConflictError(
+                            f"Session {state.session_id} was created concurrently"
+                        ) from exc
+                    state._storage_version = 0
+                else:
+                    if expected_version is None:
+                        expected_version = int(previous[2] or 0)
+                    next_version = expected_version + 1
+                    result = conn.execute(
+                        update(self._sessions)
+                        .where(
+                            self._sessions.c.session_id == state.session_id,
+                            self._sessions.c.version == expected_version,
+                        )
+                        .values(
+                            **{key: value for key, value in values.items() if key != "session_id"},
+                            version=next_version,
+                        )
+                    )
+                    if result.rowcount == 0:
+                        raise SessionConflictError(
+                            f"Session {state.session_id} changed concurrently"
+                        )
+                    state._storage_version = next_version
+
+    def _local_session_lock(self, session_id: str) -> threading.RLock:
+        with self._lock:
+            return self._session_locks.setdefault(session_id, threading.RLock())
+
+    @contextmanager
+    def serialized(self, session_id: str):
+        """Serialize one dialogue across threads and PostgreSQL workers."""
+        with self._local_session_lock(session_id):
+            if self._engine.dialect.name != "postgresql":
+                yield
+                return
+            with self._engine.connect() as conn:
+                conn.execute(
+                    text("SELECT pg_advisory_lock(hashtextextended(:session_id, 0))"),
+                    {"session_id": session_id},
+                )
+                try:
+                    yield
+                finally:
+                    conn.execute(
+                        text("SELECT pg_advisory_unlock(hashtextextended(:session_id, 0))"),
+                        {"session_id": session_id},
+                    )
+                    conn.commit()
+
+    def get_cached_response(self, session_id: str, message_id: str) -> dict | None:
+        if not message_id:
+            return None
+        with self._engine.connect() as conn:
+            row = conn.execute(
+                select(self._message_receipts.c.response_json).where(
+                    self._message_receipts.c.session_id == session_id,
+                    self._message_receipts.c.message_id == message_id,
+                )
+            ).first()
+        return json.loads(row[0]) if row else None
+
+    def cache_response(self, session_id: str, message_id: str, response: dict) -> None:
+        if not message_id:
+            return
+        values = {
+            "session_id": session_id,
+            "message_id": message_id,
+            "response_json": json.dumps(response, ensure_ascii=False, default=str),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        with self._engine.begin() as conn:
+            if self._engine.dialect.name == "postgresql":
+                stmt = postgresql_insert(self._message_receipts).values(**values)
+                conn.execute(stmt.on_conflict_do_nothing())
+            elif self._engine.dialect.name == "sqlite":
+                stmt = sqlite_insert(self._message_receipts).values(**values)
+                conn.execute(stmt.on_conflict_do_nothing())
+            else:
+                try:
+                    conn.execute(self._message_receipts.insert().values(**values))
+                except IntegrityError:
+                    pass
 
     def delete(self, session_id: str):
         with self._lock:
-            self._conn.execute("DELETE FROM sessions WHERE session_id=?", (session_id,))
-            self._conn.commit()
+            with self._engine.begin() as conn:
+                conn.execute(
+                    delete(self._sessions).where(self._sessions.c.session_id == session_id)
+                )
 
     def list_for_user(self, user_id: int, limit: int = 50) -> list[dict]:
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT session_id, state_json, updated_at FROM sessions "
-                "WHERE user_id=? ORDER BY updated_at DESC LIMIT ?",
-                (user_id, limit),
-            ).fetchall()
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    select(
+                        self._sessions.c.session_id,
+                        self._sessions.c.state_json,
+                        self._sessions.c.updated_at,
+                        self._sessions.c.last_message_at,
+                    )
+                    .where(self._sessions.c.user_id == user_id)
+                    .order_by(
+                        self._sessions.c.last_message_at.desc(),
+                        self._sessions.c.session_id.asc(),
+                    )
+                    .limit(max(1, min(int(limit), 200)))
+                ).all()
         result = []
-        for session_id, state_json, updated_at in rows:
+        for session_id, state_json, updated_at, last_message_at in rows:
             title = "Новый диалог"
             phase = ""
             archived = False
@@ -256,6 +442,7 @@ class SessionStore:
                 "title": title,
                 "phase": phase,
                 "updated_at": updated_at,
+                "last_message_at": last_message_at,
                 "archived": archived,
             })
         return result

@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
+from services.task_metrics import calculate_cost_value_ratio
 from sqlalchemy import desc, asc, func, String, cast, case
 from typing import Optional, List
 from datetime import date, datetime, timezone
@@ -15,14 +17,14 @@ logger = logging.getLogger("dmb_backlog.tasks")
 
 
 _task_creation_lock = threading.Lock()
-_task_creation_idempotency = {}
-_task_update_idempotency = {}
 
 
 def _serialize_task_creation(func):
     """Serialize ID allocation for the legacy SQLite tasks table."""
     @wraps(func)
     def wrapper(*args, **kwargs):
+        if engine.dialect.name != "sqlite":
+            return func(*args, **kwargs)
         with _task_creation_lock:
             return func(*args, **kwargs)
     return wrapper
@@ -39,8 +41,9 @@ def _require_reference(db, model, value, field_name, label):
             }],
         )
 
-from database import get_db
+from database import engine, get_db, db_lower
 from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, CompetencyCostHistory, FieldLabel, Tag, IssueTag, DictionaryItem, TaskComment
+from idempotency import reserve_idempotency
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
     BulkActionRequest, SuccessResponse, BulkActionResponse, BulkPreviewResponse, TaskHistoryResponse, TaskLinkUpdate,
@@ -57,6 +60,7 @@ from auth import (
     is_task_global_editor,
     can_comment_task,
     can_make_pip_decision,
+    task_read_scope_clause,
 )
 from notifications import notify_status_change, notify_assignment, notify_comment, notify_mention
 from routers.task_collaboration_router import is_task_lock_active
@@ -86,6 +90,52 @@ SORT_FIELD_MAP = {
     "owner": "owner_id",
 }
 
+HISTORY_REFERENCE_MODELS = {
+    "team_id": Team,
+    "channel_id": Channel,
+    "business_customer_id": BusinessCustomer,
+    "department_id": Department,
+    "project_id": Project,
+    "task_type_id": TaskType,
+    "priority_id": Priority,
+    "status_id": TaskStatus,
+    "previous_status_id": TaskStatus,
+    "deadline_id": Deadline,
+    "owner_id": User,
+    "created_by": User,
+}
+
+
+def _resolve_history_value(field_name: str, value: Optional[str], reference_values: dict) -> Optional[str]:
+    """Replace a stored foreign-key value with its human-readable name."""
+    if value is None or field_name not in HISTORY_REFERENCE_MODELS:
+        return value
+    try:
+        reference_id = int(value)
+    except (TypeError, ValueError):
+        return value
+    return reference_values.get(field_name, {}).get(reference_id, value)
+
+
+def _history_reference_values(db: Session, history: list[TaskHistory]) -> dict:
+    """Load only reference rows used by the returned history page."""
+    ids_by_field = {}
+    for item in history:
+        if item.field_name not in HISTORY_REFERENCE_MODELS:
+            continue
+        for value in (item.old_value, item.new_value):
+            try:
+                ids_by_field.setdefault(item.field_name, set()).add(int(value))
+            except (TypeError, ValueError):
+                continue
+
+    result = {}
+    for field_name, reference_ids in ids_by_field.items():
+        model = HISTORY_REFERENCE_MODELS[field_name]
+        rows = db.query(model).filter(model.id.in_(reference_ids)).all()
+        result[field_name] = {row.id: row.name for row in rows}
+    return result
+
 
 def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
     """Convert Task ORM object to TaskResponse schema"""
@@ -95,6 +145,8 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
     resolved_task_type_name = task.task_type.name if task.task_type else None
     resolved_channel_id = task.channel_id
     resolved_channel_name = task.channel.name if task.channel else None
+    resolved_status_id = task.status_id
+    resolved_status_name = task.status.name if task.status else None
 
     # Совместимость с задачами, которые ранее получили ID из legacy-таблицы
     # dictionary_items вместо канонических task_types/channels. Нормализация
@@ -129,6 +181,21 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
                 resolved_channel_id = canonical.id
                 resolved_channel_name = canonical.name
 
+    if db is not None and task.status_id is not None and not resolved_status_name:
+        legacy = db.query(DictionaryItem).filter(
+            DictionaryItem.id == task.status_id,
+            DictionaryItem.dict_type == "status",
+        ).first()
+        if legacy and legacy.name:
+            legacy_name = legacy.name.strip().casefold()
+            canonical = next(
+                (item for item in db.query(TaskStatus).all() if (item.name or "").strip().casefold() == legacy_name),
+                None,
+            )
+            if canonical:
+                resolved_status_id = canonical.id
+                resolved_status_name = canonical.name
+
     involved_team_names = None
     if task.involved_teams:
         team_ids = [t for t in task.involved_teams if isinstance(t, int)]
@@ -141,6 +208,7 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
 
     return TaskResponse(
         id=task.id,
+        public_id=task.public_id,
         team_id=task.team_id,
         title=task.title,
         description=task.description,
@@ -153,7 +221,7 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         task_type_name=resolved_task_type_name,
         involved_teams=task.involved_teams,
         priority_id=task.priority_id,
-        status_id=task.status_id,
+        status_id=resolved_status_id,
         deadline_id=task.deadline_id,
         effort_days=task.effort_days,
         effort_rub=task.effort_rub,
@@ -218,7 +286,7 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         department_name=task.department.name if task.department else None,
         project_name=task.project.name if task.project else None,
         priority_name=task.priority.name if task.priority else None,
-        status_name=task.status.name if task.status else None,
+        status_name=resolved_status_name,
         deadline_name=task.deadline.name if task.deadline else None,
         owner_name=task.owner.name if task.owner else None,
         business_customer_name=task.business_customer_rel.name if task.business_customer_rel else None,
@@ -228,6 +296,35 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         lock_owner_name=task.lock_owner.name if task.lock_owner else None,
         lock_until=task.lock_until,
     )
+
+
+def _task_conflict_detail(db: Session, task_id: int, submitted_version: int) -> dict:
+    current = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
+    return {
+        "message": "Задача была изменена другим пользователем. Обновите данные и повторите изменения.",
+        "current_version": (current.version or 0) if current else None,
+        "submitted_version": submitted_version,
+        "task": task_to_response(current, db).model_dump(mode="json") if current else None,
+    }
+
+
+def _assert_task_version(db: Session, task: Task, submitted_version: int) -> None:
+    if submitted_version != (task.version or 0):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_task_conflict_detail(db, task.id, submitted_version),
+        )
+
+
+def _commit_versioned_task(db: Session, task_id: int, submitted_version: int) -> None:
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_task_conflict_detail(db, task_id, submitted_version),
+        )
 
 
 # Компетенции и соответствующие поля ЭО (для авторасчёта стоимости по ЭО)
@@ -363,7 +460,7 @@ def recalculate_effort_rub_for_all(db: Session) -> int:
         if new_rub is not None and new_rub != task.effort_rub:
             task.effort_rub = new_rub
             if task.financial_effect is not None and new_rub > 0:
-                task.cv = round(float(task.financial_effect) / float(new_rub), 2)
+                task.cv = calculate_cost_value_ratio(new_rub, task.financial_effect)
             else:
                 task.cv = None
             changed += 1
@@ -422,14 +519,10 @@ def get_tasks(
     current_user: User = Depends(get_current_user)
 ):
     """Get filtered list of tasks"""
-    query = db.query(Task).filter(Task.is_deleted == False)
-
-    if not check_permission(current_user, "backlog_dmb", "read"):
-        user_team_id = current_user.team_id
-        if user_team_id:
-            query = query.filter(Task.team_id == user_team_id)
-        else:
-            query = query.filter(False)
+    query = db.query(Task).filter(
+        Task.is_deleted == False,
+        task_read_scope_clause(current_user, Task),
+    )
 
     if team_id:
         query = query.filter(Task.team_id == team_id)
@@ -438,7 +531,10 @@ def get_tasks(
     if priority:
         query = query.join(Priority, Task.priority_id == Priority.id).filter(Priority.name == priority)
     if search:
-        query = query.filter(Task.title.ilike(f"%{search}%"))
+        query = query.filter(
+            Task.title.ilike(f"%{search}%") |
+            Task.public_id.ilike(f"%{search}%")
+        )
 
     sort_column_name = SORT_FIELD_MAP.get(sort_by, sort_by)
     sort_column = getattr(Task, sort_column_name, Task.id)
@@ -469,12 +565,16 @@ def search_tasks(
     current_user: User = Depends(get_current_user)
 ):
     """Search tasks by title, ID, or owner name"""
-    query = db.query(Task).filter(Task.is_deleted == False)
+    query = db.query(Task).filter(
+        Task.is_deleted == False,
+        task_read_scope_clause(current_user, Task),
+    )
 
     if q:
         owner_ids = db.query(User.id).filter(User.name.ilike(f"%{q}%"))
         search_filter = (
             Task.title.ilike(f"%{q}%") |
+            Task.public_id.ilike(f"%{q}%") |
             cast(Task.id, String).ilike(f"%{q}%") |
             Task.owner_id.in_(owner_ids)
         )
@@ -491,7 +591,8 @@ def get_task_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Return aggregated task statistics"""
-    base_query = db.query(Task).filter(Task.is_deleted == False)
+    scope_clause = task_read_scope_clause(current_user, Task)
+    base_query = db.query(Task).filter(Task.is_deleted == False, scope_clause)
     total = base_query.count()
 
     terminal_statuses = ("ВЫПОЛНЕНА", "ОТКЛОНЕНА", "НЕ АКТУАЛЬНА")
@@ -516,22 +617,26 @@ def get_task_stats(
     status_rows = db.query(TaskStatus.name, func.count(Task.id)).join(
         TaskStatus, Task.status_id == TaskStatus.id
     ).filter(
-        Task.is_deleted == False
+        Task.is_deleted == False,
+        scope_clause,
     ).group_by(TaskStatus.name).all()
     by_status = {row[0]: row[1] for row in status_rows}
 
     priority_rows = db.query(Priority.name, func.count(Task.id)).join(
         Priority, Task.priority_id == Priority.id
     ).filter(
-        Task.is_deleted == False
+        Task.is_deleted == False,
+        scope_clause,
     ).group_by(Priority.name).all()
     by_priority = {row[0]: row[1] for row in priority_rows}
 
     total_financial_effect = db.query(func.coalesce(func.sum(Task.financial_effect), 0.0)).filter(
-        Task.is_deleted == False
+        Task.is_deleted == False,
+        scope_clause,
     ).scalar()
     avg_progress = db.query(func.coalesce(func.avg(Task.progress), 0.0)).filter(
-        Task.is_deleted == False
+        Task.is_deleted == False,
+        scope_clause,
     ).scalar()
 
     team_rows = db.query(
@@ -544,7 +649,8 @@ def get_task_stats(
     ).join(Task, Task.team_id == Team.id).join(
         TaskStatus, Task.status_id == TaskStatus.id
     ).filter(
-        Task.is_deleted == False
+        Task.is_deleted == False,
+        scope_clause,
     ).group_by(Team.name).all()
 
     by_team = {}
@@ -611,7 +717,8 @@ def get_report(
     if kind not in ("directorate", "did", "projects", "reg-directors"):
         raise HTTPException(status_code=400, detail="Invalid report kind")
 
-    total = db.query(Task).filter(Task.is_deleted == False).count()
+    scope_clause = task_read_scope_clause(current_user, Task)
+    total = db.query(Task).filter(Task.is_deleted == False, scope_clause).count()
     terminal = ("ВЫПОЛНЕНА", "ОТКЛОНЕНА", "НЕ АКТУАЛЬНА")
 
     if kind == "directorate":
@@ -623,7 +730,7 @@ def get_report(
             func.coalesce(func.sum(Task.financial_effect), 0.0)
         ).join(Project, Task.project_id == Project.id, isouter=True).join(
             TaskStatus, Task.status_id == TaskStatus.id
-        ).filter(Task.is_deleted == False).group_by(Project.name).all()
+        ).filter(Task.is_deleted == False, scope_clause).group_by(Project.name).all()
         groups = [
             {"project": r[0], "total": r[1], "active": r[2], "done": r[3], "total_financial_effect": float(r[4])}
             for r in rows
@@ -639,7 +746,8 @@ def get_report(
         ).join(TaskStatus, Task.status_id == TaskStatus.id).join(
             BusinessCustomer, Task.business_customer_id == BusinessCustomer.id, isouter=True
         ).filter(
-            Task.is_deleted == False
+            Task.is_deleted == False,
+            scope_clause,
         ).group_by(BusinessCustomer.name).all()
         groups = [
             {"customer": r[0], "total": r[1], "active": r[2], "total_financial_effect": float(r[3])}
@@ -656,7 +764,7 @@ def get_report(
             func.coalesce(func.avg(Task.progress), 0.0)
         ).join(Project, Task.project_id == Project.id, isouter=True).join(
             TaskStatus, Task.status_id == TaskStatus.id
-        ).filter(Task.is_deleted == False).group_by(Project.name).all()
+        ).filter(Task.is_deleted == False, scope_clause).group_by(Project.name).all()
         groups = [
             {"project": r[0], "total": r[1], "active": r[2], "done": r[3], "progress_avg": round(float(r[4]), 1)}
             for r in rows
@@ -677,7 +785,8 @@ def get_report(
         ).join(
             Deadline, Task.deadline_id == Deadline.id, isouter=True
         ).filter(
-            Task.is_deleted == False
+            Task.is_deleted == False,
+            scope_clause,
         ).group_by(Team.name).all()
         groups = [
             {"team": r[0], "total": r[1], "active": r[2], "risk": r[3], "avg_progress": round(float(r[4]), 1)}
@@ -722,7 +831,6 @@ def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = D
     task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-
     authorize_task("read", task, current_user)
 
     return task_to_response(task, db)
@@ -736,11 +844,21 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
         raise HTTPException(status_code=403, detail="Permission denied")
 
     request_key = str(task_data.client_request_id or '').strip()
-    cache_key = (current_user.id, request_key) if request_key else None
-    if cache_key and cache_key in _task_creation_idempotency:
-        existing = db.query(Task).filter(Task.id == _task_creation_idempotency[cache_key], Task.is_deleted == False).first()
+    idempotency, is_new_request = reserve_idempotency(
+        db,
+        operation="task.create",
+        user_id=current_user.id,
+        request_key=request_key,
+        request_data=task_data.model_dump(mode="json", exclude={"client_request_id"}),
+    )
+    if idempotency and not is_new_request:
+        existing = db.query(Task).filter(
+            Task.id == idempotency.resource_id,
+            Task.is_deleted == False,
+        ).first()
         if existing:
             return task_to_response(existing, db)
+        raise HTTPException(status_code=409, detail="Результат повторного запроса больше недоступен")
 
     _require_reference(db, Team, task_data.team_id, "team_id", "Ответственная команда")
     _require_reference(db, TaskType, task_data.task_type_id, "task_type_id", "Тип задачи")
@@ -755,12 +873,7 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
         if value is not None:
             _require_reference(db, model, value, field_name, label)
 
-    # 1. Calculate C/V if both financial_effect and effort_rub are provided
-    cv = None
-    if task_data.financial_effect is not None and task_data.effort_rub is not None and task_data.effort_rub > 0:
-        cv = round(task_data.financial_effect / task_data.effort_rub, 2)
-
-    # 2. Defaults are resolved by stable dictionary values, never by magic IDs.
+    # Defaults are resolved by stable dictionary values, never by magic IDs.
     status_id = task_data.status_id
     if status_id is None:
         default_status = db.query(TaskStatus).filter(TaskStatus.code == "new").first()
@@ -783,6 +896,7 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
 
     # Auto-calculate effort cost from role estimates x competency rates
     effort_rub = compute_effort_rub(db, task_data.model_dump(), task_data.effort_rub)
+    cv = calculate_cost_value_ratio(effort_rub, task_data.financial_effect)
 
     # Auto-fill department from the selected business customer when not provided
     department_id = task_data.department_id
@@ -791,15 +905,9 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
         if customer and customer.department_id is not None:
             department_id = customer.department_id
 
-    # The current SQLite database was imported with a typeless `tasks.id`
-    # column and therefore cannot provide ROWID autoincrement. Assign the ID
-    # explicitly. The process-wide lock above keeps concurrent allocations
-    # unique without rewriting the existing table or its data.
-    next_task_id = (db.query(func.max(Task.id)).scalar() or 0) + 1
     created_now = datetime.now(timezone.utc)
 
     task = Task(
-        id=next_task_id,
         team_id=task_data.team_id,
         title=task_data.title,
         description=task_data.description,
@@ -865,6 +973,11 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
     db.add(task)
     db.flush()
 
+    if idempotency:
+        idempotency.resource_type = "task"
+        idempotency.resource_id = task.id
+        idempotency.resource_version = task.version or 0
+
     _apply_tags(db, task, task_data.tags, current_user.id)
 
     # 4. Record creation in task_history
@@ -895,27 +1008,13 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
         )
         db.add(history)
 
-    # 5. Record in audit_log
-    audit = AuditLog(
-        user_id=current_user.id,
-        action="create",
-        entity_type="task",
-        entity_id=task.id,
-        details=f"Task '{task.title}' created with status_id={task.status_id}",
-    )
-    db.add(audit)
-
-    # Notifications: assignment on creation
+    # Notifications: assignment on creation. Transactional audit is attached
+    # automatically to this same SQLAlchemy transaction.
     if task.owner_id:
         notify_assignment(db, task, task.owner_id, current_user.id)
 
     db.commit()
     db.refresh(task)
-
-    if cache_key:
-        _task_creation_idempotency[cache_key] = task.id
-        if len(_task_creation_idempotency) > 1000:
-            _task_creation_idempotency.pop(next(iter(_task_creation_idempotency)))
 
     return task_to_response(task, db)
 
@@ -937,6 +1036,7 @@ def apply_pip_decision(
     task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    _assert_task_version(db, task, payload.version)
 
     current_status_name = task.status.name if task.status else ""
     if current_status_name.strip().casefold() != PIP_DECISION_STATUS.casefold():
@@ -953,7 +1053,7 @@ def apply_pip_decision(
 
     target_name = PIP_TARGET_STATUSES[payload.decision]
     target_status = db.query(TaskStatus).filter(
-        func.lower_unicode(TaskStatus.name) == target_name.casefold()
+        db_lower(TaskStatus.name) == target_name.casefold()
     ).first()
     if not target_status:
         raise HTTPException(
@@ -971,7 +1071,7 @@ def apply_pip_decision(
     task.status_id = target_status.id
     task.version = (task.version or 0) + 1
     notify_status_change(db, task, current_status_name, target_name, current_user.id)
-    db.commit()
+    _commit_versioned_task(db, task.id, payload.version)
     db.refresh(task)
     return task_to_response(task, db)
 
@@ -985,6 +1085,7 @@ def update_task(
     current_user: User = Depends(get_current_user)
 ):
     """Update existing task"""
+    submitted_version = task_data.version
     try:
         task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
         if not task:
@@ -996,8 +1097,14 @@ def update_task(
         authorize_task("edit", task, current_user, requested_team_id)
 
         request_key = str(task_data.client_request_id or '').strip()
-        cache_key = (current_user.id, task_id, request_key) if request_key else None
-        if cache_key and cache_key in _task_update_idempotency:
+        idempotency, is_new_request = reserve_idempotency(
+            db,
+            operation=f"task.update:{task_id}",
+            user_id=current_user.id,
+            request_key=request_key,
+            request_data=task_data.model_dump(mode="json", exclude={"client_request_id"}),
+        )
+        if idempotency and not is_new_request:
             return task_to_response(task, db)
 
         if is_task_lock_active(task) and task.lock_owner_id != current_user.id:
@@ -1023,7 +1130,7 @@ def update_task(
             raise HTTPException(status_code=403, detail="Фактические трудозатраты может корректировать только администратор")
 
         # Optimistic lock: extract and check version before applying changes
-        submitted_version = update_data.pop('version', None)
+        submitted_version = update_data.pop('version')
         # actual_effort_days is always computed from actual effort fields
         update_data.pop('actual_effort_days', None)
         # tags — обрабатываются отдельно через issue_tags (не колонка ORM)
@@ -1045,7 +1152,7 @@ def update_task(
             if value is not None:
                 _require_reference(db, model, value, field_name, label)
 
-        if submitted_version is not None and submitted_version != (task.version or 0):
+        if submitted_version != (task.version or 0):
             current = task_to_response(task, db)
             raise HTTPException(
                 status_code=409,
@@ -1089,16 +1196,14 @@ def update_task(
             task.actual_effort_days = compute_actual_effort_days({f: getattr(task, f) for f in ACTUAL_EFFORT_FIELDS})
 
         # Auto-calculate effort cost from role estimates x competency rates
-        if any(f in update_data for f, _ in COMPETENCY_EFFORT_FIELDS):
+        cost_inputs_changed = any(f in update_data for f, _ in COMPETENCY_EFFORT_FIELDS) or 'deadline_id' in update_data
+        if cost_inputs_changed:
             vals = {f: getattr(task, f) for f, _ in COMPETENCY_EFFORT_FIELDS}
             task.effort_rub = compute_effort_rub(db, vals, task.effort_rub, _year_from_deadline(db, task.deadline_id))
 
         # Auto-calculate C/V if financial_effect or effort_rub changed
-        if 'financial_effect' in update_data or 'effort_rub' in update_data:
-            if task.financial_effect is not None and task.effort_rub is not None and task.effort_rub > 0:
-                task.cv = round(float(task.financial_effect) / float(task.effort_rub), 2)
-            else:
-                task.cv = None
+        if 'financial_effect' in update_data or 'effort_rub' in update_data or cost_inputs_changed:
+            task.cv = calculate_cost_value_ratio(task.effort_rub, task.financial_effect)
 
         # Auto-set timestamps when status fields change; shift old status into prev_*
         from datetime import datetime, timezone
@@ -1159,19 +1264,30 @@ def update_task(
         # Version, task fields, tags, history and notifications are committed
         # atomically as one use-case.
         task.version = (task.version or 0) + 1
+        if idempotency:
+            idempotency.resource_type = "task"
+            idempotency.resource_id = task.id
+            idempotency.resource_version = task.version
         db.commit()
         db.refresh(task)
-
-        if cache_key:
-            _task_update_idempotency[cache_key] = task.version
-            if len(_task_update_idempotency) > 2000:
-                _task_update_idempotency.pop(next(iter(_task_update_idempotency)))
 
         return task_to_response(task, db)
 
     except HTTPException:
         db.rollback()
         raise
+    except StaleDataError:
+        # A concurrent transaction committed after the explicit client-version
+        # check. Mapper-level versioning turns that race into a controlled 409.
+        db.rollback()
+        current = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
+        detail = {
+            "message": "Задача была изменена другим пользователем. Пожалуйста, обновите данные и повторите изменения.",
+            "current_version": (current.version or 0) if current else None,
+            "submitted_version": submitted_version,
+            "task": task_to_response(current, db).model_dump(mode="json") if current else None,
+        }
+        raise HTTPException(status_code=409, detail=detail)
     except Exception:
         db.rollback()
         logger.exception("Unexpected task update failure task_id=%s", task_id)
@@ -1193,6 +1309,7 @@ def get_task_history(task_id: int, db: Session = Depends(get_db), current_user: 
 
     # Названия полей берутся из реестра field_labels (источник истины)
     FIELD_LABELS = {fl.key: fl.label for fl in db.query(FieldLabel).all()}
+    reference_values = _history_reference_values(db, history)
 
     result = []
     for h in history:
@@ -1205,8 +1322,8 @@ def get_task_history(task_id: int, db: Session = Depends(get_db), current_user: 
             changed_at=h.changed_at,
             field_name=h.field_name,
             field_label=FIELD_LABELS.get(h.field_name, h.field_name),
-            old_value=h.old_value,
-            new_value=h.new_value,
+            old_value=_resolve_history_value(h.field_name, h.old_value, reference_values),
+            new_value=_resolve_history_value(h.field_name, h.new_value, reference_values),
         ))
     return result
 
@@ -1243,15 +1360,22 @@ def get_task_documents(task_id: int, db: Session = Depends(get_db), current_user
 
 
 @router.delete("/{task_id}")
-def delete_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_task(
+    task_id: int,
+    version: int = Query(..., ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Soft delete task"""
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     authorize_task("delete", task, current_user)
+    _assert_task_version(db, task, version)
 
     task.is_deleted = True
-    db.commit()
+    task.version = (task.version or 0) + 1
+    _commit_versioned_task(db, task.id, version)
     return {"message": "Task deleted"}
 
 
@@ -1282,6 +1406,7 @@ def update_task_links(
         raise HTTPException(status_code=404, detail="Task not found")
 
     authorize_task("edit", task, current_user)
+    _assert_task_version(db, task, data.version)
 
     changes = {}
     if data.link_mockups is not None and data.link_mockups != (task.link_mockups or ""):
@@ -1307,7 +1432,9 @@ def update_task_links(
         )
         db.add(history)
 
-    db.commit()
+    if changes:
+        task.version = (task.version or 0) + 1
+    _commit_versioned_task(db, task.id, data.version)
     db.refresh(task)
 
     return task_to_response(task, db)
@@ -1347,6 +1474,20 @@ def _load_bulk_tasks(db: Session, task_ids: List[int]) -> tuple[list[int], list[
     return requested_ids, tasks
 
 
+def _bulk_version_issues(tasks: list[Task], versions: dict[int, int]) -> tuple[list[int], list[dict]]:
+    missing = sorted(task.id for task in tasks if task.id not in versions)
+    conflicts = [
+        {
+            "task_id": task.id,
+            "submitted_version": versions[task.id],
+            "current_version": task.version or 0,
+        }
+        for task in tasks
+        if task.id in versions and versions[task.id] != (task.version or 0)
+    ]
+    return missing, conflicts
+
+
 @router.post("/bulk/preview", response_model=BulkPreviewResponse)
 def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Validate and calculate a bulk action without changing database state."""
@@ -1357,6 +1498,12 @@ def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db
     requested_ids, tasks = _load_bulk_tasks(db, request.task_ids)
     if len(tasks) != len(requested_ids):
         errors.append("Часть задач не найдена")
+    if request.action != 'comment':
+        missing_versions, version_conflicts = _bulk_version_issues(tasks, request.versions)
+        if missing_versions:
+            errors.append(f"Не переданы версии задач: {missing_versions}")
+        if version_conflicts:
+            errors.append("Часть задач изменена после открытия массовой операции")
 
     fields = request.fields or request.updates or {}
     if set(fields) & set(ACTUAL_EFFORT_FIELDS) and not is_task_global_editor(current_user):
@@ -1465,6 +1612,25 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
             status_code=404,
             detail="Часть задач не найдена или недоступна для массовой операции",
         )
+
+    if request.action != 'comment':
+        missing_versions, version_conflicts = _bulk_version_issues(tasks, request.versions)
+        if missing_versions:
+            raise HTTPException(
+                status_code=428,
+                detail={
+                    "message": "Для массового изменения нужна версия каждой задачи.",
+                    "missing_task_ids": missing_versions,
+                },
+            )
+        if version_conflicts:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Часть задач была изменена другими пользователями.",
+                    "conflicts": version_conflicts,
+                },
+            )
 
     fields_to_update = request.fields or request.updates or {}
 
@@ -1663,7 +1829,30 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
         }, ensure_ascii=False),
     ))
 
-    db.commit()
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        current_versions = {
+            task_id: version
+            for task_id, version in db.query(Task.id, Task.version).filter(Task.id.in_(requested_ids)).all()
+        }
+        conflicts = [
+            {
+                "task_id": task_id,
+                "submitted_version": request.versions.get(task_id),
+                "current_version": current_versions.get(task_id),
+            }
+            for task_id in sorted(requested_ids)
+            if request.versions.get(task_id) != current_versions.get(task_id)
+        ]
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Задачи изменились во время выполнения массовой операции.",
+                "conflicts": conflicts,
+            },
+        )
     return BulkActionResponse(
         detail=f"Массовая операция применена к {changed_tasks} задачам",
         operation_id=operation_id,

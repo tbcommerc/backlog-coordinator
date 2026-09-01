@@ -43,6 +43,8 @@ assert.match(quickFilters, /classList\.toggle\('active', active\)[\s\S]*?aria-pr
 assert.match(quickFilters, /quick-filters-mobile-toggle[\s\S]*?aria-expanded="false"/, 'mobile quick filters must use an accessible disclosure control');
 assert.match(quickFilters, /activeCount \+= 1[\s\S]*?quick-filters-active-count/, 'mobile control must show the active filter count');
 assert.match(quickFilters, /event\.key === 'Escape'/, 'mobile quick-filter panel must close with Escape');
+assert.match(css, /@media \(max-width: 1024px\)\s*\{[\s\S]*?\.quick-filters-mobile-toggle[\s\S]*?#quick-filters\s*\{[\s\S]*?display:\s*none[\s\S]*?grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/, 'collapsed quick filters must initially open in three columns');
+assert.match(css, /@media \(max-width: 640px\)\s*\{[\s\S]*?#quick-filters\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/, 'collapsed quick filters must switch from three to two columns on narrow screens');
 assert.match(css, /#quick-filters\s*\{[\s\S]*?position:\s*static[\s\S]*?display:\s*none/, 'compact quick filters must expand in normal flow');
 assert.match(css, /#quick-filters\.mobile-open\s*\{[\s\S]*?display:\s*grid/, 'compact quick filters must open as a grid');
 assert.match(css, /@media \(max-width: 1024px\)\s*\{[\s\S]*?\.quick-filters-mobile-toggle/, 'compact quick filters must start at the tablet breakpoint');

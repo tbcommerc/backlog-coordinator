@@ -1,5 +1,6 @@
 console.log('[DMB] kanbanBoard.js v20260626.7 loaded');
 import { renderTaskCard } from './modal.js?v=90';
+import { formatTaskPublicId } from '../taskPublicId.js';
 
 let kanbanCurrentTasks = [];
 let statusNameToId = {};
@@ -343,10 +344,17 @@ function setupColumnDropHandlers(app) {
                 if (!statusId) {
                     throw new Error(`Статус "${newStatus}" не найден`);
                 }
-                const response = await app.api.put(`/tasks/${taskId}`, { status_id: statusId });
+                const task = kanbanCurrentTasks.find(item => String(item.id) === String(taskId));
+                if (!task || task.version === undefined || task.version === null) {
+                    throw new Error('Не удалось определить версию задачи. Обновите доску.');
+                }
+                const response = await app.api.put(`/tasks/${taskId}`, {
+                    status_id: statusId,
+                    version: task.version,
+                });
 
                 // Успех: toast
-                window.toast(`Задача #${taskId} перемещена в ${newStatus}`, 'success');
+                window.toast(`Задача ${formatTaskPublicId(taskId)} перемещена в ${newStatus}`, 'success');
 
                 // Перезагружаем доску с сервера — гарантирует актуальные статусы на карточках
                 try {

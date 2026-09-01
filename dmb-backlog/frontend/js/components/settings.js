@@ -1,3 +1,36 @@
+import { escapeHtml } from '../htmlUtils.js';
+
+const ACCENTS = [
+  { color: 'indigo', label: 'Индиго', hex: '#6366f1' },
+  { color: 'emerald', label: 'Изумрудный', hex: '#10b981' },
+  { color: 'rose', label: 'Розовый', hex: '#f43f5e' },
+  { color: 'amber', label: 'Янтарный', hex: '#f59e0b' },
+  { color: 'sky', label: 'Голубой', hex: '#0ea5e9' },
+  { color: 'violet', label: 'Фиолетовый', hex: '#8b5cf6' },
+];
+
+const NOTIF_GROUPS = [
+  { title: 'Важные события', description: 'События, которые могут потребовать вашего внимания', categories: [
+    { key: 'risk', label: 'Риски и эскалации', description: 'Холд, эскалация на ЛТ или отклонение задачи' },
+    { key: 'deadline', label: 'Приближение дедлайна', description: 'Напоминания о приближающихся сроках' },
+    { key: 'stale', label: 'Застоявшиеся задачи', description: 'Задачи без изменений более 14 дней' },
+  ] },
+  { title: 'Работа с задачами', description: 'Изменения в задачах и назначениях', categories: [
+    { key: 'status_change', label: 'Смена статуса' },
+    { key: 'assignment', label: 'Назначение ответственным' },
+    { key: 'express', label: 'Экспресс-импорт' },
+    { key: 'attrs', label: 'Незаполненные атрибуты' },
+  ] },
+  { title: 'Обсуждения и система', description: 'Комментарии, упоминания и служебные сообщения', categories: [
+    { key: 'mention', label: 'Упоминания в комментариях' },
+    { key: 'comment', label: 'Новые комментарии' },
+    { key: 'system', label: 'Системные сообщения' },
+  ] },
+];
+
+let notificationSaveChain = Promise.resolve();
+let systemThemeListener = null;
+
 export function renderSettings(app) {
   const user = app.store.get('currentUser') || {};
   const userName = user.name || 'Пользователь';
@@ -6,242 +39,166 @@ export function renderSettings(app) {
   const userTeam = user.team_name || '';
   const initials = window.getUserInitials(userName);
   const avatarColor = window.getAvatarColor(userName);
-
-  const paletteIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-palette"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-1 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.52-4.5-10-10-10Z"/></svg>';
-  const userIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
-  const moonIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
-  const sunIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
-
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const themeIcon = isDark ? sunIcon : moonIcon;
-  const checkedAttr = isDark ? 'checked' : '';
-  const themeToggleClass = 'theme-toggle' + (isDark ? ' active' : '');
-
+  const savedTheme = localStorage.getItem('dmb_theme') || 'light';
   const savedAccent = localStorage.getItem('dmb_accent') || 'indigo';
-  const swatches = [
-    { color: 'indigo', hex: '#6366f1' },
-    { color: 'emerald', hex: '#10b981' },
-    { color: 'rose', hex: '#f43f5e' },
-    { color: 'amber', hex: '#f59e0b' },
-    { color: 'sky', hex: '#0ea5e9' },
-    { color: 'violet', hex: '#8b5cf6' },
-  ];
-
-  const swatchHtml = swatches.map(s => `
-    <button class="color-swatch${savedAccent === s.color ? ' active' : ''}"
-            data-accent="${s.color}"
-            style="background:${s.hex}"
-            title="${s.color}"
-            aria-label="${s.color}"></button>
-  `).join('');
-
   const isCompact = localStorage.getItem('dmb_compact') === 'true';
-  const compactChecked = isCompact ? 'checked' : '';
+
+  const themeOptions = [
+    { value: 'system', label: 'Как в системе', icon: 'monitor' },
+    { value: 'light', label: 'Светлая', icon: 'sun' },
+    { value: 'dark', label: 'Тёмная', icon: 'moon' },
+  ].map(option => `
+    <button type="button" class="settings-choice${savedTheme === option.value ? ' active' : ''}" data-theme-choice="${option.value}" aria-pressed="${savedTheme === option.value}">
+      <i data-lucide="${option.icon}"></i><span>${option.label}</span>
+    </button>`).join('');
+
+  const swatches = ACCENTS.map(accent => `
+    <button type="button" class="settings-color${savedAccent === accent.color ? ' active' : ''}" data-accent="${accent.color}" aria-label="${accent.label}" aria-pressed="${savedAccent === accent.color}">
+      <span class="settings-color-dot" style="--swatch:${accent.hex}"></span><span>${accent.label}</span>
+    </button>`).join('');
 
   return `
-    <div class="animate-fade-in">
-      <div class="page-header">
-        <h1>Настройки</h1>
-        <p>Настройки профиля, темы и интерфейса</p>
+    <div class="settings-page animate-fade-in">
+      <div class="page-header settings-page-header">
+        <div><h1>Персональные настройки</h1><p>Настройте интерфейс и уведомления под свой рабочий процесс</p></div>
+        <div class="settings-local-note"><i data-lucide="laptop"></i><span>Интерфейс сохраняется на этом устройстве</span></div>
       </div>
-      <div class="settings-grid" style="display:grid;gap:16px;">
-        <div id="settings-notif-prefs" class="card" style="padding:16px;border-radius:12px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-            <div>
-              <h2 style="font-size:15px;font-weight:600;margin:0">Уведомления</h2>
-              <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted)">Какие уведомления вы хотите получать</p>
+      <div class="settings-layout">
+        <nav class="settings-nav" aria-label="Разделы настроек">
+          <button type="button" class="settings-nav-item active" data-settings-target="appearance" aria-current="page"><i data-lucide="palette"></i><span><strong>Интерфейс</strong><small>Тема и отображение</small></span></button>
+          <button type="button" class="settings-nav-item" data-settings-target="notifications"><i data-lucide="bell"></i><span><strong>Уведомления</strong><small>События и оповещения</small></span></button>
+          <button type="button" class="settings-nav-item" data-settings-target="account"><i data-lucide="user"></i><span><strong>Учётная запись</strong><small>Профиль и доступ</small></span></button>
+        </nav>
+        <div class="settings-panel" aria-live="polite">
+          <section class="settings-view active" data-settings-view="appearance">
+            <div class="settings-view-header"><div class="settings-view-icon"><i data-lucide="palette"></i></div><div><h2>Интерфейс</h2><p>Выберите комфортный вид рабочего пространства</p></div></div>
+            <div class="settings-block">
+              <div class="settings-block-heading"><h3>Тема</h3><p>Системная тема автоматически меняется вместе с настройками устройства</p></div>
+              <div class="settings-choice-group" role="group" aria-label="Тема интерфейса">${themeOptions}</div>
             </div>
-          </div>
-          <div id="notif-prefs-list" style="display:flex;flex-direction:column;gap:6px;">
-            <p style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">Загрузка...</p>
-          </div>
-          <div id="notif-prefs-save-status" style="font-size:11px;color:var(--success);margin-top:8px;min-height:16px;"></div>
-        </div>
-
-        <div class="card" style="padding:16px;border-radius:12px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-            ${paletteIcon}
-            <div>
-              <h2 style="font-size:15px;font-weight:600;margin:0">Внешний вид</h2>
-              <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted)">Тема и цветовые акценты</p>
+            <div class="settings-block">
+              <div class="settings-block-heading"><h3>Цвет интерфейса</h3><p>Используется для кнопок, ссылок и активных элементов</p></div>
+              <div class="settings-colors" role="group" aria-label="Цвет интерфейса">${swatches}</div>
             </div>
-          </div>
-
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">
-            <div>
-              <div style="font-weight:500;font-size:13px">Тёмная тема</div>
-              <div style="font-size:11px;color:var(--text-muted)">Автоматически следует за системой</div>
+            <div class="settings-block">
+              <div class="settings-block-heading"><h3>Плотность</h3><p>Компактный режим уменьшает отступы и показывает больше данных</p></div>
+              <div class="settings-choice-group settings-choice-group--density" role="group" aria-label="Плотность интерфейса">
+                <button type="button" class="settings-choice${isCompact ? '' : ' active'}" data-density="comfortable" aria-pressed="${!isCompact}"><i data-lucide="list"></i><span>Комфортная</span></button>
+                <button type="button" class="settings-choice${isCompact ? ' active' : ''}" data-density="compact" aria-pressed="${isCompact}"><i data-lucide="menu"></i><span>Компактная</span></button>
+              </div>
             </div>
-            <label class="${themeToggleClass}">
-              <input type="checkbox" class="theme-toggle-input" ${checkedAttr}>
-              <span class="theme-toggle-icon">${themeIcon}</span>
-            </label>
-          </div>
-
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">
-            <div>
-              <div style="font-weight:500;font-size:13px">Цвет акцента</div>
-              <div style="font-size:11px;color:var(--text-muted)">Выберите основной цвет</div>
-            </div>
-            <div class="color-swatches">
-              ${swatchHtml}
-            </div>
-          </div>
-
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
-            <div>
-              <div style="font-weight:500;font-size:13px">Компактный режим</div>
-              <div style="font-size:11px;color:var(--text-muted)">Меньше отступов, больше информации</div>
-            </div>
-            <label class="compact-toggle" style="display:flex;align-items:center;gap:6px;cursor:pointer;flex-shrink:0">
-              <input type="checkbox" class="compact-checkbox" ${compactChecked}>
-              <span style="font-size:12px;color:var(--text-muted)">Вкл</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="card" style="padding:16px;border-radius:12px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-            ${userIcon}
-            <div>
-              <h2 style="font-size:15px;font-weight:600;margin:0">Профиль</h2>
-              <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted)">Информация об учётной записи</p>
-            </div>
-          </div>
-
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <div style="width:48px;height:48px;border-radius:12px;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:white;flex-shrink:0">${initials}</div>
-            <div>
-              <div style="font-size:14px;font-weight:600">${userName}</div>
-              <div style="font-size:12px;color:var(--text-muted)">${userEmail}</div>
-              ${userTeam ? `<div style="font-size:11px;color:var(--text-muted)">${userTeam}</div>` : ''}
-            </div>
-          </div>
-
-          <div style="border-top:1px solid var(--border-color);padding-top:12px">
-            <div style="display:flex;justify-content:space-between;padding:6px 0">
-              <span style="font-size:12px;color:var(--text-muted)">Роль в системе</span>
-              <span class="badge badge-indigo" style="font-size:11px">${userRole}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:6px 0">
-              <span style="font-size:12px;color:var(--text-muted)">Последний вход</span>
-              <span style="font-size:12px">Сегодня, 09:42</span>
-            </div>
-          </div>
+            <div class="settings-preview" aria-hidden="true"><div class="settings-preview-top"><span></span><span></span><span></span></div><div class="settings-preview-body"><span class="settings-preview-nav"></span><div><strong>Предпросмотр</strong><span></span><span></span><span></span></div></div></div>
+            <div class="settings-inline-status"><i data-lucide="check"></i> Изменения применяются сразу</div>
+          </section>
+          <section class="settings-view" data-settings-view="notifications" hidden>
+            <div class="settings-view-header"><div class="settings-view-icon"><i data-lucide="bell"></i></div><div><h2>Уведомления</h2><p>Выберите события, о которых хотите узнавать</p></div></div>
+            <div id="notif-prefs-list" class="settings-notifications"><div class="settings-loading"><span class="spinner"></span> Загружаем настройки…</div></div>
+            <div id="notif-prefs-save-status" class="settings-save-status" role="status" aria-live="polite"></div>
+          </section>
+          <section class="settings-view" data-settings-view="account" hidden>
+            <div class="settings-view-header"><div class="settings-view-icon"><i data-lucide="user"></i></div><div><h2>Учётная запись</h2><p>Информация о профиле и доступе</p></div></div>
+            <div class="settings-profile-hero"><div class="settings-avatar" style="--avatar-color:${avatarColor}">${escapeHtml(initials)}</div><div><h3>${escapeHtml(userName)}</h3><p>${escapeHtml(userEmail)}</p>${userTeam ? `<span>${escapeHtml(userTeam)}</span>` : ''}</div></div>
+            <dl class="settings-profile-list">
+              <div><dt>Роль в системе</dt><dd><span class="badge badge-indigo">${escapeHtml(userRole)}</span></dd></div>
+              <div><dt>Команда</dt><dd>${escapeHtml(userTeam || 'Не указана')}</dd></div>
+              <div><dt>Электронная почта</dt><dd>${escapeHtml(userEmail)}</dd></div>
+            </dl>
+            <div class="settings-info-callout"><i data-lucide="info"></i><div><strong>Данные профиля управляются администратором</strong><p>Если информация устарела, обратитесь к администратору системы.</p></div></div>
+          </section>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 export async function initSettings(app) {
-  const savedTheme = localStorage.getItem('dmb_theme');
-  const savedAccent = localStorage.getItem('dmb_accent');
-  const savedCompact = localStorage.getItem('dmb_compact');
-
-  if (savedTheme === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
-  if (savedAccent) {
-    document.documentElement.setAttribute('data-accent', savedAccent);
-  }
-  if (savedCompact === 'true') {
-    document.body.classList.add('compact-mode');
-  }
-
-  bindThemeToggle(app);
-  bindColorSwatches(app);
-  bindCompactToggle(app);
+  bindSettingsNavigation();
+  openRequestedSettingsSection();
+  bindThemeChoices();
+  bindColorChoices();
+  bindDensityChoices();
+  applySavedAppearance();
   loadNotificationPrefs(app);
 }
 
-function bindThemeToggle(app) {
-  const input = document.querySelector('.theme-toggle-input');
-  if (!input) return;
-  input.addEventListener('change', () => {
-    toggleTheme();
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
-  });
+function openRequestedSettingsSection() {
+  const [, query = ''] = window.location.hash.slice(1).split('?');
+  const section = new URLSearchParams(query).get('section');
+  if (!section) return;
+  document.querySelector(`[data-settings-target="${section}"]`)?.click();
 }
 
-function bindColorSwatches(app) {
-  document.querySelectorAll('.color-swatch').forEach(swatch => {
-    swatch.addEventListener('click', () => {
-      const color = swatch.dataset.accent;
-      setAccent(color);
+function bindSettingsNavigation() {
+  const buttons = document.querySelectorAll('[data-settings-target]');
+  const views = document.querySelectorAll('[data-settings-view]');
+  buttons.forEach(button => button.addEventListener('click', () => {
+    const target = button.dataset.settingsTarget;
+    buttons.forEach(item => {
+      const active = item === button;
+      item.classList.toggle('active', active);
+      active ? item.setAttribute('aria-current', 'page') : item.removeAttribute('aria-current');
     });
+    views.forEach(view => {
+      const active = view.dataset.settingsView === target;
+      view.classList.toggle('active', active);
+      view.hidden = !active;
+    });
+  }));
+}
+
+function bindThemeChoices() {
+  document.querySelectorAll('[data-theme-choice]').forEach(button => button.addEventListener('click', () => {
+    const theme = button.dataset.themeChoice;
+    localStorage.setItem('dmb_theme', theme);
+    applyTheme(theme);
+    setPressedState('[data-theme-choice]', button);
+  }));
+}
+
+function bindColorChoices() {
+  document.querySelectorAll('[data-accent]').forEach(button => button.addEventListener('click', () => {
+    document.documentElement.setAttribute('data-accent', button.dataset.accent);
+    localStorage.setItem('dmb_accent', button.dataset.accent);
+    setPressedState('[data-accent]', button);
+  }));
+}
+
+function bindDensityChoices() {
+  document.querySelectorAll('[data-density]').forEach(button => button.addEventListener('click', () => {
+    const compact = button.dataset.density === 'compact';
+    document.documentElement.setAttribute('data-compact', compact ? 'true' : 'false');
+    document.body.classList.toggle('compact-mode', compact);
+    localStorage.setItem('dmb_compact', compact ? 'true' : 'false');
+    setPressedState('[data-density]', button);
+  }));
+}
+
+function setPressedState(selector, activeButton) {
+  document.querySelectorAll(selector).forEach(button => {
+    const active = button === activeButton;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
   });
 }
 
-function bindCompactToggle(app) {
-  const checkbox = document.querySelector('.compact-checkbox');
-  if (!checkbox) return;
-  checkbox.addEventListener('change', () => {
-    toggleCompactMode();
-  });
+function applySavedAppearance() {
+  applyTheme(localStorage.getItem('dmb_theme') || 'light');
+  const accent = localStorage.getItem('dmb_accent') || 'indigo';
+  const compact = localStorage.getItem('dmb_compact') === 'true';
+  document.documentElement.setAttribute('data-accent', accent);
+  document.documentElement.setAttribute('data-compact', compact ? 'true' : 'false');
+  document.body.classList.toggle('compact-mode', compact);
 }
 
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-
-  const toggle = document.querySelector('.theme-toggle');
-  const input = document.querySelector('.theme-toggle-input');
-  const iconSpan = document.querySelector('.theme-toggle-icon');
-
-  const isDark = next === 'dark';
-
-  if (toggle) toggle.classList.toggle('active', isDark);
-  if (input) input.checked = isDark;
-
-  if (iconSpan) {
-    const moon = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
-    const sun = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
-    iconSpan.innerHTML = isDark ? sun : moon;
+function applyTheme(theme) {
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  document.documentElement.setAttribute('data-theme', theme === 'system' ? (media.matches ? 'dark' : 'light') : theme);
+  if (systemThemeListener) media.removeEventListener('change', systemThemeListener);
+  systemThemeListener = null;
+  if (theme === 'system') {
+    systemThemeListener = event => document.documentElement.setAttribute('data-theme', event.matches ? 'dark' : 'light');
+    media.addEventListener('change', systemThemeListener);
   }
-
-  localStorage.setItem('dmb_theme', isDark ? 'dark' : 'light');
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
 }
-
-function setAccent(color) {
-  const html = document.documentElement;
-  html.setAttribute('data-accent', color);
-
-  document.querySelectorAll('.color-swatch').forEach(el => {
-    el.classList.toggle('active', el.dataset.accent === color);
-  });
-
-  localStorage.setItem('dmb_accent', color);
-}
-
-function toggleCompactMode() {
-  document.body.classList.toggle('compact-mode');
-  const checkbox = document.querySelector('.compact-checkbox');
-  const isCompact = document.body.classList.contains('compact-mode');
-  if (checkbox) checkbox.checked = isCompact;
-  localStorage.setItem('dmb_compact', isCompact ? 'true' : 'false');
-}
-
-const NOTIF_CATEGORIES = [
-  { key: 'risk',          label: 'Риски (ХОЛД, ЭСКАЛАЦИЯ НА ЛТ, ОТКЛОНЕНА)', icon: 'alert-triangle' },
-  { key: 'deadline',      label: 'Приближение дедлайна',                     icon: 'clock' },
-  { key: 'status_change', label: 'Смена статуса',                            icon: 'refresh-cw' },
-  { key: 'assignment',    label: 'Назначение ответственного',                icon: 'user-plus' },
-  { key: 'mention',       label: 'Упоминание в комментарии (@)',             icon: 'at-sign' },
-  { key: 'comment',       label: 'Новый комментарий к задаче',               icon: 'message-circle' },
-  { key: 'express',       label: 'Экспресс-импорт',                          icon: 'zap' },
-  { key: 'stale',         label: 'Застоявшиеся задачи (>14 дней)',           icon: 'timer' },
-  { key: 'attrs',         label: 'Незаполненные атрибуты',                   icon: 'file-text' },
-  { key: 'system',        label: 'Системные',                                icon: 'info' },
-];
 
 async function loadNotificationPrefs(app) {
   const container = document.getElementById('notif-prefs-list');
@@ -249,39 +206,40 @@ async function loadNotificationPrefs(app) {
   try {
     const resp = await app.api.get('/notifications/preferences');
     const prefs = resp.preferences || {};
-    const disabledSet = new Set(
-      Object.entries(prefs).filter(([_, enabled]) => !enabled).map(([key]) => key)
-    );
-
-    container.innerHTML = NOTIF_CATEGORIES.map(cat => {
-      const checked = !disabledSet.has(cat.key);
-      return `
-        <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-primary);transition:background 0.15s;"
-               onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='transparent'">
-          <input type="checkbox" class="notif-pref-toggle" data-category="${cat.key}" ${checked ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;">
-          <span style="flex:1">${cat.label}</span>
-        </label>`;
-    }).join('');
-
-    container.addEventListener('change', (e) => {
-      if (e.target.classList.contains('notif-pref-toggle')) {
-        saveNotifPrefs(app);
-      }
+    const isEnabled = key => prefs[key] !== false;
+    const allEnabled = NOTIF_GROUPS.flatMap(group => group.categories).every(category => isEnabled(category.key));
+    container.innerHTML = `
+      <label class="settings-notification-master"><span><strong>Все уведомления</strong><small>Быстро включить или отключить все категории</small></span><input type="checkbox" class="settings-switch-input" id="notif-master-toggle" ${allEnabled ? 'checked' : ''}><span class="settings-switch" aria-hidden="true"></span></label>
+      ${NOTIF_GROUPS.map(group => `<section class="settings-notification-group"><div class="settings-notification-group-header"><h3>${group.title}</h3><p>${group.description}</p></div>${group.categories.map(category => `<label class="settings-notification-row"><span><strong>${category.label}</strong>${category.description ? `<small>${category.description}</small>` : ''}</span><input type="checkbox" class="settings-switch-input notif-pref-toggle" data-category="${category.key}" ${isEnabled(category.key) ? 'checked' : ''}><span class="settings-switch" aria-hidden="true"></span></label>`).join('')}</section>`).join('')}`;
+    container.addEventListener('change', event => {
+      if (event.target.id === 'notif-master-toggle') {
+        container.querySelectorAll('.notif-pref-toggle').forEach(toggle => { toggle.checked = event.target.checked; });
+      } else if (event.target.classList.contains('notif-pref-toggle')) {
+        const toggles = [...container.querySelectorAll('.notif-pref-toggle')];
+        container.querySelector('#notif-master-toggle').checked = toggles.every(toggle => toggle.checked);
+      } else return;
+      queueNotificationSave(app);
     });
   } catch (err) {
-    container.innerHTML = '<p style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">Не удалось загрузить</p>';
+    container.innerHTML = '<div class="settings-error"><i data-lucide="circle-alert"></i><div><strong>Не удалось загрузить настройки</strong><p>Обновите страницу и попробуйте ещё раз.</p></div></div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 }
 
-async function saveNotifPrefs(app) {
-  const toggles = document.querySelectorAll('.notif-pref-toggle');
+function queueNotificationSave(app) {
+  const status = document.getElementById('notif-prefs-save-status');
   const preferences = {};
-  toggles.forEach(t => { preferences[t.dataset.category] = t.checked; });
-  const statusEl = document.getElementById('notif-prefs-save-status');
-  try {
-    await app.api.put('/notifications/preferences', { preferences });
-    if (statusEl) { statusEl.textContent = 'Сохранено'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
-  } catch (err) {
-    if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = 'Ошибка'; setTimeout(() => { statusEl.textContent = ''; statusEl.style.color = ''; }, 2000); }
-  }
+  document.querySelectorAll('.notif-pref-toggle').forEach(toggle => { preferences[toggle.dataset.category] = toggle.checked; });
+  if (status) { status.className = 'settings-save-status saving'; status.innerHTML = '<span class="spinner"></span> Сохраняем…'; }
+  notificationSaveChain = notificationSaveChain.catch(() => {}).then(() => app.api.put('/notifications/preferences', { preferences })).then(() => {
+    if (!status) return;
+    status.className = 'settings-save-status success';
+    status.innerHTML = '<i data-lucide="check"></i> Все изменения сохранены';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }).catch(() => {
+    if (!status) return;
+    status.className = 'settings-save-status error';
+    status.innerHTML = '<i data-lucide="circle-alert"></i> Не удалось сохранить изменения';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
 }

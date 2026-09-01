@@ -1,5 +1,7 @@
 console.log('[DMB] customerChat.js loaded');
 
+import { formatTaskPublicId } from '../taskPublicId.js';
+
 let chatHistory = [];
 let isTyping = false;
 let taskPreview = null;
@@ -278,7 +280,7 @@ function renderTaskLink(taskId) {
     <div class="chat-task-link">
       <i data-lucide="external-link" style="width:14px;height:14px;"></i>
       <a href="#/tasks" onclick="setTimeout(() => { const event = new CustomEvent('open-task', { detail: { taskId: ${taskId} } }); document.dispatchEvent(event); }, 100);">
-        Открыть задачу #${taskId}
+        Открыть задачу ${formatTaskPublicId(taskId)}
       </a>
     </div>
   `;

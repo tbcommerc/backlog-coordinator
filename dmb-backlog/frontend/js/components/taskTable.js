@@ -1,13 +1,16 @@
 console.log('[DMB] taskTable.js v20260807 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=81';
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=91';
 import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=90';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=71';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=66';
-import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=48';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=81';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=76';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=50';
 import { safeExternalUrl } from '../urlUtils.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { bindViewStateAction, renderViewState } from './viewState.js';
+import { formatTaskPublicId } from '../taskPublicId.js';
+import { getSelectedItems, reconcileSelection, setAllSelection } from './tableSelection.js';
+import { calculateTaskCv, cvZone } from '../taskMetrics.js';
 
 function renderExternalTaskLink(value, label) {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -40,6 +43,7 @@ let autoRefreshTimer = null;
 let keyboardHandler = null;
 let tasksLoadInProgress = false;
 let tasksReloadQueued = false;
+const backlogSelectedTaskIds = new Set();
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
 export function renderTasksPage(app) {
@@ -113,6 +117,7 @@ async function applyDefaultDisplaySettings(app) {
 }
 
 export async function initTasksPage(app) {
+  backlogSelectedTaskIds.clear();
   COLUMN_LABELS = { ...buildColumnLabels(window.app?.fieldLabels || {}) };
   await applyDefaultDisplaySettings(app);
   loadBacklogColumnState();
@@ -300,7 +305,7 @@ function isBacklogRouteActive() {
 
 function isBacklogInteractionActive() {
   return isQuickEdit('backlog')
-    || document.querySelector('.backlog-task-checkbox:checked') !== null
+    || backlogSelectedTaskIds.size > 0
     || document.getElementById('task-detail-overlay') !== null
     || document.getElementById('create-task-overlay') !== null
     || document.getElementById('bulk-modal-overlay') !== null;
@@ -351,6 +356,7 @@ function getFilteredList() {
 
 function renderCurrentView() {
   const list = getFilteredList();
+  reconcileSelection(backlogSelectedTaskIds, list, task => canEditTaskForScope('backlog', task));
   const countEl = document.getElementById('tasks-count');
   if (countEl) countEl.textContent = `Найдено: ${list.length} задач`;
   const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
@@ -411,7 +417,7 @@ function renderTableView(list) {
         <colgroup>${checkboxCol}${colgroupHtml}</colgroup>
         <thead>
           <tr>
-            ${showCheckbox ? '<th><input type="checkbox" id="backlog-select-all" aria-label="Выбрать все задачи на странице"></th>' : ''}
+            ${showCheckbox ? '<th class="table-selection-cell"><input type="checkbox" id="backlog-select-all" aria-label="Выбрать все отфильтрованные задачи"></th>' : ''}
             ${visibleCols.map(col => headerCellHtml(getColumnLabel(col), col, columnSort.key, columnSort.dir)).join('')}
           </tr>
         </thead>
@@ -454,7 +460,7 @@ function renderCell(col, task) {
   }
 
   switch (col) {
-    case 'id': return `<span class="font-mono text-muted">#${task.id}</span>`;
+    case 'id': return `<span class="font-mono text-muted">${formatTaskPublicId(task)}</span>`;
     case 'title': return `<strong class="cell-truncate">${escapeHtml(task.title)}</strong>`;
     case 'description': return `<span class="cell-truncate">${escapeHtml(task.description || '—')}</span>`;
     case 'date_received': return `<span>${escapeHtml(task.date_received || '—')}</span>`;
@@ -552,7 +558,7 @@ function renderTableRow(task, cols, showCheckbox) {
     : hasChanges
     ? `cursor:default;border-left:3px solid var(--warning);`
     : (isQuickEdit('backlog') ? 'cursor:default;' : 'cursor:pointer;');
-  const checkboxHtml = showCheckbox ? `<td>${canEditTaskForScope('backlog', task) ? `<input type="checkbox" class="backlog-task-checkbox" value="${task.id}" aria-label="Выбрать задачу ${task.id}">` : '<span title="Нет прав на изменение этой задачи" style="color:var(--text-muted);">—</span>'}</td>` : '';
+  const checkboxHtml = showCheckbox ? `<td class="table-selection-cell">${canEditTaskForScope('backlog', task) ? `<input type="checkbox" class="backlog-task-checkbox" value="${task.id}" aria-label="Выбрать задачу ${task.id}" ${backlogSelectedTaskIds.has(Number(task.id)) ? 'checked' : ''}>` : '<span title="Нет прав на изменение этой задачи" style="color:var(--text-muted);">—</span>'}</td>` : '';
   const errorCell = saveError && cells.length > 0
     ? cells.map((cell, index) => index === 0
       ? cell.replace('>', ` title="${escapeHtml(saveError)}">⚠ `).replace('</td>', `<div style="margin-top:4px;color:var(--danger);font-size:11px;white-space:normal;">${escapeHtml(saveError)}</div></td>`)
@@ -562,12 +568,13 @@ function renderTableRow(task, cols, showCheckbox) {
 }
 
 function getBacklogSelectedTasks() {
-  const ids = new Set([...document.querySelectorAll('.backlog-task-checkbox:checked')].map(cb => Number(cb.value)));
-  return (tasksCache?.items || []).filter(task => ids.has(task.id));
+  return getSelectedItems(backlogSelectedTaskIds, getFilteredList());
 }
 
 function updateBacklogBulkBar() {
-  const count = document.querySelectorAll('.backlog-task-checkbox:checked').length;
+  const editable = getFilteredList().filter(task => canEditTaskForScope('backlog', task));
+  reconcileSelection(backlogSelectedTaskIds, editable);
+  const count = backlogSelectedTaskIds.size;
   const bar = document.getElementById('backlog-bulk-actions');
   if (bar) bar.style.display = count > 0 ? 'flex' : 'none';
   const countEl = document.getElementById('backlog-selected-count');
@@ -576,14 +583,25 @@ function updateBacklogBulkBar() {
   if (action) action.textContent = `Массовые операции (${count})`;
   const toolbarAction = document.getElementById('backlog-bulk-open');
   if (toolbarAction) toolbarAction.title = count > 0 ? `Массовые операции (${count} выбрано)` : 'Массовые операции';
+  const selectAll = document.getElementById('backlog-select-all');
+  if (selectAll) {
+    selectAll.checked = editable.length > 0 && count === editable.length;
+    selectAll.indeterminate = count > 0 && count < editable.length;
+  }
 }
 
 function bindBacklogSelection() {
   document.getElementById('backlog-select-all')?.addEventListener('change', function () {
-    document.querySelectorAll('.backlog-task-checkbox').forEach(cb => { cb.checked = this.checked; });
+    setAllSelection(backlogSelectedTaskIds, getFilteredList(), this.checked, task => canEditTaskForScope('backlog', task));
+    document.querySelectorAll('.backlog-task-checkbox').forEach(cb => { cb.checked = backlogSelectedTaskIds.has(Number(cb.value)); });
     updateBacklogBulkBar();
   });
-  document.querySelectorAll('.backlog-task-checkbox').forEach(cb => cb.addEventListener('change', updateBacklogBulkBar));
+  document.querySelectorAll('.backlog-task-checkbox').forEach(cb => cb.addEventListener('change', function () {
+    const id = Number(this.value);
+    if (this.checked) backlogSelectedTaskIds.add(id);
+    else backlogSelectedTaskIds.delete(id);
+    updateBacklogBulkBar();
+  }));
   document.getElementById('backlog-bulk-selected')?.addEventListener('click', () => openBacklogBulkOps(currentApp));
   updateBacklogBulkBar();
 }
@@ -592,7 +610,10 @@ async function openBacklogBulkOps(app) {
   const selected = getBacklogSelectedTasks();
   const editable = getFilteredList().filter(task => canEditTaskForScope('backlog', task));
   const result = await showBulkOpsModal(app, 'backlog', selected.length > 0 ? selected : editable);
-  if (result?.success) await loadTasks(app);
+  if (result?.success) {
+    backlogSelectedTaskIds.clear();
+    await loadTasks(app);
+  }
 }
 
 function renderCardView(list) {
@@ -667,11 +688,11 @@ function renderProgress(progress) {
 }
 
 function renderCV(task) {
-  const cv = task.financial_effect && task.effort_rub && task.effort_rub > 0
-    ? (task.financial_effect / task.effort_rub).toFixed(2) : null;
-  if (cv === null) return '<span class="badge badge-low">—</span>';
-  const cls = parseFloat(cv) > 1.5 ? 'badge-high' : parseFloat(cv) > 1.0 ? 'badge-warning' : 'badge-danger';
-  return `<span class="badge ${cls}">${cv}</span>`;
+  const cv = calculateTaskCv(task);
+  const zone = cvZone(cv);
+  if (zone === 'missing') return '<span class="badge badge-danger">Нет данных</span>';
+  const cls = zone === 'good' ? 'badge-status-done' : zone === 'warning' ? 'badge-warning' : 'badge-danger';
+  return `<span class="badge ${cls}">${cv.toFixed(2)}</span>`;
 }
 
 function renderTags(tags) {
@@ -708,8 +729,8 @@ function exportExcel(list) {
     const row = fields.map(f => {
       let val = t[f] ?? '';
       if (f === 'cv') {
-        val = t.financial_effect && t.effort_rub && t.effort_rub > 0
-          ? (t.financial_effect / t.effort_rub).toFixed(2) : '—';
+        const cv = calculateTaskCv(t);
+        val = cv == null ? 'Нет данных' : cv.toFixed(2);
       }
       if (typeof val === 'string' && (val.includes(';') || val.includes('"') || val.includes('\n'))) val = '"' + val.replace(/"/g, '""') + '"';
       return val;

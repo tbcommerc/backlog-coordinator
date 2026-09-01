@@ -17,10 +17,11 @@ from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
+from services.task_metrics import calculate_cost_value_ratio
 
 from models import (
     Task, Team, Channel, BusinessCustomer, Department, Project, TaskType,
-    Priority, Deadline, TaskStatus, User, TaskHistory, AuditLog, TaskJiraLink,
+    Priority, Deadline, TaskStatus, User, TaskHistory, TaskJiraLink,
     FieldLabel,
 )
 
@@ -402,8 +403,7 @@ def _build_task(db: Session, task_data: dict, jira_links: List[str],
         db, {f: getattr(task, f) for f, _ in COMPETENCY_EFFORT_FIELDS}, task.effort_rub)
     if effort_rub is not None:
         task.effort_rub = effort_rub
-    if task.effort_rub is not None and task.effort_rub > 0 and task.financial_effect is not None:
-        task.cv = round(float(task.financial_effect) / float(task.effort_rub), 2)
+    task.cv = calculate_cost_value_ratio(task.effort_rub, task.financial_effect)
 
     return task
 
@@ -442,13 +442,8 @@ def persist_task(db: Session, task: Task, jira_links: List[str],
             field_name=field_name, old_value=old_val, new_value=new_val,
         ))
 
-    db.add(AuditLog(
-        user_id=current_user_id,
-        action='import',
-        entity_type='task',
-        entity_id=task.id,
-        details=f"Task '{task.title}' imported from CSV",
-    ))
+    # The central SQLAlchemy audit hook records this task in the same
+    # transaction as the import itself.
 
 
 # ==================== MAIN ENTRY ====================

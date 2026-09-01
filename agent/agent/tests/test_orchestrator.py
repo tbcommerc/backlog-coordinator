@@ -1,7 +1,7 @@
 import pytest
 
 from agent.orchestrator import AgentOrchestrator, get_orchestrator
-from agent.session import SessionStore
+from agent.session import SessionConflictError, SessionStore
 from agent.dialogue.state import (
     PHASE_DRAFT_READY,
     PHASE_INCIDENT_TRIAGE,
@@ -37,6 +37,83 @@ SLOT_ANSWERS = {
     "value": "Экономия двух часов в день",
     "priority": "Высокий",
 }
+
+
+def test_session_list_uses_last_message_time_not_generic_save_time(tmp_path):
+    store = SessionStore(str(tmp_path / "session_order.db"))
+    older = store.new_session(42)
+    older.add_message("user", "Первое сообщение")
+    store.save(older)
+
+    newer = store.new_session(42)
+    newer.add_message("user", "Более позднее сообщение")
+    store.save(newer)
+
+    before = store.list_for_user(42)
+    assert [item["session_id"] for item in before] == [newer.session_id, older.session_id]
+    older_message_time = next(
+        item["last_message_at"] for item in before if item["session_id"] == older.session_id
+    )
+
+    # A metadata-only save (for example selecting/opening a dialogue) must not
+    # change its position in the message chronology.
+    store.save(older)
+    after = store.list_for_user(42)
+    assert [item["session_id"] for item in after] == [newer.session_id, older.session_id]
+    assert next(
+        item["last_message_at"] for item in after if item["session_id"] == older.session_id
+    ) == older_message_time
+
+
+def test_session_store_rejects_stale_state_save(tmp_path):
+    store = SessionStore(str(tmp_path / "session_conflict.db"))
+    created = store.new_session(42)
+    first = store.get(created.session_id)
+    second = store.get(created.session_id)
+
+    first.add_message("user", "Первое изменение")
+    store.save(first)
+    second.add_message("user", "Конкурирующее изменение")
+
+    with pytest.raises(SessionConflictError):
+        store.save(second)
+
+    stored = store.get(created.session_id)
+    assert [item["content"] for item in stored.history] == ["Первое изменение"]
+
+
+def test_sent_request_can_be_reopened_for_revision(orch):
+    state = orch.store.new_session(42)
+    state.confirmed = True
+    state.review_status = "needs_review"
+    state.review_task_id = 17
+    state.draft = {
+        "id": "REQ-17",
+        "title": "Запрос на изменение",
+        "problem_statement": "Нужна доработка",
+        "target_process": "Новый процесс",
+    }
+    orch.store.save(state)
+
+    response = orch.reopen_for_revision(state.session_id, 42, "Уточните критерии приёмки")
+    reopened = orch.store.get(state.session_id)
+
+    assert response.action == "draft_ready"
+    assert reopened.review_status == ""
+    assert reopened.review_task_id is None
+    assert any("Уточните критерии" in item["content"] for item in reopened.history)
+
+
+def test_reopen_for_revision_checks_session_owner(orch):
+    state = orch.store.new_session(42)
+    state.draft = {"id": "REQ-18", "title": "Запрос"}
+    state.review_status = "needs_review"
+    orch.store.save(state)
+
+    response = orch.reopen_for_revision(state.session_id, 99, "Комментарий")
+
+    assert response.action == "error"
+    assert orch.store.get(state.session_id).review_status == "needs_review"
 
 
 def _drive_to_draft(orch, sid, ctx=None, max_steps=25):

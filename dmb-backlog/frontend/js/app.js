@@ -4,7 +4,7 @@
  */
 console.log('[DMB] app.js v20260727 notif-v2 loaded');
 
-import { Router } from './router.js?v=95';
+import { Router } from './router.js?v=123';
 import { Store } from './store.js';
 import { API } from './api.js?v=2';
 import { Auth } from './auth.js';
@@ -12,6 +12,8 @@ import { renderSidebar, initSidebar } from './components/sidebar.js?v=54';
 import { safeExternalUrl } from './urlUtils.js';
 import { confirmAction, formatErrorMessage, showFieldError, showToast } from './uiFeedback.js';
 import { initModalAccessibility } from './modalAccessibility.js';
+import { formatTaskPublicId } from './taskPublicId.js';
+import { pauseEventStream, resumeEventStream, startEventStream } from './eventStream.js';
 
 const AVATAR_COLORS = [
   '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e',
@@ -72,6 +74,38 @@ export async function checkNotifications() {
 
 let notificationPollTimer = null;
 let lastLiveNotificationId = 0;
+const liveRouteRefreshTimers = new Map();
+
+const LIVE_REFRESH_ROUTES = {
+  task: new Set(['/dashboard', '/backlog', '/team-backlog', '/kanban', '/reports', '/reports/detail', '/reporting-meetings', '/analytics/tribe', '/analytics/po-pl', '/analytics/it']),
+  requirement: new Set(['/customer', '/review']),
+  report: new Set(['/reports', '/reports/detail', '/reporting-meetings', '/admin']),
+};
+
+function scheduleLiveRouteRefresh(app, kind, detail = {}) {
+  if (kind === 'task' && detail.type === 'task.activity.changed') return;
+  const path = (window.location.hash.slice(1).split('?')[0] || '/dashboard');
+  const dynamicMatch = kind === 'requirement' && (/^\/customer\/request\/\d+$/.test(path) || /^\/review\/\d+$/.test(path));
+  if (!dynamicMatch && !LIVE_REFRESH_ROUTES[kind]?.has(path)) return;
+  if (kind === 'report' && path === '/admin' && document.getElementById('admin-modal-overlay')) {
+    window.toast?.('Отчёты изменились в другой сессии. Закройте форму и обновите список перед сохранением.', 'warning');
+    return;
+  }
+  if (kind === 'requirement' && document.querySelector('.review-modal')) {
+    window.toast?.('Запрос изменился в другой сессии. Закройте диалог и проверьте актуальное состояние.', 'warning');
+    return;
+  }
+  window.clearTimeout(liveRouteRefreshTimers.get(kind));
+  liveRouteRefreshTimers.set(kind, window.setTimeout(async () => {
+    liveRouteRefreshTimers.delete(kind);
+    if (document.hidden) return;
+    try {
+      await app.router.refreshCurrentRoute();
+    } catch (error) {
+      console.warn(`Live ${kind} refresh failed`, error);
+    }
+  }, 500));
+}
 
 function openNotificationTarget(app, notification) {
   if (notification.task_id) {
@@ -242,8 +276,11 @@ function scoreTask(task, query) {
   }
 
   const sid = String(task.id);
+  const publicId = formatTaskPublicId(task).toLowerCase();
   if (sid === q) { score += 95; if (!matchedFields.includes('title')) matchedFields.push('id'); }
   else if (sid.includes(q)) { score += 40; if (!matchedFields.includes('title')) matchedFields.push('id'); }
+  if (publicId === q) { score += 100; if (!matchedFields.includes('title')) matchedFields.push('id'); }
+  else if (publicId.includes(q)) { score += 45; if (!matchedFields.includes('title')) matchedFields.push('id'); }
 
   ['owner', 'project', 'team_name', 'status', 'business_customer', 'description'].forEach(f => {
     if (!task[f]) return;
@@ -288,7 +325,7 @@ async function handleSearch(query, app) {
       return `
         <div class="search-result-item" data-id="${task.id}" tabindex="-1">
           <div class="search-result-main">
-            <span class="search-result-id">#${task.id}</span>
+            <span class="search-result-id">${formatTaskPublicId(task)}</span>
             <span class="search-result-title">${titleHtml}</span>
           </div>
           <div class="search-result-meta">
@@ -322,7 +359,7 @@ async function handleSearch(query, app) {
 }
 
 async function handleLogout() {
-  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=69');
+  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=81');
   const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
   if (!ok) return;
   clearQuickEditState();
@@ -360,7 +397,7 @@ export function renderAppShell(content) {
         </div>
         <div class="search-wrap navbar-search">
           <i data-lucide="search" class="navbar-search-icon"></i>
-          <input type="text" id="global-search" placeholder="Поиск задач…" class="search-input navbar-search-input">
+          <input type="text" id="global-search" placeholder="Поиск…" class="search-input navbar-search-input">
           <div id="search-results" class="search-dropdown hidden"></div>
         </div>
         <div class="navbar-right">
@@ -411,6 +448,14 @@ export async function initApp(app) {
   app.refreshNotifications = checkNotifications;
   checkNotifications();
   startNotificationPolling(app);
+  startEventStream(app);
+  document.addEventListener('dmb:notification-changed', () => pollLiveNotifications(app));
+  document.addEventListener('dmb:task-changed', event => {
+    searchTasksCache = null;
+    scheduleLiveRouteRefresh(app, 'task', event.detail || {});
+  });
+  document.addEventListener('dmb:requirement-changed', event => scheduleLiveRouteRefresh(app, 'requirement', event.detail || {}));
+  document.addEventListener('dmb:report-changed', event => scheduleLiveRouteRefresh(app, 'report', event.detail || {}));
   initSidebar();
 
   // Bell dropdown
@@ -554,7 +599,12 @@ export async function initApp(app) {
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) pollLiveNotifications(app);
+    if (document.hidden) {
+      pauseEventStream();
+    } else {
+      resumeEventStream();
+      pollLiveNotifications(app);
+    }
   });
 
   /* Mobile sidebar toggle */
@@ -617,7 +667,7 @@ class App {
         const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=90');
         const taskCardOk = await confirmAndCloseTaskFormsForNavigation();
         if (!taskCardOk) return false;
-        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=69');
+        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=81');
         const ok = await confirmDiscardChanges('Продолжить', 'Есть несохранённые изменения в режиме массового редактирования. Перейти и потерять их?');
         if (ok) clearQuickEditState();
         return ok;
@@ -632,10 +682,26 @@ class App {
     const accent = localStorage.getItem('dmb_accent') || 'indigo';
     const compact = localStorage.getItem('dmb_compact') === 'true';
     const theme = localStorage.getItem('dmb_theme') || 'light';
+    const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    const resolvedTheme = theme === 'system'
+      ? (systemThemeMedia.matches ? 'dark' : 'light')
+      : theme;
+
+    if (this.systemThemeMedia && this.systemThemeHandler) {
+      this.systemThemeMedia.removeEventListener('change', this.systemThemeHandler);
+    }
+    this.systemThemeMedia = systemThemeMedia;
+    this.systemThemeHandler = null;
+    if (theme === 'system') {
+      this.systemThemeHandler = event => {
+        document.documentElement.setAttribute('data-theme', event.matches ? 'dark' : 'light');
+      };
+      systemThemeMedia.addEventListener('change', this.systemThemeHandler);
+    }
 
     document.documentElement.setAttribute('data-accent', accent);
     document.documentElement.setAttribute('data-compact', compact);
-    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
   }
 
   async loadUser() {

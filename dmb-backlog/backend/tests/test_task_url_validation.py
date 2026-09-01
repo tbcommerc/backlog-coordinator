@@ -9,7 +9,7 @@ from schemas import TaskLinkUpdate, TaskUpdate
     "http://intranet.example.local/mockup",
 ])
 def test_http_links_are_allowed(url):
-    assert TaskLinkUpdate(link_mockups=url).link_mockups == url
+    assert TaskLinkUpdate(link_mockups=url, version=0).link_mockups == url
 
 
 @pytest.mark.parametrize("url", [
@@ -21,13 +21,13 @@ def test_http_links_are_allowed(url):
 ])
 def test_unsafe_link_protocols_are_rejected(url):
     with pytest.raises(ValidationError):
-        TaskLinkUpdate(link_jira=url)
+        TaskLinkUpdate(link_jira=url, version=0)
 
 
 def test_all_task_link_fields_are_validated():
     with pytest.raises(ValidationError):
-        TaskUpdate(link_mockups="javascript:alert(1)")
+        TaskUpdate(link_mockups="javascript:alert(1)", version=0)
     with pytest.raises(ValidationError):
-        TaskUpdate(link_jira=["https://jira.example.com/OK", "data:text/html,bad"])
+        TaskUpdate(link_jira=["https://jira.example.com/OK", "data:text/html,bad"], version=0)
     with pytest.raises(ValidationError):
-        TaskUpdate(link_requirements=["file:///secret"])
+        TaskUpdate(link_requirements=["file:///secret"], version=0)

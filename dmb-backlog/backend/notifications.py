@@ -7,12 +7,13 @@ import logging
 import re
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import func as sql_func
+from sqlalchemy import case, func as sql_func, or_
 
 from models import (
     Notification, UserNotificationPreference, User, Role,
-    Task, Team, TaskStatus
+    Task, Team, TaskStatus, format_task_public_id
 )
+from event_outbox import enqueue_user_event
 
 
 logger = logging.getLogger("dmb_backlog.notifications")
@@ -32,6 +33,7 @@ IMPORTANCE = {
     "stale": "low",
     "attrs": "low",
     "system": "low",
+    "reporting": "high",
 }
 
 ACTIVE_STATUSES = [
@@ -57,6 +59,7 @@ DEFAULT_PREFERENCES = {
     "risk": True, "deadline": True, "status_change": True,
     "assignment": True, "mention": True, "comment": True,
     "express": True, "editing": True, "stale": True, "attrs": True, "system": True,
+    "reporting": True,
 }
 
 
@@ -192,7 +195,7 @@ def notify_status_change(
     new_status_name: str,
     changed_by_user_id: int,
 ):
-    task_label = f"#{task.id}: «{task.title or 'Без названия'}»"
+    task_label = f"{task.public_id or format_task_public_id(task.id)}: «{task.title or 'Без названия'}»"
 
     recipients = _get_task_recipients(db, task)
     title = f"Статус задачи {task_label}: {old_status_name} → {new_status_name}"
@@ -225,7 +228,7 @@ def notify_assignment(
 ):
     if not new_owner_id:
         return
-    task_label = f"#{task.id}: «{task.title or 'Без названия'}»"
+    task_label = f"{task.public_id or format_task_public_id(task.id)}: «{task.title or 'Без названия'}»"
     title = f"Вам назначена задача {task_label}"
     _send_to_users(
         db, [new_owner_id], task.id, "assignment", title,
@@ -245,7 +248,7 @@ def notify_mention(
 ):
     if not mentioned_user_ids:
         return
-    task_label = f"#{task.id}: «{task.title or 'Без названия'}»"
+    task_label = f"{task.public_id or format_task_public_id(task.id)}: «{task.title or 'Без названия'}»"
     for uid in mentioned_user_ids:
         title = f"{author_name} упомянул вас в задаче {task_label}"
         _send_to_users(
@@ -265,7 +268,7 @@ def notify_comment(
 ):
     if not task.owner_id or task.owner_id == commenter_id:
         return
-    task_label = f"#{task.id}: «{task.title or 'Без названия'}»"
+    task_label = f"{task.public_id or format_task_public_id(task.id)}: «{task.title or 'Без названия'}»"
     title = f"Новый комментарий к задаче {task_label}"
     _send_to_users(
         db, [task.owner_id], task.id, "comment", title,
@@ -281,7 +284,7 @@ def notify_express_import(
     task: Task,
     imported_by_name: str,
 ):
-    task_label = f"#{task.id}: «{task.title or 'Без названия'}»"
+    task_label = f"{task.public_id or format_task_public_id(task.id)}: «{task.title or 'Без названия'}»"
     title = f"Задача {task_label} переведена в ЭКСПРЕСС-ОЦЕНКУ"
     recipients = _get_task_recipients(db, task)
     _send_to_users(
@@ -296,7 +299,7 @@ def notify_customer_task_created(
     task: Task,
     customer_name: str,
 ):
-    task_label = f"#{task.id}: «{task.title or 'Без названия'}»"
+    task_label = f"{task.public_id or format_task_public_id(task.id)}: «{task.title or 'Без названия'}»"
     title = f"Новая задача от заказчика ({customer_name}): {task_label}"
     recipients = _get_task_recipients(db, task)
     _send_to_users(
@@ -312,7 +315,7 @@ def notify_lock_acquired(
     lock_owner_name: str,
 ):
     """Notify task owner + team PO/PL that someone started editing the task."""
-    task_label = f"#{task.id}: «{task.title or 'Без названия'}»"
+    task_label = f"{task.public_id or format_task_public_id(task.id)}: «{task.title or 'Без названия'}»"
     title = f"Пользователь {lock_owner_name} начал редактирование задачи {task_label}"
     recipients = _get_task_recipients(db, task)
     _send_to_users(
@@ -433,6 +436,11 @@ def check_scheduled_notifications(db: Session):
             action_url="#/backlog?filter=incomplete",
         )
 
+    # Отчётные встречи используют тот же почасовой планировщик и общую
+    # пользовательскую ленту уведомлений.
+    from reporting_meetings import check_reporting_meeting_notifications
+    check_reporting_meeting_notifications(db, today=now.date())
+
     db.commit()
 
 
@@ -453,7 +461,6 @@ def get_notification_summary(db: Session, user_id: int) -> dict:
     )
     unread = base.filter(Notification.is_read == False).count()
     requires_action = base.filter(
-        Notification.is_read == False,
         Notification.is_resolved == False,
         Notification.importance.in_(("critical", "high")),
     ).count()
@@ -480,6 +487,9 @@ def get_notifications(
     category: str | None = None,
     unread_only: bool = False,
     importance: str | None = None,
+    resolved: bool | None = None,
+    requires_action: bool = False,
+    search: str | None = None,
     page: int = 1,
     per_page: int = 20,
 ):
@@ -493,9 +503,26 @@ def get_notifications(
         q = q.filter(Notification.is_read == False)
     if importance:
         q = q.filter(Notification.importance == importance)
+    if resolved is not None:
+        q = q.filter(Notification.is_resolved == resolved)
+    if requires_action:
+        q = q.filter(
+            Notification.is_resolved == False,
+            Notification.importance.in_(("critical", "high")),
+        )
+    if search:
+        pattern = f"%{search.strip()}%"
+        q = q.filter(or_(Notification.title.ilike(pattern), Notification.body.ilike(pattern)))
 
     total = q.count()
-    items = q.order_by(Notification.created_at.desc()).offset(
+    attention_rank = case(
+        (Notification.is_resolved == True, 4),
+        (Notification.importance == "critical", 0),
+        (Notification.importance == "high", 1),
+        (Notification.is_read == False, 2),
+        else_=3,
+    )
+    items = q.order_by(attention_rank, Notification.created_at.desc(), Notification.id.desc()).offset(
         (page - 1) * per_page
     ).limit(per_page).all()
 
@@ -511,6 +538,12 @@ def mark_read(db: Session, notification_ids: list[int], user_id: int):
         {Notification.is_read: True, Notification.read_at: now},
         synchronize_session=False,
     )
+    enqueue_user_event(
+        db,
+        user_id=user_id,
+        event_type="notification.state.changed",
+        payload={"action": "read", "notification_ids": notification_ids[:100]},
+    )
     db.flush()
 
 
@@ -523,6 +556,12 @@ def mark_all_read(db: Session, user_id: int):
         {Notification.is_read: True, Notification.read_at: now},
         synchronize_session=False,
     )
+    enqueue_user_event(
+        db,
+        user_id=user_id,
+        event_type="notification.state.changed",
+        payload={"action": "read_all"},
+    )
     db.flush()
 
 
@@ -533,6 +572,29 @@ def dismiss_notification(db: Session, notification_id: int, user_id: int):
     ).update(
         {Notification.is_dismissed: True},
         synchronize_session=False,
+    )
+    enqueue_user_event(
+        db,
+        user_id=user_id,
+        event_type="notification.state.changed",
+        payload={"action": "dismiss", "notification_ids": [notification_id]},
+    )
+    db.flush()
+
+
+def restore_notification(db: Session, notification_id: int, user_id: int):
+    db.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.user_id == user_id,
+    ).update(
+        {Notification.is_dismissed: False},
+        synchronize_session=False,
+    )
+    enqueue_user_event(
+        db,
+        user_id=user_id,
+        event_type="notification.state.changed",
+        payload={"action": "restore", "notification_ids": [notification_id]},
     )
     db.flush()
 
@@ -551,6 +613,12 @@ def resolve_notification(db: Session, notification_id: int, user_id: int):
             Notification.read_at: now,
         },
         synchronize_session=False,
+    )
+    enqueue_user_event(
+        db,
+        user_id=user_id,
+        event_type="notification.state.changed",
+        payload={"action": "resolve", "notification_ids": [notification_id]},
     )
     db.flush()
 
@@ -610,6 +678,27 @@ def notify_request_rejected(db: Session, request_id: int, author_id: int, title:
         importance="high",
         action_url=f"#/customer/request/{request_id}",
         group_key=f"req_rejected_{request_id}",
+    )
+
+
+def notify_request_returned(db: Session, request_id: int, author_id: int, title: str, reason: str):
+    """Notify the customer that their request needs clarification."""
+    _send_to_users(
+        db, [author_id], task_id=None, category="system",
+        title=f"Нужно уточнить запрос: {title}", body=f"Комментарий ревьюера: {reason[:200]}",
+        importance="high", action_url=f"#/customer/request/{request_id}",
+        group_key=f"req_returned_{request_id}",
+    )
+
+
+def notify_request_in_progress(db: Session, request_id: int, author_id: int, title: str, task_id: int):
+    """Notify the customer when review has produced an internal delivery task."""
+    _send_to_users(
+        db, [author_id], task_id=task_id, category="system",
+        title=f"Запрос передан в проработку: {title}",
+        body="Назначен аналитик и создана внутренняя задача команды.",
+        importance="normal", action_url=f"#/customer/request/{request_id}",
+        group_key=f"req_in_progress_{request_id}",
     )
 
 

@@ -6,7 +6,16 @@ export function renderSidebar() {
     const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
     const user = window.app?.store?.get('currentUser');
     const adminAccess = user?.permissions?.admin || 'none';
+    const deadLetterLink = adminAccess === 'full' ? `
+                <a href="#/outbox-dead-letters" class="sidebar-item" aria-label="Ошибки доставки событий">
+                    <i data-lucide="triangle-alert"></i>
+                    <span>Ошибки доставки</span>
+                </a>` : '';
     const adminLinks = adminAccess !== 'none' ? `
+                ${adminAccess === 'full' ? `<a href="#/reporting-meetings" class="sidebar-item" aria-label="Управление отчётными встречами">
+                    <i data-lucide="calendar-clock"></i>
+                    <span>Отчётные встречи</span>
+                </a>` : ''}
                 <a href="#/admin" class="sidebar-item" aria-label="Администрирование">
                     <i data-lucide="shield"></i>
                     <span>Администрирование</span>
@@ -14,7 +23,8 @@ export function renderSidebar() {
                 <a href="#/audit-log" class="sidebar-item" aria-label="Аудит действий">
                     <i data-lucide="scroll-text"></i>
                     <span>Аудит действий</span>
-                </a>` : '';
+                </a>
+                ${deadLetterLink}` : '';
     return `
     <aside class="sidebar${collapsed ? ' collapsed' : ''}">
         <div class="sidebar-logo">
@@ -80,11 +90,11 @@ export function renderSidebar() {
             
             <div class="sidebar-section">
                 <div class="sidebar-section-title">Бизнес-заказчику</div>
-                <a href="#/customer" class="sidebar-item" aria-label="Мои задачи">
+                <a href="#/customer" class="sidebar-item" aria-label="Мои запросы">
                     <i data-lucide="briefcase"></i>
-                    <span>Мои задачи</span>
+                    <span>Мои запросы</span>
                 </a>
-                <a href="#/customer/create" class="sidebar-item sidebar-item-sub" aria-label="Создать задачу">
+                <a href="#/customer/create" class="sidebar-item sidebar-item-sub" aria-label="Создать запрос">
                     <i data-lucide="bot"></i>
                     <span>ИИ-ассистент</span>
                 </a>
@@ -134,7 +144,7 @@ export function initSidebar() {
         const user = window.app?.store?.get('currentUser');
         const perms = user?.permissions;
         if (perms?.customer_portal_mode === 'only') {
-            const allowedLabels = new Set(['Мои задачи', 'Создать задачу']);
+            const allowedLabels = new Set(['Мои запросы', 'Создать запрос']);
             document.querySelectorAll('.sidebar-item').forEach(el => {
                 if (!allowedLabels.has(el.getAttribute('aria-label'))) {
                     el.style.display = 'none';
@@ -154,14 +164,16 @@ export function initSidebar() {
             'Бэклог команды': 'backlog_team',
             'Экспресс-оценка': 'backlog_team',
             'Статусы для встреч': 'reports',
+            'Управление отчётными встречами': 'admin',
             'Аналитика ЛТ': 'analytics',
             'Аналитика PO/PL': 'analytics',
             'Аналитика для ИТ': 'analytics',
-            'Мои задачи': 'customer',
-            'Создать задачу': 'customer',
+            'Мои запросы': 'customer',
+            'Создать запрос': 'customer',
             'Настройки': 'settings',
             'Администрирование': 'admin',
             'Аудит действий': 'admin',
+            'Dead-letter outbox': 'admin',
         };
         document.querySelectorAll('.sidebar-item').forEach(el => {
             const label = el.getAttribute('aria-label');

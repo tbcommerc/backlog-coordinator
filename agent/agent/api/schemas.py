@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class ChatRequest(BaseModel):
     session_id: str = ""
+    message_id: str = Field(default="", max_length=64)
     message: str = Field(max_length=4000)
     context: Optional[dict] = None
 
@@ -24,6 +25,12 @@ class SendForReviewRequest(BaseModel):
     task_id: int
     title: str = ""
     user_id: Optional[int] = None
+
+
+class ReopenReviewRequest(BaseModel):
+    session_id: str = ""
+    user_id: Optional[int] = None
+    comment: str = Field(default="", max_length=5000)
 
 
 class EditDraftSectionRequest(BaseModel):

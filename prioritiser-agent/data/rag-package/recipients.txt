@@ -1,0 +1,14 @@
+# Public recipients for the K3 RAG bundle. Public keys only, never private identities.
+# owner (generated 2026-07-10, identity stays in %USERPROFILE%\.bc-keys\owner-k3.agekey)
+age1vggm3y8v7vhgl65s7vqxwcv7edc6rl3mswmzyu6kc2jwnmke3a0sqtr5dr
+
+# GitHub reviewer: itamitCom (public keys from github.com/itamitCom.keys, restored 2026-07-22)
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDYHNJRXgpP3dtgCJejZlCKhgZGRMQRyzhUjl1TBd+3mVUhZZnFyDjgbsSL98PVaNOSoZ3GXeBbYcZ8CudpIPzKHd/PrGKliqqVl97v8cj3dYDXs+x0byf2/2qHpHGG8ELKVI5BkPhzcIpRn1GR87VeHGM0H680OjtlX38kRd9p3tWfBo6nHvSHOH/NwsBDv3R268ptuzAtUgJA1unyq4a/xcMElbU+olQvjJkpFz//M5KgSQPJDnPArYlciE1r4AVW2KbfXpW9/qCkjDlBcaiLN7jUqcxM73Uhs3MZLR7/yMQHVT9DZC1hVifU7dcukZsJ0gmfS7aomALmusBEkBM86y2GQsg1Xaz5IvJHz3XPmWA0L0aMNvukqHHrhmRtRLUAz7WFnm1jfL4IKxsy4TzkOh/A8BKQFG+/5Yh/Vsl0X/FEVPdW1FxAgwLFVIgnTkawxSrPaNt2dTAu7fCcmZ/BhxnUPVCkNw/jCqWr9GClmMvnquhPcLcKGJvQ8cBloMM=
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB6JkBai0M7deg/gbWLKLmEda0H7IJVtImDhbidTCE0A
+
+# GitHub reviewer: sergey-show (public keys from github.com/sergey-show.keys, restored 2026-07-22)
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC1fZVtJBlHgpgfVROhoIKg0MfdlokOzCbWwbXoBfqQFaRU2u2i7K2Kag/wCgwL9SqlEq2kVG5yEiFuWys8i17wi+K3oGsm/ZzDLL+QwY6EpMiFTRsZntk6ZOt4dsvjNq2cBe/+N57NXkHFhFJTqefKISGzA26i+13/3KsTuPFahJyhJMyqB0nRh7nWjC44kLOSCo+tsKE+4cdiKs9X0J1GdGuYKTL/wZXTcB9WAyJjsF2c01izh8ZLblTrHv1Sr62ekO64hxgCzwxHSvT7B6ld0T7cRdLs6vNuRnciMbJ3KL6GW/pPCgOB8cXoe6A3AElTcvHZoDF6eBraq+TIsZ1dEhVcHmOII7IAQ+dbm+BFVw4A+2Z3H9yTzM5tHE9Gld4zjclK9DT57kVP08GAwDqZdQZbz7drTYJ+PtS63Je9hpZMfl7PV87AFzQhbA4RFPacLA4RIOG/nEcE3tHr8q3SI39aZX/TYKPUuYv1sI2AhvwNdWTYBJMs+4jwO5bdwiU=
+
+# GitHub employee: Daniil57Ibragimov (public key from github.com/Daniil57Ibragimov.keys,
+# re-verified 2026-07-28, fingerprint SHA256:PJN2mCo9uhuAQCv4AkG/OWGpFzxCxdNPpToyK9uMVfQ)
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKGQHuNGZUUov1WKR0rlpBuQLAJ2/qjkZKAsAkyXwjF9

@@ -2,7 +2,7 @@
 title: Модель данных DMB Backlog
 scope: as-is
 status: verified
-last_verified: 2026-08-24
+last_verified: 2026-09-01
 source_of_truth: backend/models.py
 evidence:
   - backend/models.py
@@ -12,7 +12,7 @@ evidence:
 
 # Модель данных DMB Backlog
 
-Единственный поддерживаемый источник физической схемы — `backend/models.py`. На дату проверки SQLAlchemy metadata содержит 39 таблиц. Этот документ объясняет назначение и связи; точные типы, nullable, defaults, unique constraints и индексы следует читать из моделей.
+Единственный поддерживаемый источник физической схемы — `backend/models.py`. На дату проверки SQLAlchemy metadata содержит 45 таблиц. Этот документ объясняет назначение и связи; точные типы, nullable, defaults, unique constraints и индексы следует читать из моделей.
 
 ## Границы достоверности
 
@@ -20,7 +20,7 @@ evidence:
 - Pydantic-схемы описывают API, но не заменяют ORM-схему.
 - Наличие поля не доказывает, что оно используется каждым UI-сценарием.
 - Seed-значения не являются частью физической модели.
-- PostgreSQL-совместимость всей схемы не подтверждена отдельным прогоном.
+- PostgreSQL DDL и Alembic offline SQL проверены; live smoke требует запущенного Docker/PostgreSQL.
 
 ## Группы таблиц
 
@@ -33,6 +33,8 @@ evidence:
 | Справочные данные | `channels`, `deadlines`, `departments`, `priorities`, `statuses`, `task_types`, `project_statuses`, `dictionary_items`, `competency_cost_history` |
 | Проекты и теги | `projects`, `tags`, `issue_tags`, `project_tags` |
 | Уведомления | `notifications`, `notification_templates`, `user_notification_preferences` |
+| События и идемпотентность | `event_outbox`, `idempotency_records` |
+| Отчётные встречи | `reporting_meetings`, `task_reporting_statuses`, `task_reporting_status_revisions`, `reporting_meeting_history` |
 | Отчёты и интерфейс | `reports`, `display_settings`, `field_labels`, `column_labels` |
 | AI Agent | `agent_sessions`, `requirement_requests` |
 | Аудит и календарь | `audit_log`, `timeline_events` |
@@ -87,6 +89,8 @@ evidence:
 
 `tasks` связывает бизнес-описание, классификацию, приоритизацию, оценки, статусы и аудит изменений.
 
+У задачи два идентификатора: внутренний числовой `id` используется в связях и URL API, а стабильный пользовательский `public_id` хранится в БД, уникален и отображается в карточках по маске `TASK-000-001` (две группы по три цифры). Значение детерминированно формируется из внутреннего `id`.
+
 Основные связи:
 
 - `team_id → teams.id`;
@@ -102,7 +106,7 @@ evidence:
 
 Группы полей:
 
-- идентификация: `title`, `description`, даты и ссылки;
+- идентификация: `public_id`, `title`, `description`, даты и ссылки;
 - оценки: плановые и фактические трудозатраты по компетенциям;
 - эффект и приоритет: финансовые эффекты, justification, scores, CV;
 - исполнение: progress, forecast, статусы ключевого проекта/дирекции/ДИД;
@@ -163,6 +167,15 @@ evidence:
 
 ## Отчёты и настройки интерфейса
 
+### Отчётные встречи и статусы
+
+- `reporting_meetings` хранит конкретные экземпляры трёх типов встреч, плановую и исходную даты, состояние `date_pending/planned/held/cancelled`, причину изменения, версии и отметки отправленных уведомлений.
+- `task_reporting_statuses` хранит один статус задачи на одну встречу (`meeting_id + task_id` уникальны), признак демо ДИД, источник переноса и отдельную optimistic-lock версию.
+- `task_reporting_status_revisions` сохраняет историю изменений текста и признака демо.
+- `reporting_meeting_history` фиксирует назначения, переносы, проведение и отмену встреч.
+
+После подтверждения факта встречи её статусы становятся предыдущими. При отмене заполненные статусы переносятся в следующую встречу того же типа без перезаписи уже существующих данных.
+
 - `reports` — определение отчёта, JSON filters/fields, группировка, сортировка и автор;
 - `display_settings` — JSON-настройки по странице;
 - `field_labels` — подписи и порядок полей;
@@ -179,14 +192,17 @@ evidence:
 
 ## Аудит и timeline
 
-- `audit_log` — best-effort журнал HTTP write-операций с user, action, entity, details и IP;
+- `audit_log` — транзакционный журнал ORM-изменений HTTP-команд с actor,
+  request ID, типом/ID сущности и перечнем изменённых полей без значений
+  защищённых атрибутов;
 - `timeline_events` — календарные события с типом, датой, периодом, visibility и creator; возможна связь с проектом.
 
 ## Создание и изменение схемы
 
-`database.ensure_schema()` вызывает `Base.metadata.create_all()` и добавляет отсутствующие колонки через `ALTER TABLE ADD COLUMN`. Механизм не удаляет и не переименовывает колонки, не преобразует типы и не переносит данные.
-
-Ручной Alembic и исторические scripts из `backend/migrations/` не являются текущим поддерживаемым workflow. Политика описана в `SCHEMA_CHANGES.md`.
+Целевое состояние задаётся SQLAlchemy-моделями, а изменения применяются
+версионируемыми миграциями из `backend/alembic/versions/`. Исторические SQLite-
+скрипты из `backend/migrations/` не являются поддерживаемым workflow. Политика
+описана в `SCHEMA_CHANGES.md`.
 
 ## Что не подтверждено
 
@@ -194,7 +210,29 @@ evidence:
 - Production-ready PostgreSQL deployment.
 - Retention и автоматическое архивирование записей.
 - Автоматический backup/restore.
-- Гарантированная атомарность `audit_log` с бизнес-транзакциями.
 - Автоматическая синхронизация `db-schema.dbml` с SQLAlchemy metadata.
 
 Историческое ручное описание старой схемы сохранено в `archive/legacy/DATA_MODEL_STALE_2026-06-29.md`.
+## Транзакционный outbox
+
+`event_outbox` хранит минимальные доменные и персональные события до публикации в
+Redis Stream. Основные поля: тип и ID агрегата, версия, необязательный получатель,
+JSON payload, время доступности, claim token/time, число попыток, ошибка, время
+успешной обработки и `dead_lettered_at`. Таблица не хранит снимок задачи и не является источником
+актуального состояния.
+
+Индексы `ix_event_outbox_pending` и `ix_event_outbox_claim` обслуживают конкурентный
+claim/retry. Обработанные записи имеют ограниченную ретенцию; Redis Stream также
+ограничен `EVENT_STREAM_MAXLEN`.
+
+Ошибки Redis остаются retryable. Событие, которое Redis отклоняет как некорректное,
+после `OUTBOX_MAX_ATTEMPTS` переводится в dead letter и удерживается отдельно до
+`OUTBOX_DEAD_LETTER_RETENTION_DAYS`.
+
+## Идемпотентные команды
+
+`idempotency_records` имеет уникальность `(operation, user_id, request_key)` и
+хранит fingerprint запроса вместе с ID/версией результата. Резервирование ключа
+и бизнес-изменение коммитятся одной транзакцией. Механизм используется для задач,
+комментариев, вложений и CRUD сохранённых отчётов. Повтор того же payload возвращает
+существующий результат; повтор ключа с иным payload возвращает `409`.

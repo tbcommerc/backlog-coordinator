@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy import false, true
 from config import settings
 from database import get_db
 from models import User, Role
@@ -96,6 +97,28 @@ def can_access_task(action: TaskAction, task, user: User, target_team_id: Option
     if action == "delete":
         return _scope_allows(get_task_action_scope(user, "delete"), user, task_team_id)
     return False
+
+
+def task_read_scope_clause(user: User, task_model):
+    """Return the SQL predicate implementing the same scope as task read policy.
+
+    Every list, search, aggregate, report and export query must include this
+    predicate so an endpoint cannot accidentally bypass object authorization.
+    """
+    if is_customer_portal_only(user):
+        return false()
+    if check_permission(user, "backlog_dmb", "read"):
+        return true()
+    if user.team_id is not None:
+        return task_model.team_id == user.team_id
+    return false()
+
+
+def task_read_scope_team_id(user: User) -> Optional[int]:
+    """Return None for global scope, otherwise the only readable team id."""
+    if not is_customer_portal_only(user) and check_permission(user, "backlog_dmb", "read"):
+        return None
+    return user.team_id if user.team_id is not None else -1
 
 
 def authorize_task(action: TaskAction, task, user: User, target_team_id: Optional[int] = None) -> None:

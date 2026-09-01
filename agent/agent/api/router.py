@@ -5,6 +5,7 @@ The agent runs on its own port and is reached by the DMB backend only
 header X-Agent-Secret protects the endpoint.
 """
 import secrets
+from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
@@ -14,6 +15,7 @@ from ..dialogue.state import INTENTS
 from ..kb.loader import kb
 from ..mcp.registry import registry as mcp_registry
 from ..orchestrator import get_orchestrator
+from ..session import SessionConflictError
 from ..tools.base import registry as tool_registry
 from .schemas import (
     AgentResponse,
@@ -21,6 +23,7 @@ from .schemas import (
     ConfigResponse,
     EditDraftSectionRequest,
     NewSessionRequest,
+    ReopenReviewRequest,
     ResetRequest,
     SendForReviewRequest,
 )
@@ -47,9 +50,20 @@ def _to_ctx(raw: dict | None) -> UserContext | None:
 
 @router.post("/chat", response_model=AgentResponse)
 def chat(req: ChatRequest, _=Depends(_check_secret)):
-    if not req.session_id or _orchestrator.store.get(req.session_id) is None:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return _orchestrator.handle_message(req.session_id, req.message, _to_ctx(req.context))
+    with _orchestrator.store.serialized(req.session_id):
+        if not req.session_id or _orchestrator.store.get(req.session_id) is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+        cached = _orchestrator.store.get_cached_response(req.session_id, req.message_id)
+        if cached is not None:
+            return cached
+        try:
+            response = _orchestrator.handle_message(
+                req.session_id, req.message, _to_ctx(req.context), message_id=req.message_id
+            )
+        except SessionConflictError as exc:
+            raise HTTPException(status_code=409, detail="Session changed concurrently") from exc
+        _orchestrator.store.cache_response(req.session_id, req.message_id, asdict(response))
+        return response
 
 
 @router.post("/new-session", response_model=AgentResponse)
@@ -59,7 +73,8 @@ def new_session(req: NewSessionRequest, _=Depends(_check_secret)):
 
 @router.post("/reset")
 def reset(req: ResetRequest, _=Depends(_check_secret)):
-    _orchestrator.store.delete(req.session_id)
+    with _orchestrator.store.serialized(req.session_id):
+        _orchestrator.store.delete(req.session_id)
     return {"success": True}
 
 
@@ -78,7 +93,8 @@ def sessions(user_id: int = 0, _=Depends(_check_secret)):
 
 @router.post("/session/{session_id}/archive")
 def archive_session(session_id: str, archived: bool = True, _=Depends(_check_secret)):
-    state = _orchestrator.store.set_archived(session_id, archived)
+    with _orchestrator.store.serialized(session_id):
+        state = _orchestrator.store.set_archived(session_id, archived)
     if state is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return {"success": True, "session_id": session_id, "archived": state.archived}
@@ -86,12 +102,20 @@ def archive_session(session_id: str, archived: bool = True, _=Depends(_check_sec
 
 @router.post("/send-for-review", response_model=AgentResponse)
 def send_for_review(req: SendForReviewRequest, _=Depends(_check_secret)):
-    return _orchestrator.confirm_and_send(req.session_id, req.task_id, req.title, req.user_id)
+    with _orchestrator.store.serialized(req.session_id):
+        return _orchestrator.confirm_and_send(req.session_id, req.task_id, req.title, req.user_id)
+
+
+@router.post("/reopen-review", response_model=AgentResponse)
+def reopen_review(req: ReopenReviewRequest, _=Depends(_check_secret)):
+    with _orchestrator.store.serialized(req.session_id):
+        return _orchestrator.reopen_for_revision(req.session_id, req.user_id, req.comment)
 
 
 @router.post("/edit-draft-section", response_model=AgentResponse)
 def edit_draft_section(req: EditDraftSectionRequest, _=Depends(_check_secret)):
-    return _orchestrator.edit_draft_section(req.session_id, req.field, req.value, req.user_id)
+    with _orchestrator.store.serialized(req.session_id):
+        return _orchestrator.edit_draft_section(req.session_id, req.field, req.value, req.user_id)
 
 
 @router.get("/config", response_model=ConfigResponse)

@@ -25,6 +25,9 @@ class LLMRateLimitError(RuntimeError):
 class OpenAICompatProvider:
     name = "openai_compat"
 
+    def __init__(self):
+        self.last_response_meta = {}
+
     def available(self) -> bool:
         return bool(settings.OPENAI_API_KEY)
 
@@ -57,7 +60,14 @@ class OpenAICompatProvider:
             )
             try:
                 with urllib.request.urlopen(req, timeout=timeout) as resp:
-                    return json.loads(resp.read().decode("utf-8"))
+                    raw = resp.read()
+                    response_headers = getattr(resp, "headers", None)
+                    self.last_response_meta = {
+                        "http_status": getattr(resp, "status", None),
+                        "content_type": response_headers.get("Content-Type") if response_headers else None,
+                        "response_bytes": len(raw),
+                    }
+                    return json.loads(raw.decode("utf-8"))
             except urllib.error.HTTPError as exc:
                 if exc.code not in {429, 502, 503, 504}:
                     raise
@@ -97,17 +107,50 @@ class OpenAICompatProvider:
         max_tokens: int = 1024,
         timeout: float = 60.0,
     ) -> str:
+        return self._chat_completion(
+            messages, system_prompt=system_prompt, temperature=temperature,
+            max_tokens=max_tokens, timeout=timeout,
+        )
+
+    def chat_json(
+        self,
+        messages: List[dict],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.3,
+        max_tokens: int = 1024,
+        timeout: float = 60.0,
+    ) -> str:
+        """Request a JSON object from providers that support JSON mode."""
+        return self._chat_completion(
+            messages, system_prompt=system_prompt, temperature=temperature,
+            max_tokens=max_tokens, timeout=timeout,
+            response_format={"type": "json_object"},
+        )
+
+    def _chat_completion(
+        self,
+        messages: List[dict],
+        system_prompt: Optional[str],
+        temperature: float,
+        max_tokens: int,
+        timeout: float,
+        response_format: Optional[dict] = None,
+    ) -> str:
         payload_messages = []
         if system_prompt:
             payload_messages.append({"role": "system", "content": system_prompt})
         payload_messages.extend(messages or [])
-        data = self._post("/chat/completions", {
+        payload = {
             "model": settings.OPENAI_MODEL,
             "messages": payload_messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-        }, timeout=timeout)
+        }
+        if response_format:
+            payload["response_format"] = response_format
+        data = self._post("/chat/completions", payload, timeout=timeout)
         try:
+            self.last_response_meta["finish_reason"] = data["choices"][0].get("finish_reason")
             return data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError):
             raise RuntimeError("Unexpected LLM response: " + json.dumps(data)[:500])

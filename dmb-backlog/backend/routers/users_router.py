@@ -7,7 +7,7 @@ from typing import List
 
 from database import get_db
 from models import User
-from schemas import UserCreate, UserUpdate, UserResponse
+from schemas import UserCreate, UserUpdate, UserResponse, UserDirectoryResponse
 from auth import get_current_user, require_permission, get_password_hash
 
 router = APIRouter()
@@ -26,41 +26,28 @@ def get_users(
     users = query.offset((page - 1) * per_page).limit(per_page).all()
     result = []
     for user in users:
-        result.append(UserResponse(
+        result.append(UserDirectoryResponse(
             id=user.id,
-            login=user.login,
-            email=user.email,
             name=user.name,
             position=user.position,
             team_id=user.team_id,
-            role_id=user.role_id,
-            is_active=user.is_active,
-            last_login=user.last_login,
-            created_at=user.created_at,
-            role_name=user.role.name if user.role else None,
             team_name=user.team_rel.name if user.team_rel else None
         ))
     return {"items": result, "total": total, "page": page, "per_page": per_page}
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}", response_model=UserDirectoryResponse)
 def get_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get user by ID"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return UserResponse(
+    return UserDirectoryResponse(
         id=user.id,
-        email=user.email,
         name=user.name,
         position=user.position,
         team_id=user.team_id,
-        role_id=user.role_id,
-        is_active=user.is_active,
-        last_login=user.last_login,
-        created_at=user.created_at,
-        role_name=user.role.name if user.role else None,
         team_name=user.team_rel.name if user.team_rel else None
     )
 

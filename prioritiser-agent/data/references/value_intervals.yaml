@@ -1,0 +1,83 @@
+# Калибровка интервала оценки Value.
+#
+# Файл порождается скриптом и правится только через него:
+#     python3 scripts/value_calibrate.py --write
+#
+# Множители получены конформной калибровкой на задачах, где Value
+# заполнил человек:
+#     нижняя граница = оценка / down_factor
+#     верхняя граница = оценка * up_factor
+# Целевое покрытие — 95%.
+#
+# Интервал у уровня low очень широк, и это не дефект калибровки:
+# оценка низкой уверенности действительно ничего не гарантирует.
+# Единственный способ его сузить — заполнить Value вручную.
+version: 1
+target_coverage: 0.95
+methods:
+  analogy:
+    high:
+      down_factor: 351.0
+      up_factor: 3.941
+      samples: 9
+      coverage: null
+      calibrated: false
+      inherited_from: 'более широкий уровень: наблюдений меньше 20, конформная граница
+        не определена'
+    medium:
+      down_factor: 351.0
+      up_factor: 3.941
+      samples: 113
+      coverage: 0.9735
+      calibrated: true
+    low:
+      down_factor: 351.0
+      up_factor: 21.0
+      samples: 70
+      coverage: 0.9714
+      calibrated: true
+      widened_to_keep_order: true
+  formula:
+    high:
+      down_factor: 15.279
+      up_factor: 285.849
+      samples: 6
+      coverage: null
+      calibrated: false
+      inherited_from: 'более широкий уровень: наблюдений меньше 20, конформная граница
+        не определена'
+    medium:
+      down_factor: 15.279
+      up_factor: 285.849
+      samples: 0
+      coverage: null
+      calibrated: false
+      inherited_from: 'более широкий уровень: наблюдений меньше 20, конформная граница
+        не определена'
+    low:
+      down_factor: 15.279
+      up_factor: 285.849
+      samples: 186
+      coverage: 0.9731
+      calibrated: true
+  blended:
+    high:
+      down_factor: 5.816
+      up_factor: 4.257
+      samples: 9
+      coverage: null
+      calibrated: false
+      inherited_from: 'более широкий уровень: наблюдений меньше 20, конформная граница
+        не определена'
+    medium:
+      down_factor: 5.816
+      up_factor: 4.257
+      samples: 71
+      coverage: 0.9718
+      calibrated: true
+    low:
+      down_factor: 316.241
+      up_factor: 19.396
+      samples: 112
+      coverage: 0.9732
+      calibrated: true

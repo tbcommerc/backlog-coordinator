@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node / opencode runtime
+node_modules/
+.opencode/node_modules/
+package-lock.json
+
+# Local state
+.env
+*.db
+*.sqlite3
+data/local/
+var/
+.agent-state*
+graphify-out/
+
+# RAG artifacts: indexes are rebuilt locally, never committed.
+data/index/
+*.faiss
+*.pkl
+
+# K3-classified material lives in the repo ONLY as ciphertext. The decrypted
+# corpus, the local vector runtime and any extracted package stay out of git —
+# the same rule strategy-decomposer applies to its own package directory.
+data/knowledge/k3/
+*.age
+!data/rag-package/k3-rag-current.age
+
+# macOS
+.DS_Store

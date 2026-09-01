@@ -1,0 +1,152 @@
+# Каталог команд трайба ГАК Digital Merchant Banking (ДИД).
+# Источник: обезличенное описание продуктов трайба от владельца, 2026-07-04.
+# По решению владельца: owner не ведём; capacity — placeholder (не учитывается в allocation).
+# Полные описания продуктов: data/tribe-products-DMB.md.
+
+version: 2
+source: manual
+status: populated
+teams:
+  - id: pre-trade
+    name: Pre-trade
+    mission: >-
+      Воронка и пайплайн сделок ДИД до выдачи средств: выявление сделок с акционерным
+      риском в кредитном конвейере, привлечение ДИД, маршрутизация лидов, рост воронки
+      и конверсии в выдачи. Рабочее место ДИД на платформе IBP, триггеры подключения
+      ДИД в процессы Банка, AI/GenAI-инструменты поиска и обработки сделок.
+    products:
+      - album_ref: ibp-pre-trade
+    competencies:
+      - лид-менеджмент и пайплайн сделок
+      - интеграция в кредитный конвейер
+      - аналитика воронки/конверсии/дохода
+      - GenAI-идентификация сделок с акционерным риском
+      - взаимодействие со смежными службами до выдачи
+    capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+    dependencies: [ibp-platform, отраслевые-дески-ДИД, вертикаль-ДИД-ТБ, кредитный-процесс]
+
+  - id: post-trade
+    name: Post-trade
+    mission: >-
+      Сквозной учёт и сопровождение заключённых сделок ДИД: расчётный движок РСБУ/МСФО,
+      операционная видимость по сделкам и платежам, синхронизация с учётными системами,
+      дашборды портфеля для руководства, исполнение регуляторных требований.
+    products:
+      - album_ref: ibp-post-trade
+    competencies:
+      - учёт и сопровождение сделок
+      - финансовые расчёты РСБУ/МСФО
+      - интеграции API (ЕПК, КАП, Risk Store, 1С/Navision)
+      - управленческие дашборды портфеля
+      - снижение операционных рисков
+    capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+    dependencies: [ЕПК, КАП, Risk-Store, 1С-Navision, Финансы-СБИ, Риски-СБИ]
+
+  - id: ai
+    name: AI
+    mission: Разработка и внедрение решений на основе искусственного интеллекта для трайба и ДИД.
+    products:
+      - album_ref: ibp-ai
+    competencies: [машинное обучение, GenAI/LLM, интеграция AI в бизнес-процессы]
+    capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+    dependencies: [ibp-platform, данные-сделок]
+
+  - id: core
+    name: Core
+    mission: >-
+      Базовые сервисы Investment Banking Platform как «лего» для других команд трайба:
+      AI-помощник ДИД, Главный экран, Мои Клиенты, Задачи, Уведомления, Пользователи,
+      Настройки, работа с документами ЭКД. Поставка в виде API, UI Kit, микроприложений.
+    products:
+      - album_ref: ibp-core
+    competencies:
+      - платформенные API и UI Kit
+      - фронтальные микроприложения
+      - единый клиентский опыт
+      - переиспользуемые сервисы для команд трайба
+    capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+    dependencies: [ibp-platform]
+
+  - id: delivery
+    name: Delivery
+    mission: >-
+      DevOps pipeline по всем микросервисам и микрофронтам трайба, управление релизами
+      и релизным циклом, управление инфраструктурой, сопровождение ИТ-услуг трайба.
+    products:
+      - album_ref: ibp-delivery
+    competencies: [DevOps/CI-CD, релиз-менеджмент, инфраструктура, сопровождение ИТ-услуг]
+    capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+    dependencies: [ibp-platform, инфраструктура-банка]
+
+  - id: finance
+    name: Finance
+    mission: >-
+      Бизнес-требования по доработкам MIS Банка для учёта сделок ДИД, методология учёта
+      в MIS и для КПЭ, управленческие дашборды и витрины данных по портфелю ДИД,
+      процесс сопровождения и расчёта P&L портфеля, операционное сопровождение портфеля.
+    products:
+      - album_ref: ibp-finance-mis
+    competencies:
+      - методология управленческого учёта (MIS/КПЭ)
+      - витрины данных и дашборды P&L
+      - бизнес-требования к платформе
+      - операционное сопровождение портфеля
+    capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+    dependencies: [MIS-банка, Финансы-СБИ, ibp-platform]
+
+  - id: ib
+    name: IB (M&A)
+    mission: >-
+      Онлайн-инструмент ведения пайплайна M&A сделок: совместная работа M&A-команды,
+      автоматизированный обмен информацией и задачами с клиентскими менеджерами и ДРКБ,
+      сбор данных для аналитики и бизнес-планирования M&A.
+    products:
+      - album_ref: ibp-ib-ma
+    competencies:
+      - пайплайн M&A сделок
+      - интеграция процессов КМ/ДРКБ/M&A
+      - аналитика и бизнес-планирование M&A
+    capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+    dependencies: [ДРКБ, клиентские-менеджеры, ibp-platform]
+
+  - id: methodology
+    name: Methodology
+    mission: >-
+      Создание и актуализация нормативной базы и методологических/продуктовых решений
+      по направлениям ДИД (мезонин и equity, M&A, ECM/DCM, ЦФА), оптимизация
+      инвестиционного и кредитного процессов, согласование документов со смежными
+      подразделениями, методологическая поддержка и консультирование, участие
+      в прототипировании автоматизированных решений трайба.
+    products:
+      - album_ref: did-methodology
+    competencies:
+      - нормативная база и ВНД
+      - методология мезонин/equity/M&A/ECM/DCM/ЦФА
+      - согласования со смежниками (ДКК, ДРКБ, ДККК, ДКПП, ТБ, Риски, ПД, Compliance, ДГР, ЦСОГР, ДРПА)
+      - методподдержка инвестиционного процесса
+    capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+    dependencies: [смежные-департаменты, КПКИ, ВНД-процесс]
+
+  - id: project-office
+    name: Проектный офис
+    mission: Управление проектами и программами трайба.
+    products:
+      - album_ref: did-project-office
+    competencies: [управление проектами, управление программами, координация команд]
+    capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+    dependencies: [все-команды-трайба]
+
+schema:
+  team:
+    required_fields: [id, name, mission, products, competencies, dependencies]
+
+template:
+  id: team-slug
+  name: Team Name
+  mission: Owns a defined product or platform outcome.
+  products:
+    - album_ref: product-album-ref
+  competencies: [product-discovery, backend]
+  capacity: { period: quarter, value: null, unit: fte, note: 'нет данных — placeholder, по решению владельца не учитывается' }
+  dependencies: [dependency-id]
+  owner: { name: null, role: null, contact: null }

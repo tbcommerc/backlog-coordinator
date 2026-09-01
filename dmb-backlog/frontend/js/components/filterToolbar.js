@@ -1,4 +1,5 @@
 import { confirmAction } from '../uiFeedback.js';
+import { calculateTaskCv } from '../taskMetrics.js';
 
 console.log('[DMB] filterToolbar.js v20260804.2 loaded');
 const columnFilters = { backlog: {}, team: {} };
@@ -437,6 +438,17 @@ function syncColumnControls(scope) {
     if (item) list.appendChild(item);
   });
   items.forEach((item, key) => { if (!order.includes(key)) list.appendChild(item); });
+  updateColumnOrderNumbers(list);
+}
+
+function updateColumnOrderNumbers(list) {
+  const items = list?.querySelectorAll('.col-drag-item');
+  if (!items) return;
+  list.style.gridTemplateRows = `repeat(${Math.ceil(items.length / 2)}, auto)`;
+  items.forEach((item, index) => {
+    const number = item.querySelector('.col-order-number');
+    if (number) number.textContent = `${index + 1}.`;
+  });
 }
 
 function getUniqueValues(scope, key, allTasks) {
@@ -483,7 +495,10 @@ function getUniqueValues(scope, key, allTasks) {
           return;
         }
         if (fk === '_high_cv') {
-          list = list.filter(t => t.financial_effect != null && t.effort_rub > 0 && (t.financial_effect / t.effort_rub) > 1);
+          list = list.filter(t => {
+            const cv = calculateTaskCv(t);
+            return cv == null || cv > 1;
+          });
           return;
         }
         list = list.filter(t => {
@@ -537,18 +552,18 @@ export function renderToolbar(scope, opts = {}) {
   const getLabel = (k) => colLabels[k] || k;
 
   const viewToggleHtml = `
-    <div class="view-toggle" id="${scope}-view-toggle-group">
-      <button class="toggle-btn active" data-view="table">
+    <div class="view-toggle" id="${scope}-view-toggle-group" aria-label="Режим отображения">
+      <button class="toggle-btn active" data-view="table" title="Табличное представление" aria-label="Табличное представление">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
       </button>
-      <button class="toggle-btn" data-view="cards">
+      <button class="toggle-btn" data-view="cards" title="Карточное представление" aria-label="Карточное представление">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
       </button>
     </div>`;
 
   const columnSettingsHtml = `
     <div class="relative" id="${scope}-column-settings-wrapper">
-      <button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-column-settings" title="Столбцы">
+      <button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-column-settings" title="Настройка отображения столбцов" aria-label="Настройка отображения столбцов">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </button>
       <div class="column-settings-dropdown" id="${scope}-column-settings-dropdown" style="display:none;position:absolute;right:0;top:100%;z-index:100;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:10px;padding:0;min-width:380px;max-height:420px;box-shadow:0 8px 24px rgba(0,0,0,0.25);margin-top:6px;">
@@ -560,14 +575,15 @@ export function renderToolbar(scope, opts = {}) {
             <button class="btn btn-ghost btn-sm" id="${scope}-col-clear-all" style="flex:1;font-size:11px;padding:4px 8px;">Очистить все</button>
           </div>
         </div>
-        <div class="column-settings-list" id="${scope}-column-settings-list" style="display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px 10px 10px;overflow-y:auto;max-height:340px;">
+        <div class="column-settings-list" id="${scope}-column-settings-list" style="display:grid;grid-auto-flow:column;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:6px 10px 10px 10px;overflow-y:auto;max-height:340px;">
           ${colOrder.map(key => {
             const val = colOpts[key];
             if (val === undefined) return '';
-            return `<div class="col-drag-item" draggable="true" data-col="${key}" style="display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:4px;cursor:grab;font-size:12px;color:var(--text-primary);user-select:none;border:1px solid transparent;width:calc(50% - 2px);box-sizing:border-box;">
+            return `<div class="col-drag-item" data-col="${key}" style="display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:4px;cursor:grab;font-size:12px;color:var(--text-primary);user-select:none;border:1px solid transparent;width:100%;box-sizing:border-box;">
               <span style="cursor:grab;color:var(--text-muted);display:flex;align-items:center;opacity:0.5;" class="col-drag-handle">
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg>
               </span>
+              <span class="col-order-number" aria-hidden="true"></span>
               <input type="checkbox" data-col="${key}" ${val ? 'checked' : ''} style="margin:0;flex-shrink:0;">
               <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${getLabel(key)}</span>
             </div>`;
@@ -588,18 +604,23 @@ export function renderToolbar(scope, opts = {}) {
 
   const importBtn = (canWrite && opts.onImport) ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-import-excel" title="Импорт из Excel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button>` : '';
 
+  const actionDivider = opts.viewToggle !== false && (quickEditBtn || bulkOpsBtn || importBtn || opts.excel !== false || opts.refresh !== false)
+    ? '<span class="toolbar-actions-divider" aria-hidden="true"></span>'
+    : '';
+
   const hasActions = !!(addTaskHtml || bulkOpsBtn || quickEditBtn || importBtn || opts.viewToggle !== false || opts.columnSettings || opts.excel !== false || opts.refresh !== false);
 
   const actionsHtml = hasActions ? `
     <div class="toolbar-actions">
       ${addTaskHtml}
       ${savedViewsHtml}
-      ${bulkOpsBtn}
-      ${quickEditBtn}
-      ${opts.viewToggle !== false ? viewToggleHtml : ''}
       ${opts.columnSettings ? columnSettingsHtml : ''}
-      ${opts.excel !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-export-excel" title="Экспорт в CSV"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>` : ''}
+      ${opts.viewToggle !== false ? viewToggleHtml : ''}
+      ${actionDivider}
+      ${quickEditBtn}
+      ${bulkOpsBtn}
       ${importBtn}
+      ${opts.excel !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-export-excel" title="Экспорт в CSV"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>` : ''}
       ${opts.refresh !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-refresh" title="Обновить"><i data-lucide="refresh-ccw" style="width:15px;height:15px;"></i></button>` : ''}
     </div>` : '';
 
@@ -761,71 +782,78 @@ export function initToolbarControls(scope, opts = {}) {
     }
 
     if (colList && columnOrder) {
+      updateColumnOrderNumbers(colList);
       let dragSrc = null;
-      colList.addEventListener('dragstart', (e) => {
-        const item = e.target.closest('.col-drag-item');
-        if (!item) return;
-        dragSrc = item;
-        item.style.opacity = '0.5';
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', '');
-      });
-      colList.addEventListener('dragend', (e) => {
-        const item = e.target.closest('.col-drag-item');
-        if (item) item.style.opacity = '';
+      let dropTarget = null;
+      let dropPosition = null;
+      const clearDropIndicators = () => {
+        dropTarget?.classList.remove('drop-before', 'drop-after');
+        dropTarget = null;
+        dropPosition = null;
+      };
+      const setDropIndicator = (target, position) => {
+        if (dropTarget === target && dropPosition === position) return;
+        clearDropIndicators();
+        dropTarget = target;
+        dropPosition = position;
+        dropTarget.classList.add(position);
+      };
+      let dragStartX = 0;
+      let dragStartY = 0;
+      let dragStarted = false;
+      const finishPointerDrag = (commit) => {
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+        document.removeEventListener('pointercancel', onPointerCancel);
+        if (commit && dragStarted && dragSrc && dropTarget && dropTarget !== dragSrc) {
+          colList.insertBefore(dragSrc, dropPosition === 'drop-before' ? dropTarget : dropTarget.nextSibling);
+        }
+        const changed = commit && dragStarted && !!dropTarget;
+        dragSrc?.classList.remove('is-dragging');
         dragSrc = null;
-        colList.querySelectorAll('.col-drag-item').forEach(el => {
-          el.style.borderColor = 'transparent';
-          el.style.background = '';
-        });
-      });
-      colList.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        const target = e.target.closest('.col-drag-item');
-        if (!target || target === dragSrc) return;
-        const rect = target.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        target.style.borderColor = e.clientY < midY ? 'var(--accent)' : 'var(--accent)';
-        target.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)';
-      });
-      colList.addEventListener('dragleave', (e) => {
-        const target = e.target.closest('.col-drag-item');
-        if (target) {
-          target.style.borderColor = 'transparent';
-          target.style.background = '';
-        }
-      });
-      colList.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const target = e.target.closest('.col-drag-item');
-        if (!target || !dragSrc || target === dragSrc) return;
-        colList.querySelectorAll('.col-drag-item').forEach(el => {
-          el.style.borderColor = 'transparent';
-          el.style.background = '';
-        });
-        const srcIdx = Array.from(colList.children).indexOf(dragSrc);
-        const tgtIdx = Array.from(colList.children).indexOf(target);
-        const rect = target.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        const insertBefore = e.clientY < midY;
-        if (insertBefore) {
-          if (srcIdx < tgtIdx) {
-            colList.insertBefore(dragSrc, target.nextSibling);
-          } else {
-            colList.insertBefore(dragSrc, target);
-          }
-        } else {
-          if (srcIdx > tgtIdx) {
-            colList.insertBefore(dragSrc, target);
-          } else {
-            colList.insertBefore(dragSrc, target.nextSibling);
-          }
-        }
+        dragStarted = false;
+        clearDropIndicators();
+        if (!changed) return;
         const newOrder = Array.from(colList.querySelectorAll('.col-drag-item')).map(el => el.dataset.col);
         columnOrder.length = 0;
         newOrder.forEach(k => columnOrder.push(k));
+        updateColumnOrderNumbers(colList);
         if (onColumnOrderChange) onColumnOrderChange();
+      };
+      const onPointerMove = (e) => {
+        if (!dragSrc) return;
+        if (!dragStarted && Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) < 4) return;
+        if (!dragStarted) {
+          dragStarted = true;
+          dragSrc.classList.add('is-dragging');
+        }
+        e.preventDefault();
+        const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.col-drag-item');
+        if (!target || target === dragSrc || !colList.contains(target)) return;
+        const rect = target.getBoundingClientRect();
+        const sourceRect = dragSrc.getBoundingClientRect();
+        const differentVisualColumn = Math.abs(sourceRect.left - rect.left) > Math.min(sourceRect.width, rect.width) / 2;
+        let insertBefore;
+        if (differentVisualColumn) {
+          const items = Array.from(colList.querySelectorAll('.col-drag-item'));
+          insertBefore = items.indexOf(dragSrc) > items.indexOf(target);
+        } else {
+          insertBefore = e.clientY < rect.top + rect.height / 2;
+        }
+        setDropIndicator(target, insertBefore ? 'drop-before' : 'drop-after');
+      };
+      const onPointerUp = () => finishPointerDrag(true);
+      const onPointerCancel = () => finishPointerDrag(false);
+      colList.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0 || e.target.closest('input, button')) return;
+        const item = e.target.closest('.col-drag-item');
+        if (!item) return;
+        dragSrc = item;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        document.addEventListener('pointermove', onPointerMove, { passive: false });
+        document.addEventListener('pointerup', onPointerUp, { once: true });
+        document.addEventListener('pointercancel', onPointerCancel, { once: true });
       });
 
     }
@@ -855,21 +883,27 @@ export function initToolbarControls(scope, opts = {}) {
     if (onBulkOps) onBulkOps();
   });
 
-  const qeToggles = document.querySelectorAll(`.qe-toggle`);
+  const tableOnlyActions = [
+    document.getElementById(`${scope}-inline-edit`),
+    document.getElementById(`${scope}-bulk-open`),
+  ].filter(Boolean);
   const activeTableBtn = viewGroup?.querySelector('.toggle-btn.active[data-view="table"]');
   const isTableView = !!(activeTableBtn);
 
-  if (qeToggles.length > 0) {
-    qeToggles.forEach(btn => {
-      btn.style.display = isTableView ? '' : 'none';
+  function syncTableOnlyActions(isTable) {
+    tableOnlyActions.forEach(button => {
+      button.disabled = !isTable;
+      button.setAttribute('aria-disabled', String(!isTable));
     });
   }
+
+  syncTableOnlyActions(isTableView);
 
   if (viewGroup) {
     viewGroup.querySelectorAll('.toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const isTable = btn.dataset.view === 'table';
-        qeToggles.forEach(b => b.style.display = isTable ? '' : 'none');
+        syncTableOnlyActions(isTable);
       });
     });
   }
@@ -997,7 +1031,10 @@ export function getFilteredList(scope, allTasks) {
           return;
         }
         if (key === '_high_cv') {
-          list = list.filter(t => t.financial_effect != null && t.effort_rub > 0 && (t.financial_effect / t.effort_rub) > 1);
+          list = list.filter(t => {
+            const cv = calculateTaskCv(t);
+            return cv == null || cv > 1;
+          });
           return;
         }
         list = list.filter(t => {

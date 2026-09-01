@@ -1,7 +1,7 @@
 # Ошибки API и импорта — AS-IS
 
 > Статус: проверено по `frontend/js/api.js`, `frontend/js/components/quickEdit.js`,
-> `backend/import_service.py` и роутерам FastAPI на 2026-08-24.
+> `backend/import_service.py` и роутерам FastAPI на 2026-09-01.
 
 ## Формат ошибок API
 

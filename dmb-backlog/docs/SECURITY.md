@@ -2,13 +2,16 @@
 title: Безопасность DMB Backlog
 scope: as-is
 status: verified
-last_verified: 2026-08-24
+last_verified: 2026-09-01
 evidence:
   - backend/auth.py
   - backend/routers/auth_router.py
   - backend/refresh_sessions.py
   - backend/rate_limit.py
   - backend/middleware.py
+  - backend/idempotency.py
+  - backend/event_outbox.py
+  - backend/telemetry.py
   - backend/config.py
   - frontend/js/api.js
   - frontend/js/auth.js
@@ -42,6 +45,7 @@ Login, refresh и logout вызывают `_require_trusted_origin`. При `DEB
 - `SECRET_KEY` отсутствует, равен известному dev-значению или короче 32 символов;
 - `AGENT_SECRET` отсутствует или равен известному dev-значению;
 - не настроен `REDIS_URL`.
+- `DATABASE_URL` указывает на SQLite.
 
 Файл `.env` исключён из Git. Реальный процесс управления и ротации секретов вне репозитория не подтверждён.
 

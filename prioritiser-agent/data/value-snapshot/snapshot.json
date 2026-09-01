@@ -1,0 +1,1736 @@
+{
+  "version": "2026-08-21",
+  "built_at": "2026-08-21T13:50:42+00:00",
+  "source_rows": 440,
+  "max_value_mln": 3600.0,
+  "entries": [
+    {
+      "task_key": "TASK-100-002",
+      "title": "Реализован механизм передачи данных по лидам и потенциалам в КАП для дашбордов QS",
+      "team": "Pre-Trade",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 54.7
+    },
+    {
+      "task_key": "TASK-100-003",
+      "title": "Подготовлена бизнес-логика по получению лидов из Кампаний продаж и работа с ними на Платформе IBP",
+      "team": "Pre-Trade",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 54.7
+    },
+    {
+      "task_key": "TASK-100-004",
+      "title": "Реализовано получение лидов (в том числе информации и атрибутов по Клиенту) сгенерированных SberBusinessCampaign в платформу ДИД",
+      "team": "Pre-Trade",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 36.5
+    },
+    {
+      "task_key": "TASK-100-006",
+      "title": "Разработан механизм фиксации результатов переговоров и договоренностей с Клиентом по результатам встреч и стратегических диалогов ДИД",
+      "team": "Pre-Trade",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 54.7
+    },
+    {
+      "task_key": "TASK-100-007",
+      "title": "Организован массив данных для хранения результатов переговоров",
+      "team": "Pre-Trade",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 54.7
+    },
+    {
+      "task_key": "TASK-100-008",
+      "title": "Реализован функционал планирования встреч РД с Клиентом",
+      "team": "Pre-Trade",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 54.7
+    },
+    {
+      "task_key": "TASK-100-009",
+      "title": "Реализована интеграция с почтовым сервисом для реализации функционала рассылки уведомления по потенциалам",
+      "team": "Pre-Trade",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 54.7
+    },
+    {
+      "task_key": "TASK-100-010",
+      "title": "Разработан функционал создания сущности Протокола встреч с Клиентом на основании проведенной встречи РД",
+      "team": "Pre-Trade",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 36.5
+    },
+    {
+      "task_key": "TASK-100-012",
+      "title": "Пайплайн УСИ доступен в Сигма",
+      "team": "Pre-Trade",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 49.0
+    },
+    {
+      "task_key": "TASK-100-017",
+      "title": "Сформированы критерии для анализа AI-агентом поля \"Суть сделки\".",
+      "team": "Pre-Trade",
+      "project": "ПАЙПЛАЙН-СКАНЕР СДЕЛОК",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 25.0
+    },
+    {
+      "task_key": "TASK-100-018",
+      "title": "AI-агент Пайплайн сканер умеет подключать отраслевой деск к лидам РД",
+      "team": "Pre-Trade",
+      "project": "ПАЙПЛАЙН-СКАНЕР СДЕЛОК",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 25.0
+    },
+    {
+      "task_key": "TASK-100-019",
+      "title": "Пайплайн сканер на основе анализа поля \"Суть сделки\" автоматически перемещает сделку в обязательные",
+      "team": "Pre-Trade",
+      "project": "ПАЙПЛАЙН-СКАНЕР СДЕЛОК",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 66.0
+    },
+    {
+      "task_key": "TASK-100-020",
+      "title": "Пайплайн сканер генерирует обоснование переноса сделки в обязательные",
+      "team": "Pre-Trade",
+      "project": "ПАЙПЛАЙН-СКАНЕР СДЕЛОК",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 66.0
+    },
+    {
+      "task_key": "TASK-100-022",
+      "title": "Автоформирование AI-саммари на основе внутренних данных",
+      "team": "Pre-Trade",
+      "project": "ПАЙПЛАЙН-СКАНЕР СДЕЛОК",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 132.0
+    },
+    {
+      "task_key": "TASK-100-029",
+      "title": "Создать отдельный экран для лидов, созданных для КМ из IBP",
+      "team": "Pre-Trade",
+      "project": "ЛИДЫ ДЛЯ КМ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 45.0
+    },
+    {
+      "task_key": "TASK-100-030",
+      "title": "Приоритизация лидов для КМ (\"отработать в первую очередь\")",
+      "team": "Pre-Trade",
+      "project": "ЛИДЫ ДЛЯ КМ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 45.0
+    },
+    {
+      "task_key": "TASK-100-031",
+      "title": "Дашборд по созданным лидам для КМ",
+      "team": "Pre-Trade",
+      "project": "ДАШБОРДЫ",
+      "task_type": "AD-HOC",
+      "description": "Переехало в Q3 в бэклог Finance в связи с переприоритизацией на дашборд по встречам",
+      "value_mln": 45.0
+    },
+    {
+      "task_key": "TASK-100-032",
+      "title": "Создать отделный экран для лидов по ключевым клиентам",
+      "team": "Pre-Trade",
+      "project": "ЛИДЫ ОТ КМ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 45.0
+    },
+    {
+      "task_key": "TASK-100-033",
+      "title": "Доработка приоритизации обязательных и возможных лидов",
+      "team": "Pre-Trade",
+      "project": "ЛИДЫ ОТ КМ",
+      "task_type": "AD-HOC",
+      "description": "(L) БТ И СА готовы, ждем высвобождение ресурса разработки (более выскоий приоритет у функционала по встречам)",
+      "value_mln": 45.0
+    },
+    {
+      "task_key": "TASK-100-034",
+      "title": "Получить цели ЛПР (R&D)",
+      "team": "Pre-Trade",
+      "project": "ЦЕЛИ ЛПР",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-100-035",
+      "title": "Реализовать дашборд по доходу от лидов и сделок маршрутизации",
+      "team": "Pre-Trade",
+      "project": "ДАШБОРДЫ",
+      "task_type": "AD-HOC",
+      "description": "Переехало в Q3 в бэклог Finance в связи с переприоритизацией на дашборд по встречам",
+      "value_mln": 11.6
+    },
+    {
+      "task_key": "TASK-100-036",
+      "title": "Доп. сегментация возможных сделок (R&D)",
+      "team": "Pre-Trade",
+      "project": "СДЕЛКИ МАРШРУТИЗАЦИИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-100-037",
+      "title": "Переход на новый процесс ФЖН ЦКП (получение заявок от клиента)",
+      "team": "Pre-Trade",
+      "project": "НЕДВИЖИМОСТЬ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 62.5
+    },
+    {
+      "task_key": "TASK-100-040",
+      "title": "Сегментация сделок недвижимости (контроль упущенных сделок)",
+      "team": "Pre-Trade",
+      "project": "НЕДВИЖИМОСТЬ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 62.5
+    },
+    {
+      "task_key": "TASK-100-041",
+      "title": "Редизайн процесса работы ДИД в IBP (встречи, договоренности, лиды, пайплайн)",
+      "team": "Pre-Trade",
+      "project": "CRM ДИД",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 36.5
+    },
+    {
+      "task_key": "TASK-100-048",
+      "title": "Поиск и маршрутизация сделок КРТ/МИП/ТОР",
+      "team": "Pre-Trade",
+      "project": "НЕДВИЖИМОСТЬ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 125.0
+    },
+    {
+      "task_key": "TASK-100-049",
+      "title": "Подключение инстурмента AI Pitcher для IND",
+      "team": "Pre-Trade",
+      "project": "AI PITCHER",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 36.5
+    },
+    {
+      "task_key": "TASK-100-050",
+      "title": "Подключение инстурмента AI Pitcher для NRS",
+      "team": "Pre-Trade",
+      "project": "AI PITCHER",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 36.5
+    },
+    {
+      "task_key": "TASK-100-051",
+      "title": "Встречи и потенциалы в сигма",
+      "team": "Pre-Trade",
+      "project": "Сигма",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 23.0
+    },
+    {
+      "task_key": "TASK-100-052",
+      "title": "Маршрутизация сделок и лидов в сигма",
+      "team": "Pre-Trade",
+      "project": "Сигма",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 23.0
+    },
+    {
+      "task_key": "TASK-100-053",
+      "title": "Подготовка AI питчей ко встречам РД и УСИ (RUN запросы через почту)",
+      "team": "Pre-Trade",
+      "project": "AI PITCHER",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 36.5
+    },
+    {
+      "task_key": "TASK-200-015",
+      "title": "Отказ от Dynamics Navision",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 2.0
+    },
+    {
+      "task_key": "TASK-200-021",
+      "title": "Опционные окна. Добавление дат в опционные окна",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 7.7
+    },
+    {
+      "task_key": "TASK-200-022",
+      "title": "Улучшение определения даты погашения сделки",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.5
+    },
+    {
+      "task_key": "TASK-200-023",
+      "title": "Добавление стадий для корп. запросов",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.4
+    },
+    {
+      "task_key": "TASK-200-024",
+      "title": "Вывод рассчитываемых данных на страницу сделки",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.6
+    },
+    {
+      "task_key": "TASK-200-025",
+      "title": "Добавление листа в чек-лист",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.48
+    },
+    {
+      "task_key": "TASK-200-026",
+      "title": "Добавление наименования контрагента в карточки Обеспечений",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "Реализуем в последнем спринте, в проме в апреле 2026",
+      "value_mln": 0.61
+    },
+    {
+      "task_key": "TASK-200-027",
+      "title": "Изменение плана счетов. Автоматический перенос остатков в 1С между краткосрочными и долгосрочными счетами (тело долга кредитов)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 1.9
+    },
+    {
+      "task_key": "TASK-200-028",
+      "title": "Изменение плана счетов. Автоматический перенос остатков в 1С между краткосрочными и долгосрочными счетами (опционы)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.8
+    },
+    {
+      "task_key": "TASK-200-029",
+      "title": "Автоматизация отчетов ПАО",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.5
+    },
+    {
+      "task_key": "TASK-200-030",
+      "title": "Автоматизация отчетов ПАО (3 шт. + контроль динамики)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "Частично заменили. Список изменений по отчетам ПАО: • КО_67_1, КО_67_2, КО_67_3: o Поправлены ссылки на расчетные значения в шаблонных формах o Исключено ВГО из расчетов • КО_23_13_1: o В сверочную форму добавлен признак ВГО, исключен из расчетов o Скорректирована логика расчетов \"особенных\" контрагентов (Договор уступки права требования, ПАИ) o Скорректированы расчетные строки • КО_23_5: o Скорректирована логика заполнения \"особых\" полей(ГСЗ), добавлены новые столбцы для их верного определения (синхронизация с Рисками СБИ) o Скорректирована логика расчета ПФИ, их связи с другими отчетами (КО 23_17) o Настроены фильтры для определения контрагентов в расчет, настроено правильное считывание 23_5_1 • КО_24: o Настроены верные вычисления значений по полям на расчетной странице (Баланс, Облигации наши и ЕВРО и их проценты, ПАИ) o Добавлена новая логика по Макронадбавке, обновлены итоговые таблицы на листах с контрагентами o Добавлен признак ВГО на листы с контрагентами o Поправлены ссылки на шаблонной странице • КО_24_2: o Добавлен новый тип активов \"Облигации\", настроен их верный учет в шаблонной форме o Настроены вычисления по \"особым\" контрагентам (Дженсер, Рассказовка, ПАИ, облигации и проценты) • КО_23_17 и КО_23_16: o Скорректированы справочники контрагентов, опираясь на данные 1С (ОСВ) • КО_23_15(отчет с динамикой): o Настроена сверка и маркировка расхождения между отчетами, работаем над автоматическим заполнением комментария при условии расхождения полей",
+      "value_mln": 0.49
+    },
+    {
+      "task_key": "TASK-200-031",
+      "title": "Добавление риск-сегмента в карточку \"Контрагент\" на страницу сделки",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "На ПРОМе в июле",
+      "value_mln": 0.3
+    },
+    {
+      "task_key": "TASK-200-032",
+      "title": "Улучшения подготовки расчетных данных для расчета RWA",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "На ПРОМе в июле",
+      "value_mln": 2.8
+    },
+    {
+      "task_key": "TASK-200-033",
+      "title": "Отказ от Excel. Автоматический пересчет плановых платежей после получения новой ставки",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "Вместе с Ops было решено поменять приоритеты. Задача перенесена на Q3",
+      "value_mln": 0.6
+    },
+    {
+      "task_key": "TASK-200-034",
+      "title": "Отказ от Excel. Скорректировать заполнение таблицы с индикаторами в КАП",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.4
+    },
+    {
+      "task_key": "TASK-200-035",
+      "title": "Отказ от Excel. Доработки для сложных сделок. Ежесекундные проценты",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "Вместе с Ops было решено поменять приоритеты. Задача перенесена на Q3",
+      "value_mln": 2.6
+    },
+    {
+      "task_key": "TASK-200-036",
+      "title": "Отказ от Excel. Start ВБС",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "Вместе с Ops было решено поменять приоритеты. Задача перенесена на Q3",
+      "value_mln": 0.7
+    },
+    {
+      "task_key": "TASK-200-037",
+      "title": "Отказ от Excel. Добавление компонент FV",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 1.1
+    },
+    {
+      "task_key": "TASK-200-038",
+      "title": "Отказ от Excel. Улучшение UX/UI. ОСЗ по кредитоподобным РЕПО",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.5
+    },
+    {
+      "task_key": "TASK-200-039",
+      "title": "Отказ от Excel. Внесение отрицательной оценки опционов на ППРБ",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.1
+    },
+    {
+      "task_key": "TASK-200-040",
+      "title": "Отказ от Excel. Добавление в \"Гарантию с баланса ПАО\" карточки \"Прогноз дохода\"",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.4
+    },
+    {
+      "task_key": "TASK-200-041",
+      "title": "Добавление в XML файл \"Даты капитализации процентов\" для расчета FV",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "На проме в начале Q2 2026",
+      "value_mln": 0.72
+    },
+    {
+      "task_key": "TASK-200-042",
+      "title": "Добавление ставок cap и floor в процентные схемы",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "Реализовано, в проме",
+      "value_mln": 1.76
+    },
+    {
+      "task_key": "TASK-200-043",
+      "title": "Добавления поля Комментарий в Описание сделки",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": "На проме в начале Q2 2026",
+      "value_mln": 0.48
+    },
+    {
+      "task_key": "TASK-200-044",
+      "title": "Тех. долг. Автогенерация DEALS-BE",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 5.8
+    },
+    {
+      "task_key": "TASK-200-045",
+      "title": "ЕФС. Автогенерация",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 24.0
+    },
+    {
+      "task_key": "TASK-200-046",
+      "title": "ИИ-агент по обработке корп. запросов. (Подготовлена системная аналитика по извлечению данных из писем и вложений поступающих корпоративных запросов)",
+      "team": "Post-Trade (Products & Service)",
+      "project": null,
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 18.0
+    },
+    {
+      "task_key": "TASK-200-048",
+      "title": "Переоценка опционов/акций (Подготовлены спецификации для разработки функционала по получению денежных потоков по кредитам с баланса Банка)",
+      "team": "Post-Trade (Products & Service)",
+      "project": null,
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 111.0
+    },
+    {
+      "task_key": "TASK-200-049",
+      "title": "Отказ от Navision. Отправка доходов/расходов в 1С:УХ (Реализована передача проводок МСФО по доходам, переоценкам, комиссиям в 1С УХ ООО СБИ)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": "Будет готово в начале июля",
+      "value_mln": 0.6
+    },
+    {
+      "task_key": "TASK-200-050",
+      "title": "Отказ от Navision. Отправка резервов/FV в 1С:УХ (Реализована передача проводок МСФО по доходам, переоценкам, комиссиям в 1С УХ ООО СБИ)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": "Будет готово в начале июля",
+      "value_mln": 0.6
+    },
+    {
+      "task_key": "TASK-200-051",
+      "title": "Отказ от Navision. Отправка курсов валют в 1С:УХ (Реализована передача проводок МСФО по доходам, переоценкам, комиссиям в 1С УХ ООО СБИ)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": "Будет готово в начале июля",
+      "value_mln": 0.1
+    },
+    {
+      "task_key": "TASK-200-052",
+      "title": "Отказ от Navision. Отправка доходов по еврооблигациям (Реализована передача проводок МСФО по доходам, переоценкам, комиссиям в 1С УХ ООО СБИ)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": "Будет готово в начале июля",
+      "value_mln": 0.7
+    },
+    {
+      "task_key": "TASK-200-054",
+      "title": "Отказ от Navision. Отправка Unwind в 1С:УХ",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.7
+    },
+    {
+      "task_key": "TASK-200-055",
+      "title": "Отказ от Navision. Автоматический перенос остатков в 1С между краткосрочными и долгосрочными счетами (резервы)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 1.4
+    },
+    {
+      "task_key": "TASK-200-056",
+      "title": "Корп. запросы. Улучшения агента по корп. запросам и вывод его в пром",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 18.0
+    },
+    {
+      "task_key": "TASK-200-057",
+      "title": "Корп. запросы. На платформе улучшения агента по корп. запросам",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 18.0
+    },
+    {
+      "task_key": "TASK-200-058",
+      "title": "Отказ от Excel. Автоматическое создание Платформенных фиксаций",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.7
+    },
+    {
+      "task_key": "TASK-200-059",
+      "title": "Отказ от Excel. Автоматический пересчет отчетов на Платформе",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.7
+    },
+    {
+      "task_key": "TASK-200-060",
+      "title": "Отказ от Excel. Заполнение в КАП ретроспективных показателей по FV и АС",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.6
+    },
+    {
+      "task_key": "TASK-200-061",
+      "title": "Отказ от Excel. Корректировки выгрузок в КАП",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 1.1
+    },
+    {
+      "task_key": "TASK-200-062",
+      "title": "Отказ от Excel. Доработки для сложных сделок. Ежесекундные проценты",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 2.6
+    },
+    {
+      "task_key": "TASK-200-063",
+      "title": "Отказ от Excel. Start ВБС",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.7
+    },
+    {
+      "task_key": "TASK-200-064",
+      "title": "Отказ от Excel. Улучшения отчетов МСФО / РСБУ / KPI",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 1.1
+    },
+    {
+      "task_key": "TASK-200-065",
+      "title": "Отказ от Excel. Изменение типа данных в таблице КАП",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.1
+    },
+    {
+      "task_key": "TASK-200-066",
+      "title": "Отказ от Excel. Доработка отчета KPI",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.9
+    },
+    {
+      "task_key": "TASK-200-067",
+      "title": "Отказ от Excel. Добавление погашенных ФИ в отчеты МСФО / РСБУ / KPI",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.4
+    },
+    {
+      "task_key": "TASK-200-068",
+      "title": "Отказ от Excel. Добавление и автозаполнение таблиц для КАП",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 1.0
+    },
+    {
+      "task_key": "TASK-200-069",
+      "title": "Отказ от Excel. Автоматический пересчет плановых платежей после получения новой ставки",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.6
+    },
+    {
+      "task_key": "TASK-200-070",
+      "title": "Отказ от Excel. Улучшение дат входа и выхода ДИД",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.7
+    },
+    {
+      "task_key": "TASK-200-071",
+      "title": "Отказ от Excel. Добавить в ФИ флаг \"Участие ДККК\"",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.3
+    },
+    {
+      "task_key": "TASK-200-072",
+      "title": "Отказ от Excel. Добавить в ФИ с типом акции поле \"Связанный безусловный опцион\"",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.3
+    },
+    {
+      "task_key": "TASK-200-073",
+      "title": "Отказ от Excel. Добавление в ФИ с типом \"Акции\" несколько инструментов \"Акции\"",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ИМПОРТОЗАМЕЩЕНИЕ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.2
+    },
+    {
+      "task_key": "TASK-200-074",
+      "title": "Пересчет опционов СБИ. Интеграция с ПКАП ГР (Часть 1)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 53.0
+    },
+    {
+      "task_key": "TASK-200-075",
+      "title": "Пересчет опционов СБИ. Обновление цены исполнения опциона для кредитоподобных (Часть 1)",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 53.0
+    },
+    {
+      "task_key": "TASK-200-076",
+      "title": "Пересчет опционов СБИ. Обработка не рассчитываемых параметров на Платформе",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 53.0
+    },
+    {
+      "task_key": "TASK-200-077",
+      "title": "Переоценка Private Equity",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.3
+    },
+    {
+      "task_key": "TASK-200-078",
+      "title": "Формирование и выгрузка данных по ОВП",
+      "team": "Post-Trade (Products & Service)",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.87
+    },
+    {
+      "task_key": "TASK-300-006",
+      "title": "Реализован MVP процесс мониторинга портфелей фондов",
+      "team": "IB",
+      "project": "РЕАЛИЗОВАН ПОИСК ПОТЕНЦИАЛОВ ДЛЯ НОВЫХ ВЫПУСКОВ ОБЛИГАЦИЙ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 50.0
+    },
+    {
+      "task_key": "TASK-300-007",
+      "title": "На Платформе IBP реализована лидогенерация на основе данных о портфелях фондов",
+      "team": "IB",
+      "project": "РЕАЛИЗОВАН ПОИСК ПОТЕНЦИАЛОВ ДЛЯ НОВЫХ ВЫПУСКОВ ОБЛИГАЦИЙ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 50.0
+    },
+    {
+      "task_key": "TASK-300-009",
+      "title": "Разработан функционал работы с лидами на платформе ДИД",
+      "team": "IB",
+      "project": "РЕАЛИЗОВАН ПОИСК ПОТЕНЦИАЛОВ ДЛЯ НОВЫХ ВЫПУСКОВ ОБЛИГАЦИЙ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 50.0
+    },
+    {
+      "task_key": "TASK-300-010",
+      "title": "Создан лидогенератор выпуска облигаций на основе портфеля Банка на платформе ДИД",
+      "team": "IB",
+      "project": "РЕАЛИЗОВАН ПОИСК ПОТЕНЦИАЛОВ ДЛЯ НОВЫХ ВЫПУСКОВ ОБЛИГАЦИЙ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 50.0
+    },
+    {
+      "task_key": "TASK-300-016",
+      "title": "Создано и доступно пользователям Рабочее место IB в Сигма",
+      "team": "IB",
+      "project": "ВЫВОД PM В СИГМУ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 180.0
+    },
+    {
+      "task_key": "TASK-300-018",
+      "title": "Разработан MVP пользовательского интерфейса AI-банкир: web страница, с которой возможно запросить AI питч",
+      "team": "IB",
+      "project": "IB",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 20.0
+    },
+    {
+      "task_key": "TASK-300-019",
+      "title": "Разработан MVP реестра фондов",
+      "team": "IB",
+      "project": "IB",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 400.0
+    },
+    {
+      "task_key": "TASK-300-020",
+      "title": "Разработан функционал по приему платежей от ФЛ из внешних банков по сделкам IB на Балансе ПАО Сбербанк",
+      "team": "IB",
+      "project": "IB",
+      "task_type": "AD-HOC",
+      "description": "Перенос на 2 кв. 2026 г. Клиенты согласовали (Продолжается разработка в q4. Затянулась фаза подключения к ЕПК и согласования доступа к данным. На ППР и работоспособность платежей ФЛ влияния не оказывает, завершение работ в плане на 4 кв. )",
+      "value_mln": 150.0
+    },
+    {
+      "task_key": "TASK-300-023",
+      "title": "Накопительным итогом с начала года подготовлено 40 питчей для IB",
+      "team": "IB",
+      "project": "AI ПОМОЩНИК IB",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 200.0
+    },
+    {
+      "task_key": "TASK-300-026",
+      "title": "Реализован MVP сервис FundRadar, с фиксацией протоколов встреч",
+      "team": "IB",
+      "project": "FUND RADAR",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 300.0
+    },
+    {
+      "task_key": "TASK-300-029",
+      "title": "Закрепление продукта ТА за ДИД; Обеспечение функции ТА",
+      "team": "IB",
+      "project": "ПЛАТФОРМА IBP",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 450.0
+    },
+    {
+      "task_key": "TASK-300-031",
+      "title": "Автоматическое начисление КЗ для исходящих платежей; интеграция с сервисами СТОП_ЛИСТ",
+      "team": "IB",
+      "project": "ПЛАТФОРМА IBP",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 50.0
+    },
+    {
+      "task_key": "TASK-300-032",
+      "title": "Реализация целевого агента AI Pitcher для публичных компаний",
+      "team": "IB",
+      "project": "AI ПОМОЩНИК IB",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 200.0
+    },
+    {
+      "task_key": "TASK-400-000",
+      "title": "Реализован просмотр сделок, лидов, информации по клиентам и холдингам",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-001",
+      "title": "Разработаны data-витрины и data-инструменты с фокусом на необходимые для выявления акционерного риска данные",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-002",
+      "title": "Обеспечено аккумулирование информации по Клиентам",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-003",
+      "title": "Создан профиль клиента с фокусом на Акционерный риск: фин. метрики, портфель банка, новости",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-004",
+      "title": "Подготовлена инфраструктура для вывода на Платформу дополнительных данных по клиенту",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-005",
+      "title": "Профиль клиента дополнен первым набором атрибутов (показатели финансовой отчетности клиента)",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-006",
+      "title": "Карточка клиента дополнена вторым набором атрибутов",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-007",
+      "title": "Карточка клиента дополнена третьим набором атрибутов",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-008",
+      "title": "Цифровой методолог доработан для улучшения качества и охвата пользователей и доступен в Сигма",
+      "team": "Core",
+      "project": "ЦИФРОВОЙ МЕТОДОЛОГ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-009",
+      "title": "Цифровой методолог переведен на целевую платформу и доступен в Сигме",
+      "team": "Core",
+      "project": "ЦИФРОВОЙ МЕТОДОЛОГ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-010",
+      "title": "Выполнены доработки ядра и/или интеграций Платформы ДИД для поддержки выполнения целей ГАК в согласованном объеме (в том числе Пайплайн-сканнер)",
+      "team": "Core",
+      "project": "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-011",
+      "title": "Выполнены доработки ядра и/или интеграций Платформы ДИД для поддержки выполнения целей ГАК в согласованном объеме(в том числе Пайплайн-сканнер)",
+      "team": "Core",
+      "project": "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-012",
+      "title": "Выполнены доработки ядра и/или интеграций Платформы ДИД для поддержки выполнения целей ГАК в согласованном объеме(в том числе Пайплайн-сканнер)",
+      "team": "Core",
+      "project": "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-013",
+      "title": "Выполнены доработки ядра и/или интеграций Платформы ДИД для поддержки выполнения целей ГАК в согласованном объеме(в том числе Пайплайн-сканнер)",
+      "team": "Core",
+      "project": "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-016",
+      "title": "Платформенные сервисы доработаны для Рабочего места в Сигма, за искл. ЭКД",
+      "team": "Core",
+      "project": "ВЫВОД PM В СИГМУ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-017",
+      "title": "Платформенные сервисы доработаны для Рабочего места IB и УСИ в Сигма, за искл. ЭКД",
+      "team": "Core",
+      "project": "ВЫВОД PM В СИГМУ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-020",
+      "title": "Мобильная версия IBP",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "ИССЛЕДОВАНИЕ",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-021",
+      "title": "Редизайн гланого экрана",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-022",
+      "title": "ЦКП",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-400-023",
+      "title": "CRM: Мои клиенты",
+      "team": "Core",
+      "project": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 58.3
+    },
+    {
+      "task_key": "TASK-500-000",
+      "title": "SLA: Средний срок обращений по конфигурированию",
+      "team": "Delivery",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "МЕТРИЧЕСКИЕ KR",
+      "description": "Соблюдение SLA для конфигурирования АС в рамках настроек инфраструктуры для бизнес-фичей",
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-500-001",
+      "title": "Выполнен Delivery SLA",
+      "team": "Delivery",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-500-002",
+      "title": "Обеспечен релизный цикл со стороны Delivery",
+      "team": "Delivery",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": "Обеспечение регулярной поставки бизнес-фичей в Пром. Если бизнес-фича не поставлена в Пром, то она не приносит фин эффекта",
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-500-003",
+      "title": "Отказ от AD",
+      "team": "Delivery",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": "Тех повестка",
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-500-004",
+      "title": "отказ от Qlik (кросс-инициатива от АС CI02533826)",
+      "team": "Delivery",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": "Тех повестка",
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-000",
+      "title": "Реализована витрина в ПКАП ГР с данными финансовой отчетности Клиента",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 350.0
+    },
+    {
+      "task_key": "TASK-600-001",
+      "title": "(НЕ ЗАНОСИТЬ В ПУЛЬС) Внесены изменения в Методику №2478 в части расчета КПЭ ДИД по операционному доходу до и после резервов по Группе",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 300.0
+    },
+    {
+      "task_key": "TASK-600-002",
+      "title": "(НЕ ЗАНОСИТЬ В ПУЛЬС) Реализована витрина в ПКАП ГР с данными из CF моделей Клиента",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 350.0
+    },
+    {
+      "task_key": "TASK-600-003",
+      "title": "Реализована витрина в ПКАП ГР с плановыми платежами по кредитам для автоматизации расчета стоимости опционов СБИ",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 111.0
+    },
+    {
+      "task_key": "TASK-600-004",
+      "title": "(НЕ ЗАНОСИТЬ В ПУЛЬС) Внесены изменения в схему учета дохода по PE сделкам для ТБ в части уплаты success fee после выхода из инвестции",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 500.0
+    },
+    {
+      "task_key": "TASK-600-005",
+      "title": "Запуск согласования ОРД по процессу и схеме деления дохода с PB по M&A сделкам",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 300.0
+    },
+    {
+      "task_key": "TASK-600-009",
+      "title": "Реализация витрины в ПКАП ГР по новостям Клиента",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 350.0
+    },
+    {
+      "task_key": "TASK-600-010",
+      "title": "Ключевые дэшборды ДИД мигрированы с QS на Navigator",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-011",
+      "title": "Реализованы витрины в ПКАП ГР с финансовыми данными в рамках отказа от Excel-агрегаторов",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-012",
+      "title": "(НЕ ЗАНОСИТЬ В ПУЛЬС) Оптимизирована загрузка данных в КАП",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-013",
+      "title": "(НЕ ЗАНОСИТЬ В ПУЛЬС) Реализованы витрины с данными по Клиенту для карточки Клиента в АС IBP",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 350.0
+    },
+    {
+      "task_key": "TASK-600-017",
+      "title": "Оптимизация витрины по спросу ФЛ на ценные бумаги",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 1.2
+    },
+    {
+      "task_key": "TASK-600-018",
+      "title": "Переключение дэшборда IB Summary в Навигаторе на витрину ПКАП ГР",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 1.0
+    },
+    {
+      "task_key": "TASK-600-019",
+      "title": "Реализация новых Nprinting рассылок (по HTM портфелю)",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 13.0
+    },
+    {
+      "task_key": "TASK-600-020",
+      "title": "Реализация новых Nprinting рассылок (по опционным окнам)",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 13.0
+    },
+    {
+      "task_key": "TASK-600-021",
+      "title": "Доработка дэшборда по Equity портфелю",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 2.0
+    },
+    {
+      "task_key": "TASK-600-022",
+      "title": "Переключение дэшборда по риск-метрикам в Навигаторе на витрину ПКАП ГР",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 1.0
+    },
+    {
+      "task_key": "TASK-600-023",
+      "title": "Дэшборд Встречи с Клиентами в Навигаторе",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 23.2
+    },
+    {
+      "task_key": "TASK-600-024",
+      "title": "Реализация новых Nprinting рассылок (по календарю КПКИ)",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 13.0
+    },
+    {
+      "task_key": "TASK-600-025",
+      "title": "Дэшборд по ключевым метрикам бизнеса ДИД для ДФ в Навигаторе",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": "Перенос на Q1'26. L2P",
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-026",
+      "title": "Реализован дэшборд по анализу исходящих лидов в Навигатор",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": "Q3 2026",
+      "value_mln": 3.0
+    },
+    {
+      "task_key": "TASK-600-027",
+      "title": "Реализация витрины в ПКАП ГР по лимитам на продукты Клиента",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 350.0
+    },
+    {
+      "task_key": "TASK-600-029",
+      "title": "Реализация витрины в ПКАП ГР по pipeline кредитных продуктов Клиента в Банке",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 350.0
+    },
+    {
+      "task_key": "TASK-600-030",
+      "title": "Расширение реплики IBP в КАП на новый атрибутный состав",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-032",
+      "title": "Доработка дэшборда по загрузке данных в таблицы ПКАП",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 5.0
+    },
+    {
+      "task_key": "TASK-600-033",
+      "title": "Миграция дэшборда текущий порфель в Навигатор",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-034",
+      "title": "Миграция дэшборда активы в фокусе в Навигатор",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-035",
+      "title": "Миграция дэшборда из QS в Навигатор: Портфель RE",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": "Q3 2026",
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-037",
+      "title": "Миграция дэшборда метрики ДИД в Навигатор",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-038",
+      "title": "Реализация 8 витрин с фин. данными в рамках замещения Excel-агрегаторов",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-039",
+      "title": "Реализация витрины плановых платежей по кредитам ПАО для расчета стоимости опционов на СБИ",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 111.0
+    },
+    {
+      "task_key": "TASK-600-045",
+      "title": "Проработка реализации дэшборда по воронке ДИД",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 2.0
+    },
+    {
+      "task_key": "TASK-600-046",
+      "title": "Доработан/создан дэшборд по встречам с детализацией в Навигатор",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 2.0
+    },
+    {
+      "task_key": "TASK-600-047",
+      "title": "Миграция дэшборда из QS в Навигатор: Контроль перехода по зонам",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.2
+    },
+    {
+      "task_key": "TASK-600-048",
+      "title": "Миграция дэшборда из QS в Навигатор: HTM портфель",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.2
+    },
+    {
+      "task_key": "TASK-600-049",
+      "title": "Миграция дэшборда из QS в Навигатор: Маршрутизация",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.2
+    },
+    {
+      "task_key": "TASK-600-050",
+      "title": "Миграция дэшборда из QS в Навигатор: Конверсия маршрутизации",
+      "team": "Post-Trade (Finance)",
+      "project": "BI",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.2
+    },
+    {
+      "task_key": "TASK-600-051",
+      "title": "Реализована витрина в ПКАП ГР по пассивам Клиента",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 140.0
+    },
+    {
+      "task_key": "TASK-600-052",
+      "title": "Реализована витрина в ПКАП ГР по данным Клиента из ФНС",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 140.0
+    },
+    {
+      "task_key": "TASK-600-053",
+      "title": "Реализована витрина в ПКАП ГР по Группе и Холдингам Клиента",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 140.0
+    },
+    {
+      "task_key": "TASK-600-054",
+      "title": "Расширение реплики IBP в КАП на новые атрибуты (9 поток)",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.2
+    },
+    {
+      "task_key": "TASK-600-055",
+      "title": "Реализована витрина в ПКАП ГР по HTM портфелю для миграции дэшборда в Навигатор",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.2
+    },
+    {
+      "task_key": "TASK-600-056",
+      "title": "Реализация 5 витрин в рамках замещения Excel-агрегаторов",
+      "team": "Post-Trade (Finance)",
+      "project": "DATA",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.2
+    },
+    {
+      "task_key": "TASK-600-057",
+      "title": "Разработка ОРД по процессу и схеме деления дохода по сделкам ДККК с баланса СБИ",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 1000.0
+    },
+    {
+      "task_key": "TASK-600-058",
+      "title": "Связка мезонинов СБИ с ПФИ на ПАО",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 500.0
+    },
+    {
+      "task_key": "TASK-600-059",
+      "title": "Доработка алгоритма по разделению активов СБИ между ТБ",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-600-060",
+      "title": "Отражение НПА на совместные портфели ДИД и ДТФФ",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 200.0
+    },
+    {
+      "task_key": "TASK-600-061",
+      "title": "Проработка shadow с ДТБ по банковскому обслуживанию",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 200.0
+    },
+    {
+      "task_key": "TASK-600-062",
+      "title": "Согласование БТ для корректного отражения M&A сделок с баланса Индийского Филиала",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 100.0
+    },
+    {
+      "task_key": "TASK-600-066",
+      "title": "Выделение подсубпортфеля HTM по РГС с shadow для ДИД",
+      "team": "Post-Trade (Finance)",
+      "project": "MIS",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 250.0
+    },
+    {
+      "task_key": "TASK-700-001",
+      "title": "Стоимость 1 условной единицы: OPEX / Операционный доход по Департаменту инвестиционной деятельности",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "МЕТРИЧЕСКИЕ KR",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-700-002",
+      "title": "Провели глубинное исследование по работе ДИД с ТБ, ЦА и клиентами",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-700-003",
+      "title": "Проведена подготовка и определен периметр исследования",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-700-004",
+      "title": "Провели глубинное исследование по работе ДИД с ТБ",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-700-006",
+      "title": "Проработаны и определены параметры первой кампании продаж",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 500.0
+    },
+    {
+      "task_key": "TASK-700-008",
+      "title": "Проработан порядок принятия решения о выходе из сделок Private Equity",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 0.5
+    },
+    {
+      "task_key": "TASK-700-009",
+      "title": "Утвержден постоянный порядок сопровождения сделок IB",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 250.0
+    },
+    {
+      "task_key": "TASK-700-010",
+      "title": "Продукты DCM/ECM поставлены на полку КМ",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 20.0
+    },
+    {
+      "task_key": "TASK-700-011",
+      "title": "Утвержден постоянный порядок сопровождения сделок IB (в рамках ТС DCM)",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 250.0
+    },
+    {
+      "task_key": "TASK-700-012",
+      "title": "Утвержден постоянный порядок сопровождения сделок IB (в рамках ТС ECM)",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 250.0
+    },
+    {
+      "task_key": "TASK-700-014",
+      "title": "Встраивание штрафных опционов колл в сделки КРТ за 100% shadow по ПФ",
+      "team": "Methodology",
+      "project": "RE",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 0.0
+    },
+    {
+      "task_key": "TASK-700-016",
+      "title": "Утверждение использования штрафных колл-опционов СБИ в рамках проектов КРТ/МИП/ТОР за 100% shadow по КРТ (ПФ и НФ): разработка процесса совмместно с ДКПП, логика поиска сделок на платформе ДИД",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 3600.0
+    },
+    {
+      "task_key": "TASK-700-026",
+      "title": "Подготовлен и согласован со смежными службами предварительный паспорт технического андеррайтинга по сделкам ECM / DCM для оценки трудоемкости доработок",
+      "team": "Methodology",
+      "project": "ПРОЧИЕ ЦЕЛИ",
+      "task_type": "AD-HOC",
+      "description": null,
+      "value_mln": 10.0
+    },
+    {
+      "task_key": "TASK-900-000",
+      "title": "GenAI-эффект",
+      "team": "AI",
+      "project": "ПАЙПЛАЙН-СКАНЕР СДЕЛОК",
+      "task_type": "МЕТРИЧЕСКИЕ KR",
+      "description": null,
+      "value_mln": 2120.0
+    },
+    {
+      "task_key": "TASK-900-001",
+      "title": "Разработаны новые конфигурации IDP по Пайплайн-сканеру",
+      "team": "AI",
+      "project": "ПАЙПЛАЙН-СКАНЕР СДЕЛОК",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 2120.0
+    },
+    {
+      "task_key": "TASK-900-012",
+      "title": "60% задач в рабочих местах сотрудников Отраслевых десков и Центра экспертизы Департамента инвестиционной деятельности выполняются с co-pilot",
+      "team": "AI",
+      "project": "60% ЗАДАЧ С CO-PILOT",
+      "task_type": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+      "description": null,
+      "value_mln": 2120.0
+    }
+  ]
+}

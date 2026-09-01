@@ -3,6 +3,7 @@
  */
 import { escapeHtml } from '../htmlUtils.js';
 import { bindViewStateAction, renderViewState } from './viewState.js';
+import { formatTaskPublicId } from '../taskPublicId.js';
 
 function renderInvolvedTeams(teams) {
   if (!teams || !teams.length) return '—';
@@ -73,7 +74,7 @@ const reportConfig = {
     sort: null
   },
   progress: {
-    name: 'Прогресс по задачам',
+    name: 'Светофоры по квартальным задачам',
     desc: 'Текущий прогресс по выполнению задач текущего квартала, отклонения, риски',
     icon: 'trending-up',
     gradient: 'grad-cyan',
@@ -86,6 +87,13 @@ const reportConfig = {
     fields: ['id','title','task_type_name','team_name','progress'],
     group: null,
     sort: null
+  },
+  'pd-estimates': {
+    name: 'Сбор оценок для PD',
+    desc: 'Сбор оценок от бизнес-заказчиков по итогам выполнения квартальных задач',
+    icon: 'clipboard-check',
+    gradient: 'grad-emerald',
+    isPlaceholder: true
   }
 };
 
@@ -98,6 +106,523 @@ let reportColumnFilters = {};
 
 let dbReportsCache = {};
 let cachedDbReport = null;
+let reportingMeetings = [];
+let canManageReportingMeetings = false;
+let canPrepareReportingMeetings = false;
+let meetingView = 'cards';
+let meetingFilters = { kind: 'all', state: 'open', from: '', to: '' };
+
+const meetingStateLabels = {
+  date_pending: 'Нужно назначить дату',
+  planned: 'Запланирована',
+  held: 'Состоялась',
+  cancelled: 'Отменена',
+};
+
+const meetingKindMeta = {
+  directorate: { cadence: 'Еженедельно · понедельник', icon: 'briefcase', tone: 'violet' },
+  did: { cadence: 'Раз в 2 недели · вторник', icon: 'layers', tone: 'emerald' },
+  key_projects: { cadence: 'Раз в месяц · плавающая дата', icon: 'key-round', tone: 'blue' },
+};
+
+function meetingMatchesFilters(meeting) {
+  const open = meeting.state === 'planned' || meeting.state === 'date_pending';
+  if (meetingFilters.kind !== 'all' && meeting.kind !== meetingFilters.kind) return false;
+  if (meetingFilters.state === 'open' && !open) return false;
+  if (meetingFilters.state !== 'all' && meetingFilters.state !== 'open' && meeting.state !== meetingFilters.state) return false;
+  if (meetingFilters.from && (!meeting.scheduled_date || meeting.scheduled_date < meetingFilters.from)) return false;
+  if (meetingFilters.to && (!meeting.scheduled_date || meeting.scheduled_date > meetingFilters.to)) return false;
+  return true;
+}
+
+function renderMeetingToolbar() {
+  return `<div class="meeting-toolbar" aria-label="Фильтры календаря">
+    <label>Тип<select class="input" data-meeting-filter="kind">
+      <option value="all">Все встречи</option><option value="directorate">Директорская</option>
+      <option value="did">ДИД</option><option value="key_projects">Ключевые проекты</option>
+    </select></label>
+    <label>Состояние<select class="input" data-meeting-filter="state">
+      <option value="open">Предстоящие</option><option value="all">Все</option><option value="planned">Запланированные</option>
+      <option value="date_pending">Без даты</option><option value="held">Состоявшиеся</option><option value="cancelled">Отменённые</option>
+    </select></label>
+    <label>С<input class="input" type="date" data-meeting-filter="from" value="${escapeHtml(meetingFilters.from)}"></label>
+    <label>По<input class="input" type="date" data-meeting-filter="to" value="${escapeHtml(meetingFilters.to)}"></label>
+    <div class="meeting-view-switch" role="group" aria-label="Представление календаря">
+      <button class="btn btn-sm ${meetingView === 'cards' ? 'btn-primary' : 'btn-secondary'}" data-meeting-view="cards">Карточки</button>
+      <button class="btn btn-sm ${meetingView === 'timeline' ? 'btn-primary' : 'btn-secondary'}" data-meeting-view="timeline">Хронология</button>
+    </div>
+    <button class="btn btn-secondary btn-sm" data-meeting-export><i data-lucide="download"></i> iCalendar</button>
+    <button class="btn btn-secondary btn-sm" data-meeting-reset>Сбросить</button>
+  </div>`;
+}
+
+function exportReportingMeetings() {
+  const items = reportingMeetings.filter(meeting => meetingMatchesFilters(meeting) && meeting.scheduled_date);
+  const escapeIcs = value => String(value || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//DMB Platform//Reporting Meetings//RU'];
+  items.forEach(meeting => {
+    const day = meeting.scheduled_date.replaceAll('-', '');
+    lines.push('BEGIN:VEVENT', `UID:reporting-meeting-${meeting.id}@dmb.local`, `DTSTART;VALUE=DATE:${day}`,
+      `SUMMARY:${escapeIcs(meeting.title)}`, `DESCRIPTION:${escapeIcs(meetingStateLabels[meeting.state] || meeting.state)}`, 'END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  const url = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' }));
+  const link = Object.assign(document.createElement('a'), { href: url, download: 'reporting-meetings.ics' });
+  link.click();
+  URL.revokeObjectURL(url);
+  window.toast?.(items.length ? `Экспортировано встреч: ${items.length}` : 'Нет встреч с датой для экспорта', items.length ? 'success' : 'info');
+}
+
+function renderMeetingTimeline(items) {
+  if (!items.length) return '<div class="empty-state">По заданным фильтрам встреч нет</div>';
+  return `<div class="meeting-timeline">${items.map(meeting => {
+    const meta = meetingKindMeta[meeting.kind] || { tone: 'blue' };
+    return `<article class="meeting-timeline-item meeting-tone--${meta.tone}" data-meeting-row="${meeting.id}">
+      <button class="meeting-timeline-main" data-meeting-jump="${meeting.id}">
+        <time>${escapeHtml(formatMeetingDate(meeting.scheduled_date))}</time>
+        <strong>${escapeHtml(meeting.title)}</strong>
+        <span>${escapeHtml(meeting.is_overdue ? 'Просрочена — требуется актуализировать факт' : meetingStateLabels[meeting.state] || meeting.state)}</span>
+      </button>
+      <div class="meeting-timeline-actions">
+        <button class="btn btn-secondary btn-sm" data-meeting-action="prepare" data-meeting-id="${meeting.id}">Статусы</button>
+        <button class="btn btn-secondary btn-sm" data-meeting-action="history" data-meeting-id="${meeting.id}">История</button>
+      </div>
+    </article>`;
+  }).join('')}</div>`;
+}
+
+function getMeetingCards(items) {
+  const openStates = new Set(['planned', 'date_pending']);
+  if (meetingFilters.state === 'open' || meetingFilters.state === 'planned' || meetingFilters.state === 'date_pending') {
+    return ['directorate', 'did', 'key_projects']
+      .map(kind => items.find(item => item.kind === kind && openStates.has(item.state)))
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function formatMeetingDate(value) {
+  if (!value) return 'Дата не назначена';
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    .format(new Date(`${value}T12:00:00`));
+}
+
+function formatMeetingShortDate(value) {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })
+    .format(new Date(`${value}T12:00:00`))
+    .replace('.', '');
+}
+
+function localDateIso() {
+  const value = new Date();
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
+
+function getUpcomingMeetingDates(kind, meeting) {
+  const fromDate = meeting.scheduled_date || '';
+  return reportingMeetings
+    .filter(item => item.kind === kind && item.state === 'planned' && item.scheduled_date && item.scheduled_date >= fromDate)
+    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
+    .slice(0, 4);
+}
+
+function renderUpcomingMeetingDates(meeting) {
+  const dates = getUpcomingMeetingDates(meeting.kind, meeting);
+  if (!dates.length) {
+    const hint = meeting.kind === 'did'
+      ? 'После назначения первой даты появится график на каждые две недели.'
+      : 'Проектный офис назначает дату каждой ежемесячной встречи.';
+    return `<div class="meeting-upcoming is-empty"><div class="meeting-section-label">Ближайшие даты</div><p>${escapeHtml(hint)}</p></div>`;
+  }
+  return `<div class="meeting-upcoming">
+    <div class="meeting-section-label">Ближайшие даты</div>
+    <div class="meeting-date-list">${dates.map((item, index) => `
+      <span class="meeting-date-chip${item.id === meeting.id ? ' is-current' : ''}">
+        ${index === 0 ? '<i data-lucide="calendar-check-2"></i>' : '<i data-lucide="calendar-days"></i>'}
+        ${escapeHtml(formatMeetingShortDate(item.scheduled_date))}
+      </span>`).join('')}</div>
+  </div>`;
+}
+
+function renderReportingMeetingCard(meeting, historical = false) {
+  const isOpen = meeting.state === 'planned' || meeting.state === 'date_pending';
+  const meta = meetingKindMeta[meeting.kind] || { cadence: '', icon: 'calendar-days', tone: 'blue' };
+  const localToday = localDateIso();
+  const canComplete = meeting.state === 'planned' && Boolean(meeting.scheduled_date) && meeting.scheduled_date <= localToday;
+  const completeness = meeting.total_tasks
+    ? `${meeting.filled_tasks} из ${meeting.total_tasks} задач заполнено`
+    : 'Нет активных задач';
+  const completionPercent = meeting.total_tasks ? Math.round((meeting.filled_tasks / meeting.total_tasks) * 100) : 0;
+  const warning = meeting.teams_without_recipients
+    ? `<div class="meeting-warning">У ${meeting.teams_without_recipients} команд нет активного PO/PL/CL — напоминание некому отправить</div>`
+    : '';
+  const dateActions = canManageReportingMeetings && isOpen && !historical ? `
+    <div class="meeting-date-actions">
+      <button class="meeting-date-action" data-meeting-action="schedule" data-meeting-id="${meeting.id}"><i data-lucide="calendar-cog"></i>${meeting.scheduled_date ? 'Изменить дату' : 'Назначить дату'}</button>
+      <button class="meeting-date-action is-danger" data-meeting-action="cancel" data-meeting-id="${meeting.id}" aria-label="Отменить встречу"><i data-lucide="calendar-x-2"></i><span>Отменить</span></button>
+    </div>` : '';
+  const manageActions = canManageReportingMeetings && isOpen && canComplete ? `
+    <button class="meeting-action is-success" data-meeting-action="complete" data-meeting-id="${meeting.id}"><i data-lucide="circle-check-big"></i>Встреча состоялась</button>` : '';
+  const actions = `${isOpen && canPrepareReportingMeetings ? `<button class="meeting-action is-primary" data-meeting-action="prepare" data-meeting-id="${meeting.id}"><i data-lucide="list-checks"></i>Статусы встречи</button>` : ''}
+    ${manageActions}
+    <button class="meeting-action is-secondary" data-meeting-action="history" data-meeting-id="${meeting.id}"><i data-lucide="history"></i>История</button>`;
+  return `
+    <article class="reporting-meeting-card meeting-tone--${meta.tone}${meeting.is_overdue ? ' is-overdue' : ''}${historical ? ' is-history-card' : ''}" data-meeting-card="${meeting.id}" tabindex="-1">
+      <div class="meeting-card-head">
+        <div class="meeting-card-meta"><span class="meeting-kind-icon"><i data-lucide="${meta.icon}"></i></span><div class="meeting-cadence">${escapeHtml(meta.cadence)}</div></div>
+        <span class="meeting-state meeting-state--${meeting.is_overdue ? 'overdue' : meeting.state}">${escapeHtml(meeting.is_overdue ? 'Просрочена' : meetingStateLabels[meeting.state] || meeting.state)}</span>
+        <h3>${escapeHtml(meeting.title)}</h3>
+      </div>
+      <div class="meeting-primary-date${meeting.scheduled_date ? '' : ' is-pending'}">
+        <div class="meeting-primary-date-head"><span>${historical ? 'Дата встречи' : 'Ближайшая встреча'}</span></div>
+        <div class="meeting-primary-date-main">
+          <strong>${escapeHtml(formatMeetingDate(meeting.scheduled_date))}</strong>
+          ${dateActions}
+        </div>
+        ${meeting.original_scheduled_date && meeting.original_scheduled_date !== meeting.scheduled_date ? `<small>Перенесена с ${escapeHtml(formatMeetingDate(meeting.original_scheduled_date))}</small>` : ''}
+      </div>
+      <div class="meeting-upcoming-slot">${historical ? '' : renderUpcomingMeetingDates(meeting)}</div>
+      <div class="meeting-fill-status${canPrepareReportingMeetings ? ' is-actionable' : ''}" ${canPrepareReportingMeetings ? `data-meeting-action="prepare" data-meeting-id="${meeting.id}" role="button" tabindex="0" aria-label="Открыть подготовку статусов"` : ''}>
+        <div class="meeting-progress"><span>${escapeHtml(completeness)}</span><strong>${completionPercent}%</strong></div>
+        <div class="meeting-progress-track" aria-label="Заполнено ${completionPercent}%"><span style="width:${completionPercent}%"></span></div>
+        <div class="meeting-missing${meeting.missing_tasks ? '' : ' is-complete'}">${meeting.missing_tasks ? `${meeting.missing_tasks} задач ещё не заполнено` : 'Все статусы заполнены'}</div>
+      </div>
+      <div class="meeting-messages">
+        ${meeting.change_reason ? `<div class="meeting-reason"><i data-lucide="info"></i><span>${escapeHtml(meeting.change_reason)}</span></div>` : ''}
+        ${warning}
+      </div>
+      <div class="meeting-actions">${actions}</div>
+    </article>`;
+}
+
+function renderReportingMeetingsPanel() {
+  const panel = document.getElementById('reporting-meetings-panel');
+  if (!panel) return;
+  const requested = new URLSearchParams(window.location.hash.split('?')[1] || '').get('meeting');
+  const requestedMeeting = requested && reportingMeetings.find(item => String(item.id) === requested);
+  if (requestedMeeting && !meetingMatchesFilters(requestedMeeting)) {
+    meetingFilters = { kind: 'all', state: 'all', from: '', to: '' };
+  }
+  const filtered = reportingMeetings.filter(meetingMatchesFilters)
+    .sort((a, b) => String(a.scheduled_date || '9999').localeCompare(String(b.scheduled_date || '9999')));
+  const cards = getMeetingCards(filtered);
+  panel.innerHTML = `
+    <div class="meeting-panel-heading">
+      <div><h2>Календарь отчётных встреч</h2><p>Проектный офис назначает дату и фиксирует факт; PO/PL/CL заполняют статусы в карточках задач.</p></div>
+      ${canManageReportingMeetings ? '<span class="badge badge-info">Управление доступно</span>' : ''}
+    </div>
+    ${renderMeetingToolbar()}
+    ${meetingView === 'timeline' || !cards.length
+      ? renderMeetingTimeline(filtered)
+      : `<div class="reporting-meetings-grid">${cards.map(item => renderReportingMeetingCard(item, false)).join('')}</div>`}`;
+  panel.querySelectorAll('[data-meeting-filter]').forEach(input => {
+    input.value = meetingFilters[input.dataset.meetingFilter];
+  });
+  window.lucide?.createIcons();
+  if (requested) setTimeout(() => {
+    const card = [...panel.querySelectorAll('[data-meeting-card], [data-meeting-jump]')]
+      .find(item => item.dataset.meetingCard === requested || item.dataset.meetingJump === requested);
+    card?.classList.add('is-requested');
+    card?.scrollIntoView({ block: 'center' });
+    card?.focus();
+  }, 0);
+}
+
+async function loadReportingMeetings(app) {
+  const panel = document.getElementById('reporting-meetings-panel');
+  if (!panel) return;
+  try {
+    const data = await app.api.get('/reporting-meetings?include_closed=true');
+    reportingMeetings = Array.isArray(data?.items) ? data.items : [];
+    canManageReportingMeetings = !!data?.can_manage;
+    canPrepareReportingMeetings = !!data?.can_prepare;
+    renderReportingMeetingsPanel();
+  } catch (error) {
+    panel.innerHTML = `<div class="card meeting-panel-error"><p>Не удалось загрузить календарь встреч.</p><button class="btn btn-secondary btn-sm" data-meeting-retry>Повторить</button></div>`;
+  }
+}
+
+function showReportingMeetingForm(meeting, mode) {
+  return new Promise(resolve => {
+    const returnFocus = document.activeElement;
+    document.getElementById('reporting-meeting-modal')?.remove();
+    const isSchedule = mode === 'schedule';
+    const isComplete = mode === 'complete';
+    const hasDate = Boolean(meeting.scheduled_date);
+    const title = isSchedule
+      ? (hasDate ? 'Изменить дату встречи' : 'Назначить дату встречи')
+      : (isComplete ? 'Встреча состоялась' : 'Отменить встречу');
+    const confirmLabel = isSchedule ? 'Сохранить дату' : (isComplete ? 'Подтвердить' : 'Отменить встречу');
+    const titleId = `reporting-meeting-modal-title-${meeting.id}`;
+    const overlay = document.createElement('div');
+    overlay.id = 'reporting-meeting-modal';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal-sm meeting-management-dialog" role="dialog" aria-modal="true" aria-labelledby="${titleId}">
+        <form class="meeting-management-form" novalidate>
+          <div class="modal-header">
+            <div><h3 class="modal-title" id="${titleId}">${escapeHtml(title)}</h3><p class="meeting-dialog-subtitle">${escapeHtml(meeting.title)}</p></div>
+            <button type="button" class="modal-close" data-meeting-dialog-close aria-label="Закрыть диалог">&times;</button>
+          </div>
+          <div class="modal-body">
+            ${isSchedule ? `
+              <div class="form-group">
+                <label class="form-label" for="meeting-scheduled-date">Дата встречи <span class="required">*</span></label>
+                <input class="input" id="meeting-scheduled-date" name="scheduled_date" type="date" min="${localDateIso()}" value="${escapeHtml(meeting.scheduled_date || '')}" required>
+                ${meeting.kind === 'did' && !hasDate ? '<div class="form-hint">Первая дата оперативки ДИД должна приходиться на вторник.</div>' : ''}
+              </div>
+              ${hasDate ? `<div class="form-group">
+                <label class="form-label" for="meeting-change-reason">Причина изменения даты</label>
+                <textarea class="input" id="meeting-change-reason" name="reason" rows="3" placeholder="Укажите причину, если дата изменяется"></textarea>
+                <div class="form-hint">Обязательна при выборе даты, отличной от текущей.</div>
+              </div>` : ''}` : isComplete ? `
+              <div class="meeting-dialog-warning is-success"><i data-lucide="circle-check-big"></i><span>Текущие отчётные статусы будут зафиксированы и станут статусами предыдущей встречи. Заполнено ${meeting.filled_tasks || 0} из ${meeting.total_tasks || 0} задач.</span></div>
+              ${meeting.missing_tasks ? `<label class="meeting-force-confirm"><input type="checkbox" name="force"> Завершить встречу, несмотря на ${meeting.missing_tasks} незаполненных задач</label>` : ''}` : `
+              <div class="meeting-dialog-warning"><i data-lucide="triangle-alert"></i><span>Встреча будет отменена. Заполненные статусы перенесутся в следующую встречу, не заменяя уже подготовленные данные.</span></div>
+              <div class="form-group">
+                <label class="form-label" for="meeting-cancel-reason">Причина отмены <span class="required">*</span></label>
+                <textarea class="input" id="meeting-cancel-reason" name="reason" rows="3" placeholder="Укажите причину отмены" required></textarea>
+              </div>`}
+            <div class="form-error meeting-dialog-error" role="alert" hidden></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-meeting-dialog-close>Закрыть</button>
+            <button type="submit" class="btn ${isSchedule || isComplete ? 'btn-primary' : 'btn-danger'} btn-sm">${escapeHtml(confirmLabel)}</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(overlay);
+    window.lucide?.createIcons();
+
+    const form = overlay.querySelector('form');
+    const error = overlay.querySelector('.meeting-dialog-error');
+    let settled = false;
+    const close = value => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener('keydown', onKeydown);
+      overlay.remove();
+      returnFocus?.focus?.();
+      resolve(value);
+    };
+    const onKeydown = event => {
+      if (event.key === 'Escape') close(null);
+      if (event.key === 'Tab') {
+        const focusable = [...overlay.querySelectorAll('button, input, textarea, select, [tabindex]:not([tabindex="-1"])')]
+          .filter(item => !item.disabled && item.offsetParent !== null);
+        if (!focusable.length) return;
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener('keydown', onKeydown);
+    overlay.querySelectorAll('[data-meeting-dialog-close]').forEach(item => item.addEventListener('click', () => close(null)));
+    overlay.addEventListener('mousedown', event => { if (event.target === overlay) close(null); });
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const values = new FormData(form);
+      const reason = String(values.get('reason') || '').trim();
+      if (isSchedule) {
+        const scheduledDate = String(values.get('scheduled_date') || '');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) {
+          error.textContent = 'Укажите дату встречи.';
+          error.hidden = false;
+          form.elements.scheduled_date?.focus();
+          return;
+        }
+        if (scheduledDate < localDateIso() && scheduledDate !== meeting.scheduled_date) {
+          error.textContent = 'Нельзя назначить встречу на прошедшую дату.';
+          error.hidden = false;
+          form.elements.scheduled_date?.focus();
+          return;
+        }
+        if (hasDate && scheduledDate !== meeting.scheduled_date && !reason) {
+          error.textContent = 'Укажите причину изменения даты.';
+          error.hidden = false;
+          form.elements.reason?.focus();
+          return;
+        }
+        if (meeting.kind === 'did' && !hasDate && new Date(`${scheduledDate}T12:00:00`).getDay() !== 2) {
+          error.textContent = 'Первая дата оперативки ДИД должна быть вторником.';
+          error.hidden = false;
+          form.elements.scheduled_date?.focus();
+          return;
+        }
+        close({ scheduled_date: scheduledDate, reason: reason || null });
+        return;
+      }
+      if (isComplete) {
+        if (meeting.missing_tasks && !form.elements.force?.checked) {
+          error.textContent = 'Подтвердите завершение встречи с неполными статусами.';
+          error.hidden = false;
+          form.elements.force?.focus();
+          return;
+        }
+        close({ force: !!form.elements.force?.checked });
+        return;
+      }
+      if (!reason) {
+        error.textContent = 'Укажите причину отмены встречи.';
+        error.hidden = false;
+        form.elements.reason?.focus();
+        return;
+      }
+      close({ reason });
+    });
+    requestAnimationFrame(() => form.querySelector('input, textarea')?.focus());
+  });
+}
+
+function showMeetingDataDialog({ title, subtitle, body }) {
+  document.getElementById('reporting-meeting-data-modal')?.remove();
+  const returnFocus = document.activeElement;
+  const overlay = document.createElement('div');
+  overlay.id = 'reporting-meeting-data-modal';
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal meeting-data-dialog" role="dialog" aria-modal="true" aria-labelledby="meeting-data-title">
+    <div class="modal-header"><div><h3 class="modal-title" id="meeting-data-title">${escapeHtml(title)}</h3><p class="meeting-dialog-subtitle">${escapeHtml(subtitle || '')}</p></div>
+    <button class="modal-close" type="button" data-meeting-data-close aria-label="Закрыть диалог">&times;</button></div>
+    <div class="modal-body">${body}</div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" type="button" data-meeting-data-close>Закрыть</button></div>
+  </div>`;
+  const close = () => { document.removeEventListener('keydown', keydown); overlay.remove(); returnFocus?.focus?.(); };
+  const keydown = event => {
+    if (event.key === 'Escape') close();
+    if (event.key === 'Tab') {
+      const items = [...overlay.querySelectorAll('button, textarea, input, select')].filter(item => !item.disabled && item.offsetParent !== null);
+      if (!items.length) return;
+      if (event.shiftKey && document.activeElement === items[0]) { event.preventDefault(); items.at(-1).focus(); }
+      else if (!event.shiftKey && document.activeElement === items.at(-1)) { event.preventDefault(); items[0].focus(); }
+    }
+  };
+  overlay.querySelectorAll('[data-meeting-data-close]').forEach(button => button.addEventListener('click', close));
+  overlay.addEventListener('mousedown', event => { if (event.target === overlay) close(); });
+  document.addEventListener('keydown', keydown);
+  document.body.appendChild(overlay);
+  overlay.querySelector('button, textarea, input')?.focus();
+  window.lucide?.createIcons();
+  return overlay;
+}
+
+async function showReportingMeetingHistory(meeting, app) {
+  const labels = { scheduled: 'Дата назначена', rescheduled: 'Дата перенесена', completed: 'Встреча состоялась', cancelled: 'Встреча отменена' };
+  const renderItems = items => items?.length ? `<div class="meeting-history-list">${items.map(item => `
+      <article><div><strong>${escapeHtml(labels[item.action] || item.action)}</strong><time>${escapeHtml(item.changed_at ? new Date(item.changed_at).toLocaleString('ru-RU') : '—')}</time></div>
+      <p>${item.old_date && item.new_date && item.old_date !== item.new_date ? `${escapeHtml(formatMeetingDate(item.old_date))} → ${escapeHtml(formatMeetingDate(item.new_date))}` : escapeHtml(formatMeetingDate(item.new_date || item.old_date))}</p>
+      ${item.reason ? `<blockquote>${escapeHtml(item.reason)}</blockquote>` : ''}<small>${escapeHtml(item.changed_by_name || 'Система')}</small></article>`).join('')}</div>`
+      : '<div class="empty-state">Изменений встречи пока нет</div>';
+  if (Array.isArray(meeting.history)) {
+    showMeetingDataDialog({ title: 'История встречи', subtitle: meeting.title, body: renderItems(meeting.history) });
+    return;
+  }
+  const overlay = showMeetingDataDialog({ title: 'История встречи', subtitle: meeting.title, body: '<div class="card-reporting-loading">Загрузка истории…</div>' });
+  try {
+    const data = await app.api.get(`/reporting-meetings/${meeting.id}/history`);
+    const body = overlay.querySelector('.modal-body');
+    if (body) body.innerHTML = renderItems(data.items || []);
+  } catch (error) {
+    const body = overlay.querySelector('.modal-body');
+    if (body) body.innerHTML = `<div class="meeting-panel-error"><p>Не удалось загрузить историю: ${escapeHtml(error?.message || 'ошибка сервера')}</p><p>Убедитесь, что backend перезапущен после обновления.</p></div>`;
+  }
+}
+
+async function showReportingMeetingPreparation(meeting, app) {
+  const overlay = showMeetingDataDialog({
+    title: meeting.state === 'held' ? 'Зафиксированный срез статусов' : meeting.state === 'cancelled' ? 'Статусы отменённой встречи' : 'Статусы предстоящей встречи',
+    subtitle: `${meeting.title} · ${formatMeetingDate(meeting.scheduled_date)}`,
+    body: '<div class="card-reporting-loading">Загрузка статусов встречи…</div>',
+  });
+  try {
+    const data = await app.api.get(`/reporting-meetings/${meeting.id}/preparation`);
+    const rows = data.items || [];
+    const body = `<div class="meeting-preparation-summary"><strong>${rows.filter(item => item.filled).length} из ${rows.length}</strong><span>задач в доступной области заполнено</span>
+      <label><input type="checkbox" data-preparation-missing> Только незаполненные</label></div>
+      <div class="meeting-preparation-list">${rows.map(item => `<article data-preparation-row data-filled="${item.filled}">
+        <div class="meeting-preparation-task"><button type="button" data-open-preparation-task="${item.task_id}">${escapeHtml(item.public_id)}</button><div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.team_name || 'Без команды')}</small></div></div>
+        ${item.can_edit ? `<textarea class="input" rows="3" maxlength="5000" data-preparation-text placeholder="Опишите прогресс, риски и следующие шаги">${escapeHtml(item.text || '')}</textarea>
+          ${meeting.kind === 'did' ? `<label class="meeting-demo-check"><input type="checkbox" data-preparation-demo ${item.did_demo ? 'checked' : ''}> Демо для ДИД</label>` : ''}
+          <button class="btn btn-primary btn-sm" type="button" data-save-preparation data-task-id="${item.task_id}" data-version="${item.version}">Сохранить</button>`
+          : `<p class="meeting-preparation-text">${item.text ? escapeHtml(item.text) : 'Статус не заполнен'}</p>`}
+        <div class="meeting-status-version"><span>Версия ${item.version}</span>${item.updated_at ? `<small>${escapeHtml(new Date(item.updated_at).toLocaleString('ru-RU'))}${item.updated_by_name ? ` · ${escapeHtml(item.updated_by_name)}` : ''}</small>` : ''}</div>
+        ${item.revisions?.length ? `<details class="meeting-status-revisions"><summary>История изменений · ${item.revisions.length}</summary>${item.revisions.map(revision => `<div><small>${escapeHtml(revision.changed_at ? new Date(revision.changed_at).toLocaleString('ru-RU') : '—')} · ${escapeHtml(revision.changed_by_name || 'Система')}</small><p>${escapeHtml(revision.new_text || 'Статус очищен')}</p></div>`).join('')}</details>` : ''}
+      </article>`).join('')}</div>`;
+    const modalBody = overlay.querySelector('.modal-body');
+    if (modalBody) modalBody.innerHTML = body;
+    overlay.querySelector('[data-preparation-missing]')?.addEventListener('change', event => {
+      overlay.querySelectorAll('[data-preparation-row]').forEach(row => { row.hidden = event.target.checked && row.dataset.filled === 'true'; });
+    });
+    overlay.addEventListener('click', async event => {
+      const taskButton = event.target.closest('[data-open-preparation-task]');
+      if (taskButton) document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: Number(taskButton.dataset.openPreparationTask) } }));
+      const save = event.target.closest('[data-save-preparation]');
+      if (!save) return;
+      const row = save.closest('[data-preparation-row]');
+      save.disabled = true;
+      try {
+        const result = await app.api.put(`/tasks/${save.dataset.taskId}/reporting-statuses/${meeting.id}`, {
+          text: row.querySelector('[data-preparation-text]')?.value?.trim() || null,
+          did_demo: !!row.querySelector('[data-preparation-demo]')?.checked,
+          version: Number(save.dataset.version || 0),
+        });
+        save.dataset.version = result.version;
+        row.dataset.filled = String(!!result.text);
+        window.toast?.('Отчётный статус сохранён', 'success');
+        await loadReportingMeetings(app);
+      } catch (error) {
+        if (error?.status === 409) await showReportingMeetingPreparation(meeting, app);
+        window.toast?.(error?.status === 409 ? 'Данные обновлены другим пользователем. Загружена актуальная версия.' : 'Не удалось сохранить статус', 'error');
+      } finally { save.disabled = false; }
+    });
+  } catch (error) {
+    const modalBody = overlay.querySelector('.modal-body');
+    const explanation = error?.status === 403
+      ? 'Backend не подтвердил полный административный доступ текущего пользователя.'
+      : error?.status === 404
+        ? 'Запущенный backend не содержит endpoint просмотра статусов. Его необходимо перезапустить после обновления.'
+        : 'Проверьте состояние backend и журнал приложения.';
+    if (modalBody) modalBody.innerHTML = `<div class="meeting-panel-error" role="alert">
+      <h4>Не удалось загрузить статусы встречи</h4>
+      <p>${escapeHtml(error?.message || 'Ошибка сервера')} ${error?.status ? `(HTTP ${error.status})` : ''}</p>
+      <p>${escapeHtml(explanation)}</p>
+      <button class="btn btn-secondary btn-sm" type="button" data-preparation-retry>Повторить</button>
+    </div>`;
+    modalBody?.querySelector('[data-preparation-retry]')?.addEventListener('click', () => showReportingMeetingPreparation(meeting, app));
+  }
+}
+
+async function handleReportingMeetingAction(button, app) {
+  const meeting = reportingMeetings.find(item => Number(item.id) === Number(button.dataset.meetingId));
+  if (!meeting) return;
+  const action = button.dataset.meetingAction;
+  if (action === 'history') return showReportingMeetingHistory(meeting, app);
+  if (action === 'prepare') return showReportingMeetingPreparation(meeting, app);
+  let payload = { version: meeting.version || 0 };
+  if (action === 'schedule') {
+    const values = await showReportingMeetingForm(meeting, 'schedule');
+    if (!values) return;
+    payload = { ...payload, ...values };
+  } else if (action === 'complete') {
+    const confirmed = await showReportingMeetingForm(meeting, 'complete');
+    if (!confirmed) return;
+    payload = { ...payload, ...confirmed };
+  } else if (action === 'cancel') {
+    const values = await showReportingMeetingForm(meeting, 'cancel');
+    if (!values) return;
+    payload = { ...payload, ...values };
+  }
+  button.disabled = true;
+  try {
+    await app.api.post(`/reporting-meetings/${meeting.id}/${action}`, payload);
+    window.toast?.(action === 'complete' ? 'Факт встречи зафиксирован' : action === 'cancel' ? 'Встреча отменена' : 'Дата встречи сохранена', 'success');
+    await loadReportingMeetings(app);
+  } catch (error) {
+    if (error?.status === 409) await loadReportingMeetings(app);
+    window.toast?.(error?.status === 409 ? 'Встреча была изменена другим пользователем. Показаны актуальные данные.' : error?.message || 'Не удалось обновить встречу', 'error');
+    button.disabled = false;
+  }
+}
 
 function resolveReportFields(config) {
   if (config.isDb && !config.managedFields && cachedDbReport && cachedDbReport.fields) {
@@ -179,7 +704,7 @@ function renderProgress(progress, task = null) {
 
 function renderCell(task, field) {
   switch (field) {
-    case 'id': return `<span class="font-mono text-muted">#${task.id}</span>`;
+    case 'id': return `<span class="font-mono text-muted">${formatTaskPublicId(task)}</span>`;
     case 'title': return `<strong>${escapeHtml(task.title)}</strong>`;
     case 'status': return renderStatus(task.status_name || task.status);
     case 'status_name': return renderStatus(task.status_name || task.status);
@@ -479,8 +1004,8 @@ function renderReportTable(list, fields) {
     const actions = canMakePipDecision ? `
       <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);white-space:nowrap">
         <div style="display:flex;gap:6px">
-          <button class="btn btn-danger btn-xs pip-decision-btn" data-task-id="${task.id}" data-decision="reject">Отклонить</button>
-          <button class="btn btn-primary btn-xs pip-decision-btn" data-task-id="${task.id}" data-decision="accept">В работу</button>
+          <button class="btn btn-danger btn-xs pip-decision-btn" data-task-id="${task.id}" data-task-version="${task.version ?? 0}" data-decision="reject">Отклонить</button>
+          <button class="btn btn-primary btn-xs pip-decision-btn" data-task-id="${task.id}" data-task-version="${task.version ?? 0}" data-decision="accept">В работу</button>
         </div>
       </td>` : '';
     return `<tr>${cells}${actions}</tr>`;
@@ -718,7 +1243,7 @@ function formatCount(n) {
 }
 
 export function renderReports(app) {
-  const standardKeys = ['directorate', 'did-operational', 'pip', 'did-backlog', 'progress'];
+  const standardKeys = ['directorate', 'did-operational', 'pip', 'did-backlog', 'progress', 'pd-estimates'];
   const customKeys = ['reg-directors'];
 
   function renderCard(key, cfg) {
@@ -777,6 +1302,56 @@ export function renderReports(app) {
       </div>
     </div>
     </div>`;
+}
+
+export function renderReportingMeetingsManagement() {
+  return `<div class="page-header animate-fade-in">
+    <h1>Управление отчётными встречами</h1>
+    <p>Расписание, готовность статусов и фиксация версий после проведения встречи</p>
+  </div>
+  <section class="meeting-version-flow" aria-label="Жизненный цикл статусов">
+    <div><span>1</span><strong>Предстоящая встреча</strong><small>Команды готовят текущие статусы</small></div>
+    <i data-lucide="arrow-right"></i>
+    <div><span>2</span><strong>Фиксация факта</strong><small>Проектный офис подтверждает проведение</small></div>
+    <i data-lucide="arrow-right"></i>
+    <div><span>3</span><strong>Историческая версия</strong><small>Статусы становятся неизменяемым срезом</small></div>
+  </section>
+  <section id="reporting-meetings-panel" class="reporting-meetings-panel"><div class="card">Загрузка отчётных встреч…</div></section>`;
+}
+
+export async function initReportingMeetingsManagement(app) {
+  await loadReportingMeetings(app);
+  const panel = document.getElementById('reporting-meetings-panel');
+  panel?.addEventListener('click', event => {
+      const button = event.target.closest('[data-meeting-action]');
+      if (button) handleReportingMeetingAction(button, app);
+      const view = event.target.closest('[data-meeting-view]');
+      if (view) { meetingView = view.dataset.meetingView; renderReportingMeetingsPanel(); }
+      const reset = event.target.closest('[data-meeting-reset]');
+      if (reset) { meetingFilters = { kind: 'all', state: 'open', from: '', to: '' }; renderReportingMeetingsPanel(); }
+      const retry = event.target.closest('[data-meeting-retry]');
+      if (retry) loadReportingMeetings(app);
+      if (event.target.closest('[data-meeting-export]')) exportReportingMeetings();
+      const jump = event.target.closest('[data-meeting-jump]');
+      if (jump) {
+        meetingView = 'cards';
+        meetingFilters.state = 'all';
+        renderReportingMeetingsPanel();
+        requestAnimationFrame(() => document.querySelector(`[data-meeting-card="${jump.dataset.meetingJump}"]`)?.focus?.());
+      }
+  });
+  panel?.addEventListener('change', event => {
+      const input = event.target.closest('[data-meeting-filter]');
+      if (!input) return;
+      meetingFilters[input.dataset.meetingFilter] = input.value;
+      renderReportingMeetingsPanel();
+  });
+  panel?.addEventListener('keydown', event => {
+      if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.meeting-fill-status.is-actionable')) {
+        event.preventDefault();
+        handleReportingMeetingAction(event.target, app);
+      }
+  });
 }
 
 export async function initReports(app) {
@@ -1233,12 +1808,13 @@ export function initReportPage(app) {
     if (decisionButton) {
       const decision = decisionButton.dataset.decision;
       const taskId = Number(decisionButton.dataset.taskId);
+      const version = Number(decisionButton.dataset.taskVersion);
       if (!taskId || !['reject', 'accept'].includes(decision)) return;
       if (decision === 'reject' && !window.confirm('Отклонить эту задачу?')) return;
 
       const rowButtons = decisionButton.closest('tr')?.querySelectorAll('.pip-decision-btn') || [];
       rowButtons.forEach(btn => { btn.disabled = true; });
-      app.api.put(`/tasks/${taskId}/pip-decision`, { decision })
+      app.api.put(`/tasks/${taskId}/pip-decision`, { decision, version })
         .then(() => {
           window.toast?.(decision === 'reject' ? 'Задача отклонена' : 'Задача принята в работу', 'success');
           return loadReportData(app);

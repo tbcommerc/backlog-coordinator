@@ -1,6 +1,8 @@
 import { safeExternalUrl } from '../urlUtils.js';
 import { renderAttachments } from './taskAttachments.js';
 import { renderComments, renderMentionOptions } from './taskComments.js';
+import { formatTaskPublicId } from '../taskPublicId.js';
+import { calculateCv, calculateTaskCv, cvZone } from '../taskMetrics.js';
 
 // === DMB Backlog — Подробная карточка задачи (Master-Detail) ===
 // === Референс: Карточка задачи - референс.html ===
@@ -29,7 +31,9 @@ let _createTaskRequestId = null;
 let _statusProgressSuggestionPending = false;
 let _createDuplicateOverrideSignature = null;
 let _cardSaveRequestId = null;
+let _cardQuickSaveTimer = null;
 let _taskNetworkStateBound = false;
+let _taskRealtimeBound = false;
 
 function newTaskRequestId() {
   return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -49,7 +53,7 @@ function updateTaskNetworkState() {
   if (document.getElementById('create-task-overlay')) updateCreateFormReadiness();
   const cardSaveButton = document.getElementById('saveBtn');
   if (cardSaveButton) {
-    cardSaveButton.disabled = offline || cardState.saving;
+    cardSaveButton.disabled = offline || cardState.saving || (cardState.editing && !cardState.dirty);
     cardSaveButton.setAttribute('aria-disabled', cardSaveButton.disabled ? 'true' : 'false');
   }
 }
@@ -70,7 +74,7 @@ function setTaskModalDocumentTitle(task) {
   }
   const rawTitle = String(task.title || task.name || 'Без названия').trim() || 'Без названия';
   const compactTitle = rawTitle.length > 70 ? `${rawTitle.slice(0, 67)}…` : rawTitle;
-  document.title = `#${task.id} · ${compactTitle} — ${_taskModalBaseDocumentTitle}`;
+  document.title = `${formatTaskPublicId(task)} · ${compactTitle} — ${_taskModalBaseDocumentTitle}`;
 }
 
 function restoreTaskModalDocumentTitle() {
@@ -91,6 +95,62 @@ function ensureTaskBeforeUnloadGuard() {
     event.returnValue = '';
   });
   _taskBeforeUnloadBound = true;
+}
+
+function renderExternalTaskChangeBanner(detail) {
+  const body = document.getElementById('td-tiles-container');
+  if (!body || !currentTask?.id) return;
+  let banner = document.getElementById('td-external-update-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'td-external-update-banner';
+    banner.className = 'alert alert-warning';
+    banner.setAttribute('role', 'status');
+    body.prepend(banner);
+  }
+  const hasDraft = modalMode === 'edit' || cardState.dirty;
+  banner.innerHTML = hasDraft
+    ? '<strong>Задача изменена другим пользователем.</strong> Ваш черновик сохранён. При сохранении откроется сравнение версий — не перезагружайте карточку.'
+    : '<strong>Задача изменилась.</strong> <button type="button" class="btn btn-sm btn-secondary" id="td-reload-external-task">Загрузить актуальную версию</button>';
+  if (!hasDraft) {
+    document.getElementById('td-reload-external-task')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        const fresh = await window.app.api.get(`/tasks/${currentTask.id}`);
+        stopLockPolling();
+        stopViewerPolling();
+        unregisterViewer(currentTask.id);
+        deactivateTaskModalFocusTrap();
+        document.getElementById('task-detail-overlay')?.remove();
+        currentTask = null;
+        currentModal = null;
+        openTaskModal(fresh);
+      } catch (error) {
+        window.toast?.(window.formatErrorMessage?.(error) || 'Не удалось обновить карточку', 'error');
+        button.disabled = false;
+      }
+    });
+  }
+}
+
+function ensureTaskRealtimeEvents() {
+  if (_taskRealtimeBound) return;
+  document.addEventListener('dmb:task-changed', event => {
+    const detail = event.detail || {};
+    const aggregate = detail.aggregate || {};
+    if (!currentTask?.id || Number(aggregate.id) !== Number(currentTask.id)) return;
+    if (detail.type === 'task.activity.changed') {
+      const activity = detail.payload?.activity;
+      if (activity === 'comment') loadComments(currentTask.id, window.app);
+      if (activity === 'attachment') loadAttachments(currentTask.id, window.app);
+      return;
+    }
+    const incomingVersion = Number(aggregate.version);
+    if (Number.isFinite(incomingVersion) && incomingVersion <= Number(currentTask.version || 0)) return;
+    renderExternalTaskChangeBanner(detail);
+  });
+  _taskRealtimeBound = true;
 }
 
 function ensureTaskExternalLinkGuard() {
@@ -315,7 +375,7 @@ function showCreateDuplicateWarning(tasks) {
       link.target = '_blank';
       link.rel = 'noopener';
       const id = document.createElement('b');
-      id.textContent = `#${task.id}`;
+      id.textContent = formatTaskPublicId(task);
       const name = document.createElement('span');
       name.textContent = task.title || 'Без названия';
       link.append(id, name);
@@ -438,13 +498,30 @@ function attachDictionarySearch(root, configs) {
     if (!select || select.closest('.dict-search-control')) return;
     const wrapper = document.createElement('div');
     wrapper.className = 'dict-search-control';
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'dict-combobox-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-label', label);
+    const panel = document.createElement('div');
+    panel.className = 'dict-search-popover';
+    panel.hidden = true;
     const search = document.createElement('input');
     search.type = 'search';
     search.className = 'dict-search-input';
     search.placeholder = 'Поиск…';
     search.setAttribute('aria-label', `Поиск: ${label}`);
+    const optionsList = document.createElement('div');
+    optionsList.className = 'dict-search-options';
+    optionsList.setAttribute('role', 'listbox');
     select.parentNode.insertBefore(wrapper, select);
-    wrapper.append(search, select);
+    wrapper.append(select, trigger, panel);
+    panel.append(search);
+    select.classList.add('dict-native-select');
+    select.hidden = true;
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
 
     const originalOptions = Array.from(select.options).map(option => ({
       value: option.value,
@@ -458,8 +535,24 @@ function attachDictionarySearch(root, configs) {
       scopeButton = document.createElement('button');
       scopeButton.type = 'button';
       scopeButton.className = 'dict-search-scope';
-      wrapper.prepend(scopeButton);
+      panel.append(scopeButton);
     }
+    panel.append(optionsList);
+    const selectedText = () => originalOptions.find(option => option.value === select.value)?.text || select.value || 'Не выбрано';
+    const updateTrigger = () => {
+      trigger.innerHTML = '<span>' + escapeHtml(selectedText()) + '</span><span class="dict-combobox-chevron" aria-hidden="true">⌄</span>';
+    };
+    const closePanel = () => {
+      panel.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+      search.value = '';
+    };
+    const openPanel = () => {
+      panel.hidden = false;
+      trigger.setAttribute('aria-expanded', 'true');
+      renderOptions('');
+      requestAnimationFrame(() => search.focus());
+    };
     const renderOptions = query => {
       const selectedValue = select.value;
       const normalized = String(query || '').trim().toLocaleLowerCase('ru-RU');
@@ -472,9 +565,10 @@ function attachDictionarySearch(root, configs) {
         if (!showAll || normalized) return 0;
         return Number(teamValues.has(b.value)) - Number(teamValues.has(a.value));
       });
-      select.innerHTML = visible.map(option => `<option value="${escapeHtml(option.value)}"${option.disabled ? ' disabled' : ''}>${escapeHtml(option.text)}</option>`).join('');
-      if (visible.some(option => option.value === selectedValue)) select.value = selectedValue;
-      if (scopeButton) scopeButton.textContent = showAll ? 'Только команда' : `Показать всех · ${originalOptions.filter(option => option.value !== '').length}`;
+      optionsList.innerHTML = visible.length
+        ? visible.map(option => '<button type="button" class="dict-search-option' + (option.value === selectedValue ? ' is-selected' : '') + '" role="option" aria-selected="' + (option.value === selectedValue ? 'true' : 'false') + '" data-value="' + escapeHtml(option.value) + '"' + (option.disabled ? ' disabled' : '') + '>' + escapeHtml(option.text) + '</button>').join('')
+        : '<div class="dict-search-empty">Ничего не найдено</div>';
+      if (scopeButton) scopeButton.textContent = showAll ? 'Только моя команда' : `Показать всех · ${originalOptions.filter(option => option.value !== '').length}`;
     };
     select._dictionarySearchRefresh = values => {
       teamValues = new Set((values || []).map(String));
@@ -484,13 +578,47 @@ function attachDictionarySearch(root, configs) {
     };
     search.addEventListener('input', () => renderOptions(search.value));
     select.addEventListener('change', () => {
-      search.value = '';
-      renderOptions('');
+      updateTrigger();
+    });
+    trigger.addEventListener('click', () => panel.hidden ? openPanel() : closePanel());
+    trigger.addEventListener('keydown', event => {
+      if (!['ArrowDown', 'Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      openPanel();
+    });
+    optionsList.addEventListener('click', event => {
+      const option = event.target.closest('.dict-search-option');
+      if (!option || option.disabled) return;
+      select.value = option.dataset.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      closePanel();
+      trigger.focus();
+    });
+    search.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); closePanel(); trigger.focus(); return; }
+      if (event.key !== 'ArrowDown') return;
+      event.preventDefault();
+      optionsList.querySelector('.dict-search-option:not([disabled])')?.focus();
+    });
+    optionsList.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); closePanel(); trigger.focus(); return; }
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      const options = Array.from(optionsList.querySelectorAll('.dict-search-option:not([disabled])'));
+      const index = options.indexOf(document.activeElement);
+      const next = event.key === 'ArrowDown' ? Math.min(options.length - 1, index + 1) : Math.max(0, index - 1);
+      event.preventDefault();
+      options[next]?.focus();
     });
     scopeButton?.addEventListener('click', () => {
       showAll = !showAll;
       renderOptions(search.value);
     });
+    const onDocumentPointer = event => {
+      if (!wrapper.isConnected) { document.removeEventListener('pointerdown', onDocumentPointer, true); return; }
+      if (!wrapper.contains(event.target)) closePanel();
+    };
+    document.addEventListener('pointerdown', onDocumentPointer, true);
+    updateTrigger();
     renderOptions('');
   });
 }
@@ -599,6 +727,7 @@ let _mentionedUserIds = [];
 let _commentTaskId = null;
 let _mentionSelectedIdx = -1;
 let _mentionQueryStart = -1;
+let _pendingCommentSubmission = null;
 
 // === ATTACHMENTS STATE ===
 let _attachmentsCache = [];
@@ -743,8 +872,17 @@ async function releaseLock(taskId) {
 function startLockPolling(taskId) {
   stopLockPolling();
   _lockPollTimer = setInterval(async () => {
-    if (modalMode !== 'view' || !currentTask?.id) return;
-    const status = await fetchLockStatus(taskId);
+    if (!currentTask?.id || currentTask.id !== taskId) return;
+    // POST is both an atomic acquire and a lease heartbeat for the current
+    // editor. View mode remains read-only and only observes lease state.
+    const status = modalMode === 'edit'
+      ? await acquireLock(taskId)
+      : await fetchLockStatus(taskId);
+    if (status?.error) {
+      _lockInfo = await fetchLockStatus(taskId);
+      renderLockBanner();
+      return;
+    }
     if (status && !status.error) {
       _lockInfo = status;
       renderLockBanner();
@@ -792,6 +930,9 @@ function startViewerPolling(taskId) {
       stopViewerPolling();
       return;
     }
+    // Presence is a renewable lease as well: keep our own last_seen_at alive
+    // while the card remains open, then read the other active viewers.
+    await registerViewer(taskId);
     _currentViewers = await fetchViewers(taskId);
     renderViewerBanner();
   }, VIEWER_POLL_INTERVAL);
@@ -1193,10 +1334,10 @@ function renderBKpiRow(task) {
   const statusName = task.status_name || task.status || '—';
   const deadlineName = task.deadline_name || task.deadline || '—';
   const progress = task.progress || 0;
-  const cv = task.financial_effect && task.effort_rub && task.effort_rub > 0
-    ? (task.financial_effect / task.effort_rub).toFixed(2) : '—';
-  const cvNum = parseFloat(cv);
-  const cvCls = cvNum >= 1.5 ? 'b-cv-good' : cvNum < 1 ? 'b-cv-bad' : cvNum ? 'b-cv-mid' : 'b-cv-na';
+  const cvValue = calculateTaskCv(task);
+  const cv = cvValue == null ? 'Нет данных' : cvValue.toFixed(2);
+  const zone = cvZone(cvValue);
+  const cvCls = zone === 'good' ? 'b-cv-good' : zone === 'warning' ? 'b-cv-mid' : 'b-cv-bad';
 
   return `<div class="b-kpi-row">
     <div class="b-kpi-tile">
@@ -1249,7 +1390,7 @@ function renderBKpiRow(task) {
         </div>
       </div>
       <div class="b-kpi-sub">
-        ${task.financial_effect != null ? `<span>Эффект: ${metricFormat(task.financial_effect)} ₽</span>` : ''}
+        ${task.financial_effect != null ? `<span>Эффект: ${metricFormat(task.financial_effect)} млн ₽</span>` : ''}
         ${task.effort_rub != null ? `<span>Затраты: ${metricFormat(task.effort_rub)} ₽</span>` : ''}
       </div>
     </div>
@@ -1264,9 +1405,10 @@ function renderOverviewDashboard(task) {
   const statusName = t.status_name || t.status;
   const priorityName = t.priority_name || t.priority;
   const progress = t.progress || 0;
-  const cv = t.financial_effect && t.effort_rub && t.effort_rub > 0
-    ? (t.financial_effect / t.effort_rub).toFixed(2) : '—';
-  const cvNum = parseFloat(cv);
+  const cvValue = calculateTaskCv(t);
+  const cv = cvValue == null ? 'Нет данных' : cvValue.toFixed(2);
+  const cvDisplayZone = cvZone(cvValue);
+  const cvDisplayClass = cvDisplayZone === 'good' ? 'b-cv-good' : cvDisplayZone === 'warning' ? 'b-cv-mid' : 'b-cv-bad';
   const tags = t.tags ? (Array.isArray(t.tags) ? t.tags : String(t.tags).split(',').map(x => x.trim()).filter(Boolean)) : [];
   const ownerName = t.owner_name || t.owner || '—';
   const teamName = t.team_name || t.team || '—';
@@ -1379,7 +1521,7 @@ function renderOverviewDashboard(task) {
     </div>
     <div class="b-fin-grid">
       <div class="b-fin-cell">
-        <div class="b-fin-value">${t.financial_effect != null ? metricFormat(t.financial_effect) + ' <span class="vs">₽</span>' : '—'}</div>
+        <div class="b-fin-value">${t.financial_effect != null ? metricFormat(t.financial_effect) + ' <span class="vs">млн ₽</span>' : '—'}</div>
         <span class="b-fin-sub">Финансовый эффект</span>
       </div>
       <div class="b-fin-cell">
@@ -1387,7 +1529,7 @@ function renderOverviewDashboard(task) {
         <span class="b-fin-sub">Трудозатраты</span>
       </div>
       <div class="b-fin-cell">
-        <span class="b-cv lg ${cvNum >= 1.5 ? 'b-cv-good' : cvNum < 1 ? 'b-cv-bad' : cvNum ? 'b-cv-mid' : 'b-cv-na'}">
+        <span class="b-cv lg ${cvDisplayClass}">
           <b>C / V</b> ${cv}
         </span>
         <span class="b-fin-sub">Соотношение</span>
@@ -1535,7 +1677,7 @@ function renderTaskDetailModalLegacy(task, app) {
         <div class="b-head">
           <div class="b-head-left">
             <div class="b-head-top">
-              <span class="b-head-id">${hasTaskId ? '#' + t.id : 'Новая задача'}</span>
+              <span class="b-head-id">${hasTaskId ? formatTaskPublicId(t) : 'Новая задача'}</span>
               ${t.channel_name || t.source_channel ? `<span class="b-head-channel">${escapeHtml(t.channel_name || t.source_channel)}</span>` : ''}
               ${t.date_received ? `<span class="b-head-created">${escapeHtml(t.date_received)}</span>` : ''}
             </div>
@@ -1730,7 +1872,8 @@ window.__deleteAttachment = async function(taskId, attachmentId) {
   const api = window.app?.api;
   if (!api) return;
   try {
-    await api.delete(`/tasks/${taskId}/attachments/${attachmentId}`);
+    const requestId = newTaskRequestId();
+    await api.delete(`/tasks/${taskId}/attachments/${attachmentId}?client_request_id=${encodeURIComponent(requestId)}`);
     window.toast?.('Файл удалён', 'success');
     await loadAttachments(taskId, window.app);
   } catch (e) {
@@ -1760,6 +1903,7 @@ async function saveTaskLinks(taskId, app) {
   if (!mockupsInput || !jiraInput) return;
 
   const payload = {
+    version: currentTask?.version ?? 0,
     link_mockups: mockupsInput.value.trim() || null,
     link_jira: jiraInput.value.trim() || null,
   };
@@ -1768,11 +1912,12 @@ async function saveTaskLinks(taskId, app) {
   if (btn) { btn.disabled = true; btn.textContent = 'Сохранение...'; }
 
   try {
-    await api.put(`/tasks/${taskId}/links`, payload);
+    const updatedTask = await api.put(`/tasks/${taskId}/links`, payload);
     window.toast?.('Ссылки сохранены', 'success');
     if (currentTask) {
       currentTask.link_mockups = payload.link_mockups;
       currentTask.link_jira = payload.link_jira;
+      if (updatedTask?.version !== undefined) currentTask.version = updatedTask.version;
     }
   } catch (e) {
     window.toast?.('Ошибка: ' + (e.message || 'не удалось сохранить'), 'error');
@@ -1784,8 +1929,9 @@ async function saveTaskLinks(taskId, app) {
 async function uploadFile(taskId, file, app) {
   const api = app?.api || window.app?.api;
   if (!api) return;
+  const clientRequestId = newTaskRequestId();
   try {
-    await api.upload(`/tasks/${taskId}/attachments`, file);
+    await api.upload(`/tasks/${taskId}/attachments`, file, { client_request_id: clientRequestId });
     window.toast?.(`Файл "${file.name}" загружен`, 'success');
     await loadAttachments(taskId, app);
   } catch (e) {
@@ -2453,6 +2599,7 @@ export function closeTaskDetailModal() {
 //  OPEN TASK MODAL (главная точка входа)
 // ============================================================
 export function openTaskModal(task = null) {
+  ensureTaskRealtimeEvents();
   rememberTaskModalReturnFocus(task?.id);
   if (task?.id) window.app?.router?.pushTaskRoute?.(task.id);
   currentTask = task;
@@ -2494,12 +2641,12 @@ export function renderTaskCard(task) {
   const teamName = task.team_name || '—';
   const deadlineName = task.deadline_name || task.deadline || '—';
   const ownerName = task.owner_name || task.owner || '—';
-  const safeId = escapeHtml(String(task.id));
+  const safeId = escapeHtml(formatTaskPublicId(task));
   const safePrio = escapeHtml(prio);
   return `
     <div class="task-card" data-id="${safeId}">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-        <span class="font-mono text-muted" style="font-size:11px;flex-shrink:0;">#${safeId}</span>
+        <span class="font-mono text-muted" style="font-size:11px;flex-shrink:0;">${safeId}</span>
         <div style="display:flex;gap:4px;flex-shrink:0;">
           <span class="badge ${prioClass}" style="font-size:10px;">${safePrio}</span>
         </div>
@@ -3327,7 +3474,13 @@ async function submitComment(taskId, app) {
     if (_replyingTo) {
       payload.parent_id = _replyingTo.id;
     }
+    const fingerprint = JSON.stringify(payload);
+    if (!_pendingCommentSubmission || _pendingCommentSubmission.fingerprint !== fingerprint) {
+      _pendingCommentSubmission = { fingerprint, id: newTaskRequestId() };
+    }
+    payload.client_request_id = _pendingCommentSubmission.id;
     await api.post(`/tasks/${taskId}/comments`, payload);
+    _pendingCommentSubmission = null;
     textarea.value = '';
     _mentionedUserIds = [];
     cancelReply();
@@ -3440,6 +3593,49 @@ export function showConfirmModal(message, title = 'Подтверждение', 
   });
 }
 
+function showEditExitModal() {
+  return new Promise(resolve => {
+    document.getElementById('confirm-modal-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'confirm-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '1200';
+    overlay.innerHTML = `
+      <div role="dialog" aria-modal="true" aria-labelledby="edit-exit-title" style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:620px;width:90%;position:relative;">
+        <h3 id="edit-exit-title" style="margin:0 0 16px 0;font-size:16px;color:var(--text-primary);">Отменить изменения?</h3>
+        <p style="margin:0 0 20px 0;font-size:14px;color:var(--text-secondary);">Все несохранённые изменения будут потеряны. Это действие нельзя отменить.</p>
+        <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary btn-sm" data-edit-exit="continue">Продолжить редактирование</button>
+          <button type="button" class="btn btn-primary btn-sm" data-edit-exit="save">Сохранить изменения</button>
+          <button type="button" class="btn btn-sm" data-edit-exit="discard" style="background:var(--danger);color:white;border:none;">Отменить изменения</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    let settled = false;
+    const finish = decision => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener('keydown', handleKeydown);
+      overlay.remove();
+      resolve(decision);
+    };
+    const handleKeydown = event => {
+      if (event.key === 'Escape') finish('continue');
+    };
+
+    overlay.querySelectorAll('[data-edit-exit]').forEach(button => {
+      button.addEventListener('click', () => finish(button.dataset.editExit));
+    });
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay) finish('continue');
+    });
+    document.addEventListener('keydown', handleKeydown);
+    overlay.querySelector('[data-edit-exit="save"]')?.focus();
+  });
+}
+
 const ERROR_CODE_MAP = {
   400: { label: 'Неверный запрос', desc: 'Сервер не смог обработать запрос из-за некорректных данных' },
   401: { label: 'Сессия истекла', desc: 'Авторизация истекла — войдите в систему заново' },
@@ -3509,7 +3705,7 @@ export function showErrorModal(saved, errors, errorDetails) {
                 return `
                   <tr style="border-bottom:1px solid var(--border-color);">
                     <td style="padding:8px 8px;vertical-align:top;">
-                      <strong style="font-family:monospace;">#${d.taskId}</strong>
+                      <strong style="font-family:monospace;">${formatTaskPublicId(d.taskId)}</strong>
                     </td>
                     <td style="padding:8px 8px;vertical-align:top;">
                       <span style="font-size:13px;">${escapeHtml(d.fields || '—')}</span>
@@ -3694,7 +3890,7 @@ function showBulkResultModal(result, tasks, fallbackError = '') {
       <summary style="cursor:pointer;padding:10px 12px;font-size:13px;font-weight:600;color:${group.color};">${group.label} · ${group.ids.length}</summary>
       <div style="padding:0 12px 12px;display:grid;gap:6px;max-height:190px;overflow:auto;">
         ${(group.errors || []).map(error => `<div style="font-size:12px;color:var(--danger);">${escapeHtml(error)}</div>`).join('')}
-        ${group.ids.map(id => `<div style="display:grid;grid-template-columns:52px 1fr;gap:8px;font-size:12px;"><span style="font-family:monospace;color:var(--text-muted);">#${id}</span><span>${escapeHtml(taskMap.get(Number(id))?.title || 'Задача')}</span></div>`).join('')}
+        ${group.ids.map(id => `<div style="display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:12px;"><span style="font-family:monospace;color:var(--text-muted);">${formatTaskPublicId(taskMap.get(Number(id)) || id)}</span><span>${escapeHtml(taskMap.get(Number(id))?.title || 'Задача')}</span></div>`).join('')}
       </div>
       ${group.key === 'error' && group.ids.length ? `<div style="padding:0 12px 10px;text-align:right;"><button class="btn btn-secondary btn-xs" data-copy-error-ids>Копировать ID</button></div>` : ''}
     </details>`).join('');
@@ -3778,11 +3974,11 @@ export function showBulkOpsModal(app, scope, tasks) {
         for (const t of tasksToShow) {
           const isOff = excluded.has(t.id);
           rowsHtml += `
-            <div class="bc-row ${isOff ? 'bc-row-off' : ''}" data-task-id="${t.id}" style="display:grid;grid-template-columns:22px 46px 1fr 150px 120px;gap:0;border-bottom:1px solid var(--border-color);cursor:pointer;">
+            <div class="bc-row ${isOff ? 'bc-row-off' : ''}" data-task-id="${t.id}" style="display:grid;grid-template-columns:22px 130px 1fr 150px 120px;gap:0;border-bottom:1px solid var(--border-color);cursor:pointer;">
               <div style="display:flex;align-items:center;justify-content:center;padding:8px;">
                 <input type="checkbox" class="bc-cb" value="${t.id}" ${isOff ? '' : 'checked'} style="margin:0;accent-color:var(--accent);">
               </div>
-              <div style="padding:8px;font-family:monospace;font-size:12px;color:var(--text-muted);">#${t.id}</div>
+              <div style="padding:8px;font-family:monospace;font-size:12px;color:var(--text-muted);">${formatTaskPublicId(t)}</div>
               <div style="padding:8px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.title || '—')}</div>
               <div style="padding:8px;font-size:12px;color:var(--text-secondary);">${escapeHtml(t.status_name || t.status || '—')}</div>
               <div style="padding:8px;font-size:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums;">${escapeHtml(t.deadline_name || t.deadline || '—')}</div>
@@ -3812,7 +4008,7 @@ export function showBulkOpsModal(app, scope, tasks) {
               </div>
             </div>
             <div style="display:flex;flex-direction:column;flex:1;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;min-height:0;">
-              <div class="bc-table-head" style="display:grid;grid-template-columns:22px 46px 1fr 150px 120px;gap:0;background:var(--bg-tertiary);border-radius:8px 8px 0 0;flex-shrink:0;">
+              <div class="bc-table-head" style="display:grid;grid-template-columns:22px 130px 1fr 150px 120px;gap:0;background:var(--bg-tertiary);border-radius:8px 8px 0 0;flex-shrink:0;">
                 <div style="padding:8px;"></div>
                 <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">ID</div>
                 <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">ЗАДАЧА</div>
@@ -4183,6 +4379,9 @@ export function showBulkOpsModal(app, scope, tasks) {
           }
           const selected = getSelectedCount();
           const taskIds = tasks.filter(t => !excluded.has(t.id)).map(t => t.id);
+          const versions = Object.fromEntries(
+            tasks.filter(t => !excluded.has(t.id)).map(t => [t.id, Number(t.version || 0)])
+          );
           const configured = selectedFields.filter(item => hasBulkValue(item.value));
           const changesText = configured
             .map(item => `${FIELD_LABELS_BULK[item.field] || item.field}: ${formatBulkValue(item.field, item.value)}`)
@@ -4192,7 +4391,7 @@ export function showBulkOpsModal(app, scope, tasks) {
             nextBtn.disabled = true;
             nextBtn.textContent = 'Проверяю…';
             preview = await app.api.post('/tasks/bulk/preview', {
-              action: bulkAction, task_ids: taskIds, fields: fieldsPayload
+              action: bulkAction, task_ids: taskIds, versions, fields: fieldsPayload
             });
           } catch (e) {
             window.toast?.('Не удалось проверить массовую операцию: ' + (e.message || 'ошибка сервера'), 'error');
@@ -4220,6 +4419,7 @@ export function showBulkOpsModal(app, scope, tasks) {
             const result = await app.api.post('/tasks/bulk', {
               action: bulkAction,
               task_ids: taskIds,
+              versions,
               fields: fieldsPayload
             });
             closeBulkModal();
@@ -4899,6 +5099,7 @@ const CARD_IC = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
   check: '<path d="M20 6L9 17l-5-5"/>',
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
+  warning: '<path d="M10.3 3.6 2.4 17.5A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.5L13.7 3.6a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>',
   file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>',
   trend: '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
   flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
@@ -4935,16 +5136,18 @@ const CARD_TABS = [
   ['main', 'Основное', 'file'],
   ['rep', 'Отчётные статусы', 'flag'],
   ['com', 'Комментарии', 'msg'],
-  ['sys', 'Ссылки и система', 'link'],
+  ['sys', 'Ссылки и файлы', 'link'],
   ['log', 'Лог изменений', 'clock'],
 ];
 
-let cardState = { tab: 'main', editing: false, dirty: false, saving: false, replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
+let cardState = { tab: 'main', editing: false, dirty: false, saving: false, prioritiserRunning: '', replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
 let cardRates = null;
 let cardDict = null;
 let cardMaps = null;
 let cardAi = null;
 let cardPs = null;
+let cardReportingContext = null;
+let cardReportingLoading = false;
 let _cardEscHandler = null;
 let _cardToastTimer = null;
 let _cardRouteTabHandler = null;
@@ -4956,7 +5159,7 @@ function cardTabFromRoute() {
   return CARD_TABS.some(tab => tab[0] === requested) ? requested : 'main';
 }
 
-function cardActivateTab(tab, app, syncRoute = true) {
+async function cardActivateTab(tab, app, syncRoute = true) {
   const validTab = CARD_TABS.some(item => item[0] === tab) ? tab : 'main';
   cardState.tab = validTab;
   cardState.replyFor = null;
@@ -4969,8 +5172,11 @@ function cardActivateTab(tab, app, syncRoute = true) {
     _attachmentFormInitialized = false;
     setTimeout(() => { initAttachmentForm(currentTask?.id, app); renderAttachmentsList(); }, 0);
   }
+  if (validTab === 'log') await cardLoadHistory(app);
+  if (validTab === 'rep') await cardLoadReportingContext(app);
   cardRenderTabs();
   cardRenderBody();
+  cardRenderFooter();
 }
 
 function cardCur() { return cardState.editing ? cardState.draft : cardState.current; }
@@ -4986,6 +5192,20 @@ function cardPerson(n) {
   if (p.length < 2 || !p[0] || !p[1]) return n;
   if (/^[А-ЯЁA-Zа-яёa-z]\.$/.test(p[0])) return n;
   return p[0][0] + '. ' + p[1];
+}
+function cardCustomerDepartment(customerName, fallback = '') {
+  if (!customerName || !cardDict) return fallback;
+  const customer = (cardDict.customers || []).find(item =>
+    [item?.name, item?.login, item?.email].some(value => value === customerName)
+  );
+  if (!customer) return fallback;
+  if (customer.department_name || customer.customer_department) {
+    return customer.department_name || customer.customer_department;
+  }
+  const department = (cardDict.departments || []).find(item =>
+    Number(item?.id) === Number(customer.department_id)
+  );
+  return department?.name || fallback;
 }
 function cardFmtDate(v) { return v ? new Date(v).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'; }
 function cardFmtDT(v) { return v ? new Date(v).toLocaleString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
@@ -5050,7 +5270,7 @@ function cardCalcSum(o) {
   CARD_ROLES.forEach(r => { const v = +o[r.key]; if (v) { a = true; s += v; } });
   return a ? Math.round(s * 100) / 100 : null;
 }
-function cardCvCalc(cost, fin) { return (cost > 0 && fin != null && fin > 0) ? Math.round(cost / (fin * 1e6) * 100) / 100 : null; }
+function cardCvCalc(cost, fin) { return calculateCv(cost, fin); }
 function cardCvCls(v) { if (v == null) return ''; return v < 0.3 ? 'cv-good' : (v <= 1 ? 'cv-warn' : 'cv-bad'); }
 function cardDiffPct(eo, ftz) {
   if (eo == null || eo === 0 || eo === '') return { txt: '—', cls: 'd-neutral' };
@@ -5094,13 +5314,19 @@ function cardNumC(k, v, s) { return '<input type="number" step="' + (s || 1) + '
 function cardTxtC(k, v) { return '<input type="text" data-k="' + k + '" value="' + escapeHtml(v) + '">'; }
 function cardTaC(k, v, r, maxLength) { return '<textarea rows="' + (r || 4) + '" data-k="' + k + '"' + (maxLength ? ' maxlength="' + maxLength + '"' : '') + '>' + escapeHtml(v) + '</textarea>'; }
 function cardDateC(k, v) { return '<input type="date" data-k="' + k + '" value="' + (v || '') + '">'; }
+function cardProgressEditor(value) {
+  const progress = Math.min(100, Math.max(0, Math.round((+value || 0) / 5) * 5));
+  return '<div class="prog-edit" style="--progress-position:' + progress + '%"><output class="progress-value" data-progress-value>' + progress + '%</output><input type="range" min="0" max="100" step="5" data-k="progress" value="' + progress + '" aria-label="Прогресс, процентов"></div>';
+}
 function cardF(l, inner, o) {
   o = o || {};
-  return '<div class="field ' + (o.span2 ? 'span2 ' : '') + (o.span4 ? 'span4 ' : '') + '"><div class="flabel"><span class="flt">' + escapeHtml(l) + '</span>' + (o.lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="fval">' + inner + '</div></div>';
+  const editAttrs = o.editKey ? ' inline-edit-target" data-inline-edit="' + o.editKey + '" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(l) + '" title="Нажмите, чтобы изменить"' : '"';
+  return '<div class="field ' + (o.span2 ? 'span2 ' : '') + (o.span4 ? 'span4 ' : '') + '"><div class="flabel"><span class="flt">' + escapeHtml(l) + '</span>' + (o.lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="fval' + editAttrs + '>' + inner + '</div></div>';
 }
 function cardIcell(l, inner, o) {
   o = o || {};
-  return '<div class="icell ' + (o.span2 ? 'span2cell' : '') + '"><div class="ilab"><span class="flt">' + escapeHtml(l) + '</span>' + (o.lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="ival">' + inner + '</div></div>';
+  const editAttrs = o.editKey ? ' inline-edit-target" data-inline-edit="' + o.editKey + '" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(l) + '" title="Нажмите, чтобы изменить"' : '"';
+  return '<div class="icell ' + (o.span2 ? 'span2cell' : '') + '"><div class="ilab"><span class="flt">' + escapeHtml(l) + '</span>' + (o.lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="ival' + (o.valueClass ? ' ' + o.valueClass : '') + editAttrs + '>' + inner + '</div></div>';
 }
 function cardV(v) { return '<div>' + v + '</div>'; }
 function cardROv(v) { return '<div style="display:flex;gap:7px;align-items:center;color:#5A6478">' + v + '</div>'; }
@@ -5137,6 +5363,7 @@ function buildCardState(task) {
   const fin = v => num(v);
   return {
     id: t.id,
+    publicId: formatTaskPublicId(t),
     title: t.title || '',
     description: t.description || '',
     comment: t.comment || '',
@@ -5156,6 +5383,7 @@ function buildCardState(task) {
     deadline: t.deadline_name || t.deadline || '',
     assignee: t.owner_name || t.owner || '',
     progress: num(t.progress) || 0,
+    effortDays: num(t.effort_days),
     eo: eo, ftz: ftz,
     cv: t.cv,
     finEffect: fin(t.financial_effect),
@@ -5252,14 +5480,12 @@ function cardRenderHeader() {
   if (!el) return;
   const t = cardCur();
   let h = '<div class="head-row1"><div class="row-badges">';
-  h += '<button class="tid" data-action="copy-id" title="Скопировать ID">#' + t.id + cardIcon('copy') + '</button>';
+  h += '<button class="tid" data-action="copy-id" title="Скопировать ID">' + escapeHtml(t.publicId || formatTaskPublicId(t.id)) + cardIcon('copy') + '</button>';
   h += '<span class="task-head-chip task-head-chip--type" id="hType">' + escapeHtml(t.type) + '</span>';
-  if (cardState.editing) h += '<span class="editbadge">Редактирование</span>';
-  h += '<span class="header-unsaved-indicator" id="card-unsaved-indicator" role="status" aria-live="polite" hidden><i aria-hidden="true"></i>Не сохранено</span>';
   h += '</div><div class="row-status">';
   h += '<span class="task-head-chip task-head-chip--status ' + cardStatusCls(t.status) + '" id="hStatus">' + escapeHtml(t.status) + '</span>';
   h += '<span class="task-head-chip task-head-chip--priority ' + cardPrioCls(t.priority) + '" id="hPrio">' + escapeHtml(t.priority) + '</span>';
-  h += '</div><div class="row-actions"><button class="iconbtn" data-action="copy-link" title="Копировать ссылку на задачу" aria-label="Копировать ссылку на задачу">' + cardIcon('link') + '</button><button class="iconbtn close" data-action="close" title="Закрыть (Esc)">' + cardIcon('x') + '</button></div></div>';
+  h += '</div><div class="row-actions">' + (cardState.editing ? '<span class="editbadge"><span class="editbadge-mark" aria-hidden="true">' + cardIcon('warning') + '</span>Редактирование</span>' : '') + '<button class="iconbtn" data-action="copy-link" title="Копировать ссылку на задачу" aria-label="Копировать ссылку на задачу">' + cardIcon('link') + '</button><button class="iconbtn close" data-action="close" title="Закрыть (Esc)">' + cardIcon('x') + '</button></div></div>';
   h += '<div class="head-title" id="headerTitle" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</div>';
   el.innerHTML = h;
 }
@@ -5285,11 +5511,105 @@ function cardPlaceInd() {
 function cardKpiCard(l, v, lock) {
   return '<div class="kpi"><div class="kl"><span class="flt">' + escapeHtml(l) + '</span>' + (lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="kv">' + v + '</div></div>';
 }
+function cardEffectiveFin(t) { return t.finEffect != null ? t.finEffect : t.finEffectAi; }
+function cardEffectiveFinJust(t) { return t.finJust || t.finJustAi || ''; }
+const CARD_PRIORITISER_REQUIREMENTS = {
+  value: [
+    { key: 'task_id', label: 'ID задачи', value: t => t.publicId || t.id },
+    { key: 'task_type', label: 'Тип задачи', value: t => t.type },
+    { key: 'team', label: 'Ответственная команда', value: t => t.team },
+    { key: 'title', label: 'Название задачи', value: t => t.title },
+  ],
+  priority: [
+    { key: 'task_id', label: 'ID задачи', value: t => t.publicId || t.id },
+    { key: 'task_type', label: 'Тип задачи', value: t => t.type },
+    { key: 'team', label: 'Ответственная команда', value: t => t.team },
+    { key: 'title', label: 'Название задачи', value: t => t.title },
+    { key: 'effort_man_days', label: 'Оценка трудозатрат, ч/д', value: t => t.effortDays },
+    { key: 'business_customer', label: 'Бизнес-заказчик', value: t => t.customer },
+    { key: 'deadline', label: 'Срок выполнения', value: t => t.deadline },
+  ],
+};
+const CARD_PRIORITISER_FIELD_LABELS = Object.values(CARD_PRIORITISER_REQUIREMENTS)
+  .flat()
+  .reduce((labels, item) => { labels[item.key] = item.label; return labels; }, {});
+
+function cardPrioritiserValueFilled(value) {
+  return value !== null && value !== undefined && (typeof value !== 'string' || value.trim() !== '');
+}
+
+function cardPrioritiserRequirements(kind, serverMissing = null) {
+  const task = cardState.current || buildCardState(currentTask || {});
+  const missingKeys = Array.isArray(serverMissing) ? new Set(serverMissing) : null;
+  const requirements = (CARD_PRIORITISER_REQUIREMENTS[kind] || []).map(item => ({
+    key: item.key,
+    label: item.label,
+    filled: missingKeys?.has(item.key) ? false : cardPrioritiserValueFilled(item.value(task)),
+  }));
+  if (missingKeys) {
+    missingKeys.forEach(key => {
+      if (!requirements.some(item => item.key === key)) {
+        requirements.push({ key, label: CARD_PRIORITISER_FIELD_LABELS[key] || 'Необходимое поле', filled: false });
+      }
+    });
+  }
+  return requirements;
+}
+
+function cardPrioritiserChecklist(items, className = '') {
+  return '<ul class="agent-check-list' + (className ? ' ' + className : '') + '">' + items.map(item =>
+    '<li class="agent-check-item ' + (item.filled ? 'ready' : 'missing') + '">' +
+      '<span class="agent-check-mark" aria-hidden="true">' + (item.filled ? '✓' : '!') + '</span>' +
+      '<span>' + escapeHtml(item.label) + '</span>' +
+      '<span class="agent-check-state">' + (item.filled ? 'Заполнено' : 'Не заполнено') + '</span>' +
+    '</li>'
+  ).join('') + '</ul>';
+}
+
+function showPrioritiserRequirementsModal(kind, items) {
+  document.getElementById('prioritiser-requirements-overlay')?.remove();
+  const calculation = kind === 'value' ? 'финансового эффекта' : 'приоритета';
+  const overlay = document.createElement('div');
+  overlay.id = 'prioritiser-requirements-overlay';
+  overlay.className = 'modal-overlay prioritiser-requirements-overlay';
+  overlay.style.zIndex = '1250';
+  overlay.innerHTML = '<div class="prioritiser-requirements-modal" role="dialog" aria-modal="true" aria-labelledby="prioritiser-requirements-title">' +
+    '<button type="button" class="prioritiser-requirements-x" aria-label="Закрыть">' + cardIcon('x') + '</button>' +
+    '<h3 id="prioritiser-requirements-title">Не хватает данных для расчёта ' + calculation + '</h3>' +
+    '<p>Заполните отмеченные поля в карточке задачи и повторите расчёт.</p>' +
+    cardPrioritiserChecklist(items, 'agent-check-list-modal') +
+    '<div class="prioritiser-requirements-actions"><button type="button" class="btn btn-primary btn-sm" data-action="close-requirements">Закрыть</button></div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  const closeButton = overlay.querySelector('[data-action="close-requirements"]');
+  const close = () => {
+    document.removeEventListener('keydown', onKeydown);
+    overlay.remove();
+  };
+  const onKeydown = event => { if (event.key === 'Escape') close(); };
+  overlay.querySelector('.prioritiser-requirements-x')?.addEventListener('click', close);
+  closeButton?.addEventListener('click', close);
+  document.addEventListener('keydown', onKeydown);
+  closeButton?.focus();
+}
+
+function cardPrioritiserButton(kind) {
+  const running = cardState.prioritiserRunning === kind;
+  const action = kind === 'value' ? 'ai-calc-fin' : 'ps-calc';
+  const requirements = cardPrioritiserRequirements(kind);
+  const tooltipId = 'agent-check-' + kind;
+  return '<span class="agent-check-wrap"><button class="btn ai" data-action="' + action + '" aria-describedby="' + tooltipId + '"' + (cardState.prioritiserRunning ? ' disabled' : '') + '>'
+    + cardIcon('spark') + (running ? 'Расчёт…' : 'AI-расчет') + '</button>'
+    + '<span class="agent-check-tooltip" id="' + tooltipId + '" role="tooltip"><span class="agent-check-title">Для расчёта нужны поля</span>'
+    + cardPrioritiserChecklist(requirements) + '</span></span>';
+}
 function cardKpiBlock(t, e) {
   const cost = cardCalcCost(t.eo), fcost = cardCalcCost(t.ftz);
   const ftzT = cardCalcSum(t.ftz), eoSum = cardCalcSum(t.eo);
-  const cvE = (t.cv == null || t.cv === '') ? cardCvCalc(cost, t.finEffect) : Number(t.cv);
-  const cvF = cardCvCalc(fcost, t.finEffect);
+  const displayFin = cardEffectiveFin(t), displayFinJust = cardEffectiveFinJust(t);
+  const cvE = (t.cv == null || t.cv === '') ? cardCvCalc(cost, displayFin) : Number(t.cv);
+  const cvF = cardCvCalc(fcost, displayFin);
   let h = '<div class="kpi2"><div class="kpigroup"><div class="kglabel">План (ЭО)</div><div class="kpirow3">'
     + cardKpiCard('Оценка трудозатрат (ЭО)', '<span data-dyn="eo">' + cardFmtNum(eoSum) + '</span> <small>ч/д</small>', true)
     + cardKpiCard('Стоимость по ЭО', '<span data-dyn="cost">' + cardFmtMoney(cost) + '</span>', true)
@@ -5301,18 +5621,18 @@ function cardKpiBlock(t, e) {
     + '</div></div></div>';
   h += '<div class="psrow">';
   h += '<div class="kpi"><div class="kl"><span class="flt">Priority Score</span><span class="lk">' + cardIcon('lock') + '</span>'
-    + '<button class="btn ai" data-action="ps-calc">' + cardIcon('spark') + 'AI-расчет</button></div>';
+    + cardPrioritiserButton('priority') + '</div>';
   h += '<div class="kv big"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div>';
   h += '<div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div>';
   h += '<div class="just"><div class="flabel"><span class="flt">Обоснование агента</span></div><div class="fval">' + (e ? cardTaC('priorityJust', t.priorityJust, 5) : '<span class="txt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</span>') + '</div></div>';
   h += '</div>';
   h += '<div class="kpi"><div class="kl"><span class="flt">Финансовый эффект</span>'
-    + '<button class="btn ai" data-action="ai-calc-fin">' + cardIcon('spark') + 'AI-расчет</button></div>';
+    + cardPrioritiserButton('value') + '</div>';
   h += e
     ? '<div class="fval"><input type="number" step="0.1" min="0" data-k="finEffect" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:140px;display:inline-block"> <small style="color:var(--tfaint)">млн ₽</small></div>'
-    : '<div class="kv big"><span data-dyn="fin">' + cardFmtNum(t.finEffect, 2) + '</span> <small>млн ₽</small></div>';
+    : '<div class="kv big"><span data-dyn="fin">' + cardFmtNum(displayFin, 2) + '</span> <small>млн ₽</small></div>';
   h += '<div class="psbar hide"></div>';
-  h += '<div class="just"><div class="flabel"><span class="flt">Обоснование расчёта</span></div><div class="fval">' + (e ? cardTaC('finJust', t.finJust, 5) : '<span class="txt">' + (t.finJust ? cardNl2br(t.finJust) : '—') + '</span>') + '</div><div class="aipop" id="finPop"></div></div>';
+  h += '<div class="just"><div class="flabel"><span class="flt">Обоснование расчёта</span></div><div class="fval">' + (e ? cardTaC('finJust', t.finJust, 5) : '<span class="txt">' + (displayFinJust ? cardNl2br(displayFinJust) : '—') + '</span>') + '</div><div class="aipop" id="finPop"></div></div>';
   h += '</div></div>';
   return h;
 }
@@ -5321,7 +5641,8 @@ function cardStatV30(label, value) {
 }
 function cardKpiBlockV30(t, e) {
   const cost = cardCalcCost(t.eo), fcost = cardCalcCost(t.ftz), eo = cardCalcSum(t.eo), ftz = cardCalcSum(t.ftz);
-  const cvE = (t.cv == null || t.cv === '') ? cardCvCalc(cost, t.finEffect) : Number(t.cv), cvF = cardCvCalc(fcost, t.finEffect);
+  const displayFin = cardEffectiveFin(t), displayFinJust = cardEffectiveFinJust(t);
+  const cvE = (t.cv == null || t.cv === '') ? cardCvCalc(cost, displayFin) : Number(t.cv), cvF = cardCvCalc(fcost, displayFin);
   let h = '<div class="stats"><div class="stats-half"><div class="stats-title">План (ЭО)</div>'
     + cardStatV30('Оценка трудозатрат', '<span data-dyn="eo">' + cardFmtNum(eo) + '</span> <small>ч/д</small>')
     + cardStatV30('Стоимость по ЭО', '<span data-dyn="cost">' + cardFmtMoney(cost) + '</span>')
@@ -5330,10 +5651,10 @@ function cardKpiBlockV30(t, e) {
     + cardStatV30('Фактические трудозатраты', '<span data-dyn="ftz">' + cardFmtNum(ftz) + '</span> <small>ч/д</small>')
     + cardStatV30('Стоимость по ФТЗ', '<span data-dyn="fcost">' + cardFmtMoney(fcost) + '</span>')
     + cardStatV30('C/V по ФТЗ', '<span data-dyn="cvF" class="' + cardCvCls(cvF) + '">' + (cvF == null ? '—' : cvF.toLocaleString('ru-RU')) + '</span>') + '</div></div>';
-  h += '<div class="psrow"><div class="bigcard"><div class="bc-head"><span class="bc-title">Priority Score</span><span class="lk" title="Автоматически">' + cardIcon('lock') + '</span><button class="btn ai" data-action="ps-calc">' + cardIcon('spark') + 'AI-расчет</button></div><div class="bc-value"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div><div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование агента</summary><div class="jtxt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</div></details><div class="aipop" id="psPop"></div></div>';
-  h += '<div class="bigcard"><div class="bc-head"><span class="bc-title">Финансовый эффект</span><button class="btn ai" data-action="ai-calc-fin">' + cardIcon('spark') + 'AI-расчет</button></div>';
-  if (e) h += '<div class="bc-value" style="font-size:18px"><input type="number" step="0.1" min="0" data-k="finEffect" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:150px;display:inline-block"> <small>млн ₽</small></div><div class="bc-div"></div><div class="jlab">Обоснование расчёта</div><div class="jtxt">' + cardTaC('finJust', t.finJust, 3) + '</div>';
-  else h += '<div class="bc-value"><span data-dyn="fin">' + cardFmtNum(t.finEffect, 2) + '</span> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование расчёта</summary><div class="jtxt">' + (t.finJust ? cardNl2br(t.finJust) : '—') + '</div></details>';
+  h += '<div class="psrow"><div class="bigcard"><div class="bc-head"><span class="bc-title">Priority Score</span><span class="lk" title="Автоматически">' + cardIcon('lock') + '</span>' + cardPrioritiserButton('priority') + '</div><div class="bc-value"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div><div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование агента</summary><div class="jtxt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</div></details><div class="aipop" id="psPop"></div></div>';
+  h += '<div class="bigcard"><div class="bc-head"><span class="bc-title">Финансовый эффект</span>' + cardPrioritiserButton('value') + '</div>';
+  if (e) h += '<div class="bc-value" style="font-size:18px"><input type="number" step="0.1" min="0" data-k="finEffect" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:150px;display:inline-block"> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><div class="jlab">Обоснование расчёта</div><div class="jtxt">' + cardTaC('finJust', t.finJust, 3) + '</div>';
+  else h += '<div class="bc-value"><span data-dyn="fin">' + cardFmtNum(displayFin, 2) + '</span> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование расчёта</summary><div class="jtxt">' + (displayFinJust ? cardNl2br(displayFinJust) : '—') + '</div></details>';
   return h + '<div class="aipop" id="finPop"></div></div></div>';
 }
 
@@ -5354,7 +5675,7 @@ function cardBodyMain(t, e) {
     cardF('Статус задачи', e ? cardSel('status', statuses, t.status) : cardV('<span class="badge ' + cardStatusCls(t.status) + '">' + escapeHtml(t.status) + '</span>')),
     cardF('Приоритет', e ? cardSel('priority', priorities, t.priority) : cardV('<span class="badge ' + cardPrioCls(t.priority) + '">' + escapeHtml(t.priority) + '</span>')),
     cardF('Срок выполнения', e ? cardSel('deadline', deadlines, t.deadline) : cardV('<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>')),
-    cardF('Прогресс', e ? '<div class="prog-edit"><input type="range" min="0" max="100" step="5" data-k="progress" value="' + (Math.round((+t.progress || 0) / 5) * 5) + '"><input type="number" class="pnum" min="0" max="100" step="5" data-k="progress" value="' + (Math.round((+t.progress || 0) / 5) * 5) + '"></div>' : cardV('<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%')),
+    cardF('Прогресс', e ? cardProgressEditor(t.progress) : cardV('<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%')),
     cardF('Ответственная команда', e ? cardSel('team', teams, t.team) : cardV('<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>')),
     cardF('Исполнитель', e ? cardSel('assignee', users, t.assignee) : cardV('<span class="vchip"><span class="ava24">' + getInitials(t.assignee) + '</span>' + escapeHtml(cardPerson(t.assignee)) + '</span>')),
     cardF('Проект', e ? cardSel('project', projects, t.project) : cardV('<span class="vchip">' + cardIcon('folder') + escapeHtml(t.project) + '</span>')),
@@ -5389,28 +5710,34 @@ function cardBodyMainV30(t, e) {
   const teams = cardNameList('teams'), users = cardNameList('users'), projects = cardNameList('projects');
   const types = cardNameList('taskTypes'), priorities = cardNameList('priorities'), statuses = cardNameList('statuses');
   const deadlines = cardNameList('deadlines'), channels = cardNameList('channels'), customers = cardNameList('customers'), tags = cardNameList('tags');
-  let h = '<div class="task-top"><div class="task-title-card"><div class="desc-label">' + taskFormLabel('title') + '</div><div class="task-title-row">';
-  h += e ? '<div class="title-edit-wrap"><input class="title-input" data-k="title" maxlength="255" value="' + escapeHtml(t.title) + '"><span class="tcount task-character-counter" id="titleCount"></span></div>' : '<h1 class="task-title">' + escapeHtml(t.title) + '</h1>';
-  h += '</div></div><div class="task-desc"><div class="desc-label">' + taskFormLabel('description') + '</div><div class="desc-val">' + (e ? taskFormEditControl('description', t.description) : '<span class="txt">' + cardNl2br(t.description) + '</span>') + '</div></div></div>';
+  const edit = key => e && (!cardState.entryField || cardState.entryField === key);
+  const fullEdit = e && !cardState.entryField;
+  const titleEditAttrs = e ? '"' : ' inline-edit-target" data-inline-edit="title" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('title')) + '" title="Нажмите, чтобы изменить"';
+  const descriptionEditAttrs = e ? '"' : ' inline-edit-target" data-inline-edit="description" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('description')) + '" title="Нажмите, чтобы изменить"';
+  let h = '<div class="task-top"><div class="task-title-card"><div class="desc-label">' + taskFormLabel('title') + '</div><div class="task-title-row' + titleEditAttrs + '>';
+  h += edit('title') ? '<div class="title-edit-wrap"><input class="title-input" data-k="title" maxlength="255" value="' + escapeHtml(t.title) + '"><span class="tcount task-character-counter" id="titleCount"></span></div>' : '<h1 class="task-title">' + escapeHtml(t.title) + '</h1>';
+  h += '</div></div><div class="task-desc"><div class="desc-label">' + taskFormLabel('description') + '</div><div class="desc-val' + descriptionEditAttrs + '>' + (edit('description') ? taskFormEditControl('description', t.description) : '<span class="txt">' + cardNl2br(t.description) + '</span>') + '</div></div></div>';
   h += cardSec('Паспорт задачи', 'file') + '<div class="bento">';
   h += '<div class="cl sp3" id="clExec" style="border-left:3px solid ' + cardStatusHex(t.status) + '"><div class="cl-h">' + cardIcon('trend') + '<span>Исполнение</span></div><div class="cl-grid exec">'
-    + cardIcell('Статус задачи', e ? cardSel('status', statuses, t.status) : '<span class="pill status ' + cardStatusCls(t.status) + '">' + escapeHtml(t.status) + '</span>')
-    + cardIcell(taskFormLabel('priority'), e ? taskFormEditControl('priority', t.priority) : '<span class="pill priority ' + cardPrioCls(t.priority) + '">' + escapeHtml(t.priority) + '</span>')
-    + cardIcell(taskFormLabel('deadline'), e ? taskFormEditControl('deadline', t.deadline) : '<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>')
-    + cardIcell('Прогресс', e ? '<div class="prog-edit"><input type="range" min="0" max="100" step="5" data-k="progress" value="' + (Math.round((+t.progress || 0) / 5) * 5) + '"><input type="number" class="pnum" min="0" max="100" step="5" data-k="progress" value="' + (Math.round((+t.progress || 0) / 5) * 5) + '"></div>' : '<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%') + '</div></div>';
+    + cardIcell('Статус задачи', edit('status') ? cardSel('status', statuses, t.status) : '<span class="pill status ' + cardStatusCls(t.status) + '">' + escapeHtml(t.status) + '</span>', { editKey: e ? '' : 'status' })
+    + cardIcell(taskFormLabel('priority'), edit('priority') ? taskFormEditControl('priority', t.priority) : '<span class="pill priority ' + cardPrioCls(t.priority) + '">' + escapeHtml(t.priority) + '</span>', { editKey: e ? '' : 'priority' })
+    + cardIcell(taskFormLabel('deadline'), edit('deadline') ? taskFormEditControl('deadline', t.deadline) : '<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>', { editKey: e ? '' : 'deadline' })
+    + cardIcell('Прогресс', edit('progress') ? cardProgressEditor(t.progress) : '<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%', { editKey: e ? '' : 'progress' })
+    + '<div class="icell exec-grades"><div class="ilab"><span class="flt">Оценки</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="ival grades"><span class="grade-wrap">Hard ' + cardGradePill(t.hardScore) + '</span><span class="grade-wrap">Soft ' + cardGradePill(t.softScore) + '</span></div></div></div></div>';
   h += '<div class="cl half"><div class="cl-h">' + cardIcon('team') + '<span>Команда</span></div><div class="cl-grid duo">'
-    + '<div class="icell"><div class="ilab"><span class="flt">' + taskFormLabel('assignee') + '</span></div><div class="ival person-ival"><span class="ava32">' + getInitials(t.assignee) + '</span>' + (e ? taskFormEditControl('assignee', t.assignee) : escapeHtml(cardPerson(t.assignee))) + '</div></div>'
-    + cardIcell(taskFormLabel('team'), e ? taskFormEditControl('team', t.team) : '<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>')
-    + cardIcell('Другие вовлечённые команды · ' + t.otherTeams.length, e ? cardChipsTeams(teams, t.otherTeams, 'otherTeams') : cardChipsStatic(t.otherTeams), { span2: true }) + '</div></div>';
-  h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Заказчик</span></div><div class="cl-grid duo"><div class="icell"><div class="ilab"><span class="flt">' + taskFormLabel('customer') + '</span></div><div class="ival person-cell"><span class="ava32" id="custAva">' + getInitials(t.customer) + '</span><div class="person-controls">' + (e ? taskFormEditControl('customer', t.customer) : '<span class="person-name">' + escapeHtml(cardPerson(t.customer)) + '</span>') + '<span class="person-sub" id="custDept">' + escapeHtml(t.customerDept || '—') + '</span></div></div></div>'
-    + cardIcell(taskFormLabel('channel'), e ? taskFormEditControl('channel', t.channel) : cardV(escapeHtml(t.channel)))
-    + cardIcell(taskFormLabel('receivedAt'), e ? taskFormEditControl('receivedAt', t.receivedAt) : cardV(cardFmtDate(t.receivedAt)))
-    + '<div class="icell"><div class="ilab"><span class="flt">Оценки</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="ival grades"><span class="grade-wrap">Hard ' + cardGradePill(t.hardScore) + '</span><span class="grade-wrap">Soft ' + cardGradePill(t.softScore) + '</span></div></div></div></div>';
+    + cardIcell(taskFormLabel('assignee'), '<div class="person-ival"><span class="ava32" id="assigneeAva">' + getInitials(t.assignee) + '</span><div class="person-assignee-control">' + (edit('assignee') ? taskFormEditControl('assignee', t.assignee) : '<span class="person-name">' + escapeHtml(cardPerson(t.assignee)) + '</span>') + '</div></div>', { editKey: e ? '' : 'assignee', valueClass: 'execution-inline-field' })
+    + cardIcell(taskFormLabel('team'), edit('team') ? taskFormEditControl('team', t.team) : '<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>', { editKey: e ? '' : 'team', valueClass: 'execution-inline-field' })
+    + cardIcell('Другие вовлечённые команды · ' + t.otherTeams.length, edit('otherTeams') ? cardChipsTeams(teams, t.otherTeams, 'otherTeams') : cardChipsStatic(t.otherTeams), { span2: true, editKey: e ? '' : 'otherTeams' }) + '</div></div>';
+  h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Заказчик</span></div><div class="cl-grid duo">'
+    + cardIcell(taskFormLabel('customer'), '<div class="person-ival"><span class="ava32" id="custAva">' + getInitials(t.customer) + '</span><div class="person-assignee-control">' + (edit('customer') ? taskFormEditControl('customer', t.customer) : '<span class="person-name">' + escapeHtml(cardPerson(t.customer)) + '</span>') + '</div></div>', { editKey: e ? '' : 'customer', valueClass: 'customer-row-field' })
+    + cardIcell('Подразделение', '<span id="custDept">' + escapeHtml(t.customerDept || '—') + '</span>', { lock: true, valueClass: 'customer-row-field' })
+    + cardIcell(taskFormLabel('channel'), fullEdit ? taskFormEditControl('channel', t.channel) : cardV(escapeHtml(t.channel)), { valueClass: 'customer-row-field' })
+    + cardIcell(taskFormLabel('receivedAt'), fullEdit ? taskFormEditControl('receivedAt', t.receivedAt) : cardV(cardFmtDate(t.receivedAt)), { valueClass: 'customer-row-field' }) + '</div></div>';
   h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('tag') + '<span>Классификация</span></div><div class="cl-grid classify">'
-    + cardIcell(taskFormLabel('project'), e ? taskFormEditControl('project', t.project) : '<span class="vchip">' + cardIcon('folder') + escapeHtml(t.project) + '</span>')
-    + cardIcell(taskFormLabel('type'), e ? taskFormEditControl('type', t.type) : '<span class="ttype">' + escapeHtml(t.type) + '</span>')
-    + cardIcell('Метки', cardChipsTags(tags, t.tags, 'tags', e)) + '</div></div></div>';
-  return h + cardSec('Ключевые показатели', 'trend') + cardKpiBlockV30(t, e) + cardEffortDisclosure(t, e);
+    + cardIcell(taskFormLabel('project'), edit('project') ? taskFormEditControl('project', t.project) : '<span class="vchip">' + cardIcon('folder') + escapeHtml(t.project) + '</span>', { editKey: e ? '' : 'project', valueClass: 'classification-inline-field' })
+    + cardIcell(taskFormLabel('type'), edit('type') ? taskFormEditControl('type', t.type) : '<span class="ttype">' + escapeHtml(t.type) + '</span>', { editKey: e ? '' : 'type', valueClass: 'classification-inline-field' })
+    + cardIcell('Метки', cardChipsTags(tags, t.tags, 'tags', edit('tags')), { editKey: e ? '' : 'tags' }) + '</div></div></div>';
+  return h + cardSec('Ключевые показатели', 'trend') + cardKpiBlockV30(t, fullEdit) + cardEffortDisclosure(t, fullEdit);
 }
 
 function cardEffortTable(t, e) {
@@ -5432,22 +5759,80 @@ function cardEffortDisclosure(t, e) {
     + '<div class="field effort-source"><div class="flabel"><span class="flt">Источник ФТЗ</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">Фактические трудозатраты поступают из внешней БД, связанной с Jira. Разница &lt; 0 — факт ниже оценки, &gt; 0 — перерасход.</span></div></div>'
     + '</div></details>';
 }
-function cardRepCard(title, color, icon, group, t, e, extra) {
-  const g = t.statuses[group];
-  let h = '<div class="repcard"><div class="rc-head"><span class="ric" style="background:' + color + '22;color:' + color + '">' + cardIcon(icon) + '</span><h4>' + escapeHtml(title) + '</h4></div><div class="stack">';
-  h += '<div class="field"><div class="flabel"><span class="flt">Статус предыдущей встречи</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">' + (g.prev ? cardNl2br(g.prev) : '—') + '</span></div></div>';
-  h += '<div class="field"><div class="flabel"><span class="flt">Текущий статус</span></div><div class="fval">' + (e ? cardTaC('statuses.' + group + '.cur', g.cur, 6) : '<span class="txt">' + (g.cur ? cardNl2br(g.cur) : '—') + '</span>') + '</div></div>';
-  h += '<div class="field"><div class="flabel"><span class="flt">Дата изменения текущего статуса</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval">' + cardV(cardFmtDT(g.at)) + '</div></div>';
-  if (extra) h += extra;
+function cardReportingDate(value) {
+  if (!value) return 'Дата ещё не назначена';
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    .format(new Date(value + 'T12:00:00'));
+}
+function cardReportingItem(item) {
+  const meeting = item.current_meeting;
+  const current = item.current_status || {};
+  const previous = item.previous_status || {};
+  const colors = { directorate: '#6C4CD4', did: '#1F9D44', key_projects: '#2E6BE6' };
+  const icons = { directorate: 'trend', did: 'clock', key_projects: 'flag' };
+  const color = colors[item.kind] || '#64748b';
+  const canEdit = !!item.can_edit;
+  let h = '<div class="repcard reporting-status-card" data-reporting-kind="' + escapeHtml(item.kind) + '">';
+  h += '<div class="rc-head"><span class="ric" style="background:' + color + '22;color:' + color + '">' + cardIcon(icons[item.kind] || 'flag') + '</span><div><h4>' + escapeHtml(item.title) + '</h4><div class="reporting-status-date">' + escapeHtml(cardReportingDate(meeting?.scheduled_date)) + '</div></div></div><div class="stack">';
+  h += '<div class="field"><div class="flabel"><span class="flt">Статус прошлой встречи' + (item.previous_meeting?.scheduled_date ? ' · ' + escapeHtml(cardReportingDate(item.previous_meeting.scheduled_date)) : '') + '</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">' + (previous.text ? cardNl2br(previous.text) : '—') + '</span></div></div>';
+  h += '<div class="field"><div class="flabel"><span class="flt">Статус к ближайшей встрече</span></div><div class="fval">';
+  h += canEdit
+    ? '<textarea class="task-detail-input" data-reporting-text="' + escapeHtml(item.kind) + '" rows="6" maxlength="5000" placeholder="Опишите прогресс, риски и следующие шаги">' + escapeHtml(current.text || '') + '</textarea>'
+    : '<span class="txt">' + (current.text ? cardNl2br(current.text) : '—') + '</span>';
+  h += '</div></div>';
+  if (item.kind === 'did') {
+    h += '<div class="field"><div class="flabel"><span class="flt">Демо для ДИД</span></div><div class="fval"><label class="switch' + (canEdit ? '' : ' view') + '"><input type="checkbox" data-reporting-demo="did" ' + (current.did_demo ? 'checked' : '') + (canEdit ? '' : ' disabled') + '><span class="sl"></span>' + (current.did_demo ? 'да' : 'нет') + '</label></div></div>';
+  }
+  h += '<div class="reporting-status-meta">' + (current.updated_at ? 'Обновлено ' + escapeHtml(cardFmtDT(current.updated_at)) + (current.updated_by_name ? ' · ' + escapeHtml(current.updated_by_name) : '') : 'Статус ещё не заполнялся') + '</div>';
+  if (canEdit) h += '<button class="btn primary reporting-status-save" data-action="save-reporting-status" data-reporting-kind="' + escapeHtml(item.kind) + '" data-meeting-id="' + meeting.id + '" data-version="' + (current.version || 0) + '">' + cardIcon('check') + 'Сохранить статус</button>';
+  else h += '<div class="reporting-status-note">' + escapeHtml(item.edit_reason || 'Статус доступен только для просмотра.') + '</div>';
   return h + '</div></div>';
 }
-function cardBodyRep(t, e) {
-  const demo = '<div class="field"><div class="flabel"><span class="flt">Демо для ДИД</span></div><div class="fval"><label class="switch' + (e ? '' : ' view') + '"><input type="checkbox" data-k="demoDid" ' + (t.demoDid ? 'checked' : '') + (e ? '' : ' disabled') + '><span class="sl"></span>' + (t.demoDid ? 'да' : 'нет') + '</label></div></div>';
-  return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="repgrid">'
-    + cardRepCard('Директорская оперативка', '#6C4CD4', 'trend', 'directorate', t, e, null)
-    + cardRepCard('Оперативка ДИД', '#1F9D44', 'clock', 'did', t, e, demo)
-    + cardRepCard('Встреча по ключевым проектам', '#2E6BE6', 'flag', 'key', t, e, null)
-    + '</div>';
+function cardBodyRep() {
+  if (cardReportingLoading) return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="card-reporting-loading">Загрузка календаря и статусов…</div>';
+  if (!cardReportingContext) return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="card-reporting-loading">Не удалось загрузить статусы. Переключитесь на вкладку ещё раз.</div>';
+  return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="reporting-status-help">Статус сохраняется отдельно от остальных полей карточки. После фиксации факта встречи он автоматически станет предыдущим.</div><div class="repgrid">'
+    + cardReportingContext.items.map(cardReportingItem).join('') + '</div>';
+}
+
+async function cardLoadReportingContext(app) {
+  const api = app?.api || window.app?.api;
+  if (!api || !currentTask?.id || cardReportingLoading) return;
+  cardReportingLoading = true;
+  if (cardState.tab === 'rep') cardRenderBody();
+  try {
+    cardReportingContext = await api.get(`/tasks/${currentTask.id}/reporting-statuses/context`);
+  } catch (_) {
+    cardReportingContext = null;
+    cardToast('Не удалось загрузить отчётные статусы', 'err');
+  } finally {
+    cardReportingLoading = false;
+    if (cardState.tab === 'rep') cardRenderBody();
+  }
+}
+
+async function cardSaveReportingStatus(button, app) {
+  const api = app?.api || window.app?.api;
+  const kind = button.dataset.reportingKind;
+  const meetingId = button.dataset.meetingId;
+  const textInput = document.querySelector(`[data-reporting-text="${kind}"]`);
+  const demoInput = document.querySelector('[data-reporting-demo="did"]');
+  button.disabled = true;
+  try {
+    await api.put(`/tasks/${currentTask.id}/reporting-statuses/${meetingId}`, {
+      text: textInput?.value?.trim() || null,
+      did_demo: kind === 'did' ? !!demoInput?.checked : false,
+      version: Number(button.dataset.version || 0),
+    });
+    cardReportingContext = null;
+    await cardLoadReportingContext(app);
+    cardState.dirty = false;
+    cardUpdateDirty();
+    cardToast('Отчётный статус сохранён', 'ok');
+  } catch (error) {
+    button.disabled = false;
+    cardToast(error?.status === 409 ? 'Статус уже изменён. Обновите вкладку и повторите.' : 'Не удалось сохранить отчётный статус', 'err');
+  }
 }
 
 function cardBodyCom() {
@@ -5488,6 +5873,7 @@ function cardBodySys(t, e) {
   h += cardGrid(cardF('Ссылка на макеты', e ? cardTxtC('mockupUrl', t.mockupUrl) : cardV(t.mockupUrl ? cardLnk(t.mockupUrl) : '—'), { span2: true }));
   h += cardGrid(cardLinksField('Ссылки на Jira', t.jiraLinks, e, 'newJira', 'del-jira', 'add-jira', 'https://jira…/ISSUE-123'));
   h += cardGrid(cardLinksField('Ссылки на бизнес-требования', t.reqLinks, e, 'newReq', 'del-req', 'add-req', 'https://docs…/requirements'));
+  h += cardBodyFiles();
   h += cardSec('Системная информация', 'user');
   h += cardGrid(
     cardF('Автор задачи', cardROv('<span class="vchip"><span class="ava24">' + getInitials(t.author) + '</span>' + escapeHtml(cardPerson(t.author)) + '</span>'), { lock: true }),
@@ -5497,6 +5883,29 @@ function cardBodySys(t, e) {
   return h;
 }
 
+const CARD_HISTORY_REFERENCE_KEYS = {
+  team_id: 'teams',
+  channel_id: 'channels',
+  business_customer_id: 'customers',
+  department_id: 'departments',
+  project_id: 'projects',
+  task_type_id: 'taskTypes',
+  priority_id: 'priorities',
+  status_id: 'statuses',
+  previous_status_id: 'statuses',
+  deadline_id: 'deadlines',
+  owner_id: 'users',
+  created_by: 'users',
+};
+
+function cardHistoryValue(fieldName, value) {
+  if (value == null) return null;
+  const dictionaryKey = CARD_HISTORY_REFERENCE_KEYS[fieldName];
+  if (!dictionaryKey) return value;
+  const item = (cardDict?.[dictionaryKey] || []).find(entry => Number(entry?.id) === Number(value));
+  return item?.name || item?.title || item?.login || item?.email || value;
+}
+
 function cardBodyLog() {
   const items = cardState.history;
   let rows = '';
@@ -5504,7 +5913,9 @@ function cardBodyLog() {
     rows = '<tr><td colspan="5" style="text-align:center;color:var(--tfaint);padding:24px">История изменений пуста</td></tr>';
   } else {
     items.forEach(r => {
-      rows += '<tr><td>' + cardFmtDT(r.changed_at) + '</td><td><b>' + escapeHtml(r.changed_by_name || 'Система') + '</b></td><td>' + escapeHtml(r.field_label || r.field_name || '') + '</td><td>' + escapeHtml(r.old_value != null ? String(r.old_value) : '—') + '</td><td>' + escapeHtml(r.new_value != null ? String(r.new_value) : '—') + '</td></tr>';
+      const oldValue = cardHistoryValue(r.field_name, r.old_value);
+      const newValue = cardHistoryValue(r.field_name, r.new_value);
+      rows += '<tr><td>' + cardFmtDT(r.changed_at) + '</td><td><b>' + escapeHtml(r.changed_by_name || 'Система') + '</b></td><td>' + escapeHtml(r.field_label || r.field_name || '') + '</td><td>' + escapeHtml(oldValue != null ? String(oldValue) : '—') + '</td><td>' + escapeHtml(newValue != null ? String(newValue) : '—') + '</td></tr>';
     });
   }
   return cardSec('История изменений (лог) · ' + items.length, 'clock') + '<table class="tbl"><colgroup><col style="width:16%"><col style="width:18%"><col style="width:24%"><col style="width:21%"><col style="width:21%"></colgroup><thead><tr><th>Дата</th><th>Пользователь</th><th>Поле</th><th>Старое значение</th><th>Новое значение</th></tr></thead><tbody>' + rows + '</tbody></table>';
@@ -5514,15 +5925,17 @@ function cardRenderBody() {
   const el = document.getElementById('mbody');
   if (!el) return;
   const t = cardCur(), e = cardState.editing;
+  const fullEdit = e && !cardState.entryField;
   let h = '';
   if (cardState.tab === 'main') h = cardBodyMainV30(t, e);
-  else if (cardState.tab === 'rep') h = cardBodyRep(t, e);
+  else if (cardState.tab === 'rep') h = cardBodyRep();
   else if (cardState.tab === 'com') h = cardBodyCom();
   else if (cardState.tab === 'files') h = cardBodyFiles();
-  else if (cardState.tab === 'sys') h = cardBodySys(t, e) + cardBodyFiles();
+  else if (cardState.tab === 'sys') h = cardBodySys(t, fullEdit);
   else h = cardBodyLog();
   el.innerHTML = '<div id="td-lock-banner" style="display:none;"></div><div id="td-viewer-banner" style="display:none;"></div><div class="form-error-summary" id="card-form-error-summary" role="alert" hidden></div>' + h;
   cardRefreshDynamic();
+  cardRenderPrioritiserValueProposal();
   renderLockBanner();
   renderViewerBanner();
   if (e) attachDictionarySearch(el, [
@@ -5537,10 +5950,21 @@ function cardRenderFooter() {
   const el = document.getElementById('mfoot');
   if (!el) return;
   const t = cardCur();
+  if (cardState.tab === 'rep' && !cardState.editing) {
+    el.innerHTML = '<div class="fmeta">Отчётные статусы имеют собственную кнопку сохранения для каждой встречи.</div><span class="dirty" id="dirty"><i></i>Статус не сохранён</span>';
+    cardUpdateDirty();
+    return;
+  }
   const lockedByOther = _lockInfo && _lockInfo.locked && !_lockInfo.is_mine;
-  let h = '<div class="fmeta"><b>Автор:</b> ' + escapeHtml(cardPerson(t.author)) + ' · <b>Создана:</b> ' + cardFmtDT(t.createdAt) + ' · <b>Изменена:</b> ' + cardFmtDT(t.updatedAt) + '</div><div class="factions"><span class="task-network-status" role="status" hidden></span><span class="dirty" id="dirty"><i></i>Не сохранено</span>';
+  const editingTitle = cardState.entryField
+    ? 'Быстрое редактирование · ' + escapeHtml(cardFieldLabel(cardState.entryField))
+    : 'Редактирование карточки';
+  const meta = cardState.editing
+    ? '<div class="edit-change-summary"><strong>' + editingTitle + '</strong><span id="card-change-summary" role="status" aria-live="polite">Изменений пока нет</span></div>'
+    : '<b>Автор:</b> ' + escapeHtml(cardPerson(t.author)) + ' · <b>Создана:</b> ' + cardFmtDT(t.createdAt) + ' · <b>Изменена:</b> ' + cardFmtDT(t.updatedAt);
+  let h = '<div class="fmeta">' + meta + '</div><div class="factions"><span class="task-network-status" role="status" hidden></span><span class="dirty" id="dirty"><i></i>Не сохранено</span>';
   h += cardState.editing
-    ? '<button class="btn ghost" data-action="cancel">' + cardIcon('x') + 'Отменить</button><button class="btn primary" id="saveBtn" data-action="save">' + cardIcon('check') + 'Сохранить</button>'
+    ? '<button class="btn ghost" id="cardCancelBtn" data-action="cancel">' + cardIcon('x') + '<span>Выйти из редактирования</span></button><button class="btn primary" id="saveBtn" data-action="save" disabled>' + cardIcon('check') + '<span>Сохранить</span></button>'
     : '<button class="btn primary" data-action="edit"' + (lockedByOther ? ' disabled style="opacity:.45;cursor:not-allowed" title="Задача редактируется другим пользователем"' : '') + '>' + cardIcon('edit') + 'Редактировать</button>';
   el.innerHTML = h + '</div>';
   cardUpdateDirty();
@@ -5567,9 +5991,11 @@ function cardRefreshDynamic() {
   set('hPrio', el => { el.textContent = t.priority; el.className = 'task-head-chip task-head-chip--priority ' + cardPrioCls(t.priority); });
   set('hTeam', el => { el.textContent = t.team; });
   set('hAssignee', el => { el.textContent = cardPerson(t.assignee); });
+  set('assigneeAva', el => { el.textContent = getInitials(t.assignee); });
   set('hDeadline', el => { el.textContent = t.deadline; });
   set('hProject', el => { el.textContent = t.project; });
   set('custAva', el => { el.textContent = getInitials(t.customer); });
+  set('custDept', el => { el.textContent = t.customerDept || '—'; });
   set('ringFg', el => { el.style.strokeDashoffset = (94.25 * (1 - (+t.progress || 0) / 100)).toFixed(2); });
   set('ringTxt', el => { el.textContent = t.progress + '%'; });
   set('titleCount', el => { const length = String(t.title || '').length; el.textContent = length + ' / 255'; el.classList.toggle('near-limit', length >= 230); });
@@ -5605,28 +6031,46 @@ function cardRefreshDynamic() {
 }
 function cardUpdateDirty() {
   const d = document.getElementById('dirty');
-  const changesCount = cardState.editing && cardState.draft
-    ? cardDiffChanges(cardState.current, cardState.draft).length
-    : 0;
+  const changes = cardState.editing && cardState.draft
+    ? cardDiffChanges(cardState.current, cardState.draft)
+    : [];
+  const changesCount = changes.length;
   if (d) {
     d.style.display = cardState.dirty ? 'inline-flex' : 'none';
     d.innerHTML = '<i></i>Не сохранено · ' + changesCount;
+  }
+  const summary = document.getElementById('card-change-summary');
+  if (summary) {
+    const visibleFields = changes.slice(0, 3).map(change => change.field);
+    const remaining = Math.max(0, changesCount - visibleFields.length);
+    summary.textContent = changesCount
+      ? 'Изменено: ' + visibleFields.join(', ') + (remaining ? ' и ещё ' + remaining : '')
+      : 'Изменений пока нет';
+  }
+  const saveButton = document.getElementById('saveBtn');
+  if (saveButton) {
+    saveButton.disabled = !cardState.dirty || cardState.saving;
+    if (!cardState.saving) saveButton.innerHTML = cardIcon('check') + '<span>' + (changesCount ? 'Сохранить · ' + changesCount : 'Сохранить') + '</span>';
+  }
+  const cancelButton = document.getElementById('cardCancelBtn');
+  if (cancelButton) {
+    cancelButton.disabled = cardState.saving;
+    cancelButton.innerHTML = cardIcon('x') + '<span>' + (changesCount ? 'Отменить изменения' : 'Выйти из редактирования') + '</span>';
   }
   document.querySelectorAll('#task-detail-overlay .field-modified').forEach(field => field.classList.remove('field-modified'));
   if (!cardState.editing || !cardState.draft) return;
   document.querySelectorAll('#task-detail-overlay [data-k]').forEach(control => {
     if (!cardStatePathChanged(control.dataset.k)) return;
-    control.closest('.icell, .field, .task-title-card, .task-desc')?.classList.add('field-modified');
+    control.closest('.ival, .fval, .task-title-row, .desc-val')?.classList.add('field-modified');
   });
   [['otherTeams', 'otherTeams'], ['tags', 'tags']].forEach(([toggle, key]) => {
     if (!cardStatePathChanged(key)) return;
-    document.querySelector(`#task-detail-overlay [data-toggle="${toggle}"]`)?.closest('.icell, .field')?.classList.add('field-modified');
+    document.querySelector(`#task-detail-overlay [data-toggle="${toggle}"]`)?.closest('.ival, .fval')?.classList.add('field-modified');
   });
   if (cardState.editing) {
     if (cardState.dirty) saveCardEditDraft();
     else clearCardEditDraft();
   }
-  updateHeaderUnsavedIndicator('card-unsaved-indicator', cardState.dirty, cardState.saving, changesCount);
 }
 
 async function taskSaveRequestWithTimeout(request, timeoutMs = 15000) {
@@ -5662,12 +6106,13 @@ function cardHighlightSavedFields(changes) {
   const labelElements = Array.from(document.querySelectorAll('#task-detail-overlay .flt, #task-detail-overlay .ilab, #task-detail-overlay .flabel, #task-detail-overlay .jlab, #task-detail-overlay .bc-title, #task-detail-overlay .slab'));
   changes.forEach(change => {
     let target = null;
-    if (change.key === 'title') target = document.querySelector('#task-detail-overlay .task-title-card');
-    else if (change.key === 'description') target = document.querySelector('#task-detail-overlay .task-desc');
+    if (change.key === 'title') target = document.querySelector('#task-detail-overlay .task-title-row');
+    else if (change.key === 'description') target = document.querySelector('#task-detail-overlay .desc-val');
     else {
       const expected = String(aliases[change.key] || change.field.replace(' (ЭО)', '')).toLocaleLowerCase('ru-RU');
       const label = labelElements.find(el => el.textContent.trim().toLocaleLowerCase('ru-RU').includes(expected));
-      target = label?.closest('.icell, .field, .task-title-card, .task-desc, .repcard, .bigcard, .cl');
+      const container = label?.closest('.icell, .field, .task-title-card, .task-desc, .repcard, .bigcard, .cl');
+      target = container?.querySelector(':scope > .ival, :scope > .fval, .task-title-row, .desc-val') || container;
     }
     target?.classList.add('field-saved');
   });
@@ -5710,7 +6155,7 @@ async function cardRevealFirstChangedField(app) {
   if (!target) return;
   const details = target.closest('details');
   if (details) details.open = true;
-  target.closest('.icell, .field, .task-title-card, .task-desc')?.classList.add('field-modified');
+  target.closest('.ival, .fval, .task-title-row, .desc-val')?.classList.add('field-modified');
   target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   if (typeof target.focus === 'function') target.focus({ preventScroll: true });
 }
@@ -5729,6 +6174,20 @@ function cardToast(msg, type) {
   t.innerHTML = cardIcon(type === 'ok' ? 'check' : 'alert') + '<span>' + escapeHtml(msg) + '</span>';
   clearTimeout(_cardToastTimer);
   _cardToastTimer = setTimeout(() => { t.classList.remove('show'); }, 2800);
+}
+
+function cardToastAction(msg, label, action) {
+  const t = document.getElementById('card-toast');
+  if (!t) { cardToast(msg, 'ok'); return; }
+  t.className = 'toast show card-toast-action';
+  t.innerHTML = cardIcon('check') + '<span>' + escapeHtml(msg) + '</span><button type="button" class="toast-action-btn">' + escapeHtml(label) + '</button>';
+  clearTimeout(_cardToastTimer);
+  const button = t.querySelector('.toast-action-btn');
+  button?.addEventListener('click', async () => {
+    button.disabled = true;
+    await action();
+  }, { once: true });
+  _cardToastTimer = setTimeout(() => { t.classList.remove('show'); }, 7000);
 }
 
 function createTaskChangedFieldNames() {
@@ -5756,6 +6215,7 @@ function createTaskChangedFieldNames() {
 
 function taskUnsavedChangeNames() {
   if (_createTaskDirty) return createTaskChangedFieldNames();
+  if (cardState.tab === 'rep' && cardState.dirty) return ['Отчётный статус'];
   if (cardState.editing && cardState.current && cardState.draft) {
     return cardDiffChanges(cardState.current, cardState.draft).map(change => change.field);
   }
@@ -5823,33 +6283,24 @@ async function cardRequestClose() {
   return true;
 }
 
-function cardAiSuggest(t) {
-  const cost = cardCalcCost(t.eo);
-  const fin = Math.round((cost || 0) / 0.25 / 1e6 * 10) / 10;
-  const text = 'AI-оценка: стоимость по ЭО ' + cardFmtMoney(cost) + ' при целевом C/V 0,25 даёт финансовый эффект ' + cardFmtNum(fin, 1) + ' млн ₽. Учтены ответственная команда ' + (t.team || '—') + (t.otherTeams.length ? ', вовлечённые команды: ' + t.otherTeams.join(', ') : '') + ', срок ' + (t.deadline || '—') + ' и медианные эффекты аналогичных задач портфеля.';
-  return { fin: fin, text: text };
-}
-
 function cardPsCls(v) {
   if (v == null) return '';
   return v >= 70 ? 'cv-good' : (v >= 40 ? 'cv-warn' : 'cv-bad');
 }
 
-function cardPsSuggest(t) {
-  const cost = cardCalcCost(t.eo);
-  const cvE = cardCvCalc(cost, t.finEffect);
-  const prio = String(t.priority || '').toUpperCase();
-  let s = 0;
-  s += prio === 'ВЫСОКИЙ' ? 40 : (prio === 'СРЕДНИЙ' ? 25 : 10);
-  s += Math.min(30, Math.round((t.finEffect || 0) * 2));
-  s += cvE == null ? 0 : (cvE < 0.3 ? 20 : (cvE <= 1 ? 10 : 0));
-  s += t.deadline === 'БЕЗ СРОКА' ? 0 : 10;
-  s = Math.min(100, s);
-  const text = 'Агент учёл: приоритет «' + (t.priority || '—') + '», финансовый эффект ' + cardFmtNum(t.finEffect, 2) + ' млн ₽, C/V по ЭО ' + (cvE == null ? '—' : cvE.toLocaleString('ru-RU')) + ', срок «' + (t.deadline || '—') + '», принадлежность к проекту «' + (t.project || '—') + '». Итог: ' + s + '/100.';
-  return { score: s, text: text };
+function cardFocusEditField(key) {
+  if (!key) return;
+  requestAnimationFrame(() => {
+    const target = document.querySelector('#task-detail-overlay [data-k="' + key + '"], #task-detail-overlay [data-toggle="' + key + '"]');
+    if (!target) return;
+    const focusTarget = target.closest('.dict-search-control')?.querySelector('.dict-combobox-trigger') || target;
+    focusTarget.focus({ preventScroll: true });
+    if (typeof focusTarget.select === 'function' && (focusTarget.tagName === 'INPUT' || focusTarget.tagName === 'TEXTAREA')) focusTarget.select();
+    if (focusTarget.classList.contains('dict-combobox-trigger')) requestAnimationFrame(() => focusTarget.click());
+  });
 }
 
-async function cardStartEdit(app) {
+async function cardStartEdit(app, focusKey = '') {
   if (!currentTask?.id) return;
   if (_lockInfo && _lockInfo.locked && !_lockInfo.is_mine) {
     cardToast('Задача редактируется другим пользователем', 'warn');
@@ -5865,36 +6316,39 @@ async function cardStartEdit(app) {
   renderLockBanner();
   cardState.draft = JSON.parse(JSON.stringify(cardState.current));
   cardState.editing = true;
+  cardState.entryField = focusKey || '';
   cardState.dirty = restoreCardEditDraft();
   cardState.replyFor = null;
   cardAi = null;
   cardPs = null;
   modalMode = 'edit';
+  const cardBodyScrollTop = document.getElementById('mbody')?.scrollTop || 0;
   cardRender();
+  const renderedCardBody = document.getElementById('mbody');
+  if (renderedCardBody) renderedCardBody.scrollTop = cardBodyScrollTop;
   cardToast(cardState.dirty ? 'Черновик редактирования восстановлен' : 'Режим редактирования включён', 'ok');
-  const ti = document.getElementById('titleInput');
-  if (ti) { ti.focus(); ti.setSelectionRange(ti.value.length, ti.value.length); }
+  cardFocusEditField(focusKey || 'title');
 }
 
 async function cardCancelEdit(app) {
+  clearTimeout(_cardQuickSaveTimer);
   if (cardState.saving) {
     cardToast('Дождитесь завершения сохранения', 'warn');
     return;
   }
   if (cardState.dirty) {
-    const confirmed = await showConfirmModal(
-      'Все несохранённые изменения будут потеряны. Это действие нельзя отменить.',
-      'Отменить изменения?',
-      'Отменить изменения',
-      'Продолжить редактирование',
-      true
-    );
-    if (!confirmed) return;
+    const decision = await showEditExitModal();
+    if (decision === 'continue') return;
+    if (decision === 'save') {
+      await cardSaveEdit(app);
+      return;
+    }
   }
   if (currentTask?.id) releaseLock(currentTask.id);
   clearCardEditDraft();
   _lockInfo = null;
   cardState.editing = false;
+  cardState.entryField = '';
   cardState.draft = null;
   cardState.dirty = false;
   cardState.replyFor = null;
@@ -5912,6 +6366,16 @@ function isTaskDateInFuture(value) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return selected > today;
+}
+
+function cardQuickEditContains(target) {
+  if (!cardState.editing || !cardState.entryField || !target) return false;
+  const controls = Array.from(document.querySelectorAll('#task-detail-overlay [data-k], #task-detail-overlay [data-toggle]'))
+    .filter(control => control.dataset.k === cardState.entryField || control.dataset.toggle === cardState.entryField);
+  return controls.some(control => {
+    const editor = control.closest('.ival, .fval, .task-title-row, .desc-val, .dict-search-control') || control;
+    return editor.contains(target);
+  });
 }
 
 function normalizedTaskStatus(value) {
@@ -5993,6 +6457,11 @@ const CARD_DIFF_TRACK = [
   ['tags', 'Метки (теги)'], ['otherTeams', 'Другие вовлечённые команды'],
   ['jiraLinks', 'Ссылки на Jira'], ['reqLinks', 'Ссылки на бизнес-требования'],
 ];
+const CARD_AUTO_SAVE_INLINE_FIELDS = new Set(['priority', 'deadline']);
+
+function cardFieldLabel(key) {
+  return CARD_DIFF_TRACK.find(([field]) => field === key)?.[1] || key;
+}
 function cardDiffChanges(a, b) {
   const ch = [];
   CARD_DIFF_TRACK.forEach(p => {
@@ -6032,10 +6501,6 @@ function cardPayload(source = cardState.draft) {
     completion_forecast: d.forecastPercent != null && d.forecastPercent !== '' ? +d.forecastPercent : null,
     hard_score: d.hardScore || null,
     soft_score: d.softScore || null,
-    directorate_status: d.statuses.directorate.cur,
-    did_status: d.statuses.did.cur,
-    key_project_status: d.statuses.key.cur,
-    did_demo: !!d.demoDid,
     link_mockups: d.mockupUrl || null,
     link_jira: d.jiraLinks,
     link_requirements: d.reqLinks,
@@ -6080,6 +6545,45 @@ async function cardLoadHistory(app) {
   }
 }
 
+async function cardUndoSavedChanges(app, previousSnapshot) {
+  const api = app?.api || window.app?.api;
+  if (!api || !currentTask?.id || !previousSnapshot) return;
+  if (cardState.editing || cardState.saving) {
+    cardToast('Сначала завершите текущее редактирование', 'warn');
+    return;
+  }
+  const lock = await acquireLock(currentTask.id);
+  if (!lock || lock.error) {
+    cardToast(lock?.status === 423 ? 'Отмена недоступна: задача уже редактируется' : 'Не удалось начать отмену', 'warn');
+    return;
+  }
+  _lockInfo = { locked: true, is_mine: true, lock_owner_name: 'Вы' };
+  try {
+    const currentPayload = cardPayload(cardState.current);
+    const previousPayload = cardPayload(previousSnapshot);
+    const patch = { version: currentTask.version || 0, client_request_id: newTaskRequestId() };
+    Object.keys(previousPayload).forEach(field => {
+      if (field === 'version') return;
+      if (JSON.stringify(currentPayload[field] ?? null) !== JSON.stringify(previousPayload[field] ?? null)) patch[field] = previousPayload[field];
+    });
+    if (Object.keys(patch).length === 2) {
+      cardToast('Отменять нечего', 'info');
+      return;
+    }
+    await api.patch(`/tasks/${currentTask.id}`, patch);
+    await cardReloadTask(app);
+    cardRender();
+    cardHighlightSavedFields(cardDiffChanges(cardState.current, previousSnapshot));
+    cardToast('Последнее сохранение отменено', 'ok');
+  } catch (error) {
+    if (error?.status === 409) cardToast('Задача уже изменилась. Отмена не выполнена', 'warn');
+    else cardToast('Не удалось отменить сохранение', 'err');
+  } finally {
+    releaseLock(currentTask.id);
+    _lockInfo = null;
+  }
+}
+
 async function cardSaveEdit(app) {
   if (cardState.saving) return;
   if (isTaskNetworkOffline()) {
@@ -6099,11 +6603,13 @@ async function cardSaveEdit(app) {
   }
   clearTaskFormErrorSummary('card-form-error-summary');
   const changes = cardDiffChanges(cardState.current, cardState.draft);
+  const previousSnapshot = JSON.parse(JSON.stringify(cardState.current));
   if (!changes.length) {
     if (currentTask?.id) releaseLock(currentTask.id);
     clearCardEditDraft();
     _lockInfo = null;
     cardState.editing = false;
+    cardState.entryField = '';
     cardState.draft = null;
     cardState.dirty = false;
     cardState.replyFor = null;
@@ -6136,6 +6642,7 @@ async function cardSaveEdit(app) {
     _cardSaveRequestId = null;
     clearCardEditDraft();
     cardState.editing = false;
+    cardState.entryField = '';
     cardState.draft = null;
     cardState.dirty = false;
     cardState.replyFor = null;
@@ -6145,6 +6652,7 @@ async function cardSaveEdit(app) {
     cardRender();
     cardHighlightSavedFields(changes);
     cardToast('Сохранено · изменений: ' + changes.length, 'ok');
+    cardToastAction('Сохранено · изменений: ' + changes.length, 'Отменить', () => cardUndoSavedChanges(app, previousSnapshot));
   } catch (e) {
     if (e && e.status === 409) {
       cardShowConflict(e.data && e.data.detail, app);
@@ -6271,7 +6779,7 @@ async function cardDoSave(payload, app) {
     _lockInfo = null;
     await cardReloadTask(app);
     clearCardEditDraft();
-    cardState.editing = false; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
+    cardState.editing = false; cardState.entryField = ''; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
     modalMode = 'view';
     cardRender();
     cardToast('Сохранено', 'ok');
@@ -6306,7 +6814,7 @@ function cardConflictRefresh(serverTask, app) {
   cardConflictClose();
   currentTask = serverTask;
   cardState.current = buildCardState(serverTask);
-  cardState.editing = false; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
+  cardState.editing = false; cardState.entryField = ''; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
   modalMode = 'view';
   if (currentTask?.id) releaseLock(currentTask.id);
   clearCardEditDraft();
@@ -6319,65 +6827,100 @@ function cardConflictClose() {
   if (o) o.remove();
 }
 
-function cardShowAi(target, app) {
-  const src = cardState.draft || cardState.current;
-  if (!src) return;
-  cardAi = { target: target, ...cardAiSuggest(src) };
-  const popId = target === 'finAi' ? 'aiPop' : 'finPop';
-  const pop = document.getElementById(popId);
-  if (!pop) return;
-  pop.innerHTML = '<div class="ah">' + cardIcon('spark') + 'AI-подсказка</div><div class="av">Финансовый эффект: ' + cardFmtNum(cardAi.fin, 1) + ' млн ₽</div><div class="at">' + escapeHtml(cardAi.text) + '</div><div style="display:flex;gap:8px">' + (cardState.editing ? '<button class="btn primary mini" data-action="ai-apply">' + cardIcon('check') + 'Применить</button>' : '') + '<button class="btn ghost mini" data-action="ai-dismiss">Скрыть</button></div>';
+function cardRenderPrioritiserValueProposal() {
+  const pop = document.getElementById('finPop');
+  if (!pop || !cardAi || cardAi.target !== 'fin') return;
+  const busy = cardState.prioritiserRunning === 'value-approve';
+  pop.innerHTML = '<div class="ah">' + cardIcon('spark') + 'Предложение агента</div>' +
+    '<div class="av">Финансовый эффект: ' + cardFmtNum(cardAi.fin, 2) + ' млн ₽</div>' +
+    '<div class="at">' + cardNl2br(cardAi.text) + '</div>' +
+    '<div class="ai-suggestion-actions">' +
+      '<button type="button" class="btn mini ghost" data-action="ai-value-reject"' + (busy ? ' disabled' : '') + '>Отклонить</button>' +
+      '<button type="button" class="btn mini primary" data-action="ai-value-accept"' + (busy ? ' disabled' : '') + '>' + cardIcon('check') + (busy ? 'Сохранение…' : 'Принять результат') + '</button>' +
+    '</div>';
   pop.classList.add('show');
 }
-function cardApplyAi() {
-  if (!cardAi) return;
-  const d = cardState.draft;
-  if (cardAi.target === 'fin') {
-    d.finEffect = cardAi.fin;
-    d.finJust = cardAi.text;
-  } else {
-    d.finEffectAi = cardAi.fin;
-    d.finJustAi = cardAi.text;
-  }
-  cardAi = null;
-  cardState.dirty = true;
+
+async function cardAcceptPrioritiserValue(app) {
+  if (!cardAi || cardAi.target !== 'fin' || cardState.prioritiserRunning || !currentTask?.id) return;
+  const api = app?.api || window.app?.api;
+  if (!api) return;
+  cardState.prioritiserRunning = 'value-approve';
   cardRenderBody();
-  cardUpdateDirty();
-  cardToast('AI-рекомендация применена', 'ok');
+  try {
+    const updatedTask = await api.post(`/tasks/${currentTask.id}/prioritiser/value/approve`, {
+      version: currentTask?.version || cardAi.version || 0,
+      value_mln: cardAi.fin,
+      justification: cardAi.text,
+    });
+    cardAi = null;
+    currentTask = updatedTask;
+    cardState.current = buildCardState(updatedTask);
+    cardRender();
+    cardToast('Финансовый эффект принят и сохранён', 'ok');
+  } catch (error) {
+    if (error?.status === 409) cardToast('Задача изменилась после расчёта. Рассчитайте эффект повторно.', 'warn');
+    else if (error?.status === 423) cardToast('Задача редактируется другим пользователем', 'warn');
+    else cardToast('Ошибка сохранения: ' + (error?.message || 'не удалось принять результат'), 'err');
+  } finally {
+    cardState.prioritiserRunning = '';
+    cardRenderBody();
+  }
 }
 
-async function cardApplyPsToDb(app) {
-  if (!cardPs) return;
-  const api = app?.api || window.app?.api;
-  if (!api || !currentTask?.id) return;
-  const score = cardPs.score, text = cardPs.text;
-  try {
-    await api.put(`/tasks/${currentTask.id}`, {
-      priority_score: score,
-      priority_justification: text,
-      version: currentTask?.version || 0
-    });
-    cardPs = null;
-    await cardReloadTask(app);
-    cardRender();
-    cardToast('Priority Score применён и сохранён', 'ok');
-  } catch (e) {
-    cardPs = null;
-    if (e && e.status === 409) cardToast('Задача изменена другим пользователем. Обновите страницу и повторите.', 'warn');
-    else if (e && e.status === 423) cardToast('Задача редактируется другим пользователем', 'warn');
-    else cardToast('Ошибка: ' + (e.message || 'не удалось сохранить Priority Score'), 'err');
+async function cardRunPrioritiser(kind, app) {
+  if (cardState.prioritiserRunning || !currentTask?.id) return;
+  if (cardState.editing) {
+    cardToast('Перед расчётом сохраните или отмените изменения карточки', 'warn');
+    return;
   }
-}
-function cardApplyPs() {
-  if (!cardPs) return;
-  const d = cardState.draft;
-  d.priorityScore = cardPs.score;
-  d.priorityJust = cardPs.text;
-  cardPs = null;
-  cardState.dirty = true;
+  const requirements = cardPrioritiserRequirements(kind);
+  if (requirements.some(item => !item.filled)) {
+    showPrioritiserRequirementsModal(kind, requirements);
+    return;
+  }
+  const api = app?.api || window.app?.api;
+  if (!api) return;
+  cardState.prioritiserRunning = kind;
   cardRenderBody();
-  cardUpdateDirty();
-  cardToast('Priority Score применён — сохраните изменения', 'ok');
+  try {
+    const result = await api.post(`/tasks/${currentTask.id}/prioritiser/${kind}`, {
+      version: currentTask?.version || 0,
+    });
+    if (kind === 'value') {
+      const valueMln = Number(result?.value_mln);
+      if (!Number.isFinite(valueMln) || valueMln < 0) {
+        throw new Error('Агент вернул некорректный финансовый эффект');
+      }
+      cardAi = {
+        target: 'fin',
+        fin: valueMln,
+        text: String(result.justification || ''),
+        version: Number(result.version ?? currentTask?.version ?? 0),
+      };
+      cardRenderBody();
+      cardToast('Финансовый эффект рассчитан. Проверьте и примите результат.', 'info');
+    } else {
+      currentTask = result;
+      cardState.current = buildCardState(result);
+      cardRender();
+      cardToast('Приоритет рассчитан и сохранён', 'ok');
+    }
+  } catch (error) {
+    if (error?.status === 409) cardToast('Задача изменена другим пользователем. Обновите страницу и повторите.', 'warn');
+    else if (error?.status === 423) cardToast('Задача редактируется другим пользователем', 'warn');
+    else {
+      const missing = error?.data?.missing_attributes;
+      if (Array.isArray(missing) && missing.length) {
+        showPrioritiserRequirementsModal(kind, cardPrioritiserRequirements(kind, missing));
+      } else {
+        cardToast('Ошибка: ' + (error?.message || 'агент не выполнил расчёт'), 'err');
+      }
+    }
+  } finally {
+    cardState.prioritiserRunning = '';
+    cardRenderBody();
+  }
 }
 
 async function cardSuggestStatusProgressSync(changedKey, changedValue) {
@@ -6417,7 +6960,12 @@ async function cardSuggestStatusProgressSync(changedKey, changedValue) {
   }
 }
 
-function cardOnField(ev) {
+function cardOnField(ev, app = window.app) {
+  if (cardState.tab === 'rep' && (ev.target.matches('[data-reporting-text]') || ev.target.matches('[data-reporting-demo]'))) {
+    cardState.dirty = true;
+    cardUpdateDirty();
+    return;
+  }
   if (!cardState.editing) return;
   const el = ev.target;
   const k = el.dataset && el.dataset.k;
@@ -6433,10 +6981,19 @@ function cardOnField(ev) {
     if (k === 'progress') v = Math.min(100, Math.round(v / 5) * 5);
   }
   cardSetPath(cardState.draft, k, v);
+  if (k === 'customer') {
+    cardState.draft.customerDept = cardCustomerDepartment(v, '');
+  }
   cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
   cardUpdateDirty();
   if (k === 'progress') {
     document.querySelectorAll('#task-detail-overlay [data-k="progress"]').forEach(el2 => { if (el2 !== el) el2.value = v; });
+    const progressEditor = el.closest('.prog-edit');
+    if (progressEditor) {
+      progressEditor.style.setProperty('--progress-position', v + '%');
+      const progressValue = progressEditor.querySelector('[data-progress-value]');
+      if (progressValue) progressValue.textContent = v + '%';
+    }
   }
   if (ev.type === 'change' && (k === 'status' || k === 'progress')) {
     void cardSuggestStatusProgressSync(k, v);
@@ -6450,6 +7007,12 @@ function cardOnField(ev) {
     cardUpdateDirty();
   }
   cardRefreshDynamic();
+  if (ev.type === 'change' && cardState.entryField === k && CARD_AUTO_SAVE_INLINE_FIELDS.has(k) && cardDiffChanges(cardState.current, cardState.draft).length === 1) {
+    clearTimeout(_cardQuickSaveTimer);
+    _cardQuickSaveTimer = setTimeout(() => {
+      if (cardState.editing && cardState.entryField === k && cardDiffChanges(cardState.current, cardState.draft).length === 1 && !cardState.saving) cardSaveEdit(app);
+    }, 250);
+  }
 }
 
 async function cardOnClick(ev, app) {
@@ -6460,9 +7023,11 @@ async function cardOnClick(ev, app) {
     if (a === 'edit') { cardStartEdit(app); return; }
     if (a === 'cancel') { cardCancelEdit(app); return; }
     if (a === 'save') { cardSaveEdit(app); return; }
+    if (a === 'save-reporting-status') { cardSaveReportingStatus(actEl, app); return; }
     if (a === 'copy-id') {
-      try { navigator.clipboard.writeText(String(currentTask.id)); cardToast('ID ' + currentTask.id + ' скопирован', 'ok'); }
-      catch (_) { cardToast('ID: ' + currentTask.id, 'ok'); }
+      const publicId = formatTaskPublicId(currentTask);
+      try { navigator.clipboard.writeText(publicId); cardToast('ID ' + publicId + ' скопирован', 'ok'); }
+      catch (_) { cardToast('ID: ' + publicId, 'ok'); }
       return;
     }
     if (a === 'copy-link') {
@@ -6485,21 +7050,13 @@ async function cardOnClick(ev, app) {
       }
       return;
     }
-    if (a === 'ai-calc') { cardShowAi('finAi', app); return; }
-    if (a === 'ai-calc-fin') { cardShowAi('fin', app); return; }
-    if (a === 'ai-apply') { cardApplyAi(); return; }
-    if (a === 'ai-dismiss') {
+    if (a === 'ai-calc-fin') { await cardRunPrioritiser('value', app); return; }
+    if (a === 'ps-calc') { await cardRunPrioritiser('priority', app); return; }
+    if (a === 'ai-value-accept') { await cardAcceptPrioritiserValue(app); return; }
+    if (a === 'ai-value-reject') {
       cardAi = null;
-      const p1 = document.getElementById('aiPop'); if (p1) p1.classList.remove('show');
-      const p2 = document.getElementById('finPop'); if (p2) p2.classList.remove('show');
-      return;
-    }
-    if (a === 'ps-calc') {
-      const src = cardState.draft || cardState.current;
-      if (!src) return;
-      cardPs = cardPsSuggest(src);
-      if (cardState.editing) cardApplyPs();
-      else cardApplyPsToDb(app);
+      cardRenderBody();
+      cardToast('Предложение агента отклонено', 'info');
       return;
     }
     if (a === 'add-jira') {
@@ -6522,8 +7079,18 @@ async function cardOnClick(ev, app) {
     if (a === 'del-req') { cardState.draft.reqLinks.splice(+actEl.dataset.idx, 1); cardState.dirty = true; cardRenderBody(); cardUpdateDirty(); return; }
     return;
   }
+  const inlineEdit = ev.target.closest('[data-inline-edit]');
+  if (inlineEdit && !cardState.editing) {
+    await cardStartEdit(app, inlineEdit.dataset.inlineEdit);
+    return;
+  }
   const tabEl = ev.target.closest('[data-tab]');
   if (tabEl) {
+    if (cardState.tab === 'rep' && cardState.dirty) {
+      const confirmed = await confirmTaskCardDiscard('Несохранённый отчётный статус будет потерян. Переключить вкладку?');
+      if (!confirmed) return;
+      cardState.dirty = false;
+    }
     cardActivateTab(tabEl.dataset.tab, app);
     return;
   }
@@ -6542,8 +7109,10 @@ async function cardOnClick(ev, app) {
 }
 
 function cardReset() {
-  cardState = { tab: 'main', editing: false, dirty: false, saving: false, replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
+  clearTimeout(_cardQuickSaveTimer);
+  cardState = { tab: 'main', editing: false, dirty: false, saving: false, prioritiserRunning: '', replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
   cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
+  cardReportingContext = null; cardReportingLoading = false;
   _statusProgressSuggestionPending = false;
   if (_cardEscHandler) { document.removeEventListener('keydown', _cardEscHandler); _cardEscHandler = null; }
   if (_cardRouteTabHandler) { document.removeEventListener('task-tab-change', _cardRouteTabHandler); _cardRouteTabHandler = null; }
@@ -6553,6 +7122,7 @@ async function cardInit(app) {
   const api = app?.api || window.app?.api;
   cardRender();
   if (!api || !currentTask?.id) return;
+  if (cardState.tab === 'rep') await cardLoadReportingContext(app);
   const ratesData = await api.get('/admin/competency-costs').catch(() => []);
   cardRates = cardBuildRates(ratesData);
   await cardLoadDict(app);
@@ -6576,9 +7146,10 @@ export function renderTaskDetailModal(task, app) {
   modalMode = task ? 'view' : 'edit';
   cardState.current = buildCardState(task || {});
   cardState.tab = cardTabFromRoute();
-  cardState.editing = false; cardState.dirty = false; cardState.saving = false; cardState.replyFor = null;
+  cardState.editing = false; cardState.entryField = ''; cardState.dirty = false; cardState.saving = false; cardState.replyFor = null;
   cardState.history = []; cardState.commentsCount = 0; cardState.filesCount = 0;
   cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
+  cardReportingContext = null; cardReportingLoading = false;
   return `
     <div class="modal-overlay" id="task-detail-overlay">
       <div class="task-detail-modal modal" id="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="mhead">
@@ -6599,12 +7170,24 @@ export function initTaskDetailModal(app) {
   ensureTaskExternalLinkGuard();
   ensureTaskNetworkState();
 
-  overlay.addEventListener('click', (e) => {
+  overlay.addEventListener('click', async (e) => {
+    if (cardState.editing && cardState.entryField && !cardQuickEditContains(e.target) && !e.target.closest('[data-action]')) {
+      e.preventDefault();
+      await cardCancelEdit(app);
+      return;
+    }
     if (e.target === overlay) { cardRequestClose(); return; }
     cardOnClick(e, app);
   });
-  overlay.addEventListener('input', cardOnField);
-  overlay.addEventListener('change', cardOnField);
+  overlay.addEventListener('input', e => cardOnField(e, app));
+  overlay.addEventListener('change', e => cardOnField(e, app));
+  overlay.addEventListener('keydown', e => {
+    if (cardState.editing || (e.key !== 'Enter' && e.key !== ' ')) return;
+    const inlineEdit = e.target.closest('[data-inline-edit]');
+    if (!inlineEdit) return;
+    e.preventDefault();
+    cardStartEdit(app, inlineEdit.dataset.inlineEdit);
+  });
 
   if (!window._cardResizeBound) {
     window.addEventListener('resize', cardPlaceInd);
@@ -6616,6 +7199,16 @@ export function initTaskDetailModal(app) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && cardState.editing) {
       e.preventDefault();
       cardSaveEdit(app);
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && cardState.editing) {
+      e.preventDefault();
+      cardSaveEdit(app);
+      return;
+    }
+    if (e.key === 'Escape' && cardState.editing) {
+      e.preventDefault();
+      cardCancelEdit(app);
       return;
     }
     if (e.key === 'Escape') cardRequestClose();

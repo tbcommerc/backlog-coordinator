@@ -234,7 +234,7 @@ def test_progress_report_uses_current_quarter_and_relative_traffic_light(client,
 
     report = Report(
         key="progress",
-        name="Прогресс по задачам",
+        name="Светофоры по квартальным задачам",
         type="standard",
         filters=None,
         fields='["id"]',

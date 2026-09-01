@@ -2,7 +2,7 @@
 title: Бизнес-требования DMB Backlog
 scope: requirements-governance
 status: open-questions
-last_reviewed: 2026-08-24
+last_reviewed: 2026-09-01
 ---
 
 # Бизнес-требования DMB Backlog

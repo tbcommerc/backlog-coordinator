@@ -45,6 +45,7 @@ export class API {
     constructor() {
         this.baseURL = '/api/v1';
         this.accessToken = null;
+        this._refreshPromise = null;
     }
 
     setAccessToken(token) { this.accessToken = token || null; }
@@ -123,11 +124,15 @@ export class API {
             } catch {
                 errorData = { detail: `HTTP ${response.status}` };
             }
+            const detail = errorData.detail;
+            const message = detail && typeof detail === 'object'
+                ? (detail.message || `HTTP ${response.status}`)
+                : (detail || `HTTP ${response.status}`);
             throw new APIError(
-                errorData.detail || `HTTP ${response.status}`,
+                message,
                 response.status,
-                errorData.code || null,
-                errorData,
+                errorData.code || (detail && typeof detail === 'object' ? detail.code : null) || null,
+                detail && typeof detail === 'object' ? detail : errorData,
                 rawText
             );
         }
@@ -140,6 +145,18 @@ export class API {
     }
     
     async refreshToken() {
+        if (this._refreshPromise) return this._refreshPromise;
+
+        const refreshPromise = this._performRefresh();
+        this._refreshPromise = refreshPromise;
+        try {
+            return await refreshPromise;
+        } finally {
+            if (this._refreshPromise === refreshPromise) this._refreshPromise = null;
+        }
+    }
+
+    async _performRefresh() {
         try {
             const response = await fetch(`${this.baseURL}/auth/refresh`, {
                 method: 'POST',
@@ -221,10 +238,13 @@ export class API {
      * @param {File} file
      * @returns {Promise<*>}
      */
-    async upload(path, file) {
+    async upload(path, file, fields = {}) {
         const url = `${this.baseURL}${path}`;
         const formData = new FormData();
         formData.append('file', file);
+        Object.entries(fields || {}).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') formData.append(key, String(value));
+        });
 
         const headers = this.getHeaders();
         delete headers['Content-Type'];

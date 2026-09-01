@@ -1,5 +1,7 @@
 # Архитектура AI Business Analyst Agent
 
+> AS-IS проверено по runtime, session store, KB adapters и тестам 01.09.2026.
+
 Документ описывает фактически используемую архитектуру сервиса. Точка входа — `run.py`, приложение FastAPI — `agent/main.py`, основной диалоговый runtime — `AgenticOrchestrator`.
 
 ## Контекст системы
@@ -19,6 +21,9 @@ AgenticOrchestrator
     ├── session store и audit
     ├── composer + quality checks
     └── human-review workflow
+
+SQLAlchemy session store → PostgreSQL (production)
+OpenTelemetry → OTLP/HTTP collector
 ```
 
 Исходники диаграмм находятся в `docs/diagrams/`.
@@ -64,7 +69,9 @@ Python не должен превращать основной agentic runtime �
 5. `AgenticBA.apply` обновляет факты, исправления и противоречия сессии.
 6. `AgenticOrchestrator` формирует следующий вопрос или другое разрешённое действие.
 7. Composer и quality checks создают проверяемый черновик.
-8. Терминальные операции выполняются детерминированно и записываются в аудит.
+8. Независимый read-only validator проверяет черновик и блокирует отправку при
+   структурной ошибке или критическом противоречии.
+9. Терминальные операции выполняются детерминированно и записываются в аудит.
 
 ## Отказоустойчивость
 
@@ -86,19 +93,31 @@ Agentic runtime работает по принципу fail-closed. Если LLM
 | `agent/agentic_orchestrator.py` | основной model-driven runtime |
 | `agent/dialogue/agentic.py` | `TurnDecision`, вызов LLM и применение фактов |
 | `agent/guardrails/` | входные и выходные политики |
-| `agent/session.py` | хранение состояния диалога |
+| `agent/session.py` | SQLAlchemy session store, CAS, advisory lock и идемпотентность `message_id` |
 | `agent/composer/` | сборка черновика требования и оценка качества |
+| `agent/dialogue/gaps.py` | типизированный реестр открытых, решённых и отложенных пробелов |
+| `agent/composer/reviewer.py` | независимая read-only проверка перед human review |
 | `agent/llm/` | провайдеры LLM и OpenAI-compatible клиент |
-| `agent/kb/` и `kb_seed/` | загрузка и поиск по базе знаний |
+| `agent/kb/` и `kb_seed/` | общий KnowledgeSource contract, adapters, curated corpus и поиск |
 | `agent/workflow/` | операции human review и интеграции |
 | `agent/audit.py` | аудит событий |
+| `agent/telemetry.py` | OpenTelemetry FastAPI/SQLAlchemy/urllib и `X-Trace-ID` |
 | `agent/mcp/` и `agent/tools/` | реестр внешних возможностей |
 
 ## Данные и аудит
 
 Состояние сессии хранит историю диалога, карту требований, исправления, противоречия, текущий фокус и состояние черновика. Изменения должны применяться через слой сессий, а значимые события — записываться через audit logger.
 
+В production сессии находятся в PostgreSQL. CAS-version обнаруживает устаревшее
+состояние, advisory lock сериализует mutation одной сессии между worker'ами, а
+стабильный `message_id` делает повтор chat-вызова идемпотентным.
+
 `kb_seed/` содержит исходные документы базы знаний. Правила её наполнения описаны в `KB_GUIDE.md`.
+
+Retrieval policy учитывает минимальную релевантность, тип и статус источника,
+а при наличии даты — допустимую давность. Приоритеты задаются независимо от
+адаптера, поэтому локальная KB, история требований, БД и внешний RAG используют
+единый воспроизводимый порядок.
 
 ## Проверка архитектурного контракта
 

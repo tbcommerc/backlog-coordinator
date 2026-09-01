@@ -1,0 +1,257 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "anthropic": {
+      "name": "Anthropic Claude",
+      "models": {
+        "claude-opus-5": {
+          "name": "Claude Opus 5"
+        },
+        "claude-sonnet-5": {
+          "name": "Claude Sonnet 5"
+        },
+        "claude-haiku-4-5": {
+          "name": "Claude Haiku 4.5"
+        }
+      }
+    },
+    "gigachat": {
+      "name": "GigaChat (публичный контур)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://gigachat.devices.sberbank.ru/api/v1",
+        "apiKey": "{env:GIGACHAT_ACCESS_TOKEN}"
+      },
+      "models": {
+        "GigaChat-2-Max": {
+          "name": "GigaChat 2 Max",
+          "limit": {
+            "context": 128000,
+            "output": 32000
+          }
+        },
+        "GigaChat-2-Pro": {
+          "name": "GigaChat 2 Pro",
+          "limit": {
+            "context": 128000,
+            "output": 32000
+          }
+        }
+      }
+    },
+    "gigacode": {
+      "name": "GigaChat (внутренний контур банка)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "{env:GIGACODE_LLM_BASE_URL}",
+        "apiKey": "{env:GIGACODE_TOKEN}"
+      },
+      "models": {
+        "vllm/CodeAgent": {
+          "name": "CodeAgent",
+          "limit": {
+            "context": 128000,
+            "output": 100000
+          }
+        }
+      }
+    }
+  },
+  "permission": {
+    "skill": {
+      "*": "deny"
+    }
+  },
+  "default_agent": "prioritiser",
+  "agent": {
+    "prioritiser": {
+      "mode": "primary",
+      "temperature": 0.2,
+      "description": "Приоритизатор инициатив трайба: объясняет приоритет P1–P5 и Value, запускает пересчёт, отвечает на вопросы по бэклогу.",
+      "prompt": "{file:./agent-prompts/prioritiser/orchestrator.md}",
+      "permission": {
+        "edit": {
+          "*": "deny"
+        },
+        "write": {
+          "*": "deny"
+        },
+        "bash": {
+          "*": "deny",
+          "ls *": "allow",
+          "cat data/references/*": "allow",
+          "cat docs/*": "allow"
+        },
+        "backlog-query": "allow",
+        "backlog-stats": "allow",
+        "backlog-recompute": "allow",
+        "task-explain": "allow",
+        "task-recompute": "allow",
+        "reference-read": "allow",
+        "rag-search": "allow",
+        "attribution-run": "ask",
+        "task": {
+          "*": "deny",
+          "value-estimator": "allow",
+          "methodologist": "allow",
+          "strategy-analyst": "allow",
+          "dependency-analyst": "allow"
+        },
+        "skill": {
+          "*": "deny"
+        },
+        "question": "allow",
+        "list": "allow",
+        "rag-status": "allow",
+        "rubric-read": "allow",
+        "assessments-read": "allow",
+        "strategy-assess": "deny",
+        "dependency-assess": "deny"
+      }
+    },
+    "value-estimator": {
+      "mode": "subagent",
+      "temperature": 0.2,
+      "description": "Разбирает, из чего собран Value конкретной задачи, и формулирует вопросы автору по недостающим вводным.",
+      "prompt": "{file:./agent-prompts/prioritiser/value-estimator.md}",
+      "permission": {
+        "edit": {
+          "*": "deny"
+        },
+        "write": {
+          "*": "deny"
+        },
+        "bash": {
+          "*": "deny"
+        },
+        "task-explain": "allow",
+        "reference-read": "allow",
+        "rag-search": "allow",
+        "backlog-query": "allow",
+        "task-recompute": "allow",
+        "backlog-recompute": "deny",
+        "attribution-run": "deny",
+        "backlog-stats": "allow",
+        "task": {
+          "*": "deny"
+        },
+        "skill": {
+          "*": "deny"
+        },
+        "rag-status": "allow",
+        "rubric-read": "allow",
+        "assessments-read": "allow",
+        "strategy-assess": "deny",
+        "dependency-assess": "deny"
+      }
+    },
+    "methodologist": {
+      "mode": "subagent",
+      "temperature": 0.1,
+      "description": "Помогает калибровать веса факторов, константы и правила-овверрайды; считает эффект изменений на реальном бэклоге.",
+      "prompt": "{file:./agent-prompts/prioritiser/methodologist.md}",
+      "permission": {
+        "edit": {
+          "*": "deny"
+        },
+        "write": {
+          "*": "deny"
+        },
+        "bash": {
+          "*": "deny"
+        },
+        "reference-read": "allow",
+        "backlog-stats": "allow",
+        "backlog-query": "allow",
+        "backlog-recompute": "allow",
+        "task-explain": "allow",
+        "rag-search": "allow",
+        "task-recompute": "deny",
+        "attribution-run": "deny",
+        "task": {
+          "*": "deny"
+        },
+        "skill": {
+          "*": "deny"
+        },
+        "rag-status": "allow",
+        "rubric-read": "allow",
+        "assessments-read": "allow",
+        "strategy-assess": "deny",
+        "dependency-assess": "deny"
+      }
+    },
+    "strategy-analyst": {
+      "mode": "subagent",
+      "temperature": 0.1,
+      "description": "Оценивает стратегическое соответствие инициативы (F5) по рубрике, опираясь на корпус знаний; записывает оценку с обоснованием.",
+      "prompt": "{file:./agent-prompts/prioritiser/strategy-analyst.md}",
+      "permission": {
+        "edit": {
+          "*": "deny"
+        },
+        "write": {
+          "*": "deny"
+        },
+        "bash": {
+          "*": "deny"
+        },
+        "task": {
+          "*": "deny"
+        },
+        "skill": {
+          "*": "deny"
+        },
+        "rubric-read": "allow",
+        "assessments-read": "allow",
+        "task-explain": "allow",
+        "rag-search": "allow",
+        "rag-status": "allow",
+        "reference-read": "allow",
+        "backlog-query": "allow",
+        "strategy-assess": "allow",
+        "dependency-assess": "deny",
+        "backlog-recompute": "deny",
+        "task-recompute": "deny",
+        "attribution-run": "deny",
+        "backlog-stats": "allow"
+      }
+    },
+    "dependency-analyst": {
+      "mode": "subagent",
+      "temperature": 0.1,
+      "description": "Определяет зависимости задачи от других команд трайба и тип каждой связи (F6); записывает оценку.",
+      "prompt": "{file:./agent-prompts/prioritiser/dependency-analyst.md}",
+      "permission": {
+        "edit": {
+          "*": "deny"
+        },
+        "write": {
+          "*": "deny"
+        },
+        "bash": {
+          "*": "deny"
+        },
+        "task": {
+          "*": "deny"
+        },
+        "skill": {
+          "*": "deny"
+        },
+        "rubric-read": "allow",
+        "assessments-read": "allow",
+        "task-explain": "allow",
+        "rag-search": "allow",
+        "rag-status": "allow",
+        "reference-read": "allow",
+        "backlog-query": "allow",
+        "dependency-assess": "allow",
+        "strategy-assess": "deny",
+        "backlog-recompute": "deny",
+        "task-recompute": "deny",
+        "attribution-run": "deny",
+        "backlog-stats": "allow"
+      }
+    }
+  }
+}

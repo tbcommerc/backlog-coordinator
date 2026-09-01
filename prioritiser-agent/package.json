@@ -1,0 +1,10 @@
+{
+  "name": "agent-prioritiser-opencode",
+  "private": true,
+  "type": "module",
+  "description": "Локальный runtime opencode для агента-приоритизатора. Ставится в node_modules этого репозитория — глобальная установка не нужна.",
+  "dependencies": {
+    "@opencode-ai/plugin": "1.17.13",
+    "opencode-ai": "1.17.13"
+  }
+}

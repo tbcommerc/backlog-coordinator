@@ -89,7 +89,7 @@ async function loadAuditFilters(app) {
 function renderAuditTable() {
   const items = auditData.items || [];
   if (!items.length) {
-    return '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">Нет записей аудита</td></tr>';
+    return '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">Нет записей аудита</td></tr>';
   }
   return items.map(item => `
     <tr>
@@ -99,6 +99,7 @@ function renderAuditTable() {
       <td style="padding:10px 14px;border-bottom:1px solid var(--border-color)">${getEntityTypeBadge(item.entity_type)}</td>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);font-size:13px;color:var(--text-secondary)">${item.entity_id || '—'}</td>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${parseDetails(item.details)}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);font-size:11px;font-family:monospace" title="${escapeHtml(item.trace_id || item.request_id || '')}">${escapeHtml(item.trace_id || item.request_id || '—')}</td>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted);font-family:monospace">${escapeHtml(item.ip_address || '—')}</td>
     </tr>
   `).join('');
@@ -221,11 +222,12 @@ export function renderAuditLog(app) {
               <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Тип сущности</th>
               <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">ID сущности</th>
               <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Детали</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Trace / Request ID</th>
               <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">IP-адрес</th>
             </tr>
           </thead>
           <tbody id="audit-table-body">
-            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">
+            <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">
               <div style="display:flex;align-items:center;justify-content:center;gap:8px">
                 <div class="spinner" style="width:16px;height:16px;border:2px solid var(--border-color);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite"></div>
                 Загрузка...

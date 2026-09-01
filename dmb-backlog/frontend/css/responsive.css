@@ -119,6 +119,7 @@
   .main-content {
     padding: var(--space-5);
   }
+
 }
 
 @media (max-width: 1024px) {
@@ -360,7 +361,7 @@
   #quick-filters {
     position: static;
     display: none;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-2) !important;
     max-height: min(360px, 55dvh);
     margin: 6px 0 0 !important;
@@ -398,6 +399,10 @@
 }
 
 @media (max-width: 640px) {
+
+  #quick-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
   .modal,
   .modal-lg,

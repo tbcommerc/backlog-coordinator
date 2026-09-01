@@ -43,6 +43,52 @@ def test_full_chat_flow(client):
     assert r.json()["action"] in ("question", "reflect", "summarize")
 
 
+def test_chat_message_id_is_idempotent(client):
+    created = client.post("/api/agent/new-session", headers=SECRET, json={"user_id": 6})
+    sid = created.json()["session_id"]
+    payload = {
+        "session_id": sid,
+        "message_id": "browser-message-1",
+        "message": "Какой прогноз погоды на выходные?",
+    }
+
+    first = client.post("/api/agent/chat", headers=SECRET, json=payload)
+    history_after_first = api_router._orchestrator.store.get(sid).history
+    second = client.post("/api/agent/chat", headers=SECRET, json=payload)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json() == first.json()
+    state = api_router._orchestrator.store.get(sid)
+    assert state.history == history_after_first
+
+
+def test_user_message_is_persisted_before_processing_failure(client, monkeypatch):
+    created = client.post("/api/agent/new-session", headers=SECRET, json={"user_id": 16})
+    sid = created.json()["session_id"]
+
+    def fail_before_response(_message):
+        raise RuntimeError("processing failed")
+
+    monkeypatch.setattr(
+        "agent.orchestrator.input_harness.classify_domain_detailed",
+        fail_before_response,
+    )
+    with pytest.raises(RuntimeError, match="processing failed"):
+        client.post("/api/agent/chat", headers=SECRET, json={
+            "session_id": sid,
+            "message_id": "accepted-before-failure",
+            "message": "Нужен контроль расчётов по сделкам",
+        })
+
+    state = api_router._orchestrator.store.get(sid)
+    assert state.history[-1] == {
+        "role": "user",
+        "content": "Нужен контроль расчётов по сделкам",
+        "message_id": "accepted-before-failure",
+    }
+
+
 def test_out_of_domain(client):
     r = client.post("/api/agent/new-session", headers=SECRET, json={"user_id": 1})
     sid = r.json()["session_id"]

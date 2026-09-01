@@ -1,0 +1,110 @@
+# Локальный запуск DMB Platform
+
+> AS-IS проверено по `scripts/start-project.ps1`, status/stop scripts и
+> `compose.yaml` 01.09.2026.
+
+## Что запускается
+
+Единый сценарий поднимает полный локальный контур:
+
+- PostgreSQL 16 для DMB Backlog на `127.0.0.1:5432/dmb_backlog`;
+- отдельную PostgreSQL-базу сессий AI-агента `agent_sessions`;
+- Redis на `127.0.0.1:6379`;
+- Alembic-миграции основной схемы;
+- AI-агента на `http://127.0.0.1:9000`;
+- агента приоритизации на `http://127.0.0.1:9100`;
+- backend и frontend на `http://127.0.0.1:8000`.
+
+Frontend не требует отдельного процесса: FastAPI отдаёт его вместе с backend.
+
+## Предварительные требования
+
+1. Windows PowerShell 5.1 или PowerShell 7.
+2. Python 3.12, доступный командой `python`.
+3. Docker Desktop с поддержкой `docker compose`.
+4. Интернет при первом запуске для загрузки Docker-образов и Python-пакетов.
+
+## Запуск
+
+Из корня проекта:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
+```
+
+При первом запуске сценарий:
+
+1. создаёт `dmb-backlog/.env`, `agent/.env` и `prioritiser-agent/.env`, если их ещё нет;
+2. фиксирует в них PostgreSQL и Redis как локальный стек;
+3. запускает Docker-контейнеры и ждёт их health-check;
+4. создаёт основное Python-окружение `.venv` и изолированное окружение `.venv-prioritiser`, затем устанавливает зависимости;
+5. выполняет `alembic upgrade head`;
+6. запускает AI-агента, агент приоритизации и DMB Backlog в скрытых фоновых процессах;
+7. проверяет все HTTP health endpoint.
+
+Первичная установка зависимостей агента приоритизации занимает больше времени:
+его стек включает локальную модель эмбеддингов. Изолированное окружение исключает
+конфликт версий FastAPI и Pydantic с основным backend.
+
+Провайдер, ключ, endpoint и модель LLM для агента приоритизации при каждом
+едином запуске синхронизируются из `agent/.env`. Поэтому оба агента используют
+одни и те же `LLM_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_BASE_URL` и
+`OPENAI_MODEL`; отдельная настройка ключа приоритизатора не требуется.
+
+Повторный запуск использует существующие Docker volumes и не переустанавливает
+зависимости, пока не изменятся файлы `requirements.txt`.
+
+## Адреса
+
+- приложение: `http://127.0.0.1:8000`;
+- Swagger backend: `http://127.0.0.1:8000/docs`;
+- Swagger AI-агента: `http://127.0.0.1:9000/docs`;
+- Swagger агента приоритизации: `http://127.0.0.1:9100/docs`;
+- health backend: `http://127.0.0.1:8000/api/v1/health`;
+- health AI-агента: `http://127.0.0.1:9000/api/agent/health`;
+- health агента приоритизации: `http://127.0.0.1:9100/health`.
+
+Логи и PID-файлы находятся в `.runtime/`.
+
+## Статус и остановка
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/project-status.ps1
+powershell -ExecutionPolicy Bypass -File scripts/stop-project.ps1
+```
+
+Остановка сохраняет PostgreSQL-данные в Docker volume. Для остановки только
+Python-сервисов с сохранением запущенной инфраструктуры используется:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/stop-project.ps1 -KeepInfrastructure
+```
+
+## Данные после перехода
+
+Первичная Alembic-миграция создаёт пустую PostgreSQL-схему. Старый SQLite-файл не
+импортируется автоматически. Startup seed принудительно выключен, потому что он
+создаёт и изменяет пользователей, роли, справочники и команды — защищённые данные
+проекта.
+
+Перенос таких записей должен выполняться отдельно владельцем данных или DBA по
+проверенному сценарию. После импорта явных числовых ID необходимо синхронизировать
+PostgreSQL sequences. Обычные рабочие данные можно переносить только после того,
+как в целевой базе уже существуют необходимые защищённые ссылки.
+
+## Изменение схемы
+
+Схема PostgreSQL изменяется только через Alembic. Полный порядок описан в
+`dmb-backlog/docs/SCHEMA_CHANGES.md`. `backend/migrations/` содержит старые
+SQLite-скрипты и не используется.
+
+## Типовые ошибки
+
+- `Docker не установлен` — установить Docker Desktop и повторить запуск.
+- `Docker Engine недоступен` — дождаться полного старта Docker Desktop.
+- Порт `5432`, `6379`, `8000`, `9000` или `9100` занят — остановить конфликтующий сервис.
+- Ошибка Alembic — посмотреть вывод запуска и не запускать backend поверх
+  частично применённой схемы.
+- Ошибка Python-сервиса — проверить `.runtime/backend.err.log` или
+  `.runtime/agent.err.log`; для агента приоритизации —
+  `.runtime/prioritiser.err.log`.

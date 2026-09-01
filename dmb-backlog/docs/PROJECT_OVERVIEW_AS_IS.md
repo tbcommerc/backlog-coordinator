@@ -1,15 +1,16 @@
 # DMB Platform: документация фактического состояния
 
-Дата проверки: 24 августа 2026 года. Статус: **AS-IS VERIFIED** в пределах перечисленных ниже источников. Документ описывает реализованное состояние, а не целевую архитектуру.
+Дата проверки: 1 сентября 2026 года. Статус: **AS-IS VERIFIED** в пределах перечисленных ниже источников. Документ описывает реализованное состояние, а не целевую архитектуру.
 
 Основные источники проверки: `backend/main.py`, `backend/config.py`, `backend/models.py`, `backend/routers/`, `backend/rate_limit.py`, `frontend/js/`, `agent/agent/`, профильные тесты и `.github/workflows/quality.yml`. При расхождении с кодом приоритет имеет исполняемая реализация.
 
 ## Назначение
 
-DMB Platform состоит из двух FastAPI-приложений:
+DMB Platform состоит из трёх FastAPI-приложений:
 
 1. `dmb-backlog` — SPA и backend для управления портфелем задач, отчётами, оценкой, уведомлениями и справочниками.
 2. `agent` — AI Business Analyst Assistant для диалогового сбора и структурирования требований.
+3. `prioritiser-agent` — детерминированный расчёт финансового эффекта и приоритета с HTTP API.
 
 Основной backend проксирует запросы к агенту и хранит связанные requirement requests в своей БД. Agent защищает API общим заголовком `X-Agent-Secret`.
 
@@ -18,14 +19,16 @@ DMB Platform состоит из двух FastAPI-приложений:
 ```text
 Browser SPA
   └─ /api/v1/* → DMB Backlog FastAPI :8000
-       ├─ SQLAlchemy → DATABASE_URL (SQLite по умолчанию)
-       ├─ filesystem → backend/uploads
+       ├─ SQLAlchemy → PostgreSQL через DATABASE_URL
+       ├─ shared filesystem → ATTACHMENT_STORAGE_DIR
+       ├─ transactional outbox → Redis Stream → SSE
        ├─ опциональный hourly notification scheduler
-       └─ HTTP + X-Agent-Secret → Agent FastAPI :9000
-                                   ├─ локальный SQLite session store
+       ├─ HTTP + X-Agent-Secret → Agent FastAPI :9000
+                                   ├─ PostgreSQL session store через SQLAlchemy
                                    ├─ local Markdown/JSON knowledge base
                                    ├─ mock или OpenAI-compatible LLM
                                    └─ реестры HTTP/MCP-интеграций; активность зависит от конфигурации
+       └─ HTTP/JSON → Task Prioritiser FastAPI :9100
 ```
 
 ## Технологии
@@ -33,7 +36,7 @@ Browser SPA
 | Слой | Реализация |
 |---|---|
 | Web API | FastAPI 0.109, Pydantic 2.5 |
-| Persistence | SQLAlchemy 2.0; SQLite по умолчанию |
+| Persistence | SQLAlchemy 2.0; PostgreSQL 16; Alembic |
 | Auth | JWT HS256, bcrypt, access + refresh |
 | Frontend | Vanilla ES modules, hash router, CSS custom properties |
 | Visualization | Chart.js, ECharts |
@@ -139,23 +142,16 @@ Browser SPA
 
 ### Agent
 
-`LLM_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_EMBEDDING_MODEL`, `AGENT_DIALOGUE_ENGINE`, `SESSION_DB`, `AGENT_PORT`, `DEBUG`, `AGENT_SECRET`, `MCP_SERVERS_JSON`, `TOOLS_CONFIG_JSON`.
+`LLM_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_EMBEDDING_MODEL`, `SESSION_DATABASE_URL`, `SESSION_DB`, `AGENT_PORT`, `DEBUG`, `AGENT_SECRET`, `MCP_SERVERS_JSON`, `TOOLS_CONFIG_JSON`.
 
 Production должен запускаться только с явно заданными уникальными secret’ами и `DEBUG=false`.
 
 ## Локальный запуск без изменения production-данных
 
-Создайте отдельную dev БД и не указывайте путь к рабочей SQLite:
+Используйте единый безопасный сценарий из корня проекта:
 
 ```powershell
-cd D:\Проект\dmb-backlog\backend
-$env:DATABASE_URL = 'sqlite:///./dmb_backlog.dev.db'
-$env:SECRET_KEY = '<случайное-dev-значение>'
-$env:AGENT_SECRET = '<одинаковое-значение-для-двух-сервисов>'
-$env:RUN_STARTUP_SEED = 'false'
-$env:RUN_STARTUP_MAINTENANCE = 'false'
-$env:RUN_NOTIFICATION_SCHEDULER = 'false'
-uvicorn main:app --reload --port 8000
+powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 ```
 
 Agent:
@@ -167,14 +163,16 @@ $env:LLM_PROVIDER = 'mock'
 python run.py
 ```
 
-Отдельный production worker плановых уведомлений (запускать в одном экземпляре при `DEBUG=false` и безопасной конфигурации):
+Отдельный production worker плановых уведомлений (рекомендуемый активный процесс;
+standby безопасен благодаря PostgreSQL advisory lock):
 
 ```powershell
 cd D:\Проект\dmb-backlog\backend
 python run_notification_scheduler.py
 ```
 
-Внимание: создание таблиц и добавление отсутствующих колонок выполняются всегда. Seed, maintenance и встроенный scheduler отключаются указанными выше флагами.
+Внимание: PostgreSQL-схема изменяется только Alembic. Автоматический `create_all`
+сохранён для SQLite-совместимости. Seed и maintenance в production запрещены.
 
 ## Проверки
 
@@ -191,14 +189,19 @@ pytest tests -v
 
 ## Эксплуатационные ограничения As-Is
 
-- SQLite-файлы backlog и agent session store ограничивают безопасное горизонтальное масштабирование и требуют отдельной оценки многопроцессного режима.
-- Встроенный scheduler запускается в каждом worker, если `RUN_NOTIFICATION_SCHEDULER=true`; для production предусмотрен отдельный worker.
+- Production-конфигурация требует отдельные PostgreSQL БД для backlog и agent.
+- Scheduler использует PostgreSQL advisory lock; failover требует стендового smoke.
 - Rate limit использует Redis при заданном `REDIS_URL`, иначе process-local memory fallback.
-- Upload storage локален конкретному host.
-- Agent sessions сохраняются в локальном SQLite-файле `SESSION_DB`.
-- Health endpoint проверяет только процесс, а не DB/agent/storage.
-- Есть GitHub Actions quality workflow; Docker/Kubernetes manifests в проверенном дереве не найдены.
-- Observability ограничена файловым логом и stdout.
+- Production требует общий `ATTACHMENT_STORAGE_DIR` для всех backend instances.
+- Agent sessions в production сохраняются в PostgreSQL и сериализуются advisory lock.
+- `/health` проверяет процесс; `/health/ready` — DB, Redis, storage и outbox.
+- Task/notification invalidations доставляются через transactional outbox,
+  Redis Stream и авторизованный SSE; polling остаётся fallback.
+- Есть GitHub Actions quality workflow, Dockerfile каждого сервиса, локальный
+  Compose для data services и `compose.production.yaml` для стендового baseline.
+- Observability включает stdout/file logs, `X-Request-ID`, `/metrics`, базовые
+  alert rules и OpenTelemetry-трассы backend/agent с `X-Trace-ID` и корреляцией
+  в `audit_log`.
 
 ## Связанные документы
 

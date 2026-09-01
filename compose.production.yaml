@@ -1,0 +1,244 @@
+name: dmb-platform-production
+
+x-backend-environment: &backend-environment
+  DEBUG: "false"
+  RUN_STARTUP_SEED: "false"
+  RUN_STARTUP_MAINTENANCE: "false"
+  RUN_NOTIFICATION_SCHEDULER: "false"
+  DATABASE_URL: "${DMB_DATABASE_URL:?set DMB_DATABASE_URL with URL-encoded credentials}"
+  REDIS_URL: "${DMB_REDIS_URL:?set DMB_REDIS_URL with URL-encoded credentials}"
+  SECRET_KEY: "${DMB_SECRET_KEY:?set DMB_SECRET_KEY}"
+  AGENT_SECRET: "${DMB_AGENT_SECRET:?set DMB_AGENT_SECRET}"
+  AGENT_BASE_URL: "http://agent:9000"
+  PRIORITISER_BASE_URL: "http://prioritiser:9100"
+  PRIORITISER_TIMEOUT_SECONDS: "180"
+  CORS_ORIGINS: "${DMB_CORS_ORIGINS:?set DMB_CORS_ORIGINS as JSON array}"
+  ATTACHMENT_STORAGE_DIR: "/data/attachments"
+  OTEL_ENABLED: "true"
+  OTEL_SERVICE_NAME: "dmb-backlog"
+  OTEL_DEPLOYMENT_ENVIRONMENT: "${DMB_ENVIRONMENT:-production}"
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://otel-collector:4318/v1/traces"
+  OTEL_TRACE_SAMPLE_RATIO: "${DMB_OTEL_SAMPLE_RATIO:-0.2}"
+
+x-agent-environment: &agent-environment
+  DEBUG: "false"
+  SESSION_DATABASE_URL: "${DMB_AGENT_SESSION_DATABASE_URL:?set DMB_AGENT_SESSION_DATABASE_URL with URL-encoded credentials}"
+  AGENT_SECRET: "${DMB_AGENT_SECRET:?set DMB_AGENT_SECRET}"
+  LLM_PROVIDER: "${DMB_LLM_PROVIDER:?set a non-mock LLM provider}"
+  OPENAI_API_KEY: "${DMB_OPENAI_API_KEY:?set the LLM provider key or explicit non-empty self-hosted marker}"
+  OPENAI_BASE_URL: "${DMB_OPENAI_BASE_URL:-https://api.openai.com/v1}"
+  OPENAI_MODEL: "${DMB_OPENAI_MODEL:-gpt-4o-mini}"
+  OTEL_ENABLED: "true"
+  OTEL_SERVICE_NAME: "dmb-agent"
+  OTEL_DEPLOYMENT_ENVIRONMENT: "${DMB_ENVIRONMENT:-production}"
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://otel-collector:4318/v1/traces"
+  OTEL_TRACE_SAMPLE_RATIO: "${DMB_OTEL_SAMPLE_RATIO:-0.2}"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dmb_backlog
+      POSTGRES_USER: dmb
+      POSTGRES_PASSWORD: "${DMB_POSTGRES_PASSWORD:?set DMB_POSTGRES_PASSWORD}"
+    volumes:
+      - dmb-postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dmb -d dmb_backlog"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [data]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: "${DMB_REDIS_PASSWORD:?set DMB_REDIS_PASSWORD}"
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - dmb-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [data]
+
+  migration:
+    build:
+      context: .
+      dockerfile: dmb-backlog/Dockerfile
+    environment: *backend-environment
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [data, app]
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: dmb-backlog/Dockerfile
+    restart: unless-stopped
+    environment: *backend-environment
+    volumes:
+      - dmb-attachments:/data/attachments
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      agent:
+        condition: service_healthy
+      prioritiser:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 20s
+    deploy:
+      replicas: 2
+    networks: [app, data, observability]
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: dmb-backlog/Dockerfile
+    restart: unless-stopped
+    environment: *backend-environment
+    command: ["python", "run_notification_scheduler.py"]
+    volumes:
+      - dmb-attachments:/data/attachments
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks: [app, data, observability]
+
+  agent:
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+    restart: unless-stopped
+    environment: *agent-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/api/agent/health', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 20s
+    deploy:
+      replicas: 2
+    networks: [app, data, observability]
+
+  prioritiser:
+    build:
+      context: .
+      dockerfile: prioritiser-agent/Dockerfile
+    restart: unless-stopped
+    environment:
+      PRIORITISER_DB_URL: "sqlite:////data/prioritiser.db"
+      PRIORITISER_LLM_PROVIDER: "${DMB_LLM_PROVIDER:?set the shared non-mock LLM provider}"
+      PRIORITISER_OPENAI_API_KEY: "${DMB_OPENAI_API_KEY:?set the shared LLM provider key}"
+      PRIORITISER_OPENAI_BASE_URL: "${DMB_OPENAI_BASE_URL:-https://api.openai.com/v1}"
+      PRIORITISER_OPENAI_MODEL: "${DMB_OPENAI_MODEL:-gpt-4o-mini}"
+      PRIORITISER_RAG_ALLOW_K3: "0"
+    volumes:
+      - dmb-prioritiser-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/health', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 30s
+    networks: [app]
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${DMB_HTTP_BIND:-127.0.0.1:8080}:8080"
+    volumes:
+      - ./infrastructure/nginx/dmb.container.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [app]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.132.0
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./infrastructure/observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      jaeger:
+        condition: service_started
+    networks: [observability]
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: "badger"
+      BADGER_EPHEMERAL: "false"
+      BADGER_DIRECTORY_VALUE: "/badger/data"
+      BADGER_DIRECTORY_KEY: "/badger/key"
+    volumes:
+      - dmb-jaeger-data:/badger
+    ports:
+      - "127.0.0.1:16686:16686"
+    networks: [observability]
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./infrastructure/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/observability/dmb-alerts.yml:/etc/prometheus/dmb-alerts.yml:ro
+      - dmb-prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [observability]
+
+volumes:
+  dmb-postgres-data:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-postgres"
+  dmb-redis-data:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-redis"
+  dmb-attachments:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-attachments"
+  dmb-prometheus-data:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-prometheus"
+  dmb-jaeger-data:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-jaeger"
+  dmb-prioritiser-data:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-prioritiser"
+
+networks:
+  app:
+  data:
+    internal: true
+  observability:
+    internal: true

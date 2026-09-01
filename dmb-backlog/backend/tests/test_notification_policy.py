@@ -70,3 +70,36 @@ def test_resolve_notification_marks_it_read_and_resolved():
     notifications.resolve_notification(db, 10, 20)
     assert db.query_obj.values[notifications.Notification.is_resolved] is True
     assert db.query_obj.values[notifications.Notification.is_read] is True
+
+
+def test_restore_notification_makes_dismissed_item_visible_again():
+    class Query:
+        def filter(self, *args):
+            return self
+
+        def update(self, values, synchronize_session=False):
+            self.values = values
+            return 1
+
+    class DB:
+        def __init__(self):
+            self.query_obj = Query()
+
+        def query(self, model):
+            return self.query_obj
+
+        def flush(self):
+            pass
+
+    db = DB()
+    notifications.restore_notification(db, 10, 20)
+    assert db.query_obj.values[notifications.Notification.is_dismissed] is False
+
+
+def test_attention_summary_does_not_require_notification_to_be_unread():
+    source = Path(notifications.__file__).read_text(encoding="utf-8-sig")
+    block = source[source.index("def get_notification_summary"):source.index("def get_notifications")]
+    requires_action = block[block.index("requires_action ="):block.index("today_start")]
+    assert "Notification.is_resolved == False" in requires_action
+    assert "Notification.is_read == False" not in requires_action
+    assert "attention_rank = case(" in source

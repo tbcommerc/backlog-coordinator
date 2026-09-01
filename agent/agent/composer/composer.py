@@ -9,7 +9,9 @@ from ..context import UserContext
 from ..dialogue.state import DialogueState, SLOT_LABELS, QUALITY_PROGRESS_SLOTS
 from ..dialogue.quality import assess_quality
 from ..guardrails.output_harness import validate_draft_schema
-from ..kb.requirements_history import history
+from ..kb.sources import requirements_history_source
+from ..dialogue.gaps import synchronize_gaps
+from .reviewer import has_blocking_findings, review_draft
 from .schema import RequirementDraft, DraftSource, to_markdown
 from .scores import completeness_score, confidence_level
 
@@ -45,7 +47,7 @@ def _make_title(state: DialogueState) -> str:
 def check_duplicates(state: DialogueState) -> list[dict]:
     """Find similar requirements in the history for the duplicate check."""
     query = " ".join([state.get("need_statement") or "", state.get("to_be") or ""])
-    return history.find_similar(query, limit=3)
+    return requirements_history_source.find_similar(query, limit=3)
 
 
 def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDraft:
@@ -53,8 +55,14 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
     confidence = confidence_level(state, completeness)
     quality = assess_quality(state)
     state.quality_assessment = quality.as_dict()
+    gaps = synchronize_gaps(state, quality)
 
     open_questions = []
+    # Preserve concrete questions explicitly supplied by the user/model. They
+    # are more useful to reviewers than generic messages about missing slots.
+    for question in _list(state.get("open_questions")):
+        if question not in open_questions:
+            open_questions.append(question)
     open_question_slots = list(dict.fromkeys(_OPEN_QUESTION_SLOTS + QUALITY_PROGRESS_SLOTS))
     for key in open_question_slots:
         if state.slots[key].status == "skipped":
@@ -73,6 +81,16 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
         assumptions.append("[предположение] Драфт неполный: возможны неточности формулировок.")
     if state.slots["product"].status == "skipped":
         assumptions.append("[предположение] Продукт не подтверждён пользователем.")
+    for key, slot in state.slots.items():
+        if slot.status == "filled" and slot.assumption:
+            text = f"[предположение] {SLOT_LABELS.get(key, key)}: {slot.value}"
+            if text not in assumptions:
+                assumptions.append(text)
+    for source in state.sources:
+        if source.get("type") == "assumption" and source.get("text"):
+            text = f"[предположение] {source['text']}"
+            if text not in assumptions:
+                assumptions.append(text)
 
     regulatory_flags = _list(state.get("regulatory_flags"))
     product = state.get("product") or ""
@@ -96,7 +114,7 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
         if slot and slot.status == "filled":
             field_provenance[field] = {
                 "source": slot.source or "unknown", "assumption": slot.assumption,
-                "confirmed": slot.confirmed or state.confirmed,
+                "confirmed": slot.confirmed,
             }
             field_confidence[field] = round(float(slot.confidence), 2)
 
@@ -135,7 +153,7 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
         risks=_list(state.get("risks")),
         assumptions=assumptions,
         regulatory_flags=regulatory_flags,
-        priority=state.get("priority") or "Средний",
+        priority=state.get("priority") or "",
         duplicates=state.duplicates,
         sources=[DraftSource(**s) for s in state.sources],
         field_provenance=field_provenance,
@@ -147,6 +165,7 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
         quality_profile=quality.profile,
         quality_issues=[issue.as_dict() for issue in quality.issues],
         conflicts=[issue.as_dict() for issue in quality.conflicts],
+        gaps=[gap.__dict__.copy() for gap in gaps],
         status="Draft",
         created_by={
             "user_id": ctx.user_id if ctx else None,
@@ -154,6 +173,9 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
             "role": ctx.role_name if ctx else "",
         },
     )
+    findings = review_draft(draft)
+    draft.review_findings = [finding.as_dict() for finding in findings]
+    draft.review_blocked = has_blocking_findings(findings)
     return draft
 
 

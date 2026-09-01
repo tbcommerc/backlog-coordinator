@@ -8,59 +8,50 @@
 |-------|----------|
 | `agent/` | AI Business Analyst Assistant — FastAPI-сервис для диалогового сбора требований |
 | `dmb-backlog/` | Система управления бэклогом — FastAPI backend + SPA frontend |
+| `prioritiser-agent/` | Агент расчёта финансового эффекта и приоритета задач |
 
-## Быстрый старт (Agent)
+## Быстрый старт всей платформы
 
-### 1. Установка зависимостей
+Штатный локальный запуск выполняется из корня на Windows:
 
-```bash
-cd agent
-pip install -r requirements.txt
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 ```
 
-### 2. Настройка API ключа
+Сценарий поднимает PostgreSQL и Redis, применяет Alembic-миграции, создаёт два
+изолированных Python-окружения и запускает три сервиса. После health-check:
 
-Скопируйте шаблон конфигурации и впишите свой API ключ:
+- приложение и backend API: `http://127.0.0.1:8000`;
+- AI Business Analyst API: `http://127.0.0.1:9000/docs`;
+- Task Prioritiser API: `http://127.0.0.1:9100/docs`;
+- логи: `.runtime/`.
 
-```bash
-cd agent
-cp .env.example .env
+Статус и остановка:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/project-status.ps1
+powershell -ExecutionPolicy Bypass -File scripts/stop-project.ps1
 ```
 
-Откройте файл `agent/.env` и укажите ваш ключ:
+Локально `LLM_PROVIDER=mock` допустим для health-check и детерминированных
+тестов; полноценному агентному диалогу нужен доступный LLM. Для
+реального OpenAI-compatible endpoint заполните `agent/.env` по
+`agent/.env.example`; стартовый сценарий передаст те же параметры
+prioritiser.
 
-```env
-LLM_PROVIDER=openai_compat
-OPENAI_API_KEY=sk-ваш-ключ-здесь
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4o-mini
-```
-
-> Без ключа агент работает в режиме mock (без реального LLM).
-
-### 3. Запуск
-
-```bash
-cd agent
-python run.py
-```
-
-Агент доступен на http://127.0.0.1:9000
-
-## Быстрый старт (DMB Backlog)
-
-Подробная инструкция: [dmb-backlog/README.md](dmb-backlog/README.md)
-
-```bash
-cd dmb-backlog/backend
-cp .env.example .env
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
-
-Frontend: http://localhost:8000
+Отдельные команды запуска сервисов в их README предназначены для диагностики.
+Полная инструкция и требования Docker находятся в
+[docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md).
 
 ## Документация
 
 - [Agent README](agent/README.md) — API, архитектура, структура
 - [DMB Backlog README](dmb-backlog/README.md) — полная документация Backend + Frontend
+- [Карта документации](docs/index.md) — актуальные документы и источники истины
+- [Task Prioritiser README](prioritiser-agent/README.md) — методика, API и агентный слой
+- [Prioritiser upstream](prioritiser-agent/UPSTREAM.md) — источник и версия интегрированного агента
+- [Локальный запуск всей платформы](docs/LOCAL_DEVELOPMENT.md) — единый сценарий для трёх сервисов
+- [Production runbook](docs/PRODUCTION_RUNBOOK.md) — многорепличный стенд, smoke, observability и backup
+
+Документация сверена с текущим рабочим деревом 01.09.2026. Исторические отчёты
+и материалы в каталогах `archive/` не переписываются при актуализации AS-IS.

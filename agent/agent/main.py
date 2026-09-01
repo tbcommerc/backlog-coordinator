@@ -7,6 +7,8 @@ from fastapi import FastAPI
 from .api.router import router as agent_router
 from .config import settings, validate_runtime_settings
 from .kb.ontology import stem as stem_word
+from .session import session_store
+from .telemetry import configure_telemetry
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -47,3 +49,10 @@ app = FastAPI(
 )
 
 app.include_router(agent_router, prefix="/api/agent")
+
+configure_telemetry(app, engine=session_store.engine, settings=settings)
+
+
+@app.get("/api/agent/health")
+def health_check():
+    return {"status": "ok", "version": settings.APP_VERSION}
