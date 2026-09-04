@@ -1,0 +1,77 @@
+/* Shared feedback layout. Loaded after page and responsive styles. */
+:is(.view-state, .admin-state-error, .meeting-panel-error,
+    .customer-request-state.is-error, .chat-sessions-empty.chat-message-error,
+    .empty-state:has(> button)) {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+  padding: clamp(20px, 4vw, 40px);
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+:is(.view-state, .admin-state-error, .meeting-panel-error,
+    .customer-request-state.is-error, .chat-sessions-empty.chat-message-error) > :is(p, span, h3, h4, strong) {
+  min-width: 0;
+  max-width: min(100%, 560px);
+  margin: 0;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+:is(.view-state, .admin-state-error, .meeting-panel-error,
+    .customer-request-state.is-error, .chat-sessions-empty.chat-message-error,
+    .empty-state) > button {
+  flex: 0 0 auto;
+  max-width: 100%;
+  height: auto;
+  min-height: 36px;
+  margin: 4px 0 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+:is(.view-state, .admin-state-error, .meeting-panel-error) > :is(svg, i) {
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+.chat-sessions-empty.chat-message-error > br { display: none; }
+:is(.form-error-summary, .admin-form-error-summary, .dict-validation-summary) {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.form-error-summary { flex-wrap: wrap; align-items: flex-start; }
+.form-error-summary > :is(p, span, div) { min-width: 0; flex: 1 1 240px; margin: 0; }
+.form-error-summary > button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+#toast-container { width: min(450px, calc(100vw - 32px)); right: 16px; bottom: 16px; }
+#toast-container > .toast {
+  position: relative;
+  inset: auto;
+  transform: none;
+  opacity: 1;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 24px;
+  align-items: start;
+  gap: 10px 12px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+}
+#toast-container .toast-icon { grid-column: 1; grid-row: 1; }
+#toast-container .toast-message { grid-column: 2; grid-row: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+#toast-container .toast-close { grid-column: 3; grid-row: 1; min-height: 24px; }
+#toast-container .toast-action { grid-column: 2; grid-row: 2; justify-self: start; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+#card-toast { min-width: 0; max-width: calc(100vw - 32px); width: max-content; border-radius: 12px; flex-wrap: wrap; }
+#card-toast > svg { flex: 0 0 16px; }
+#card-toast > span { min-width: 0; flex: 1 1 180px; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+#card-toast > button { flex: 0 1 auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

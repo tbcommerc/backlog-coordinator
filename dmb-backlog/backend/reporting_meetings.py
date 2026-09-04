@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
+from uuid import uuid4
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -273,7 +274,8 @@ def task_reporting_context(db: Session, task: Task, can_edit: bool) -> dict:
                 TaskReportingStatus.meeting_id == previous.id,
                 TaskReportingStatus.task_id == task.id,
             ).first()
-        _, previous_field, _ = LEGACY_FIELDS[kind]
+        current_field, previous_field, updated_field = LEGACY_FIELDS[kind]
+        legacy_current = getattr(task, current_field, None) if current_status is None else None
         legacy_previous = getattr(task, previous_field, None) if previous is None else None
         result.append({
             "kind": kind,
@@ -288,7 +290,19 @@ def task_reporting_context(db: Session, task: Task, can_edit: bool) -> dict:
                 "version": current_status.version or 0,
                 "updated_at": current_status.updated_at.isoformat() if current_status.updated_at else None,
                 "updated_by_name": current_status.updater.name if current_status.updater else None,
-            } if current_status else None,
+            } if current_status else ({
+                "id": None,
+                "text": str(legacy_current or ""),
+                "did_demo": bool(task.did_demo) if kind == "did" else False,
+                "source": "legacy_task",
+                "version": 0,
+                "updated_at": (
+                    getattr(task, updated_field).isoformat()
+                    if getattr(task, updated_field, None) else None
+                ),
+                "updated_by_name": None,
+                "legacy": True,
+            } if legacy_current else None),
             "previous_status": {
                 "text": previous_status.status_text or "",
                 "did_demo": bool(previous_status.did_demo),
@@ -454,6 +468,38 @@ def schedule_meeting(
     _meeting_history(db, meeting, "scheduled" if old_date is None else "rescheduled", user_id=user_id, old_state=old_state, old_date=old_date, reason=reason)
     db.flush()
     ensure_reporting_schedule(db)
+    return meeting
+
+
+def create_meeting_instance(
+    db: Session,
+    kind: str,
+    scheduled_date: date,
+    *,
+    user_id: int,
+) -> ReportingMeeting:
+    kind = validate_meeting_kind(kind)
+    if scheduled_date < date.today():
+        raise ValueError("Нельзя добавить встречу на прошедшую дату")
+    if kind == "directorate" and scheduled_date.weekday() != 0:
+        raise ValueError("Новая директорская оперативка должна быть в понедельник")
+    if kind == "did" and scheduled_date.weekday() != 1:
+        raise ValueError("Новая оперативка ДИД должна быть во вторник")
+    duplicate = db.query(ReportingMeeting).filter(
+        ReportingMeeting.kind == kind,
+        ReportingMeeting.scheduled_date == scheduled_date,
+        ReportingMeeting.state.in_(OPEN_MEETING_STATES),
+    ).first()
+    if duplicate:
+        raise ValueError("На эту дату уже запланирована встреча выбранного типа")
+    meeting = _create_meeting(
+        db,
+        kind,
+        f"manual-{uuid4()}",
+        scheduled_date,
+        created_by=user_id,
+    )
+    _meeting_history(db, meeting, "scheduled", user_id=user_id)
     return meeting
 
 

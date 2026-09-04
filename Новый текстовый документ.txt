@@ -1,0 +1,250 @@
+@startuml
+!theme plain
+
+left to right direction
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 12
+skinparam ArrowColor #455A64
+skinparam ArrowThickness 1.3
+skinparam ArrowFontSize 10
+skinparam linetype polyline
+skinparam nodesep 65
+skinparam ranksep 85
+skinparam wrapWidth 210
+
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #90A4AE
+  FontColor #263238
+}
+
+skinparam component {
+  BackgroundColor<<live>> #E3F2FD
+  BorderColor<<live>> #1565C0
+  FontColor<<live>> #0D2C4A
+
+  BackgroundColor<<guard>> #FCE4EC
+  BorderColor<<guard>> #C62828
+  FontColor<<guard>> #5F1420
+
+  BackgroundColor<<kb>> #E8F5E9
+  BorderColor<<kb>> #2E7D32
+  FontColor<<kb>> #17451B
+
+  BackgroundColor<<conditional>> #FFF3E0
+  BorderColor<<conditional>> #E65100
+  FontColor<<conditional>> #632000
+
+  BackgroundColor<<partial>> #FFF8E1
+  BorderColor<<partial>> #F9A825
+  FontColor<<partial>> #5C4600
+
+  BackgroundColor<<stub>> #FFEBEE
+  BorderColor<<stub>> #D32F2F
+  FontColor<<stub>> #6B1515
+
+  BackgroundColor<<legacy>> #ECEFF1
+  BorderColor<<legacy>> #78909C
+  FontColor<<legacy>> #37474F
+}
+
+skinparam database {
+  BackgroundColor #FFFDE7
+  BorderColor #F9A825
+  FontColor #5C4600
+}
+
+skinparam cloud {
+  BackgroundColor #F5F5F5
+  BorderColor #757575
+  FontColor #333333
+}
+
+title AI-агент подготовки бизнес-требований — подробная архитектура AS-IS\n<size:12>Основной runtime, данные, интеллектуальные источники и ограничения · август 2026</size>
+
+' ============================================================================
+' LEFT COLUMN — USERS AND DMB BACKLOG
+' ============================================================================
+
+actor "Бизнес-заказчик\nили аналитик" as User
+actor "BA / PO\nревьюер" as Reviewer
+
+package "DMB Backlog · основной продукт" as DMB {
+  component "<b>1 · Web-интерфейс</b>\nЧат, просмотр собранных фактов\nи редактирование черновика" as UI <<live>>
+
+  component "<b>2 · Backend API</b>\nАвторизация пользователя, контекст\nи защищённый прокси к агенту" as Backend <<live>>
+
+  database "<b>DMB Database</b>\nRequirementRequest\nзапрос на human review" as DMBDB
+
+  UI -down-> Backend
+  Backend -down-> DMBDB
+}
+
+User -right-> UI
+Reviewer -right-> UI
+
+' ============================================================================
+' CENTER COLUMN — AGENT SERVICE
+' ============================================================================
+
+package "Agent Service :9000 · рабочий контур" as Agent {
+
+  package "Входной контур" as Ingress {
+    component "<b>3 · HTTP API</b>\nFastAPI /api/agent/*\nпроверка X-Agent-Secret" as API <<live>>
+
+    component "<b>4 · Guardrails</b>\nPrompt injection, чувствительные\nи запрещённые запросы" as Guard <<guard>>
+
+    API -down-> Guard
+  }
+
+  package "Управление диалогом" as Runtime {
+    component "<b>5 · AgenticOrchestrator</b>\nУправляет сессией, применяет факты\nи выполняет разрешённые операции" as Orch <<live>>
+
+    component "<b>6 · AgenticBA</b>\nПередаёт модели контекст и получает\nпроверенный TurnDecision в JSON" as Decision <<live>>
+
+    component "<b>Structured-output validation</b>\nAllowlist полей и действий,\nлимиты длины и confidence" as Validator <<guard>>
+
+    Orch -down-> Decision
+    Decision -down-> Validator
+  }
+
+  package "Формирование результата" as Result {
+    component "<b>7 · Draft Builder</b>\nRequirementDraft, предположения,\nисточники и открытые вопросы" as Composer <<live>>
+
+    component "<b>8 · Quality Checks</b>\nПолнота, измеримость критериев,\nконфликты As-Is / To-Be" as Quality <<live>>
+
+    Composer -down-> Quality
+  }
+
+  package "Состояние и наблюдаемость" as Persistence {
+    database "<b>Session Store · SQLite</b>\nДиалог, факты, исправления,\nконфликты и черновик" as Session
+
+    database "<b>Audit Log · JSONL</b>\nОтказы, создание драфта\nи отправка на ревью" as Audit
+
+    Session -[hidden]down-> Audit
+  }
+
+  Guard -right-> Orch
+  Validator -right-> Composer
+  Orch -right-> Session
+  Quality -right-> Audit
+}
+
+Backend -right-> API
+
+' ============================================================================
+' RIGHT COLUMN — INTELLIGENCE
+' ============================================================================
+
+package "Интеллектуальные источники" as Intelligence {
+
+  package "LLM · требуется настройка" as LLMZone {
+    component "<b>OpenAI-compatible клиент</b>\nСтруктурированный вызов модели\nи повторы временных ошибок" as LLMClient <<conditional>>
+
+    cloud "LLM Provider\nOpenAI / Azure /\nvLLM-compatible" as LLM
+
+    component "<b>Mock provider</b>\nШаблонный offline-режим;\nдля agentic runtime недостаточен" as Mock <<stub>>
+
+    LLMClient -right-> LLM
+    LLMClient ..> Mock
+  }
+
+  package "База знаний · локальные файлы" as KBZone {
+    database "<b>kb_seed/</b>\nMarkdown + JSON\n<color:#B45309><b>СИНТЕТИЧЕСКИЕ ДАННЫЕ</b></color>" as KBFiles
+
+    component "<b>Loader + manifest</b>\nВ поиск попадают только\napproved-документы" as Loader <<kb>>
+
+    component "<b>Ontology</b>\nПродукты, модули,\nпроцессы и роли" as Ontology <<kb>>
+
+    component "<b>Search</b>\nBM25-like по ключевым словам;\nembedding rerank не подключён" as Search <<partial>>
+
+    component "<b>Requirements History</b>\nПоиск возможных\nдубликатов требований" as History <<kb>>
+
+    component "<b>Q&A по базе знаний</b>\nВ agentic runtime\nне подключён" as KBQA <<partial>>
+
+    KBFiles -down-> Loader
+    Loader -down-> Ontology
+    Loader -right-> Search
+    KBFiles -right-> History
+    KBQA ..> Search
+  }
+
+  LLMZone -[hidden]down-> KBZone
+}
+
+Decision -right-> LLMClient
+Orch -right-> Search
+Composer -right-> History
+Decision ..> KBQA
+
+' ============================================================================
+' HUMAN REVIEW — KEEP CLOSE TO DMB DATA
+' ============================================================================
+
+note bottom of DMBDB
+  <b>Human-in-the-loop</b>
+  Агент подготавливает черновик, но не принимает решение.
+  В DMB создаётся запрос на ревью, а не задача бэклога.
+end note
+
+' ============================================================================
+' BOTTOM STRIP — EVERYTHING OUTSIDE THE WORKING PATH
+' ============================================================================
+
+package "Вне рабочего контура · заглушки, ограничения и rollback" as Future {
+  component "<b>MCP registry / client</b>\nОбнаруживает список tools,\nно Agentic Core их не вызывает" as MCP <<partial>>
+
+  cloud "MCP Servers" as MCPServers
+
+  component "<b>External Tool Registry</b>\nСоздаёт StubTool с заранее\nзаданным ответом" as Tools <<stub>>
+
+  cloud "Банковские системы\nCRM / trade registry / ..." as Bank <<stub>>
+
+  component "<b>Jira / Confluence</b>\nМетоды возвращают\nфиктивный результат" as Jira <<stub>>
+
+  component "<b>Rate limiting</b>\nНе реализован" as RateLimit <<stub>>
+
+  component "<b>Legacy runtime</b>\nState machine и эвристический\nопросник; только rollback" as Legacy <<legacy>>
+
+  MCP -right-> MCPServers
+  Tools -right-> Bank
+  Jira -[hidden]right-> RateLimit
+  RateLimit -[hidden]right-> Legacy
+}
+
+Agent -[dashed]down-> Future
+
+' ============================================================================
+' EXPLANATION AND LEGEND
+' ============================================================================
+
+note bottom of Agent
+  <b>Граница ответственности</b>
+  LLM понимает смысл реплики и предлагает следующий шаг.
+  Python валидирует решение, сохраняет состояние, собирает драфт
+  и не позволяет модели самостоятельно отправить требование.
+end note
+
+note bottom of KBZone
+  <b>Ограничение демо-стенда</b>
+  База знаний не загружена из подтверждённых корпоративных источников.
+  Для production нужны владелец данных, верификация и процесс обновления.
+end note
+
+legend bottom
+  |= Обозначение |= Что это значит |
+  |<#E3F2FD> <b>РАБОТАЕТ</b> | Реализовано и участвует в основном контуре |
+  |<#FCE4EC> <b>КОНТРОЛЬ</b> | Детерминированные проверки безопасности и структуры |
+  |<#FFF3E0> <b>НУЖНА НАСТРОЙКА</b> | Требуется внешний provider, ключ или доступ |
+  |<#FFF8E1> <b>ЧАСТИЧНО</b> | Реализована только часть пользовательского сценария |
+  |<#FFEBEE> <b>ЗАГЛУШКА</b> | Не участвует в рабочем контуре |
+  |<#ECEFF1> <b>LEGACY</b> | Резервный старый runtime |
+  | сплошная стрелка | Фактическая связь компонентов |
+  | пунктирная стрелка | Неподключённая или потенциальная связь |
+endlegend
+
+@enduml

@@ -1,4 +1,4 @@
-# Карта проекта DMB Platform
+# Карта проекта Backlog coordinator
 
 > Статус: активная карта AS-IS, сверена с рабочим деревом 01.09.2026.
 
@@ -14,7 +14,7 @@
 Воспроизводимая production-топология и операторские команды описаны в
 `docs/PRODUCTION_RUNBOOK.md`.
 
-## DMB Backlog
+## Backlog coordinator
 
 Основные точки входа:
 
@@ -74,7 +74,7 @@
 
 - `prioritiser-agent/app/api/main.py` — FastAPI-приложение на порту 9100.
 - `prioritiser-agent/app/api/contract.py` — входной и выходной контракт агента.
-- `prioritiser-agent/app/service/scenarios.py` — идемпотентные сценарии запрос-ответ для Координатора.
+- `prioritiser-agent/app/service/scenarios.py` — идемпотентные сценарии запрос-ответ для Backlog coordinator.
 - `prioritiser-agent/app/core/value.py` — расчёт финансового эффекта.
 - `prioritiser-agent/app/core/scoring.py` — расчёт факторов и приоритета P1–P5.
 - `prioritiser-agent/app/cli.py` — CLI детерминированного ядра.
@@ -118,3 +118,7 @@
 3. Расширять область поиска только при наличии конкретной зависимости.
 4. Не читать без необходимости резервные копии БД, тестовые выгрузки, отчёты прошлых прогонов, библиотеки из `frontend/**/lib/` и референсные HTML-файлы.
 5. Ограничения на изменения защищённых данных находятся в корневом `AGENTS.md`.
+
+## Отчёт для бизнес-заказчиков ДИД
+
+- `dmb-backlog/docs/DID_BACKLOG_REPORT.md` — отбор, девять колонок, настройки, выгрузки и новые справочники; проверено 04.09.2026.

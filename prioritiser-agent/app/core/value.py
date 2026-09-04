@@ -50,7 +50,7 @@ class ValueInput:
     name: str
     value: float
     unit: str
-    origin: str  # attribute | llm | typical | constant
+    origin: str  # attribute | llm | constant | substitution
     explicit: bool
 
 
@@ -81,14 +81,8 @@ def _first_number(pattern: re.Pattern[str], text: str | None) -> float | None:
     return float(match.group(1)) if match else None
 
 
-def _team_defaults(refs: ReferenceBundle, section: str, team: str | None) -> dict[str, Any]:
-    payload = refs.value_defaults.get(section) or {}
-    by_team = (payload.get("by_team") or {}).get(team or "") or {}
-    return by_team
-
-
 def _confidence_from(inputs: list[ValueInput], llm_confident: bool) -> str:
-    """ТЗ Ф5. Уверенность падает по мере того, как вводные заменяются типовыми."""
+    """ТЗ Ф5. Уверенность зависит от доли фактических вводных."""
     if not inputs:
         return CONFIDENCE_LOW
     explicit = sum(1 for i in inputs if i.explicit)
@@ -177,7 +171,8 @@ def _compute_value_core(
     """Считает value_internal и сопровождающие атрибуты для одной задачи.
 
     Порядок методов: ручное значение → ноль для регуляторки и RnD → аналогия с
-    задачами, где Value заполнил человек → формула по типовым значениям.
+    задачами, где Value заполнил человек → формула только по фактическим
+    атрибутам задачи и числам, возвращённым настроенной моделью.
 
     Аналогия стоит выше формулы не по вкусу: на 192 задачах с известным ответом
     она попадает в двукратную окрестность в 69% случаев против 14% у формулы.
@@ -250,8 +245,8 @@ def _blend(analogy: ValueResult, formula: ValueResult) -> ValueResult:
     наличии аналогов и 100% при их отсутствии заданы там же.
 
     Прежняя редакция усредняла пополам. Это оказалось хуже: расчёт из
-    измеренных величин получал ровно столько же доверия, сколько расчёт из
-    типовых подстановок, а хорошие аналоги весили не больше плохих.
+    измеренных величин получал ровно столько же доверия, сколько слабый
+    формульный расчёт, а хорошие аналоги весили не больше плохих.
     """
     from app.core.weights import compute_weights
 
@@ -445,10 +440,6 @@ def _compute_revenue(
 ) -> ValueResult:
     """Доходный метод зарабатывающих команд (IB, Pre-Trade)."""
     constants = refs.constants
-    defaults = refs.value_defaults.get("earning") or {}
-    team_defaults = _team_defaults(refs, "earning", task.team)
-    fallback = float((defaults.get("default_deals_per_year") or {}).get("value", 1))
-
     explicit_deals = _first_number(_DEALS_RE, text)
     llm_deals = hints.get("deals_per_year")
 
@@ -457,8 +448,15 @@ def _compute_revenue(
     elif llm_deals is not None:
         deals_per_year, origin, explicit = float(llm_deals), "llm", False
     else:
-        deals_per_year = float(team_defaults.get("deals_per_year", fallback))
-        origin, explicit = "typical", False
+        return _no_driver_result(
+            task,
+            missing_driver="число дополнительных сделок в год",
+            hint_lines=[
+                "Метод расчёта: доходный — применить не удалось.",
+                "Ни в постановке задачи, ни в ответе модели нет числа дополнительных сделок.",
+            ],
+            missing=["указать ожидаемое число дополнительных сделок в год"],
+        )
 
     # Стоимость сделки разрешается по команде. Своей нет — берётся у соседней
     # зарабатывающей команды с понижением уверенности: единой константы «одна
@@ -559,27 +557,48 @@ def _compute_time_saving(
 ) -> ValueResult:
     """Метод экономии времени обслуживающих команд, внутренний контур."""
     constants = refs.constants
-    section = refs.value_defaults.get("serving") or {}
-    base = section.get("defaults") or {}
-    team_defaults = _team_defaults(refs, "serving", task.team)
-
-    def pick(name: str, explicit_value: float | None, fallback_key: str) -> ValueInput:
+    def pick(name: str, explicit_value: float | None) -> ValueInput | None:
         if explicit_value is not None:
             return ValueInput(name, explicit_value, "", "attribute", True)
         if hints.get(name) is not None:
             return ValueInput(name, float(hints[name]), "", "llm", False)
-        if fallback_key in team_defaults:
-            return ValueInput(name, float(team_defaults[fallback_key]), "", "typical", False)
-        return ValueInput(name, float((base.get(fallback_key) or {}).get("value", 1)), "", "typical", False)
+        return None
 
     explicit_minutes = _first_number(_MINUTES_RE, text)
     if explicit_minutes is None:
         hours = _first_number(_HOURS_RE, text)
         explicit_minutes = hours * 60 if hours is not None else None
 
-    users = pick("users", _first_number(_USERS_RE, text), "users")
-    minutes = pick("minutes_per_operation", explicit_minutes, "minutes_per_operation")
-    frequency = pick("operations_per_year", None, "operations_per_year")
+    users = pick("users", _first_number(_USERS_RE, text))
+    minutes = pick("minutes_per_operation", explicit_minutes)
+    frequency = pick("operations_per_year", None)
+
+    missing_by_name = {
+        "users": "уточнить число пользователей процесса или витрины",
+        "minutes_per_operation": "уточнить длительность одной операции в минутах",
+        "operations_per_year": "уточнить частоту выполнения операции за год",
+    }
+    absent = [
+        missing_by_name[name]
+        for name, value in (
+            ("users", users),
+            ("minutes_per_operation", minutes),
+            ("operations_per_year", frequency),
+        )
+        if value is None
+    ]
+    if absent:
+        return _no_driver_result(
+            task,
+            missing_driver="вводные экономии времени",
+            hint_lines=[
+                "Метод расчёта: экономия времени — применить не удалось.",
+                "Ни постановка задачи, ни ответ модели не содержат всех числовых драйверов.",
+            ],
+            missing=absent,
+        )
+
+    assert users is not None and minutes is not None and frequency is not None
 
     users.unit, minutes.unit, frequency.unit = "польз.", "мин", "раз/год"
     inputs = [users, minutes, frequency]
@@ -595,11 +614,7 @@ def _compute_time_saving(
     value_mln = value_rub / 1_000_000
 
     missing = [
-        {
-            "users": "уточнить число пользователей процесса или витрины",
-            "minutes_per_operation": "уточнить длительность одной операции в минутах",
-            "operations_per_year": "уточнить частоту выполнения операции за год",
-        }[i.name]
+        missing_by_name[i.name]
         for i in inputs
         if not i.explicit
     ]

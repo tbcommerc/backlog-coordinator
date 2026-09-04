@@ -33,8 +33,10 @@ def get_adapter(provider: str | None = None) -> LLMAdapter:
     Реальные клиенты импортируются лениво: прототип должен запускаться и на
     машине без пакета anthropic и без доступа в контур банка.
     """
-    name = (provider or get_settings().llm_provider or "mock").strip().lower()
     settings = get_settings()
+    name = (provider if provider is not None else settings.llm_provider).strip().lower()
+    if not name:
+        raise RuntimeError("не задан PRIORITISER_LLM_PROVIDER")
 
     if name == "mock":
         return MockAdapter()

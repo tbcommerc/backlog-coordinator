@@ -1,5 +1,5 @@
 ---
-title: Программа нагрузочного тестирования DMB Platform
+title: Программа нагрузочного тестирования Backlog coordinator
 scope: target-dev-testing
 status: draft-baseline
 last_updated: 2026-09-01

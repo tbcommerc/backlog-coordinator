@@ -1,4 +1,4 @@
-# Архитектура DMB Backlog
+# Архитектура Backlog coordinator
 
 **Версия:** 3.0  
 **Дата:** 2026-06-29
@@ -241,7 +241,7 @@ project_tags.tag_id     → tags.id
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│                      DMB Backlog System                            │
+│                      Backlog coordinator System                            │
 │                                                                    │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
 │  │    Tribe     │  │  PO / PL /   │  │   Business   │             │
@@ -281,7 +281,7 @@ project_tags.tag_id     → tags.id
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    DMB Backlog — Container Diagram               │
+│                    Backlog coordinator — Container Diagram               │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────┐      │
 │  │                 Frontend (SPA)                        │      │
@@ -442,7 +442,7 @@ project_tags.tag_id     → tags.id
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Время жизни access token | `60` |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Время жизни refresh token | `7` |
 | `CORS_ORIGINS` | Разрешённые CORS-источники | `["http://localhost:5500"]` |
-| `APP_NAME` | Название приложения | `DMB Backlog` |
+| `APP_NAME` | Название приложения | `Backlog coordinator` |
 | `APP_VERSION` | Версия приложения | `1.0.0` |
 | `DEBUG` | Режим отладки | `True` |
 

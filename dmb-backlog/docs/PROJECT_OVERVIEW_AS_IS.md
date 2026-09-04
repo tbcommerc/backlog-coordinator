@@ -1,4 +1,4 @@
-# DMB Platform: документация фактического состояния
+# Backlog coordinator: документация фактического состояния
 
 Дата проверки: 1 сентября 2026 года. Статус: **AS-IS VERIFIED** в пределах перечисленных ниже источников. Документ описывает реализованное состояние, а не целевую архитектуру.
 
@@ -6,7 +6,7 @@
 
 ## Назначение
 
-DMB Platform состоит из трёх FastAPI-приложений:
+Backlog coordinator состоит из трёх FastAPI-приложений:
 
 1. `dmb-backlog` — SPA и backend для управления портфелем задач, отчётами, оценкой, уведомлениями и справочниками.
 2. `agent` — AI Business Analyst Assistant для диалогового сбора и структурирования требований.
@@ -18,7 +18,7 @@ DMB Platform состоит из трёх FastAPI-приложений:
 
 ```text
 Browser SPA
-  └─ /api/v1/* → DMB Backlog FastAPI :8000
+└─ /api/v1/* → Backlog coordinator FastAPI :8000
        ├─ SQLAlchemy → PostgreSQL через DATABASE_URL
        ├─ shared filesystem → ATTACHMENT_STORAGE_DIR
        ├─ transactional outbox → Redis Stream → SSE

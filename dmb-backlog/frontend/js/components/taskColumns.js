@@ -9,6 +9,7 @@ export const TASK_COLUMNS = [
   { key: 'priority', labelKey: 'priority_id', group: 'основные', def: true },
   { key: 'team', labelKey: 'team_id', group: 'основные', def: true },
   { key: 'channel', labelKey: 'channel_id', group: 'основные', def: false },
+  { key: 'did_client_group', labelKey: 'did_client_group_id', group: 'основные', def: false },
   { key: 'business_customer', labelKey: 'business_customer_id', group: 'основные', def: false },
   { key: 'department', labelKey: 'department_id', group: 'основные', def: false },
   { key: 'project', labelKey: 'project_id', group: 'основные', def: false },
@@ -49,12 +50,13 @@ export const TASK_COLUMNS = [
 ];
 
 const FALLBACK_LABELS = {
+  did_client_group: 'Клиент ДИД',
   id: 'ID', title: 'Задача', description: 'Описание', date_received: 'Дата получения',
   status: 'Статус', priority: 'Приоритет', team: 'Команда',
   channel: 'Канал', business_customer: 'Бизнес-заказчик', department: 'Подразделение',
   project: 'Проект', task_type: 'Тип задачи', involved_teams: 'Вовлечённые команды',
   deadline: 'Дедлайн',
-  owner: 'Владелец',
+  owner: 'Исполнитель',
   created_by: 'Автор задачи', created_at: 'Дата создания',
   updated_at: 'Дата последнего изменения',
   effort_days: 'Трудозатраты (дни)', effort_rub: 'Трудозатраты (руб)',

@@ -140,7 +140,9 @@ def task_to_quick_estimate_response(task: Task, epics: list[Epic]) -> QuickEstim
         effort_test_auto=task.effort_test_auto,
         effort_delivery=task.effort_delivery,
         financial_effect=task.financial_effect,
-        progress=task.progress,
+        # Legacy tasks may still have NULL despite the current API contract.
+        # Keep one such row from breaking the whole quick-estimate response.
+        progress=task.progress if task.progress is not None else 0,
         link_mockups=task.link_mockups,
         link_jira=task.link_jira,
         rejection_reason=task.rejection_reason,

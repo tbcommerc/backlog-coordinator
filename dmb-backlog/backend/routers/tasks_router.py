@@ -42,7 +42,7 @@ def _require_reference(db, model, value, field_name, label):
         )
 
 from database import engine, get_db, db_lower
-from models import Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, CompetencyCostHistory, FieldLabel, Tag, IssueTag, DictionaryItem, TaskComment
+from models import DidClientGroup, Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, CompetencyCostHistory, FieldLabel, Tag, IssueTag, DictionaryItem, TaskComment
 from idempotency import reserve_idempotency
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
@@ -91,6 +91,7 @@ SORT_FIELD_MAP = {
 }
 
 HISTORY_REFERENCE_MODELS = {
+    "did_client_group_id": DidClientGroup,
     "team_id": Team,
     "channel_id": Channel,
     "business_customer_id": BusinessCustomer,
@@ -214,6 +215,8 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         description=task.description,
         date_received=task.date_received,
         channel_id=resolved_channel_id,
+        did_client_group_id=task.did_client_group_id,
+        did_client_group_name=task.did_client_group.name if task.did_client_group else None,
         business_customer_id=task.business_customer_id,
         department_id=task.department_id,
         project_id=task.project_id,
@@ -252,7 +255,10 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         completion_forecast=task.completion_forecast,
         hard_score=task.hard_score,
         soft_score=task.soft_score,
-        progress=task.progress,
+        # PostgreSQL still contains legacy rows where progress is NULL.  The
+        # public contract is an integer 0..100, so normalize those rows at the
+        # response boundary instead of failing the whole backlog with HTTP 500.
+        progress=task.progress if task.progress is not None else 0,
         link_mockups=task.link_mockups,
         link_jira=task.link_jira,
         link_requirements=task.link_requirements,
@@ -693,6 +699,7 @@ def get_task_reference(
     users = db.query(User).filter(User.is_active == True).order_by(User.name).all()
 
     return {
+        "did_client_groups": [{"id": g.id, "name": g.name, "code": g.code} for g in db.query(DidClientGroup).filter_by(is_active=True).order_by(DidClientGroup.sort_order, DidClientGroup.name)],
         "statuses": [{"id": s.id, "name": s.name} for s in statuses],
         "priorities": [{"id": p.id, "name": p.name} for p in priorities],
         "deadlines": [{"id": d.id, "name": d.name} for d in deadlines],
@@ -864,6 +871,7 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
     _require_reference(db, TaskType, task_data.task_type_id, "task_type_id", "Тип задачи")
     _require_reference(db, Channel, task_data.channel_id, "channel_id", "Канал поступления")
     optional_references = (
+        (DidClientGroup, task_data.did_client_group_id, "did_client_group_id", "Клиент ДИД"),
         (Project, task_data.project_id, "project_id", "Проект"),
         (BusinessCustomer, task_data.business_customer_id, "business_customer_id", "Бизнес-заказчик"),
         (User, task_data.owner_id, "owner_id", "Исполнитель"),
@@ -913,6 +921,7 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
         description=task_data.description,
         date_received=task_data.date_received or date.today(),
         channel_id=task_data.channel_id,
+        did_client_group_id=task_data.did_client_group_id,
         business_customer_id=task_data.business_customer_id,
         department_id=department_id,
         project_id=task_data.project_id,
@@ -942,10 +951,6 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
         actual_effort_delivery=task_data.actual_effort_delivery,
         financial_effect=task_data.financial_effect,
         financial_effect_justification=task_data.financial_effect_justification,
-        financial_effect_ai=task_data.financial_effect_ai,
-        financial_effect_ai_justification=task_data.financial_effect_ai_justification,
-        priority_score=task_data.priority_score,
-        priority_justification=task_data.priority_justification,
         assessment_weight=task_data.assessment_weight,
         completion_forecast=task_data.completion_forecast,
         hard_score=task_data.hard_score,
@@ -1137,6 +1142,7 @@ def update_task(
         tag_names = update_data.pop('tags', None)
 
         reference_fields = {
+            'did_client_group_id': (DidClientGroup, 'Клиент ДИД'),
             'team_id': (Team, 'Ответственная команда'),
             'task_type_id': (TaskType, 'Тип задачи'),
             'channel_id': (Channel, 'Канал поступления'),
@@ -1443,7 +1449,7 @@ def update_task_links(
 ALLOWED_BULK_FIELDS = {
     'status_id', 'priority_id', 'progress', 'deadline_id', 'owner_id',
     'team_id', 'project_id', 'task_type_id', 'channel_id', 'department_id',
-    'business_customer_id', 'key_project_status',
+    'business_customer_id', 'did_client_group_id', 'key_project_status',
     'directorate_status', 'did_status',
     'effort_days', 'effort_rub', 'financial_effect',
     'rejection_reason',
@@ -1524,6 +1530,10 @@ def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db
     for tag_field in ('tags_add', 'tags_remove'):
         if tag_field in fields and not isinstance(fields.get(tag_field), list):
             errors.append(f"Поле '{tag_field}' должно быть списком")
+
+    for key, model in [("did_client_group_id", DidClientGroup)]:
+        if fields.get(key) is not None and db.query(model).filter_by(id=fields[key]).first() is None:
+            errors.append(f"Значение {key} не найдено в справочнике")
 
     status_obj = db.query(TaskStatus).filter(TaskStatus.id == fields.get('status_id')).first() if fields.get('status_id') else None
     if status_obj and status_obj.name in REQUIRES_REASON_STATUSES and not fields.get('rejection_reason'):
@@ -1663,6 +1673,10 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
                 raise HTTPException(status_code=400, detail=f"Поле '{field}' нельзя менять массово")
             if field not in ALLOWED_BULK_FIELDS:
                 raise HTTPException(status_code=400, detail=f"Поле '{field}' не поддерживается для массового изменения")
+
+    for key, model in [('did_client_group_id', DidClientGroup)]:
+        if fields_to_update.get(key) is not None:
+            _require_reference(db, model, fields_to_update[key], key, key)
 
     status_id = fields_to_update.get('status_id')
     if status_id:

@@ -1,13 +1,13 @@
 ---
-title: Программа тестирования DMB Platform на DEV
+title: Программа тестирования Backlog coordinator на DEV
 scope: target-dev-testing
 status: draft
 last_updated: 2026-09-01
 ---
 
-# Тестирование DMB Platform на DEV-стенде
+# Тестирование Backlog coordinator на DEV-стенде
 
-Раздел содержит целевую программу испытаний DMB Backlog, AI Business Analyst
+Раздел содержит целевую программу испытаний Backlog coordinator, AI Business Analyst
 Agent и Task Prioritiser после развёртывания на DEV. Программа учитывает
 PostgreSQL/Redis, readiness, SSE/outbox и observability. Это рабочий план, а не
 описание уже выполненных проверок; датированные отчёты остаются историческими.

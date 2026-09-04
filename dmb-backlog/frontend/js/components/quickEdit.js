@@ -1,5 +1,5 @@
 import { showConfirmModal, showErrorModal } from './modal.js?v=90';
-import { updateStickyOffsets } from './filterToolbar.js?v=91';
+import { updateStickyOffsets } from './filterToolbar.js?v=97';
 
 console.log('[DMB] quickEdit.js v20260804 loaded');
 
@@ -8,6 +8,7 @@ const DISPLAY_TO_FIELD = {
   priority: 'priority_id',
   team: 'team_id',
   channel: 'channel_id',
+  did_client_group: 'did_client_group_id',
   business_customer: 'business_customer_id',
   department: 'department_id',
   project: 'project_id',
@@ -24,7 +25,7 @@ const EDITABLE_FIELDS = {
     'effort_delivery', 'effort_python_be',
     'actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics', 'actual_effort_be', 'actual_effort_fe', 'actual_effort_test', 'actual_effort_test_auto',
     'actual_effort_python_be', 'actual_effort_delivery', 'progress'],
-  select: ['status_id', 'priority_id', 'team_id', 'deadline_id', 'task_type_id', 'channel_id', 'department_id', 'project_id', 'owner_id'],
+  select: ['did_client_group_id', 'business_customer_id', 'status_id', 'priority_id', 'team_id', 'deadline_id', 'task_type_id', 'channel_id', 'department_id', 'project_id', 'owner_id'],
   checkbox: ['did_demo'],
   date: ['date_received'],
   tags: ['tags']
@@ -258,6 +259,10 @@ function handleCellChange(scope, el) {
   const taskId = parseInt(el.dataset.task);
   const field = el.dataset.field;
   const original = el.dataset.original;
+  if (field === 'business_customer_id' && el.value === '__all') {
+    el.innerHTML = '<option value="">Не выбрано</option>' + (window.app?.businessCustomers || []).map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
+    el.value = original || ''; return;
+  }
   const rawValue = el.type === 'checkbox' ? el.checked : el.value;
   let newValue = rawValue;
   let oldValue = original;
@@ -315,6 +320,7 @@ function getReferenceValues(field) {
     team_id: window.app?.teams, task_type_id: window.app?.taskTypes, channel_id: window.app?.channels,
     priority_id: window.app?.priorities, deadline_id: window.app?.deadlines, department_id: window.app?.departments,
     project_id: window.app?.projects, owner_id: window.app?.users,
+    did_client_group_id: window.app?.didClientGroups, business_customer_id: window.app?.businessCustomers,
   };
   return sources[field] || null;
 }
@@ -553,12 +559,12 @@ export function renderQuickEditCell(scope, col, task) {
     return `<input type="date"${validationAttrs} value="${value || ''}" data-task="${taskId}" data-field="${field}" data-original="${currentValue || ''}" style="padding:4px 6px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;box-sizing:border-box;">`;
   }
   if (EDITABLE_FIELDS.select.includes(field)) {
-    return renderSelectForEdit(col, taskId, field, value, currentValue, validationAttrs);
+    return renderSelectForEdit(col, taskId, field, value, currentValue, validationAttrs, st.changes[taskId]?.department_id?.newValue ?? task.department_id);
   }
   return '';
 }
 
-function renderSelectForEdit(col, taskId, field, value, currentValue, validationAttrs = '') {
+function renderSelectForEdit(col, taskId, field, value, currentValue, validationAttrs = '', departmentId = null) {
   let options = '';
   let displayValue = value;
 
@@ -587,6 +593,15 @@ function renderSelectForEdit(col, taskId, field, value, currentValue, validation
       options = window.app?.channels?.map(c => `<option value="${c.id}" ${c.id == value ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('') || '';
       displayValue = window.app?.channels?.find(c => c.id == value)?.name || value;
       break;
+    case 'did_client_group_id':
+    case 'business_customer_id': {
+      const list = field === 'did_client_group_id' ? window.app?.didClientGroups : window.app?.businessCustomers;
+      const shown = field === 'business_customer_id' && departmentId ? (list || []).filter(i => i.department_id === Number(departmentId) || i.id === Number(value)) : (list || []);
+      options = shown.map(d => `<option value="${d.id}" ${d.id == value ? 'selected' : ''}>${escapeHtml(d.name)}</option>`).join('');
+      if (shown.length < (list || []).length) options += '<option value="__all">Показать всех контактных лиц…</option>';
+      displayValue = (list || []).find(d => d.id == value)?.name || value;
+      break;
+    }
     case 'department_id':
       options = window.app?.departments?.map(d => `<option value="${d.id}" ${d.id == value ? 'selected' : ''}>${escapeHtml(d.name)}</option>`).join('') || '';
       displayValue = window.app?.departments?.find(d => d.id == value)?.name || value;

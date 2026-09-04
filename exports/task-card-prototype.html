@@ -1,0 +1,2203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Прототип карточки задачи</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Прототип карточки задачи" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Прототип карточки задачи&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: var(--border-radius-lg, 12.5px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress {
+  display: flex;
+  height: 6px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 6px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .form-control,
+  .form-select {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control,
+  .form-select {
+    font-size: max(16px, var(--font-size-normal));
+  }
+
+  .form-control[type=&quot;file&quot;]::file-selector-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control-color[type=&quot;color&quot;] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .form-control:is(
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;week&quot;]
+  ) {
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+
+  .form-check-input {
+    position: relative;
+  }
+
+  .form-check-input::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: &quot;&quot;;
+    transform: translate(-50%, -50%);
+  }
+
+  .form-check-label {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .form-range {
+    height: 44px;
+    touch-action: pan-y;
+  }
+
+  .form-range::-webkit-slider-runnable-track {
+    height: 44px;
+  }
+
+  .form-range::-moz-range-track {
+    height: 44px;
+  }
+
+  .form-range::-webkit-slider-thumb {
+    margin-top: 12px;
+  }
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;task-card-prototype-complete&quot;&gt;
+  &lt;style&gt;
+    #task-card-prototype-complete {
+      --bg: light-dark(#eef2f7, #0d121b);
+      --surface: light-dark(#ffffff, #151c28);
+      --surface-2: light-dark(#f7f9fc, #1a2331);
+      --surface-3: light-dark(#edf2f8, #202b3b);
+      --text: light-dark(#172033, #e9eef7);
+      --muted: light-dark(#667085, #98a6ba);
+      --line: light-dark(#dce3ec, #2d3a4d);
+      --line-strong: light-dark(#c7d1df, #405068);
+      --accent: light-dark(#315bd6, #79a2ff);
+      --accent-soft: light-dark(#e9efff, #1d315f);
+      --positive: light-dark(#14804a, #56d495);
+      --positive-soft: light-dark(#e8f7ef, #173d2d);
+      --warning: light-dark(#a85d00, #f0b35d);
+      --warning-soft: light-dark(#fff4df, #402d16);
+      --danger: light-dark(#b42318, #ff8178);
+      --danger-soft: light-dark(#fff0ee, #48211f);
+      --shadow: 0 18px 60px rgba(20, 32, 54, .14);
+      color-scheme: light dark;
+      color: var(--text);
+      background: var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      padding: 22px;
+      min-height: 100%;
+      box-sizing: border-box;
+    }
+    #task-card-prototype-complete * { box-sizing: border-box; }
+    #task-card-prototype-complete button,
+    #task-card-prototype-complete input,
+    #task-card-prototype-complete select,
+    #task-card-prototype-complete textarea { font: inherit; }
+    #task-card-prototype-complete button { color: inherit; }
+    #task-card-prototype-complete .tc-shell {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    #task-card-prototype-complete .tc-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      padding: 24px 28px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    #task-card-prototype-complete .tc-eyebrow,
+    #task-card-prototype-complete .tc-actions,
+    #task-card-prototype-complete .tc-inline,
+    #task-card-prototype-complete .tc-inline-actions,
+    #task-card-prototype-complete .tc-section-head,
+    #task-card-prototype-complete .tc-card-title,
+    #task-card-prototype-complete .tc-footer,
+    #task-card-prototype-complete .tc-comment-head,
+    #task-card-prototype-complete .tc-report-head,
+    #task-card-prototype-complete .tc-report-meta,
+    #task-card-prototype-complete .tc-file-row,
+    #task-card-prototype-complete .tc-history-row { display: flex; align-items: center; }
+    #task-card-prototype-complete .tc-eyebrow { gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    #task-card-prototype-complete .tc-id { color: var(--muted); font-weight: 750; letter-spacing: .05em; }
+    #task-card-prototype-complete .tc-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+      background: var(--surface-3);
+      color: var(--muted);
+    }
+    #task-card-prototype-complete .tc-pill.status { background: var(--accent-soft); color: var(--accent); }
+    #task-card-prototype-complete .tc-pill.priority { background: var(--danger-soft); color: var(--danger); }
+    #task-card-prototype-complete .tc-title-field { max-width: 780px; }
+    #task-card-prototype-complete h1 { margin: 0; font-size: clamp(22px, 3vw, 32px); line-height: 1.18; letter-spacing: -.025em; }
+    #task-card-prototype-complete .tc-title-field .tc-field-editor { margin-top: 2px; }
+    #task-card-prototype-complete .tc-actions { gap: 8px; align-self: start; flex-wrap: wrap; justify-content: flex-end; }
+    #task-card-prototype-complete .tc-btn,
+    #task-card-prototype-complete .tc-icon-btn,
+    #task-card-prototype-complete .tc-tab,
+    #task-card-prototype-complete .tc-link-btn {
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      cursor: pointer;
+      min-height: 38px;
+      border-radius: 9px;
+      padding: 8px 13px;
+      font-weight: 700;
+    }
+    #task-card-prototype-complete .tc-btn:hover,
+    #task-card-prototype-complete .tc-icon-btn:hover,
+    #task-card-prototype-complete .tc-link-btn:hover { border-color: var(--accent); color: var(--accent); }
+    #task-card-prototype-complete .tc-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    #task-card-prototype-complete .tc-btn.ghost { border-color: transparent; background: transparent; }
+    #task-card-prototype-complete .tc-btn.small { min-height: 32px; padding: 5px 10px; font-size: 12px; }
+    #task-card-prototype-complete .tc-icon-btn { width: 38px; padding: 7px; display: grid; place-items: center; }
+    #task-card-prototype-complete .tc-edit-badge { display: none; min-height: 30px; align-items: center; gap: 7px; color: var(--warning); background: var(--warning-soft); border-radius: 8px; padding: 5px 10px; font-weight: 750; }
+    #task-card-prototype-complete.is-full-editing .tc-edit-badge { display: inline-flex; }
+    #task-card-prototype-complete.is-full-editing [data-action=&quot;full-edit&quot;] { display: none; }
+    #task-card-prototype-complete .tc-nav { display: flex; gap: 2px; overflow-x: auto; padding: 0 22px; border-bottom: 1px solid var(--line); scrollbar-width: thin; }
+    #task-card-prototype-complete .tc-tab { flex: 0 0 auto; border: 0; border-bottom: 3px solid transparent; border-radius: 0; color: var(--muted); background: transparent; min-height: 48px; }
+    #task-card-prototype-complete .tc-tab[aria-selected=&quot;true&quot;] { color: var(--accent); border-bottom-color: var(--accent); }
+    #task-card-prototype-complete .tc-body { padding: 24px 28px 100px; }
+    #task-card-prototype-complete .tc-panel[hidden] { display: none; }
+    #task-card-prototype-complete .tc-edit-summary { display: none; margin: 0 28px; padding: 11px 14px; border: 1px solid var(--warning); border-radius: 9px; color: var(--warning); background: var(--warning-soft); }
+    #task-card-prototype-complete.is-full-editing .tc-edit-summary { display: flex; align-items: center; gap: 8px; }
+    #task-card-prototype-complete .tc-description { margin: 0 0 24px; }
+    #task-card-prototype-complete .tc-description .tc-field-display { font-size: 15px; line-height: 1.65; }
+    #task-card-prototype-complete .tc-section { margin-top: 28px; }
+    #task-card-prototype-complete .tc-section:first-child { margin-top: 0; }
+    #task-card-prototype-complete .tc-section-head { justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    #task-card-prototype-complete .tc-section-head h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
+    #task-card-prototype-complete .tc-section-hint { color: var(--muted); font-size: 12px; }
+    #task-card-prototype-complete .tc-bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px; }
+    #task-card-prototype-complete .tc-group { grid-column: span 4; border: 1px solid var(--line); border-radius: 13px; overflow: hidden; background: var(--surface); }
+    #task-card-prototype-complete .tc-group.wide { grid-column: span 8; }
+    #task-card-prototype-complete .tc-group.full { grid-column: 1 / -1; }
+    #task-card-prototype-complete [data-block=&quot;classification&quot;] { order: 1; }
+    #task-card-prototype-complete [data-block=&quot;customer&quot;] { order: 2; }
+    #task-card-prototype-complete .tc-card-title { gap: 8px; min-height: 43px; padding: 11px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-weight: 800; }
+    #task-card-prototype-complete .tc-card-title svg { color: var(--accent); flex: 0 0 auto; }
+    #task-card-prototype-complete .tc-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #task-card-prototype-complete .tc-field { position: relative; min-width: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    #task-card-prototype-complete .tc-field:nth-last-child(-n+2) { border-bottom: 0; }
+    #task-card-prototype-complete .tc-field.full-row { grid-column: 1 / -1; }
+    #task-card-prototype-complete .tc-label { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .02em; margin-bottom: 6px; }
+    #task-card-prototype-complete .tc-lock { color: var(--muted); font-size: 12px; }
+    #task-card-prototype-complete .tc-field-display { min-height: 32px; display: flex; align-items: center; gap: 8px; min-width: 0; }
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display { width: 100%; border: 1px solid transparent; background: transparent; text-align: left; padding: 4px 30px 4px 5px; border-radius: 7px; cursor: pointer; position: relative; }
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display::after { content: &quot;✎&quot;; position: absolute; right: 7px; top: 50%; transform: translateY(-50%); color: var(--muted); opacity: .5; }
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display:hover,
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display:focus-visible { border-color: var(--accent); background: var(--accent-soft); outline: none; }
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display:hover::after,
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display:focus-visible::after { opacity: 1; color: var(--accent); }
+    #task-card-prototype-complete .tc-field-editor { display: none; }
+    #task-card-prototype-complete .tc-field.quick-active .tc-field-display { display: none; }
+    #task-card-prototype-complete .tc-field.quick-active .tc-field-editor { display: block; }
+    #task-card-prototype-complete.is-full-editing .tc-field[data-editable=&quot;true&quot;] .tc-field-display { display: none; }
+    #task-card-prototype-complete.is-full-editing .tc-field[data-editable=&quot;true&quot;] .tc-field-editor { display: block; }
+    #task-card-prototype-complete.is-full-editing .tc-field[data-quick=&quot;true&quot;] .tc-field-display::after { display: none; }
+    #task-card-prototype-complete input,
+    #task-card-prototype-complete select,
+    #task-card-prototype-complete textarea {
+      width: 100%; min-height: 40px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--text); background: var(--surface); padding: 8px 10px; font-size: 16px;
+    }
+    #task-card-prototype-complete textarea { resize: vertical; min-height: 86px; }
+    #task-card-prototype-complete input:focus,
+    #task-card-prototype-complete select:focus,
+    #task-card-prototype-complete textarea:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent) 18%, transparent); }
+    #task-card-prototype-complete input[type=&quot;range&quot;] { border: 0; padding: 0; min-height: 28px; accent-color: var(--accent); }
+    #task-card-prototype-complete input[type=&quot;checkbox&quot;] { width: 18px; min-height: 18px; accent-color: var(--accent); }
+    #task-card-prototype-complete .tc-inline { gap: 9px; }
+    #task-card-prototype-complete .tc-inline &gt; * { min-width: 0; }
+    #task-card-prototype-complete .tc-inline-actions { justify-content: flex-end; gap: 7px; margin-top: 8px; }
+    #task-card-prototype-complete.is-full-editing .tc-inline-actions { display: none; }
+    #task-card-prototype-complete .tc-autosave-hint { margin-right: auto; color: var(--muted); font-size: 11px; }
+    #task-card-prototype-complete .tc-list { display: flex; flex-wrap: wrap; gap: 5px; }
+    #task-card-prototype-complete .tc-chip { display: inline-flex; align-items: center; min-height: 25px; padding: 3px 8px; border-radius: 6px; background: var(--surface-3); font-size: 12px; font-weight: 650; }
+    #task-card-prototype-complete .tc-progress { width: 100%; display: grid; grid-template-columns: minmax(70px, 1fr) auto; gap: 8px; align-items: center; }
+    #task-card-prototype-complete .tc-progress-track { height: 7px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+    #task-card-prototype-complete .tc-progress-track span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+    #task-card-prototype-complete .tc-kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    #task-card-prototype-complete .tc-kpi { border: 1px solid var(--line); border-radius: 13px; padding: 16px; min-width: 0; }
+    #task-card-prototype-complete .tc-kpi.compact { padding: 0; }
+    #task-card-prototype-complete .tc-kpi h3 { margin: 0 0 12px; font-size: 14px; }
+    #task-card-prototype-complete .tc-stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    #task-card-prototype-complete .tc-stat { background: var(--surface); padding: 12px; min-width: 0; }
+    #task-card-prototype-complete .tc-stat b { display: block; font-size: 18px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #task-card-prototype-complete .tc-stat span { color: var(--muted); font-size: 11px; }
+    #task-card-prototype-complete .tc-score { font-size: 32px; font-weight: 850; letter-spacing: -.04em; }
+    #task-card-prototype-complete .tc-score small { font-size: 13px; color: var(--muted); letter-spacing: 0; }
+    #task-card-prototype-complete details { border-top: 1px solid var(--line); margin-top: 13px; padding-top: 10px; }
+    #task-card-prototype-complete summary { cursor: pointer; color: var(--accent); font-weight: 700; }
+    #task-card-prototype-complete details p { color: var(--muted); margin: 9px 0 0; }
+    #task-card-prototype-complete .tc-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+    #task-card-prototype-complete table { width: 100%; min-width: 850px; border-collapse: collapse; }
+    #task-card-prototype-complete th,
+    #task-card-prototype-complete td { border-bottom: 1px solid var(--line); padding: 10px 11px; text-align: left; vertical-align: middle; }
+    #task-card-prototype-complete th { background: var(--surface-2); color: var(--muted); font-size: 11px; }
+    #task-card-prototype-complete td.num,
+    #task-card-prototype-complete th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    #task-card-prototype-complete tfoot td { font-weight: 800; background: var(--surface-2); border-bottom: 0; }
+    #task-card-prototype-complete .tc-eo-input { display: none; min-height: 34px; padding: 5px 7px; text-align: right; }
+    #task-card-prototype-complete.is-full-editing .tc-eo-value { display: none; }
+    #task-card-prototype-complete.is-full-editing .tc-eo-input { display: block; }
+    #task-card-prototype-complete .tc-note { color: var(--muted); font-size: 12px; margin-top: 9px; }
+    #task-card-prototype-complete .tc-extra { border: 1px solid var(--line); border-radius: 12px; padding: 0 15px 15px; }
+    #task-card-prototype-complete .tc-extra &gt; summary { padding: 13px 0 2px; border: 0; color: var(--text); }
+    #task-card-prototype-complete .tc-extra .tc-fields { margin-top: 10px; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+    #task-card-prototype-complete .tc-report-list { display: grid; gap: 12px; }
+    #task-card-prototype-complete .tc-report { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 15px 16px; }
+    #task-card-prototype-complete .tc-report:nth-child(2) { border-left-color: var(--positive); }
+    #task-card-prototype-complete .tc-report:nth-child(3) { border-left-color: var(--warning); }
+    #task-card-prototype-complete .tc-report-head { justify-content: space-between; gap: 12px; }
+    #task-card-prototype-complete .tc-report-head h3 { margin: 0; font-size: 15px; }
+    #task-card-prototype-complete .tc-report-meta { gap: 14px; color: var(--muted); font-size: 12px; margin: 5px 0 12px; flex-wrap: wrap; }
+    #task-card-prototype-complete .tc-report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    #task-card-prototype-complete .tc-readbox { min-height: 86px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); padding: 10px; white-space: pre-wrap; }
+    #task-card-prototype-complete .tc-check { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+    #task-card-prototype-complete .tc-comment-list { display: grid; gap: 12px; }
+    #task-card-prototype-complete .tc-comment { border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+    #task-card-prototype-complete .tc-comment:last-child { border-bottom: 0; }
+    #task-card-prototype-complete .tc-comment-head { gap: 8px; margin-bottom: 6px; }
+    #task-card-prototype-complete .tc-avatar { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 850; flex: 0 0 auto; }
+    #task-card-prototype-complete .tc-comment-time { color: var(--muted); font-size: 11px; margin-left: auto; }
+    #task-card-prototype-complete .tc-comment p { margin: 0 0 5px 38px; }
+    #task-card-prototype-complete .tc-comment button { margin-left: 38px; }
+    #task-card-prototype-complete .tc-composer { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+    #task-card-prototype-complete .tc-composer-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+    #task-card-prototype-complete .tc-material-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    #task-card-prototype-complete .tc-file-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    #task-card-prototype-complete .tc-file-row { justify-content: space-between; gap: 12px; padding: 11px 13px; border-bottom: 1px solid var(--line); }
+    #task-card-prototype-complete .tc-file-row:last-child { border-bottom: 0; }
+    #task-card-prototype-complete .tc-file-meta { color: var(--muted); font-size: 11px; }
+    #task-card-prototype-complete .tc-system { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--line); }
+    #task-card-prototype-complete .tc-system &gt; div { background: var(--surface); padding: 12px; }
+    #task-card-prototype-complete .tc-system span { display: block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+    #task-card-prototype-complete .tc-history { border-left: 2px solid var(--line); margin-left: 8px; padding-left: 18px; display: grid; gap: 14px; }
+    #task-card-prototype-complete .tc-history-item { position: relative; }
+    #task-card-prototype-complete .tc-history-item::before { content: &quot;&quot;; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); position: absolute; left: -24px; top: 6px; box-shadow: 0 0 0 4px var(--surface); }
+    #task-card-prototype-complete .tc-history-row { gap: 8px; flex-wrap: wrap; }
+    #task-card-prototype-complete .tc-history-row time { color: var(--muted); font-size: 11px; margin-left: auto; }
+    #task-card-prototype-complete .tc-history-change { margin-top: 5px; color: var(--muted); }
+    #task-card-prototype-complete .tc-footer { display: none; position: sticky; bottom: 0; justify-content: space-between; gap: 12px; padding: 13px 28px; background: color-mix(in srgb, var(--surface) 93%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line); z-index: 5; }
+    #task-card-prototype-complete.is-full-editing .tc-footer { display: flex; }
+    #task-card-prototype-complete .tc-footer-actions { display: flex; gap: 8px; }
+    #task-card-prototype-complete .tc-change-count { color: var(--muted); }
+    #task-card-prototype-complete .tc-error { display: none; color: var(--danger); font-size: 12px; margin-top: 6px; }
+    #task-card-prototype-complete .tc-field.has-error .tc-error { display: block; }
+    #task-card-prototype-complete .tc-field.has-error input,
+    #task-card-prototype-complete .tc-field.has-error select,
+    #task-card-prototype-complete .tc-field.has-error textarea { border-color: var(--danger); }
+    #task-card-prototype-complete .tc-toast { position: fixed; right: 24px; bottom: 24px; max-width: min(360px, calc(100vw - 48px)); padding: 11px 14px; border-radius: 9px; background: light-dark(#172033, #eef3fb); color: light-dark(#fff, #172033); box-shadow: 0 12px 35px rgba(0,0,0,.25); opacity: 0; transform: translateY(8px); pointer-events: none; transition: .2s ease; z-index: 20; }
+    #task-card-prototype-complete .tc-toast.show { opacity: 1; transform: translateY(0); }
+    #task-card-prototype-complete .tc-saved { animation: tcSaved 1.5s ease; }
+    @keyframes tcSaved { 0%, 55% { background: var(--positive-soft); } 100% { background: transparent; } }
+    @media (max-width: 900px) {
+      #task-card-prototype-complete .tc-group,
+      #task-card-prototype-complete .tc-group.wide { grid-column: span 6; }
+      #task-card-prototype-complete .tc-group.full { grid-column: 1 / -1; }
+      #task-card-prototype-complete .tc-kpi-grid { grid-template-columns: 1fr; }
+      #task-card-prototype-complete .tc-material-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 736px) {
+      #task-card-prototype-complete { padding: 0; }
+      #task-card-prototype-complete .tc-shell { border-radius: 0; border-left: 0; border-right: 0; }
+      #task-card-prototype-complete .tc-head { grid-template-columns: 1fr; padding: 20px 18px 16px; }
+      #task-card-prototype-complete .tc-actions { justify-content: flex-start; }
+      #task-card-prototype-complete .tc-nav { padding: 0 10px; }
+      #task-card-prototype-complete .tc-body { padding: 20px 16px 100px; }
+      #task-card-prototype-complete .tc-edit-summary { margin: 0 16px; }
+      #task-card-prototype-complete .tc-group,
+      #task-card-prototype-complete .tc-group.wide,
+      #task-card-prototype-complete .tc-group.full { grid-column: 1 / -1; }
+      #task-card-prototype-complete .tc-report-grid { grid-template-columns: 1fr; }
+      #task-card-prototype-complete .tc-system { grid-template-columns: 1fr 1fr; }
+      #task-card-prototype-complete .tc-footer { padding: 12px 16px; }
+    }
+    @media (max-width: 440px) {
+      #task-card-prototype-complete .tc-fields { grid-template-columns: 1fr; }
+      #task-card-prototype-complete .tc-field { grid-column: 1 !important; border-bottom: 1px solid var(--line) !important; }
+      #task-card-prototype-complete .tc-stat-grid { grid-template-columns: 1fr; }
+      #task-card-prototype-complete .tc-system { grid-template-columns: 1fr; }
+      #task-card-prototype-complete .tc-footer { align-items: stretch; flex-direction: column; }
+      #task-card-prototype-complete .tc-footer-actions { display: grid; grid-template-columns: 1fr 1fr; }
+    }
+    /* Визуальный язык первого варианта: мягкие поверхности, спокойная типографика и единая система значков. */
+    #task-card-prototype-complete {
+      --bg: light-dark(#eef1f7, #0f1420);
+      --surface: light-dark(#ffffff, #171d2a);
+      --surface-2: light-dark(#f7f8fb, #202736);
+      --surface-3: light-dark(#f0f3f8, #283142);
+      --text: light-dark(#182033, #edf1f8);
+      --muted: light-dark(#526078, #aeb9ca);
+      --line: light-dark(#dfe4ec, #323c4d);
+      --line-strong: light-dark(#d2d9e4, #3a4659);
+      --accent: light-dark(#5d63ee, #8c91ff);
+      --accent-soft: light-dark(#ececff, #2d3059);
+      --positive: light-dark(#16865c, #57d3a2);
+      --positive-soft: light-dark(#e6f7ef, #163d31);
+      --warning: light-dark(#a86408, #f4bd59);
+      --warning-soft: light-dark(#fff5dc, #463615);
+      --danger: light-dark(#c44343, #ff8787);
+      --danger-soft: light-dark(#fff0f0, #462324);
+      --shadow: 0 18px 55px light-dark(rgba(36, 44, 74, .17), rgba(0, 0, 0, .42));
+      padding: 12px;
+      background: var(--bg);
+      font-family: Inter, &quot;Segoe UI&quot;, Arial, sans-serif;
+      font-size: 14px;
+    }
+    #task-card-prototype-complete b,
+    #task-card-prototype-complete strong,
+    #task-card-prototype-complete h1,
+    #task-card-prototype-complete h2,
+    #task-card-prototype-complete h3 { font-weight: 500; }
+    #task-card-prototype-complete .tc-shell { width: 100%; border-radius: 16px; box-shadow: var(--shadow); }
+    #task-card-prototype-complete .tc-head { padding: 16px 18px 14px; gap: 12px; }
+    #task-card-prototype-complete .tc-eyebrow { margin-bottom: 9px; }
+    #task-card-prototype-complete .tc-id { font-weight: 500; }
+    #task-card-prototype-complete .tc-pill { min-height: 26px; padding: 3px 9px; border-radius: 7px; font-size: 12px; font-weight: 500; }
+    #task-card-prototype-complete .tc-pill.status { color: var(--positive); background: var(--positive-soft); }
+    #task-card-prototype-complete .tc-pill.priority { color: var(--warning); background: var(--warning-soft); }
+    #task-card-prototype-complete h1 { font-size: clamp(19px, 3vw, 26px); line-height: 1.25; letter-spacing: 0; }
+    #task-card-prototype-complete .tc-actions { gap: 6px; }
+    #task-card-prototype-complete .tc-btn,
+    #task-card-prototype-complete .tc-icon-btn,
+    #task-card-prototype-complete .tc-link-btn { min-height: 38px; border: 0; border-radius: 9px; background: var(--surface-2); padding: 8px 13px; font-size: 13px; font-weight: 500; }
+    #task-card-prototype-complete .tc-btn,
+    #task-card-prototype-complete .tc-link-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    #task-card-prototype-complete .tc-icon-btn { width: 34px; min-height: 34px; padding: 7px; }
+    #task-card-prototype-complete .tc-btn.primary { background: var(--accent); color: light-dark(#ffffff, #101326); }
+    #task-card-prototype-complete .tc-btn:hover,
+    #task-card-prototype-complete .tc-icon-btn:hover,
+    #task-card-prototype-complete .tc-link-btn:hover { border-color: transparent; background: var(--surface-3); color: var(--text); }
+    #task-card-prototype-complete .tc-btn.primary:hover { background: var(--accent); color: light-dark(#ffffff, #101326); filter: brightness(1.04); }
+    #task-card-prototype-complete .tc-edit-badge { min-height: 26px; border-radius: 7px; padding: 3px 9px; font-size: 12px; font-weight: 500; }
+    #task-card-prototype-complete .tc-summary {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr 1.15fr 1.25fr 1.35fr;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+    #task-card-prototype-complete .tc-summary-item { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 12px 14px; border-right: 1px solid var(--line); }
+    #task-card-prototype-complete .tc-summary-item:first-child { padding-left: 0; }
+    #task-card-prototype-complete .tc-summary-item:last-child { padding-right: 0; border-right: 0; }
+    #task-card-prototype-complete .tc-summary-icon { color: var(--muted); flex: none; }
+    #task-card-prototype-complete .tc-summary-copy { min-width: 0; }
+    #task-card-prototype-complete .tc-summary-label { color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .055em; text-transform: uppercase; }
+    #task-card-prototype-complete .tc-summary-value { margin-top: 2px; overflow: hidden; font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    #task-card-prototype-complete .tc-summary .tc-progress { display: block; }
+    #task-card-prototype-complete .tc-summary .tc-progress-track { width: 100%; height: 6px; margin-top: 6px; }
+    #task-card-prototype-complete .tc-nav { min-height: 48px; padding: 0 12px; gap: 2px; background: var(--surface); }
+    #task-card-prototype-complete .tc-tab { display: inline-flex; min-height: 48px; align-items: center; gap: 7px; padding: 0 12px; border-bottom-width: 2px; color: var(--muted); font-size: 13px; font-weight: 400; }
+    #task-card-prototype-complete .tc-tab[aria-selected=&quot;true&quot;] { color: var(--text); }
+    #task-card-prototype-complete .tc-edit-summary { margin: 12px 18px 0; border: 0; border-radius: 10px; font-size: 13px; }
+    #task-card-prototype-complete .tc-body { padding: 18px 18px 96px; background: var(--surface-2); }
+    #task-card-prototype-complete .tc-description { margin: 0 0 12px; padding: 14px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+    #task-card-prototype-complete .tc-description .tc-field-display { font-size: 14px; line-height: 1.55; }
+    #task-card-prototype-complete .tc-section { margin-top: 18px; }
+    #task-card-prototype-complete .tc-section-head { margin-bottom: 11px; }
+    #task-card-prototype-complete .tc-section-head h2 { font-size: 14px; font-weight: 500; }
+    #task-card-prototype-complete .tc-section-hint { font-size: 12px; }
+    #task-card-prototype-complete .tc-bento { gap: 12px; }
+    #task-card-prototype-complete .tc-group,
+    #task-card-prototype-complete .tc-kpi,
+    #task-card-prototype-complete .tc-extra,
+    #task-card-prototype-complete .tc-report,
+    #task-card-prototype-complete .tc-file-list,
+    #task-card-prototype-complete .tc-table-wrap { border-color: var(--line); border-radius: 13px; background: var(--surface); }
+    #task-card-prototype-complete .tc-card-title { min-height: 42px; gap: 8px; padding: 12px 14px 9px; border-bottom: 0; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; }
+    #task-card-prototype-complete .tc-card-title svg,
+    #task-card-prototype-complete .tc-section-head svg { color: var(--accent); }
+    #task-card-prototype-complete .tc-fields { padding: 0 14px 4px; }
+    #task-card-prototype-complete .tc-field { padding: 10px 0; }
+    #task-card-prototype-complete .tc-field:nth-child(odd) { padding-right: 10px; }
+    #task-card-prototype-complete .tc-field:nth-child(even) { padding-left: 10px; }
+    #task-card-prototype-complete .tc-field.full-row { padding-left: 0; padding-right: 0; }
+    #task-card-prototype-complete .tc-label { color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .055em; text-transform: uppercase; }
+    #task-card-prototype-complete .tc-field-display { min-height: 30px; font-weight: 500; }
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display { border-radius: 8px; }
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display::after { color: var(--muted); font-weight: 400; }
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display::after { content: none; }
+    #task-card-prototype-complete .tc-quick-icon { position: absolute; right: 7px; top: 50%; width: 14px; height: 14px; transform: translateY(-50%); color: var(--muted); opacity: .55; }
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display:hover .tc-quick-icon,
+    #task-card-prototype-complete .tc-field[data-quick=&quot;true&quot;] .tc-field-display:focus-visible .tc-quick-icon { color: var(--accent); opacity: 1; }
+    #task-card-prototype-complete .tc-lock { display: inline-flex; align-items: center; gap: 4px; }
+    #task-card-prototype-complete .tc-lock svg { width: 12px; height: 12px; }
+    #task-card-prototype-complete input,
+    #task-card-prototype-complete select,
+    #task-card-prototype-complete textarea { border-color: var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); }
+    #task-card-prototype-complete .tc-chip { border-radius: 6px; background: var(--surface-2); color: var(--muted); font-weight: 400; }
+    #task-card-prototype-complete .tc-kpi-grid { gap: 12px; }
+    #task-card-prototype-complete .tc-kpi { padding: 14px; }
+    #task-card-prototype-complete .tc-kpi h3 { font-size: 13px; font-weight: 500; }
+    #task-card-prototype-complete .tc-stat-grid { border: 0; border-radius: 0; background: transparent; }
+    #task-card-prototype-complete .tc-stat { padding: 5px 12px; border-left: 1px solid var(--line); }
+    #task-card-prototype-complete .tc-stat:first-child { padding-left: 0; border-left: 0; }
+    #task-card-prototype-complete .tc-stat b { font-size: 18px; font-weight: 500; }
+    #task-card-prototype-complete .tc-score { font-size: 24px; font-weight: 500; }
+    #task-card-prototype-complete th { background: var(--surface-2); font-weight: 500; }
+    #task-card-prototype-complete tfoot td { background: var(--surface-2); font-weight: 500; }
+    #task-card-prototype-complete .tc-report { border-left-width: 3px; padding: 14px; }
+    #task-card-prototype-complete .tc-comment-head b,
+    #task-card-prototype-complete .tc-file-row b,
+    #task-card-prototype-complete .tc-history-row b { font-weight: 500; }
+    #task-card-prototype-complete .tc-footer { padding: 11px 18px; }
+    #task-card-prototype-complete .tc-toast { border-radius: 9px; }
+    @media (max-width: 760px) {
+      #task-card-prototype-complete { padding: 6px; }
+      #task-card-prototype-complete .tc-shell { border-radius: 12px; }
+      #task-card-prototype-complete .tc-head { padding: 14px; }
+      #task-card-prototype-complete .tc-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 14px; }
+      #task-card-prototype-complete .tc-summary-item { padding: 10px 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+      #task-card-prototype-complete .tc-summary-item:first-child { padding-left: 8px; }
+      #task-card-prototype-complete .tc-summary-item:last-child { grid-column: 1 / -1; border-bottom: 0; padding-right: 8px; }
+      #task-card-prototype-complete .tc-body { padding: 12px 12px 96px; }
+      #task-card-prototype-complete .tc-edit-summary { margin: 12px 12px 0; }
+    }
+    @media (max-width: 440px) {
+      #task-card-prototype-complete .tc-field:nth-child(odd),
+      #task-card-prototype-complete .tc-field:nth-child(even) { padding-left: 0; padding-right: 0; }
+      #task-card-prototype-complete .tc-actions { justify-content: flex-start; }
+    }
+  &lt;/style&gt;
+
+  &lt;div class=&quot;tc-shell&quot;&gt;
+    &lt;header class=&quot;tc-head&quot;&gt;
+      &lt;div&gt;
+        &lt;div class=&quot;tc-eyebrow&quot;&gt;
+          &lt;span class=&quot;tc-id&quot;&gt;TASK-026-418&lt;/span&gt;
+          &lt;span class=&quot;tc-pill&quot; data-out=&quot;type&quot;&gt;Развитие&lt;/span&gt;
+          &lt;span class=&quot;tc-pill status&quot; data-out=&quot;status&quot;&gt;В работе&lt;/span&gt;
+          &lt;span class=&quot;tc-pill priority&quot; data-out=&quot;priority&quot;&gt;Высокий&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;tc-title-field tc-field&quot; data-field=&quot;title&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;
+          &lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open aria-label=&quot;Быстро изменить название&quot;&gt;&lt;h1 data-out=&quot;title&quot;&gt;Автоматизация маршрутизации входящих заявок&lt;/h1&gt;&lt;/button&gt;
+          &lt;div class=&quot;tc-field-editor&quot;&gt;
+            &lt;input data-in=&quot;title&quot; maxlength=&quot;255&quot; aria-label=&quot;Название задачи&quot;&gt;
+            &lt;div class=&quot;tc-error&quot;&gt;Название обязательно.&lt;/div&gt;
+            &lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;tc-actions&quot;&gt;
+        &lt;span class=&quot;tc-edit-badge&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M12 9v4&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M12 17h.01&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Редактирование&lt;/span&gt;
+        &lt;button class=&quot;tc-btn primary&quot; type=&quot;button&quot; data-action=&quot;full-edit&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z&quot;&gt;&lt;/path&gt;&lt;path d=&quot;m15 5 4 4&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Редактировать&lt;/button&gt;
+        &lt;button class=&quot;tc-icon-btn&quot; type=&quot;button&quot; data-action=&quot;copy&quot; aria-label=&quot;Скопировать ссылку&quot; data-tooltip=&quot;Скопировать ссылку&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/button&gt;
+        &lt;button class=&quot;tc-icon-btn&quot; type=&quot;button&quot; data-action=&quot;close&quot; aria-label=&quot;Закрыть карточку&quot; data-tooltip=&quot;Закрыть&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M18 6 6 18&quot;&gt;&lt;/path&gt;&lt;path d=&quot;m6 6 12 12&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/header&gt;
+
+    &lt;div class=&quot;tc-summary&quot; aria-label=&quot;Краткая сводка&quot;&gt;
+      &lt;div class=&quot;tc-summary-item&quot;&gt;&lt;svg class=&quot;tc-summary-icon&quot;   aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M8 2v4&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M16 2v4&quot;&gt;&lt;/path&gt;&lt;rect width=&quot;18&quot; height=&quot;18&quot; x=&quot;3&quot; y=&quot;4&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M3 10h18&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;div class=&quot;tc-summary-copy&quot;&gt;&lt;div class=&quot;tc-summary-label&quot;&gt;Срок&lt;/div&gt;&lt;div class=&quot;tc-summary-value&quot; data-out=&quot;deadline&quot;&gt;30 сентября 2026&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+      &lt;div class=&quot;tc-summary-item&quot;&gt;&lt;svg class=&quot;tc-summary-icon&quot;   aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M16 3.128a4 4 0 0 1 0 7.744&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M22 21v-2a4 4 0 0 0-3-3.87&quot;&gt;&lt;/path&gt;&lt;circle cx=&quot;9&quot; cy=&quot;7&quot; r=&quot;4&quot;&gt;&lt;/circle&gt;&lt;/svg&gt;&lt;div class=&quot;tc-summary-copy&quot;&gt;&lt;div class=&quot;tc-summary-label&quot;&gt;Команда&lt;/div&gt;&lt;div class=&quot;tc-summary-value&quot; data-out=&quot;team&quot;&gt;Платформа заявок&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+      &lt;div class=&quot;tc-summary-item&quot;&gt;&lt;svg class=&quot;tc-summary-icon&quot;   aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;8&quot; r=&quot;5&quot;&gt;&lt;/circle&gt;&lt;path d=&quot;M20 21a8 8 0 0 0-16 0&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;div class=&quot;tc-summary-copy&quot;&gt;&lt;div class=&quot;tc-summary-label&quot;&gt;Исполнитель&lt;/div&gt;&lt;div class=&quot;tc-summary-value&quot; data-out=&quot;assignee&quot;&gt;Анна Смирнова&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+      &lt;div class=&quot;tc-summary-item&quot;&gt;&lt;svg class=&quot;tc-summary-icon&quot;   aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M10 12h4&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M10 8h4&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M14 21v-3a2 2 0 0 0-4 0v3&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;div class=&quot;tc-summary-copy&quot;&gt;&lt;div class=&quot;tc-summary-label&quot;&gt;Заказчик&lt;/div&gt;&lt;div class=&quot;tc-summary-value&quot; data-out=&quot;customer&quot;&gt;Ольга Власова&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+      &lt;div class=&quot;tc-summary-item&quot;&gt;&lt;div class=&quot;tc-progress&quot;&gt;&lt;div class=&quot;tc-summary-label&quot;&gt;Прогресс · &lt;span data-progress-text&gt;65%&lt;/span&gt;&lt;/div&gt;&lt;span class=&quot;tc-progress-track&quot;&gt;&lt;span data-progress-bar style=&quot;width:65%&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;nav class=&quot;tc-nav&quot; aria-label=&quot;Разделы карточки&quot;&gt;
+      &lt;button class=&quot;tc-tab&quot; type=&quot;button&quot; data-tab=&quot;main&quot; aria-selected=&quot;true&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;rect width=&quot;7&quot; height=&quot;9&quot; x=&quot;3&quot; y=&quot;3&quot; rx=&quot;1&quot;&gt;&lt;/rect&gt;&lt;rect width=&quot;7&quot; height=&quot;5&quot; x=&quot;14&quot; y=&quot;3&quot; rx=&quot;1&quot;&gt;&lt;/rect&gt;&lt;rect width=&quot;7&quot; height=&quot;9&quot; x=&quot;14&quot; y=&quot;12&quot; rx=&quot;1&quot;&gt;&lt;/rect&gt;&lt;rect width=&quot;7&quot; height=&quot;5&quot; x=&quot;3&quot; y=&quot;16&quot; rx=&quot;1&quot;&gt;&lt;/rect&gt;&lt;/svg&gt;Основное&lt;/button&gt;
+      &lt;button class=&quot;tc-tab&quot; type=&quot;button&quot; data-tab=&quot;reporting&quot; aria-selected=&quot;false&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Отчётные статусы&lt;/button&gt;
+      &lt;button class=&quot;tc-tab&quot; type=&quot;button&quot; data-tab=&quot;comments&quot; aria-selected=&quot;false&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Комментарии &lt;span class=&quot;tc-pill&quot; data-comment-count&gt;2&lt;/span&gt;&lt;/button&gt;
+      &lt;button class=&quot;tc-tab&quot; type=&quot;button&quot; data-tab=&quot;materials&quot; aria-selected=&quot;false&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Ссылки и файлы &lt;span class=&quot;tc-pill&quot;&gt;5&lt;/span&gt;&lt;/button&gt;
+      &lt;button class=&quot;tc-tab&quot; type=&quot;button&quot; data-tab=&quot;history&quot; aria-selected=&quot;false&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M3 3v5h5&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M12 7v5l4 2&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Лог изменений&lt;/button&gt;
+    &lt;/nav&gt;
+
+    &lt;div class=&quot;tc-edit-summary&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M12 9v4&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M12 17h.01&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;span data-edit-summary&gt;Полное редактирование: изменено полей — 0&lt;/span&gt;&lt;/div&gt;
+
+    &lt;div class=&quot;tc-body&quot;&gt;
+      &lt;section class=&quot;tc-panel&quot; data-panel=&quot;main&quot;&gt;
+        &lt;div class=&quot;tc-description tc-field&quot; data-field=&quot;description&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;
+          &lt;div class=&quot;tc-label&quot;&gt;Описание задачи&lt;/div&gt;
+          &lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open aria-label=&quot;Быстро изменить описание&quot;&gt;&lt;span data-out=&quot;description&quot;&gt;Настроить единый маршрут обработки заявок: автоматическое определение команды, приоритета и контроль сроков на основании типа обращения.&lt;/span&gt;&lt;/button&gt;
+          &lt;div class=&quot;tc-field-editor&quot;&gt;
+            &lt;textarea data-in=&quot;description&quot; rows=&quot;4&quot; aria-label=&quot;Описание задачи&quot;&gt;&lt;/textarea&gt;
+            &lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;section class=&quot;tc-section&quot;&gt;
+          &lt;div class=&quot;tc-section-head&quot;&gt;&lt;h2&gt;Паспорт задачи&lt;/h2&gt;&lt;span class=&quot;tc-section-hint&quot;&gt;Карандаш справа — быстрое редактирование&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;tc-bento&quot;&gt;
+            &lt;article class=&quot;tc-group wide&quot;&gt;
+              &lt;div class=&quot;tc-card-title&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Исполнение&lt;/div&gt;
+              &lt;div class=&quot;tc-fields&quot;&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;status&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Статус задачи&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span class=&quot;tc-pill status&quot; data-out=&quot;status&quot;&gt;В работе&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;select data-in=&quot;status&quot;&gt;&lt;option&gt;Новая&lt;/option&gt;&lt;option&gt;В работе&lt;/option&gt;&lt;option&gt;На паузе&lt;/option&gt;&lt;option&gt;Выполнена&lt;/option&gt;&lt;option&gt;Отклонена&lt;/option&gt;&lt;/select&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;priority&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot; data-autosave=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Приоритет&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span class=&quot;tc-pill priority&quot; data-out=&quot;priority&quot;&gt;Высокий&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;select data-in=&quot;priority&quot;&gt;&lt;option&gt;Критический&lt;/option&gt;&lt;option&gt;Высокий&lt;/option&gt;&lt;option&gt;Средний&lt;/option&gt;&lt;option&gt;Низкий&lt;/option&gt;&lt;/select&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;span class=&quot;tc-autosave-hint&quot;&gt;Сохранится автоматически&lt;/span&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;deadline&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot; data-autosave=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Срок выполнения&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span data-out=&quot;deadline&quot;&gt;30 сентября 2026&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input type=&quot;date&quot; data-in=&quot;deadline&quot;&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;span class=&quot;tc-autosave-hint&quot;&gt;Сохранится автоматически&lt;/span&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;progress&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Прогресс&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span class=&quot;tc-progress&quot;&gt;&lt;span class=&quot;tc-progress-track&quot;&gt;&lt;span data-progress-bar style=&quot;width:65%&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;b data-progress-text&gt;65%&lt;/b&gt;&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;div class=&quot;tc-inline&quot;&gt;&lt;input type=&quot;range&quot; min=&quot;0&quot; max=&quot;100&quot; step=&quot;5&quot; data-in=&quot;progress&quot;&gt;&lt;b data-range-value&gt;65%&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;tc-error&quot;&gt;100% допустимо только для статуса «Выполнена».&lt;/div&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Оценка за завершённость (Hard) &lt;span class=&quot;tc-lock&quot;&gt;&lt;svg aria-label=&quot;Только для чтения&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;16&quot; r=&quot;1&quot;&gt;&lt;/circle&gt;&lt;rect x=&quot;3&quot; y=&quot;10&quot; width=&quot;18&quot; height=&quot;12&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M7 10V7a5 5 0 0 1 10 0v3&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span class=&quot;tc-pill&quot; data-out=&quot;hardScore&quot;&gt;B&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Оценка за взаимодействие (Soft) &lt;span class=&quot;tc-lock&quot;&gt;&lt;svg aria-label=&quot;Только для чтения&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;16&quot; r=&quot;1&quot;&gt;&lt;/circle&gt;&lt;rect x=&quot;3&quot; y=&quot;10&quot; width=&quot;18&quot; height=&quot;12&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M7 10V7a5 5 0 0 1 10 0v3&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span class=&quot;tc-pill&quot; data-out=&quot;softScore&quot;&gt;A&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;/div&gt;
+            &lt;/article&gt;
+
+            &lt;article class=&quot;tc-group&quot;&gt;
+              &lt;div class=&quot;tc-card-title&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M16 3.128a4 4 0 0 1 0 7.744&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M22 21v-2a4 4 0 0 0-3-3.87&quot;&gt;&lt;/path&gt;&lt;circle cx=&quot;9&quot; cy=&quot;7&quot; r=&quot;4&quot;&gt;&lt;/circle&gt;&lt;/svg&gt;Команда&lt;/div&gt;
+              &lt;div class=&quot;tc-fields&quot;&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;assignee&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Исполнитель&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span data-out=&quot;assignee&quot;&gt;Анна Смирнова&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;select data-in=&quot;assignee&quot;&gt;&lt;option&gt;Анна Смирнова&lt;/option&gt;&lt;option&gt;Илья Петров&lt;/option&gt;&lt;option&gt;Мария Орлова&lt;/option&gt;&lt;/select&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;team&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Ответственная команда&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span data-out=&quot;team&quot;&gt;Платформа заявок&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;select data-in=&quot;team&quot;&gt;&lt;option&gt;Платформа заявок&lt;/option&gt;&lt;option&gt;Корпоративные сервисы&lt;/option&gt;&lt;option&gt;Data Products&lt;/option&gt;&lt;/select&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field full-row&quot; data-field=&quot;otherTeams&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Другие вовлечённые команды&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span class=&quot;tc-list&quot; data-list-out=&quot;otherTeams&quot;&gt;&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input data-in=&quot;otherTeams&quot; placeholder=&quot;Через запятую&quot;&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;/div&gt;
+            &lt;/article&gt;
+
+            &lt;article class=&quot;tc-group&quot; data-block=&quot;customer&quot;&gt;
+              &lt;div class=&quot;tc-card-title&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M2 21a8 8 0 0 1 13.292-6&quot;&gt;&lt;/path&gt;&lt;circle cx=&quot;10&quot; cy=&quot;8&quot; r=&quot;5&quot;&gt;&lt;/circle&gt;&lt;path d=&quot;m16 19 2 2 4-4&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Заказчик&lt;/div&gt;
+              &lt;div class=&quot;tc-fields&quot;&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;customer&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Бизнес-заказчик&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span data-out=&quot;customer&quot;&gt;Ольга Власова&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;select data-in=&quot;customer&quot;&gt;&lt;option&gt;Ольга Власова&lt;/option&gt;&lt;option&gt;Алексей Фомин&lt;/option&gt;&lt;option&gt;Елена Миронова&lt;/option&gt;&lt;/select&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Подразделение &lt;span class=&quot;tc-lock&quot;&gt;&lt;svg aria-label=&quot;Только для чтения&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;16&quot; r=&quot;1&quot;&gt;&lt;/circle&gt;&lt;rect x=&quot;3&quot; y=&quot;10&quot; width=&quot;18&quot; height=&quot;12&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M7 10V7a5 5 0 0 1 10 0v3&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;customerDept&quot;&gt;Дирекция клиентского сервиса&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;channel&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Канал поступления&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;channel&quot;&gt;Стратегическая сессия&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;select data-in=&quot;channel&quot;&gt;&lt;option&gt;Стратегическая сессия&lt;/option&gt;&lt;option&gt;Почта&lt;/option&gt;&lt;option&gt;Совещание&lt;/option&gt;&lt;option&gt;Service Desk&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;receivedAt&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Дата получения&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;receivedAt&quot;&gt;12 августа 2026&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input type=&quot;date&quot; data-in=&quot;receivedAt&quot;&gt;&lt;div class=&quot;tc-error&quot;&gt;Дата не может быть в будущем.&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;/div&gt;
+            &lt;/article&gt;
+
+            &lt;article class=&quot;tc-group wide&quot; data-block=&quot;classification&quot;&gt;
+              &lt;div class=&quot;tc-card-title&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M13.172 2a2 2 0 0 1 1.414.586l6.71 6.71a2.4 2.4 0 0 1 0 3.408l-4.592 4.592a2.4 2.4 0 0 1-3.408 0l-6.71-6.71A2 2 0 0 1 6 9.172V3a1 1 0 0 1 1-1z&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M2 7v6.172a2 2 0 0 0 .586 1.414l6.71 6.71a2.4 2.4 0 0 0 3.191.193&quot;&gt;&lt;/path&gt;&lt;circle cx=&quot;10.5&quot; cy=&quot;6.5&quot; r=&quot;.5&quot; fill=&quot;currentColor&quot;&gt;&lt;/circle&gt;&lt;/svg&gt;Классификация&lt;/div&gt;
+              &lt;div class=&quot;tc-fields&quot;&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;project&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Проект&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span data-out=&quot;project&quot;&gt;Единое окно&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;select data-in=&quot;project&quot;&gt;&lt;option&gt;Единое окно&lt;/option&gt;&lt;option&gt;Клиент 360&lt;/option&gt;&lt;option&gt;Операционная эффективность&lt;/option&gt;&lt;/select&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field&quot; data-field=&quot;type&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Тип задачи&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span class=&quot;tc-pill&quot; data-out=&quot;type&quot;&gt;Развитие&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;select data-in=&quot;type&quot;&gt;&lt;option&gt;Развитие&lt;/option&gt;&lt;option&gt;Проект&lt;/option&gt;&lt;option&gt;Инцидент&lt;/option&gt;&lt;option&gt;Техдолг&lt;/option&gt;&lt;/select&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+                &lt;div class=&quot;tc-field full-row&quot; data-field=&quot;tags&quot; data-editable=&quot;true&quot; data-quick=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Метки (теги)&lt;/div&gt;&lt;button class=&quot;tc-field-display&quot; type=&quot;button&quot; data-quick-open&gt;&lt;span class=&quot;tc-list&quot; data-list-out=&quot;tags&quot;&gt;&lt;/span&gt;&lt;/button&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input data-in=&quot;tags&quot; placeholder=&quot;Через запятую&quot;&gt;&lt;div class=&quot;tc-inline-actions&quot;&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-quick-cancel&gt;Отмена&lt;/button&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-quick-save&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;/div&gt;
+            &lt;/article&gt;
+          &lt;/div&gt;
+        &lt;/section&gt;
+
+        &lt;section class=&quot;tc-section&quot;&gt;
+          &lt;details class=&quot;tc-extra&quot;&gt;
+            &lt;summary&gt;Дополнительные атрибуты задачи · 7&lt;/summary&gt;
+            &lt;div class=&quot;tc-fields&quot;&gt;
+              &lt;div class=&quot;tc-field&quot; data-field=&quot;weightPercent&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Вес оценки, %&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;weightPercent&quot;&gt;35&lt;/span&gt;%&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot; max=&quot;100&quot; step=&quot;0.1&quot; data-in=&quot;weightPercent&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field&quot; data-field=&quot;forecastPercent&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Прогноз выполнения, %&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;forecastPercent&quot;&gt;70&lt;/span&gt;%&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot; max=&quot;100&quot; step=&quot;0.1&quot; data-in=&quot;forecastPercent&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field&quot; data-field=&quot;metricKrPlan&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Метрический KR — план&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;metricKrPlan&quot;&gt;1200&lt;/span&gt; &lt;span data-out=&quot;metricKrUnit&quot;&gt;заявок/мес&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot; step=&quot;0.1&quot; data-in=&quot;metricKrPlan&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field&quot; data-field=&quot;metricKrFact&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Метрический KR — факт&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;metricKrFact&quot;&gt;860&lt;/span&gt; &lt;span data-out=&quot;metricKrUnit&quot;&gt;заявок/мес&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot; step=&quot;0.1&quot; data-in=&quot;metricKrFact&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field&quot; data-field=&quot;metricKrUnit&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Единица метрического KR&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;metricKrUnit&quot;&gt;заявок/мес&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input data-in=&quot;metricKrUnit&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field full-row&quot; data-field=&quot;comment&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Комментарий — редактирование&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;comment&quot;&gt;Согласовать правила маршрутизации с владельцами очередей.&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;textarea data-in=&quot;comment&quot; rows=&quot;3&quot;&gt;&lt;/textarea&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field full-row&quot; data-field=&quot;rejectionReason&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Причина отклонения &lt;span class=&quot;tc-section-hint&quot;&gt;используется при статусе «Отклонена»&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;rejectionReason&quot;&gt;—&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;textarea data-in=&quot;rejectionReason&quot; rows=&quot;3&quot; placeholder=&quot;Заполняется при отклонении&quot;&gt;&lt;/textarea&gt;&lt;/div&gt;&lt;/div&gt;
+            &lt;/div&gt;
+          &lt;/details&gt;
+        &lt;/section&gt;
+
+        &lt;section class=&quot;tc-section&quot;&gt;
+          &lt;div class=&quot;tc-section-head&quot;&gt;&lt;h2&gt;Ключевые показатели&lt;/h2&gt;&lt;span class=&quot;tc-section-hint&quot;&gt;Расчётные показатели отделены от вводимых данных&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;tc-kpi-grid&quot;&gt;
+            &lt;article class=&quot;tc-kpi&quot;&gt;
+              &lt;h3&gt;План (ЭО)&lt;/h3&gt;
+              &lt;div class=&quot;tc-stat-grid&quot;&gt;&lt;div class=&quot;tc-stat&quot;&gt;&lt;span&gt;Трудозатраты&lt;/span&gt;&lt;b data-eo-total&gt;37 ч/д&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;tc-stat&quot;&gt;&lt;span&gt;Стоимость&lt;/span&gt;&lt;b data-eo-cost&gt;926 000 ₽&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;tc-stat&quot;&gt;&lt;span&gt;C/V&lt;/span&gt;&lt;b data-cv-eo&gt;13,4&lt;/b&gt;&lt;/div&gt;&lt;/div&gt;
+            &lt;/article&gt;
+            &lt;article class=&quot;tc-kpi&quot;&gt;
+              &lt;h3&gt;Факт (ФТЗ) &lt;span class=&quot;tc-lock&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;16&quot; r=&quot;1&quot;&gt;&lt;/circle&gt;&lt;rect x=&quot;3&quot; y=&quot;10&quot; width=&quot;18&quot; height=&quot;12&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M7 10V7a5 5 0 0 1 10 0v3&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Jira&lt;/span&gt;&lt;/h3&gt;
+              &lt;div class=&quot;tc-stat-grid&quot;&gt;&lt;div class=&quot;tc-stat&quot;&gt;&lt;span&gt;Трудозатраты&lt;/span&gt;&lt;b data-ftz-total&gt;29 ч/д&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;tc-stat&quot;&gt;&lt;span&gt;Стоимость&lt;/span&gt;&lt;b data-ftz-cost&gt;730 000 ₽&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;tc-stat&quot;&gt;&lt;span&gt;C/V&lt;/span&gt;&lt;b data-cv-ftz&gt;17,0&lt;/b&gt;&lt;/div&gt;&lt;/div&gt;
+            &lt;/article&gt;
+            &lt;article class=&quot;tc-kpi&quot;&gt;
+              &lt;div class=&quot;tc-section-head&quot;&gt;&lt;h3&gt;Priority Score &lt;span class=&quot;tc-lock&quot;&gt;&lt;svg aria-label=&quot;Рассчитывается автоматически&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;16&quot; r=&quot;1&quot;&gt;&lt;/circle&gt;&lt;rect x=&quot;3&quot; y=&quot;10&quot; width=&quot;18&quot; height=&quot;12&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M7 10V7a5 5 0 0 1 10 0v3&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/h3&gt;&lt;button class=&quot;tc-btn small&quot; type=&quot;button&quot; data-action=&quot;recalc-priority&quot;&gt;Пересчитать AI&lt;/button&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-score&quot;&gt;&lt;span data-out=&quot;priorityScore&quot;&gt;78&lt;/span&gt; &lt;small&gt;/ 100&lt;/small&gt;&lt;/div&gt;
+              &lt;details&gt;&lt;summary&gt;Обоснование агента&lt;/summary&gt;&lt;p data-out=&quot;priorityJust&quot;&gt;Высокий охват пользователей, подтверждённый экономический эффект и умеренная сложность внедрения.&lt;/p&gt;&lt;/details&gt;
+            &lt;/article&gt;
+            &lt;article class=&quot;tc-kpi&quot;&gt;
+              &lt;div class=&quot;tc-section-head&quot;&gt;&lt;h3&gt;Финансовый эффект&lt;/h3&gt;&lt;button class=&quot;tc-btn small&quot; type=&quot;button&quot; data-action=&quot;recalc-fin&quot;&gt;Пересчитать AI&lt;/button&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field&quot; data-field=&quot;finEffect&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Экспертная оценка, млн ₽&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span class=&quot;tc-score&quot;&gt;&lt;span data-out=&quot;finEffect&quot;&gt;12,4&lt;/span&gt; &lt;small&gt;млн ₽&lt;/small&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot; step=&quot;0.1&quot; data-in=&quot;finEffect&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field&quot; data-field=&quot;finJust&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Обоснование расчёта&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;finJust&quot;&gt;Снижение ручной обработки и просрочек по SLA.&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;textarea data-in=&quot;finJust&quot; rows=&quot;3&quot;&gt;&lt;/textarea&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;details&gt;&lt;summary&gt;AI-оценка: &lt;span data-out=&quot;finEffectAi&quot;&gt;13,1&lt;/span&gt; млн ₽&lt;/summary&gt;&lt;p data-out=&quot;finJustAi&quot;&gt;Расчёт основан на объёме 1 200 заявок в месяц и сокращении обработки на 18 минут.&lt;/p&gt;&lt;/details&gt;
+            &lt;/article&gt;
+          &lt;/div&gt;
+        &lt;/section&gt;
+
+        &lt;section class=&quot;tc-section&quot;&gt;
+          &lt;div class=&quot;tc-section-head&quot;&gt;&lt;h2&gt;Трудозатраты и стоимость: план / факт&lt;/h2&gt;&lt;span class=&quot;tc-section-hint&quot;&gt;План редактируется, факт поступает из Jira&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;tc-table-wrap&quot;&gt;
+            &lt;table aria-label=&quot;Трудозатраты по компетенциям&quot;&gt;
+              &lt;thead&gt;&lt;tr&gt;&lt;th&gt;Компетенция&lt;/th&gt;&lt;th class=&quot;num&quot;&gt;Ставка, ₽/ч-д&lt;/th&gt;&lt;th class=&quot;num&quot;&gt;ЭО, ч/д&lt;/th&gt;&lt;th class=&quot;num&quot;&gt;ФТЗ, ч/д &lt;span class=&quot;tc-lock&quot;&gt;&lt;svg aria-label=&quot;Только для чтения&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;16&quot; r=&quot;1&quot;&gt;&lt;/circle&gt;&lt;rect x=&quot;3&quot; y=&quot;10&quot; width=&quot;18&quot; height=&quot;12&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M7 10V7a5 5 0 0 1 10 0v3&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/th&gt;&lt;th class=&quot;num&quot;&gt;ЭО, ₽&lt;/th&gt;&lt;th class=&quot;num&quot;&gt;ФТЗ, ₽&lt;/th&gt;&lt;th class=&quot;num&quot;&gt;Разница&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+              &lt;tbody data-effort-body&gt;&lt;/tbody&gt;
+              &lt;tfoot&gt;&lt;tr&gt;&lt;td&gt;Итого&lt;/td&gt;&lt;td class=&quot;num&quot;&gt;—&lt;/td&gt;&lt;td class=&quot;num&quot; data-eo-total-cell&gt;&lt;/td&gt;&lt;td class=&quot;num&quot; data-ftz-total-cell&gt;&lt;/td&gt;&lt;td class=&quot;num&quot; data-eo-cost-cell&gt;&lt;/td&gt;&lt;td class=&quot;num&quot; data-ftz-cost-cell&gt;&lt;/td&gt;&lt;td class=&quot;num&quot; data-diff-total&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tfoot&gt;
+            &lt;/table&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;tc-note&quot;&gt;ФТЗ и ставки доступны только для чтения. Отрицательная разница означает, что фактические затраты ниже оценки.&lt;/div&gt;
+        &lt;/section&gt;
+      &lt;/section&gt;
+
+      &lt;section class=&quot;tc-panel&quot; data-panel=&quot;reporting&quot; hidden&gt;
+        &lt;div class=&quot;tc-section-head&quot;&gt;&lt;h2&gt;Отчётные статусы&lt;/h2&gt;&lt;span class=&quot;tc-section-hint&quot;&gt;Каждый статус сохраняется отдельно&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;tc-report-list&quot;&gt;
+          &lt;article class=&quot;tc-report&quot; data-report=&quot;directorate&quot;&gt;&lt;div class=&quot;tc-report-head&quot;&gt;&lt;h3&gt;Директорская оперативка&lt;/h3&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-report-save&gt;Сохранить статус&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;tc-report-meta&quot;&gt;&lt;span&gt;Встреча: 2 сентября 2026&lt;/span&gt;&lt;span&gt;Обновила Анна Смирнова · сегодня, 10:24&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-report-grid&quot;&gt;&lt;div&gt;&lt;div class=&quot;tc-label&quot;&gt;Предыдущий статус &lt;span class=&quot;tc-lock&quot;&gt;&lt;svg aria-label=&quot;Только для чтения&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;16&quot; r=&quot;1&quot;&gt;&lt;/circle&gt;&lt;rect x=&quot;3&quot; y=&quot;10&quot; width=&quot;18&quot; height=&quot;12&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M7 10V7a5 5 0 0 1 10 0v3&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-readbox&quot;&gt;Согласован целевой процесс. Ожидаем финальный список правил.&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;label class=&quot;tc-label&quot; for=&quot;report-directorate&quot;&gt;Статус к ближайшей встрече&lt;/label&gt;&lt;textarea id=&quot;report-directorate&quot; data-report-input&gt;Готов прототип маршрутизации, проводится проверка исключений.&lt;/textarea&gt;&lt;/div&gt;&lt;/div&gt;&lt;/article&gt;
+          &lt;article class=&quot;tc-report&quot; data-report=&quot;did&quot;&gt;&lt;div class=&quot;tc-report-head&quot;&gt;&lt;h3&gt;Оперативка ДИД&lt;/h3&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-report-save&gt;Сохранить статус&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;tc-report-meta&quot;&gt;&lt;span&gt;Встреча: 4 сентября 2026&lt;/span&gt;&lt;span&gt;Обновил Илья Петров · вчера, 18:06&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-report-grid&quot;&gt;&lt;div&gt;&lt;div class=&quot;tc-label&quot;&gt;Предыдущий статус &lt;span class=&quot;tc-lock&quot;&gt;&lt;svg aria-label=&quot;Только для чтения&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;16&quot; r=&quot;1&quot;&gt;&lt;/circle&gt;&lt;rect x=&quot;3&quot; y=&quot;10&quot; width=&quot;18&quot; height=&quot;12&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M7 10V7a5 5 0 0 1 10 0v3&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-readbox&quot;&gt;Развёрнут стенд и подключён тестовый справочник команд.&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;label class=&quot;tc-label&quot; for=&quot;report-did&quot;&gt;Статус к ближайшей встрече&lt;/label&gt;&lt;textarea id=&quot;report-did&quot; data-report-input&gt;Настраиваем интеграцию с очередями и события аудита.&lt;/textarea&gt;&lt;label class=&quot;tc-check&quot;&gt;&lt;input type=&quot;checkbox&quot; data-report-demo checked&gt; Нужна демонстрация на встрече&lt;/label&gt;&lt;/div&gt;&lt;/div&gt;&lt;/article&gt;
+          &lt;article class=&quot;tc-report&quot; data-report=&quot;key&quot;&gt;&lt;div class=&quot;tc-report-head&quot;&gt;&lt;h3&gt;Встреча по ключевым проектам&lt;/h3&gt;&lt;button class=&quot;tc-btn primary small&quot; type=&quot;button&quot; data-report-save&gt;Сохранить статус&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;tc-report-meta&quot;&gt;&lt;span&gt;Дата ещё не назначена&lt;/span&gt;&lt;span&gt;Обновила Мария Орлова · 28 августа, 14:12&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-report-grid&quot;&gt;&lt;div&gt;&lt;div class=&quot;tc-label&quot;&gt;Предыдущий статус &lt;span class=&quot;tc-lock&quot;&gt;&lt;svg aria-label=&quot;Только для чтения&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;16&quot; r=&quot;1&quot;&gt;&lt;/circle&gt;&lt;rect x=&quot;3&quot; y=&quot;10&quot; width=&quot;18&quot; height=&quot;12&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;path d=&quot;M7 10V7a5 5 0 0 1 10 0v3&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-readbox&quot;&gt;Задача включена в приоритетный пул третьего квартала.&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;label class=&quot;tc-label&quot; for=&quot;report-key&quot;&gt;Статус к ближайшей встрече&lt;/label&gt;&lt;textarea id=&quot;report-key&quot; data-report-input&gt;Ожидается решение о пилоте на двух командах.&lt;/textarea&gt;&lt;/div&gt;&lt;/div&gt;&lt;/article&gt;
+        &lt;/div&gt;
+      &lt;/section&gt;
+
+      &lt;section class=&quot;tc-panel&quot; data-panel=&quot;comments&quot; hidden&gt;
+        &lt;div class=&quot;tc-section-head&quot;&gt;&lt;h2&gt;Комментарии&lt;/h2&gt;&lt;span class=&quot;tc-section-hint&quot;&gt;Ответы и упоминания сохраняют контекст&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;tc-comment-list&quot; data-comment-list&gt;
+          &lt;article class=&quot;tc-comment&quot;&gt;&lt;div class=&quot;tc-comment-head&quot;&gt;&lt;span class=&quot;tc-avatar&quot;&gt;АС&lt;/span&gt;&lt;b&gt;Анна Смирнова&lt;/b&gt;&lt;time class=&quot;tc-comment-time&quot;&gt;сегодня, 10:28&lt;/time&gt;&lt;/div&gt;&lt;p&gt;Добавила сценарии для заявок без назначенной команды. &lt;b&gt;@Илья Петров&lt;/b&gt;, проверь, пожалуйста, правила по SLA.&lt;/p&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-reply=&quot;Анна Смирнова&quot;&gt;Ответить&lt;/button&gt;&lt;/article&gt;
+          &lt;article class=&quot;tc-comment&quot;&gt;&lt;div class=&quot;tc-comment-head&quot;&gt;&lt;span class=&quot;tc-avatar&quot;&gt;ИП&lt;/span&gt;&lt;b&gt;Илья Петров&lt;/b&gt;&lt;time class=&quot;tc-comment-time&quot;&gt;сегодня, 11:02&lt;/time&gt;&lt;/div&gt;&lt;p&gt;Проверил: для критических обращений нужен отдельный маршрут. Добавил замечание в Jira.&lt;/p&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-reply=&quot;Илья Петров&quot;&gt;Ответить&lt;/button&gt;&lt;/article&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;tc-composer&quot;&gt;&lt;label class=&quot;tc-label&quot; for=&quot;tc-comment-new&quot;&gt;Новый комментарий&lt;/label&gt;&lt;textarea id=&quot;tc-comment-new&quot; data-comment-input placeholder=&quot;Напишите комментарий… Используйте @ для упоминания&quot;&gt;&lt;/textarea&gt;&lt;div class=&quot;tc-composer-actions&quot;&gt;&lt;button class=&quot;tc-btn primary&quot; type=&quot;button&quot; data-comment-send&gt;Отправить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+      &lt;/section&gt;
+
+      &lt;section class=&quot;tc-panel&quot; data-panel=&quot;materials&quot; hidden&gt;
+        &lt;div class=&quot;tc-section-head&quot;&gt;&lt;h2&gt;Ссылки и файлы&lt;/h2&gt;&lt;span class=&quot;tc-section-hint&quot;&gt;Ссылки входят в полное редактирование&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;tc-material-grid&quot;&gt;
+          &lt;article class=&quot;tc-group full&quot;&gt;
+            &lt;div class=&quot;tc-card-title&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Ссылки&lt;/div&gt;
+            &lt;div class=&quot;tc-fields&quot;&gt;
+              &lt;div class=&quot;tc-field full-row&quot; data-field=&quot;mockupUrl&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Ссылка на макеты&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span data-out=&quot;mockupUrl&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;input type=&quot;url&quot; data-in=&quot;mockupUrl&quot;&gt;&lt;div class=&quot;tc-error&quot;&gt;Нужна корректная ссылка http(s).&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field full-row&quot; data-field=&quot;jiraLinks&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Ссылки на Jira&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span class=&quot;tc-list&quot; data-list-out=&quot;jiraLinks&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;textarea data-in=&quot;jiraLinks&quot; rows=&quot;3&quot; placeholder=&quot;По одной ссылке в строке&quot;&gt;&lt;/textarea&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;tc-field full-row&quot; data-field=&quot;reqLinks&quot; data-editable=&quot;true&quot;&gt;&lt;div class=&quot;tc-label&quot;&gt;Ссылки на бизнес-требования&lt;/div&gt;&lt;div class=&quot;tc-field-display&quot;&gt;&lt;span class=&quot;tc-list&quot; data-list-out=&quot;reqLinks&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-field-editor&quot;&gt;&lt;textarea data-in=&quot;reqLinks&quot; rows=&quot;3&quot; placeholder=&quot;По одной ссылке в строке&quot;&gt;&lt;/textarea&gt;&lt;/div&gt;&lt;/div&gt;
+            &lt;/div&gt;
+          &lt;/article&gt;
+        &lt;/div&gt;
+
+        &lt;section class=&quot;tc-section&quot;&gt;&lt;div class=&quot;tc-section-head&quot;&gt;&lt;h2&gt;Файлы&lt;/h2&gt;&lt;button class=&quot;tc-btn small&quot; type=&quot;button&quot; data-file-add&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M12 3v12&quot;&gt;&lt;/path&gt;&lt;path d=&quot;m17 8-5-5-5 5&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Добавить файл&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;tc-file-list&quot; data-file-list&gt;&lt;div class=&quot;tc-file-row&quot;&gt;&lt;div&gt;&lt;b&gt;Схема маршрутизации.pdf&lt;/b&gt;&lt;div class=&quot;tc-file-meta&quot;&gt;1,8 МБ · Анна Смирнова · 29 августа&lt;/div&gt;&lt;/div&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M12 15V3&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4&quot;&gt;&lt;/path&gt;&lt;path d=&quot;m7 10 5 5 5-5&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Скачать&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;tc-file-row&quot;&gt;&lt;div&gt;&lt;b&gt;Матрица правил.xlsx&lt;/b&gt;&lt;div class=&quot;tc-file-meta&quot;&gt;246 КБ · Илья Петров · 30 августа&lt;/div&gt;&lt;/div&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot;&gt;&lt;svg aria-hidden=&quot;true&quot; width=&quot;16&quot; height=&quot;16&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;&gt;&lt;path d=&quot;M12 15V3&quot;&gt;&lt;/path&gt;&lt;path d=&quot;M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4&quot;&gt;&lt;/path&gt;&lt;path d=&quot;m7 10 5 5 5-5&quot;&gt;&lt;/path&gt;&lt;/svg&gt;Скачать&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;
+
+        &lt;section class=&quot;tc-section&quot;&gt;&lt;div class=&quot;tc-section-head&quot;&gt;&lt;h2&gt;Системная информация&lt;/h2&gt;&lt;span class=&quot;tc-section-hint&quot;&gt;Только для чтения&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;tc-system&quot;&gt;&lt;div&gt;&lt;span&gt;Автор&lt;/span&gt;&lt;b&gt;Мария Орлова&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;span&gt;Создана&lt;/span&gt;&lt;b&gt;12 августа 2026, 09:14&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;span&gt;Последнее изменение&lt;/span&gt;&lt;b data-updated-at&gt;31 августа 2026, 11:02&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;span&gt;Публичный ID&lt;/span&gt;&lt;b&gt;TASK-026-418&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;span&gt;Версия&lt;/span&gt;&lt;b data-version&gt;14&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;span&gt;Блокировка&lt;/span&gt;&lt;b data-lock-state&gt;Свободна&lt;/b&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;
+      &lt;/section&gt;
+
+      &lt;section class=&quot;tc-panel&quot; data-panel=&quot;history&quot; hidden&gt;
+        &lt;div class=&quot;tc-section-head&quot;&gt;&lt;h2&gt;Лог изменений&lt;/h2&gt;&lt;span class=&quot;tc-section-hint&quot;&gt;Сгруппировано по сохранениям&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;tc-history&quot; data-history&gt;
+          &lt;article class=&quot;tc-history-item&quot;&gt;&lt;div class=&quot;tc-history-row&quot;&gt;&lt;b&gt;Анна Смирнова&lt;/b&gt;&lt;span&gt;изменила 2 поля&lt;/span&gt;&lt;time&gt;сегодня, 10:24&lt;/time&gt;&lt;/div&gt;&lt;div class=&quot;tc-history-change&quot;&gt;Прогресс: 55% → 65% · Статус: «На паузе» → «В работе»&lt;/div&gt;&lt;/article&gt;
+          &lt;article class=&quot;tc-history-item&quot;&gt;&lt;div class=&quot;tc-history-row&quot;&gt;&lt;b&gt;Илья Петров&lt;/b&gt;&lt;span&gt;обновил трудозатраты&lt;/span&gt;&lt;time&gt;30 августа, 18:06&lt;/time&gt;&lt;/div&gt;&lt;div class=&quot;tc-history-change&quot;&gt;Аналитика (ЭО): 7 → 8 ч/д · Разработка BE (ЭО): 9 → 10 ч/д&lt;/div&gt;&lt;/article&gt;
+          &lt;article class=&quot;tc-history-item&quot;&gt;&lt;div class=&quot;tc-history-row&quot;&gt;&lt;b&gt;Мария Орлова&lt;/b&gt;&lt;span&gt;создала задачу&lt;/span&gt;&lt;time&gt;12 августа, 09:14&lt;/time&gt;&lt;/div&gt;&lt;div class=&quot;tc-history-change&quot;&gt;TASK-026-418 создана в команде «Платформа заявок»&lt;/div&gt;&lt;/article&gt;
+        &lt;/div&gt;
+      &lt;/section&gt;
+    &lt;/div&gt;
+
+    &lt;footer class=&quot;tc-footer&quot;&gt;
+      &lt;span class=&quot;tc-change-count&quot; data-change-count&gt;Нет несохранённых изменений&lt;/span&gt;
+      &lt;div class=&quot;tc-footer-actions&quot;&gt;&lt;button class=&quot;tc-btn&quot; type=&quot;button&quot; data-action=&quot;cancel-full&quot;&gt;Отменить изменения&lt;/button&gt;&lt;button class=&quot;tc-btn primary&quot; type=&quot;button&quot; data-action=&quot;save-full&quot; disabled&gt;Сохранить · 0&lt;/button&gt;&lt;/div&gt;
+    &lt;/footer&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;tc-toast&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
+
+  &lt;script&gt;
+    (() =&gt; {
+      const root = document.getElementById(&#x27;task-card-prototype-complete&#x27;);
+      if (!root) return;
+      const customerBlock = root.querySelector(&#x27;[data-block=&quot;customer&quot;]&#x27;);
+      const classificationBlock = root.querySelector(&#x27;[data-block=&quot;classification&quot;]&#x27;);
+      if (customerBlock &amp;&amp; classificationBlock &amp;&amp; customerBlock.parentElement === classificationBlock.parentElement) {
+        customerBlock.parentElement.insertBefore(classificationBlock, customerBlock);
+      }
+      root.querySelectorAll(&#x27;[data-quick-open]&#x27;).forEach(button =&gt; {
+        const icon = document.createElement(&#x27;i&#x27;);
+        icon.className = &#x27;tc-quick-icon&#x27;;
+        icon.dataset.lucide = &#x27;pencil&#x27;;
+        icon.setAttribute(&#x27;aria-hidden&#x27;, &#x27;true&#x27;);
+        icon.textContent = &#x27;✎&#x27;;
+        button.appendChild(icon);
+      });
+      if (window.lucide &amp;&amp; typeof window.lucide.createIcons === &#x27;function&#x27;) window.lucide.createIcons({ attrs: { width: 16, height: 16 } });
+      const clone = value =&gt; JSON.parse(JSON.stringify(value));
+      const initialState = {
+        title: &#x27;Автоматизация маршрутизации входящих заявок&#x27;,
+        description: &#x27;Настроить единый маршрут обработки заявок: автоматическое определение команды, приоритета и контроль сроков на основании типа обращения.&#x27;,
+        status: &#x27;В работе&#x27;, priority: &#x27;Высокий&#x27;, deadline: &#x27;2026-09-30&#x27;, progress: 65,
+        assignee: &#x27;Анна Смирнова&#x27;, team: &#x27;Платформа заявок&#x27;, otherTeams: [&#x27;Data Products&#x27;, &#x27;Корпоративные сервисы&#x27;],
+        customer: &#x27;Ольга Власова&#x27;, customerDept: &#x27;Дирекция клиентского сервиса&#x27;, channel: &#x27;Стратегическая сессия&#x27;, receivedAt: &#x27;2026-08-12&#x27;,
+        project: &#x27;Единое окно&#x27;, type: &#x27;Развитие&#x27;, tags: [&#x27;автоматизация&#x27;, &#x27;SLA&#x27;, &#x27;Q3&#x27;],
+        hardScore: &#x27;B&#x27;, softScore: &#x27;A&#x27;, weightPercent: 35, forecastPercent: 70,
+        metricKrPlan: 1200, metricKrFact: 860, metricKrUnit: &#x27;заявок/мес&#x27;,
+        comment: &#x27;Согласовать правила маршрутизации с владельцами очередей.&#x27;, rejectionReason: &#x27;&#x27;,
+        priorityScore: 78, priorityJust: &#x27;Высокий охват пользователей, подтверждённый экономический эффект и умеренная сложность внедрения.&#x27;,
+        finEffect: 12.4, finJust: &#x27;Снижение ручной обработки и просрочек по SLA.&#x27;, finEffectAi: 13.1,
+        finJustAi: &#x27;Расчёт основан на объёме 1 200 заявок в месяц и сокращении обработки на 18 минут.&#x27;,
+        mockupUrl: &#x27;https://design.example.com/task-routing&#x27;,
+        jiraLinks: [&#x27;https://jira.example.com/browse/PLAT-418&#x27;, &#x27;https://jira.example.com/browse/PLAT-426&#x27;],
+        reqLinks: [&#x27;https://wiki.example.com/requirements/routing&#x27;],
+        eo_designee: 2, eo_analytics: 8, eo_be: 10, eo_python: 5, eo_fe: 5, eo_test: 4, eo_auto: 2, eo_delivery: 1
+      };
+      let state = clone(initialState);
+      let fullSnapshot = null;
+      let currentQuick = null;
+      let version = 14;
+      let toastTimer = null;
+      const roles = [
+        { key: &#x27;designee&#x27;, label: &#x27;Designee&#x27;, rate: 28000, actual: 2 },
+        { key: &#x27;analytics&#x27;, label: &#x27;Аналитика&#x27;, rate: 26000, actual: 7 },
+        { key: &#x27;be&#x27;, label: &#x27;Разработка BE&#x27;, rate: 27000, actual: 8 },
+        { key: &#x27;python&#x27;, label: &#x27;Разработка python BE&#x27;, rate: 27500, actual: 4 },
+        { key: &#x27;fe&#x27;, label: &#x27;Разработка FE&#x27;, rate: 25500, actual: 3 },
+        { key: &#x27;test&#x27;, label: &#x27;Test&#x27;, rate: 22000, actual: 3 },
+        { key: &#x27;auto&#x27;, label: &#x27;Test Auto&#x27;, rate: 24000, actual: 1 },
+        { key: &#x27;delivery&#x27;, label: &#x27;Delivery&#x27;, rate: 30000, actual: 1 }
+      ];
+      const arrayKeys = new Set([&#x27;otherTeams&#x27;, &#x27;tags&#x27;, &#x27;jiraLinks&#x27;, &#x27;reqLinks&#x27;]);
+      const numberKeys = new Set([&#x27;progress&#x27;, &#x27;weightPercent&#x27;, &#x27;forecastPercent&#x27;, &#x27;metricKrPlan&#x27;, &#x27;metricKrFact&#x27;, &#x27;finEffect&#x27;, ...roles.map(r =&gt; &#x27;eo_&#x27; + r.key)]);
+      const quickKeys = [&#x27;title&#x27;, &#x27;description&#x27;, &#x27;status&#x27;, &#x27;priority&#x27;, &#x27;deadline&#x27;, &#x27;progress&#x27;, &#x27;assignee&#x27;, &#x27;team&#x27;, &#x27;otherTeams&#x27;, &#x27;customer&#x27;, &#x27;project&#x27;, &#x27;type&#x27;, &#x27;tags&#x27;];
+      const money = value =&gt; Math.round(value).toLocaleString(&#x27;ru-RU&#x27;) + &#x27; ₽&#x27;;
+      const number = value =&gt; Number(value || 0).toLocaleString(&#x27;ru-RU&#x27;, { maximumFractionDigits: 1 });
+      const date = value =&gt; {
+        if (!value) return &#x27;—&#x27;;
+        const parsed = new Date(value + &#x27;T12:00:00&#x27;);
+        return new Intl.DateTimeFormat(&#x27;ru-RU&#x27;, { day: &#x27;numeric&#x27;, month: &#x27;long&#x27;, year: &#x27;numeric&#x27; }).format(parsed);
+      };
+      const normalizeArray = value =&gt; String(value || &#x27;&#x27;).split(/[\n,]/).map(v =&gt; v.trim()).filter(Boolean);
+      const toast = message =&gt; {
+        const node = root.querySelector(&#x27;.tc-toast&#x27;);
+        node.textContent = message;
+        node.classList.add(&#x27;show&#x27;);
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() =&gt; node.classList.remove(&#x27;show&#x27;), 2200);
+      };
+      const formatValue = (key, value) =&gt; {
+        if (key === &#x27;deadline&#x27; || key === &#x27;receivedAt&#x27;) return date(value);
+        if (key === &#x27;rejectionReason&#x27;) return value || &#x27;—&#x27;;
+        if (key === &#x27;finEffect&#x27; || key === &#x27;finEffectAi&#x27;) return number(value);
+        return value == null || value === &#x27;&#x27; ? &#x27;—&#x27; : String(value);
+      };
+      const renderLists = () =&gt; {
+        root.querySelectorAll(&#x27;[data-list-out]&#x27;).forEach(node =&gt; {
+          const key = node.dataset.listOut;
+          node.replaceChildren();
+          const list = Array.isArray(state[key]) ? state[key] : [];
+          if (!list.length) { node.textContent = &#x27;—&#x27;; return; }
+          list.forEach(item =&gt; {
+            const chip = document.createElement(&#x27;span&#x27;);
+            chip.className = &#x27;tc-chip&#x27;;
+            chip.textContent = item;
+            node.appendChild(chip);
+          });
+        });
+      };
+      const renderEffort = () =&gt; {
+        const body = root.querySelector(&#x27;[data-effort-body]&#x27;);
+        if (!body) return;
+        body.replaceChildren();
+        let eoTotal = 0, actualTotal = 0, eoCost = 0, actualCost = 0;
+        roles.forEach(role =&gt; {
+          const eo = Number(state[&#x27;eo_&#x27; + role.key] || 0);
+          const actual = role.actual;
+          eoTotal += eo; actualTotal += actual; eoCost += eo * role.rate; actualCost += actual * role.rate;
+          const tr = document.createElement(&#x27;tr&#x27;);
+          const diff = eo ? ((actual - eo) / eo) * 100 : 0;
+          tr.innerHTML = &#x27;&lt;td&gt;&lt;b&gt;&#x27; + role.label + &#x27;&lt;/b&gt;&lt;/td&gt;&lt;td class=&quot;num&quot;&gt;&#x27; + role.rate.toLocaleString(&#x27;ru-RU&#x27;) + &#x27;&lt;/td&gt;&lt;td class=&quot;num&quot;&gt;&lt;span class=&quot;tc-eo-value&quot;&gt;&#x27; + number(eo) + &#x27;&lt;/span&gt;&lt;input class=&quot;tc-eo-input&quot; type=&quot;number&quot; min=&quot;0&quot; step=&quot;0.5&quot; data-in=&quot;eo_&#x27; + role.key + &#x27;&quot; aria-label=&quot;ЭО: &#x27; + role.label + &#x27;&quot;&gt;&lt;/td&gt;&lt;td class=&quot;num&quot;&gt;&#x27; + number(actual) + &#x27;&lt;/td&gt;&lt;td class=&quot;num&quot;&gt;&#x27; + money(eo * role.rate) + &#x27;&lt;/td&gt;&lt;td class=&quot;num&quot;&gt;&#x27; + money(actual * role.rate) + &#x27;&lt;/td&gt;&lt;td class=&quot;num&quot;&gt;&#x27; + (diff &gt;= 0 ? &#x27;+&#x27; : &#x27;&#x27;) + number(diff) + &#x27;%&lt;/td&gt;&#x27;;
+          body.appendChild(tr);
+        });
+        root.querySelector(&#x27;[data-eo-total]&#x27;).textContent = number(eoTotal) + &#x27; ч/д&#x27;;
+        root.querySelector(&#x27;[data-eo-cost]&#x27;).textContent = money(eoCost);
+        root.querySelector(&#x27;[data-ftz-total]&#x27;).textContent = number(actualTotal) + &#x27; ч/д&#x27;;
+        root.querySelector(&#x27;[data-ftz-cost]&#x27;).textContent = money(actualCost);
+        root.querySelector(&#x27;[data-cv-eo]&#x27;).textContent = eoCost ? number((state.finEffect * 1000000) / eoCost) : &#x27;—&#x27;;
+        root.querySelector(&#x27;[data-cv-ftz]&#x27;).textContent = actualCost ? number((state.finEffect * 1000000) / actualCost) : &#x27;—&#x27;;
+        root.querySelector(&#x27;[data-eo-total-cell]&#x27;).textContent = number(eoTotal);
+        root.querySelector(&#x27;[data-ftz-total-cell]&#x27;).textContent = number(actualTotal);
+        root.querySelector(&#x27;[data-eo-cost-cell]&#x27;).textContent = money(eoCost);
+        root.querySelector(&#x27;[data-ftz-cost-cell]&#x27;).textContent = money(actualCost);
+        const totalDiff = eoTotal ? ((actualTotal - eoTotal) / eoTotal) * 100 : 0;
+        root.querySelector(&#x27;[data-diff-total]&#x27;).textContent = (totalDiff &gt;= 0 ? &#x27;+&#x27; : &#x27;&#x27;) + number(totalDiff) + &#x27;%&#x27;;
+      };
+      const syncControls = source =&gt; {
+        root.querySelectorAll(&#x27;[data-in]&#x27;).forEach(control =&gt; {
+          const key = control.dataset.in;
+          const value = source[key];
+          control.value = arrayKeys.has(key) ? (Array.isArray(value) ? value.join(key === &#x27;otherTeams&#x27; || key === &#x27;tags&#x27; ? &#x27;, &#x27; : &#x27;\n&#x27;) : &#x27;&#x27;) : (value == null ? &#x27;&#x27; : value);
+        });
+        root.querySelectorAll(&#x27;[data-range-value]&#x27;).forEach(node =&gt; node.textContent = (source.progress || 0) + &#x27;%&#x27;);
+      };
+      const collectControls = base =&gt; {
+        const draft = clone(base);
+        root.querySelectorAll(&#x27;[data-in]&#x27;).forEach(control =&gt; {
+          const key = control.dataset.in;
+          let value = control.value;
+          if (arrayKeys.has(key)) value = normalizeArray(value);
+          else if (numberKeys.has(key)) value = value === &#x27;&#x27; ? null : Number(value);
+          draft[key] = value;
+        });
+        return draft;
+      };
+      const changedKeys = (a, b) =&gt; Object.keys(b).filter(key =&gt; JSON.stringify(a[key]) !== JSON.stringify(b[key]));
+      const clearErrors = () =&gt; root.querySelectorAll(&#x27;.tc-field.has-error&#x27;).forEach(node =&gt; node.classList.remove(&#x27;has-error&#x27;));
+      const validate = draft =&gt; {
+        clearErrors();
+        if (!String(draft.title || &#x27;&#x27;).trim()) return { key: &#x27;title&#x27;, message: &#x27;Укажите название задачи.&#x27; };
+        if (draft.receivedAt &amp;&amp; draft.receivedAt &gt; &#x27;2026-08-31&#x27;) return { key: &#x27;receivedAt&#x27;, message: &#x27;Дата получения не может быть в будущем.&#x27; };
+        if (Number(draft.progress) === 100 &amp;&amp; draft.status !== &#x27;Выполнена&#x27;) return { key: &#x27;progress&#x27;, message: &#x27;Для 100% выберите статус «Выполнена».&#x27; };
+        if (draft.status === &#x27;Выполнена&#x27; &amp;&amp; Number(draft.progress) !== 100) return { key: &#x27;progress&#x27;, message: &#x27;Для выполненной задачи нужен прогресс 100%.&#x27; };
+        if (draft.mockupUrl &amp;&amp; !/^https?:\/\//i.test(draft.mockupUrl)) return { key: &#x27;mockupUrl&#x27;, message: &#x27;Ссылка на макеты должна начинаться с http(s).&#x27; };
+        return null;
+      };
+      const showError = error =&gt; {
+        const field = root.querySelector(&#x27;.tc-field[data-field=&quot;&#x27; + error.key + &#x27;&quot;]&#x27;);
+        if (field) { field.classList.add(&#x27;has-error&#x27;); field.scrollIntoView({ block: &#x27;center&#x27;, behavior: &#x27;smooth&#x27; }); }
+        toast(error.message);
+      };
+      const render = () =&gt; {
+        root.querySelectorAll(&#x27;[data-out]&#x27;).forEach(node =&gt; {
+          const key = node.dataset.out;
+          node.textContent = formatValue(key, state[key]);
+        });
+        renderLists();
+        root.querySelectorAll(&#x27;[data-progress-bar]&#x27;).forEach(node =&gt; node.style.width = state.progress + &#x27;%&#x27;);
+        root.querySelectorAll(&#x27;[data-progress-text]&#x27;).forEach(node =&gt; node.textContent = state.progress + &#x27;%&#x27;);
+        renderEffort();
+        syncControls(state);
+        root.querySelector(&#x27;[data-version]&#x27;).textContent = String(version);
+      };
+      const addHistory = (keys, label) =&gt; {
+        const history = root.querySelector(&#x27;[data-history]&#x27;);
+        const item = document.createElement(&#x27;article&#x27;);
+        item.className = &#x27;tc-history-item&#x27;;
+        const names = { title:&#x27;Название&#x27;, description:&#x27;Описание&#x27;, status:&#x27;Статус&#x27;, priority:&#x27;Приоритет&#x27;, deadline:&#x27;Срок&#x27;, progress:&#x27;Прогресс&#x27;, assignee:&#x27;Исполнитель&#x27;, team:&#x27;Команда&#x27;, otherTeams:&#x27;Вовлечённые команды&#x27;, customer:&#x27;Заказчик&#x27;, project:&#x27;Проект&#x27;, type:&#x27;Тип&#x27;, tags:&#x27;Метки&#x27; };
+        item.innerHTML = &#x27;&lt;div class=&quot;tc-history-row&quot;&gt;&lt;b&gt;Вы&lt;/b&gt;&lt;span&gt;&#x27; + label + &#x27;&lt;/span&gt;&lt;time&gt;только что&lt;/time&gt;&lt;/div&gt;&lt;div class=&quot;tc-history-change&quot;&gt;&#x27; + keys.map(key =&gt; names[key] || key).join(&#x27; · &#x27;) + &#x27;&lt;/div&gt;&#x27;;
+        history.prepend(item);
+      };
+      const highlight = key =&gt; {
+        root.querySelectorAll(&#x27;.tc-field[data-field=&quot;&#x27; + key + &#x27;&quot;]&#x27;).forEach(node =&gt; {
+          node.classList.remove(&#x27;tc-saved&#x27;); void node.offsetWidth; node.classList.add(&#x27;tc-saved&#x27;);
+        });
+      };
+      const closeQuick = restore =&gt; {
+        if (!currentQuick) return;
+        currentQuick.classList.remove(&#x27;quick-active&#x27;);
+        if (restore) syncControls(state);
+        currentQuick = null;
+        clearErrors();
+      };
+      const saveQuick = (field, auto = false) =&gt; {
+        const key = field.dataset.field;
+        const control = field.querySelector(&#x27;[data-in=&quot;&#x27; + key + &#x27;&quot;]&#x27;);
+        if (!control) return;
+        const draft = clone(state);
+        let value = control.value;
+        if (arrayKeys.has(key)) value = normalizeArray(value);
+        else if (numberKeys.has(key)) value = value === &#x27;&#x27; ? null : Number(value);
+        draft[key] = value;
+        const error = validate(draft);
+        if (error) { showError(error); return; }
+        const changed = JSON.stringify(state[key]) !== JSON.stringify(value);
+        state = draft;
+        closeQuick(false);
+        if (changed) { version += 1; render(); highlight(key); addHistory([key], &#x27;быстро изменили поле&#x27;); toast(auto ? &#x27;Сохранено автоматически&#x27; : &#x27;Поле сохранено&#x27;); }
+        else { render(); toast(&#x27;Изменений нет&#x27;); }
+      };
+      const updateFullSummary = () =&gt; {
+        if (!root.classList.contains(&#x27;is-full-editing&#x27;) || !fullSnapshot) return;
+        const draft = collectControls(fullSnapshot);
+        const count = changedKeys(fullSnapshot, draft).length;
+        root.querySelector(&#x27;[data-edit-summary]&#x27;).textContent = &#x27;Полное редактирование: изменено полей — &#x27; + count;
+        root.querySelector(&#x27;[data-change-count]&#x27;).textContent = count ? &#x27;Несохранённых изменений: &#x27; + count : &#x27;Нет несохранённых изменений&#x27;;
+        const button = root.querySelector(&#x27;[data-action=&quot;save-full&quot;]&#x27;);
+        button.disabled = count === 0;
+        button.textContent = &#x27;Сохранить · &#x27; + count;
+      };
+      const startFull = () =&gt; {
+        closeQuick(true);
+        fullSnapshot = clone(state);
+        root.classList.add(&#x27;is-full-editing&#x27;);
+        root.querySelector(&#x27;[data-lock-state]&#x27;).textContent = &#x27;Заблокирована вами&#x27;;
+        syncControls(state);
+        updateFullSummary();
+        toast(&#x27;Полный режим редактирования включён&#x27;);
+      };
+      const cancelFull = () =&gt; {
+        state = clone(fullSnapshot || state);
+        fullSnapshot = null;
+        root.classList.remove(&#x27;is-full-editing&#x27;);
+        root.querySelector(&#x27;[data-lock-state]&#x27;).textContent = &#x27;Свободна&#x27;;
+        clearErrors(); render(); toast(&#x27;Изменения отменены&#x27;);
+      };
+      const saveFull = () =&gt; {
+        const draft = collectControls(fullSnapshot || state);
+        const error = validate(draft);
+        if (error) { showError(error); return; }
+        const keys = changedKeys(state, draft);
+        if (!keys.length) { toast(&#x27;Изменений нет&#x27;); return; }
+        state = draft; version += 1; fullSnapshot = null;
+        root.classList.remove(&#x27;is-full-editing&#x27;);
+        root.querySelector(&#x27;[data-lock-state]&#x27;).textContent = &#x27;Свободна&#x27;;
+        root.querySelector(&#x27;[data-updated-at]&#x27;).textContent = &#x27;31 августа 2026, только что&#x27;;
+        render(); keys.forEach(highlight); addHistory(keys, &#x27;сохранили &#x27; + keys.length + &#x27; полей&#x27;); toast(&#x27;Сохранено · изменений: &#x27; + keys.length);
+      };
+      root.addEventListener(&#x27;click&#x27;, event =&gt; {
+        const tab = event.target.closest(&#x27;[data-tab]&#x27;);
+        if (tab) {
+          const name = tab.dataset.tab;
+          root.querySelectorAll(&#x27;[data-tab]&#x27;).forEach(node =&gt; node.setAttribute(&#x27;aria-selected&#x27;, String(node === tab)));
+          root.querySelectorAll(&#x27;[data-panel]&#x27;).forEach(panel =&gt; panel.hidden = panel.dataset.panel !== name);
+          return;
+        }
+        const quickOpen = event.target.closest(&#x27;[data-quick-open]&#x27;);
+        if (quickOpen &amp;&amp; !root.classList.contains(&#x27;is-full-editing&#x27;)) {
+          const field = quickOpen.closest(&#x27;.tc-field&#x27;);
+          closeQuick(true); currentQuick = field; field.classList.add(&#x27;quick-active&#x27;); syncControls(state);
+          const control = field.querySelector(&#x27;[data-in]&#x27;); if (control) { control.focus(); if (typeof control.select === &#x27;function&#x27; &amp;&amp; control.tagName !== &#x27;SELECT&#x27;) control.select(); }
+          return;
+        }
+        if (event.target.closest(&#x27;[data-quick-cancel]&#x27;)) { closeQuick(true); toast(&#x27;Быстрое редактирование отменено&#x27;); return; }
+        if (event.target.closest(&#x27;[data-quick-save]&#x27;)) { const field = event.target.closest(&#x27;.tc-field&#x27;); saveQuick(field); return; }
+        const action = event.target.closest(&#x27;[data-action]&#x27;)?.dataset.action;
+        if (action === &#x27;full-edit&#x27;) { startFull(); return; }
+        if (action === &#x27;cancel-full&#x27;) { cancelFull(); return; }
+        if (action === &#x27;save-full&#x27;) { saveFull(); return; }
+        if (action === &#x27;copy&#x27;) { toast(&#x27;Ссылка на TASK-026-418 скопирована&#x27;); return; }
+        if (action === &#x27;close&#x27;) { toast(&#x27;Это прототип: карточка остаётся открытой&#x27;); return; }
+        if (action === &#x27;recalc-priority&#x27;) { state.priorityScore = Math.min(100, state.priorityScore + 2); render(); toast(&#x27;Priority Score пересчитан агентом&#x27;); return; }
+        if (action === &#x27;recalc-fin&#x27;) { state.finEffectAi = Number((state.finEffectAi + .4).toFixed(1)); render(); toast(&#x27;AI-оценка финансового эффекта обновлена&#x27;); return; }
+        const reportSave = event.target.closest(&#x27;[data-report-save]&#x27;);
+        if (reportSave) { reportSave.textContent = &#x27;Сохранено ✓&#x27;; setTimeout(() =&gt; reportSave.textContent = &#x27;Сохранить статус&#x27;, 1500); toast(&#x27;Отчётный статус сохранён&#x27;); return; }
+        const reply = event.target.closest(&#x27;[data-reply]&#x27;);
+        if (reply) { const input = root.querySelector(&#x27;[data-comment-input]&#x27;); input.value = &#x27;@&#x27; + reply.dataset.reply + &#x27;, &#x27;; input.focus(); return; }
+        if (event.target.closest(&#x27;[data-comment-send]&#x27;)) {
+          const input = root.querySelector(&#x27;[data-comment-input]&#x27;); const value = input.value.trim();
+          if (!value) { toast(&#x27;Введите текст комментария&#x27;); input.focus(); return; }
+          const article = document.createElement(&#x27;article&#x27;); article.className = &#x27;tc-comment&#x27;;
+          article.innerHTML = &#x27;&lt;div class=&quot;tc-comment-head&quot;&gt;&lt;span class=&quot;tc-avatar&quot;&gt;ВЫ&lt;/span&gt;&lt;b&gt;Вы&lt;/b&gt;&lt;time class=&quot;tc-comment-time&quot;&gt;только что&lt;/time&gt;&lt;/div&gt;&lt;p&gt;&lt;/p&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot; data-reply=&quot;Вы&quot;&gt;Ответить&lt;/button&gt;&#x27;;
+          article.querySelector(&#x27;p&#x27;).textContent = value; root.querySelector(&#x27;[data-comment-list]&#x27;).appendChild(article); input.value = &#x27;&#x27;;
+          const count = root.querySelectorAll(&#x27;.tc-comment&#x27;).length; root.querySelector(&#x27;[data-comment-count]&#x27;).textContent = String(count); toast(&#x27;Комментарий добавлен&#x27;); return;
+        }
+        if (event.target.closest(&#x27;[data-file-add]&#x27;)) {
+          const row = document.createElement(&#x27;div&#x27;); row.className = &#x27;tc-file-row&#x27;; row.innerHTML = &#x27;&lt;div&gt;&lt;b&gt;Новый файл-пример.pdf&lt;/b&gt;&lt;div class=&quot;tc-file-meta&quot;&gt;320 КБ · Вы · только что&lt;/div&gt;&lt;/div&gt;&lt;button class=&quot;tc-btn ghost small&quot; type=&quot;button&quot;&gt;Скачать&lt;/button&gt;&#x27;;
+          root.querySelector(&#x27;[data-file-list]&#x27;).appendChild(row); toast(&#x27;Файл добавлен в прототип&#x27;); return;
+        }
+        if (currentQuick &amp;&amp; !currentQuick.contains(event.target)) closeQuick(true);
+      });
+      root.addEventListener(&#x27;input&#x27;, event =&gt; {
+        if (event.target.matches(&#x27;[data-in=&quot;progress&quot;]&#x27;)) root.querySelectorAll(&#x27;[data-range-value]&#x27;).forEach(node =&gt; node.textContent = event.target.value + &#x27;%&#x27;);
+        if (root.classList.contains(&#x27;is-full-editing&#x27;) &amp;&amp; event.target.matches(&#x27;[data-in]&#x27;)) updateFullSummary();
+      });
+      root.addEventListener(&#x27;change&#x27;, event =&gt; {
+        const field = event.target.closest(&#x27;.tc-field[data-autosave=&quot;true&quot;].quick-active&#x27;);
+        if (field &amp;&amp; !root.classList.contains(&#x27;is-full-editing&#x27;)) saveQuick(field, true);
+        if (root.classList.contains(&#x27;is-full-editing&#x27;) &amp;&amp; event.target.matches(&#x27;[data-in]&#x27;)) updateFullSummary();
+      });
+      root.addEventListener(&#x27;keydown&#x27;, event =&gt; {
+        if (event.key === &#x27;Escape&#x27;) { if (currentQuick) closeQuick(true); else if (root.classList.contains(&#x27;is-full-editing&#x27;)) cancelFull(); }
+        if (event.key === &#x27;Enter&#x27; &amp;&amp; (event.ctrlKey || event.metaKey)) {
+          if (currentQuick) saveQuick(currentQuick); else if (root.classList.contains(&#x27;is-full-editing&#x27;)) saveFull();
+        }
+      });
+      const body = root.querySelector(&#x27;[data-effort-body]&#x27;);
+      renderEffort();
+      syncControls(state);
+      render();
+      if (body &amp;&amp; !quickKeys.every(key =&gt; root.querySelector(&#x27;.tc-field[data-field=&quot;&#x27; + key + &#x27;&quot;][data-quick=&quot;true&quot;]&#x27;))) console.warn(&#x27;Prototype quick-edit matrix is incomplete&#x27;);
+    })();
+  &lt;/script&gt;
+&lt;/div&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+  let lastPointerWasTouch = false;
+  let pinnedByTouch = false;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    pinnedByTouch = false;
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handlePointer = (event) =&gt; {
+    lastPointerWasTouch =
+      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
+  };
+  const handleTouchClick = (event) =&gt; {
+    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
+    lastPointerWasTouch = false;
+    if (!isTouch || event.detail === 0) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (
+      trigger == null ||
+      !trigger.isConnected ||
+      getContent(trigger).length === 0 ||
+      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
+    ) {
+      if (pinnedByTouch) {
+        closeTooltip();
+      }
+      return;
+    }
+    openTooltip(trigger);
+    pinnedByTouch = activeTrigger === trigger;
+    window.setTimeout(() =&gt; {
+      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
+        closeTooltip(false);
+      }
+    }, 0);
+  };
+  const handleLeave = (event) =&gt; {
+    if (pinnedByTouch) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    lastPointerWasTouch = false;
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    lastPointerWasTouch = false;
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerdown&quot;, handlePointer);
+    document.removeEventListener(&quot;pointercancel&quot;, handlePointer);
+    document.removeEventListener(&quot;click&quot;, handleTouchClick);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerdown&quot;, handlePointer);
+  document.addEventListener(&quot;pointercancel&quot;, handlePointer);
+  document.addEventListener(&quot;click&quot;, handleTouchClick);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>

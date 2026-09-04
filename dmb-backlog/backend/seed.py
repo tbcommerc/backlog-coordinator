@@ -491,6 +491,29 @@ def seed_initial_data():
     dir_statuses = ["В работе", "На контроле", "Риск", "Выполнен"]
     did_statuses = ["В работе", "Требует решения", "Закрыта", "Блокировано"]
 
+    def reporting_status(meeting_kind, title, description, progress, short_status):
+        progress_text = f"По задаче «{title}» выполнено {progress}% запланированного объёма."
+        context_text = f"Текущий результат связан со следующим направлением: {description.rstrip('.')}."
+        next_steps = {
+            "directorate": {
+                "В работе": "На директорской оперативке предлагается подтвердить текущий курс и контрольные сроки следующего этапа.",
+                "На контроле": "На директорской оперативке необходимо сверить соблюдение сроков и зафиксировать ответственных за следующий этап.",
+                "Риск": "Для продолжения требуется обсудить риск на директорской оперативке и согласовать меры по его снижению.",
+                "Выполнен": "На директорской оперативке можно зафиксировать достигнутый результат и определить, требуется ли дальнейшее сопровождение.",
+            },
+            "did": {
+                "В работе": "К оперативке ДИД команда готовит следующий результат и уточняет срок его предъявления.",
+                "Требует решения": "На оперативке ДИД требуется принять решение по дальнейшему сценарию и зафиксировать владельца следующего шага.",
+                "Закрыта": "На оперативке ДИД предлагается подтвердить полученный результат и отсутствие незавершённых действий.",
+                "Блокировано": "На оперативке ДИД необходимо разобрать блокирующие факторы и согласовать способ их устранения.",
+            },
+            "key_projects": {
+                "На контроле": "На встрече по ключевым проектам необходимо сверить ближайшую контрольную точку и возможные отклонения от плана.",
+                "Выполнен": "На встрече по ключевым проектам можно подтвердить достижение результата и договориться о дальнейших действиях.",
+            },
+        }
+        return " ".join((progress_text, context_text, next_steps[meeting_kind][short_status]))
+
     for idx, tmpl in enumerate(task_templates):
         title, desc, team_name, project_code, tt_code, status_code, pri_name, dl_code, effort_days, effort_rub, fin_effect, progress, ch_code, dept_code, owner_email = tmpl
 
@@ -516,10 +539,20 @@ def seed_initial_data():
             effort_rub=effort_rub,
             financial_effect=fin_effect,
             progress=progress,
-            directorate_status=dir_statuses[idx % len(dir_statuses)],
-            did_status=did_statuses[idx % len(did_statuses)],
+            directorate_status=reporting_status(
+                "directorate", title, desc, progress, dir_statuses[idx % len(dir_statuses)]
+            ),
+            did_status=reporting_status(
+                "did", title, desc, progress, did_statuses[idx % len(did_statuses)]
+            ),
             owner_id=users_by_email[owner_email].id if owner_email and owner_email in users_by_email else None,
-            key_project_status="На контроле" if idx < 10 else ("Выполнен" if idx < 15 else None),
+            key_project_status=reporting_status(
+                "key_projects",
+                title,
+                desc,
+                progress,
+                "На контроле" if idx < 10 else "Выполнен",
+            ) if idx < 15 else None,
             created_by=users_by_email.get("a@dmb.ru").id,
         )
         db.add(task)

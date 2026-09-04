@@ -69,15 +69,13 @@ def _period_catalog(tasks: list[Task], today: date):
 
     def sort_key(period_id: str):
         q_match = re.match(r"^q([1-4])_(\d{4})$", period_id)
-        if period_id == current_id:
-            return (0, 0, 0)
-        if period_id == ytd_id:
-            return (1, 0, 0)
         if q_match:
-            return (2, int(q_match.group(2)), int(q_match.group(1)))
+            return (int(q_match.group(2)), int(q_match.group(1)))
+        if period_id.startswith("ytd_"):
+            return (int(period_id[4:]), 5)
         if period_id.startswith("y") and not period_id.startswith("ytd_"):
-            return (3, int(period_id[1:]), 0)
-        return (4, 0, 0)
+            return (int(period_id[1:]), 6)
+        return (9999, 99)
 
     periods = sorted(by_period, key=sort_key)
     active = current_id if current_id in by_period else (periods[0] if periods else None)
@@ -582,11 +580,14 @@ def get_po_pl_reports(
         task_read_scope_clause(current_user, Task),
         _lt_task_scope_clause(),
     ).all()
+    periods, period_labels, _, active_period = _period_catalog(tasks, today)
     team_names = {
         team.id: team.name
         for team in db.query(Team).filter(Team.name.notin_(LT_EXCLUDED_TEAM_NAMES)).all()
     }
     return {
+        "periods": [{"id": period, "label": period_labels[period]} for period in periods],
+        "active_period": active_period,
         "scope": "tribe" if task_read_scope_team_id(current_user) is None else "team",
         "excluded_teams": sorted(LT_EXCLUDED_TEAM_NAMES),
         "quality_thresholds": {

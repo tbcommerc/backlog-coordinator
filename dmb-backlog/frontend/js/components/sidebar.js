@@ -8,7 +8,7 @@ export function renderSidebar() {
     const adminAccess = user?.permissions?.admin || 'none';
     const deadLetterLink = adminAccess === 'full' ? `
                 <a href="#/outbox-dead-letters" class="sidebar-item" aria-label="Ошибки доставки событий">
-                    <i data-lucide="triangle-alert"></i>
+                    <i data-lucide="alert-triangle"></i>
                     <span>Ошибки доставки</span>
                 </a>` : '';
     const adminLinks = adminAccess !== 'none' ? `
@@ -25,6 +25,10 @@ export function renderSidebar() {
                     <span>Аудит действий</span>
                 </a>
                 ${deadLetterLink}` : '';
+    const developmentBadge = `
+                    <span class="item-badge sidebar-development-badge" title="В разработке" aria-label="В разработке">
+                        <i data-lucide="code-2" aria-hidden="true"></i>
+                    </span>`;
     return `
     <aside class="sidebar${collapsed ? ' collapsed' : ''}">
         <div class="sidebar-logo">
@@ -58,6 +62,7 @@ export function renderSidebar() {
                 <a href="#/express-estimate" class="sidebar-item" aria-label="Экспресс-оценка">
                     <i data-lucide="zap"></i>
                     <span>Экспресс-оценка</span>
+                    ${developmentBadge}
                 </a>
                 <a href="#/kanban" class="sidebar-item" aria-label="Канбан-доска">
                     <i data-lucide="columns"></i>
@@ -82,9 +87,7 @@ export function renderSidebar() {
                 <a href="#/analytics/it" class="sidebar-item" aria-label="Аналитика для ИТ">
                     <i data-lucide="loader2"></i>
                     <span>Аналитика для ИТ</span>
-                    <span class="item-badge" title="В разработке" style="background:var(--bg-tertiary);color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;padding:3px;min-width:20px;">
-                        <i data-lucide="wrench" style="width:12px;height:12px;"></i>
-                    </span>
+                    ${developmentBadge}
                 </a>
             </div>
             

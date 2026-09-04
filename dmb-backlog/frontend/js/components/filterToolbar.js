@@ -1,5 +1,7 @@
 import { confirmAction } from '../uiFeedback.js';
 import { calculateTaskCv } from '../taskMetrics.js';
+import { formatTaskPublicId } from '../taskPublicId.js';
+import { TASK_COLUMNS } from './taskColumns.js';
 
 console.log('[DMB] filterToolbar.js v20260804.2 loaded');
 const columnFilters = { backlog: {}, team: {} };
@@ -10,7 +12,23 @@ const allTasksCache = { backlog: [], team: [] };
 const columnSettingsRefs = { backlog: null, team: null };
 const columnOrderRefs = { backlog: null, team: null };
 const defaultColumnSettingsRefs = { backlog: null, team: null };
+const filterLabelsRefs = { backlog: {}, team: {} };
 const SAVED_VIEWS_PREFIX = 'dmb_saved_views_v1_';
+const PINNED_FILTERS_PREFIX = 'dmb_pinned_filters_v1_';
+const MAX_PINNED_FILTERS = 5;
+const EMPTY_FILTER_VALUE = '__EMPTY__';
+const FILTER_TOKEN_PREFIX = {
+  text: '__text__:',
+  min: '__min__:',
+  max: '__max__:',
+  from: '__from__:',
+  to: '__to__:',
+};
+
+export const DEFAULT_PINNED_FILTERS = {
+  backlog: ['status_name', 'priority_name', 'team_name', 'deadline_name', 'project_name'],
+  team: ['status_name', 'priority_name', 'deadline_name', 'owner_name', 'task_type_name'],
+};
 
 const directoryCache = {};
 const directoryLoading = {};
@@ -76,22 +94,84 @@ async function loadDirectories() {
 }
 
 const filterableColumns = [
-  { key: 'status_name', label: 'Статус', columnKey: 'status_name' },
-  { key: 'priority_name', label: 'Приоритет', columnKey: 'priority_name' },
-  { key: 'team_name', label: 'Команда', columnKey: 'team_name' },
-  { key: 'project_name', label: 'Проект', columnKey: 'project_name' },
-  { key: 'task_type_name', label: 'Тип задачи', columnKey: 'task_type_name' },
-  { key: 'deadline_name', label: 'Срок выполнения', columnKey: 'deadline_name' },
-  { key: 'owner_name', label: 'Владелец', columnKey: 'owner_name' },
-  { key: 'business_customer', label: 'Заказчик', columnKey: 'business_customer' },
-  { key: 'channel_name', label: 'Канал', columnKey: 'channel_name' },
-  { key: 'department_name', label: 'Подразделение', columnKey: 'department_name' },
-  { key: 'key_project_status', label: 'Статус ключ. проектов', columnKey: 'key_project_status' },
-  { key: 'directorate_status', label: 'Статус для директорской' },
-  { key: 'did_status', label: 'Статус для ДИД' },
-  { key: 'date_received', label: 'Дата получения' },
-  { key: 'involved_teams', label: 'Вовлечённые команды' },
+  { key: 'id', label: 'ID', columnKey: 'id', group: 'Основные', type: 'text', valueKeys: ['public_id', 'id'] },
+  { key: 'title', label: 'Задача', columnKey: 'title', group: 'Основные', type: 'text', valueKeys: ['title'] },
+  { key: 'description', label: 'Описание', columnKey: 'description', group: 'Основные', type: 'text', valueKeys: ['description'] },
+  { key: 'status_name', label: 'Статус', filterLabel: 'Статус', columnKey: 'status', group: 'Основные', type: 'select', valueKeys: ['status_name', 'status'] },
+  { key: 'priority_name', label: 'Приоритет', columnKey: 'priority', group: 'Основные', type: 'select', valueKeys: ['priority_name', 'priority'] },
+  { key: 'project_name', label: 'Проект', columnKey: 'project', group: 'Основные', type: 'select', valueKeys: ['project_name', 'project'] },
+  { key: 'task_type_name', label: 'Тип задачи', columnKey: 'task_type', group: 'Основные', type: 'select', valueKeys: ['task_type_name', 'task_type'] },
+
+  { key: 'team_name', label: 'Команда', columnKey: 'team', group: 'Ответственные', type: 'select', valueKeys: ['team_name', 'team'] },
+  { key: 'owner_name', label: 'Исполнитель', columnKey: 'owner', group: 'Ответственные', type: 'select', valueKeys: ['owner_name', 'owner'] },
+  { key: 'created_by_name', label: 'Автор задачи', columnKey: 'created_by', group: 'Ответственные', type: 'select', valueKeys: ['created_by_name', 'created_by'] },
+  { key: 'business_customer', label: 'Бизнес-заказчик', columnKey: 'business_customer', group: 'Ответственные', type: 'select', valueKeys: ['business_customer_name', 'business_customer'] },
+  { key: 'department_name', label: 'Подразделение', columnKey: 'department', group: 'Ответственные', type: 'select', valueKeys: ['department_name', 'department'] },
+  { key: 'involved_teams', label: 'Вовлечённые команды', columnKey: 'involved_teams', group: 'Ответственные', type: 'select', valueKeys: ['involved_team_names', 'involved_teams'], multipleValue: true },
+  { key: 'channel_name', label: 'Канал', columnKey: 'channel', group: 'Ответственные', type: 'select', valueKeys: ['channel_name', 'channel'] },
+
+  { key: 'date_received', label: 'Дата получения', columnKey: 'date_received', group: 'Планирование', type: 'date', valueKeys: ['date_received'] },
+  { key: 'deadline_name', label: 'Срок выполнения', filterLabel: 'Срок', columnKey: 'deadline', group: 'Планирование', type: 'select', valueKeys: ['deadline_name', 'deadline'] },
+  { key: 'progress', label: 'Прогресс', columnKey: 'progress', group: 'Планирование', type: 'number', valueKeys: ['progress'], min: 0, max: 100, step: 1, suffix: '%' },
+  { key: 'created_at', label: 'Дата создания', columnKey: 'created_at', group: 'Планирование', type: 'date', valueKeys: ['created_at'] },
+  { key: 'updated_at', label: 'Дата последнего изменения', columnKey: 'updated_at', group: 'Планирование', type: 'date', valueKeys: ['updated_at'] },
+
+  { key: 'effort_days', label: 'Трудозатраты (дни)', columnKey: 'effort_days', group: 'Трудозатраты', type: 'number', valueKeys: ['effort_days'], min: 0, step: 1 },
+  { key: 'effort_rub', label: 'Трудозатраты (руб)', columnKey: 'effort_rub', group: 'Трудозатраты', type: 'number', valueKeys: ['effort_rub'], min: 0, step: 'any' },
+  { key: 'actual_effort_days', label: 'Фактические трудозатраты (ч/д)', columnKey: 'actual_effort_days', group: 'Трудозатраты', type: 'number', valueKeys: ['actual_effort_days'], min: 0, step: 'any' },
+
+  { key: 'financial_effect', label: 'Фин. эффект', columnKey: 'financial_effect', group: 'Ценность', type: 'number', valueKeys: ['financial_effect'], min: 0, step: 'any' },
+  { key: 'financial_effect_justification', label: 'Обоснование фин. эффекта', columnKey: 'financial_effect_justification', group: 'Ценность', type: 'text', valueKeys: ['financial_effect_justification'] },
+  { key: 'cv', label: 'C/V', columnKey: 'cv', group: 'Ценность', type: 'number', computed: 'cv', min: 0, step: 'any' },
+  { key: 'metric_kr_plan', label: 'Метрический KR (план)', columnKey: 'metric_kr_plan', group: 'Ценность', type: 'number', valueKeys: ['metric_kr_plan'], step: 'any' },
+  { key: 'metric_kr_fact', label: 'Метрический KR (факт)', columnKey: 'metric_kr_fact', group: 'Ценность', type: 'number', valueKeys: ['metric_kr_fact'], step: 'any' },
+  { key: 'metric_kr_unit', label: 'Единица измерения (метрический KR)', columnKey: 'metric_kr_unit', group: 'Ценность', type: 'select', valueKeys: ['metric_kr_unit'] },
+
+  { key: 'key_project_status', label: 'Статус ключ. проекта', columnKey: 'key_project_status', group: 'Отчётность', type: 'text', valueKeys: ['key_project_status'] },
+  { key: 'key_project_status_updated_at', label: 'Дата статуса ключ. проекта', columnKey: 'key_project_status_updated_at', group: 'Отчётность', type: 'date', valueKeys: ['key_project_status_updated_at'] },
+  { key: 'directorate_status', label: 'Статус для директорской', columnKey: 'directorate_status', group: 'Отчётность', type: 'text', valueKeys: ['directorate_status'] },
+  { key: 'directorate_status_updated_at', label: 'Дата статуса (директорская)', columnKey: 'directorate_status_updated_at', group: 'Отчётность', type: 'date', valueKeys: ['directorate_status_updated_at'] },
+  { key: 'did_status', label: 'Статус для ДИД', columnKey: 'did_status', group: 'Отчётность', type: 'text', valueKeys: ['did_status'] },
+  { key: 'did_status_updated_at', label: 'Дата статуса (ДИД)', columnKey: 'did_status_updated_at', group: 'Отчётность', type: 'date', valueKeys: ['did_status_updated_at'] },
+  { key: 'did_demo', label: 'Демо для ДИД', columnKey: 'did_demo', group: 'Отчётность', type: 'boolean', valueKeys: ['did_demo'] },
+
+  { key: 'link_mockups', label: 'Ссылка на макеты', columnKey: 'link_mockups', group: 'Прочее', type: 'text', valueKeys: ['link_mockups'] },
+  { key: 'link_jira', label: 'Ссылка на Jira', columnKey: 'link_jira', group: 'Прочее', type: 'text', valueKeys: ['link_jira'], multipleValue: true },
+  { key: 'tags', label: 'Метки (теги)', columnKey: 'tags', group: 'Прочее', type: 'select', valueKeys: ['tags'], multipleValue: true, objectLabelKey: 'name' },
+  { key: 'rejection_reason', label: 'Причина отклонения', columnKey: 'rejection_reason', group: 'Прочее', type: 'text', valueKeys: ['rejection_reason'] },
+  { key: 'comment', label: 'Комментарий', columnKey: 'comment', group: 'Прочее', type: 'text', valueKeys: ['comment'] },
 ];
+
+const filterColumnsByKey = Object.fromEntries(filterableColumns.map(column => [column.key, column]));
+const filterColumnsByTableColumn = Object.fromEntries(filterableColumns.map(column => [column.columnKey, column]));
+const FILTER_GROUP_ORDER = ['Основные', 'Ответственные', 'Планирование', 'Трудозатраты', 'Ценность', 'Отчётность', 'Прочее'];
+const missingFilterColumns = TASK_COLUMNS.filter(column => !filterColumnsByTableColumn[column.key]);
+if (missingFilterColumns.length) {
+  console.warn('[DMB] Table columns without filters:', missingFilterColumns.map(column => column.key));
+}
+
+function validPinnedFilterKeys(keys) {
+  const result = [];
+  (Array.isArray(keys) ? keys : []).forEach(key => {
+    if (filterColumnsByKey[key] && !result.includes(key) && result.length < MAX_PINNED_FILTERS) result.push(key);
+  });
+  return result;
+}
+
+function readPinnedFilters(scope) {
+  const defaults = DEFAULT_PINNED_FILTERS[scope] || DEFAULT_PINNED_FILTERS.backlog;
+  try {
+    const stored = localStorage.getItem(PINNED_FILTERS_PREFIX + scope);
+    if (stored == null) return [...defaults];
+    return validPinnedFilterKeys(JSON.parse(stored));
+  } catch {
+    return [...defaults];
+  }
+}
+
+function writePinnedFilters(scope, keys) {
+  localStorage.setItem(PINNED_FILTERS_PREFIX + scope, JSON.stringify(validPinnedFilterKeys(keys)));
+}
 
 const priorityWeight = { 'ВЫСОКИЙ': 3, 'СРЕДНИЙ': 2, 'НИЗКИЙ': 1 };
 
@@ -441,6 +521,10 @@ function syncColumnControls(scope) {
   updateColumnOrderNumbers(list);
 }
 
+export function getToolbarSearchValue(scope) {
+  return searchValues[scope] || '';
+}
+
 function updateColumnOrderNumbers(list) {
   const items = list?.querySelectorAll('.col-drag-item');
   if (!items) return;
@@ -451,103 +535,147 @@ function updateColumnOrderNumbers(list) {
   });
 }
 
-function getUniqueValues(scope, key, allTasks) {
-  if (directoryCache[key]) {
-    return directoryCache[key];
+function getTaskFilterValue(task, column) {
+  if (!column || !task) return null;
+  if (column.computed === 'cv') return calculateTaskCv(task);
+  for (const key of column.valueKeys || [column.key]) {
+    const value = task[key];
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return null;
+}
+
+function normalizeTaskFilterValues(value, column) {
+  const values = column?.multipleValue
+    ? (Array.isArray(value) ? value : String(value ?? '').split(','))
+    : [value];
+  return values.map(item => {
+    if (item && typeof item === 'object') return String(item[column?.objectLabelKey || 'name'] ?? '');
+    return String(item ?? '');
+  }).map(item => item.trim()).filter(Boolean);
+}
+
+function isEmptyFilterValue(value, column) {
+  return normalizeTaskFilterValues(value, column).length === 0;
+}
+
+function tokenValue(values, prefix) {
+  const token = [...values].find(value => String(value).startsWith(prefix));
+  return token == null ? '' : String(token).slice(prefix.length);
+}
+
+function matchesColumnFilter(task, column, values) {
+  if (!column || !values?.size) return true;
+  const rawValue = getTaskFilterValue(task, column);
+  const isEmpty = isEmptyFilterValue(rawValue, column);
+  const includeEmpty = values.has(EMPTY_FILTER_VALUE);
+  if (isEmpty) return includeEmpty;
+
+  if (column.type === 'text') {
+    const query = tokenValue(values, FILTER_TOKEN_PREFIX.text).trim().toLocaleLowerCase('ru-RU');
+    const normalizedValues = normalizeTaskFilterValues(rawValue, column);
+    if (query) return normalizedValues.join(' ').toLocaleLowerCase('ru-RU').includes(query);
+    const legacyValues = [...values].filter(value => value !== EMPTY_FILTER_VALUE && !String(value).startsWith('__'));
+    return legacyValues.length ? normalizedValues.some(value => legacyValues.includes(value)) : false;
   }
 
-  let list = allTasks;
+  if (column.type === 'number') {
+    const numericValue = Number(rawValue);
+    if (!Number.isFinite(numericValue)) return includeEmpty;
+    const minRaw = tokenValue(values, FILTER_TOKEN_PREFIX.min);
+    const maxRaw = tokenValue(values, FILTER_TOKEN_PREFIX.max);
+    const min = minRaw === '' ? null : Number(minRaw);
+    const max = maxRaw === '' ? null : Number(maxRaw);
+    if (column.key === 'progress' && ['0-25', '25-50', '50-75', '75-100'].some(range => values.has(range))) {
+      return (values.has('0-25') && numericValue <= 25)
+        || (values.has('25-50') && numericValue > 25 && numericValue <= 50)
+        || (values.has('50-75') && numericValue > 50 && numericValue <= 75)
+        || (values.has('75-100') && numericValue > 75);
+    }
+    const matchesRange = (min == null || numericValue >= min) && (max == null || numericValue <= max);
+    return (min != null || max != null) ? matchesRange : false;
+  }
 
-  const cf = columnFilters[scope];
+  if (column.type === 'date') {
+    const timestamp = Date.parse(rawValue);
+    if (!Number.isFinite(timestamp)) return includeEmpty;
+    const fromRaw = tokenValue(values, FILTER_TOKEN_PREFIX.from);
+    const toRaw = tokenValue(values, FILTER_TOKEN_PREFIX.to);
+    const from = fromRaw ? Date.parse(`${fromRaw}T00:00:00`) : null;
+    const to = toRaw ? Date.parse(`${toRaw}T23:59:59.999`) : null;
+    const legacyValues = [...values].filter(value => value !== EMPTY_FILTER_VALUE && !String(value).startsWith('__'));
+    if (from == null && to == null && legacyValues.length) {
+      return legacyValues.some(value => String(rawValue).startsWith(value));
+    }
+    const matchesRange = (from == null || timestamp >= from) && (to == null || timestamp <= to);
+    return (from != null || to != null) ? matchesRange : false;
+  }
+
+  const normalized = column.type === 'boolean'
+    ? [rawValue ? 'Да' : 'Нет']
+    : normalizeTaskFilterValues(rawValue, column);
+  return normalized.some(value => values.has(value));
+}
+
+function matchesQuickFilter(task, key) {
   const terminalStatuses = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
+  if (key === '_overdue') return task.deadline_id != null && !terminalStatuses.includes(task.status_name) && isDeadlinePast(task.deadline_name);
+  if (key === '_urgent') return task.priority_name === 'ВЫСОКИЙ';
+  if (key === '_current') return isCurrentTask(task);
+  if (key === '_last_quarter') return isLastQuarterTask(task);
+  if (key === '_active') return !!task.status_name && !terminalStatuses.includes(task.status_name) && task.status_name !== 'ХОЛД';
+  if (key === '_hold') return task.status_name === 'ХОЛД';
+  if (key === '_rejected') return task.status_name === 'ОТКЛОНЕНА';
+  if (key === '_high_cv') {
+    const cv = calculateTaskCv(task);
+    return cv == null || cv > 1;
+  }
+  return null;
+}
 
+function matchesStoredFilter(task, key, values) {
+  if (!values?.size) return true;
+  if (key.startsWith('_')) return matchesQuickFilter(task, key) === true;
+  return matchesColumnFilter(task, filterColumnsByKey[key], values);
+}
+
+function getUniqueValues(scope, key, allTasks) {
+  const column = filterColumnsByKey[key];
+  if (!column || !['select', 'boolean'].includes(column.type)) return [];
+  let list = allTasks || [];
+  const cf = columnFilters[scope];
   if (cf) {
     Object.keys(cf).forEach(fk => {
       if (fk === key) return;
       const vals = cf[fk];
-      if (vals && vals.size > 0) {
-        if (fk === '_overdue') {
-          list = list.filter(t => t.deadline_id != null && !terminalStatuses.includes(t.status_name) && isDeadlinePast(t.deadline_name));
-          return;
-        }
-        if (fk === '_urgent') {
-          list = list.filter(t => t.priority_name === 'ВЫСОКИЙ');
-          return;
-        }
-        if (fk === '_current') {
-          list = list.filter(isCurrentTask);
-          return;
-        }
-        if (fk === '_last_quarter') {
-          list = list.filter(isLastQuarterTask);
-          return;
-        }
-        if (fk === '_active') {
-          list = list.filter(t => !!t.status_name && !terminalStatuses.includes(t.status_name) && t.status_name !== 'ХОЛД');
-          return;
-        }
-        if (fk === '_hold') {
-          list = list.filter(t => t.status_name === 'ХОЛД');
-          return;
-        }
-        if (fk === '_rejected') {
-          list = list.filter(t => t.status_name === 'ОТКЛОНЕНА');
-          return;
-        }
-        if (fk === '_high_cv') {
-          list = list.filter(t => {
-            const cv = calculateTaskCv(t);
-            return cv == null || cv > 1;
-          });
-          return;
-        }
-        list = list.filter(t => {
-          let v = t[fk];
-          if (fk === 'progress') {
-            if (vals.has('0-25')) return (v || 0) <= 25;
-            if (vals.has('25-50')) return (v || 0) > 25 && (v || 0) <= 50;
-            if (vals.has('50-75')) return (v || 0) > 50 && (v || 0) <= 75;
-            if (vals.has('75-100')) return (v || 0) > 75;
-            return true;
-          }
-          if (fk === 'tags') {
-            const taskTags = Array.isArray(v)
-              ? v.map(x => typeof x === 'object' && x !== null ? String(x.name || '') : String(x)).filter(Boolean)
-              : String(v).split(',').map(s => s.trim());
-            return taskTags.some(tag => vals.has(tag));
-          }
-          if (fk === 'involved_teams' && typeof v === 'string') {
-            const teams = v.split(',').map(s => s.trim());
-            return teams.some(tm => vals.has(tm));
-          }
-          return v != null && vals.has(String(v));
-        });
-      }
+      if (vals?.size) list = list.filter(task => matchesStoredFilter(task, fk, vals));
     });
+  }
+
+  const hasEmpty = list.some(task => isEmptyFilterValue(getTaskFilterValue(task, column), column));
+  if (column.type === 'boolean') {
+    return [
+      { value: 'Да', label: 'Да' },
+      { value: 'Нет', label: 'Нет' },
+      ...(hasEmpty ? [{ value: EMPTY_FILTER_VALUE, label: 'Не заполнено' }] : []),
+    ];
   }
 
   const unique = new Set();
   list.forEach(t => {
-    let v = t[key];
-    if (v == null || v === '') return;
-    if (key === 'tags') {
-      const arr = Array.isArray(v)
-        ? v.map(x => typeof x === 'object' && x !== null ? String(x.name || '') : String(x)).filter(Boolean)
-        : String(v).split(',').map(s => s.trim()).filter(Boolean);
-      arr.forEach(tag => unique.add(tag));
-    } else if (key === 'involved_teams' && typeof v === 'string') {
-      v.split(',').map(s => s.trim()).filter(Boolean).forEach(tm => unique.add(tm));
-    } else {
-      unique.add(key === 'team_name' ? v : String(v));
-    }
+    normalizeTaskFilterValues(getTaskFilterValue(t, column), column).forEach(value => unique.add(value));
   });
-
-  return [...unique].sort().map(v => ({ value: v, label: v }));
+  const configured = directoryCache[key] || [];
+  configured.forEach(option => unique.add(String(option.value)));
+  const options = [...unique].sort((a, b) => a.localeCompare(b, 'ru')).map(value => ({ value, label: value }));
+  if (hasEmpty) options.unshift({ value: EMPTY_FILTER_VALUE, label: 'Не заполнено' });
+  return options;
 }
 
 export function renderToolbar(scope, opts = {}) {
   const colOpts = opts.columnSettings || {};
   const colLabels = opts.columnLabels || {};
+  filterLabelsRefs[scope] = { ...colLabels };
   const colOrder = opts.columnOrder || Object.keys(colOpts);
   const getLabel = (k) => colLabels[k] || k;
 
@@ -635,29 +763,44 @@ export function renderToolbar(scope, opts = {}) {
           </div>` : ''}
           ${actionsHtml}
         </div>
-        <div class="filter-panel">
-          <div class="flex items-center gap-2 filter-toolbar-row">
-            <div class="relative filter-search-wrap" style="flex:1;min-width:0;">
+        <div class="filter-panel" data-filter-scope="${scope}">
+          <div class="filter-toolbar-row">
+            <div class="relative filter-search-wrap">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-muted);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input id="f-${scope}-search" placeholder="Поиск..." style="width:100%;padding:6px 8px 6px 28px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-color);border-radius:8px;font-size:12px;">
+              <input id="f-${scope}-search" aria-label="Поиск по ID, названию и описанию" placeholder="Поиск по ID и названию…">
             </div>
-            <div id="f-${scope}-main-filters" class="flex items-center gap-2" style="flex:1;min-width:0;"></div>
+            <div id="f-${scope}-main-filters" class="pinned-filters-row" aria-label="Закреплённые фильтры"></div>
             <div class="filter-toolbar-controls">
-              <button id="btn-ext-${scope}" class="btn btn-secondary btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
+              <button id="btn-ext-${scope}" class="btn btn-secondary btn-sm filter-catalog-trigger" aria-expanded="false" aria-controls="f-${scope}-ext-filters">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-                <span id="btn-ext-${scope}-text">Фильтры</span>
+                <span id="btn-ext-${scope}-text">Все фильтры</span>
                 <svg id="chev-ext-${scope}" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </button>
-              <button id="f-${scope}-reset" class="btn btn-secondary btn-sm" style="font-size:12px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding:7px 10px;min-height:32px;">
+              <button id="f-${scope}-reset" class="btn btn-secondary btn-sm filter-reset-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                 Сброс
               </button>
             </div>
           </div>
-          <div id="f-${scope}-ext-filters" class="hidden" style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border-color);">
-            <div id="f-${scope}-ext-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;"></div>
+          <div id="f-${scope}-ext-filters" class="filter-catalog-panel hidden">
+            <div class="filter-catalog-header">
+              <div>
+                <strong>Все фильтры</strong>
+                <span>Закрепите до ${MAX_PINNED_FILTERS} важных фильтров</span>
+              </div>
+              <div class="filter-catalog-header-actions">
+                <button type="button" class="filter-pins-reset" data-reset-pinned-filters="${scope}">По умолчанию</button>
+                <button type="button" class="filter-catalog-close" data-filter-catalog-close="${scope}" aria-label="Закрыть все фильтры"><i data-lucide="x"></i></button>
+              </div>
+            </div>
+            <label class="filter-catalog-search-wrap">
+              <i data-lucide="search" aria-hidden="true"></i>
+              <input type="search" id="f-${scope}-catalog-search" class="filter-catalog-search" placeholder="Найти фильтр…" aria-label="Найти фильтр">
+            </label>
+            <div id="f-${scope}-ext-row" class="filter-catalog-groups"></div>
           </div>
         </div>
+        <button type="button" id="f-${scope}-catalog-backdrop" class="filter-catalog-backdrop hidden" data-filter-catalog-close="${scope}" aria-label="Закрыть все фильтры"></button>
         <div id="f-${scope}-active-filters" class="active-filters-row"></div>
         ${opts.quickFilters || ''}
       </div>
@@ -947,17 +1090,50 @@ export function initToolbar(scope, allTasks, onFilterChange) {
     renderAll();
   });
 
-  $(`btn-ext-${scope}`)?.addEventListener('click', () => {
+  function setCatalogOpen(open) {
     const ext = $(`f-${scope}-ext-filters`);
     const chev = $(`chev-ext-${scope}`);
+    const trigger = $(`btn-ext-${scope}`);
+    const backdrop = $(`f-${scope}-catalog-backdrop`);
     if (!ext) return;
-    ext.classList.toggle('hidden');
+    ext.classList.toggle('hidden', !open);
+    backdrop?.classList.toggle('hidden', !open);
+    trigger?.setAttribute('aria-expanded', String(open));
+    document.body.classList.toggle('filter-catalog-open', open);
     if (chev) {
-      chev.innerHTML = ext.classList.contains('hidden')
-        ? '<polyline points="6 9 12 15 18 9"></polyline>'
-        : '<polyline points="18 15 12 9 6 15"></polyline>';
+      chev.innerHTML = open
+        ? '<polyline points="18 15 12 9 6 15"></polyline>'
+        : '<polyline points="6 9 12 15 18 9"></polyline>';
     }
     updateStickyOffsets();
+    if (open) requestAnimationFrame(() => $(`f-${scope}-catalog-search`)?.focus());
+  }
+
+  $(`btn-ext-${scope}`)?.addEventListener('click', () => {
+    const ext = $(`f-${scope}-ext-filters`);
+    setCatalogOpen(!!ext?.classList.contains('hidden'));
+  });
+
+  document.querySelectorAll(`[data-filter-catalog-close="${scope}"]`).forEach(button => {
+    button.addEventListener('click', () => setCatalogOpen(false));
+  });
+
+  $(`f-${scope}-ext-filters`)?.querySelector(`[data-reset-pinned-filters="${scope}"]`)?.addEventListener('click', () => {
+    writePinnedFilters(scope, DEFAULT_PINNED_FILTERS[scope] || DEFAULT_PINNED_FILTERS.backlog);
+    renderFilterButtons(scope, allTasksCache[scope] || []);
+    window.toast?.('Закреплённые фильтры восстановлены', 'success');
+    updateStickyOffsets();
+  });
+
+  $(`f-${scope}-catalog-search`)?.addEventListener('input', event => {
+    applyFilterCatalogSearch(scope, event.target.value);
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !$(`f-${scope}-ext-filters`)?.classList.contains('hidden')) {
+      setCatalogOpen(false);
+      $(`btn-ext-${scope}`)?.focus();
+    }
   });
 
   document.addEventListener('click', (e) => {
@@ -985,80 +1161,18 @@ export function getFilteredList(scope, allTasks) {
   const q = searchValues[scope] ? searchValues[scope].toLowerCase() : '';
   if (q) {
     list = list.filter(t =>
-      (t.title && t.title.toLowerCase().includes(q)) ||
       String(t.id).includes(q) ||
-      (t.project && t.project.toLowerCase().includes(q)) ||
-      (t.description && t.description.toLowerCase().includes(q)) ||
-      (t.owner && t.owner.toLowerCase().includes(q)) ||
-      (t.team_name && t.team_name.toLowerCase().includes(q)) ||
-      (t.status && t.status.toLowerCase().includes(q)) ||
-      (t.business_customer_name && t.business_customer_name.toLowerCase().includes(q)) || (t.business_customer && t.business_customer.toLowerCase().includes(q))
+      formatTaskPublicId(t).toLowerCase().includes(q) ||
+      (t.title && t.title.toLowerCase().includes(q)) ||
+      (t.description && t.description.toLowerCase().includes(q))
     );
   }
 
   const cf = columnFilters[scope];
-  const terminalStatuses = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
   if (cf) {
     Object.keys(cf).forEach(key => {
       const vals = cf[key];
-      if (vals && vals.size > 0) {
-        if (key === '_overdue') {
-          list = list.filter(t => t.deadline_id != null && !terminalStatuses.includes(t.status_name) && isDeadlinePast(t.deadline_name));
-          return;
-        }
-        if (key === '_urgent') {
-          list = list.filter(t => t.priority_name === 'ВЫСОКИЙ');
-          return;
-        }
-        if (key === '_current') {
-          list = list.filter(isCurrentTask);
-          return;
-        }
-        if (key === '_last_quarter') {
-          list = list.filter(isLastQuarterTask);
-          return;
-        }
-        if (key === '_active') {
-          list = list.filter(t => !!t.status_name && !terminalStatuses.includes(t.status_name) && t.status_name !== 'ХОЛД');
-          return;
-        }
-        if (key === '_hold') {
-          list = list.filter(t => t.status_name === 'ХОЛД');
-          return;
-        }
-        if (key === '_rejected') {
-          list = list.filter(t => t.status_name === 'ОТКЛОНЕНА');
-          return;
-        }
-        if (key === '_high_cv') {
-          list = list.filter(t => {
-            const cv = calculateTaskCv(t);
-            return cv == null || cv > 1;
-          });
-          return;
-        }
-        list = list.filter(t => {
-          let v = t[key];
-          if (key === 'progress') {
-            if (vals.has('0-25')) return (v || 0) <= 25;
-            if (vals.has('25-50')) return (v || 0) > 25 && (v || 0) <= 50;
-            if (vals.has('50-75')) return (v || 0) > 50 && (v || 0) <= 75;
-            if (vals.has('75-100')) return (v || 0) > 75;
-            return true;
-          }
-          if (key === 'tags') {
-            const taskTags = Array.isArray(v)
-              ? v.map(x => typeof x === 'object' && x !== null ? String(x.name || '') : String(x)).filter(Boolean)
-              : String(v).split(',').map(s => s.trim());
-            return taskTags.some(tag => vals.has(tag));
-          }
-          if (key === 'involved_teams' && typeof v === 'string') {
-            const teams = v.split(',').map(s => s.trim());
-            return teams.some(tm => vals.has(tm));
-          }
-          return v != null && vals.has(String(v));
-        });
-      }
+      if (vals?.size) list = list.filter(task => matchesStoredFilter(task, key, vals));
     });
   }
 
@@ -1092,15 +1206,56 @@ function getVisibleColumnKeys(scope) {
 
 function getSortedFilterColumns(scope) {
   const visibleKeys = getVisibleColumnKeys(scope);
-  return [...filterableColumns].sort((a, b) => {
-    const aCol = a.columnKey || a.key;
-    const bCol = b.columnKey || b.key;
-    const ai = visibleKeys.indexOf(aCol);
-    const bi = visibleKeys.indexOf(bCol);
-    if (ai !== -1 && bi === -1) return -1;
-    if (ai === -1 && bi !== -1) return 1;
-    if (ai !== -1 && bi !== -1) return ai - bi;
-    return filterableColumns.indexOf(a) - filterableColumns.indexOf(b);
+  const tableOrder = [...visibleKeys, ...TASK_COLUMNS.map(column => column.key).filter(key => !visibleKeys.includes(key))];
+  return tableOrder.map(key => filterColumnsByTableColumn[key]).filter(Boolean);
+}
+
+function getFilterLabel(scope, column) {
+  return column.filterLabel || filterLabelsRefs[scope]?.[column.columnKey] || column.label;
+}
+
+function getFilterValueText(column, values) {
+  if (!values?.size) return 'Все';
+  const includeEmpty = values.has(EMPTY_FILTER_VALUE);
+  const legacyValues = [...values].filter(value => value !== EMPTY_FILTER_VALUE && !String(value).startsWith('__'));
+  if (column.type === 'text') {
+    const query = tokenValue(values, FILTER_TOKEN_PREFIX.text);
+    if (query && includeEmpty) return `«${query}» или пусто`;
+    if (query) return `содержит «${query}»`;
+    if (legacyValues.length) return legacyValues.length === 1 ? legacyValues[0] : `${legacyValues.length} выбрано`;
+    return includeEmpty ? 'Не заполнено' : 'Все';
+  }
+  if (column.type === 'number') {
+    const min = tokenValue(values, FILTER_TOKEN_PREFIX.min);
+    const max = tokenValue(values, FILTER_TOKEN_PREFIX.max);
+    if (min && max) return `${min}–${max}${column.suffix || ''}`;
+    if (min) return `от ${min}${column.suffix || ''}`;
+    if (max) return `до ${max}${column.suffix || ''}`;
+    if (legacyValues.length) return legacyValues.length === 1 ? legacyValues[0] : `${legacyValues.length} выбрано`;
+    return includeEmpty ? 'Не заполнено' : 'Все';
+  }
+  if (column.type === 'date') {
+    const from = tokenValue(values, FILTER_TOKEN_PREFIX.from);
+    const to = tokenValue(values, FILTER_TOKEN_PREFIX.to);
+    if (from && to) return `${from} — ${to}`;
+    if (from) return `с ${from}`;
+    if (to) return `до ${to}`;
+    if (legacyValues.length) return legacyValues.length === 1 ? legacyValues[0] : `${legacyValues.length} выбрано`;
+    return includeEmpty ? 'Не заполнено' : 'Все';
+  }
+  const labels = [...values].map(value => value === EMPTY_FILTER_VALUE ? 'Не заполнено' : value);
+  return labels.length === 1 ? labels[0] : `${labels.length} выбрано`;
+}
+
+function applyFilterCatalogSearch(scope, query = '') {
+  const normalized = String(query).trim().toLocaleLowerCase('ru-RU');
+  const root = $(`f-${scope}-ext-row`);
+  if (!root) return;
+  root.querySelectorAll('.filter-catalog-item').forEach(item => {
+    item.hidden = normalized !== '' && !item.dataset.filterSearch.includes(normalized);
+  });
+  root.querySelectorAll('.filter-catalog-group').forEach(group => {
+    group.hidden = !group.querySelector('.filter-catalog-item:not([hidden])');
   });
 }
 
@@ -1112,6 +1267,8 @@ function renderFilterButtons(scope, allTasks) {
 
   const cf = columnFilters[scope];
   const sortedColumns = getSortedFilterColumns(scope);
+  const pinnedKeys = readPinnedFilters(scope);
+  const pinnedColumns = pinnedKeys.map(key => filterColumnsByKey[key]).filter(Boolean);
 
   function clearFilter(e, key) {
     e.stopPropagation();
@@ -1121,27 +1278,41 @@ function renderFilterButtons(scope, allTasks) {
     if (cb) cb();
   }
 
-  const renderBtn = (col) => {
+  const renderBtn = (col, placement = 'catalog') => {
     const hasValue = cf[col.key] && cf[col.key].size > 0;
-    let valueText = 'Все';
-    if (hasValue) {
-      const labels = [...cf[col.key]];
-      valueText = labels.length === 1 ? labels[0] : `${labels.length} выбрано`;
-    }
-    return `<div class="filter-cell" data-filter-scope="${scope}" data-filter-key="${col.key}">
-      <button class="filter-btn ${hasValue ? 'has-value' : ''}" data-scope="${scope}" data-key="${col.key}">
+    const label = getFilterLabel(scope, col);
+    const valueText = getFilterValueText(col, cf[col.key]);
+    const isPinned = pinnedKeys.includes(col.key);
+    const filterCell = `<div class="filter-cell" data-filter-scope="${scope}" data-filter-key="${col.key}">
+      <button type="button" class="filter-btn ${hasValue ? 'has-value' : ''}" data-scope="${scope}" data-key="${col.key}" aria-haspopup="dialog">
         <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-        <span class="filter-label">${col.label}:</span>
-        <span class="filter-value">${valueText}</span>
+        <span class="filter-label">${escapeAttr(label)}:</span>
+        <span class="filter-value">${escapeAttr(valueText)}</span>
         <svg class="filter-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
-      ${hasValue ? `<button class="filter-clear" data-clear="${col.key}" title="Очистить фильтр"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : ''}
+      ${hasValue ? `<button type="button" class="filter-clear" data-filter-clear="${col.key}" title="Очистить фильтр" aria-label="Очистить фильтр ${escapeAttr(label)}"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : ''}
+    </div>`;
+    if (placement === 'pinned') return filterCell;
+    const pinTitle = isPinned ? 'Открепить фильтр' : 'Закрепить фильтр на панели';
+    return `<div class="filter-catalog-item" data-filter-search="${escapeAttr(`${label} ${col.group}`.toLocaleLowerCase('ru-RU'))}">
+      ${filterCell}
+      <button type="button" class="filter-pin ${isPinned ? 'is-pinned' : ''}" data-pin-filter="${col.key}" aria-pressed="${isPinned}" title="${pinTitle}" aria-label="${pinTitle}: ${escapeAttr(label)}">
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"></path><path d="M5 4h14l-3 6v4l2 2H6l2-2v-4Z"></path></svg>
+      </button>
     </div>`;
   };
 
-  const allHtml = sortedColumns.map(renderBtn).join('');
-  mainC.innerHTML = '';
-  if (extC) extC.innerHTML = allHtml;
+  mainC.innerHTML = pinnedColumns.map(column => renderBtn(column, 'pinned')).join('');
+  if (extC) {
+    extC.innerHTML = FILTER_GROUP_ORDER.map(group => {
+      const columns = sortedColumns.filter(column => column.group === group);
+      if (!columns.length) return '';
+      return `<section class="filter-catalog-group" data-filter-group="${escapeAttr(group)}">
+        <h3>${escapeAttr(group)}</h3>
+        <div class="filter-catalog-grid">${columns.map(column => renderBtn(column)).join('')}</div>
+      </section>`;
+    }).join('');
+  }
 
   document.querySelectorAll(`[data-scope="${scope}"].filter-btn`).forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -1151,13 +1322,32 @@ function renderFilterButtons(scope, allTasks) {
     });
   });
 
-  document.querySelectorAll(`[data-clear]`).forEach(el => {
-    el.addEventListener('click', (e) => clearFilter(e, el.dataset.clear));
+  document.querySelectorAll(`[data-filter-clear]`).forEach(el => {
+    el.addEventListener('click', (e) => clearFilter(e, el.dataset.filterClear));
+  });
+
+  document.querySelectorAll(`[data-pin-filter]`).forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      const key = button.dataset.pinFilter;
+      const next = readPinnedFilters(scope);
+      const index = next.indexOf(key);
+      if (index >= 0) next.splice(index, 1);
+      else if (next.length >= MAX_PINNED_FILTERS) {
+        window.toast?.(`Можно закрепить не более ${MAX_PINNED_FILTERS} фильтров`, 'warning');
+        return;
+      } else next.push(key);
+      writePinnedFilters(scope, next);
+      renderFilterButtons(scope, allTasks);
+      applyFilterCatalogSearch(scope, $(`f-${scope}-catalog-search`)?.value || '');
+      updateStickyOffsets();
+    });
   });
 
   const extActive = Object.keys(cf).filter(k => cf[k] && cf[k].size > 0).length;
   const btnTxt = $(`btn-ext-${scope}-text`);
-  if (btnTxt) btnTxt.textContent = extActive > 0 ? `Фильтры (${extActive})` : 'Фильтры';
+  if (btnTxt) btnTxt.textContent = extActive > 0 ? `Все фильтры (${extActive})` : 'Все фильтры';
+  applyFilterCatalogSearch(scope, $(`f-${scope}-catalog-search`)?.value || '');
   updateActiveFiltersRow(scope);
 }
 
@@ -1165,8 +1355,6 @@ function updateActiveFiltersRow(scope) {
   const container = $(`f-${scope}-active-filters`);
   if (!container) return;
   const cf = columnFilters[scope];
-  const labels = {};
-  filterableColumns.forEach(c => { labels[c.key] = c.label; });
   const chips = [];
   Object.keys(cf).forEach(key => {
     const vals = cf[key];
@@ -1179,15 +1367,16 @@ function updateActiveFiltersRow(scope) {
     if (key === '_hold') { chips.push({ key, label: 'Холд', value: 'да' }); return; }
     if (key === '_rejected') { chips.push({ key, label: 'Отклонённые', value: 'да' }); return; }
     if (key === '_high_cv') { chips.push({ key, label: 'C/V > 1', value: 'да' }); return; }
-    const colLabel = labels[key] || key;
-    const valueText = vals.size === 1 ? [...vals][0] : `${vals.size} выбрано`;
+    const column = filterColumnsByKey[key];
+    const colLabel = column ? getFilterLabel(scope, column) : key;
+    const valueText = column ? getFilterValueText(column, vals) : (vals.size === 1 ? [...vals][0] : `${vals.size} выбрано`);
     chips.push({ key, label: colLabel, value: valueText });
   });
   if (chips.length === 0) { container.innerHTML = ''; return; }
   container.innerHTML = chips.map(ch => `
     <span class="active-filter-chip" data-key="${ch.key}">
-      <span class="chip-label">${ch.label}:</span>
-      <span class="chip-value">${ch.value}</span>
+      <span class="chip-label">${escapeAttr(ch.label)}:</span>
+      <span class="chip-value">${escapeAttr(ch.value)}</span>
       <button class="chip-clear" data-clear="${ch.key}" title="Очистить фильтр">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
@@ -1211,30 +1400,63 @@ function toggleDropdown(event, scope, key, allTasks) {
   document.querySelectorAll('.filter-dropdown').forEach(d => d.remove());
   if (existing) return;
 
-  const options = getUniqueValues(scope, key, allTasks);
+  const column = filterColumnsByKey[key];
+  if (!column) return;
   const currentSelected = columnFilters[scope][key] ? new Set(columnFilters[scope][key]) : new Set();
+  const options = getUniqueValues(scope, key, allTasks);
+  const includeEmpty = currentSelected.has(EMPTY_FILTER_VALUE);
+  const label = getFilterLabel(scope, column);
 
   const dd = document.createElement('div');
   dd.className = 'filter-dropdown';
-  dd.style.cssText = 'position:absolute;top:calc(100% + 4px);left:0;min-width:220px;max-height:340px;overflow-y:auto;z-index:40;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:10px;box-shadow:0 10px 25px -5px var(--shadow-color),0 8px 10px -6px var(--shadow-color);padding:8px;';
+  dd.setAttribute('role', 'dialog');
+  dd.setAttribute('aria-label', `Фильтр: ${label}`);
   dd.onclick = (e) => e.stopPropagation();
 
-  dd.innerHTML = `
-    <input type="text" class="fd-search" placeholder="Поиск..." style="width:100%;padding:6px 10px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:6px;margin-bottom:6px;color:var(--text-primary);box-sizing:border-box;">
-    <div class="fd-options" style="max-height:220px;overflow-y:auto;">
-      ${options.map(o => {
-        const checked = currentSelected.has(o.value) ? 'checked' : '';
-        return `<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text-secondary);transition:background-color 0.1s;">
-          <input type="checkbox" ${checked} data-val="${o.value.replace(/"/g, '&quot;')}" style="margin:0;">
-          <span>${o.label}</span>
-        </label>`;
-      }).join('')}
-    </div>
-    <div style="display:flex;justify-content:space-between;padding-top:6px;margin-top:6px;border-top:1px solid var(--border-subtle);">
-      <button class="fd-clear" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:none;border:none;color:var(--text-muted);cursor:pointer;">Очистить</button>
-      <button class="fd-apply" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:white;border:none;cursor:pointer;">Готово</button>
-    </div>
-  `;
+  const emptyToggle = `<label class="fd-empty-option">
+    <input type="checkbox" class="fd-empty" ${includeEmpty ? 'checked' : ''}>
+    <span>Не заполнено</span>
+  </label>`;
+
+  let controls = '';
+  if (['select', 'boolean'].includes(column.type)) {
+    controls = `
+      <input type="search" class="fd-search" placeholder="Поиск значения…" aria-label="Поиск значения">
+      <div class="fd-options">
+        ${options.length ? options.map(option => {
+          const checked = currentSelected.has(option.value) ? 'checked' : '';
+          return `<label>
+            <input type="checkbox" ${checked} data-val="${escapeAttr(option.value)}">
+            <span>${escapeAttr(option.label)}</span>
+          </label>`;
+        }).join('') : '<div class="fd-empty-state">Нет доступных значений</div>'}
+      </div>`;
+  } else if (column.type === 'text') {
+    controls = `
+      <label class="fd-field-label" for="fd-text-${scope}-${key}">Содержит текст</label>
+      <input type="search" class="fd-text" id="fd-text-${scope}-${key}" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.text))}" placeholder="Введите фрагмент…">
+      ${emptyToggle}`;
+  } else if (column.type === 'number') {
+    controls = `
+      <div class="fd-range-fields">
+        <label><span>От</span><input type="number" class="fd-min" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.min))}" ${column.min != null ? `min="${column.min}"` : ''} ${column.max != null ? `max="${column.max}"` : ''} step="${column.step || 'any'}"></label>
+        <label><span>До</span><input type="number" class="fd-max" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.max))}" ${column.min != null ? `min="${column.min}"` : ''} ${column.max != null ? `max="${column.max}"` : ''} step="${column.step || 'any'}"></label>
+      </div>
+      ${emptyToggle}`;
+  } else if (column.type === 'date') {
+    controls = `
+      <div class="fd-range-fields">
+        <label><span>С даты</span><input type="date" class="fd-from" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.from))}"></label>
+        <label><span>По дату</span><input type="date" class="fd-to" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.to))}"></label>
+      </div>
+      ${emptyToggle}`;
+  }
+
+  dd.innerHTML = `<div class="fd-title">${escapeAttr(label)}</div>${controls}
+    <div class="fd-actions">
+      <button type="button" class="fd-clear">Очистить</button>
+      <button type="button" class="fd-apply">Применить</button>
+    </div>`;
 
   wrapper.appendChild(dd);
 
@@ -1253,39 +1475,42 @@ function toggleDropdown(event, scope, key, allTasks) {
 
   dd.querySelector('.fd-clear')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    // Очищаем фильтр для этой колонки
     delete columnFilters[scope][key];
-
-    // Снимаем все чекбоксы в дропдауне
-    dd.querySelectorAll('.fd-options input[type="checkbox"]').forEach(cb => {
-      cb.checked = false;
-    });
-
-    // Обновляем текст на кнопке-родителе и убираем крестик, не перерисовывая весь тулбар
-    const filterCell = wrapper.matches('.filter-cell') ? wrapper : wrapper.closest('.filter-cell');
-    if (filterCell) {
-      const valueSpan = filterCell.querySelector('.filter-value');
-      if (valueSpan) valueSpan.textContent = 'Все';
-
-      const btn = filterCell.querySelector('.filter-btn');
-      if (btn) btn.classList.remove('has-value');
-
-      const clearBtn = filterCell.querySelector('.filter-clear');
-      if (clearBtn) clearBtn.remove();
-    }
-
-    // Возвращаем фокус в поле поиска для продолжения выбора
-    const searchInput = dd.querySelector('.fd-search');
-    if (searchInput) searchInput.focus();
-
+    dd.remove();
+    renderFilterButtons(scope, allTasks);
     notifyChange();
   });
 
   dd.querySelector('.fd-apply')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    const checked = dd.querySelectorAll('.fd-options input[type="checkbox"]:checked');
     const vals = new Set();
-    checked.forEach(cb => vals.add(cb.dataset.val));
+    if (['select', 'boolean'].includes(column.type)) {
+      dd.querySelectorAll('.fd-options input[type="checkbox"]:checked').forEach(checkbox => vals.add(checkbox.dataset.val));
+    } else if (column.type === 'text') {
+      const value = dd.querySelector('.fd-text')?.value.trim();
+      if (value) vals.add(FILTER_TOKEN_PREFIX.text + value);
+      if (dd.querySelector('.fd-empty')?.checked) vals.add(EMPTY_FILTER_VALUE);
+    } else if (column.type === 'number') {
+      const min = dd.querySelector('.fd-min')?.value;
+      const max = dd.querySelector('.fd-max')?.value;
+      if (min !== '' && max !== '' && Number(min) > Number(max)) {
+        window.toast?.('Значение «От» не может быть больше значения «До»', 'warning');
+        return;
+      }
+      if (min !== '') vals.add(FILTER_TOKEN_PREFIX.min + min);
+      if (max !== '') vals.add(FILTER_TOKEN_PREFIX.max + max);
+      if (dd.querySelector('.fd-empty')?.checked) vals.add(EMPTY_FILTER_VALUE);
+    } else if (column.type === 'date') {
+      const from = dd.querySelector('.fd-from')?.value;
+      const to = dd.querySelector('.fd-to')?.value;
+      if (from && to && from > to) {
+        window.toast?.('Начальная дата не может быть позже конечной', 'warning');
+        return;
+      }
+      if (from) vals.add(FILTER_TOKEN_PREFIX.from + from);
+      if (to) vals.add(FILTER_TOKEN_PREFIX.to + to);
+      if (dd.querySelector('.fd-empty')?.checked) vals.add(EMPTY_FILTER_VALUE);
+    }
     if (vals.size > 0) {
       columnFilters[scope][key] = vals;
     } else {
@@ -1295,10 +1520,26 @@ function toggleDropdown(event, scope, key, allTasks) {
     renderFilterButtons(scope, allTasks);
     notifyChange();
   });
+
+  requestAnimationFrame(() => dd.querySelector('input')?.focus());
 }
 
 let toolbarOffsetObserver = null;
 let observedToolbar = null;
+let toolbarMainContentObserver = null;
+let observedToolbarMainContent = null;
+
+function syncStickyToolbarWidth(toolbar, mainContent) {
+  if (!toolbar || !mainContent) return;
+  const mainStyle = getComputedStyle(mainContent);
+  const mainBorders = (parseFloat(mainStyle.borderLeftWidth) || 0)
+    + (parseFloat(mainStyle.borderRightWidth) || 0);
+  const mainContentScrollbarWidth = Math.max(
+    0,
+    mainContent.offsetWidth - mainContent.clientWidth - mainBorders,
+  );
+  toolbar.style.setProperty('--main-content-scrollbar-width', `${mainContentScrollbarWidth}px`);
+}
 
 export function updateStickyOffsets() {
   // Architecture and regression checklist: docs/STICKY_BACKLOG_TABLES.md
@@ -1314,6 +1555,15 @@ export function updateStickyOffsets() {
     const style = getComputedStyle(document.documentElement);
     const navbarHeight = parseFloat(style.getPropertyValue('--navbar-height')) || 64;
     const mainContent = document.querySelector('.main-content');
+    if (mainContent !== observedToolbarMainContent && typeof ResizeObserver !== 'undefined') {
+      toolbarMainContentObserver?.disconnect();
+      observedToolbarMainContent = mainContent;
+      if (mainContent) {
+        toolbarMainContentObserver = new ResizeObserver(() => updateStickyOffsets());
+        toolbarMainContentObserver.observe(mainContent);
+      }
+    }
+    syncStickyToolbarWidth(toolbar, mainContent);
     const toolbarIsFixed = getComputedStyle(toolbar).position === 'fixed';
     const toolbarBottom = Math.max(navbarHeight, toolbar.getBoundingClientRect().bottom);
 
@@ -1448,6 +1698,7 @@ export function initStickyTableHeader(tableId) {
           position: fixed;
           z-index: 20;
           overflow: hidden;
+          border-radius: var(--radius-lg) var(--radius-lg) 0 0;
           background: var(--bg-tertiary);
           box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         `;

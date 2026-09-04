@@ -1,5 +1,5 @@
 ---
-title: Master Test Plan DMB Platform DEV
+title: Master Test Plan Backlog coordinator DEV
 scope: target-dev-testing
 status: ready-for-scheduling
 last_updated: 2026-09-01
@@ -9,7 +9,7 @@ last_updated: 2026-09-01
 
 ## 1. Цель цикла
 
-Подтвердить готовность DMB Platform, AI Business Analyst Agent и Task
+Подтвердить готовность Backlog coordinator, AI Business Analyst Agent и Task
 Prioritiser к дальнейшей опытной эксплуатации на DEV: корректность
 развёртывания, критические бизнес-сценарии, доступ, UX/UI в Chrome при окне
 640×700–2560×1440, качество агентов, импорт, отказоустойчивость и сохранность данных.

@@ -8,9 +8,10 @@ import time
 import urllib.error
 import urllib.request
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from auth import authorize_task, get_current_user
@@ -19,7 +20,7 @@ from database import get_db
 from metrics import inc_counter, observe_histogram
 from models import Task, Team, User
 from routers.tasks_router import update_task
-from schemas import TaskResponse, TaskUpdate
+from schemas import PrioritiserTaskUpdate, TaskResponse, TaskUpdate
 
 
 logger = logging.getLogger("dmb_backlog.prioritiser")
@@ -40,6 +41,28 @@ class PrioritiserValueApproval(BaseModel):
     version: int = Field(ge=0)
     value_mln: float = Field(ge=0)
     justification: str = Field(min_length=1, max_length=10000)
+
+
+class PrioritiserValueResult(BaseModel):
+    value_mln: float | None = Field(default=None, ge=0)
+    explanation: str = Field(min_length=1)
+    confidence: Literal["high", "medium", "low"]
+    missing_inputs: list[str] = Field(default_factory=list)
+
+
+class PrioritiserPriorityResult(BaseModel):
+    priority: Literal["P1", "P2", "P3", "P4", "P5"]
+    score: float = Field(ge=0, le=1)
+    rationale: str = Field(min_length=1)
+
+
+class PrioritiserAgentEnvelope(BaseModel):
+    status: Literal["ok", "insufficient_data", "error"]
+    value: PrioritiserValueResult | None = None
+    priority: PrioritiserPriorityResult | None = None
+    warnings: list[str] = Field(default_factory=list)
+    error: str | None = None
+    missing_attributes: list[str] = Field(default_factory=list)
 
 
 def _number(value: Decimal | float | int | None) -> float | None:
@@ -91,6 +114,10 @@ def _call_prioritiser(path: str, payload: dict) -> dict:
             result = json.loads(response.read().decode("utf-8"))
             if not isinstance(result, dict):
                 raise ValueError("prioritiser response is not an object")
+            try:
+                PrioritiserAgentEnvelope.model_validate(result)
+            except ValidationError as error:
+                raise ValueError("prioritiser response violates the contract") from error
             return result
     except urllib.error.HTTPError as error:
         outcome = f"http_{error.code}"
@@ -122,10 +149,12 @@ def _load_task(task_id: int, db: Session, current_user: User) -> Task:
 def _raise_agent_error(result: dict) -> None:
     if result.get("status") not in {"insufficient_data", "error"}:
         return
+    value = result.get("value") if isinstance(result.get("value"), dict) else {}
+    missing = result.get("missing_attributes") or value.get("missing_inputs") or []
     detail = {
         "code": f"prioritiser_{result.get('status')}",
         "message": result.get("error") or "Агент не смог выполнить расчёт",
-        "missing_attributes": result.get("missing_attributes") or [],
+        "missing_attributes": missing,
     }
     raise HTTPException(status_code=422 if result.get("status") == "insufficient_data" else 502, detail=detail)
 
@@ -220,4 +249,4 @@ def calculate_task_priority(
         "priority_score": score,
         "priority_justification": justification,
     }
-    return update_task(task_id, TaskUpdate(**changes), db, current_user)
+    return update_task(task_id, PrioritiserTaskUpdate(**changes), db, current_user)

@@ -20,3 +20,10 @@ export function renderViewState({ kind = 'empty', title, message = '', actionLab
 export function bindViewStateAction(root, callback) {
   root?.querySelector('[data-view-state-action]')?.addEventListener('click', callback);
 }
+
+export function fitTableViewState(root) {
+  const scrollContainer = root?.querySelector('.table-container');
+  const state = scrollContainer?.querySelector('.table-view-state-cell .view-state');
+  if (!scrollContainer || !state) return;
+  state.style.width = `${scrollContainer.clientWidth}px`;
+}

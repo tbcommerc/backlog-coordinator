@@ -1,5 +1,5 @@
 ---
-title: Test Summary Report DMB Platform DEV
+title: Test Summary Report Backlog coordinator DEV
 scope: target-dev-testing-template
 status: active-template
 last_updated: 2026-08-25

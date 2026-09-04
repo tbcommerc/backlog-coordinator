@@ -24,12 +24,13 @@
 * Подсказка под полем Value: метод, вводные, уверенность, что уточнить.
 * Ex-post атрибуция `value_external` для обслуживающих команд от факта дохода
   фронта, с защитой от двойного счёта.
-* LLM-адаптер с переключением `mock | anthropic | gigachat | gigacode`, кэшем по
-  хешу промпта и журналом токенов.
+* LLM-адаптер с переключением `openai_compat | anthropic | gigachat | gigacode`,
+  кэшем по хешу промпта и журналом токенов. `mock` доступен только при явном
+  выборе в тестах и никогда не включается как аварийная подмена.
 * Гибридный RAG (BM25 + FAISS, RRF) на 1263 фрагментах: закрытый пакет знаний
   банка, знания о трайбе, 440 исторических задач и методика. Качество
   проверяется на 25 размеченных запросах из пакета.
-* **Сервис для Координатора бэклога:** два сценария запрос-ответ без доступа к
+* **Сервис для Backlog coordinator:** два сценария запрос-ответ без доступа к
   базе — атрибуты одной задачи внутрь, Value с диапазоном или приоритет с
   разбором по факторам наружу. Повторяемость: одинаковые атрибуты дают прежний
   ответ без обращения к модели.
@@ -40,7 +41,7 @@
 
 ## Быстрый старт
 
-В составе DMB Platform штатный запуск выполняется из корня:
+В составе Backlog coordinator штатный запуск выполняется из корня:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
@@ -80,7 +81,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m app.cli show TASK-100-011
 ```
 
-## Сценарии Координатора бэклога
+## Сценарии Backlog coordinator
 
 Так агент вызывается из ПРОМ-варианта: базы он не видит, атрибуты приходят в
 запросе. Контракт — [docs/COORDINATOR-CONTRACT.md](docs/COORDINATOR-CONTRACT.md).
@@ -132,9 +133,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 | `PUT` | `/admin/references/{name}` | Новая версия справочника + пересчёт |
 | `POST` | `/admin/attribution` | Ex-post атрибуция `value_external` |
 | `GET` | `/rag/search?q=…&layer=…` | Поиск по корпусу |
-| `POST` | `/agent/value` | **Сценарий Координатора:** рассчитай Value(internal) |
+| `POST` | `/agent/value` | **Сценарий Backlog coordinator:** рассчитай Value(internal) |
 | `POST` | `/agent/value/full` | Полный Value с методами, драйверами и аудитом для UI |
-| `POST` | `/agent/priority` | **Сценарий Координатора:** определи приоритет |
+| `POST` | `/agent/priority` | **Сценарий Backlog coordinator:** определи приоритет |
 | `POST` | `/agent/priority/full` | Полный priority с факторами, overrides и аудитом для UI |
 | `GET` | `/agent/snapshot` | Версия зашитого слепка исторических Value |
 
@@ -169,11 +170,12 @@ runtime, валидность `opencode.json`, существование фай
 
 ## Настройка
 
-Скопируйте `.env.example` в `.env`. По умолчанию всё работает офлайн: провайдер
-LLM — детерминированный мок, Strategy Decomposer — заглушка. Для реальной модели:
+Скопируйте `.env.example` в `.env` и задайте учётные данные модели. Рабочая
+конфигурация использует OpenAI-compatible LLM и LLM-оценщик стратегии; без
+настроенного провайдера расчёт завершается явной ошибкой, а не mock-подменой:
 
 ```bash
-PRIORITISER_LLM_PROVIDER=openai_compat   # также mock, anthropic, gigachat, gigacode
+PRIORITISER_LLM_PROVIDER=openai_compat   # также anthropic, gigachat, gigacode
 ```
 
 Справочники методолога — в `data/references/`:
@@ -206,7 +208,7 @@ PRIORITISER_LLM_PROVIDER=openai_compat   # также mock, anthropic, gigachat,
 часть бэклога. Проставить нужно один из уровней `tribe_leader`, `director`, `head`,
 `team` вместо `unknown`.
 
-По контракту с Координатором оба поля обязательны для расчёта приоритета, так
+По контракту с Backlog coordinator оба поля обязательны для расчёта приоритета, так
 что в ПРОМ-варианте пробел закрывается на входе.
 
 Формулы при этом работают ровно по ТЗ. Подробный разбор с цифрами и порядком

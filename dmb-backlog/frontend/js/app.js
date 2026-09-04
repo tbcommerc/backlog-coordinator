@@ -4,7 +4,7 @@
  */
 console.log('[DMB] app.js v20260727 notif-v2 loaded');
 
-import { Router } from './router.js?v=123';
+import { Router } from './router.js?v=138';
 import { Store } from './store.js';
 import { API } from './api.js?v=2';
 import { Auth } from './auth.js';
@@ -359,7 +359,7 @@ async function handleSearch(query, app) {
 }
 
 async function handleLogout() {
-  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=81');
+  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=83');
   const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
   if (!ok) return;
   clearQuickEditState();
@@ -667,7 +667,7 @@ class App {
         const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=90');
         const taskCardOk = await confirmAndCloseTaskFormsForNavigation();
         if (!taskCardOk) return false;
-        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=81');
+        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=83');
         const ok = await confirmDiscardChanges('Продолжить', 'Есть несохранённые изменения в режиме массового редактирования. Перейти и потерять их?');
         if (ok) clearQuickEditState();
         return ok;
@@ -741,6 +741,7 @@ class App {
       this.channels = ref.channels || [];
       this.departments = ref.departments || [];
       this.businessCustomers = ref.business_customers || [];
+      this.didClientGroups = ref.did_client_groups || [];
       this.tags = ref.tags || [];
       this.users = ref.users || [];
       console.log('[DEBUG] window.app.statuses:', this.statuses);

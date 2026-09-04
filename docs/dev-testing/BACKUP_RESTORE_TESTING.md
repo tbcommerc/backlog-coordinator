@@ -1,5 +1,5 @@
 ---
-title: Проверка backup и restore DMB Platform
+title: Проверка backup и restore Backlog coordinator
 scope: target-dev-testing
 status: ready-for-devops-review
 last_updated: 2026-09-01

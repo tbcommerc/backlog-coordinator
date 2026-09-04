@@ -2517,6 +2517,10 @@ async function handleAdminClick(e, app) {
 
   if (target.classList.contains('admin-dict-card')) {
     const dictKey = target.dataset.dict;
+    if (dictKey === 'did-client-groups') {
+      const { openCustomerReferences } = await import('./customerReferences.js');
+      await openCustomerReferences(dictKey, app); return;
+    }
     const lock = dictLocks[DICTIONARY_CONFIG[dictKey]?.type];
     if (lock && lock.locked && !lock.is_mine) {
       toast(`Справочник редактируется: ${lock.lock_owner_name || 'Администратор'}`, 'error');

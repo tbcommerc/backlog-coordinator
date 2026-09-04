@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark" data-accent="indigo">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мои уведомления — Улучшенный прототип</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    :root {
+      --bg-primary: #0f0f23;
+      --bg-secondary: #1a1a2e;
+      --bg-tertiary: #16213e;
+      --bg-elevated: #232342;
+      --bg-hover: rgba(255, 255, 255, 0.05);
+      --bg-active: rgba(255, 255, 255, 0.08);
+      --border-color: #2a2a4a;
+      --border-hover: #3a3a5a;
+      --border-focus: var(--accent);
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0b0;
+      --text-muted: #6b6b80;
+      --text-inverse: #0f0f23;
+      --accent: #6366f1;
+      --accent-hover: #5558e8;
+      --accent-light: rgba(99, 102, 241, 0.12);
+      --accent-medium: rgba(99, 102, 241, 0.25);
+      --success: #10b981;
+      --success-light: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-light: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-light: rgba(239, 68, 68, 0.12);
+      --info: #3b82f6;
+      --info-light: rgba(59, 130, 246, 0.12);
+      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-heading: 'Unbounded', sans-serif;
+      --text-xs: 0.75rem;
+      --text-sm: 0.875rem;
+      --text-base: 1rem;
+      --text-lg: 1.125rem;
+      --text-xl: 1.25rem;
+      --text-2xl: 1.5rem;
+      --text-3xl: 1.875rem;
+      --font-normal: 400;
+      --font-medium: 500;
+      --font-semibold: 600;
+      --font-bold: 700;
+      --space-1: 0.25rem;
+      --space-2: 0.5rem;
+      --space-3: 0.75rem;
+      --space-4: 1rem;
+      --space-5: 1.25rem;
+      --space-6: 1.5rem;
+      --space-8: 2rem;
+      --space-10: 2.5rem;
+      --space-12: 3rem;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --radius-full: 9999px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+      --transition-fast: 0.15s ease;
+      --transition-normal: 0.2s ease;
+      --z-sticky: 200;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-family); font-size: var(--text-base); line-height: 1.5; color: var(--text-primary); background: var(--bg-primary); -webkit-font-smoothing: antialiased; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; }
+    input, select { font-family: inherit; }
+    
+    .notification-center { max-width: 1400px; margin: 0 auto; padding: var(--space-8); width: 100%; }
+    
+    /* Hero */
+    .notification-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-6); margin-bottom: var(--space-6); }
+    .notification-hero h1 { font-family: var(--font-heading); font-size: var(--text-2xl); font-weight: var(--font-bold); margin: 0 0 var(--space-1) 0; letter-spacing: -0.02em; }
+    .notification-hero p { margin: 0; color: var(--text-secondary); font-size: var(--text-sm); }
+    .notification-header-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; justify-content: flex-end; }
+    .notification-header-actions .btn { gap: 6px; display: inline-flex; align-items: center; }
+    .notification-header-actions svg { width: 14px; height: 14px; }
+    
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-medium); transition: all var(--transition-fast); white-space: nowrap; }
+    .btn-sm { padding: 6px 12px; font-size: var(--text-xs); }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+    .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); }
+    .btn-secondary:hover { background: var(--bg-hover); border-color: var(--border-hover); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); }
+    .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+    
+    /* Stats */
+    .notification-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); }
+    .notification-stat { display: flex; align-items: center; gap: var(--space-4); width: 100%; padding: var(--space-5); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-secondary); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; transition: all var(--transition-fast); }
+    .notification-stat:hover { border-color: var(--accent); background: var(--bg-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .notification-stat:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .notification-stat.active { border-color: var(--accent); background: var(--accent-light); }
+    .notification-stat.is-action.active { border-color: var(--warning); background: var(--warning-light); }
+    .notification-stat > .stat-value { min-width: 44px; font-size: var(--text-2xl); line-height: 1; font-weight: var(--font-bold); }
+    .notification-stat.is-action > .stat-value { color: var(--warning); }
+    .notification-stat strong, .notification-stat small { display: block; }
+    .notification-stat strong { font-size: var(--text-sm); margin-bottom: var(--space-1); font-weight: var(--font-semibold); }
+    .notification-stat small { color: var(--text-muted); font-size: var(--text-xs); }
+    
+    /* Workspace */
+    .notification-workspace { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 560px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-secondary); }
+    
+    /* Toolbar */
+    .notification-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) auto minmax(155px, auto) auto; align-items: center; gap: var(--space-2); padding: var(--space-3); border-bottom: 1px solid var(--border-color); background: var(--bg-primary); }
+    .notification-search { position: relative; display: block; }
+    .notification-search > svg { position: absolute; z-index: 1; left: 11px; top: 50%; width: 15px; height: 15px; color: var(--text-muted); transform: translateY(-50%); }
+    .notification-search .input { width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-secondary); color: var(--text-primary); font-size: var(--text-sm); transition: all var(--transition-fast); }
+    .notification-search .input:focus { outline: none; border-color: var(--accent); background: var(--bg-primary); }
+    .notification-search .input::placeholder { color: var(--text-muted); }
+    .notification-view-switch { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-tertiary); }
+    .notification-view-switch button { min-height: 32px; padding: 5px 9px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: var(--text-xs); cursor: pointer; white-space: nowrap; transition: all var(--transition-fast); }
+    .notification-view-switch button:hover { color: var(--text-primary); }
+    .notification-view-switch button.active { background: var(--bg-primary); color: var(--accent); box-shadow: var(--shadow-sm); font-weight: var(--font-semibold); }
+    .notification-sort { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-secondary); color: var(--text-primary); font-size: var(--text-sm); cursor: pointer; }
+    .notification-sort:focus { outline: none; border-color: var(--accent); }
+    
+    /* Tabs */
+    .notification-nav { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); overflow: visible; padding: var(--space-3); border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); }
+    .notification-nav-item { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: var(--radius-md); padding: 7px 9px; background: transparent; color: var(--text-secondary); cursor: pointer; white-space: nowrap; font-size: var(--text-xs); transition: all var(--transition-fast); }
+    .notification-nav-item svg { width: 15px; height: 15px; flex: none; }
+    .notification-nav-item span { flex: 1; }
+    .notification-nav-item b { min-width: 20px; padding: 2px 6px; border-radius: var(--radius-full); background: var(--bg-tertiary); font-size: 10px; text-align: center; font-weight: var(--font-semibold); }
+    .notification-nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .notification-nav-item.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: var(--font-semibold); }
+    
+    /* Feed */
+    .notification-feed { min-width: 0; padding: var(--space-5); }
+    .notification-feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
+    .notification-feed-header h2 { margin: 0 0 var(--space-1); font-size: var(--text-lg); font-weight: var(--font-semibold); }
+    .notification-feed-header p { margin: 0; color: var(--text-muted); font-size: var(--text-xs); }
+    .notification-updated { color: var(--text-muted); font-size: var(--text-xs); display: flex; align-items: center; gap: var(--space-1); }
+    .notification-updated svg { width: 12px; height: 12px; }
+    
+    /* Time Groups */
+    .notification-time-group { margin-bottom: var(--space-6); }
+    .notification-time-group:last-child { margin-bottom: 0; }
+    .notification-time-group-header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); color: var(--text-muted); font-size: var(--text-xs); font-weight: var(--font-semibold); text-transform: uppercase; letter-spacing: 0.05em; }
+    .notification-time-group-header::after { content: ''; flex: 1; height: 1px; background: var(--border-color); }
+    
+    /* Cards */
+    .notification-list { display: flex; flex-direction: column; gap: 9px; }
+    .notification-card { position: relative; display: grid; grid-template-columns: 18px 40px minmax(0, 1fr) auto; align-items: start; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary); transition: all var(--transition-fast); }
+    .notification-card:hover { border-color: var(--border-hover); background: var(--bg-hover); }
+    .notification-card.is-unread { background: var(--bg-elevated); }
+    .notification-card.is-unread::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+    .notification-card.importance-critical::before { background: var(--danger); }
+    .notification-card.importance-high::before { background: var(--warning); }
+    .notification-card.is-read { opacity: 0.7; }
+    .notification-card.is-resolved { opacity: 0.72; }
+    .notification-card-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); }
+    .notification-card-content { min-width: 0; }
+    .notification-card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-2); color: var(--text-muted); font-size: var(--text-xs); }
+    .notification-topic, .notification-priority { padding: 2px 7px; border-radius: var(--radius-full); background: var(--bg-tertiary); font-weight: var(--font-semibold); }
+    .notification-card.importance-critical .notification-priority { color: var(--danger); background: var(--danger-light); }
+    .notification-card.importance-high .notification-priority { color: var(--warning); background: var(--warning-light); }
+    .notification-card.importance-medium .notification-priority { color: var(--info); background: var(--info-light); }
+    .notification-resolved-label { padding: 2px 7px; border-radius: var(--radius-full); color: var(--success); background: var(--success-light); font-weight: var(--font-semibold); }
+    .notification-time { display: flex; align-items: center; gap: var(--space-1); }
+    .notification-unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .notification-card-title-row { display: flex; align-items: center; gap: 6px; }
+    .notification-card h3 { margin: 0; font-size: var(--text-sm); line-height: 1.4; font-weight: var(--font-medium); }
+    .notification-card p { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--text-xs); line-height: 1.5; }
+    
+    /* Group Accordion */
+    .notification-group-count { flex: none; padding: 2px 7px; border-radius: var(--radius-full); background: var(--bg-tertiary); color: var(--text-secondary); font-size: 10px; font-weight: var(--font-semibold); cursor: pointer; transition: all var(--transition-fast); border: none; }
+    .notification-group-count:hover { background: var(--accent-light); color: var(--accent); }
+    .notification-group-expanded { margin-top: var(--space-3); padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-secondary); display: none; }
+    .notification-group-expanded.show { display: block; }
+    .notification-group-item { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-2); border-radius: var(--radius-sm); transition: background var(--transition-fast); }
+    .notification-group-item:hover { background: var(--bg-hover); }
+    .notification-group-item-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); flex-shrink: 0; }
+    .notification-group-item-content { flex: 1; min-width: 0; }
+    .notification-group-item-title { font-size: var(--text-xs); font-weight: var(--font-medium); margin-bottom: 2px; }
+    .notification-group-item-time { font-size: 10px; color: var(--text-muted); }
+    
+    /* Card Actions */
+    .notification-card-actions { display: flex; align-items: center; gap: var(--space-2); padding-top: 4px; opacity: 0; transition: opacity var(--transition-fast); }
+    .notification-card:hover .notification-card-actions { opacity: 1; }
+    .notification-card-actions .btn-primary { min-width: 140px; justify-content: center; }
+    .notification-icon-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); color: var(--text-muted); background: transparent; cursor: pointer; transition: all var(--transition-fast); }
+    .notification-icon-btn:hover { color: var(--text-primary); background: var(--bg-secondary); }
+    .notification-resolve-btn:hover { color: var(--success); background: var(--success-light); }
+    .notification-dismiss-btn:hover { color: var(--danger); background: var(--danger-light); }
+    .notification-context-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); color: var(--text-muted); background: transparent; cursor: pointer; transition: all var(--transition-fast); }
+    .notification-context-btn:hover { color: var(--text-primary); background: var(--bg-secondary); }
+    
+    /* Batch Bar */
+    .notification-batch-bar { position: sticky; bottom: var(--space-4); margin-top: var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-elevated); box-shadow: var(--shadow-lg); display: none; align-items: center; justify-content: space-between; gap: var(--space-4); z-index: var(--z-sticky); }
+    .notification-batch-bar.show { display: flex; }
+    .notification-batch-info { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium); }
+    .notification-batch-actions { display: flex; align-items: center; gap: var(--space-2); }
+    
+    /* Checkbox */
+    .notification-checkbox { width: 18px; height: 18px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all var(--transition-fast); flex-shrink: 0; margin-top: 2px; }
+    .notification-checkbox:hover { border-color: var(--accent); }
+    .notification-checkbox.checked { background: var(--accent); border-color: var(--accent); }
+    .notification-checkbox.checked::after { content: ''; width: 10px; height: 10px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E"); background-size: contain; background-repeat: no-repeat; }
+    
+    /* Empty State */
+    .notification-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-12) var(--space-4); text-align: center; }
+    .notification-empty-icon { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-xl); background: var(--bg-tertiary); color: var(--text-muted); margin-bottom: var(--space-4); }
+    .notification-empty-icon svg { width: 40px; height: 40px; }
+    .notification-empty h3 { margin: 0 0 var(--space-2); font-size: var(--text-lg); font-weight: var(--font-semibold); }
+    .notification-empty p { margin: 0 0 var(--space-4); color: var(--text-secondary); font-size: var(--text-sm); max-width: 400px; }
+    .notification-empty-types { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; margin-top: var(--space-4); }
+    .notification-empty-type { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-tertiary); color: var(--text-secondary); font-size: var(--text-xs); }
+    .notification-empty-type svg { width: 14px; height: 14px; }
+    
+    /* Accessibility */
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .notification-toolbar { grid-template-columns: 1fr 1fr; }
+      .notification-view-switch { grid-column: 1 / -1; order: 3; overflow-x: auto; }
+      .notification-toolbar > .notification-sort { grid-column: 1; }
+      .notification-toolbar > .btn-ghost { grid-column: 2; justify-self: end; }
+    }
+    @media (max-width: 900px) {
+      .notification-center { padding: var(--space-4); }
+      .notification-nav { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; }
+      .notification-nav-item { scroll-snap-align: start; }
+      .notification-nav-item b { display: none; }
+      .notification-stats { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+      .notification-stat { min-width: 245px; scroll-snap-align: start; }
+      .notification-card { grid-template-columns: 18px 38px minmax(0, 1fr); }
+      .notification-card-actions { grid-column: 2 / -1; width: 100%; justify-content: flex-start; opacity: 1; }
+      .notification-card-actions .btn-primary { min-width: 0; }
+      .notification-icon-btn { width: 44px; height: 44px; }
+      .notification-hero { align-items: flex-start; flex-direction: column; }
+      .notification-header-actions { justify-content: flex-start; }
+      .notification-toolbar { grid-template-columns: 1fr; }
+      .notification-view-switch { grid-column: auto; order: 0; }
+      .notification-toolbar > .btn-ghost { grid-column: auto; justify-self: start; }
+      .notification-feed { padding: var(--space-4); }
+    }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in { animation: fadeIn 0.3s ease; }
+  </style>
+</head>
+<body>
+  <div class="notification-center animate-fade-in" data-od-id="notification-center">
+    
+    <header class="notification-hero" data-od-id="notification-hero">
+      <div>
+        <h1>Мои уведомления</h1>
+        <p>События и действия по вашей зоне ответственности</p>
+      </div>
+      <div class="notification-header-actions">
+        <a class="btn btn-secondary btn-sm" href="#settings">
+          <i data-lucide="settings" aria-hidden="true"></i> Настроить
+        </a>
+        <button type="button" class="btn btn-secondary btn-sm" id="mark-all-read">
+          <i data-lucide="check-check" aria-hidden="true"></i> Отметить все прочитанными
+        </button>
+      </div>
+    </header>
+    
+    <div class="notification-stats" aria-label="Быстрые фильтры" data-od-id="notification-stats">
+      <button type="button" class="notification-stat is-action" data-stat-view="action" aria-pressed="false">
+        <span class="stat-value" id="notif-stat-action">7</span>
+        <span><strong>Требуют действия</strong><small>нерешённые срочные и важные</small></span>
+      </button>
+      <button type="button" class="notification-stat" data-stat-view="unread" aria-pressed="false">
+        <span class="stat-value" id="notif-stat-unread">12</span>
+        <span><strong>Не прочитано</strong><small>новые события</small></span>
+      </button>
+      <button type="button" class="notification-stat" data-stat-view="today" aria-pressed="false">
+        <span class="stat-value" id="notif-stat-today">5</span>
+        <span><strong>Сегодня</strong><small>новых событий</small></span>
+      </button>
+    </div>
+    
+    <div class="notification-workspace" data-od-id="notification-workspace">
+      
+      <div class="notification-toolbar" aria-label="Фильтры уведомлений" data-od-id="notification-toolbar">
+        <label class="notification-search">
+          <i data-lucide="search" aria-hidden="true"></i>
+          <span class="sr-only">Поиск уведомлений</span>
+          <input id="notification-search" class="input" type="search" placeholder="Поиск по уведомлениям...">
+        </label>
+        <div class="notification-view-switch" aria-label="Состояние" data-od-id="notification-view-switch">
+          <button type="button" class="active" data-view="all" aria-pressed="true">Все</button>
+          <button type="button" data-view="resolved" aria-pressed="false">Закрытые</button>
+        </div>
+        <select id="notification-sort" class="notification-sort" aria-label="Сортировка">
+          <option value="time">По времени</option>
+          <option value="priority">По приоритету</option>
+        </select>
+        <select id="notification-importance" class="notification-sort" aria-label="Приоритет">
+          <option value="">Любой приоритет</option>
+          <option value="critical">Срочно</option>
+          <option value="high">Требует действия</option>
+          <option value="medium">Важно</option>
+          <option value="low">Информация</option>
+        </select>
+        <button type="button" class="btn btn-ghost btn-sm" id="notification-reset">Сбросить</button>
+      </div>
+      
+      <nav class="notification-nav" id="notification-tabs" role="tablist" aria-label="Темы уведомлений" data-od-id="notification-tabs">
+        <button type="button" role="tab" aria-selected="true" class="notification-nav-item active" data-cat="">
+          <i data-lucide="inbox" aria-hidden="true"></i><span>Все</span>
+        </button>
+        <button type="button" role="tab" aria-selected="false" class="notification-nav-item" data-cat="risks">
+          <i data-lucide="alert-triangle" aria-hidden="true"></i><span>Риски и сроки</span><b>4</b>
+        </button>
+        <button type="button" role="tab" aria-selected="false" class="notification-nav-item" data-cat="assignment">
+          <i data-lucide="user-plus" aria-hidden="true"></i><span>Назначения</span><b>2</b>
+        </button>
+        <button type="button" role="tab" aria-selected="false" class="notification-nav-item" data-cat="discussions">
+          <i data-lucide="message-circle" aria-hidden="true"></i><span>Обсуждения</span><b>3</b>
+        </button>
+        <button type="button" role="tab" aria-selected="false" class="notification-nav-item" data-cat="status">
+          <i data-lucide="refresh-cw" aria-hidden="true"></i><span>Статусы</span><b>2</b>
+        </button>
+        <button type="button" role="tab" aria-selected="false" class="notification-nav-item" data-cat="system">
+          <i data-lucide="info" aria-hidden="true"></i><span>Система</span><b>1</b>
+        </button>
+      </nav>
+      
+      <section class="notification-feed" aria-labelledby="notifications-heading" data-od-id="notification-feed">
+        <div class="notification-feed-header">
+          <div>
+            <h2 id="notifications-heading">Уведомления</h2>
+            <p id="notification-results-count" role="status" aria-live="polite">18 уведомлений</p>
+          </div>
+          <div class="notification-updated">
+            <i data-lucide="clock" aria-hidden="true"></i>
+            <span>Обновлено 2 мин. назад</span>
+          </div>
+        </div>
+        
+        <div id="notifications-list" aria-live="polite" data-od-id="notifications-list">
+          
+          <!-- ===== СЕГОДНЯ ===== -->
+          <div class="notification-time-group" data-od-id="group-today">
+            <div class="notification-time-group-header"><span>Сегодня</span></div>
+            <div class="notification-list">
+              
+              <article class="notification-card is-unread importance-critical" data-notif-id="1" data-category="risks" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--danger-light);color:var(--danger)"><i data-lucide="alert-triangle" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Риск</span>
+                    <span class="notification-priority">Срочно</span>
+                    <span class="notification-time"><span class="notification-unread-dot"></span><time>15 мин. назад</time></span>
+                  </div>
+                  <div class="notification-card-title-row">
+                    <h3>Срок задачи #2417 истекает завтра</h3>
+                    <button class="notification-group-count" data-group-id="1" aria-label="Раскрыть 3 события" aria-expanded="false">3 события</button>
+                  </div>
+                  <p>Задача «Обновить API авторизации» не обновлялась 5 дней. Срок: 27 августа 2026.</p>
+                  <div class="notification-group-expanded" id="group-1">
+                    <div class="notification-group-item"><div class="notification-group-item-icon" style="background:var(--danger-light);color:var(--danger)"><i data-lucide="alert-triangle" style="width:14px;height:14px"></i></div><div class="notification-group-item-content"><div class="notification-group-item-title">Срок через 3 дня</div><div class="notification-group-item-time">2 часа назад</div></div></div>
+                    <div class="notification-group-item"><div class="notification-group-item-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="timer" style="width:14px;height:14px"></i></div><div class="notification-group-item-content"><div class="notification-group-item-title">Нет обновления 5 дней</div><div class="notification-group-item-time">Вчера, 18:30</div></div></div>
+                    <div class="notification-group-item"><div class="notification-group-item-icon" style="background:var(--info-light);color:var(--info)"><i data-lucide="info" style="width:14px;height:14px"></i></div><div class="notification-group-item-content"><div class="notification-group-item-title">Срок через 7 дней</div><div class="notification-group-item-time">25 авг, 10:00</div></div></div>
+                  </div>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть задачу <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть" title="Закрыть (R)"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть" title="Скрыть (D)"><i data-lucide="x" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-context-btn" aria-label="Ещё"><i data-lucide="more-vertical" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-unread importance-high" data-notif-id="2" data-category="assignment" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--accent-light);color:var(--accent)"><i data-lucide="user-plus" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Назначение</span>
+                    <span class="notification-priority">Требует действия</span>
+                    <span class="notification-time"><span class="notification-unread-dot"></span><time>1 ч. назад</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Вы назначены исполнителем задачи #2456</h3></div>
+                  <p>Алексей Петров назначил вас исполнителем задачи «Интеграция с платёжной системой».</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть задачу <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-unread importance-medium" data-notif-id="3" data-category="discussions" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--info-light);color:var(--info)"><i data-lucide="message-circle" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Обсуждение</span>
+                    <span class="notification-priority">Важно</span>
+                    <span class="notification-time"><span class="notification-unread-dot"></span><time>2 ч. назад</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Новый комментарий в задаче #2389</h3></div>
+                  <p>Мария Иванова: «Необходимо уточнить требования к API перед началом разработки».</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">К обсуждению <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-unread importance-high" data-notif-id="4" data-category="risks" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="clock" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Дедлайн</span>
+                    <span class="notification-priority">Требует действия</span>
+                    <span class="notification-time"><span class="notification-unread-dot"></span><time>3 ч. назад</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Срок задачи #2420 через 3 дня</h3></div>
+                  <p>Задача «Редизайн дашборда аналитики» — срок 29 августа. Осталось 3 дня.</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть задачу <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-unread importance-medium" data-notif-id="5" data-category="status" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--info-light);color:var(--info)"><i data-lucide="refresh-cw" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Статус</span>
+                    <span class="notification-priority">Важно</span>
+                    <span class="notification-time"><span class="notification-unread-dot"></span><time>4 ч. назад</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Задача #2412 возвращена на уточнение</h3></div>
+                  <p>Аналитик вернул запрос «Добавить фильтрацию по датам» на уточнение требований.</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть запрос <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+            </div>
+          </div>
+          
+          <!-- ===== ВЧЕРА ===== -->
+          <div class="notification-time-group" data-od-id="group-yesterday">
+            <div class="notification-time-group-header"><span>Вчера</span></div>
+            <div class="notification-list">
+              
+              <article class="notification-card is-read importance-critical" data-notif-id="6" data-category="risks" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--danger-light);color:var(--danger)"><i data-lucide="alert-triangle" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Дедлайн</span>
+                    <span class="notification-priority">Срочно</span>
+                    <span class="notification-time"><time>Вчера, 16:30</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Срок задачи #2398 просрочен</h3></div>
+                  <p>Задача «Рефакторинг модуля отчётности» просрочена на 1 день.</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть задачу <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-read importance-high" data-notif-id="7" data-category="discussions" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--accent-light);color:var(--accent)"><i data-lucide="at-sign" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Упоминание</span>
+                    <span class="notification-priority">Требует действия</span>
+                    <span class="notification-time"><time>Вчера, 14:20</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Вас упомянули в #2401</h3></div>
+                  <p>Дмитрий Сидоров: «@username, можешь проверить оценку задачи?»</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">К обсуждению <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-resolved importance-medium" data-notif-id="8" data-category="status" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--success-light);color:var(--success)"><i data-lucide="refresh-cw" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Статус</span>
+                    <span class="notification-priority">Важно</span>
+                    <span class="notification-resolved-label">Закрыто</span>
+                    <span class="notification-time"><time>Вчера, 11:00</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Задача #2387 выполнена</h3></div>
+                  <p>Задача «Оптимизация запросов к БД» переведена в статус «Выполнена».</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть задачу <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-read importance-high" data-notif-id="9" data-category="discussions" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--info-light);color:var(--info)"><i data-lucide="message-circle" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Обсуждение</span>
+                    <span class="notification-priority">Требует действия</span>
+                    <span class="notification-time"><time>Вчера, 09:45</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Ответ на ваш комментарий в #2345</h3></div>
+                  <p>Сергей Николаев ответил на ваш комментарий в задаче «Оптимизация загрузки данных».</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">К обсуждению <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+            </div>
+          </div>
+          
+          <!-- ===== НА ЭТОЙ НЕДЕЛЕ ===== -->
+          <div class="notification-time-group" data-od-id="group-week">
+            <div class="notification-time-group-header"><span>На этой неделе</span></div>
+            <div class="notification-list">
+              
+              <article class="notification-card is-read importance-critical" data-notif-id="10" data-category="risks" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--danger-light);color:var(--danger)"><i data-lucide="alert-triangle" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Риск</span>
+                    <span class="notification-priority">Срочно</span>
+                    <span class="notification-time"><time>21 авг, 17:00</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Эскалация: задача #2301 на ХОЛД</h3></div>
+                  <p>Задача «Миграция на новую версию БД» переведена в ХОЛД. Требуется ваше решение.</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть задачу <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-read importance-medium" data-notif-id="11" data-category="assignment" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--bg-tertiary);color:var(--text-secondary)"><i data-lucide="user-plus" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Назначение</span>
+                    <span class="notification-priority">Важно</span>
+                    <span class="notification-time"><time>21 авг, 10:30</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Задача #2298 взята на ревью</h3></div>
+                  <p>Анна Белова взяла на ревью ваш запрос «Добавить экспорт в Excel».</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть запрос <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-read importance-medium" data-notif-id="12" data-category="risks" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="timer" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Давность</span>
+                    <span class="notification-priority">Важно</span>
+                    <span class="notification-time"><time>23 авг, 10:00</time></span>
+                  </div>
+                  <div class="notification-card-title-row">
+                    <h3>3 задачи требуют обновления</h3>
+                    <button class="notification-group-count" data-group-id="2" aria-label="Раскрыть 3 задачи" aria-expanded="false">3 задачи</button>
+                  </div>
+                  <p>Задачи не обновлялись более 5 рабочих дней: #2312, #2315, #2318.</p>
+                  <div class="notification-group-expanded" id="group-2">
+                    <div class="notification-group-item"><div class="notification-group-item-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="timer" style="width:14px;height:14px"></i></div><div class="notification-group-item-content"><div class="notification-group-item-title">#2312 — Миграция данных</div><div class="notification-group-item-time">7 дней без обновления</div></div></div>
+                    <div class="notification-group-item"><div class="notification-group-item-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="timer" style="width:14px;height:14px"></i></div><div class="notification-group-item-content"><div class="notification-group-item-title">#2315 — Тестирование API</div><div class="notification-group-item-time">6 дней без обновления</div></div></div>
+                    <div class="notification-group-item"><div class="notification-group-item-icon" style="background:var(--warning-light);color:var(--warning)"><i data-lucide="timer" style="width:14px;height:14px"></i></div><div class="notification-group-item-content"><div class="notification-group-item-title">#2318 — Ревью кода</div><div class="notification-group-item-time">5 дней без обновления</div></div></div>
+                  </div>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Показать задачи <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-read importance-low" data-notif-id="13" data-category="assignment" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--bg-tertiary);color:var(--text-secondary)"><i data-lucide="user-plus" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Назначение</span>
+                    <span class="notification-priority">Информация</span>
+                    <span class="notification-time"><time>24 авг, 15:45</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Вы добавлены как наблюдатель в #2356</h3></div>
+                  <p>Елена Козлова добавила вас как наблюдателя в задачу «Документация API v2».</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть задачу <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+            </div>
+          </div>
+          
+          <!-- ===== РАНЕЕ ===== -->
+          <div class="notification-time-group" data-od-id="group-earlier">
+            <div class="notification-time-group-header"><span>Ранее</span></div>
+            <div class="notification-list">
+              
+              <article class="notification-card is-read importance-low" data-notif-id="14" data-category="system" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--bg-tertiary);color:var(--text-secondary)"><i data-lucide="info" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Система</span>
+                    <span class="notification-priority">Информация</span>
+                    <span class="notification-time"><time>20 авг, 09:00</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Плановые работы 25 августа</h3></div>
+                  <p>25 августа с 02:00 до 04:00 МСК будут проводиться плановые работы.</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Подробнее <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-read importance-low" data-notif-id="15" data-category="assignment" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--bg-tertiary);color:var(--text-secondary)"><i data-lucide="user-plus" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Назначение</span>
+                    <span class="notification-priority">Информация</span>
+                    <span class="notification-time"><time>20 авг, 14:00</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Изменена команда задачи #2287</h3></div>
+                  <p>Задача «Внедрение мониторинга» передана команде «Backend Core».</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть задачу <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-read importance-medium" data-notif-id="16" data-category="discussions" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--info-light);color:var(--info)"><i data-lucide="message-circle" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Обсуждение</span>
+                    <span class="notification-priority">Важно</span>
+                    <span class="notification-time"><time>19 авг, 11:30</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Новый комментарий в #2267</h3></div>
+                  <p>Ольга Смирнова добавила комментарий к задаче «Настроить CI/CD pipeline».</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">К обсуждению <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-read importance-low" data-notif-id="17" data-category="status" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--bg-tertiary);color:var(--text-secondary)"><i data-lucide="refresh-cw" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Статус</span>
+                    <span class="notification-priority">Информация</span>
+                    <span class="notification-time"><time>18 авг, 16:00</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Приоритет задачи #2250 изменён</h3></div>
+                  <p>Приоритет задачи «Обновить зависимости» изменён с «Средний» на «Высокий».</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Открыть задачу <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-resolve-btn" aria-label="Закрыть"><i data-lucide="check" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+              <article class="notification-card is-read importance-low" data-notif-id="18" data-category="system" tabindex="0">
+                <div class="notification-checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+                <div class="notification-card-icon" style="background:var(--bg-tertiary);color:var(--text-secondary)"><i data-lucide="info" aria-hidden="true"></i></div>
+                <div class="notification-card-content">
+                  <div class="notification-card-meta">
+                    <span class="notification-topic">Система</span>
+                    <span class="notification-priority">Информация</span>
+                    <span class="notification-time"><time>15 авг, 10:00</time></span>
+                  </div>
+                  <div class="notification-card-title-row"><h3>Обновление системы v2.4.0</h3></div>
+                  <p>Выпущено обновление системы. Добавлены новые функции экспорта и улучшена производительность.</p>
+                </div>
+                <div class="notification-card-actions">
+                  <button type="button" class="btn btn-primary btn-sm">Подробнее <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+                  <button type="button" class="notification-icon-btn notification-dismiss-btn" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
+                </div>
+              </article>
+              
+            </div>
+          </div>
+          
+        </div>
+        
+        <!-- Empty State -->
+        <div class="notification-empty" id="notification-empty" style="display:none" data-od-id="notification-empty">
+          <div class="notification-empty-icon"><i data-lucide="inbox" aria-hidden="true"></i></div>
+          <h3 id="empty-title">Ничего не найдено</h3>
+          <p id="empty-message">Измените или сбросьте фильтры, чтобы увидеть уведомления.</p>
+          <button type="button" class="btn btn-primary btn-sm" id="empty-reset">Сбросить фильтры</button>
+          <div class="notification-empty-types">
+            <div class="notification-empty-type"><i data-lucide="user-plus" aria-hidden="true"></i><span>Назначения</span></div>
+            <div class="notification-empty-type"><i data-lucide="at-sign" aria-hidden="true"></i><span>Упоминания</span></div>
+            <div class="notification-empty-type"><i data-lucide="clock" aria-hidden="true"></i><span>Сроки</span></div>
+            <div class="notification-empty-type"><i data-lucide="refresh-cw" aria-hidden="true"></i><span>Изменения статусов</span></div>
+            <div class="notification-empty-type"><i data-lucide="message-circle" aria-hidden="true"></i><span>Обсуждения</span></div>
+            <div class="notification-empty-type"><i data-lucide="alert-triangle" aria-hidden="true"></i><span>Риски</span></div>
+          </div>
+        </div>
+        
+        <!-- Batch Bar -->
+        <div class="notification-batch-bar" id="batch-bar" data-od-id="notification-batch">
+          <div class="notification-batch-info"><span id="batch-count">0 выбрано</span></div>
+          <div class="notification-batch-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="batch-read"><i data-lucide="check" aria-hidden="true"></i> Прочитано</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="batch-resolve"><i data-lucide="check-circle" aria-hidden="true"></i> Закрыть</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="batch-dismiss"><i data-lucide="x" aria-hidden="true"></i> Скрыть</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="batch-cancel">Отмена</button>
+          </div>
+        </div>
+        
+      </section>
+    </div>
+  </div>
+  
+  <script>
+    lucide.createIcons();
+    
+    // State
+    const state = {
+      selected: new Set(),
+      view: 'all',
+      category: '',
+      importance: '',
+      search: ''
+    };
+    
+    // Stats cards
+    document.querySelectorAll('[data-stat-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.statView;
+        const wasActive = btn.classList.contains('active');
+        document.querySelectorAll('[data-stat-view]').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        if (!wasActive) {
+          btn.classList.add('active');
+          btn.setAttribute('aria-pressed', 'true');
+          state.view = view;
+        } else {
+          state.view = 'all';
+          document.querySelectorAll('[data-view]').forEach(b => {
+            b.classList.toggle('active', b.dataset.view === 'all');
+            b.setAttribute('aria-pressed', String(b.dataset.view === 'all'));
+          });
+        }
+        filterAll();
+      });
+    });
+    
+    // View switch
+    document.querySelectorAll('[data-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-view]').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+        state.view = btn.dataset.view;
+        document.querySelectorAll('[data-stat-view]').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        filterAll();
+      });
+    });
+    
+    // Category tabs
+    document.querySelectorAll('[data-cat]').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('[data-cat]').forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        state.category = tab.dataset.cat;
+        filterAll();
+      });
+    });
+    
+    // Importance
+    document.getElementById('notification-importance').addEventListener('change', e => {
+      state.importance = e.target.value;
+      filterAll();
+    });
+    
+    // Search
+    let searchTimer;
+    document.getElementById('notification-search').addEventListener('input', e => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.search = e.target.value.trim().toLowerCase();
+        filterAll();
+      }, 300);
+    });
+    
+    // Reset
+    function resetAll() {
+      state.view = 'all';
+      state.category = '';
+      state.importance = '';
+      state.search = '';
+      document.getElementById('notification-search').value = '';
+      document.getElementById('notification-importance').value = '';
+      document.getElementById('notification-sort').value = 'time';
+      document.querySelectorAll('[data-stat-view]').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      document.querySelectorAll('[data-view]').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      document.querySelector('[data-view="all"]').classList.add('active');
+      document.querySelector('[data-view="all"]').setAttribute('aria-pressed', 'true');
+      document.querySelectorAll('[data-cat]').forEach((t, i) => {
+        t.classList.toggle('active', i === 0);
+        t.setAttribute('aria-selected', String(i === 0));
+      });
+      filterAll();
+    }
+    document.getElementById('notification-reset').addEventListener('click', resetAll);
+    document.getElementById('empty-reset').addEventListener('click', resetAll);
+    
+    // Mark all read
+    document.getElementById('mark-all-read').addEventListener('click', () => {
+      document.querySelectorAll('.notification-card.is-unread').forEach(card => {
+        card.classList.remove('is-unread');
+        card.classList.add('is-read');
+        const dot = card.querySelector('.notification-unread-dot');
+        if (dot) dot.remove();
+      });
+      document.getElementById('notif-stat-unread').textContent = '0';
+    });
+    
+    // Group accordion
+    document.querySelectorAll('.notification-group-count').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const groupId = btn.dataset.groupId;
+        const expanded = document.getElementById('group-' + groupId);
+        const isOpen = expanded.classList.toggle('show');
+        btn.setAttribute('aria-expanded', String(isOpen));
+      });
+    });
+    
+    // Checkboxes
+    document.querySelectorAll('.notification-checkbox').forEach(cb => {
+      cb.addEventListener('click', e => {
+        e.stopPropagation();
+        const card = cb.closest('.notification-card');
+        const id = card.dataset.notifId;
+        if (cb.classList.contains('checked')) {
+          cb.classList.remove('checked');
+          cb.setAttribute('aria-checked', 'false');
+          state.selected.delete(id);
+        } else {
+          cb.classList.add('checked');
+          cb.setAttribute('aria-checked', 'true');
+          state.selected.add(id);
+        }
+        updateBatchBar();
+      });
+      cb.addEventListener('keydown', e => {
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); cb.click(); }
+      });
+    });
+    
+    // Batch bar
+    function updateBatchBar() {
+      const bar = document.getElementById('batch-bar');
+      const count = document.getElementById('batch-count');
+      if (state.selected.size > 0) {
+        bar.classList.add('show');
+        count.textContent = state.selected.size + ' выбрано';
+      } else {
+        bar.classList.remove('show');
+      }
+    }
+    
+    function clearSelection() {
+      state.selected.clear();
+      updateBatchBar();
+      document.querySelectorAll('.notification-checkbox.checked').forEach(cb => {
+        cb.classList.remove('checked');
+        cb.setAttribute('aria-checked', 'false');
+      });
+    }
+    
+    document.getElementById('batch-read').addEventListener('click', () => {
+      state.selected.forEach(id => {
+        const card = document.querySelector('[data-notif-id="' + id + '"]');
+        if (card) {
+          card.classList.remove('is-unread');
+          card.classList.add('is-read');
+          const dot = card.querySelector('.notification-unread-dot');
+          if (dot) dot.remove();
+        }
+      });
+      clearSelection();
+    });
+    
+    document.getElementById('batch-resolve').addEventListener('click', () => {
+      state.selected.forEach(id => {
+        const card = document.querySelector('[data-notif-id="' + id + '"]');
+        if (card) card.classList.add('is-resolved');
+      });
+      clearSelection();
+    });
+    
+    document.getElementById('batch-dismiss').addEventListener('click', () => {
+      state.selected.forEach(id => {
+        const card = document.querySelector('[data-notif-id="' + id + '"]');
+        if (card) card.style.display = 'none';
+      });
+      clearSelection();
+    });
+    
+    document.getElementById('batch-cancel').addEventListener('click', clearSelection);
+    
+    // Individual actions
+    document.querySelectorAll('.notification-resolve-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const card = btn.closest('.notification-card');
+        card.classList.add('is-resolved');
+        card.classList.remove('is-unread');
+        const dot = card.querySelector('.notification-unread-dot');
+        if (dot) dot.remove();
+      });
+    });
+    
+    document.querySelectorAll('.notification-dismiss-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        btn.closest('.notification-card').style.display = 'none';
+      });
+    });
+    
+    // Filter
+    function filterAll() {
+      const cards = document.querySelectorAll('.notification-card');
+      let visible = 0;
+      
+      cards.forEach(card => {
+        let show = true;
+        
+        if (state.view === 'resolved' && !card.classList.contains('is-resolved')) show = false;
+        else if (state.view === 'action') {
+          if (!card.classList.contains('importance-critical') && !card.classList.contains('importance-high')) show = false;
+          if (card.classList.contains('is-resolved')) show = false;
+        }
+        else if (state.view === 'unread' && !card.classList.contains('is-unread')) show = false;
+        else if (state.view === 'today') {
+          const group = card.closest('.notification-time-group');
+          if (!group || group.dataset.odId !== 'group-today') show = false;
+        }
+        
+        if (state.category && card.dataset.category !== state.category) show = false;
+        
+        if (state.importance) {
+          const imp = card.classList.contains('importance-critical') ? 'critical' :
+                      card.classList.contains('importance-high') ? 'high' :
+                      card.classList.contains('importance-medium') ? 'medium' : 'low';
+          if (imp !== state.importance) show = false;
+        }
+        
+        if (state.search) {
+          const text = card.textContent.toLowerCase();
+          if (!text.includes(state.search)) show = false;
+        }
+        
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      
+      document.querySelectorAll('.notification-time-group').forEach(group => {
+        const vc = group.querySelectorAll('.notification-card:not([style*="display: none"])');
+        group.style.display = vc.length > 0 ? '' : 'none';
+      });
+      
+      document.getElementById('notification-results-count').textContent = visible + ' ' + plural(visible, 'уведомление', 'уведомления', 'уведомлений');
+      
+      const empty = document.getElementById('notification-empty');
+      if (visible === 0) {
+        empty.style.display = 'flex';
+        const hasFilters = state.category || state.importance || state.search || state.view !== 'all';
+        document.getElementById('empty-title').textContent = hasFilters ? 'Ничего не найдено' : 'У вас пока нет уведомлений';
+        document.getElementById('empty-message').textContent = hasFilters ? 'Измените или сбросьте фильтры.' : 'Здесь появятся назначения, упоминания, сроки и изменения статусов задач из вашей зоны ответственности.';
+        document.getElementById('empty-reset').style.display = hasFilters ? '' : 'none';
+      } else {
+        empty.style.display = 'none';
+      }
+    }
+    
+    function plural(n, one, few, many) {
+      const m100 = n % 100, m10 = n % 10;
+      if (m100 >= 11 && m100 <= 19) return many;
+      if (m10 === 1) return one;
+      if (m10 >= 2 && m10 <= 4) return few;
+      return many;
+    }
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+      
+      const focused = document.activeElement;
+      const card = focused?.closest('.notification-card');
+      
+      if (e.key === 'j' || e.key === 'k') {
+        e.preventDefault();
+        const cards = Array.from(document.querySelectorAll('.notification-card:not([style*="display: none"])'));
+        const idx = card ? cards.indexOf(card) : -1;
+        const next = e.key === 'j' ? idx + 1 : idx - 1;
+        if (next >= 0 && next < cards.length) cards[next].focus();
+      }
+      
+      if (e.key === 'r' && card) {
+        const btn = card.querySelector('.notification-resolve-btn');
+        if (btn) btn.click();
+      }
+      
+      if (e.key === 'd' && card) {
+        const btn = card.querySelector('.notification-dismiss-btn');
+        if (btn) btn.click();
+      }
+      
+      if (e.key === ' ' && focused?.classList.contains('notification-checkbox')) {
+        e.preventDefault();
+        focused.click();
+      }
+    });
+  </script>
+</body>
+</html>

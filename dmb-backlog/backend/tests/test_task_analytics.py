@@ -1,12 +1,28 @@
 from datetime import date
+from types import SimpleNamespace
 
 from models import Deadline, Department, Role, Task, TaskType, Team, User
 from services.task_analytics import (
+    _period_catalog,
     get_lt_reports,
     get_po_pl_reports,
     get_tribe_dashboard,
 )
 from services.task_metrics import calculate_cost_value_ratio
+
+
+def test_period_catalog_is_chronological_and_keeps_current_period_active():
+    tasks = [
+        SimpleNamespace(deadline=SimpleNamespace(code=code))
+        for code in ("Q4_2025", "Q1_2026", "Q3_2026", "Q4_2026", "Y2026")
+    ]
+
+    periods, _, _, active = _period_catalog(tasks, date(2026, 8, 15))
+
+    assert periods == [
+        "q4_2025", "y2025", "q1_2026", "q3_2026", "q4_2026", "ytd_2026", "y2026",
+    ]
+    assert active == "q3_2026"
 
 
 def test_lt_analytics_excludes_it_lt_as_owner_and_involved_team(db):
@@ -78,6 +94,8 @@ def test_lt_analytics_excludes_it_lt_as_owner_and_involved_team(db):
 
     po_pl = get_po_pl_reports(db=db, current_user=user)
     assert [task["title"] for task in po_pl["tasks"]] == ["Visible task"]
+    assert po_pl["active_period"] == period
+    assert {item["id"] for item in po_pl["periods"]} >= {period}
 
 
 def test_lt_reports_expose_periods_department_and_cost_value_ratio(db):

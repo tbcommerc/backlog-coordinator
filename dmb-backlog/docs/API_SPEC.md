@@ -1,8 +1,8 @@
 ---
-title: API DMB Backlog
+title: API Backlog coordinator
 scope: as-is
 status: verified-index
-last_verified: 2026-09-01
+last_verified: 2026-09-03
 source_of_truth:
   - FastAPI app.routes
   - /openapi.json
@@ -13,7 +13,7 @@ evidence:
   - backend/tests/test_route_uniqueness.py
 ---
 
-# API DMB Backlog
+# API Backlog coordinator
 
 Машиночитаемый источник фактического контракта — OpenAPI, который создаёт запущенное приложение:
 
@@ -22,6 +22,10 @@ evidence:
 - базовый префикс прикладного API: `/api/v1`.
 
 Этот файл служит навигатором и фиксирует сквозные правила. Он намеренно не копирует вручную все request/response поля: такое дублирование уже привело к расхождению старой спецификации с кодом.
+
+Для `TaskResponse` поле `progress` всегда выдаётся целым числом от 0 до 100.
+Унаследованные записи БД с `NULL` нормализуются в `0` на границе API, поэтому
+одна такая запись не прерывает выдачу всего списка задач.
 
 ## Проверенный реестр
 
@@ -34,7 +38,7 @@ evidence:
 | `/api/v1/teams` | 8 | `teams_router.py` |
 | `/api/v1/users` | 5 | `users_router.py` |
 | `/api/v1/reports` | 8 | `reports_router.py` |
-| `/api/v1/reporting-meetings` | 6 | `reporting_meetings_router.py` |
+| `/api/v1/reporting-meetings` | 7 | `reporting_meetings_router.py` |
 | `/api/v1/admin` | 85 | `admin_router.py` |
 | `/api/v1/customer` | 1 | `customer_router.py` |
 | `/api/v1/quick-estimate` | 13 | `express_router.py` |
@@ -51,6 +55,7 @@ evidence:
 ### Reporting meetings
 
 - `GET /reporting-meetings` — календарь, состояния и полнота заполнения; поддерживает фильтры `kind`, `state`, `date_from`, `date_to` и признак доступности подготовки;
+- `POST /reporting-meetings` — добавить новый будущий экземпляр встречи; требуется `admin=full`, дата директорской должна приходиться на понедельник, ДИД — на вторник;
 - `GET /reporting-meetings/{id}/history` — полная история действий с датами, причиной и автором;
 - `GET /reporting-meetings/{id}/preparation` — read-only срез статусов и журнал их версий для проектного офиса; требуется `admin=full`;
 - `POST /reporting-meetings/{id}/schedule` — назначить дату или перенести встречу;
@@ -84,20 +89,26 @@ Login возвращает access-токен и устанавливает refre
 - comments и attachments;
 - analytics и отчёты по задачам.
 
+Ответ `GET /api/v1/tasks/analytics/po-pl-reports` содержит каталог `periods`,
+идентификатор `active_period` и `period_ids` каждой задачи для клиентской
+фильтрации отчётов по сроку.
+
 Объектная авторизация находится в `backend/auth.py`. Форматы задач — в `backend/schemas.py` и OpenAPI.
 
 Расчёты из карточки задачи:
 
 - `POST /tasks/{id}/prioritiser/value` — рассчитать финансовый эффект;
-- `POST /tasks/{id}/prioritiser/priority` — рассчитать приоритет и, когда ручной
-  эффект отсутствует, сохранить также рассчитанный AI-эффект.
+- `POST /tasks/{id}/prioritiser/priority` — рассчитать и сохранить приоритет;
 
-Оба endpoint принимают `{ "version": <текущая версия задачи> }`, используют те
-же права, блокировки и optimistic locking, что и обычное редактирование, и
-возвращают обновлённую задачу. Финансовый результат записывается в
-`financial_effect_ai` и `financial_effect_ai_justification`, приоритет — в
-`priority_score` (шкала 0–100) и `priority_justification`. Недостаточные входные
-данные возвращаются как `422`, недоступность внешнего сервиса — как `502`.
+Оба endpoint принимают `{ "version": <текущая версия задачи> }` и используют те
+же права, блокировки и optimistic locking, что и обычное редактирование. Value
+возвращается как предложение и записывается в основные поля только отдельным
+`POST /tasks/{id}/prioritiser/value/approve`. Приоритет записывается в
+`priority_score` (шкала 0–100) и `priority_justification` только специализированным
+endpoint prioritiser. Обычные create/PATCH задачи не принимают legacy-поля
+`financial_effect_ai*` и agent-managed поля приоритета. Карточка не использует
+старые AI-поля как fallback. Недостаточные входные данные возвращаются как `422`,
+недоступность сервиса или нарушение им контракта — как `502`.
 Создание комментария принимает необязательный `client_request_id`. Upload
 вложения принимает его как multipart form field, удаление вложения — как query
 parameter. Повтор с тем же ключом и payload возвращает исходный результат без
@@ -110,6 +121,10 @@ parameter. Повтор с тем же ключом и payload возвраща�
 ### Reports
 
 Поддерживаются registry/CRUD отчётов, выполнение сохранённого отчёта и специализированные directorate/DID operational reports.
+Directorate report выбирает доступные пользователю задачи текущего квартала с
+непустым статусом ближайшей незавершённой директорской встречи. Источником текста
+служит `TaskReportingStatus`, а не legacy-поле задачи. В IV квартале к сроку `4Q`
+добавляется годовой срок `Y<год>`; задачи I–III кварталов в эту выборку не входят.
 `POST` принимает необязательный `client_request_id`; `PUT` требует `version` и
 также поддерживает idempotency key; `DELETE` требует query `version` и принимает
 query `client_request_id`. Конфликт конкурентного изменения возвращает `409` с
@@ -240,3 +255,26 @@ backend workers. Повтор того же ключа и payload не повт�
 5. обновить профильный документ (`IMPORT_SPEC.md`, `error-codes.md` и т. п.), если его поведение затронуто.
 
 Историческая ручная спецификация сохранена в `archive/legacy/API_SPEC_STALE_MANUAL.md`; она не является источником текущего контракта.
+
+
+## Бэклог для бизнес-заказчиков ДИД — проверено 04.09.2026
+
+Все пути ниже имеют префикс `/api/v1` и требуют внутреннего пользователя с доступом к отчётам.
+
+| Метод | Путь | Назначение |
+|---|---|---|
+| GET | `/reports/did-backlog?quarter=3Q%202026` | Девять атрибутов, ID, признаки пробелов и сводка |
+| GET | `/reports/did-backlog/quarters` | Доступные кварталы и текущий квартал |
+| GET / PUT / DELETE | `/reports/did-backlog/preferences` | Прочитать, сохранить, сбросить свои настройки |
+| POST | `/reports/did-backlog/export/xlsx` | XLSX: имя файла и base64-содержимое |
+| POST | `/reports/did-backlog/export/pdf` | HTML для стандартного диалога печати |
+| GET / POST | `/admin/customer-references/{kind}` | Список / создание справочной записи, `admin=full` |
+| PUT | `/admin/customer-references/{kind}/{id}` | Изменение с проверкой исходного снимка `expected`, `admin=full` |
+
+`kind`: `did-client-groups`. Контактное лицо берётся из существующего `/admin/business-customers`; отдельный endpoint справочника контактов не создаётся. Настройки и экспорт принимают
+`quarter`, `filters`, `sortField`, `sortDir`, `widths`; экспорт дополнительно принимает
+`ordered_ids` видимых задач. `user_id` в команде запрещён. Экспорт проверяет одновременно
+`user.can_export` и `role.can_export`; видимость задач ограничивается общей task-policy.
+При изменении состава выборки перед экспортом возвращается 409. Новый nullable FK `did_client_group_id` задачи
+включён в создание, PATCH, массовое изменение, ответы и `/tasks/reference`.
+Полный контракт поведения и ограничение применения миграции — [отчёт ДИД](DID_BACKLOG_REPORT.md).

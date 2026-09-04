@@ -19,6 +19,15 @@ const reviewPage = readFileSync(new URL('../js/components/reviewPage.js', import
 const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
 const eventStream = readFileSync(new URL('../js/eventStream.js', import.meta.url), 'utf8');
 
+assert.match(taskTable, /renderTasksTableStateMarkup\(\{ kind: 'loading', title: 'Загружаем задачи…' \}\)/, 'DMB backlog must render loading inside the table shell');
+assert.match(taskTable, /<tbody id="tasks-tbody" aria-live="polite">[\s\S]*renderViewState\(state\)/, 'DMB backlog state must stay inside tbody');
+assert.match(taskTable, /class="table-view-state-cell"[\s\S]*fitTableViewState\(container\)/, 'DMB backlog states must be centered in the visible table viewport');
+assert.match(taskTable, /renderTasksTableState\(\{[\s\S]*kind: 'error'/, 'DMB backlog error must preserve the table shell');
+assert.match(teamBacklog, /renderTeamTableStateMarkup\(\{ kind: 'loading', title: 'Загружаем задачи команды…' \}\)/, 'team backlog must render loading inside the table shell');
+assert.match(teamBacklog, /<tbody id="team-tasks-tbody" aria-live="polite">[\s\S]*renderViewState\(state\)/, 'team backlog state must stay inside tbody');
+assert.match(teamBacklog, /class="table-view-state-cell"[\s\S]*fitTableViewState\(container\)/, 'team backlog states must be centered in the visible table viewport');
+assert.match(teamBacklog, /renderTeamTableState\(\{[\s\S]*kind: 'error'/, 'team backlog error must preserve the table shell');
+
 assert.match(modal, /isTaskDateInFuture\(receivedAt\)/);
 assert.match(modal, /function normalizedTaskStatus\(value\)/);
 assert.match(modal, /status === 'ВЫПОЛНЕНА' && progress !== 100/);
@@ -225,7 +234,10 @@ assert.match(modal, /payload\.client_request_id = _pendingCommentSubmission\.id/
 assert.match(modal, /api\.upload\(`\/tasks\/\$\{taskId\}\/attachments`, file, \{ client_request_id: clientRequestId \}\)/);
 
 assert.match(taskTable, /import \{ escapeHtml \} from '\.\.\/htmlUtils\.js';/);
-assert.match(taskTable, /escapeHtml\(task\.title\)/);
+assert.match(taskTable, /highlightSearchText\(value, getToolbarSearchValue\('backlog'\)\)/);
+assert.match(taskTable, /case 'title': return `<strong class="cell-truncate">\$\{highlight\(task\.title\)\}/);
+assert.match(filterToolbar, /list = list\.filter\(t =>[\s\S]*String\(t\.id\)\.includes\(q\)[\s\S]*formatTaskPublicId\(t\)[\s\S]*t\.title[\s\S]*t\.description/);
+assert.doesNotMatch(filterToolbar, /t\.project\.toLowerCase\(\)\.includes\(q\)|t\.owner\.toLowerCase\(\)\.includes\(q\)|t\.team_name\.toLowerCase\(\)\.includes\(q\)|t\.status\.toLowerCase\(\)\.includes\(q\)|t\.business_customer_name\.toLowerCase\(\)\.includes\(q\)/);
 assert.match(modal, /type="range" min="0" max="100" step="5"[^>]*data-k="progress"/);
 assert.match(modal, /Math\.round\(v \/ 5\) \* 5/);
 assert.match(modal, /Все несохранённые изменения будут потеряны/);
@@ -411,15 +423,19 @@ assert.match(tableUtils, /const COLUMN_BASE = \{[\s\S]*actual_effort_days:\s*105
 assert.match(tableUtils, /const labelW = th\.querySelector\('\.th-label'\)\?\.scrollWidth[\s\S]*labelW \+ iconW \+ 46/, 'automatic widths must use the intrinsic header label width instead of the stretched header width');
 assert.match(tableUtils, /const maxCell = Math\.max[\s\S]*w = Math\.max\(w, maxCell\)/, 'automatic widths must still account for sampled one-line cell content');
 assert.match(tableUtils, /autoCols\.forEach\(key => \{[\s\S]*COLUMN_MAX\[key\][\s\S]*widths\[key\] = Math\.min/, 'persisted automatic widths must be clamped to the audited range');
-assert.doesNotMatch(tableUtils, /extraPer|free\) \/ autoCols\.length/, 'audited column widths must not be expanded with leftover container space');
-assert.match(tableUtils, /col\.style\.width = \(fixed\[key\] \|\| widths\[key\] \|\| COLUMN_BASE\[key\][\s\S]*table\.style\.width = Math\.ceil\(prefixSum \+ fixedSum \+ baseSumAuto\)/, 'table and colgroup must use the exact audited widths');
+assert.match(tableUtils, /containerWidth = table\.parentElement\?\.clientWidth[\s\S]*extraWidth = autoCols\.length > 0[\s\S]*extraWidth \* \(\(widths\[key\] \|\| 0\) \/ baseSumAuto\)/, 'wide backlog tables must distribute free container width across automatic columns');
+assert.match(tableUtils, /new ResizeObserver\(\(\) => applyColumnWidths\(table, cols, widths, opts\)\)[\s\S]*observer\.observe\(table\.parentElement\)/, 'backlog table widths must follow container resizing');
+assert.match(tableUtils, /table\.style\.width = Math\.ceil\(intrinsicWidth \+ extraWidth\)/, 'table width must preserve horizontal overflow only when intrinsic columns exceed the container');
 assert.match(filterToolbar, /tableOriginLeft = tableRect\.left \+ scrollLeft[\s\S]*visibleWidth = Math\.max\(0, containerRect\.right - tableOriginLeft\)[\s\S]*style\.left = tableOriginLeft/, 'sticky header wrapper must preserve the source table fractional origin and include the right border');
 assert.match(filterToolbar, /stickyOverlap = 1[\s\S]*style\.top = \(offsetTop - stickyOverlap\)[\s\S]*style\.height = \(theadHeight \+ stickyOverlap\)/, 'sticky header must overlap the toolbar edge so scrolling rows cannot show through a fractional gap');
 assert.doesNotMatch(filterToolbar, /containerRect\.left \+ container\.clientLeft/, 'sticky header alignment must not round the source table origin through clientLeft');
 assert.match(filterToolbar, /observedScrollContainer\?\.removeEventListener\('scroll', scrollHandler\)[\s\S]*observedMainContent\?\.removeEventListener\('scroll', scrollHandler\)/, 'sticky header reinitialization must remove scroll handlers from previous elements');
 assert.match(filterToolbar, /observedScrollContainer = container;[\s\S]*observedMainContent = mainContent;/, 'sticky header must retain the exact scroll listener targets for cleanup');
 assert.match(componentsCss, /#quick-filters\s*\{[\s\S]*display:\s*grid[\s\S]*grid-template-columns:\s*repeat\(4, minmax\(0, 210px\)\)[\s\S]*justify-content:\s*space-between[\s\S]*overflow:\s*visible/, 'desktop quick filters must use the same fixed-width 4 by 2 grid on backlog pages');
-assert.doesNotMatch(quickFilters, /getBoundingClientRect\(\)\.width|--quick-filter-item-width/, 'quick-filter width must not depend on page-specific content measurements');
+assert.match(componentsCss, /#quick-filters\.quick-filters-single-row\s*\{[\s\S]*grid-template-columns:\s*repeat\(8, minmax\(0, 1fr\)\)/, 'all eight quick filters must have equal widths in the single-row layout');
+assert.match(quickFilters, /widestButton \* buttons\.length \+ columnGap \* Math\.max\(0, buttons\.length - 1\)[\s\S]*requiredEqualWidth <= panel\.clientWidth \+ 1[\s\S]*classList\.toggle\('quick-filters-single-row', fitsWithoutClipping\)/, 'single-row quick filters must fit eight copies of the widest unclipped button');
+assert.match(quickFilters, /new ResizeObserver\(scheduleUpdate\)[\s\S]*observe\(shell\)/, 'quick-filter layout must react to its own available width');
+assert.doesNotMatch(quickFilters, /--quick-filter-item-width/, 'quick-filter equal widths must be owned by the grid rather than persisted as page-specific CSS state');
 assert.match(componentsCss, /\.quick-filter-btn\s*\{[\s\S]*height:\s*36px[\s\S]*width:\s*100%[\s\S]*min-width:\s*0/, 'quick-filter buttons must have equal grid dimensions');
 assert.match(componentsCss, /\.quick-filter-info\s*\{[\s\S]*flex-direction:\s*row[\s\S]*justify-content:\s*space-between[\s\S]*flex:\s*1/, 'quick-filter content must span the button so counts align to the form edge');
 assert.match(componentsCss, /\.quick-filter-count\s*\{[\s\S]*margin-left:\s*auto[\s\S]*height:\s*20px[\s\S]*border-radius:\s*var\(--radius-full\)/, 'quick-filter count must align to the button edge and render as a compact badge');

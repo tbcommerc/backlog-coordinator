@@ -1,13 +1,13 @@
-# Локальный запуск DMB Platform
+# Локальный запуск Backlog coordinator
 
 > AS-IS проверено по `scripts/start-project.ps1`, status/stop scripts и
-> `compose.yaml` 01.09.2026.
+> `compose.yaml` 02.09.2026.
 
 ## Что запускается
 
 Единый сценарий поднимает полный локальный контур:
 
-- PostgreSQL 16 для DMB Backlog на `127.0.0.1:5432/dmb_backlog`;
+- PostgreSQL 16 для Backlog coordinator на `127.0.0.1:5432/dmb_backlog`;
 - отдельную PostgreSQL-базу сессий AI-агента `agent_sessions`;
 - Redis на `127.0.0.1:6379`;
 - Alembic-миграции основной схемы;
@@ -39,7 +39,7 @@ powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 3. запускает Docker-контейнеры и ждёт их health-check;
 4. создаёт основное Python-окружение `.venv` и изолированное окружение `.venv-prioritiser`, затем устанавливает зависимости;
 5. выполняет `alembic upgrade head`;
-6. запускает AI-агента, агент приоритизации и DMB Backlog в скрытых фоновых процессах;
+6. запускает AI-агента, агент приоритизации и Backlog coordinator в скрытых фоновых процессах;
 7. проверяет все HTTP health endpoint.
 
 Первичная установка зависимостей агента приоритизации занимает больше времени:
@@ -50,6 +50,8 @@ powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 едином запуске синхронизируются из `agent/.env`. Поэтому оба агента используют
 одни и те же `LLM_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_BASE_URL` и
 `OPENAI_MODEL`; отдельная настройка ключа приоритизатора не требуется.
+`LLM_PROVIDER` обязателен; значение `mock` отклоняется полным стартовым
+сценарием и остаётся доступным только изолированным тестам.
 
 Повторный запуск использует существующие Docker volumes и не переустанавливает
 зависимости, пока не изменятся файлы `requirements.txt`.

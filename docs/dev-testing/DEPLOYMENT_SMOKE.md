@@ -1,5 +1,5 @@
 ---
-title: Deployment smoke DMB Platform на DEV
+title: Deployment smoke Backlog coordinator на DEV
 scope: target-dev-testing
 status: ready-for-first-run
 last_updated: 2026-09-01

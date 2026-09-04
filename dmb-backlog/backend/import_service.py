@@ -22,7 +22,7 @@ from services.task_metrics import calculate_cost_value_ratio
 from models import (
     Task, Team, Channel, BusinessCustomer, Department, Project, TaskType,
     Priority, Deadline, TaskStatus, User, TaskHistory, TaskJiraLink,
-    FieldLabel,
+    FieldLabel, DidClientGroup,
 )
 
 # Импортируемые поля (белый список)
@@ -30,7 +30,7 @@ IMPORTABLE_FIELDS = [
     'title', 'team_id', 'description', 'date_received',
     'channel_id', 'business_customer_id', 'department_id', 'project_id',
     'task_type_id', 'involved_teams', 'priority_id', 'status_id',
-    'deadline_id',
+    'deadline_id', 'did_client_group_id',
     'effort_days', 'effort_rub', 'effort_designee', 'effort_analytics', 'effort_be',
     'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery',
     'actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics',
@@ -142,6 +142,12 @@ def build_field_map(db: Session) -> tuple:
     labels = db.query(FieldLabel).all()
     db_key_to_label = {fl.key: fl.label for fl in labels}
     field_map = {}
+    for key, label in [('did_client_group_id', 'Клиент ДИД'), ('business_customer_id', 'Бизнес-заказчик')]:
+        field_map[_norm(key)] = key
+        field_map[_norm(label)] = key
+        db_key_to_label[key] = label
+    field_map[_norm('Группировка для клиентов ДИД')] = 'did_client_group_id'
+
 
     for fl in labels:
         if fl.key in IMPORTABLE_SET:
@@ -177,6 +183,11 @@ def load_reference_indexes(db: Session) -> Dict[str, dict]:
     refs['teams'] = _index_from(db.query(Team).all(), 'name', 'abbr')
     refs['channels'] = _index_from(db.query(Channel).all(), 'name', 'code')
     refs['business_customers'] = _index_from(db.query(BusinessCustomer).all(), 'name')
+    refs['did_client_groups'] = _index_from(db.query(DidClientGroup).filter_by(is_active=True).all(), 'name', 'code')
+    contacts = db.query(BusinessCustomer).all()
+    refs['contacts_by_name'] = {}
+    for contact in contacts:
+        refs['contacts_by_name'].setdefault(_norm(contact.name), []).append((contact.id, contact.department_id))
     refs['departments'] = _index_from(db.query(Department).all(), 'name', 'code')
     refs['projects'] = _index_from(db.query(Project).all(), 'name', 'code')
     refs['task_types'] = _index_from(db.query(TaskType).all(), 'name', 'code')
@@ -299,6 +310,22 @@ def process_row(row_num: int, raw: dict, field_map: dict, db_key_to_label: dict,
                 ))
             else:
                 task_data[key] = uid
+            continue
+
+        if key in {'did_client_group_id', 'business_customer_id'}:
+            index = refs['did_client_groups' if key == 'did_client_group_id' else 'business_customers']
+            rid = _lookup(index, value)
+            if key == 'business_customer_id' and 'contacts_by_name' in refs:
+                matches = refs['contacts_by_name'].get(_norm(value), [])
+                department_value = next((v for h, v in raw.items() if field_map.get(_norm(h)) == 'department_id'), None)
+                department_id = _lookup(refs['departments'], department_value)
+                preferred = [item for item in matches if department_id is not None and item[1] == department_id]
+                candidates = preferred or matches
+                rid = candidates[0][0] if len(candidates) == 1 else None
+            if rid is None:
+                errors.append(make_error(row_num, key, db_key_to_label, value, 'customer_reference_not_found',
+                    f'Значение «{value}» не найдено; поле оставлено незаполненным', fatal=False))
+            task_data[key] = rid
             continue
 
         ref = REFERENCE_BY_KEY.get(key)

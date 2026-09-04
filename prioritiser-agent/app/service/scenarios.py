@@ -131,14 +131,13 @@ def build_task(attrs: TaskAttributes, refs: ReferenceBundle) -> Task:
 # --- преобразование результатов ядра в контракт -------------------------------
 
 
-# Происхождение вводной в терминах ядра → в терминах контракта. `typical` и
-# `llm` оба становятся `assumption`: и типовое значение справочника, и догадка
-# модели — предположения, а не измеренные величины, и уверенность они понижают
+# Происхождение вводной в терминах ядра → в терминах контракта. Число от
+# модели становится `assumption`: оно не является измеренной величиной и
+# понижает уверенность.
 # одинаково.
 _ORIGIN_MAP = {
     "attribute": "attribute",
     "constant": "reference",
-    "typical": "assumption",
     "llm": "assumption",
 }
 
@@ -354,7 +353,8 @@ def _explanation(core, methods, divergence, horizon, value_range) -> str:
             f"\nДиапазон ({value_range.coverage:.0%} вероятности): {value_range.text}."
         )
     if value_range is None:
-        text += "\nЗначение точное, диапазона у него нет."
+        if core.value_internal_mln is not None:
+            text += "\nЗначение точное, диапазона у него нет."
     elif not value_range.calibrated:
         text += (
             "\nМножители диапазона унаследованы от более широкого уровня "

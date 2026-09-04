@@ -1,6 +1,6 @@
-# DMB Platform
+# Backlog coordinator
 
-Платформа управления бэклогом задач и AI-ассистент для сбора бизнес-требований банковского подразделения DMB (Digital & Mobile Banking).
+Платформа управления бэклогом задач и AI-ассистент для сбора бизнес-требований банковского подразделения DMB (Digital Merchant Banking).
 
 ## Структура
 
@@ -33,11 +33,11 @@ powershell -ExecutionPolicy Bypass -File scripts/project-status.ps1
 powershell -ExecutionPolicy Bypass -File scripts/stop-project.ps1
 ```
 
-Локально `LLM_PROVIDER=mock` допустим для health-check и детерминированных
-тестов; полноценному агентному диалогу нужен доступный LLM. Для
-реального OpenAI-compatible endpoint заполните `agent/.env` по
-`agent/.env.example`; стартовый сценарий передаст те же параметры
-prioritiser.
+Полный локальный запуск требует доступный реальный LLM. `LLM_PROVIDER=mock`
+используется только изолированными тестами и отклоняется стартовым сценарием,
+чтобы UI не выдавал тестовые данные за ответ агента. Настройте
+OpenAI-compatible endpoint в `agent/.env` по `agent/.env.example`; стартовый
+сценарий передаст те же параметры prioritiser.
 
 Отдельные команды запуска сервисов в их README предназначены для диагностики.
 Полная инструкция и требования Docker находятся в
@@ -46,7 +46,7 @@ prioritiser.
 ## Документация
 
 - [Agent README](agent/README.md) — API, архитектура, структура
-- [DMB Backlog README](dmb-backlog/README.md) — полная документация Backend + Frontend
+- [Backlog coordinator README](dmb-backlog/README.md) — полная документация Backend + Frontend
 - [Карта документации](docs/index.md) — актуальные документы и источники истины
 - [Task Prioritiser README](prioritiser-agent/README.md) — методика, API и агентный слой
 - [Prioritiser upstream](prioritiser-agent/UPSTREAM.md) — источник и версия интегрированного агента

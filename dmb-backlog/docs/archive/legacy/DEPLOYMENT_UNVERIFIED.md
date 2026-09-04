@@ -1,4 +1,4 @@
-# Развертывание DMB Backlog
+# Развертывание Backlog coordinator
 
 **Версия:** 1.0  
 **Дата:** 2026-06-29
@@ -40,7 +40,7 @@
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Нет | `60` | Время жизни access token (минуты) |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Нет | `7` | Время жизни refresh token (дни) |
 | `CORS_ORIGINS` | Да | `["http://localhost:5500","http://127.0.0.1:5500","http://localhost:8080"]` | Разрешённые CORS-источники (JSON-массив) |
-| `APP_NAME` | Нет | `DMB Backlog` | Название приложения |
+| `APP_NAME` | Нет | `Backlog coordinator` | Название приложения |
 | `APP_VERSION` | Нет | `1.0.0` | Версия приложения |
 | `DEBUG` | Нет | `True` | Режим отладки (выключить в production) |
 
@@ -112,7 +112,7 @@ cp .env.example .env
 # 4. Запуск через systemd
 sudo tee /etc/systemd/system/dmb-backlog.service << EOF
 [Unit]
-Description=DMB Backlog API
+Description=Backlog coordinator API
 After=network.target
 
 [Service]

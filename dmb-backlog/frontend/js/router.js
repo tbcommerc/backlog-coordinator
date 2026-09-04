@@ -1,10 +1,10 @@
 import { renderDashboard, initDashboard } from './components/dashboard.js';
-import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=105';
-import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=104';
+import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=115';
+import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=114';
 import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js';
 import { renderKanban, initKanban } from './components/kanbanBoard.js?v=4';
-import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=4';
-import { renderAnalytics, initAnalytics } from './components/analytics.js?v=4';
+import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=6';
+import { renderAnalytics, initAnalytics } from './components/analytics.js?v=18';
 import { renderNotifications, initNotifications } from './components/notifications.js?v=9';
 import { renderSettings, initSettings } from './components/settings.js';
 import { renderAdmin, initAdmin } from './components/admin.js';

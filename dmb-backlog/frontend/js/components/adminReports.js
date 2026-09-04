@@ -56,7 +56,7 @@ const REPORT_SORT_FIELDS = [
   { value: 'created_at', label: 'По дате создания' },
 ];
 
-export const scriptManagedReportKeys = ['directorate', 'did-operational', 'pip', 'progress'];
+export const scriptManagedReportKeys = ['directorate', 'did-operational', 'pip', 'progress', 'did-backlog'];
 const BOOLEAN_REPORT_FIELDS = ['did_demo'];
 const NUMBER_REPORT_FIELDS = new Set(['id','progress','effort_days','effort_rub','financial_effect','cv','priority_score']);
 const DATE_REPORT_FIELDS = new Set(['date_received','created_at','updated_at']);

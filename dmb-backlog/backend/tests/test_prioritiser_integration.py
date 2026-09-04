@@ -1,7 +1,11 @@
 from datetime import date
 from types import SimpleNamespace
 
+import pytest
+from pydantic import ValidationError
+
 from routers import prioritiser_router
+from schemas import PrioritiserTaskUpdate, TaskCreate, TaskUpdate
 
 
 class _Query:
@@ -57,6 +61,79 @@ def test_task_payload_matches_prioritiser_contract():
         "business_customer": "Иван Иванов",
         "value_internal_mln": None,
     }
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("financial_effect_ai", 42.5),
+        ("financial_effect_ai_justification", "заглушка"),
+        ("priority_score", 68),
+        ("priority_justification", "не ответ агента"),
+    ],
+)
+def test_generic_task_update_rejects_agent_managed_fields(field, value):
+    with pytest.raises(ValidationError):
+        TaskUpdate(version=1, **{field: value})
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("financial_effect_ai", 42.5),
+        ("financial_effect_ai_justification", "заглушка"),
+        ("priority_score", 68),
+        ("priority_justification", "не ответ агента"),
+    ],
+)
+def test_task_create_rejects_agent_managed_fields(field, value):
+    with pytest.raises(ValidationError):
+        TaskCreate(
+            title="Новая задача",
+            team_id=1,
+            task_type_id=1,
+            channel_id=1,
+            date_received=date(2026, 9, 2),
+            **{field: value},
+        )
+
+
+def test_prioritiser_update_accepts_only_current_agent_result_fields():
+    update = PrioritiserTaskUpdate(
+        version=1,
+        priority_score=68,
+        priority_justification="Фактическое обоснование агента",
+    )
+    assert update.priority_score == 68
+    assert "financial_effect_ai" not in update.model_fields_set
+
+
+def test_agent_contract_rejects_placeholder_response():
+    with pytest.raises(ValidationError):
+        prioritiser_router.PrioritiserAgentEnvelope.model_validate(
+            {
+                "status": "ok",
+                "value": {
+                    "value_mln": 42.5,
+                    "explanation": "",
+                    "confidence": "synthetic",
+                },
+            }
+        )
+
+
+def test_insufficient_value_forwards_real_missing_inputs():
+    with pytest.raises(prioritiser_router.HTTPException) as raised:
+        prioritiser_router._raise_agent_error(
+            {
+                "status": "insufficient_data",
+                "value": {
+                    "missing_inputs": ["уточнить число пользователей"],
+                },
+            }
+        )
+    assert raised.value.status_code == 422
+    assert raised.value.detail["missing_attributes"] == ["уточнить число пользователей"]
 
 
 def test_value_endpoint_returns_proposal_without_database_write(monkeypatch):

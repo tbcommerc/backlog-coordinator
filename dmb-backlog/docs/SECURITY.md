@@ -1,5 +1,5 @@
 ---
-title: Безопасность DMB Backlog
+title: Безопасность Backlog coordinator
 scope: as-is
 status: verified
 last_verified: 2026-09-01
@@ -21,7 +21,7 @@ evidence:
   - frontend/tests/htmlUtils.test.mjs
 ---
 
-# Безопасность DMB Backlog
+# Безопасность Backlog coordinator
 
 Документ фиксирует реализованные механизмы. Он не подтверждает внешнюю инфраструктуру, регламенты организации или production-процессы, которых нет в репозитории.
 

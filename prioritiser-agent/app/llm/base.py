@@ -53,7 +53,7 @@ class TaskHints:
     operations_per_year: float | None = None
     confident: bool = False
     rationale: str = ""
-    provider: str = "mock"
+    provider: str = "unknown"
     raw: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -197,12 +197,18 @@ def parse_hints(text: str, provider: str) -> TaskHints:
             cleaned = cleaned[4:]
     start, end = cleaned.find("{"), cleaned.rfind("}")
     if start == -1 or end == -1:
-        return TaskHints(provider=provider, rationale="модель вернула ответ без JSON")
+        raise ValueError("модель вернула ответ без JSON")
 
     try:
         payload = json.loads(cleaned[start : end + 1])
-    except json.JSONDecodeError:
-        return TaskHints(provider=provider, rationale="модель вернула некорректный JSON")
+    except json.JSONDecodeError as exc:
+        raise ValueError("модель вернула некорректный JSON") from exc
+
+    kind = payload.get("kind")
+    if kind not in {"revenue", "time_saving", "regulatory", "rnd"}:
+        raise ValueError("модель вернула неизвестный kind")
+    if not isinstance(payload.get("confident"), bool):
+        raise ValueError("модель вернула некорректный confident")
 
     def number(key: str) -> float | None:
         value = payload.get(key)
@@ -215,12 +221,12 @@ def parse_hints(text: str, provider: str) -> TaskHints:
         return parsed if parsed > 0 else None
 
     return TaskHints(
-        kind=payload.get("kind"),
+        kind=kind,
         deals_per_year=number("deals_per_year"),
         users=number("users"),
         minutes_per_operation=number("minutes_per_operation"),
         operations_per_year=number("operations_per_year"),
-        confident=bool(payload.get("confident", False)),
+        confident=payload["confident"],
         rationale=str(payload.get("rationale", ""))[:500],
         provider=provider,
         raw=payload,

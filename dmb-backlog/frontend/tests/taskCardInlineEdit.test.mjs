@@ -191,7 +191,7 @@ test('вторая строка атрибутов команды и заказ�
 });
 
 test('подразделение выводится справа от бизнес-заказчика, а оценки — в исполнении', () => {
-  assert.match(modal, /cardIcell\(taskFormLabel\('customer'\)[\s\S]*?cardIcell\('Подразделение', '<span id="custDept">/);
+  assert.match(modal, /cardIcell\(taskFormLabel\('customer'\)[\s\S]*?cardIcell\('Подразделение', cardCustomerReference\('customerDeptId'/);
   assert.doesNotMatch(modal, /person-sub" id="custDept"/);
   assert.match(modal, /cl-grid exec[\s\S]*?class="icell exec-grades"[\s\S]*?<span class="flt">Оценки<\/span>/);
   assert.match(styles, /\.cl-grid\.exec \.exec-grades\{grid-column:1\/-1\}/);
@@ -226,6 +226,15 @@ test('финансовый эффект сохраняется только по
   assert.match(modal, /if \(a === 'ai-value-reject'\) \{[\s\S]*?cardAi = null;[\s\S]*?Предложение агента отклонено/);
 });
 
+test('карточка не подменяет ответ агента legacy AI-полями и не отправляет agent-managed поля в общий PATCH', () => {
+  assert.match(modal, /function cardEffectiveFin\(t\) \{ return t\.finEffect; \}/);
+  assert.match(modal, /function cardEffectiveFinJust\(t\) \{ return t\.finJust \|\| ''; \}/);
+  assert.doesNotMatch(modal, /finEffectAi|finJustAi/);
+  const payload = modal.match(/function cardPayload\(source = cardState\.draft\) \{[\s\S]*?\n\}/)?.[0] || '';
+  assert.doesNotMatch(payload, /financial_effect_ai|priority_score|priority_justification/);
+  assert.doesNotMatch(modal, /cardTaC\('priorityJust'/);
+});
+
 test('кнопки агентов показывают чек-лист обязательных полей на русском', () => {
   assert.match(modal, /const CARD_PRIORITISER_REQUIREMENTS = \{/);
   for (const label of ['ID задачи', 'Тип задачи', 'Ответственная команда', 'Название задачи', 'Оценка трудозатрат, ч\/д', 'Бизнес-заказчик', 'Срок выполнения']) {
@@ -241,6 +250,7 @@ test('кнопки агентов показывают чек-лист обяз�
 test('неполные данные агента показываются в устойчивом модальном окне', () => {
   assert.match(modal, /function showPrioritiserRequirementsModal\(kind, items\)/);
   assert.match(modal, /role="dialog" aria-modal="true"/);
+  assert.match(modal, /const host = document\.getElementById\('task-detail-overlay'\) \|\| document\.body;[\s\S]*?host\.appendChild\(overlay\)/);
   assert.match(modal, /if \(requirements\.some\(item => !item\.filled\)\) \{[\s\S]*?showPrioritiserRequirementsModal\(kind, requirements\);[\s\S]*?return;/);
   assert.match(modal, /Array\.isArray\(missing\) && missing\.length[\s\S]*?showPrioritiserRequirementsModal\(kind, cardPrioritiserRequirements\(kind, missing\)\)/);
   assert.doesNotMatch(modal, /Не хватает данных: ' \+ missing\.join/);

@@ -15,6 +15,8 @@ from app.core.value import (
     compute_cost_to_value,
     compute_value,
 )
+from app.api.contract import TaskAttributes
+from app.service.scenarios import _value_result
 from tests.conftest import make_task
 
 
@@ -61,15 +63,15 @@ class TestRevenueMethod:
         assert result.confidence == CONFIDENCE_HIGH
         assert result.missing == []
 
-    def test_typical_deal_count_lowers_confidence(self, refs):
+    def test_missing_deal_count_does_not_create_a_plausible_value(self, refs):
         task = make_task(
             team="Pre-Trade", team_class="earning", title="Доработка карточки клиента"
         )
         result = compute_value(task, refs)
 
         assert result.source == SOURCE_REVENUE
-        assert result.confidence != CONFIDENCE_HIGH
-        assert result.missing, "должен появиться запрос уточнения числа сделок"
+        assert result.value_internal_mln is None
+        assert result.missing == ["указать ожидаемое число дополнительных сделок в год"]
 
     def test_discount_factor_reduces_value(self, refs):
         """Дисконтирование действительно применяется, а не декларируется."""
@@ -122,10 +124,14 @@ class TestTimeSavingMethod:
             team_class="serving",
             title="Автоматизация отчёта: 30 пользователей тратят 45 мин на операцию",
         )
-        result = compute_value(task, refs)
+        result = compute_value(
+            task,
+            refs,
+            {"operations_per_year": 50, "confident": True},
+        )
 
         assert result.source == SOURCE_TIME_SAVING
-        # 30 × 45 × частота (типовая 50) × 50 ₽ × 3 года × дисконт
+        # Частоту 50 вернула модель; ядро её не подставляет самостоятельно.
         assert result.value_internal_mln > 0
         components = {c["name"]: c for c in result.inputs["components"]}
         assert components["users"]["value"] == 30
@@ -135,7 +141,16 @@ class TestTimeSavingMethod:
     def test_external_value_is_tbd_for_serving_team(self, refs):
         """Ф7/Ф9: наружу экономия времени не выходит ни при каких условиях."""
         task = make_task(team="Core", team_class="serving", title="Автоматизация витрины")
-        result = compute_value(task, refs)
+        result = compute_value(
+            task,
+            refs,
+            {
+                "users": 1,
+                "minutes_per_operation": 15,
+                "operations_per_year": 50,
+                "confident": True,
+            },
+        )
 
         assert result.value_external_mln is None
         assert result.value_external_status == STATUS_TBD
@@ -144,7 +159,11 @@ class TestTimeSavingMethod:
         task = make_task(
             team="Core", team_class="serving", title="Процесс занимает 2 часа у сотрудника"
         )
-        result = compute_value(task, refs)
+        result = compute_value(
+            task,
+            refs,
+            {"users": 1, "operations_per_year": 50, "confident": True},
+        )
         components = {c["name"]: c for c in result.inputs["components"]}
         assert components["minutes_per_operation"]["value"] == 120
 
@@ -195,12 +214,33 @@ class TestCostToValue:
 
 
 class TestHint:
-    def test_hint_names_method_confidence_and_gaps(self, refs):
-        """Ф22: метод, вводные, уверенность и что уточнить."""
+    def test_missing_drivers_are_named_without_a_substitute_number(self, refs):
+        """Ф22: без драйверов агент запрашивает вводные, а не строит оценку."""
         task = make_task(team="Core", team_class="serving", title="Автоматизация витрины")
         result = compute_value(task, refs)
 
-        assert "Метод расчёта" in result.hint
-        assert "Уверенность в оценке" in result.hint
-        assert "Уточнение повысит точность" in result.hint
-        assert "дисконтировано" in result.hint.lower()
+        assert result.value_internal_mln is None
+        assert "применить не удалось" in result.hint
+        assert "Что уточнить" in result.hint
+        assert "20 польз." not in result.hint
+        assert "15 мин" not in result.hint
+        assert "50 раз/год" not in result.hint
+
+    def test_missing_value_is_not_called_exact(self, refs):
+        task = make_task(team="Core", team_class="serving", title="Автоматизация витрины")
+        core = compute_value(task, refs)
+        output = _value_result(
+            task,
+            core,
+            TaskAttributes(
+                task_id="T-1",
+                task_type="AD-HOC",
+                team="Core",
+                title=task.title,
+                deadline="4Q 2026",
+            ),
+            [],
+        )
+
+        assert output.value_mln is None
+        assert "Значение точное" not in output.explanation

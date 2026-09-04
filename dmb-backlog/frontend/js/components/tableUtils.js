@@ -1,4 +1,4 @@
-console.log('[DMB] tableUtils.js v20260826.2 loaded');
+console.log('[DMB] tableUtils.js v20260901.1 loaded');
 import { calculateTaskCv } from '../taskMetrics.js';
 
 const PRIORITY_WEIGHT = { 'ВЫСОКИЙ': 3, 'СРЕДНИЙ': 2, 'НИЗКИЙ': 1 };
@@ -55,6 +55,7 @@ const MIN_LABEL_PX = 32;
 const MAX_SAMPLES = 25;
 
 const registered = { sort: {}, widths: {}, minWidths: {}, layout: {}, fixed: {}, unfix: {}, resizeEnd: {} };
+const widthObservers = {};
 let bound = false;
 let suppressClick = false;
 
@@ -94,14 +95,31 @@ export function applyColumnWidths(table, cols, widths, opts = {}) {
   const baseSumAuto = autoCols.reduce((s, k) => s + (widths[k] || 0), 0);
   const fixedSum = cols.reduce((s, k) => s + (fixed[k] || 0), 0);
   const prefixSum = colEls.slice(0, offset).reduce((s, c) => s + (parseFloat(c.style.width) || c.offsetWidth || 0), 0);
+  const intrinsicWidth = prefixSum + fixedSum + baseSumAuto;
+  const containerWidth = table.parentElement?.clientWidth || 0;
+  const extraWidth = autoCols.length > 0 ? Math.max(0, containerWidth - intrinsicWidth) : 0;
   cols.forEach((key, i) => {
     const col = colEls[i + offset];
     if (!col) return;
-    col.style.width = (fixed[key] || widths[key] || COLUMN_BASE[key] || DEFAULT_MIN) + 'px';
+    const baseWidth = fixed[key] || widths[key] || COLUMN_BASE[key] || DEFAULT_MIN;
+    const share = !fixed[key] && baseSumAuto > 0
+      ? extraWidth * ((widths[key] || 0) / baseSumAuto)
+      : 0;
+    col.style.width = (baseWidth + share) + 'px';
   });
-  table.style.width = Math.ceil(prefixSum + fixedSum + baseSumAuto) + 'px';
+  table.style.width = Math.ceil(intrinsicWidth + extraWidth) + 'px';
   table.style.minWidth = '0';
   table.style.tableLayout = 'fixed';
+
+  if (typeof ResizeObserver !== 'undefined' && table.id && table.parentElement) {
+    const current = widthObservers[table.id];
+    if (!current || current.table !== table) {
+      current?.observer.disconnect();
+      const observer = new ResizeObserver(() => applyColumnWidths(table, cols, widths, opts));
+      observer.observe(table.parentElement);
+      widthObservers[table.id] = { table, observer };
+    }
+  }
 }
 
 function sortValue(task, key) {

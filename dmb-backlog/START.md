@@ -1,4 +1,4 @@
-# DMB Backlog - Команды запуска
+# Backlog coordinator — команды запуска
 
 ## Запуск сервера (Windows)
 ```powershell

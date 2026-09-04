@@ -19,5 +19,7 @@ assert.match(router, /requiresFullAdmin = path === '\/outbox-dead-letters'/);
 assert.match(router, /requiresFullAdmin && adminAccess !== 'full'/);
 assert.match(sidebar, /adminAccess === 'full'/);
 assert.match(sidebar, /Ошибки доставки/);
+assert.match(sidebar, /data-lucide="alert-triangle"/);
+assert.doesNotMatch(sidebar, /data-lucide="triangle-alert"/);
 
 console.log('outboxDeadLetters.test.mjs: OK');

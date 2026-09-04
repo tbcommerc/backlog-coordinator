@@ -92,11 +92,15 @@ def get_strategy_provider(provider: str | None = None):
     from app.config import get_settings
 
     settings = get_settings()
-    name = (provider or settings.strategy_provider or "stub").strip().lower()
+    name = (provider if provider is not None else settings.strategy_provider).strip().lower()
+    if not name:
+        raise RuntimeError("не задан PRIORITISER_STRATEGY_PROVIDER")
 
     if name == "rest":
         url = settings.strategy_decomposer_url or os.getenv("STRATEGY_DECOMPOSER_URL", "")
         if not url:
             raise RuntimeError("не задан STRATEGY_DECOMPOSER_URL")
         return RestStrategyDecomposer(url, settings.strategy_decomposer_token)
-    return StubStrategyDecomposer()
+    if name == "stub":
+        return StubStrategyDecomposer()
+    raise ValueError(f"неизвестный strategy provider: {name}")

@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, List, Dict, Any, Literal
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from typing import Optional, List, Dict, Any, ClassVar, Literal
 from datetime import datetime, date
 from urllib.parse import urlsplit
 
@@ -199,6 +199,7 @@ class RoleResponse(RoleBase):
 # ==================== TASK ====================
 
 class TaskBase(BaseModel):
+    did_client_group_id: Optional[int] = None
     team_id: int
     title: str = Field(max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
@@ -233,10 +234,6 @@ class TaskBase(BaseModel):
     actual_effort_delivery: Optional[float] = Field(None, ge=0)
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
-    financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (млн ₽)')
-    financial_effect_ai_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование AI-расчёта финансового эффекта')
-    priority_score: Optional[int] = Field(None, ge=0, le=100, description='Priority Score (рейтинг 0-100)')
-    priority_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование Priority Score')
     assessment_weight: Optional[float] = Field(None, ge=0, le=100, description='Вес оценки (%)')
     completion_forecast: Optional[float] = Field(None, ge=0, le=100, description='Прогноз выполнения (%)')
     hard_score: Optional[str] = Field(None, max_length=1, pattern='^[A-E]$', description='Оценка за завершенность (Hard)')
@@ -299,6 +296,24 @@ class TaskCreate(TaskBase):
     priority_id: Optional[int] = None
     description: Optional[str] = Field(None, max_length=10000)
 
+    @model_validator(mode='before')
+    @classmethod
+    def _reject_agent_managed_fields(cls, values):
+        if not isinstance(values, dict):
+            return values
+        forbidden = {
+            'financial_effect_ai',
+            'financial_effect_ai_justification',
+            'priority_score',
+            'priority_justification',
+        } & set(values)
+        if forbidden:
+            raise ValueError(
+                'Поля результата агента нельзя задавать при создании задачи: '
+                + ', '.join(sorted(forbidden))
+            )
+        return values
+
     @field_validator('title')
     @classmethod
     def _validate_create_title(cls, value):
@@ -309,6 +324,9 @@ class TaskCreate(TaskBase):
 
 
 class TaskUpdate(BaseModel):
+    did_client_group_id: Optional[int] = None
+    agent_managed_fields_allowed: ClassVar[bool] = False
+
     client_request_id: Optional[str] = Field(None, min_length=8, max_length=64)
     version: int = Field(ge=0, description='Обязательная версия задачи для optimistic lock')
     team_id: Optional[int] = None
@@ -345,10 +363,6 @@ class TaskUpdate(BaseModel):
     actual_effort_delivery: Optional[float] = Field(None, ge=0)
     financial_effect: Optional[float] = Field(None, ge=0)
     financial_effect_justification: Optional[str] = Field(None, max_length=10000)
-    financial_effect_ai: Optional[float] = Field(None, ge=0, description='AI-расчёт финансового эффекта (млн ₽)')
-    financial_effect_ai_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование AI-расчёта финансового эффекта')
-    priority_score: Optional[int] = Field(None, ge=0, le=100, description='Priority Score (рейтинг 0-100)')
-    priority_justification: Optional[str] = Field(None, max_length=10000, description='Обоснование Priority Score')
     assessment_weight: Optional[float] = Field(None, ge=0, le=100, description='Вес оценки (%)')
     completion_forecast: Optional[float] = Field(None, ge=0, le=100, description='Прогноз выполнения (%)')
     hard_score: Optional[str] = Field(None, max_length=1, pattern='^[A-E]$', description='Оценка за завершенность (Hard)')
@@ -372,6 +386,24 @@ class TaskUpdate(BaseModel):
     metric_kr_unit: Optional[str] = Field(None, max_length=50, description='Единица измерения Метрического KR')
     did_demo: Optional[bool] = None
     tags: Optional[List[str]] = Field(None, description='Метки (теги) — имена тегов')
+
+    @model_validator(mode='before')
+    @classmethod
+    def _reject_agent_managed_fields(cls, values):
+        if cls.agent_managed_fields_allowed or not isinstance(values, dict):
+            return values
+        forbidden = {
+            'financial_effect_ai',
+            'financial_effect_ai_justification',
+            'priority_score',
+            'priority_justification',
+        } & set(values)
+        if forbidden:
+            raise ValueError(
+                'Поля результата агента изменяются только через endpoint prioritiser: '
+                + ', '.join(sorted(forbidden))
+            )
+        return values
 
     @field_validator('title')
     @classmethod
@@ -412,12 +444,21 @@ class TaskUpdate(BaseModel):
         return _validate_external_url(v)
 
 
+class PrioritiserTaskUpdate(TaskUpdate):
+    """Поля, которые разрешено записывать только интеграции prioritiser."""
+
+    agent_managed_fields_allowed: ClassVar[bool] = True
+    priority_score: Optional[int] = Field(None, ge=0, le=100)
+    priority_justification: Optional[str] = Field(None, min_length=1, max_length=10000)
+
+
 class PipDecisionRequest(BaseModel):
     decision: Literal["reject", "accept"]
     version: int = Field(ge=0)
 
 
 class TaskResponse(TaskBase):
+    did_client_group_name: Optional[str] = None
     id: int
     public_id: str = Field(pattern=r'^TASK-\d{3}-\d{3}$')
     cv: Optional[float] = None
@@ -427,6 +468,12 @@ class TaskResponse(TaskBase):
     created_at: datetime
     updated_at: datetime
     version: int = 0
+    # Legacy AI-поля остаются только в ответе для совместимости со схемой БД.
+    # Карточка их не отображает и не использует как замену реального результата.
+    financial_effect_ai: Optional[float] = None
+    financial_effect_ai_justification: Optional[str] = None
+    priority_score: Optional[int] = Field(None, ge=0, le=100)
+    priority_justification: Optional[str] = None
     lock_owner_id: Optional[int] = None
     lock_owner_name: Optional[str] = None
     lock_until: Optional[datetime] = None

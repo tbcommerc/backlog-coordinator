@@ -127,7 +127,12 @@ Set-EnvValue $agentEnv "SESSION_DATABASE_URL" "postgresql+psycopg://dmb:dmb_loca
 Set-EnvValue $agentEnv "AGENT_SECRET" $sharedSecret
 Set-EnvValue $prioritiserEnv "PRIORITISER_DB_URL" "sqlite:///var/prioritiser.db"
 $sharedLlmProvider = Get-EnvValue -Path $agentEnv -Name "LLM_PROVIDER"
-if (-not $sharedLlmProvider) { $sharedLlmProvider = "mock" }
+if (-not $sharedLlmProvider) {
+    throw "LLM_PROVIDER is not configured in agent/.env. Configure a real provider before starting the project."
+}
+if ($sharedLlmProvider.Trim().ToLowerInvariant() -eq "mock") {
+    throw "LLM_PROVIDER=mock is test-only and is not allowed by the full project launcher."
+}
 $sharedOpenAiBaseUrl = Get-EnvValue -Path $agentEnv -Name "OPENAI_BASE_URL"
 if (-not $sharedOpenAiBaseUrl) { $sharedOpenAiBaseUrl = "https://api.openai.com/v1" }
 $sharedOpenAiModel = Get-EnvValue -Path $agentEnv -Name "OPENAI_MODEL"

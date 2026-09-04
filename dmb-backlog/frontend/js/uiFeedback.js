@@ -9,10 +9,20 @@ export function formatErrorMessage(error, fallback = ERROR_FALLBACK) {
   if (/failed to fetch|networkerror|network request failed/i.test(message)) {
     return 'Сервер недоступен. Проверьте подключение и попробуйте ещё раз.';
   }
+  const standardMessages = {
+    'not found': 'Запрошенные данные недоступны. Обновите страницу и повторите попытку.',
+    'internal server error': 'Не удалось обработать запрос. Повторите попытку позже.',
+    'service unavailable': 'Сервис временно недоступен. Повторите попытку позже.',
+    'unauthorized': 'Сеанс завершён. Войдите в систему ещё раз.',
+    'forbidden': 'У вас нет доступа к этим данным.',
+    'failed to load': 'Не удалось загрузить данные. Повторите попытку.',
+  };
+  if (standardMessages[message.toLowerCase()]) return standardMessages[message.toLowerCase()];
   return message;
 }
 
 export function showToast(message, type = 'success', options = {}) {
+  if (type === 'error') message = formatErrorMessage(message);
   const container = document.getElementById('toast-container');
   if (!container) return;
   const item = document.createElement('div');

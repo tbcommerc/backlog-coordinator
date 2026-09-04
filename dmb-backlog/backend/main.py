@@ -168,9 +168,13 @@ app.include_router(tasks_router, prefix="/api/v1/tasks", tags=["Tasks"], depende
 app.include_router(task_collaboration_router, prefix="/api/v1/tasks", tags=["Task collaboration"], dependencies=non_customer_dependencies)
 app.include_router(teams_router, prefix="/api/v1/teams", tags=["Teams"], dependencies=non_customer_dependencies)
 app.include_router(users_router, prefix="/api/v1/users", tags=["Users"], dependencies=non_customer_dependencies)
+from routers.did_backlog_router import router as did_backlog_router
+app.include_router(did_backlog_router, prefix="/api/v1/reports/did-backlog", tags=["DID backlog"], dependencies=non_customer_dependencies)
 app.include_router(reports_router, prefix="/api/v1/reports", tags=["Reports"], dependencies=non_customer_dependencies)
 app.include_router(reporting_meetings_router, prefix="/api/v1/reporting-meetings", tags=["Reporting meetings"], dependencies=non_customer_dependencies)
 app.include_router(task_reporting_router, prefix="/api/v1/tasks", tags=["Task reporting statuses"], dependencies=non_customer_dependencies)
+from routers.customer_references_router import router as customer_references_router
+app.include_router(customer_references_router, prefix="/api/v1/admin/customer-references", tags=["Customer references"], dependencies=non_customer_dependencies)
 app.include_router(admin_router.router, prefix="/api/v1/admin", dependencies=non_customer_dependencies)
 app.include_router(customer_router, prefix="/api/v1/customer", tags=["Customer Portal"])
 app.include_router(express_router, prefix="/api/v1", tags=["Express Estimate"], dependencies=non_customer_dependencies)

@@ -1,8 +1,8 @@
 ---
-title: Архитектура DMB Backlog
+title: Архитектура Backlog coordinator
 scope: as-is
 status: verified
-last_verified: 2026-09-01
+last_verified: 2026-09-02
 evidence:
   - backend/main.py
   - backend/config.py
@@ -18,13 +18,13 @@ evidence:
   - .github/workflows/quality.yml
 ---
 
-# Архитектура DMB Backlog
+# Архитектура Backlog coordinator
 
 Документ описывает только подтверждённую реализацию. Модель данных, поля API и пользовательские сценарии вынесены в профильные документы и должны сверяться с кодом отдельно.
 
 ## Контекст
 
-DMB Backlog — браузерная SPA и FastAPI backend для работы с задачами и связанными данными. Backend проксирует запросы к AI Business Analyst Agent, сохраняет `RequirementRequest` и вызывает отдельный агент расчёта финансового эффекта и приоритета.
+Backlog coordinator — браузерная SPA и FastAPI backend для работы с задачами и связанными данными. Backend проксирует запросы к AI Business Analyst Agent, сохраняет `RequirementRequest` и вызывает отдельный агент расчёта финансового эффекта и приоритета.
 
 ```text
 Browser SPA
@@ -77,11 +77,13 @@ Backlog вызывает Agent по `AGENT_BASE_URL` и передаёт `X-Agen
 
 Backlog вызывает сервис по `PRIORITISER_BASE_URL`. Кнопка финансового эффекта
 использует `/agent/value/full`, кнопка приоритета — `/agent/priority/full`.
-Backend преобразует карточку задачи во внешний контракт, а результат сохраняет
-как новую версию задачи через штатные проверки прав, блокировки и аудит.
-Ручной финансовый эффект имеет приоритет; оценка агента хранится отдельно в
-`financial_effect_ai` и `financial_effect_ai_justification`. Приоритет сохраняется
-в `priority_score` (0–100) и `priority_justification`.
+Backend преобразует карточку задачи во внешний контракт и строго проверяет
+ответ prioritiser. Некорректный или неполный ответ не заменяется локальными
+значениями и возвращается как ошибка интеграции. Value сначала показывается как
+предложение и попадает в основные поля только после явного принятия пользователем.
+Приоритет сохраняется в `priority_score` (0–100) и `priority_justification` только
+через endpoint prioritiser. Legacy-поля `financial_effect_ai*` не участвуют в
+отображении и не служат fallback для пустого финансового эффекта.
 OpenAI-compatible провайдер, endpoint, модель и учётные данные совпадают с
 настройками AI Business Analyst Agent; локальный launcher синхронизирует их из
 `agent/.env`, а production Compose передаёт обоим сервисам одинаковые `DMB_*`

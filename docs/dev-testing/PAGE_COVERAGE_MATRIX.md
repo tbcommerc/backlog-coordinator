@@ -1,5 +1,5 @@
 ---
-title: Матрица UX/UI-покрытия страниц DMB Platform
+title: Матрица UX/UI-покрытия страниц Backlog coordinator
 scope: target-dev-testing
 status: draft-baseline
 last_updated: 2026-08-25

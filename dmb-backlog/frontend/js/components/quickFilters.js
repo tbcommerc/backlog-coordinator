@@ -1,6 +1,6 @@
-console.log('[DMB] quickFilters.js loaded');
+console.log('[DMB] quickFilters.js v20260901.2 loaded');
 
-import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask } from './filterToolbar.js?v=91';
+import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask } from './filterToolbar.js?v=97';
 import { calculateTaskCv } from '../taskMetrics.js';
 
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
@@ -91,6 +91,39 @@ export function renderQuickFilters() {
 
 let mobileOutsideHandler = null;
 let mobileKeyHandler = null;
+let quickFilterLayoutObserver = null;
+
+function updateQuickFilterLayout() {
+  const panel = document.getElementById('quick-filters');
+  if (!panel) return;
+
+  if (window.matchMedia?.('(max-width: 1024px)').matches) {
+    panel.classList.remove('quick-filters-measuring', 'quick-filters-single-row');
+    return;
+  }
+
+  panel.classList.remove('quick-filters-single-row');
+  panel.classList.add('quick-filters-measuring');
+  const buttons = Array.from(panel.querySelectorAll('.quick-filter-btn'));
+  const widestButton = Math.max(0, ...buttons.map(button => button.getBoundingClientRect().width));
+  const columnGap = parseFloat(getComputedStyle(panel).columnGap) || 0;
+  const requiredEqualWidth = widestButton * buttons.length + columnGap * Math.max(0, buttons.length - 1);
+  const fitsWithoutClipping = requiredEqualWidth <= panel.clientWidth + 1;
+  panel.classList.remove('quick-filters-measuring');
+  panel.classList.toggle('quick-filters-single-row', fitsWithoutClipping);
+}
+
+function bindQuickFilterLayout() {
+  quickFilterLayoutObserver?.disconnect();
+  const shell = document.querySelector('.quick-filters-shell');
+  if (!shell) return;
+  const scheduleUpdate = () => requestAnimationFrame(updateQuickFilterLayout);
+  if (typeof ResizeObserver !== 'undefined') {
+    quickFilterLayoutObserver = new ResizeObserver(scheduleUpdate);
+    quickFilterLayoutObserver.observe(shell);
+  }
+  scheduleUpdate();
+}
 
 function setMobilePanelOpen(open) {
   const toggle = document.getElementById('quick-filters-mobile-toggle');
@@ -155,6 +188,7 @@ export function initQuickFilters(scope, getTasks) {
 
   updateCounts();
   syncQuickFilterButtons(scope);
+  bindQuickFilterLayout();
 }
 
 export function syncQuickFilterButtons(scope) {

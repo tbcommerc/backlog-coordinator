@@ -28,18 +28,19 @@ class Settings(BaseSettings):
     db_url: str = "sqlite:///var/prioritiser.db"
 
     # mock | openai_compat | anthropic | gigachat | gigacode
-    llm_provider: str = "mock"
+    # Рабочий default обязан обращаться к настроенной модели. Mock разрешён
+    # только при явном выборе в тестах и никогда не включается как fallback.
+    llm_provider: str = "openai_compat"
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"
     anthropic_model: str = "claude-sonnet-5"
     gigachat_model: str = "GigaChat-2-Max"
 
-    # F5 «Стратегическое соответствие»: stub | agent | rest.
+    # F5 «Стратегическое соответствие»: agent | rest; stub только для тестов.
     # По ТЗ фактор приходит от внешнего Strategy Decomposer (rest); решением
-    # владельца оценка перенесена внутрь проекта (agent). Дефолт stub —
-    # прогон бэклога должен быть воспроизводим и не зависеть от модели.
-    strategy_provider: str = "stub"
+    # владельца оценка перенесена внутрь проекта (agent).
+    strategy_provider: str = "agent"
 
     # F6 «Зависимость от команд»: declared | agent.
     dependency_provider: str = "declared"

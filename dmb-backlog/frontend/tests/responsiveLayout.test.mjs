@@ -5,20 +5,34 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 
 const index = read('index.html');
 const css = read('css/responsive.css');
+const componentsCss = read('css/components.css');
 const taskTable = read('js/components/taskTable.js');
 const teamBacklog = read('js/components/teamBacklog.js');
 const app = read('js/app.js');
 const fixture = read('tests/fixtures/responsive-shell.html');
 const filterToolbar = read('js/components/filterToolbar.js');
 const quickFilters = read('js/components/quickFilters.js');
+const tableUtils = read('js/components/tableUtils.js');
 
 assert.match(index, /responsive\.css\?v=\d+/, 'responsive stylesheet must be loaded');
 for (const breakpoint of ['1279px', '1024px', '640px', '420px']) {
   assert.ok(css.includes(breakpoint), `responsive layer must cover ${breakpoint}`);
 }
 assert.match(css, /overflow-x:\s*auto\s*!important/, 'wide tables must scroll horizontally');
+assert.doesNotMatch(css, /\.table-container\s*\{[\s\S]*?scrollbar-gutter:\s*stable/, 'backlog tables must not reserve an empty vertical scrollbar gutter on the right');
+assert.match(css, /#tasks-table,[\s\S]*?#team-tasks-table\s*\{[\s\S]*?width:\s*100%[\s\S]*?min-width:\s*max-content/, 'backlog tables must fill ultra-wide workspaces without losing narrow-screen scrolling');
+assert.match(tableUtils, /containerWidth\s*-\s*intrinsicWidth/, 'calculated backlog columns must absorb unused wide-screen space');
+assert.match(tableUtils, /new ResizeObserver\(\(\)\s*=>\s*applyColumnWidths/, 'backlog column widths must react when the workspace is resized');
+assert.match(componentsCss, /thead tr:first-child th:last-child\s*\{[\s\S]*?border-top-right-radius/, 'the original backlog header must follow the rounded table container');
+assert.match(filterToolbar, /overflow:\s*hidden;[\s\S]*?border-radius:\s*var\(--radius-lg\) var\(--radius-lg\) 0 0;/, 'the cloned sticky backlog header must keep the same rounded top edge');
+assert.match(componentsCss, /quick-filters-single-row[\s\S]*repeat\(8, minmax\(0, 1fr\)\)/, 'wide backlog pages must place all quick filters in one equal-width row');
+assert.match(quickFilters, /requiredEqualWidth <= panel\.clientWidth \+ 1/, 'wide quick-filter layout must fit equal copies of the widest button rather than use a fixed breakpoint');
+assert.match(quickFilters, /matchMedia\?\.\('\(max-width: 1024px\)'\)[\s\S]*classList\.remove\('quick-filters-measuring', 'quick-filters-single-row'\)/, 'compact quick-filter disclosure must never retain the desktop single-row layout');
 assert.match(css, /@media \(pointer: coarse\)/, 'touch targets must be adapted for coarse pointers');
 assert.match(css, /\.sidebar\.collapsed[\s\S]*?width:\s*min\(300px, 86vw\)/, 'mobile drawer must ignore desktop collapsed width');
+assert.match(componentsCss, /\.sidebar-nav\s*\{[\s\S]*?overflow-y:\s*auto;[\s\S]*?scrollbar-width:\s*thin;[\s\S]*?scrollbar-color:[\s\S]*?transparent/, 'sidebar navigation must keep a subtle right-edge scrollbar');
+assert.match(componentsCss, /\.sidebar-nav::\-webkit-scrollbar-thumb\s*\{[\s\S]*?border:\s*3px solid transparent;[\s\S]*?background-clip:\s*padding-box/, 'sidebar scrollbar must expose a narrow rounded thumb without moving it beside the icons');
+assert.match(componentsCss, /\.sidebar-nav:hover,[\s\S]*?\.sidebar-nav:focus-within[\s\S]*?scrollbar-color:/, 'sidebar scrollbar must become clearer on pointer and keyboard interaction');
 assert.doesNotMatch(taskTable, /innerWidth\s*<=/, 'DMB view must not change automatically on resize');
 assert.doesNotMatch(teamBacklog, /innerWidth\s*<=/, 'team view must not change automatically on resize');
 assert.match(taskTable, /if \(currentView === 'cards'\)/, 'DMB must respect the selected view');
@@ -27,6 +41,9 @@ assert.match(app, /matchMedia\('\(max-width: 640px\)'\)/, 'drawer state must be 
 assert.doesNotMatch(fixture, /task-card-grid/, 'table fixture must not contain task cards');
 assert.match(filterToolbar, /class="filter-toolbar-controls"/, 'filter and reset buttons must share a right-aligned group');
 assert.match(filterToolbar, /new ResizeObserver\(\(\) => updateStickyOffsets\(\)\)/, 'content offset must follow toolbar height changes');
+assert.match(componentsCss, /right:\s*var\(--main-content-scrollbar-width, 0px\)/, 'fixed toolbar must stop at the same right edge as the scrollable backlog content');
+assert.match(filterToolbar, /mainContent\.offsetWidth - mainContent\.clientWidth - mainBorders/, 'fixed toolbar width must account for the main-content vertical scrollbar');
+assert.match(filterToolbar, /toolbarMainContentObserver\.observe\(mainContent\)/, 'fixed toolbar width must react when the main-content scrollbar changes');
 assert.match(filterToolbar, /baseContentMargin\s*=\s*toolbarIsFixed[\s\S]*?:\s*0;[\s\S]*?marginTop\s*=\s*baseContentMargin/, 'flow toolbar must not leave a synthetic table offset');
 assert.match(filterToolbar, /class="toolbar-add-task-label"/, 'add-task text must be independently hideable');
 assert.match(css, /\.toolbar-title,[\s\S]*?white-space:\s*nowrap/, 'toolbar title must stay on one line');

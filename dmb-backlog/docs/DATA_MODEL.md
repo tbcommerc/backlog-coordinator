@@ -1,8 +1,8 @@
 ---
-title: Модель данных DMB Backlog
+title: Модель данных Backlog coordinator
 scope: as-is
 status: verified
-last_verified: 2026-09-01
+last_verified: 2026-09-04
 source_of_truth: backend/models.py
 evidence:
   - backend/models.py
@@ -10,7 +10,7 @@ evidence:
   - backend/schemas.py
 ---
 
-# Модель данных DMB Backlog
+# Модель данных Backlog coordinator
 
 Единственный поддерживаемый источник физической схемы — `backend/models.py`. На дату проверки SQLAlchemy metadata содержит 45 таблиц. Этот документ объясняет назначение и связи; точные типы, nullable, defaults, unique constraints и индексы следует читать из моделей.
 
@@ -236,3 +236,7 @@ claim/retry. Обработанные записи имеют ограничен
 и бизнес-изменение коммитятся одной транзакцией. Механизм используется для задач,
 комментариев, вложений и CRUD сохранённых отчётов. Повтор того же payload возвращает
 существующий результат; повтор ключа с иным payload возвращает `409`.
+
+## Отчёт ДИД — проверено 04.09.2026
+
+Миграция `a9246d1c7e30` добавляет `did_client_groups` (код, название, порядок, активность), nullable FK `tasks.did_client_group_id` и таблицу `user_report_prefs` с уникальной парой пользователь/отчёт и JSON настроек. Контактное лицо использует существующий `tasks.business_customer_id` → `business_customers`, связанный с `departments`. Отдельный справочник контактов исключён по уточнению владельца продукта от 04.09.2026. Миграция применена локально 04.09.2026 с разрешения владельца продукта; справочник не наполнен. Подробности — [отчёт ДИД](DID_BACKLOG_REPORT.md).

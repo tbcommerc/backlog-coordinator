@@ -39,6 +39,26 @@ def test_get_tasks(client, auth_headers, db):
     assert data["total"] >= 1
 
 
+def test_get_tasks_normalizes_legacy_null_progress(client, auth_headers, db):
+    from models import Team, Task
+
+    team = Team(name="LegacyProgressTeam")
+    db.add(team)
+    db.commit()
+    db.refresh(team)
+
+    task = Task(team_id=team.id, title="Legacy task", status_id=1, progress=None)
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    response = client.get("/api/v1/tasks/", headers=auth_headers)
+
+    assert response.status_code == 200
+    returned_task = next(item for item in response.json()["items"] if item["id"] == task.id)
+    assert returned_task["progress"] == 0
+
+
 def test_get_task_by_id(client, auth_headers, db):
     from models import Team, Task
     team = Team(name="TestTeam3")

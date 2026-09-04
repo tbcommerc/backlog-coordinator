@@ -1,13 +1,14 @@
-console.log('[DMB] taskTable.js v20260807 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=91';
-import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=90';
+console.log('[DMB] taskTable.js v20260902.1 loaded');
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, getToolbarSearchValue, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=97';
+import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=91';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=81';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=76';
-import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=50';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=83';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=80';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=51';
 import { safeExternalUrl } from '../urlUtils.js';
 import { escapeHtml } from '../htmlUtils.js';
-import { bindViewStateAction, renderViewState } from './viewState.js';
+import { highlightSearchText } from '../htmlUtils.js';
+import { bindViewStateAction, fitTableViewState, renderViewState } from './viewState.js?v=2';
 import { formatTaskPublicId } from '../taskPublicId.js';
 import { getSelectedItems, reconcileSelection, setAllSelection } from './tableSelection.js';
 import { calculateTaskCv, cvZone } from '../taskMetrics.js';
@@ -72,21 +73,12 @@ export function renderTasksPage(app) {
       ${renderQuickEditToolbar('backlog')}
 
       <div id="tasks-container">
-        <div class="table-container" style="overflow-x:auto;">
-          <table class="table" id="tasks-table">
-            <thead>
-              <tr id="table-header-row"></tr>
-            </thead>
-            <tbody id="tasks-tbody">
-              ${renderSkeletonRows(8)}
-            </tbody>
-          </table>
-        </div>
+        ${renderTasksTableStateMarkup({ kind: 'loading', title: 'Загружаем задачи…' })}
       </div>
     </div>
 
     <div class="flex justify-between items-center pagination-footer" style="margin-top: var(--space-6);">
-      <span class="text-secondary" id="tasks-count">Найдено: 0 задач</span>
+      <span class="text-secondary" id="tasks-count" role="status" aria-live="polite">Загрузка…</span>
       <div class="flex gap-2" id="pagination"></div>
     </div>
   `;
@@ -121,6 +113,7 @@ export async function initTasksPage(app) {
   COLUMN_LABELS = { ...buildColumnLabels(window.app?.fieldLabels || {}) };
   await applyDefaultDisplaySettings(app);
   loadBacklogColumnState();
+  renderTasksTableState({ kind: 'loading', title: 'Загружаем задачи…' });
   await loadTasks(app);
 
   function onFilterChange() {
@@ -274,6 +267,12 @@ async function loadTasks(app) {
     return;
   }
   tasksLoadInProgress = true;
+  const existingContainer = document.getElementById('tasks-container');
+  if (!tasksCache || existingContainer?.querySelector('.view-state-error')) {
+    renderTasksTableState({ kind: 'loading', title: 'Загружаем задачи…' });
+    const countEl = document.getElementById('tasks-count');
+    if (countEl) countEl.textContent = 'Загрузка…';
+  }
   try {
     const data = await loadAllTaskPages(app, '');
     tasksCache = data;
@@ -282,14 +281,17 @@ async function loadTasks(app) {
   } catch (e) {
     const container = document.getElementById('tasks-container');
     if (container) {
-      container.innerHTML = renderViewState({
+      renderTasksTableState({
         kind: 'error',
         message: window.formatErrorMessage?.(e) || 'Повторите попытку позже.',
         actionLabel: 'Повторить',
       });
       bindViewStateAction(container, () => loadTasks(app));
-      window.lucide?.createIcons();
     }
+    const countEl = document.getElementById('tasks-count');
+    if (countEl) countEl.textContent = 'Не удалось загрузить задачи';
+    const pagination = document.getElementById('pagination');
+    if (pagination) pagination.innerHTML = '';
   } finally {
     tasksLoadInProgress = false;
     if (tasksReloadQueued) {
@@ -459,15 +461,17 @@ function renderCell(col, task) {
     return renderQuickEditCell('backlog', col, task);
   }
 
+  const highlight = value => highlightSearchText(value, getToolbarSearchValue('backlog'));
   switch (col) {
-    case 'id': return `<span class="font-mono text-muted">${formatTaskPublicId(task)}</span>`;
-    case 'title': return `<strong class="cell-truncate">${escapeHtml(task.title)}</strong>`;
-    case 'description': return `<span class="cell-truncate">${escapeHtml(task.description || '—')}</span>`;
+    case 'id': return `<span class="font-mono text-muted">${highlight(formatTaskPublicId(task))}</span>`;
+    case 'title': return `<strong class="cell-truncate">${highlight(task.title)}</strong>`;
+    case 'description': return `<span class="cell-truncate">${highlight(task.description || '—')}</span>`;
     case 'date_received': return `<span>${escapeHtml(task.date_received || '—')}</span>`;
     case 'status': return `<span>${renderStatus(task.status_name || task.status)}</span>`;
     case 'priority': return `<span>${renderPriority(task.priority_name || task.priority)}</span>`;
     case 'team': return `<span class="badge badge-info">${escapeHtml(task.team_name || '—')}</span>`;
     case 'channel': return `<span>${escapeHtml(task.channel_name || '—')}</span>`;
+    case 'did_client_group': return `<span>${escapeHtml(task.did_client_group_name || '—')}</span>`;
     case 'business_customer': return `<span>${escapeHtml(task.business_customer_name || task.business_customer || '—')}</span>`;
     case 'department': return `<span>${escapeHtml(task.department_name || '—')}</span>`;
     case 'project': return `<span>${escapeHtml(task.project_name || '—')}</span>`;
@@ -514,6 +518,32 @@ function renderCell(col, task) {
     case 'tags': return renderTags(task.tags);
     default: return '';
   }
+}
+
+function renderTasksTableStateMarkup(state) {
+  const visibleCols = columnOrder.filter(key => columnSettings[key]);
+  const colspan = Math.max(1, visibleCols.length);
+  return `
+    <div class="table-container" style="overflow-x:auto;">
+      <table class="table" id="tasks-table" aria-busy="${state.kind === 'loading'}">
+        <thead>
+          <tr>${visibleCols.map(col => headerCellHtml(getColumnLabel(col), col, columnSort.key, columnSort.dir)).join('')}</tr>
+        </thead>
+        <tbody id="tasks-tbody" aria-live="polite">
+          <tr><td class="table-view-state-cell" colspan="${colspan}">${renderViewState(state)}</td></tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderTasksTableState(state) {
+  const container = document.getElementById('tasks-container');
+  if (!container) return;
+  container.innerHTML = renderTasksTableStateMarkup(state);
+  fitTableViewState(container);
+  updateStickyOffsets();
+  initStickyTableHeader('tasks-table');
+  window.lucide?.createIcons();
 }
 
 function resolveInvolvedTeams(teams) {
@@ -637,7 +667,7 @@ function renderCardView(list) {
 }
 
 function renderCard(task) {
-  return renderTaskCard(task);
+  return renderTaskCard(task, getToolbarSearchValue('backlog'));
 }
 
 function renderDeadline(task) {

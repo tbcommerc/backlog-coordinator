@@ -13,12 +13,13 @@ import json
 from database import get_db, db_lower
 from models import (
     Report, Task, User, Team, Priority, TaskStatus, Project, Department,
-    TaskType, Deadline, BusinessCustomer, Channel,
+    TaskType, Deadline, BusinessCustomer, Channel, TaskReportingStatus,
 )
 from schemas import ReportCreate, ReportResponse, ReportUpdate
 from auth import get_current_user, task_read_scope_clause
 from idempotency import reserve_idempotency
 from services.task_metrics import calculate_cost_value_ratio
+from reporting_meetings import current_meeting
 
 router = APIRouter()
 
@@ -85,6 +86,15 @@ REPORT_NUMERIC_FIELDS = {
 }
 
 PIP_STATUS = "Принятие решения"
+
+
+def _directorate_deadline_names(today: date) -> list[str]:
+    """Вернуть сроки директорского отчёта для текущего квартала."""
+    quarter = (today.month - 1) // 3 + 1
+    names = [f"{quarter}Q {today.year}"]
+    if quarter == 4:
+        names.append(f"Y{today.year}")
+    return names
 
 
 def _current_quarter_progress(today: date) -> tuple[str, float]:
@@ -478,36 +488,34 @@ def directorate_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Отчёт «Статус для Директорской оперативки» — High Priority / Риск / На контроле,
-    с дедлайном в текущем квартале (или году — для Q4), группировка по командам."""
+    """Отчёт «Статус для Директорской оперативки» — задачи текущего квартала
+    с заполненным директорским статусом, группировка по командам."""
     today = date.today()
-    current_year = today.year
-    current_quarter = (today.month - 1) // 3 + 1
-
-    if current_quarter == 4:
-        deadline_names = [f"{i}Q {current_year}" for i in range(1, 5)]
-        deadline_names.append(f"Y{current_year}")
-    else:
-        deadline_names = [f"{current_quarter}Q {current_year}"]
+    deadline_names = _directorate_deadline_names(today)
 
     deadline_ids = db.query(Deadline.id).filter(Deadline.name.in_(deadline_names)).all()
     deadline_ids = [d[0] for d in deadline_ids]
 
-    high_priority_ids = db.query(Priority.id).filter(Priority.name == "Высокий").all()
-    high_priority_ids = [p[0] for p in high_priority_ids]
+    meeting = current_meeting(db, "directorate")
+    if meeting is None:
+        return {"total_tasks": 0, "total_teams": 0, "teams": []}
 
-    query = db.query(Task).filter(
+    query = db.query(Task, TaskReportingStatus).join(
+        TaskReportingStatus,
+        TaskReportingStatus.task_id == Task.id,
+    ).filter(
         Task.is_deleted == False,
         task_read_scope_clause(current_user, Task),
         Task.deadline_id.in_(deadline_ids),
-        (Task.priority_id.in_(high_priority_ids)) |
-        (Task.directorate_status.in_(["Риск", "На контроле"]))
+        TaskReportingStatus.meeting_id == meeting.id,
+        TaskReportingStatus.status_text.isnot(None),
+        func.trim(TaskReportingStatus.status_text) != "",
     )
 
-    tasks = query.all()
+    task_rows = query.all()
 
     teams_data = {}
-    for task in tasks:
+    for task, reporting_status in task_rows:
         team_name = task.team.name if task.team else "Без команды"
         if team_name not in teams_data:
             teams_data[team_name] = {
@@ -530,8 +538,8 @@ def directorate_report(
             "id": task.id,
             "public_id": task.public_id,
             "title": task.title,
-            "directorate_status": task.directorate_status or "",
-            "directorate_status_updated_at": task.directorate_status_updated_at.isoformat() if task.directorate_status_updated_at else None,
+            "directorate_status": reporting_status.status_text or "",
+            "directorate_status_updated_at": reporting_status.updated_at.isoformat() if reporting_status.updated_at else None,
             "progress": progress,
             "status_name": task.status.name if task.status else "",
             "priority_name": task.priority.name if task.priority else "",
@@ -548,7 +556,7 @@ def directorate_report(
     sorted_teams = sorted(teams_data.values(), key=lambda x: x["total"], reverse=True)
 
     return {
-        "total_tasks": len(tasks),
+        "total_tasks": len(task_rows),
         "total_teams": len(sorted_teams),
         "teams": sorted_teams
     }

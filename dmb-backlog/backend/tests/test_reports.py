@@ -114,6 +114,58 @@ def test_standard_filters(client, auth_headers, db):
     assert data["total"] == 1
 
 
+def test_directorate_report_uses_filled_status_in_current_quarter(client, auth_headers, db):
+    from models import Deadline, Priority, ReportingMeeting, Task, TaskReportingStatus, Team
+    from routers.reports_router import _directorate_deadline_names
+
+    today = date.today()
+    quarter = (today.month - 1) // 3 + 1
+    deadline_name = f"{quarter}Q {today.year}"
+    deadline = Deadline(code="TEST_DIRECTORATE_PERIOD", name=deadline_name)
+    medium = Priority(name="Средний")
+    team = Team(name="Тестовая команда директорской")
+    db.add_all([deadline, medium, team])
+    db.flush()
+    included = Task(
+        title="Заполненный статус текущего квартала",
+        team_id=team.id,
+        deadline_id=deadline.id,
+        priority_id=medium.id,
+        directorate_status="Устаревший текст задачи",
+    )
+    excluded = Task(
+        title="Пустой статус не попадает в отчёт",
+        team_id=team.id,
+        deadline_id=deadline.id,
+        priority_id=medium.id,
+        directorate_status="Этот legacy-текст не является источником отчёта",
+    )
+    meeting = ReportingMeeting(
+        kind="directorate",
+        occurrence_key="test-directorate-current",
+        scheduled_date=today,
+        original_scheduled_date=today,
+        state="planned",
+    )
+    db.add_all([included, excluded, meeting])
+    db.flush()
+    db.add_all([
+        TaskReportingStatus(meeting_id=meeting.id, task_id=included.id, status_text="Статус текущей встречи"),
+        TaskReportingStatus(meeting_id=meeting.id, task_id=excluded.id, status_text="   "),
+    ])
+    db.commit()
+
+    response = client.get("/api/v1/reports/directorate-report", headers=auth_headers)
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["total_tasks"] == 1
+    assert data["teams"][0]["tasks"][0]["title"] == "Заполненный статус текущего квартала"
+    assert data["teams"][0]["tasks"][0]["directorate_status"] == "Статус текущей встречи"
+    assert _directorate_deadline_names(date(2026, 9, 30)) == ["3Q 2026"]
+    assert _directorate_deadline_names(date(2026, 10, 1)) == ["4Q 2026", "Y2026"]
+
+
 def test_joined_field_filters(client, auth_headers, db):
     _seed(db)
     h = auth_headers

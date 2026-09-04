@@ -128,6 +128,25 @@ class BusinessCustomer(Base):
     department = relationship("Department")
 
 
+class DidClientGroup(Base):
+    __tablename__ = "did_client_groups"
+    id = Column(Integer, primary_key=True)
+    code = Column(String(50), nullable=False, unique=True)
+    name = Column(String(100), nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+
+class UserReportPreference(Base):
+    __tablename__ = "user_report_prefs"
+    __table_args__ = (UniqueConstraint("user_id", "report_key", name="uq_user_report_prefs"),)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    report_key = Column(String(50), nullable=False)
+    prefs = Column(JSON, nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class TaskStatus(Base):
     __tablename__ = "statuses"
 
@@ -272,6 +291,8 @@ class Task(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
+    did_client_group_id = Column(Integer, ForeignKey("did_client_groups.id"), nullable=True)
+    did_client_group = relationship("DidClientGroup")
     public_id = Column(String(12), nullable=True)
     team_id = Column(Integer, ForeignKey("teams.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)

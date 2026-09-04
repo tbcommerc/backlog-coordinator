@@ -60,5 +60,9 @@ assert.match(css, /\.request-participants\{display:grid/);
 assert.match(css, /\.request-card-progress\{/);
 assert.match(router, /isCustomerRequestDetail = \^?\/\^\\\/customer\\\/request/);
 assert.match(sidebar, />Мои запросы<\/span>/);
+assert.match(sidebar, /const developmentBadge = `[\s\S]*?sidebar-development-badge[\s\S]*?data-lucide="code-2"[\s\S]*?`;/);
+assert.match(sidebar, /href="#\/express-estimate"[\s\S]*?>Экспресс-оценка<\/span>[\s\S]*?\$\{developmentBadge\}/);
+assert.match(sidebar, /href="#\/analytics\/it"[\s\S]*?>Аналитика для ИТ<\/span>[\s\S]*?\$\{developmentBadge\}/);
+assert.doesNotMatch(sidebar, /data-lucide="wrench"/);
 
 console.log('customerPortal tests passed');

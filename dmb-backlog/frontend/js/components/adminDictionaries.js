@@ -18,6 +18,7 @@ function competencyCostCardData(adminData) {
 export function renderDictionariesTab(adminData, dictLocks, escapeHtml) {
   const ccCard = competencyCostCardData(adminData);
   const dicts = [
+    { key: 'did-client-groups', dictType: 'did-client-groups', label: 'Клиенты ДИД', icon: 'building', count: '—', preview: [] },
     { key: 'priorities', dictType: 'priority', label: 'Приоритеты', icon: 'flag', count: (adminData.priorities || []).length, preview: (adminData.priorities || []).slice(0, 3) },
     { key: 'statuses', dictType: 'status', label: 'Статусы задачи', icon: 'circle', count: (adminData.statuses || []).length, preview: (adminData.statuses || []).slice(0, 3) },
     { key: 'taskTypes', dictType: 'task_type', label: 'Типы задач', icon: 'tag', count: (adminData.taskTypes || []).length, preview: (adminData.taskTypes || []).slice(0, 3) },

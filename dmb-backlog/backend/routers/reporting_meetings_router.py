@@ -13,6 +13,7 @@ from reporting_meetings import (
     MEETING_KINDS,
     cancel_meeting,
     complete_meeting,
+    create_meeting_instance,
     current_meeting,
     ensure_reporting_schedule,
     meeting_to_dict,
@@ -37,6 +38,11 @@ class MeetingDateCommand(BaseModel):
     scheduled_date: date
     reason: Optional[str] = Field(None, max_length=2000)
     version: Optional[int] = Field(None, ge=0)
+
+
+class MeetingCreateCommand(BaseModel):
+    kind: str
+    scheduled_date: date
 
 
 class MeetingCancelCommand(BaseModel):
@@ -158,6 +164,21 @@ def get_reporting_meeting_history(
     }
 
 
+@router.post("", status_code=status.HTTP_201_CREATED)
+def create_reporting_meeting(
+    payload: MeetingCreateCommand,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "full")),
+):
+    result = _commit_or_http(db, lambda: create_meeting_instance(
+        db,
+        payload.kind,
+        payload.scheduled_date,
+        user_id=current_user.id,
+    ))
+    return meeting_to_dict(db, result)
+
+
 @router.get("/{meeting_id}/preparation")
 def get_reporting_meeting_preparation(
     meeting_id: int,
@@ -216,7 +237,6 @@ def assign_or_reschedule_meeting(
         reason=payload.reason,
         user_id=current_user.id,
         submitted_version=payload.version,
-        force=payload.force,
     ))
     return meeting_to_dict(db, result)
 
@@ -234,6 +254,7 @@ def mark_meeting_completed(
         meeting,
         user_id=current_user.id,
         submitted_version=payload.version,
+        force=payload.force,
     ))
     return meeting_to_dict(db, result)
 

@@ -3,6 +3,7 @@ import { renderAttachments } from './taskAttachments.js';
 import { renderComments, renderMentionOptions } from './taskComments.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
 import { calculateCv, calculateTaskCv, cvZone } from '../taskMetrics.js';
+import { highlightSearchText } from '../htmlUtils.js';
 
 // === DMB Backlog — Подробная карточка задачи (Master-Detail) ===
 // === Референс: Карточка задачи - референс.html ===
@@ -2632,7 +2633,7 @@ export function initModal(app) {
   initTaskDetailModal(app);
 }
 
-export function renderTaskCard(task) {
+export function renderTaskCard(task, searchQuery = '') {
   // Мини-карточка для канбан/карточек
   const prio = task.priority_name || task.priority || 'СРЕДНИЙ';
   const prioClass = prio === 'ВЫСОКИЙ' ? 'badge-high' : prio === 'СРЕДНИЙ' ? 'badge-medium' : 'badge-low';
@@ -2643,15 +2644,16 @@ export function renderTaskCard(task) {
   const ownerName = task.owner_name || task.owner || '—';
   const safeId = escapeHtml(formatTaskPublicId(task));
   const safePrio = escapeHtml(prio);
+  const highlight = value => highlightSearchText(value, searchQuery);
   return `
     <div class="task-card" data-id="${safeId}">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-        <span class="font-mono text-muted" style="font-size:11px;flex-shrink:0;">${safeId}</span>
+        <span class="font-mono text-muted" style="font-size:11px;flex-shrink:0;">${highlight(formatTaskPublicId(task))}</span>
         <div style="display:flex;gap:4px;flex-shrink:0;">
           <span class="badge ${prioClass}" style="font-size:10px;">${safePrio}</span>
         </div>
       </div>
-      <div class="task-card-title">${escapeHtml(task.title)}</div>
+      <div class="task-card-title">${highlight(task.title)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;">
         ${renderStatusBadge(statusName)}
         <span class="badge badge-info" style="font-size:10px;">${escapeHtml(teamName)}</span>
@@ -2900,6 +2902,8 @@ function renderCreateTaskFormFields() {
   html += `<div class="td-edit-row-2">`;
   html += field(FL('project_id'), apiSelect('create-project'));
   html += field(FL('business_customer_id'), apiSelect('create-business-customer'));
+  html += field('Подразделение заказчика', apiSelect('create-customer-department'));
+  html += field('Клиент ДИД', apiSelect('create-did-client'));
   html += `</div>`;
 
   // Deadline & Date
@@ -3050,6 +3054,17 @@ async function populateCreateSelects(app) {
     if (prioritySelect && !prioritySelect.value && ref.priorities?.length) prioritySelect.value = String(ref.priorities[0].id);
     populate(ref.deadlines, 'create-deadline', 'Не выбран');
     populate(ref.business_customers, 'create-business-customer', 'Не выбран');
+    populate(ref.departments, 'create-customer-department', 'Не выбрано');
+    populate(ref.did_client_groups, 'create-did-client', 'Не выбран');
+    const allContacts = ref.business_customers || [];
+    const contactSelect = document.getElementById('create-business-customer');
+    const departmentSelect = document.getElementById('create-customer-department');
+    departmentSelect?.addEventListener('change', () => {
+      const preferred = departmentSelect.value ? allContacts.filter(i => Number(i.department_id) === Number(departmentSelect.value)) : allContacts;
+      populate(preferred, 'create-business-customer', 'Не выбрано');
+      if (preferred.length < allContacts.length) contactSelect.insertAdjacentHTML('beforeend', '<option value="__all">Показать всех контактных лиц…</option>');
+    });
+    contactSelect?.addEventListener('change', () => { if (contactSelect.value === '__all') populate(allContacts, 'create-business-customer', 'Не выбрано'); });
     populate(ref.users, 'create-owner', 'Не назначен');
   } catch (e) {
     window.toast?.('Не удалось загрузить справочники для создания задачи', 'error');
@@ -3216,6 +3231,8 @@ async function saveCreateTask(app) {
     channel_id: getInt('create-channel'),
     project_id: getInt('create-project'),
     business_customer_id: getInt('create-business-customer'),
+    department_id: getInt('create-customer-department'),
+    did_client_group_id: getInt('create-did-client'),
     owner_id: getInt('create-owner'),
     deadline_id: getInt('create-deadline'),
     date_received: document.getElementById('create-date-received')?.value || null,
@@ -3783,7 +3800,7 @@ const FIELD_GROUPS = {
   'status_priority': { label: 'Статус и приоритет', fields: ['status_id', 'priority_id', 'progress'] },
   'deadlines': { label: 'Сроки', fields: ['deadline_id', 'date_received'] },
   'responsible': { label: 'Ответственные', fields: ['owner_id'] },
-  'ownership': { label: 'Принадлежность', fields: ['team_id', 'project_id', 'task_type_id', 'channel_id', 'department_id', 'business_customer_id'] },
+  'ownership': { label: 'Принадлежность', fields: ['team_id', 'project_id', 'task_type_id', 'channel_id', 'department_id', 'business_customer_id', 'did_client_group_id'] },
   'meetings': { label: 'Для встреч', fields: ['key_project_status', 'directorate_status', 'did_status'] },
   'estimation': { label: 'Оценка', fields: ['effort_days', 'effort_rub', 'financial_effect'] },
   'text_links': { label: 'Тексты и ссылки', fields: ['rejection_reason', 'comment_add', 'link_jira', 'link_mockups'] },
@@ -3791,6 +3808,7 @@ const FIELD_GROUPS = {
 };
 
 const FIELD_LABELS_BULK = {
+  did_client_group_id: 'Клиент ДИД',
   status_id: 'Статус', priority_id: 'Приоритет', progress: 'Прогресс %',
   deadline_id: 'Дедлайн', date_received: 'Дата получения',
   owner_id: 'Владелец',
@@ -3802,6 +3820,7 @@ const FIELD_LABELS_BULK = {
 };
 
 const FIELD_TYPES_BULK = {
+  did_client_group_id: 'select',
   status_id: 'select', priority_id: 'select', progress: 'number',
   deadline_id: 'select', date_received: 'date',
   owner_id: 'select',
@@ -3847,6 +3866,7 @@ function formatBulkValue(field, value) {
     project_id: window.app?.projects,
     owner_id: window.app?.users,
     business_customer_id: window.app?.businessCustomers,
+    did_client_group_id: window.app?.didClientGroups,
   };
   const item = (sources[field] || []).find(option => option.id == value);
   return item?.name || item?.label || String(value);
@@ -4130,6 +4150,7 @@ export function showBulkOpsModal(app, scope, tasks) {
         case 'project_id': (window.app?.projects || []).forEach(p => { opts += `<option value="${p.id}">${escapeHtml(p.name)}</option>`; }); break;
         case 'task_type_id': (window.app?.taskTypes || []).forEach(t => { opts += `<option value="${t.id}">${escapeHtml(t.name)}</option>`; }); break;
         case 'channel_id': (window.app?.channels || []).forEach(c => { opts += `<option value="${c.id}">${escapeHtml(c.name)}</option>`; }); break;
+        case 'did_client_group_id': (window.app?.didClientGroups || []).forEach(d => { opts += `<option value="${d.id}">${escapeHtml(d.name)}</option>`; }); break;
         case 'department_id': (window.app?.departments || []).forEach(d => { opts += `<option value="${d.id}">${escapeHtml(d.name)}</option>`; }); break;
         case 'business_customer_id': (window.app?.businessCustomers || []).forEach(b => { opts += `<option value="${b.id}">${escapeHtml(b.name)}</option>`; }); break;
         case 'deadline_id': (window.app?.deadlines || []).forEach(d => { opts += `<option value="${d.id}">${escapeHtml(d.name)}</option>`; }); break;
@@ -4488,6 +4509,7 @@ export function importTasksFromExcel(app, onSuccess) {
 
   const IMPORT_FIELDS = [
     { key: 'title' }, { key: 'team_id' }, { key: 'description' }, { key: 'date_received' },
+    { key: 'did_client_group_id' },
     { key: 'channel_id' }, { key: 'business_customer_id' }, { key: 'department_id' },
     { key: 'project_id' }, { key: 'task_type_id' }, { key: 'involved_teams' },
     { key: 'priority_id' }, { key: 'status_id' }, { key: 'deadline_id' },
@@ -4508,6 +4530,7 @@ export function importTasksFromExcel(app, onSuccess) {
   const FIELD_LABEL_FALLBACK = {
     title: 'Название задачи', team_id: 'Ответственная команда', description: 'Описание задачи',
     date_received: 'Дата получения', channel_id: 'Канал поступления',
+    did_client_group_id: 'Клиент ДИД',
     business_customer_id: 'Бизнес-заказчик', department_id: 'Подразделение Бизнес-заказчика',
     project_id: 'Проект', task_type_id: 'Тип задачи', involved_teams: 'Другие вовлеченные команды',
     priority_id: 'Приоритет', status_id: 'Статус задачи', deadline_id: 'Срок выполнения',
@@ -5371,6 +5394,9 @@ function buildCardState(task) {
     team: t.team_name || t.team || '',
     channel: t.channel_name || t.source_channel || '',
     channelId: t.channel_id == null ? null : Number(t.channel_id),
+    didClientId: String(t.did_client_group_id ?? ''),
+    customerDeptId: String(t.department_id ?? ''),
+    didClientName: t.did_client_group_name || '',
     customer: t.business_customer_name || '',
     customerDept: t.department_name || t.customer_department || '',
     project: t.project_name || t.project || '',
@@ -5388,8 +5414,6 @@ function buildCardState(task) {
     cv: t.cv,
     finEffect: fin(t.financial_effect),
     finJust: t.financial_effect_justification || '',
-    finEffectAi: fin(t.financial_effect_ai),
-    finJustAi: t.financial_effect_ai_justification || '',
     priorityScore: t.priority_score == null ? null : Number(t.priority_score),
     priorityJust: t.priority_justification || '',
     weightPercent: num(t.assessment_weight),
@@ -5430,6 +5454,7 @@ async function cardLoadDict(app) {
     deadlines: norm(ref?.deadlines || cached.deadlines),
     taskTypes: norm(ref?.task_types || cached.taskTypes),
     channels: norm(ref?.channels || cached.channels),
+    didClientGroups: norm(ref?.did_client_groups || cached.didClientGroups),
     customers: norm(ref?.business_customers || cached.businessCustomers),
     departments: norm(ref?.departments || cached.departments),
     tags: norm(ref?.tags || cached.tags),
@@ -5511,8 +5536,8 @@ function cardPlaceInd() {
 function cardKpiCard(l, v, lock) {
   return '<div class="kpi"><div class="kl"><span class="flt">' + escapeHtml(l) + '</span>' + (lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="kv">' + v + '</div></div>';
 }
-function cardEffectiveFin(t) { return t.finEffect != null ? t.finEffect : t.finEffectAi; }
-function cardEffectiveFinJust(t) { return t.finJust || t.finJustAi || ''; }
+function cardEffectiveFin(t) { return t.finEffect; }
+function cardEffectiveFinJust(t) { return t.finJust || ''; }
 const CARD_PRIORITISER_REQUIREMENTS = {
   value: [
     { key: 'task_id', label: 'ID задачи', value: t => t.publicId || t.id },
@@ -5580,7 +5605,8 @@ function showPrioritiserRequirementsModal(kind, items) {
     cardPrioritiserChecklist(items, 'agent-check-list-modal') +
     '<div class="prioritiser-requirements-actions"><button type="button" class="btn btn-primary btn-sm" data-action="close-requirements">Закрыть</button></div>' +
     '</div>';
-  document.body.appendChild(overlay);
+  const host = document.getElementById('task-detail-overlay') || document.body;
+  host.appendChild(overlay);
 
   const closeButton = overlay.querySelector('[data-action="close-requirements"]');
   const close = () => {
@@ -5624,7 +5650,7 @@ function cardKpiBlock(t, e) {
     + cardPrioritiserButton('priority') + '</div>';
   h += '<div class="kv big"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div>';
   h += '<div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div>';
-  h += '<div class="just"><div class="flabel"><span class="flt">Обоснование агента</span></div><div class="fval">' + (e ? cardTaC('priorityJust', t.priorityJust, 5) : '<span class="txt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</span>') + '</div></div>';
+  h += '<div class="just"><div class="flabel"><span class="flt">Обоснование агента</span></div><div class="fval"><span class="txt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</span></div></div>';
   h += '</div>';
   h += '<div class="kpi"><div class="kl"><span class="flt">Финансовый эффект</span>'
     + cardPrioritiserButton('value') + '</div>';
@@ -5706,6 +5732,16 @@ function cardBodyMain(t, e) {
   return h;
 }
 
+function cardCustomerReference(key, items, value, fallback, editing, departmentId) {
+  items = items || [];
+  if (!editing) return cardV(escapeHtml(items.find(i => String(i.id) === String(value))?.name || fallback || '—'));
+  const preferred = items;
+  const shown = preferred.slice();
+  const selected = items.find(i => String(i.id) === String(value));
+  if (selected && !shown.includes(selected)) shown.unshift(selected);
+  return '<select data-k="' + key + '"><option value="">Не выбрано</option>' + shown.map(i => '<option value="' + i.id + '"' + (String(i.id) === String(value) ? ' selected' : '') + '>' + escapeHtml(i.name) + '</option>').join('') + (shown.length < items.length ? '<option value="__all">Показать всех контактных лиц…</option>' : '') + '</select>';
+}
+
 function cardBodyMainV30(t, e) {
   const teams = cardNameList('teams'), users = cardNameList('users'), projects = cardNameList('projects');
   const types = cardNameList('taskTypes'), priorities = cardNameList('priorities'), statuses = cardNameList('statuses');
@@ -5730,7 +5766,8 @@ function cardBodyMainV30(t, e) {
     + cardIcell('Другие вовлечённые команды · ' + t.otherTeams.length, edit('otherTeams') ? cardChipsTeams(teams, t.otherTeams, 'otherTeams') : cardChipsStatic(t.otherTeams), { span2: true, editKey: e ? '' : 'otherTeams' }) + '</div></div>';
   h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Заказчик</span></div><div class="cl-grid duo">'
     + cardIcell(taskFormLabel('customer'), '<div class="person-ival"><span class="ava32" id="custAva">' + getInitials(t.customer) + '</span><div class="person-assignee-control">' + (edit('customer') ? taskFormEditControl('customer', t.customer) : '<span class="person-name">' + escapeHtml(cardPerson(t.customer)) + '</span>') + '</div></div>', { editKey: e ? '' : 'customer', valueClass: 'customer-row-field' })
-    + cardIcell('Подразделение', '<span id="custDept">' + escapeHtml(t.customerDept || '—') + '</span>', { lock: true, valueClass: 'customer-row-field' })
+    + cardIcell('Подразделение', cardCustomerReference('customerDeptId', cardDict.departments, t.customerDeptId, t.customerDept, edit('customerDeptId')), { editKey: e ? '' : 'customerDeptId', valueClass: 'customer-row-field' })
+    + cardIcell('Клиент ДИД', cardCustomerReference('didClientId', cardDict.didClientGroups, t.didClientId, t.didClientName, edit('didClientId')), { editKey: e ? '' : 'didClientId', valueClass: 'customer-row-field' })
     + cardIcell(taskFormLabel('channel'), fullEdit ? taskFormEditControl('channel', t.channel) : cardV(escapeHtml(t.channel)), { valueClass: 'customer-row-field' })
     + cardIcell(taskFormLabel('receivedAt'), fullEdit ? taskFormEditControl('receivedAt', t.receivedAt) : cardV(cardFmtDate(t.receivedAt)), { valueClass: 'customer-row-field' }) + '</div></div>';
   h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('tag') + '<span>Классификация</span></div><div class="cl-grid classify">'
@@ -5774,8 +5811,8 @@ function cardReportingItem(item) {
   const canEdit = !!item.can_edit;
   let h = '<div class="repcard reporting-status-card" data-reporting-kind="' + escapeHtml(item.kind) + '">';
   h += '<div class="rc-head"><span class="ric" style="background:' + color + '22;color:' + color + '">' + cardIcon(icons[item.kind] || 'flag') + '</span><div><h4>' + escapeHtml(item.title) + '</h4><div class="reporting-status-date">' + escapeHtml(cardReportingDate(meeting?.scheduled_date)) + '</div></div></div><div class="stack">';
-  h += '<div class="field"><div class="flabel"><span class="flt">Статус прошлой встречи' + (item.previous_meeting?.scheduled_date ? ' · ' + escapeHtml(cardReportingDate(item.previous_meeting.scheduled_date)) : '') + '</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">' + (previous.text ? cardNl2br(previous.text) : '—') + '</span></div></div>';
-  h += '<div class="field"><div class="flabel"><span class="flt">Статус к ближайшей встрече</span></div><div class="fval">';
+  h += '<div class="field reporting-status-field"><div class="flabel"><span class="flt">Статус прошлой встречи' + (item.previous_meeting?.scheduled_date ? ' · ' + escapeHtml(cardReportingDate(item.previous_meeting.scheduled_date)) : '') + '</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">' + (previous.text ? cardNl2br(previous.text) : '—') + '</span></div></div>';
+  h += '<div class="field reporting-status-field"><div class="flabel"><span class="flt">Статус к ближайшей встрече</span></div><div class="fval">';
   h += canEdit
     ? '<textarea class="task-detail-input" data-reporting-text="' + escapeHtml(item.kind) + '" rows="6" maxlength="5000" placeholder="Опишите прогресс, риски и следующие шаги">' + escapeHtml(current.text || '') + '</textarea>'
     : '<span class="txt">' + (current.text ? cardNl2br(current.text) : '—') + '</span>';
@@ -5941,7 +5978,7 @@ function cardRenderBody() {
   if (e) attachDictionarySearch(el, [
     { selector: '[data-k="team"]', label: 'Ответственная команда' },
     { selector: '[data-k="project"]', label: 'Проект' },
-    { selector: '[data-k="customer"]', label: 'Бизнес-заказчик' },
+    { selector: '[data-k="customer"]', label: 'Бизнес-заказчик', preferredValues: (cardDict.customers || []).filter(c => String(c.department_id) === String(t.customerDeptId)).map(c => c.name) },
     { selector: '[data-k="assignee"]', label: 'Исполнитель', preferredValues: userValuesForTeam(cardDict?.users, cardMaps?.teamId(t.team), true) },
   ]);
 }
@@ -6008,7 +6045,6 @@ function cardRefreshDynamic() {
     else if (k === 'fcost') el.textContent = cardFmtMoney(fcost);
     else if (k === 'ftz') el.textContent = cardFmtNum(ftzT);
     else if (k === 'fin') el.textContent = cardFmtNum(t.finEffect, 2);
-    else if (k === 'finAi') el.textContent = cardFmtNum(t.finEffectAi, 2);
     else if (k === 'ps') { el.textContent = (t.priorityScore == null ? '—' : t.priorityScore); el.className = cardPsCls(t.priorityScore); }
     else if (k === 'cvE') { el.textContent = (cvE == null ? '—' : cvE.toLocaleString('ru-RU')); el.className = cardCvCls(cvE); }
     else if (k === 'cvF') { el.textContent = (cvF == null ? '—' : cvF.toLocaleString('ru-RU')); el.className = cardCvCls(cvF); }
@@ -6447,12 +6483,12 @@ function cardShowFieldError(key, message) {
 }
 
 const CARD_DIFF_TRACK = [
+  ['didClientId', 'Клиент ДИД'], ['customerDeptId', 'Подразделение заказчика'],
   ['title', 'Название задачи'], ['description', 'Описание задачи'], ['receivedAt', 'Дата получения'],
   ['channel', 'Канал поступления'], ['customer', 'Бизнес-заказчик'], ['project', 'Проект'],
   ['type', 'Тип задачи'], ['priority', 'Приоритет'], ['status', 'Статус задачи'],
   ['deadline', 'Срок выполнения'], ['team', 'Ответственная команда'], ['assignee', 'Исполнитель'],
   ['progress', 'Прогресс'], ['finEffect', 'Финансовый эффект'], ['finJust', 'Обоснование фин. эффекта'],
-  ['finEffectAi', 'AI-финансовый эффект'], ['finJustAi', 'Обоснование AI-финэффекта'],
   ['mockupUrl', 'Ссылка на макеты'], ['statuses', 'Отчётные статусы'], ['demoDid', 'Демо для ДИД'],
   ['tags', 'Метки (теги)'], ['otherTeams', 'Другие вовлечённые команды'],
   ['jiraLinks', 'Ссылки на Jira'], ['reqLinks', 'Ссылки на бизнес-требования'],
@@ -6486,6 +6522,8 @@ function cardPayload(source = cardState.draft) {
     project_id: m.projectId ? m.projectId(d.project) : null,
     task_type_id: (m.typeId && m.typeId(d.type) != null) ? m.typeId(d.type) : (d.type === cardState.current.type ? cardState.current.taskTypeId : null),
     channel_id: (m.channelId && m.channelId(d.channel) != null) ? m.channelId(d.channel) : (d.channel === cardState.current.channel ? cardState.current.channelId : null),
+    did_client_group_id: d.didClientId ? Number(d.didClientId) : null,
+    department_id: d.customerDeptId ? Number(d.customerDeptId) : null,
     business_customer_id: m.customerId ? m.customerId(d.customer) : null,
     owner_id: m.userId ? m.userId(d.assignee) : null,
     involved_teams: d.otherTeams.map(n => (m.teamId ? m.teamId(n) : null)).filter(id => id != null),
@@ -6493,10 +6531,6 @@ function cardPayload(source = cardState.draft) {
     progress: Math.max(0, Math.min(100, Math.round((+d.progress || 0) / 5) * 5)),
     financial_effect: d.finEffect != null && d.finEffect !== '' ? Math.round(+d.finEffect) : null,
     financial_effect_justification: d.finJust || null,
-    financial_effect_ai: d.finEffectAi != null && d.finEffectAi !== '' ? Math.round(+d.finEffectAi) : null,
-    financial_effect_ai_justification: d.finJustAi || null,
-    priority_score: d.priorityScore != null && d.priorityScore !== '' ? Math.round(+d.priorityScore) : null,
-    priority_justification: d.priorityJust || null,
     assessment_weight: d.weightPercent != null && d.weightPercent !== '' ? +d.weightPercent : null,
     completion_forecast: d.forecastPercent != null && d.forecastPercent !== '' ? +d.forecastPercent : null,
     hard_score: d.hardScore || null,
@@ -6740,7 +6774,6 @@ function cardConflictRows(serverTask) {
     channel_id: 'Канал', business_customer_id: 'Бизнес-заказчик', involved_teams: 'Другие команды',
     tags: 'Метки', progress: 'Прогресс', description: 'Описание', date_received: 'Дата получения',
     financial_effect: 'Финансовый эффект (₽)', financial_effect_justification: 'Обоснование фин. эффекта',
-    financial_effect_ai: 'AI-финансовый эффект (₽)', financial_effect_ai_justification: 'Обоснование AI',
     directorate_status: 'Статус (директорская)', did_status: 'Статус (ДИД)', key_project_status: 'Статус (ключ. проекты)',
     did_demo: 'Демо для ДИД', link_mockups: 'Макеты', link_jira: 'Jira', link_requirements: 'Требования',
     effort_designee: 'Designee (ЭО)', effort_analytics: 'Аналитика (ЭО)', effort_be: 'Разработка BE (ЭО)',
@@ -6983,9 +7016,11 @@ function cardOnField(ev, app = window.app) {
   cardSetPath(cardState.draft, k, v);
   if (k === 'customer') {
     cardState.draft.customerDept = cardCustomerDepartment(v, '');
+    cardState.draft.customerDeptId = String((cardDict.customers || []).find(i => i.name === v)?.department_id ?? '');
   }
   cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
   cardUpdateDirty();
+  if (k === 'customerDeptId') { cardState.draft.customerDept = (cardDict.departments || []).find(i => String(i.id) === String(v))?.name || ''; cardRenderBody(); }
   if (k === 'progress') {
     document.querySelectorAll('#task-detail-overlay [data-k="progress"]').forEach(el2 => { if (el2 !== el) el2.value = v; });
     const progressEditor = el.closest('.prog-edit');

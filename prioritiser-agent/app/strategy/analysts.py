@@ -5,10 +5,10 @@ Decomposer. Решение владельца от 2026-08-11: считать и
 
 Три провайдера с одинаковым контрактом:
 
-* `stub` — детерминированная эвристика без сети. Дефолт: прогон бэклога должен
-  быть воспроизводимым и не зависеть от доступности модели;
+* `stub` — детерминированная эвристика без сети, доступная только при явном
+  выборе в тестах;
 * `agent` — собственный оценщик на LLM-адаптере, отвечает по рубрике и
-  опирается на найденные в корпусе материалы;
+  опирается на найденные в корпусе материалы; это рабочий default;
 * `rest` — внешний Strategy Decomposer, как в исходном ТЗ.
 
 Во всех трёх случаях итоговый балл считает `app/strategy/rubric.py`. Провайдер
@@ -306,7 +306,9 @@ class AgentDependencyAnalyst:
 
 def get_strategy_analyst(provider: str | None = None, adapter=None) -> StrategyAnalyst:
     settings = get_settings()
-    name = (provider or settings.strategy_provider or "stub").strip().lower()
+    name = (provider if provider is not None else settings.strategy_provider).strip().lower()
+    if not name:
+        raise RuntimeError("не задан PRIORITISER_STRATEGY_PROVIDER")
 
     if name == "agent":
         from app.llm.factory import get_adapter
@@ -317,18 +319,24 @@ def get_strategy_analyst(provider: str | None = None, adapter=None) -> StrategyA
         if not url:
             raise RuntimeError("не задан STRATEGY_DECOMPOSER_URL")
         return RestStrategyAnalyst(RestStrategyDecomposer(url, settings.strategy_decomposer_token))
-    return StubStrategyAnalyst()
+    if name == "stub":
+        return StubStrategyAnalyst()
+    raise ValueError(f"неизвестный strategy provider: {name}")
 
 
 def get_dependency_analyst(provider: str | None = None, adapter=None) -> DependencyAnalyst:
     settings = get_settings()
-    name = (provider or settings.dependency_provider or "declared").strip().lower()
+    name = (provider if provider is not None else settings.dependency_provider).strip().lower()
+    if not name:
+        raise RuntimeError("не задан PRIORITISER_DEPENDENCY_PROVIDER")
 
     if name == "agent":
         from app.llm.factory import get_adapter
 
         return AgentDependencyAnalyst(adapter or get_adapter(), use_rag=settings.strategy_use_rag)
-    return DeclaredDependencyAnalyst()
+    if name == "declared":
+        return DeclaredDependencyAnalyst()
+    raise ValueError(f"неизвестный dependency provider: {name}")
 
 
 __all__ = [

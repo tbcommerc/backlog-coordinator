@@ -1,13 +1,14 @@
-console.log('[DMB] teamBacklog.js v20260806.1 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=91';
-import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=90';
+console.log('[DMB] teamBacklog.js v20260902.1 loaded');
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, getToolbarSearchValue, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=97';
+import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=91';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=81';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=76';
-import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=50';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=83';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=80';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=51';
 import { safeExternalUrl } from '../urlUtils.js';
-import { bindViewStateAction, renderViewState } from './viewState.js';
+import { bindViewStateAction, fitTableViewState, renderViewState } from './viewState.js?v=2';
 import { formatTaskPublicId } from '../taskPublicId.js';
+import { highlightSearchText } from '../htmlUtils.js';
 import { getSelectedItems, reconcileSelection, setAllSelection } from './tableSelection.js';
 import { calculateTaskCv, cvZone } from '../taskMetrics.js';
 
@@ -87,21 +88,12 @@ export function renderTeamBacklog(app) {
       ${renderQuickEditToolbar('team')}
 
       <div id="team-tasks-container">
-          <div class="table-container" style="overflow-x:auto;">
-              <table class="table" id="team-tasks-table">
-                  <thead>
-                      <tr id="team-table-header-row"></tr>
-                  </thead>
-                  <tbody id="team-tasks-tbody">
-                      ${renderTeamSkeletonRows(6)}
-                  </tbody>
-              </table>
-          </div>
+          ${renderTeamTableStateMarkup({ kind: 'loading', title: 'Загружаем задачи команды…' })}
       </div>
     </div>
 
     <div class="flex justify-between items-center" style="margin-top: var(--space-6);">
-        <span class="text-secondary" id="team-tasks-count">Найдено: 0 задач</span>
+        <span class="text-secondary" id="team-tasks-count" role="status" aria-live="polite">Загрузка…</span>
         <div class="flex gap-2" id="team-pagination"></div>
     </div>
     `;
@@ -158,6 +150,7 @@ export async function initTeamBacklog(app) {
     }
     await applyTeamDefaultDisplaySettings(app);
     loadTeamColumnState();
+    renderTeamTableState({ kind: 'loading', title: 'Загружаем задачи команды…' });
     await loadTeamTasks(app);
 
   function onFilterChange() {
@@ -291,6 +284,12 @@ async function loadTeamTasks(app) {
         return;
     }
     teamTasksLoadInProgress = true;
+    const existingContainer = document.getElementById('team-tasks-container');
+    if (!teamTasksCache || existingContainer?.querySelector('.view-state-error')) {
+        renderTeamTableState({ kind: 'loading', title: 'Загружаем задачи команды…' });
+        const countEl = document.getElementById('team-tasks-count');
+        if (countEl) countEl.textContent = 'Загрузка…';
+    }
     try {
         const user = app.store.get('currentUser');
         const teamId = user?.team_id || null;
@@ -304,14 +303,17 @@ async function loadTeamTasks(app) {
     } catch (e) {
         const container = document.getElementById('team-tasks-container');
         if (container) {
-            container.innerHTML = renderViewState({
+            renderTeamTableState({
                 kind: 'error',
                 message: window.formatErrorMessage?.(e) || 'Повторите попытку позже.',
                 actionLabel: 'Повторить',
             });
             bindViewStateAction(container, () => loadTeamTasks(app));
-            window.lucide?.createIcons();
         }
+        const countEl = document.getElementById('team-tasks-count');
+        if (countEl) countEl.textContent = 'Не удалось загрузить задачи';
+        const pagination = document.getElementById('team-pagination');
+        if (pagination) pagination.innerHTML = '';
     } finally {
         teamTasksLoadInProgress = false;
         if (teamTasksReloadQueued) {
@@ -497,16 +499,18 @@ function renderTeamCell(col, task) {
     return renderQuickEditCell('team', col, task);
   }
 
+    const highlight = value => highlightSearchText(value, getToolbarSearchValue('team'));
     switch (col) {
-        case 'id': return `<span class="font-mono text-muted">${formatTaskPublicId(task)}</span>`;
-        case 'title': return `<strong class="cell-truncate">${escapeHtml(task.title)}</strong>`;
-        case 'description': return `<span class="cell-truncate">${escapeHtml(task.description || '—')}</span>`;
+        case 'id': return `<span class="font-mono text-muted">${highlight(formatTaskPublicId(task))}</span>`;
+        case 'title': return `<strong class="cell-truncate">${highlight(task.title)}</strong>`;
+        case 'description': return `<span class="cell-truncate">${highlight(task.description || '—')}</span>`;
         case 'date_received': return `<span>${escapeHtml(task.date_received || '—')}</span>`;
         case 'status': return `<span>${renderStatus(task.status_name || task.status)}</span>`;
         case 'priority': return `<span>${renderPriority(task.priority_name || task.priority)}</span>`;
         case 'team': return `<span class="badge badge-info">${escapeHtml(task.team_name || '—')}</span>`;
         case 'channel': return `<span>${escapeHtml(task.channel_name || '—')}</span>`;
-        case 'business_customer': return `<span>${escapeHtml(task.business_customer_name || task.business_customer || '—')}</span>`;
+        case 'did_client_group': return `<span>${escapeHtml(task.did_client_group_name || '—')}</span>`;
+    case 'business_customer': return `<span>${escapeHtml(task.business_customer_name || task.business_customer || '—')}</span>`;
         case 'department': return `<span>${escapeHtml(task.department_name || '—')}</span>`;
         case 'project': return `<span>${escapeHtml(task.project_name || '—')}</span>`;
         case 'task_type': return `<span>${escapeHtml(task.task_type_name || '—')}</span>`;
@@ -594,7 +598,7 @@ function renderTeamCards(list) {
         <div class="task-card-grid">
             ${list.length === 0
                 ? renderViewState({ kind: 'empty', title: 'Задачи команды не найдены', message: 'Измените фильтры или создайте новую задачу.' })
-                : list.map(task => renderTaskCard(task)).join('')}
+                : list.map(task => renderTaskCard(task, getToolbarSearchValue('team'))).join('')}
         </div>
     `;
     container.querySelectorAll('.task-card').forEach(card => {
@@ -693,6 +697,32 @@ function updateBulkBar() {
         selectAll.checked = editable.length > 0 && checked === editable.length;
         selectAll.indeterminate = checked > 0 && checked < editable.length;
     }
+}
+
+function renderTeamTableStateMarkup(state) {
+    const visibleCols = teamColumnOrder.filter(key => teamColumnSettings[key]);
+    const colspan = Math.max(1, visibleCols.length);
+    return `
+        <div class="table-container" style="overflow-x:auto;">
+            <table class="table" id="team-tasks-table" aria-busy="${state.kind === 'loading'}">
+                <thead>
+                    <tr>${visibleCols.map(col => headerCellHtml(getTeamColumnLabel(col), col, teamSort.key, teamSort.dir)).join('')}</tr>
+                </thead>
+                <tbody id="team-tasks-tbody" aria-live="polite">
+                    <tr><td class="table-view-state-cell" colspan="${colspan}">${renderViewState(state)}</td></tr>
+                </tbody>
+            </table>
+        </div>`;
+}
+
+function renderTeamTableState(state) {
+    const container = document.getElementById('team-tasks-container');
+    if (!container) return;
+    container.innerHTML = renderTeamTableStateMarkup(state);
+    fitTableViewState(container);
+    updateStickyOffsets();
+    initStickyTableHeader('team-tasks-table');
+    window.lucide?.createIcons();
 }
 
 function getTeamSelectedTasks() {

@@ -1,4 +1,4 @@
-# API Спецификация DMB Backlog
+# API Спецификация Backlog coordinator
 
 **Версия:** 3.1  
 **Дата:** 2026-07-25

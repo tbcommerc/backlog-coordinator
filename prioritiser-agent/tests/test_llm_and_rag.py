@@ -53,14 +53,22 @@ class TestParseHints:
         hints = parse_hints('```json\n{"kind": "rnd", "confident": false}\n```', "test")
         assert hints.kind == "rnd"
 
-    def test_survives_garbage(self):
-        assert parse_hints("совершенно не JSON", "test").kind is None
+    def test_rejects_garbage_instead_of_substituting_empty_hints(self):
+        with pytest.raises(ValueError, match="без JSON"):
+            parse_hints("совершенно не JSON", "test")
 
     def test_null_and_zero_become_none(self):
         """Ноль пользователей — не число, а отсутствие данных."""
-        hints = parse_hints('{"kind": "time_saving", "users": 0, "minutes_per_operation": null}', "t")
+        hints = parse_hints(
+            '{"kind": "time_saving", "users": 0, "minutes_per_operation": null, "confident": false}',
+            "t",
+        )
         assert hints.users is None
         assert hints.minutes_per_operation is None
+
+    def test_rejects_unknown_kind(self):
+        with pytest.raises(ValueError, match="неизвестный kind"):
+            parse_hints('{"kind": "placeholder", "confident": false}', "test")
 
 
 class TestPromptHash:

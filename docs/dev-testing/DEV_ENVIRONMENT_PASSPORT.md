@@ -1,5 +1,5 @@
 ---
-title: Паспорт DEV-стенда DMB Platform
+title: Паспорт DEV-стенда Backlog coordinator
 scope: target-dev-testing
 status: ready-to-fill
 last_updated: 2026-09-01

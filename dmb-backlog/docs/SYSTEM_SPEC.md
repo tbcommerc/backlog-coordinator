@@ -1,5 +1,5 @@
 ---
-title: Системная спецификация DMB Backlog
+title: Системная спецификация Backlog coordinator
 scope: as-is
 status: verified
 last_verified: 2026-09-01
@@ -15,13 +15,13 @@ evidence:
   - frontend/tests/
 ---
 
-# Системная спецификация DMB Backlog
+# Системная спецификация Backlog coordinator
 
 Документ описывает подтверждённые возможности системы. Он не является утверждённым BRD и не добавляет бизнес-правила, которых нет в реализации.
 
 ## Назначение и границы
 
-DMB Backlog объединяет:
+Backlog coordinator объединяет:
 
 - внутренний backlog задач;
 - командный backlog и Kanban;
