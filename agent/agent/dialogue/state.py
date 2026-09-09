@@ -6,6 +6,22 @@ generates natural phrasing around this state.
 """
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
+import re
+import uuid
+
+
+def value_status(value) -> str:
+    """Distinguish an answer from an explicit gap, including older sessions."""
+    if value is None or not str(value).strip():
+        return "empty"
+    text = str(value).strip().lower().rstrip(".! ")
+    if text in {"не применимо", "неприменимо", "не относится", "n/a"}:
+        return "not_applicable"
+    if text in {"не знаю", "не знаю, нужно уточнить", "нужно уточнить", "неизвестно", "затрудняюсь"}:
+        return "unknown"
+    if re.match(r"^(?:пока |ещ[её] |сейчас )?(?:не знаю|не уверен[аы]?|затрудняюсь|неизвестно)(?:\b|[,;])", text):
+        return "unknown"
+    return "filled"
 
 # ---- Phase definitions ----------------------------------------------------
 PHASE_WELCOME = "welcome"
@@ -133,10 +149,13 @@ class Slot:
     source: str = ""  # user_message | knowledge_base | assumption | system
     confirmed: bool = False  # confirmed by user explicitly
     assumption: bool = False  # True if value was inferred, not stated
+    evidence: str = ""  # User quotation supporting the current value
+    message_id: str = ""  # Stable origin, independent of the retained chat window
+    provenance: List[dict] = field(default_factory=list)  # Sources of compound facts
 
     @property
     def handled(self) -> bool:
-        return self.status in ("filled", "skipped")
+        return self.status in ("filled", "skipped", "unknown", "not_applicable")
 
     @property
     def needs_review(self) -> bool:
@@ -236,6 +255,8 @@ class DialogueState:
     last_user_signal: str = ""
     last_extracted_slots: List[str] = field(default_factory=list)
     last_agent_decision: dict = field(default_factory=dict)
+    requirement_conflicts: List[dict] = field(default_factory=list)
+    requirement_assumptions: List[dict] = field(default_factory=list)
     requirement_shape: str = ""
 
     # Phase 4: Escalation
@@ -249,10 +270,11 @@ class DialogueState:
 
     def get(self, key: str) -> Optional[str]:
         slot = self.slots.get(key)
-        return slot.value if slot else None
+        return slot.value if slot and value_status(slot.value) == "filled" else None
 
     def set(self, key: str, value, confidence: float = 1.0, source: str = "user_message", 
-            confirmed: bool = False, assumption: bool = False):
+            confirmed: bool = False, assumption: bool = False,
+            evidence: str = "", message_id: str = "", provenance: Optional[List[dict]] = None):
         if key not in self.slots:
             self.slots[key] = Slot(key=key)
         self.slots[key].value = value
@@ -260,8 +282,14 @@ class DialogueState:
         self.slots[key].source = source
         self.slots[key].confirmed = confirmed
         self.slots[key].assumption = assumption
-        if value is not None and value != "":
-            self.slots[key].status = "filled"
+        self.slots[key].evidence = evidence
+        self.slots[key].message_id = message_id
+        self.slots[key].provenance = list(provenance or [])
+        self.slots[key].status = value_status(value)
+        if confirmed:
+            self.resolve_field_conflicts(key, value, "user_confirmation")
+            self.resolve_field_assumptions(key, "user_confirmation")
+        if self.slots[key].status == "filled":
             if self.first_slot_filled_at is None:
                 import time
                 self.first_slot_filled_at = time.time()
@@ -292,9 +320,26 @@ class DialogueState:
 
     def add_message(self, role: str, content: str, message_id: str = ""):
         entry = {"role": role, "content": content}
+        if role == "user" and not message_id:
+            message_id = f"msg-{uuid.uuid4().hex}"
         if message_id:
             entry["message_id"] = message_id
         self.history.append(entry)
+        from ..config import settings
+        limit = max(2, settings.AGENT_HISTORY_MESSAGES)
+        if len(self.history) > limit:
+            del self.history[:-limit]
+
+    def resolve_field_conflicts(self, key: str, value, reason: str = "user_confirmation"):
+        """Resolve only conflicts concerning an explicitly corrected field."""
+        for conflict in self.requirement_conflicts:
+            if (conflict.get("field") or conflict.get("slot")) == key and conflict.get("status") == "open":
+                conflict.update(status="resolved", resolution=str(value or ""), resolution_reason=reason)
+
+    def resolve_field_assumptions(self, key: str, reason: str = "user_confirmation"):
+        for assumption in self.requirement_assumptions:
+            if (assumption.get("field") or assumption.get("slot")) == key and assumption.get("status") == "open":
+                assumption.update(status="resolved", resolution_reason=reason)
 
     def progress(self) -> List[dict]:
         items = []
@@ -303,9 +348,11 @@ class DialogueState:
             if not slot:
                 continue
             label = SLOT_LABELS.get(key, key)
-            filled = slot.handled and slot.status == "filled"
+            status = value_status(slot.value) if slot.status != "skipped" else "skipped"
+            filled = status == "filled"
             items.append({
                 "key": key, "label": label, "filled": filled,
+                "status": status,
                 "skipped": slot.status == "skipped", "confidence": slot.confidence,
                 "needs_review": slot.needs_review,
             })
@@ -323,12 +370,12 @@ class DialogueState:
     def all_mandatory_hard_filled(self) -> bool:
         for k in MANDATORY_HARD:
             slot = self.slots.get(k)
-            if not slot or slot.status != "filled":
+            if not slot or slot.status != "filled" or value_status(slot.value) != "filled":
                 return False
         return True
     
     def get_missing_mandatory_hard(self) -> List[str]:
-        return [k for k in MANDATORY_HARD if not self.slots.get(k) or self.slots[k].status != "filled"]
+        return [k for k in MANDATORY_HARD if not self.slots.get(k) or self.slots[k].status != "filled" or not self.get(k)]
     
     def get_missing_mandatory_soft(self) -> List[str]:
         return [k for k in MANDATORY_SOFT if not self.slots.get(k) or self.slots[k].status != "filled"]
@@ -395,6 +442,10 @@ class DialogueState:
             "reason": reason,
             "timestamp": len(self.history),  # Use history length as pseudo-timestamp
         })
+        from ..config import settings
+        limit = max(1, settings.AGENT_SLOT_HISTORY_ITEMS)
+        if len(self.slot_history[key]) > limit:
+            del self.slot_history[key][:-limit]
     
     def get_slot_history(self, key: str) -> List[dict]:
         """Get change history for a slot."""

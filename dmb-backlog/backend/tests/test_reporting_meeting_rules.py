@@ -6,7 +6,7 @@ import pytest
 from types import SimpleNamespace
 
 import reporting_meetings
-from reporting_meetings import complete_meeting, create_meeting_instance, reminder_date, task_reporting_context, validate_completion_readiness
+from reporting_meetings import complete_meeting, create_meeting_instance, meeting_completeness, reminder_date, save_task_reporting_status, task_reporting_context
 from routers import reporting_meetings_router
 from routers.reporting_meetings_router import MeetingCompleteCommand, MeetingCreateCommand, MeetingDateCommand, _can_fill_status
 
@@ -27,19 +27,120 @@ def test_key_projects_reminder_is_three_calendar_days_before():
     assert reminder_date(meeting("key_projects", date(2026, 9, 3))) == date(2026, 8, 31)
 
 
-def test_only_assigned_po_pl_cl_can_fill_reporting_status():
-    task = SimpleNamespace(team=SimpleNamespace(po_id=10, pl_id=20, cl_id=30))
-    assert _can_fill_status(SimpleNamespace(id=10), task) is True
-    assert _can_fill_status(SimpleNamespace(id=20), task) is True
-    assert _can_fill_status(SimpleNamespace(id=30), task) is True
-    assert _can_fill_status(SimpleNamespace(id=40), task) is False
+def test_po_pl_cl_and_team_participants_can_fill_reporting_status():
+    task = SimpleNamespace(team=SimpleNamespace(id=7, po_id=10, pl_id=20, cl_id=30))
+    assert _can_fill_status(SimpleNamespace(id=10, team_id=None, role_name="IT PL"), task) is True
+    assert _can_fill_status(SimpleNamespace(id=20, team_id=7, role_name="PO/PL/CL"), task) is True
+    assert _can_fill_status(SimpleNamespace(id=40, team_id=7, role_name="BA/Участник команды"), task) is True
+    assert _can_fill_status(SimpleNamespace(id=41, team_id=8, role_name="BA/Участник команды"), task) is False
+    assert _can_fill_status(SimpleNamespace(id=42, team_id=7, role_name="Лидер трайба"), task) is False
 
 
-def test_incomplete_meeting_requires_explicit_force():
-    with pytest.raises(ValueError, match="Не заполнено задач: 4"):
-        validate_completion_readiness({"missing_tasks": 4}, force=False)
-    validate_completion_readiness({"missing_tasks": 4}, force=True)
-    validate_completion_readiness({"missing_tasks": 0}, force=False)
+def test_admin_can_fill_reporting_status_for_any_team():
+    role = SimpleNamespace(
+        admin_access="full",
+        backlog_dmb_access="none",
+        backlog_team_access="none",
+        reports_access="none",
+        analytics_access="none",
+        customer_access="none",
+        settings_access="none",
+    )
+    user = SimpleNamespace(id=99, team_id=None, role_name="Администратор", role=role)
+    task = SimpleNamespace(team=SimpleNamespace(id=7, po_id=10, pl_id=20, cl_id=30))
+
+    assert _can_fill_status(user, task) is True
+
+
+def test_calendar_list_can_skip_expensive_completeness(monkeypatch):
+    stored = ReportingMeeting(id=42, kind="directorate", occurrence_key="test", scheduled_date=date(2026, 9, 7))
+    captured = {}
+
+    class MeetingQuery:
+        def filter(self, *args):
+            return self
+
+        def all(self):
+            return [stored]
+
+    monkeypatch.setattr(reporting_meetings_router, "ensure_reporting_schedule", lambda db: None)
+    monkeypatch.setattr(
+        reporting_meetings_router,
+        "_meeting_with_history",
+        lambda db, item, **kwargs: captured.update(kwargs) or {"id": item.id},
+    )
+    monkeypatch.setattr(reporting_meetings_router, "check_permission", lambda *args: False)
+    db = SimpleNamespace(query=lambda model: MeetingQuery(), commit=lambda: None)
+
+    result = reporting_meetings_router.list_reporting_meetings(
+        kind=None,
+        include_closed=False,
+        state=None,
+        date_from=None,
+        date_to=None,
+        include_completeness=False,
+        db=db,
+        current_user=SimpleNamespace(),
+    )
+
+    assert result["items"] == [{"id": 42}]
+    assert captured == {"include_completeness": False}
+
+
+def test_reporting_status_requires_explicit_readiness_confirmation(db):
+    team = Team(name=f"Команда готовности {uuid4()}")
+    db.add(team)
+    db.flush()
+    task = Task(team_id=team.id, title="Статус с подтверждением")
+    meeting_row = ReportingMeeting(
+        kind="directorate",
+        occurrence_key=f"ready-{uuid4()}",
+        scheduled_date=date.today(),
+        state="planned",
+    )
+    db.add_all([task, meeting_row])
+    db.flush()
+
+    draft = save_task_reporting_status(
+        db,
+        task=task,
+        meeting=meeting_row,
+        status_text="Черновик статуса",
+        did_demo=False,
+        is_ready=False,
+        submitted_version=None,
+        user_id=None,
+    )
+    assert draft.is_ready is False
+    assert meeting_completeness(db, meeting_row)["filled_tasks"] == 0
+
+    confirmed = save_task_reporting_status(
+        db,
+        task=task,
+        meeting=meeting_row,
+        status_text="Черновик статуса",
+        did_demo=False,
+        is_ready=True,
+        submitted_version=draft.version,
+        user_id=None,
+        directorate_attention=True,
+    )
+    assert confirmed.is_ready is True
+    assert confirmed.directorate_attention is True
+    assert meeting_completeness(db, meeting_row)["filled_tasks"] == 1
+
+    with pytest.raises(ValueError, match="заполните статус"):
+        save_task_reporting_status(
+            db,
+            task=task,
+            meeting=meeting_row,
+            status_text="",
+            did_demo=False,
+            is_ready=True,
+            submitted_version=confirmed.version,
+            user_id=None,
+        )
+    db.rollback()
 
 
 def test_overdue_meeting_can_be_completed_until_fact_is_recorded(monkeypatch):
@@ -51,7 +152,7 @@ def test_overdue_meeting_can_be_completed_until_fact_is_recorded(monkeypatch):
         state="planned",
     )
     monkeypatch.setattr(reporting_meetings, "_current_meeting", lambda db, kind: stored)
-    monkeypatch.setattr(reporting_meetings, "meeting_completeness", lambda db, item: {"missing_tasks": 0})
+    monkeypatch.setattr(reporting_meetings, "meeting_completeness", lambda db, item: {"missing_tasks": 4})
     monkeypatch.setattr(reporting_meetings, "_meeting_history", lambda *args, **kwargs: None)
     monkeypatch.setattr(reporting_meetings, "active_tasks", lambda db: [])
     monkeypatch.setattr(reporting_meetings, "_resolve_meeting_notifications", lambda *args: None)
@@ -146,7 +247,7 @@ def test_meeting_command_routes_forward_only_supported_fields(monkeypatch):
     )
     reporting_meetings_router.mark_meeting_completed(
         42,
-        MeetingCompleteCommand(version=3, force=True),
+        MeetingCompleteCommand(version=3),
         db=SimpleNamespace(),
         current_user=SimpleNamespace(id=7),
     )
@@ -163,7 +264,7 @@ def test_meeting_command_routes_forward_only_supported_fields(monkeypatch):
         "user_id": 7,
         "submitted_version": 3,
     }
-    assert calls["complete"]["force"] is True
+    assert "force" not in calls["complete"]
     assert calls["create"] == {
         "kind": "key_projects",
         "scheduled_date": date(2026, 9, 10),

@@ -12,7 +12,7 @@ export async function openCustomerReferences(kind, app) {
   dialog.showModal();
   const title = 'Клиенты ДИД';
   function render() {
-    dialog.innerHTML = `<div class="did-filter-panel-head"><h2>${title}</h2><button class="btn btn-ghost" data-close aria-label="Закрыть">×</button></div><p class="text-muted">Группировка задач в отчёте для бизнес-заказчиков ДИД.</p><div role="alert" data-error></div><div class="customer-reference-list">${items.map(item => `<div class="customer-reference-row"><span>${escapeHtml(item.name)} ${item.is_active ? '' : '· Неактивна'}</span><button class="btn btn-secondary btn-sm" data-edit="${item.id}">Изменить</button></div>`).join('') || '<p class="empty-state">Справочник пока пуст</p>'}</div><button class="btn btn-primary" data-new>Добавить запись</button><div data-editor></div>`;
+    dialog.innerHTML = `<div class="did-filter-panel-head"><h2>${title}</h2><button class="modal-close" type="button" data-close data-modal-close aria-label="Закрыть">×</button></div><p class="text-muted">Группировка задач в отчёте для бизнес-заказчиков ДИД.</p><div role="alert" data-error></div><div class="customer-reference-list">${items.map(item => `<div class="customer-reference-row"><span>${escapeHtml(item.name)} ${item.is_active ? '' : '· Неактивна'}</span><button class="btn btn-secondary btn-sm" data-edit="${item.id}">Изменить</button></div>`).join('') || '<p class="empty-state">Справочник пока пуст</p>'}</div><button class="btn btn-primary" data-new>Добавить запись</button><div data-editor></div>`;
     dialog.querySelector('[data-close]').onclick = () => dialog.close();
     dialog.querySelector('[data-new]').onclick = () => editor(null);
     dialog.querySelectorAll('[data-edit]').forEach(b => { b.onclick = () => editor(items.find(i => i.id === Number(b.dataset.edit))); });
@@ -35,7 +35,7 @@ export async function openCustomerReferences(kind, app) {
     };
     host.querySelector('input').focus();
   }
-  dialog.innerHTML = `<p>Загрузка…</p><button class="btn" data-close>Закрыть</button>`;
+  dialog.innerHTML = `<div class="app-modal__state" role="status"><p>Загрузка…</p><button class="btn btn-secondary" data-close data-modal-close>Закрыть</button></div>`;
   dialog.querySelector('[data-close]').onclick = () => dialog.close();
   try {
     items = await app.api.get(endpoint);

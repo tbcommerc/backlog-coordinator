@@ -4,6 +4,16 @@
 вычисляет приоритет **P1–P5** и, если поле Value не заполнено вручную,
 рассчитывает финансовый эффект по единой методике.
 
+В production сервис использует PostgreSQL и запускается после
+`python -m alembic upgrade head`; автосоздание таблиц сохранено только для
+локального SQLite и тестов. `/health` — liveness, `/ready` проверяет БД,
+LLM-конфигурацию и состояние локальной модели эмбеддингов без блокирующей
+загрузки в HTTP-запросе. При старте модель прогревается ровно один раз в фоне;
+пока прогрев не закончен, `/ready` быстро возвращает `503` и статус `loading`. Модель
+`intfloat/multilingual-e5-base` закреплена по revision
+`d13f1b27baf31030b7fd040960d60d909913633f`, загружается при сборке образа и
+открывается в production с `local_files_only=true`.
+
 Методика зафиксирована в ТЗ v2.0 и прошла четыре итерации согласования. Конспект —
 [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
@@ -37,7 +47,8 @@
 * Зашитый слепок исторических Value (192 задачи) — от него живут аналогии и
   шкала фактора F1, когда базы бэклога рядом нет.
 * FastAPI, Streamlit-панель, CLI и слой opencode-агента с тремя агентами.
-* 334 теста собрано на 01.09.2026.
+* 347 тестов собрано локально через `pytest --collect-only` 09.09.2026;
+  перед релизом число и результат полного прогона фиксируются заново.
 
 ## Быстрый старт
 
@@ -119,7 +130,12 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m uvicorn app.api.main:app --reload
 ```
 
-Документация — на `http://127.0.0.1:8000/docs`.
+Документация — на `http://127.0.0.1:9100/docs`.
+
+Все endpoints, кроме `/health`, требуют capability header. Координатор передаёт
+`X-Prioritiser-Secret`; административные endpoints `/admin/*` принимают только
+отдельный `X-Methodologist-Secret`. В production оба секрета обязательны и
+должны отличаться от локальных значений из `.env.example`.
 
 | Метод | Путь | Назначение |
 |---|---|---|
@@ -131,7 +147,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 | `POST` | `/recompute-all` | Пересчёт всего бэклога |
 | `GET` | `/reports/low-confidence` | Где качество оценки Value ниже всего |
 | `PUT` | `/admin/references/{name}` | Новая версия справочника + пересчёт |
-| `POST` | `/admin/attribution` | Ex-post атрибуция `value_external` |
+| `POST` | `/admin/attribution` | Ex-post атрибуция `value_external`; тело фиксирует `task_keys` периода |
 | `GET` | `/rag/search?q=…&layer=…` | Поиск по корпусу |
 | `POST` | `/agent/value` | **Сценарий Backlog coordinator:** рассчитай Value(internal) |
 | `POST` | `/agent/value/full` | Полный Value с методами, драйверами и аудитом для UI |
@@ -232,9 +248,9 @@ PRIORITISER_LLM_PROVIDER=openai_compat   # также anthropic, gigachat, gigac
 ## Статус
 
 Прототип. Standalone-хранилище по умолчанию — SQLite; production baseline DMB
-монтирует отдельный persistent volume и пока также использует SQLite. Внешняя
-аутентификация сервиса не реализована, поэтому порт 9100 не публикуется через
-Nginx. Интеграция с бэклогом выполняется stateless HTTP-вызовами `/agent/*/full`,
+использует отдельную PostgreSQL-БД и применяет Alembic-миграции до запуска
+сервиса. API защищён раздельными capability secrets Координатора и методолога;
+порт 9100 не публикуется через Nginx. Интеграция с бэклогом выполняется stateless HTTP-вызовами `/agent/*/full`,
 а исторические аналоги берутся из зашитого слепка. Полный список
 отступлений с причинами — в [docs/DEVIATIONS-FROM-TZ.md](docs/DEVIATIONS-FROM-TZ.md).
 

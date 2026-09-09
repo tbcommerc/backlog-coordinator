@@ -1,5 +1,5 @@
-const OVERLAY_SELECTOR = '.modal-overlay, .admin-modal-overlay, .feedback-confirm-overlay';
-const CLOSE_SELECTOR = '.modal-close, .modal-close-x, .modal-cancel-btn, .task-detail-btn-close, #td-close-btn, #create-close-btn, #bc-modal-close, [data-feedback-cancel], [data-modal-close]';
+const OVERLAY_SELECTOR = '.modal-overlay, .admin-modal-overlay, .feedback-confirm-overlay, .conflict-overlay, .modal-backdrop, dialog';
+const CLOSE_SELECTOR = '.modal-close, .modal-close-x, .modal-cancel-btn, .prioritiser-requirements-x, .task-detail-btn-close, #td-close-btn, #create-close-btn, #bc-modal-close, [data-feedback-cancel], [data-modal-close], dialog [data-close]';
 const FOCUSABLE_SELECTOR = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled])',
   'select:not([disabled])', 'textarea:not([disabled])',
@@ -16,7 +16,7 @@ function visibleFocusable(dialog) {
 
 export function enhanceDialogOverlay(overlay, focusOrigin = document.activeElement) {
   if (!overlay || overlay.dataset.a11yDialogReady === 'true') return overlay;
-  const dialog = overlay.matches('[role="dialog"], [role="alertdialog"]')
+  const dialog = overlay.matches('dialog, [role="dialog"], [role="alertdialog"]')
     ? overlay
     : overlay.querySelector('[role="dialog"], [role="alertdialog"]') || overlay.firstElementChild;
   if (!dialog) return overlay;
@@ -35,8 +35,9 @@ export function enhanceDialogOverlay(overlay, focusOrigin = document.activeEleme
     dialog.setAttribute('aria-label', 'Диалоговое окно');
   }
 
-  dialog.querySelectorAll('.modal-close, .modal-close-x').forEach((button) => {
-    if (!button.hasAttribute('aria-label')) button.setAttribute('aria-label', 'Закрыть диалог');
+  dialog.querySelectorAll(CLOSE_SELECTOR).forEach((button) => {
+    const hasVisibleName = Boolean(button.textContent.trim());
+    if (!hasVisibleName && !button.hasAttribute('aria-label')) button.setAttribute('aria-label', 'Закрыть диалог');
     if (button.tagName === 'BUTTON' && !button.hasAttribute('type')) button.type = 'button';
   });
   dialog.querySelectorAll('button').forEach((button) => {
@@ -58,6 +59,7 @@ export function enhanceDialogOverlay(overlay, focusOrigin = document.activeEleme
 function activeOverlay() {
   return [...document.querySelectorAll(OVERLAY_SELECTOR)]
     .filter((overlay) => overlay.dataset.a11yDialogReady === 'true')
+    .filter((overlay) => !overlay.matches('dialog') || overlay.open)
     .at(-1);
 }
 
@@ -70,13 +72,14 @@ function restoreFocus(overlay) {
 function handleKeydown(event) {
   const overlay = activeOverlay();
   if (!overlay) return;
-  const dialog = overlay.matches('[role]') ? overlay : overlay.querySelector('[role="dialog"], [role="alertdialog"]');
+  const dialog = overlay.matches('dialog, [role]') ? overlay : overlay.querySelector('[role="dialog"], [role="alertdialog"]');
   if (!dialog) return;
 
   if (event.key === 'Escape') {
     event.preventDefault();
     const close = dialog.querySelector(CLOSE_SELECTOR);
     if (close) close.click();
+    else if (dialog.matches('dialog')) dialog.close();
     return;
   }
   if (event.key !== 'Tab') return;

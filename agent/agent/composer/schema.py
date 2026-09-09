@@ -8,6 +8,17 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+FIELD_SLOTS = {
+    "intent": "intent", "problem_statement": "need_statement", "current_process": "as_is",
+    "target_process": "to_be", "business_value": "value", "primary_role": "role",
+    "affected_users": "users", "process": "process", "department": "department",
+    "product": "product", "module": "module", "priority": "priority",
+    "scenarios": "scenarios", "business_rules": "business_rules", "data_integrations": "data_integrations",
+    "acceptance_criteria": "acceptance_criteria", "dependencies": "dependencies", "risks": "risks",
+    "regulatory_flags": "regulatory_flags",
+}
+
+
 class DraftSource(BaseModel):
     doc_id: str = ""
     source: str = ""
@@ -20,8 +31,11 @@ class DraftSource(BaseModel):
     score: Optional[float] = None
     raw_score: Optional[float] = None
     provider: str = ""
+    usage: str = ""
     rank: Optional[int] = None
     version: Optional[str] = None
+    status: str = ""
+    updated_at: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
 
 
@@ -34,6 +48,9 @@ class RequirementDraft(BaseModel):
     target_process: str = ""
     business_value: str = ""
     user_roles: list[str] = Field(default_factory=list)
+    primary_role: str = ""
+    affected_users: list[str] = Field(default_factory=list)
+    process: str = ""
     department: str = ""
     product: str = ""
     module: str = ""
@@ -46,12 +63,15 @@ class RequirementDraft(BaseModel):
     dependencies: list[str] = Field(default_factory=list)
     risks: list[str] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
+    assumption_details: list[dict] = Field(default_factory=list)
+    conflict_history: list[dict] = Field(default_factory=list)
     regulatory_flags: list[str] = Field(default_factory=list)
     priority: str = "Средний"
     duplicates: list[dict] = Field(default_factory=list)
     sources: list[DraftSource] = Field(default_factory=list)
     field_provenance: dict[str, dict] = Field(default_factory=dict)
     field_confidence: dict[str, float] = Field(default_factory=dict)
+    field_status: dict[str, str] = Field(default_factory=dict)
     completeness_score: int = 0
     confidence: str = "low"          # low | medium | high
     quality_score: int = 0
@@ -88,6 +108,8 @@ def to_markdown(draft: RequirementDraft) -> str:
     L.append("")
     L.append("## Пользователи")
     L.append(", ".join(draft.user_roles) if draft.user_roles else "—")
+    if draft.process:
+        L.append(f"**Бизнес-процесс:** {draft.process}")
     if draft.department:
         L.append(f"**Подразделение:** {draft.department}")
     L.append("")
@@ -127,7 +149,9 @@ def to_markdown(draft: RequirementDraft) -> str:
     if draft.gaps:
         L.append("## Реестр пробелов")
         for gap in draft.gaps:
-            L.append(f"- [{gap.get('criticality', 'low')}] {gap.get('question', '')}")
+            status = {"resolved": "решено", "deferred": "отложено", "open": "открыто"}.get(gap.get("status"), "открыто")
+            resolution = f" — {gap['resolution']}" if gap.get("resolution") else ""
+            L.append(f"- [{status}] {gap.get('question', '')}{resolution}")
         L.append("")
     if draft.review_findings:
         L.append("## Независимая проверка")
@@ -141,10 +165,33 @@ def to_markdown(draft: RequirementDraft) -> str:
         L.append("## Допущения")
         L.extend(f"- {a}" for a in draft.assumptions)
         L.append("")
+    if draft.field_provenance:
+        from ..dialogue.state import SLOT_LABELS
+        L.append("## Происхождение и достоверность формулировок")
+        for name, provenance in draft.field_provenance.items():
+            label = SLOT_LABELS.get(FIELD_SLOTS.get(name, name), name)
+            status = draft.field_status.get(name, provenance.get("status", "filled"))
+            status_label = {"not_applicable": "явно не применимо", "unknown": "требует уточнения",
+                            "skipped": "отложено", "empty": "не обсуждалось"}.get(status)
+            if not status_label:
+                status_label = "предположение" if provenance.get("assumption") else (
+                    "подтверждено отдельно" if provenance.get("confirmed") else "не подтверждено отдельно"
+                )
+            quotes = list(dict.fromkeys(
+                [item.get("evidence", "") for item in provenance.get("claims", []) if item.get("evidence")]
+                + ([provenance["evidence"]] if provenance.get("evidence") else [])
+            ))
+            citation = "; цитаты: " + "; ".join(f"«{quote}»" for quote in quotes) if quotes else ""
+            L.append(f"- {label}: {status_label}{citation}")
+        L.append("")
     if draft.sources:
         L.append("## Источники")
         for s in draft.sources:
-            L.append(f"- {s.source}")
+            label = s.source or s.title or s.doc_id or s.record_id or "Источник"
+            reference = f" — {s.uri}" if s.uri else ""
+            version = f"; версия {s.version}" if s.version else ""
+            purpose = " (справочный кандидат, не подтверждение требования)" if s.usage == "reference_candidate" else ""
+            L.append(f"- {label}{reference}{version}{purpose}")
         L.append("")
     if draft.duplicates:
         L.append("## Похожие требования")

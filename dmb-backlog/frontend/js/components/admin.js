@@ -265,16 +265,17 @@ function showConfirmModal(message, onConfirm, options = {}) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
-        <div class="modal" role="alertdialog" aria-modal="true" aria-label="Подтверждение действия" tabindex="-1" style="max-width:420px;text-align:center;">
-            <div style="margin-bottom:var(--space-6);">
+        <div class="modal modal-sm" role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" tabindex="-1">
+            <div class="modal-header"><h3 class="modal-title" id="admin-confirm-title">Подтверждение действия</h3></div>
+            <div class="modal-body" style="text-align:center;">
                 <div style="width:48px;height:48px;border-radius:50%;background:var(--danger-light, rgba(244,63,94,0.12));display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-4);">
                     <i data-lucide="alert-triangle" style="width:24px;height:24px;color:var(--danger);"></i>
                 </div>
                 <div style="font-size:15px;font-weight:500;color:var(--text-primary);line-height:1.5;">${escapeHtml(message)}</div>
                 ${details ? `<div class="admin-impact-details">${details}</div>` : ''}
             </div>
-            <div style="display:flex;gap:var(--space-3);justify-content:center;">
-                <button class="btn btn-ghost modal-cancel-btn" style="min-width:100px;">Отмена</button>
+            <div class="modal-footer">
+                <button class="btn btn-ghost modal-cancel-btn" data-modal-close style="min-width:100px;">Отмена</button>
                 <button class="btn btn-danger modal-confirm-btn" style="min-width:100px;"${canConfirm ? '' : ' disabled'}>${escapeHtml(options.confirmText || 'Подтвердить')}</button>
             </div>
         </div>`;
@@ -478,10 +479,10 @@ export function renderAdmin(app) {
   if (adminAccess === 'none') {
     return '<div class="state-page state-forbidden"><h1>Недостаточно прав</h1><p>Раздел администрирования недоступен для вашей роли.</p></div>';
   }
-  const tabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'home', 'dictionaries', 'display', 'notifications', 'reports', ...(adminAccess === 'full' ? ['audit'] : [])];
+  const tabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'home', 'dictionaries', 'display', 'reports', ...(adminAccess === 'full' ? ['audit'] : [])];
   adminTab = tabs.includes(requestedTab) ? requestedTab : (tabs.includes(adminTab) ? adminTab : 'teams');
-  const tabLabels = { teams: 'Команды', projects: 'Проекты', businessCustomers: 'Бизнес-заказчики', users: 'Пользователи', roles: 'Роли', home: 'Таймлайн', dictionaries: 'Справочники', display: 'Отображение', notifications: 'Уведомления', reports: 'Отчёты', audit: 'Журнал действий' };
-  const tabIcons = { teams: 'users', projects: 'briefcase', businessCustomers: 'user-cog', users: 'user', roles: 'shield', home: 'calendar', dictionaries: 'book-open', display: 'eye', notifications: 'bell-ring', reports: 'bar-chart-3', audit: 'scroll-text' };
+  const tabLabels = { teams: 'Команды', projects: 'Проекты', businessCustomers: 'Бизнес-заказчики', users: 'Пользователи', roles: 'Роли', home: 'Таймлайн', dictionaries: 'Справочники', display: 'Отображение', reports: 'Отчёты', audit: 'Журнал действий' };
+  const tabIcons = { teams: 'users', projects: 'briefcase', businessCustomers: 'user-cog', users: 'user', roles: 'shield', home: 'calendar', dictionaries: 'book-open', display: 'eye', reports: 'bar-chart-3', audit: 'scroll-text' };
 
   const tabButton = t => `<button class="admin-tab${adminTab === t ? ' active' : ''}" data-tab="${t}" role="tab" aria-selected="${adminTab === t}" aria-controls="admin-content" tabindex="${adminTab === t ? '0' : '-1'}">
       <i data-lucide="${tabIcons[t]}" aria-hidden="true" style="width:22px;height:22px;"></i>
@@ -489,7 +490,7 @@ export function renderAdmin(app) {
     </button>`;
   const groups = [
     ['Структура', ['teams', 'projects', 'businessCustomers']], ['Доступы', ['users', 'roles']],
-    ['Настройки', ['dictionaries', 'display']], ['Инструменты', ['home', 'notifications', 'reports']], ['Контроль', ['audit']],
+    ['Настройки', ['dictionaries', 'display']], ['Инструменты', ['home', 'reports']], ['Контроль', ['audit']],
   ];
   const tabBar = `<div class="admin-tab-groups">${groups.map(([label, groupTabs]) => {
     const visible = groupTabs.filter(tab => tabs.includes(tab));
@@ -1288,10 +1289,10 @@ function renderTimelineEventModal(data, app) {
 
   return `
     <div class="modal-backdrop" id="tl-modal-backdrop">
-      <div class="modal" style="max-width:480px;">
+      <div class="modal modal-timeline" role="dialog" aria-modal="true" aria-labelledby="tl-modal-title">
         <div class="modal-header">
-          <h3>${isEdit ? 'Редактировать событие' : 'Новое событие'}</h3>
-          <button class="modal-close" id="tl-modal-close">&times;</button>
+          <h3 class="modal-title" id="tl-modal-title">${isEdit ? 'Редактировать событие' : 'Новое событие'}</h3>
+          <button type="button" class="modal-close" id="tl-modal-close" data-modal-close aria-label="Закрыть">&times;</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -1327,7 +1328,10 @@ function renderTimelineEventModal(data, app) {
               </select>
             </div>
           </div>
-          <button class="btn btn-primary" style="width:100%;margin-top:12px" id="tl-modal-save" data-edit-id="${data.id || ''}">${isEdit ? 'Сохранить' : 'Создать'}</button>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="tl-modal-cancel">Отмена</button>
+          <button type="button" class="btn btn-primary" id="tl-modal-save" data-edit-id="${data.id || ''}">${isEdit ? 'Сохранить' : 'Создать'}</button>
         </div>
       </div>
     </div>`;
@@ -1390,6 +1394,8 @@ function bindTimelineEventModal(app) {
   }
   const close = document.getElementById('tl-modal-close');
   if (close) close.addEventListener('click', () => backdrop?.remove());
+  const cancel = document.getElementById('tl-modal-cancel');
+  if (cancel) cancel.addEventListener('click', () => backdrop?.remove());
 
   const saveBtn = document.getElementById('tl-modal-save');
   if (saveBtn) {
@@ -1861,6 +1867,7 @@ function renderModal() {
   const isView = mode === 'view';
   const titleLabels = { team: 'команды', user: 'пользователя', role: 'роли', dict: 'справочника', project: 'проекта', bc: 'бизнес-заказчика', report: 'отчёта', notificationTemplate: 'шаблона уведомления' };
   const title = type === 'rolePreview' ? `Интерфейс роли «${getRoleDisplayName(data)}»` : type === 'dict' ? `Редактирование ${titleLabels[type]}` : isEdit ? `Редактирование ${titleLabels[type] || type}` : (isView ? `Просмотр ${titleLabels[type] || type}` : `Добавление ${titleLabels[type] || type}`);
+  const sizeClass = (type === 'rolePreview' || type === 'role') ? 'app-modal--large' : (type === 'report' || type === 'project' || type === 'bc' || type === 'notificationTemplate') ? 'app-modal--medium' : '';
 
   let body = '';
   if (type === 'team') body = renderTeamForm(data);
@@ -1874,12 +1881,12 @@ function renderModal() {
   else if (type === 'notificationTemplate') body = renderNotificationTemplateForm(data);
 
   return `
-    <div class="admin-modal-overlay" id="admin-modal-overlay" style="z-index:1000">
-      <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" tabindex="-1" style="max-width:${type === 'rolePreview' ? '860' : type === 'role' ? '940' : (type === 'project' || type === 'bc' || type === 'notificationTemplate') ? '600' : type === 'report' ? '720' : '520'}px">
+    <div class="admin-modal-overlay" id="admin-modal-overlay">
+      <div class="admin-modal ${sizeClass}" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" tabindex="-1">
         <div class="modal-header-sticky">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
             <h3 id="admin-modal-title" style="margin:0;font-size:16px;font-weight:600">${title}</h3>
-            <button class="modal-close-x" aria-label="Закрыть" style="width:32px;height:32px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+            <button type="button" class="modal-close-x" data-modal-close aria-label="Закрыть">
               <i data-lucide="x" style="width:18px;height:18px;color:var(--text-muted)"></i>
             </button>
           </div>
@@ -2518,7 +2525,7 @@ async function handleAdminClick(e, app) {
   if (target.classList.contains('admin-dict-card')) {
     const dictKey = target.dataset.dict;
     if (dictKey === 'did-client-groups') {
-      const { openCustomerReferences } = await import('./customerReferences.js');
+      const { openCustomerReferences } = await import('./customerReferences.js?v=1');
       await openCustomerReferences(dictKey, app); return;
     }
     const lock = dictLocks[DICTIONARY_CONFIG[dictKey]?.type];

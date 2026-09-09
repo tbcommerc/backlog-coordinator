@@ -4,6 +4,9 @@ import {
   getSignalTarget,
   getRequestStage,
   humanizeSignal,
+  numericScore,
+  renderLegacyRequestDescription,
+  renderLatestRevisionDiff,
   renderRequestHistory,
   renderRequestJourney,
   renderRequestParticipants,
@@ -26,6 +29,7 @@ assert.match(rejectedJourney, /Отклонён/);
 const returnedJourney = renderRequestJourney({ status: 'returned' });
 assert.match(returnedJourney, /aria-current="step"/);
 assert.match(returnedJourney, /Уточнение/);
+assert.match(returnedJourney, /Этап 2 из 4 · Уточнение/);
 
 assert.equal(humanizeSignal('Требуется уточнение: dependencies'), 'Нужно уточнить зависимости от других систем или команд');
 assert.equal(signalCount({ open_questions: ['1'], conflicts: [{ message: '2' }], risks: ['3'] }), 3);
@@ -42,6 +46,20 @@ assert.match(content, /id="request-section-acceptance-criteria"/);
 
 assert.equal(getSignalTarget('Требуется уточнение: dependencies'), 'request-section-dependencies');
 assert.equal(getSignalTarget('Не описаны критерии проверки'), 'request-section-acceptance-criteria');
+assert.equal(getSignalTarget('Ложные совпадения могут снижать доверие пользователей', 'Риски'), 'request-section-risks');
+assert.equal(getSignalTarget({ text: 'Неясный текст', section_key: 'business_value' }, 'Открытые вопросы'), 'request-section-business-value');
+assert.match(renderRequirementSections({
+  problem_statement: 'Есть потребность',
+  review_findings: [{ text: 'Не описана интеграция', section_key: 'data_integrations' }],
+}), /id="request-section-data-integrations"/);
+
+assert.equal(numericScore(null), null);
+assert.equal(numericScore(''), null);
+assert.equal(numericScore(undefined), null);
+assert.equal(numericScore('72'), 72);
+assert.match(renderLegacyRequestDescription('Первая строка\nВторая строка'), /Исходное описание/);
+assert.match(renderLegacyRequestDescription('<script>'), /&lt;script&gt;/);
+assert.match(renderLegacyRequestDescription('Полный текст', { supplemental: true }), /Полный сохранённый текст/);
 
 const request = {
   status: 'in_review',
@@ -50,11 +68,22 @@ const request = {
   created_at: '2026-08-25T10:00:00Z',
   updated_at: '2026-08-26T10:00:00Z',
 };
-assert.match(renderRequestSummary(request), /Сейчас отвечает/);
-assert.match(renderRequestSummary(request), /Срок уточняется/);
+assert.match(renderRequestSummary(request), /Ответственный/);
+assert.doesNotMatch(renderRequestSummary(request), /Ожидаемый результат/);
+assert.match(renderRequestSummary({ ...request, stage_started_at: '2026-08-26T10:00:00Z' }), /Текущий этап с/);
+assert.doesNotMatch(renderRequestSummary(request), /<small>Статус<\/small>/);
 assert.match(renderRequestHistory(request), /Ключевые события/);
 assert.match(renderRequestHistory(request), /Начато ревью/);
-assert.match(renderRequestParticipants(request), /Участники и сроки/);
+assert.match(renderRequestHistory({ ...request, updated_at: request.created_at }), /Начато ревью/);
+assert.match(renderRequestParticipants(request), /Участники и даты/);
 assert.match(renderRequestParticipants(request), /Ревьюер/);
+
+const revisionDiff = renderLatestRevisionDiff({ revision_history: [
+  { revision: 1, draft: { problem_statement: 'Было' } },
+  { revision: 2, draft: { problem_statement: 'Стало' } },
+] });
+assert.match(revisionDiff, /Что изменилось/);
+assert.match(revisionDiff, /Было/);
+assert.match(revisionDiff, /Стало/);
 
 console.log('requestPresentation tests passed');

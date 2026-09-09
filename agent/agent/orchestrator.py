@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from .audit import log_dialogue, log_refusal, log_draft, log_event
 from .composer import composer
 from .composer.schema import RequirementDraft
+from .composer.revision import draft_fingerprint
 from .config import settings
 from .context import UserContext
 from .dialogue import confinement
@@ -88,6 +89,9 @@ class AgentResponse:
     quality: dict = field(default_factory=dict)
     request_id: int | None = None
     expected_slot: str = ""
+    dialogue_mode: str = ""
+    sources: list = field(default_factory=list)
+    draft_revision: str = ""
 
 
 class AgentOrchestrator:
@@ -112,12 +116,14 @@ class AgentOrchestrator:
                 state.total_agent_messages += 1
         quality = assess_quality(state).as_dict()
         state.quality_assessment = quality
+        phase = compute_phase(state)
+        state.phase = phase
         response = AgentResponse(
             session_id=state.session_id,
             action=action,
             message=message,
             blocks=blocks or [],
-            phase=compute_phase(state),
+            phase=phase,
             slots={k: s.value for k, s in state.slots.items() if s.handled},
             progress=state.progress(),
             draft=state.draft,
@@ -127,6 +133,9 @@ class AgentOrchestrator:
             request_id=state.review_task_id,
             expected_slot=(state.last_asked_slot or "")
             if not (state.last_asked_slot or "").startswith("__") else "",
+            dialogue_mode=state.dialogue_mode,
+            sources=state.sources,
+            draft_revision=draft_fingerprint(state.draft) if state.draft else "",
         )
         # Response construction mutates history and metrics; persist exactly
         # what the user receives, including early-return branches.
@@ -567,6 +576,19 @@ class AgentOrchestrator:
             state.set("need_statement", message.strip()[:2000], confidence=0.90)
             self._capture_requirement_shape(state, message)
             self._apply_opportunistic(state, message, ctx)
+            low = message.lower()
+            asks_recolor = any(word in low for word in ("перекрас", "изменить цвет", "поменять цвет"))
+            has_color = any(word in low for word in (
+                "красн", "зелён", "зелен", "син", "жёлт", "желт", "бел", "чёрн", "черн",
+                "сер", "фиолет", "оранж", "голуб", "розов", "бирюз", "бордов",
+            ))
+            if asks_recolor and not has_color and not state.slots["business_rules"].handled:
+                state.last_asked_slot = "business_rules"
+                return self._build_response(
+                    state,
+                    "question",
+                    "Какой цвет должен использоваться для кнопок?",
+                )
             return self._advance(state, ctx)
         self._apply_opportunistic(state, message, ctx)
         return self._ask_need_statement(state, ctx)
@@ -791,9 +813,11 @@ class AgentOrchestrator:
                           confidence=0.7, source="assumption", assumption=True)
 
     def _apply_opportunistic(self, state: DialogueState, message: str, ctx):
-        decision = agentic_ba.decide_strict(state, message)
-        agentic_updates = agentic_ba.apply(state, decision)
-        state.last_agent_decision = decision.as_dict()
+        agentic_updates = []
+        if agentic_ba.enabled():
+            decision = agentic_ba.decide_strict(state, message)
+            agentic_updates = agentic_ba.apply(state, decision)
+            state.last_agent_decision = decision.as_dict()
         opp = extractor.opportunistic(state, message, ctx)
         for key, value_conf in opp.items():
             value, confidence = value_conf
@@ -807,7 +831,16 @@ class AgentOrchestrator:
         duplicate_check = composer.check_duplicates(state)
         state.duplicates = duplicate_check
         kb_sources = retrieval.answer_from_kb(state.get("need_statement") or "", k=3)
-        state.sources = kb_sources
+        # Search matches are reference material, never confirmation of user facts.
+        # Preserve previously used references and legacy assumption records.
+        sources = list(state.sources)
+        known = {(s.get("record_id"), s.get("doc_id"), s.get("text")) for s in sources}
+        for item in kb_sources:
+            key = (item.get("record_id"), item.get("doc_id"), item.get("text"))
+            if key not in known:
+                sources.append({**item, "usage": "reference_candidate"})
+                known.add(key)
+        state.sources = sources
         notes = list(state.edit_notes)
         state.summary_text = gen_summary(state, notes=notes)
 
@@ -995,7 +1028,8 @@ class AgentOrchestrator:
         return self._build_response(state, "ended", "Спасибо за обращение!")
 
     def confirm_and_send(self, session_id: str, task_id: int, title: str,
-                         user_id: int | None = None) -> AgentResponse:
+                         user_id: int | None = None,
+                         expected_draft_hash: str = "") -> AgentResponse:
         state = self.store.get(session_id)
         if state is None:
             return AgentResponse(session_id=session_id, action="error", message="Сессия не найдена.")
@@ -1003,26 +1037,33 @@ class AgentOrchestrator:
             return AgentResponse(session_id=session_id, action="error", message="Нет доступа к этой сессии.")
         if not state.draft or not state.confirmed:
             return AgentResponse(session_id=session_id, action="error", message="Сначала сформируйте и подтвердите черновик.")
-        from .composer.reviewer import has_blocking_findings, review_draft
-        reviewed_draft = RequirementDraft(
-            id=state.draft.get("id") or f"DRAFT-{session_id[:8].upper()}",
-            **{key: value for key, value in state.draft.items() if key != "id"},
-        )
-        findings = review_draft(reviewed_draft)
-        reviewed_draft.review_findings = [finding.as_dict() for finding in findings]
-        reviewed_draft.review_blocked = has_blocking_findings(findings)
-        state.draft = reviewed_draft.model_dump()
+        if expected_draft_hash and expected_draft_hash != draft_fingerprint(state.draft):
+            return AgentResponse(
+                session_id=session_id, action="revision_conflict",
+                message="Черновик изменился после просмотра. Проверьте текущую редакцию перед отправкой.",
+                draft=state.draft, draft_revision=draft_fingerprint(state.draft),
+            )
+        reviewed_draft = self._review_current_draft(state)
         if reviewed_draft.review_blocked:
             self.store.save(state)
             return AgentResponse(
                 session_id=session_id,
                 action="validation_error",
-                message="Черновик не отправлен: независимая проверка обнаружила критические проблемы.",
+                message="Черновик не отправлен: " + " ".join(
+                    item["message"] for item in reviewed_draft.review_findings if item["severity"] == "error"
+                ),
                 draft=state.draft,
             )
         if task_id <= 0:
             return AgentResponse(session_id=session_id, action="error", message="Некорректный идентификатор задачи.")
         if state.review_status == "needs_review":
+            if state.review_task_id != task_id:
+                return AgentResponse(
+                    session_id=session_id, action="revision_conflict",
+                    message="Эта редакция уже связана с другим запросом на ревью. Проверьте существующий запрос.",
+                    draft=state.draft, draft_revision=draft_fingerprint(state.draft),
+                    request_id=state.review_task_id,
+                )
             return self._build_response(state, "sent", gen_sent(state.review_task_id or task_id, title))
         state.review_status = "needs_review"
         state.review_task_id = task_id
@@ -1053,6 +1094,38 @@ class AgentOrchestrator:
             self._draft_blocks(RequirementDraft(**draft)),
         )
 
+    def cancel_review_submission(self, session_id: str, task_id: int,
+                                 user_id: int | None = None) -> AgentResponse:
+        """Undo only the matching review marker after a coordinator rollback."""
+        state = self.store.get(session_id)
+        if state is None:
+            return AgentResponse(session_id=session_id, action="error", message="Сессия не найдена.")
+        if user_id is not None and state.user_id != user_id:
+            return AgentResponse(session_id=session_id, action="error", message="Нет доступа к этой сессии.")
+        if state.review_status != "needs_review" or state.review_task_id != task_id:
+            return self._build_response(state, "unchanged", "Отправка уже изменилась; компенсация не требуется.")
+        state.review_status = ""
+        state.review_task_id = None
+        self.store.save(state)
+        log_event("review_submission_compensated", {"session_id": session_id, "task_id": task_id})
+        return self._build_response(state, "cancelled", "Отправка на ревью отменена.")
+
+    @staticmethod
+    def _review_current_draft(state: DialogueState) -> RequirementDraft:
+        """Use the same checks when displaying, restoring and submitting a draft."""
+        from .composer.reviewer import has_blocking_findings, review_draft
+        data = dict(state.draft)
+        data.setdefault("id", f"DRAFT-{state.session_id[:8].upper()}")
+        data.setdefault("primary_role", state.get("role") or "")
+        data.setdefault("affected_users", state.list_values("users"))
+        data.setdefault("process", state.get("process") or "")
+        draft = RequirementDraft(**data)
+        findings = review_draft(draft)
+        draft.review_findings = [finding.as_dict() for finding in findings]
+        draft.review_blocked = has_blocking_findings(findings)
+        state.draft = draft.model_dump()
+        return draft
+
     def edit_draft_section(self, session_id: str, field: str, value: str,
                            user_id: int | None = None) -> AgentResponse:
         """Apply an explicit user edit to one draft section and rebuild scores."""
@@ -1061,9 +1134,19 @@ class AgentOrchestrator:
             return AgentResponse(session_id=session_id, action="error", message="Сессия не найдена.")
         if user_id is not None and state.user_id != user_id:
             return AgentResponse(session_id=session_id, action="error", message="Нет доступа к этой сессии.")
+        if state.review_status == "needs_review" and state.review_task_id:
+            return AgentResponse(
+                session_id=session_id,
+                action="sent_locked",
+                message="Отправленное требование доступно только для чтения. Дождитесь возврата с ревью, чтобы внести изменения.",
+                draft=state.draft,
+                request_id=state.review_task_id,
+            )
         field_to_slot = {
             "problem_statement": "need_statement", "current_process": "as_is", "target_process": "to_be",
             "business_value": "value", "user_roles": "users", "product": "product",
+            "primary_role": "role", "affected_users": "users", "role": "role", "users": "users",
+            "process": "process", "priority": "priority",
             "department": "department",
             "module": "module", "scenarios": "scenarios", "business_rules": "business_rules",
             "data_integrations": "data_integrations", "acceptance_criteria": "acceptance_criteria",
@@ -1075,16 +1158,23 @@ class AgentOrchestrator:
         if not slot or not clean_value:
             return AgentResponse(session_id=session_id, action="error", message="Некорректный раздел или значение.")
         old_value = state.get(slot) or ""
+        state.add_message("user", f"Изменён раздел {field}: {clean_value}")
+        edit_message_id = state.history[-1].get("message_id", "")
         state.record_slot_change(slot, old_value, clean_value, reason="explicit_draft_edit")
-        state.set(slot, clean_value, confidence=1.0, source="user", confirmed=True)
+        state.set(slot, clean_value, confidence=1.0, source="user", confirmed=True,
+                  evidence=clean_value, message_id=edit_message_id,
+                  provenance=[{"value": clean_value, "evidence": clean_value,
+                               "message_id": edit_message_id, "assumption": False, "source": "user"}])
+        state.resolve_field_conflicts(slot, clean_value, reason="explicit_draft_edit")
         state.edit_notes.append(f"{field}: {clean_value}"[:1000])
         state.confirmed = True
         state.review_status = ""
         self._prepare_summary(state, None)
         draft = composer.build_draft(state, None)
+        if state.draft:
+            draft.id = state.draft.get("id", draft.id)
+            draft.created_by = state.draft.get("created_by", draft.created_by)
         state.draft = draft.model_dump()
-        state.history.append({"role": "user", "content": f"Изменён раздел: {field}"})
-        state.history.append({"role": "assistant", "content": "Раздел обновлён, показатели черновика пересчитаны."})
         self.store.save(state)
         return self._build_response(
             state, "draft_ready", "Раздел обновлён, показатели черновика пересчитаны.",

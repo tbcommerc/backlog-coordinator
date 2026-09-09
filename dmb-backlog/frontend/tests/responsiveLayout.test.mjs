@@ -37,7 +37,9 @@ assert.doesNotMatch(taskTable, /innerWidth\s*<=/, 'DMB view must not change auto
 assert.doesNotMatch(teamBacklog, /innerWidth\s*<=/, 'team view must not change automatically on resize');
 assert.match(taskTable, /if \(currentView === 'cards'\)/, 'DMB must respect the selected view');
 assert.match(teamBacklog, /if \(teamCurrentView === 'cards'\)/, 'team backlog must respect the selected view');
-assert.match(app, /matchMedia\('\(max-width: 640px\)'\)/, 'drawer state must be reset after leaving mobile layout');
+assert.match(app, /matchMedia\('\(max-width: 768px\)'\)/, 'drawer state must match the visual mobile breakpoint');
+assert.match(app, /sidebar\.toggleAttribute\('inert', hidden\)/, 'closed mobile drawer must leave the accessibility tree');
+assert.match(app, /sidebar\?\.removeAttribute\('inert'\)/, 'desktop navigation must re-enter the accessibility tree');
 assert.doesNotMatch(fixture, /task-card-grid/, 'table fixture must not contain task cards');
 assert.match(filterToolbar, /class="filter-toolbar-controls"/, 'filter and reset buttons must share a right-aligned group');
 assert.match(filterToolbar, /new ResizeObserver\(\(\) => updateStickyOffsets\(\)\)/, 'content offset must follow toolbar height changes');
@@ -66,5 +68,10 @@ assert.match(css, /#quick-filters\s*\{[\s\S]*?position:\s*static[\s\S]*?display:
 assert.match(css, /#quick-filters\.mobile-open\s*\{[\s\S]*?display:\s*grid/, 'compact quick filters must open as a grid');
 assert.match(css, /@media \(max-width: 1024px\)\s*\{[\s\S]*?\.quick-filters-mobile-toggle/, 'compact quick filters must start at the tablet breakpoint');
 assert.match(css, /#quick-filters\s*\{[\s\S]*?background:\s*transparent[\s\S]*?box-shadow:\s*none/, 'compact quick filters must not introduce a separate visual surface');
+assert.match(componentsCss, /\.notification-workspace\s*\{[^}]*grid-template-rows:\s*auto minmax\(0,1fr\)/, 'notification toolbar row must keep its intrinsic height');
+assert.match(componentsCss, /\.notification-workspace\s*\{[^}]*container-type:\s*inline-size/, 'notification layout must react to its workspace width rather than only the viewport');
+assert.match(componentsCss, /@container notification-workspace \(max-width:920px\)/, 'notification filters must wrap before their labels or reset action overflow');
+assert.match(componentsCss, /\.notification-center\s*\{[^}]*width:\s*100%/, 'notification center must fill the shared page content area');
+assert.doesNotMatch(componentsCss, /\.notification-center\s*\{[^}]*(?:max-width|margin:\s*0 auto)/, 'notification center must not be centered inside the shared page content area on wide screens');
 
 console.log('responsiveLayout.test.mjs: OK');

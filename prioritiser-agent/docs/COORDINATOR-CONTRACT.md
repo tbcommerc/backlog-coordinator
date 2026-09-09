@@ -1,7 +1,7 @@
 # Контракт с Backlog coordinator
 
 > AS-IS сверено с `app/api/contract.py`, `app/service/scenarios.py` и FastAPI
-> endpoint `/agent/*` 02.09.2026.
+> endpoint `/agent/*` 07.09.2026.
 
 Агент-приоритизатор встраивается в Backlog coordinator как **вызываемый сервис
 без состояния**. Backlog coordinator владеет базой и интерфейсом; агент считает.
@@ -329,6 +329,10 @@ Backlog coordinator (`prompt`) в ключ не входит: переформу
 ## Как вызвать
 
 **REST.** Сервис поднимается тем же приложением, что и остальное API:
+
+Каждый REST-вызов Координатора передаёт `X-Prioritiser-Secret`. Этот capability
+secret не даёт доступа к `/admin/*`, для которого используется отдельный
+`X-Methodologist-Secret`.
 
 | Метод | Путь | Сценарий |
 |---|---|---|

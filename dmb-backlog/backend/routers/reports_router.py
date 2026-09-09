@@ -16,10 +16,10 @@ from models import (
     TaskType, Deadline, BusinessCustomer, Channel, TaskReportingStatus,
 )
 from schemas import ReportCreate, ReportResponse, ReportUpdate
-from auth import get_current_user, task_read_scope_clause
+from auth import check_permission, get_current_user, task_read_scope_clause, task_read_scope_team_id
 from idempotency import reserve_idempotency
 from services.task_metrics import calculate_cost_value_ratio
-from reporting_meetings import current_meeting
+from reporting_meetings import can_fill_team_reporting_status, current_meeting, previous_meeting
 
 router = APIRouter()
 
@@ -320,10 +320,11 @@ DEFAULT_STANDARD_REPORTS = [
         "sort_order": "asc",
     },
     {
-        "key": "progress",
-        "name": "Светофоры по квартальным задачам",
-        "description": "Текущий прогресс по выполнению задач текущего квартала, отклонения, риски",
-        "legacy_names": ["Прогресс по задачам"],
+        "key": "quarterly-goals",
+        "name": "Светофоры по квартальным целям",
+        "description": "Статус достижения квартальных целей команд трайба",
+        "legacy_keys": ["progress"],
+        "legacy_names": ["Прогресс по задачам", "Светофоры по квартальным задачам"],
         "filters": None,
         "fields": '["id","title","task_type_name","team_name","progress"]',
         "group_by": None,
@@ -343,6 +344,13 @@ def ensure_standard_reports(db):
     """
     for cfg in DEFAULT_STANDARD_REPORTS:
         report = db.query(Report).filter(Report.key == cfg["key"]).first()
+        migrated_legacy_key = False
+
+        if report is None:
+            legacy_keys = cfg.get("legacy_keys", [])
+            if legacy_keys:
+                report = db.query(Report).filter(Report.key.in_(legacy_keys)).first()
+                migrated_legacy_key = report is not None
 
         if report is None:
             for legacy in cfg.get("legacy_names", []):
@@ -367,7 +375,7 @@ def ensure_standard_reports(db):
             db.add(report)
             continue
 
-        first_sync = report.key is None
+        first_sync = report.key is None or migrated_legacy_key
         report.key = cfg["key"]
         if first_sync:
             report.name = cfg["name"]
@@ -488,17 +496,39 @@ def directorate_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Отчёт «Статус для Директорской оперативки» — задачи текущего квартала
-    с заполненным директорским статусом, группировка по командам."""
-    today = date.today()
-    deadline_names = _directorate_deadline_names(today)
-
-    deadline_ids = db.query(Deadline.id).filter(Deadline.name.in_(deadline_names)).all()
-    deadline_ids = [d[0] for d in deadline_ids]
+    """Готовые статусы ближайшей директорской оперативки по командам."""
+    scope_team_id = task_read_scope_team_id(current_user)
+    teams_query = db.query(Team)
+    if scope_team_id is not None:
+        teams_query = teams_query.filter(Team.id == scope_team_id)
+    visible_teams = teams_query.order_by(Team.name).all()
+    teams_data = {
+        team.name: {
+            "team_name": team.name,
+            "total": 0,
+            "tasks": [],
+        }
+        for team in visible_teams
+    }
 
     meeting = current_meeting(db, "directorate")
     if meeting is None:
-        return {"total_tasks": 0, "total_teams": 0, "teams": []}
+        return {
+            "meeting": None,
+            "previous_meeting": None,
+            "total_tasks": 0,
+            "total_teams": len(teams_data),
+            "teams": list(teams_data.values()),
+        }
+
+    previous = previous_meeting(db, "directorate")
+    previous_rows = {
+        row.task_id: row
+        for row in db.query(TaskReportingStatus).filter(
+            TaskReportingStatus.meeting_id == previous.id,
+        ).all()
+    } if previous else {}
+    is_admin = check_permission(current_user, "admin", "full")
 
     query = db.query(Task, TaskReportingStatus).join(
         TaskReportingStatus,
@@ -506,15 +536,14 @@ def directorate_report(
     ).filter(
         Task.is_deleted == False,
         task_read_scope_clause(current_user, Task),
-        Task.deadline_id.in_(deadline_ids),
         TaskReportingStatus.meeting_id == meeting.id,
+        TaskReportingStatus.is_ready == True,
         TaskReportingStatus.status_text.isnot(None),
         func.trim(TaskReportingStatus.status_text) != "",
     )
 
     task_rows = query.all()
 
-    teams_data = {}
     for task, reporting_status in task_rows:
         team_name = task.team.name if task.team else "Без команды"
         if team_name not in teams_data:
@@ -534,12 +563,23 @@ def directorate_report(
             elif status_norm in ("отклонена", "не актуальна", "холд"):
                 progress = -1
 
+        previous_row = previous_rows.get(task.id)
         teams_data[team_name]["tasks"].append({
             "id": task.id,
             "public_id": task.public_id,
             "title": task.title,
             "directorate_status": reporting_status.status_text or "",
             "directorate_status_updated_at": reporting_status.updated_at.isoformat() if reporting_status.updated_at else None,
+            "previous_directorate_status": previous_row.status_text if previous_row else "",
+            "previous_meeting_date": (
+                previous.scheduled_date.isoformat()
+                if previous and previous.scheduled_date else None
+            ),
+            "directorate_attention": bool(reporting_status.directorate_attention),
+            "reporting_status_version": reporting_status.version or 0,
+            "can_edit_attention": bool(
+                is_admin or can_fill_team_reporting_status(current_user, task.team)
+            ),
             "progress": progress,
             "status_name": task.status.name if task.status else "",
             "priority_name": task.priority.name if task.priority else "",
@@ -553,9 +593,28 @@ def directorate_report(
             "description": task.description or "",
         })
 
-    sorted_teams = sorted(teams_data.values(), key=lambda x: x["total"], reverse=True)
+    for team in teams_data.values():
+        team["tasks"].sort(key=lambda item: (
+            not item["directorate_attention"],
+            (item["project_name"] or "Без проекта").casefold(),
+            -len(item["directorate_status"]),
+            (item["title"] or "").casefold(),
+        ))
+
+    sorted_teams = sorted(
+        teams_data.values(),
+        key=lambda item: (-item["total"], item["team_name"].casefold()),
+    )
 
     return {
+        "meeting": {
+            "id": meeting.id,
+            "scheduled_date": meeting.scheduled_date.isoformat() if meeting.scheduled_date else None,
+        },
+        "previous_meeting": {
+            "id": previous.id,
+            "scheduled_date": previous.scheduled_date.isoformat() if previous and previous.scheduled_date else None,
+        } if previous else None,
         "total_tasks": len(task_rows),
         "total_teams": len(sorted_teams),
         "teams": sorted_teams
@@ -775,7 +834,7 @@ def execute_report(
             "operator": "equals",
             "value": PIP_STATUS,
         }])
-    elif report.type == "standard" and report.key == "progress":
+    elif report.type == "standard" and report.key == "quarterly-goals":
         deadline_name, _planned_progress = _current_quarter_progress(date.today())
         query = _apply_report_filters(query, [{
             "field": "deadline_name",
@@ -793,7 +852,7 @@ def execute_report(
     tasks = query.all()
 
     items = []
-    progress_plan = _current_quarter_progress(date.today())[1] if report.key == "progress" else None
+    progress_plan = _current_quarter_progress(date.today())[1] if report.key == "quarterly-goals" else None
     for task in tasks:
         cv = calculate_cost_value_ratio(task.effort_rub, task.financial_effect)
 
@@ -836,13 +895,13 @@ def execute_report(
             "updated_at": task.updated_at.isoformat() if task.updated_at else None,
         })
 
-    effective_sort_by = None if report.key in ("pip", "progress") else report.sort_by
+    effective_sort_by = None if report.key in ("pip", "quarterly-goals") else report.sort_by
     if effective_sort_by:
         reverse = (report.sort_order or "asc") == "desc"
         items.sort(key=lambda x: _report_sort_key(x, effective_sort_by), reverse=reverse)
         items.sort(key=lambda x: 1 if x.get(effective_sort_by) is None else 0)
 
-    effective_group_by = None if report.key in ("pip", "progress") else report.group_by
+    effective_group_by = None if report.key in ("pip", "quarterly-goals") else report.group_by
     if effective_group_by:
         groups = {}
         for item in items:

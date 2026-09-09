@@ -5,13 +5,12 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from models import (
     Notification,
     ReportingMeeting,
     ReportingMeetingHistory,
-    Role,
     Task,
     TaskReportingStatus,
     TaskReportingStatusRevision,
@@ -30,6 +29,7 @@ MEETING_TITLES = {
 MEETING_STATES = ("date_pending", "planned", "held", "cancelled")
 OPEN_MEETING_STATES = ("date_pending", "planned")
 CLOSED_TASK_STATUSES = ("ВЫПОЛНЕНА", "ОТКЛОНЕНА", "НЕ АКТУАЛЬНА")
+REPORTING_TEAM_ROLES = {"po/pl/cl", "ba/участник команды"}
 
 LEGACY_FIELDS = {
     "directorate": ("directorate_status", "prev_directorate_status", "directorate_status_updated_at"),
@@ -50,14 +50,52 @@ def _utcnow() -> datetime:
 
 
 def _active_tasks_query(db: Session):
-    return db.query(Task).outerjoin(TaskStatus, Task.status_id == TaskStatus.id).filter(
+    return db.query(Task).options(joinedload(Task.team)).outerjoin(TaskStatus, Task.status_id == TaskStatus.id).filter(
         Task.is_deleted == False,
         or_(TaskStatus.id == None, TaskStatus.name.notin_(CLOSED_TASK_STATUSES)),
     )
 
 
-def active_tasks(db: Session) -> list[Task]:
-    return _active_tasks_query(db).all()
+def active_tasks(db: Session, *, team_id: int | None = None) -> list[Task]:
+    query = _active_tasks_query(db)
+    if team_id is not None:
+        query = query.filter(Task.team_id == team_id)
+    return query.all()
+
+
+def can_fill_team_reporting_status(user: User, team: Team | None) -> bool:
+    """Разрешить отчётный статус ответственным PO/PL/CL и участникам их команды."""
+    if not team or not getattr(user, "id", None):
+        return False
+    assigned_ids = {value for value in (team.po_id, team.pl_id, team.cl_id) if value}
+    if user.id in assigned_ids:
+        return True
+    role_name = str(getattr(user, "role_name", "") or "").strip().casefold()
+    return bool(
+        user.team_id is not None
+        and user.team_id == team.id
+        and role_name in REPORTING_TEAM_ROLES
+    )
+
+
+def active_reporting_users_by_team(db: Session, teams: list[Team]) -> dict[int, list[User]]:
+    """Одним запросом собрать активных получателей для нескольких команд."""
+    unique_teams = {team.id: team for team in teams if team and team.id is not None}
+    team_ids = set(unique_teams)
+    assigned_ids = {
+        user_id
+        for team in unique_teams.values()
+        for user_id in (team.po_id, team.pl_id, team.cl_id)
+        if user_id
+    }
+    users = db.query(User).options(joinedload(User.role)).filter(
+        User.is_active == True,
+        or_(User.team_id.in_(team_ids or {-1}), User.id.in_(assigned_ids or {-1})),
+    ).all()
+    return {
+        team_id: [user for user in users if can_fill_team_reporting_status(user, team)]
+        for team_id, team in unique_teams.items()
+    }
 
 
 def _next_weekday(day: date, weekday: int) -> date:
@@ -156,6 +194,10 @@ def current_meeting(db: Session, kind: str) -> ReportingMeeting | None:
     return _current_meeting(db, validate_meeting_kind(kind))
 
 
+def previous_meeting(db: Session, kind: str) -> ReportingMeeting | None:
+    return _previous_meeting(db, validate_meeting_kind(kind))
+
+
 def _backfill_current_legacy_statuses(db: Session) -> None:
     """Однократно переносить legacy-current в ближайшую незавершённую встречу."""
     tasks = db.query(Task).filter(Task.is_deleted == False).all()
@@ -178,6 +220,7 @@ def _backfill_current_legacy_statuses(db: Session) -> None:
                 task_id=task.id,
                 status_text=str(value),
                 did_demo=bool(task.did_demo) if kind == "did" else False,
+                is_ready=True,
                 source="legacy_import",
             ))
     db.flush()
@@ -199,24 +242,16 @@ def meeting_completeness(db: Session, meeting: ReportingMeeting) -> dict:
         TaskReportingStatus.meeting_id == meeting.id,
         TaskReportingStatus.task_id.in_(task_ids or {-1}),
     ).all()
-    filled_ids = {row.task_id for row in rows if str(row.status_text or "").strip()}
-    missing_teams = {}
+    filled_ids = {row.task_id for row in rows if row.is_ready}
+    missing_teams: dict[int, Team] = {}
     for task in tasks:
         if task.id in filled_ids:
             continue
         team = task.team or db.query(Team).filter(Team.id == task.team_id).first()
         if team:
-            missing_teams[team.id] = {uid for uid in (team.po_id, team.pl_id, team.cl_id) if uid}
-    candidate_ids = set().union(*missing_teams.values()) if missing_teams else set()
-    active_ids = {
-        row[0] for row in db.query(User.id).filter(
-            User.id.in_(candidate_ids or {-1}), User.is_active == True
-        ).all()
-    }
-    teams_without_recipients = {
-        team_id for team_id, responsible_ids in missing_teams.items()
-        if not responsible_ids.intersection(active_ids)
-    }
+            missing_teams[team.id] = team
+    recipients = active_reporting_users_by_team(db, list(missing_teams.values()))
+    teams_without_recipients = {team_id for team_id in missing_teams if not recipients.get(team_id)}
     return {
         "total_tasks": len(tasks),
         "filled_tasks": len(filled_ids),
@@ -245,15 +280,6 @@ def meeting_to_dict(db: Session, meeting: ReportingMeeting, *, include_completen
     if include_completeness:
         result.update(meeting_completeness(db, meeting))
     return result
-
-
-def validate_completion_readiness(completeness: dict, *, force: bool) -> None:
-    missing = int(completeness.get("missing_tasks") or 0)
-    if missing and not force:
-        raise ValueError(
-            f"Не заполнено задач: {missing}. "
-            "Подтвердите завершение встречи с неполными статусами"
-        )
 
 
 def task_reporting_context(db: Session, task: Task, can_edit: bool) -> dict:
@@ -319,7 +345,7 @@ def task_reporting_context(db: Session, task: Task, can_edit: bool) -> dict:
                 if not current else
                 "Заполнение откроется после назначения даты проектным офисом"
                 if current.state == "date_pending" or not current.scheduled_date else
-                "Статус могут изменять только назначенные PO/PL/CL ответственной команды"
+                "Статус могут изменять PO/PL/CL и BA/участники ответственной команды"
                 if not can_edit else None
             ),
         })
@@ -333,8 +359,10 @@ def save_task_reporting_status(
     meeting: ReportingMeeting,
     status_text: str | None,
     did_demo: bool,
+    is_ready: bool,
     submitted_version: int | None,
     user_id: int,
+    directorate_attention: bool | None = None,
 ) -> TaskReportingStatus:
     if meeting.state != "planned" or not meeting.scheduled_date:
         raise ValueError("Заполнение откроется после назначения даты встречи")
@@ -343,6 +371,8 @@ def save_task_reporting_status(
     text = str(status_text or "").strip()
     if len(text) > 5000:
         raise ValueError("Отчётный статус не может быть длиннее 5000 символов")
+    if is_ready and not text:
+        raise ValueError("Перед подтверждением готовности заполните статус")
     row = db.query(TaskReportingStatus).filter(
         TaskReportingStatus.meeting_id == meeting.id,
         TaskReportingStatus.task_id == task.id,
@@ -361,7 +391,18 @@ def save_task_reporting_status(
     old_text = row.status_text
     old_demo = bool(row.did_demo)
     new_demo = bool(did_demo) if meeting.kind == "did" else False
-    if old_text != text or old_demo != new_demo:
+    new_ready = bool(is_ready and text)
+    new_attention = (
+        bool(directorate_attention)
+        if meeting.kind == "directorate" and directorate_attention is not None
+        else bool(row.directorate_attention)
+    )
+    if (
+        old_text != text
+        or old_demo != new_demo
+        or bool(row.is_ready) != new_ready
+        or bool(row.directorate_attention) != new_attention
+    ):
         db.add(TaskReportingStatusRevision(
             reporting_status_id=row.id,
             old_text=old_text,
@@ -372,6 +413,8 @@ def save_task_reporting_status(
         ))
         row.status_text = text or None
         row.did_demo = new_demo
+        row.is_ready = new_ready
+        row.directorate_attention = new_attention
         row.updated_by = user_id
         row.source = "native"
         row.version = (row.version or 0) + 1
@@ -382,18 +425,21 @@ def save_task_reporting_status(
         if meeting.kind == "did":
             task.did_demo = new_demo
     db.flush()
-    if text:
-        remaining, _ = _missing_tasks_by_recipient(db, meeting)
-        if user_id not in remaining:
-            now = _utcnow()
-            db.query(Notification).filter(
-                Notification.user_id == user_id,
-                Notification.group_key == f"reporting_fill_{meeting.id}",
-                Notification.is_resolved == False,
-            ).update({
-                Notification.is_resolved: True,
-                Notification.resolved_at: now,
-            }, synchronize_session=False)
+    remaining, _ = _missing_tasks_by_recipient(db, meeting)
+    remaining_ids = set(remaining)
+    notification_query = db.query(Notification).filter(
+        Notification.group_key == f"reporting_fill_{meeting.id}",
+        Notification.is_resolved == False,
+    )
+    if remaining_ids:
+        notification_query = notification_query.filter(Notification.user_id.notin_(remaining_ids))
+    resolved_at = _utcnow()
+    notification_query.update({
+        Notification.is_resolved: True,
+        Notification.resolved_at: resolved_at,
+        Notification.is_read: True,
+        Notification.read_at: resolved_at,
+    }, synchronize_session=False)
     return row
 
 
@@ -419,20 +465,17 @@ def _meeting_history(
     ))
 
 
-def _resolve_fact_notifications(db: Session, meeting_id: int) -> None:
-    now = _utcnow()
-    db.query(Notification).filter(
-        Notification.group_key == f"reporting_fact_{meeting_id}",
-        Notification.is_resolved == False,
-    ).update({Notification.is_resolved: True, Notification.resolved_at: now}, synchronize_session=False)
-
-
 def _resolve_meeting_notifications(db: Session, meeting_id: int) -> None:
     now = _utcnow()
     db.query(Notification).filter(
-        Notification.group_key.in_((f"reporting_fact_{meeting_id}", f"reporting_fill_{meeting_id}")),
+        Notification.group_key == f"reporting_fill_{meeting_id}",
         Notification.is_resolved == False,
-    ).update({Notification.is_resolved: True, Notification.resolved_at: now}, synchronize_session=False)
+    ).update({
+        Notification.is_resolved: True,
+        Notification.resolved_at: now,
+        Notification.is_read: True,
+        Notification.read_at: now,
+    }, synchronize_session=False)
 
 
 def schedule_meeting(
@@ -509,7 +552,6 @@ def complete_meeting(
     *,
     user_id: int,
     submitted_version: int | None,
-    force: bool = False,
 ) -> ReportingMeeting:
     current = _current_meeting(db, meeting.kind)
     if not current or current.id != meeting.id:
@@ -520,7 +562,6 @@ def complete_meeting(
         raise ValueError("Будущую встречу нельзя отметить состоявшейся")
     if submitted_version is not None and submitted_version != (meeting.version or 0):
         raise RuntimeError("version_conflict")
-    validate_completion_readiness(meeting_completeness(db, meeting), force=force)
     old_state = meeting.state
     meeting.state = "held"
     meeting.held_at = _utcnow()
@@ -600,6 +641,7 @@ def cancel_meeting(
                 task_id=source.task_id,
                 status_text=source.status_text,
                 did_demo=source.did_demo,
+                is_ready=bool(source.is_ready),
                 source="carried_from_cancelled",
                 carried_from_status_id=source.id,
                 created_by=user_id,
@@ -642,49 +684,30 @@ def _missing_tasks_by_recipient(db: Session, meeting: ReportingMeeting) -> tuple
     filled_ids = {
         row.task_id for row in db.query(TaskReportingStatus).filter(
             TaskReportingStatus.meeting_id == meeting.id,
-            TaskReportingStatus.status_text.isnot(None),
-            TaskReportingStatus.status_text != "",
+            TaskReportingStatus.is_ready == True,
         ).all()
     }
-    by_user: dict[int, list[Task]] = defaultdict(list)
-    candidate_ids = set()
-    tasks_by_recipient: dict[int, list[Task]] = defaultdict(list)
-    missing_teams: dict[int, set[int]] = {}
+    tasks_by_team: dict[int, list[Task]] = defaultdict(list)
+    teams: dict[int, Team] = {}
     for task in tasks:
         if task.id in filled_ids:
             continue
         team = task.team or db.query(Team).filter(Team.id == task.team_id).first()
         if not team:
             continue
-        responsible_ids = {user_id for user_id in (team.po_id, team.pl_id, team.cl_id) if user_id}
-        missing_teams[team.id] = responsible_ids
-        for user_id in responsible_ids:
-            if user_id:
-                candidate_ids.add(user_id)
-                tasks_by_recipient[user_id].append(task)
-    active_ids = {
-        row[0] for row in db.query(User.id).filter(User.id.in_(candidate_ids or {-1}), User.is_active == True).all()
-    }
-    for user_id, user_tasks in tasks_by_recipient.items():
-        if user_id in active_ids:
-            by_user[user_id] = user_tasks
-    teams_without_active_recipients = sum(
-        1 for responsible_ids in missing_teams.values()
-        if not responsible_ids.intersection(active_ids)
-    )
+        teams[team.id] = team
+        tasks_by_team[team.id].append(task)
+    recipients_by_team = active_reporting_users_by_team(db, list(teams.values()))
+    by_user: dict[int, list[Task]] = defaultdict(list)
+    for team_id, team_tasks in tasks_by_team.items():
+        for user in recipients_by_team.get(team_id, []):
+            by_user[user.id].extend(team_tasks)
+    teams_without_active_recipients = sum(1 for team_id in teams if not recipients_by_team.get(team_id))
     return by_user, teams_without_active_recipients
 
 
-def _admin_user_ids(db: Session) -> list[int]:
-    rows = db.query(User).join(Role, User.role_id == Role.id).filter(
-        User.is_active == True,
-        or_(Role.admin_access == "full", Role.name.in_(("Проектный офис (админ)", "Администратор"))),
-    ).all()
-    return [user.id for user in rows]
-
-
 def check_reporting_meeting_notifications(db: Session, today: date | None = None) -> None:
-    """Создать одно напоминание командам и один запрос админам на встречу."""
+    """Создать одно напоминание о незаполненных статусах на каждого получателя."""
     from notifications import _send_to_users
 
     today = today or date.today()
@@ -720,27 +743,12 @@ def check_reporting_meeting_notifications(db: Session, today: date | None = None
                     f"Заполните статусы к встрече «{MEETING_TITLES[meeting.kind]}»",
                     body=f"Не заполнено задач: {len(tasks)}. {preview}{suffix}",
                     importance="high",
-                    action_url=f"#/backlog?task={tasks[0].id}&tab=rep",
+                    action_url=f"#/reporting-statuses?source=notification&meeting_id={meeting.id}",
                     group_key=f"reporting_fill_{meeting.id}",
                 )
-            # Если у части команд пока нет активного PO/PL/CL, проверяем снова
+            # Если у части команд пока нет активного получателя, проверяем снова
             # на следующем запуске, но не дублируем уже созданные уведомления.
             if teams_without_recipients == 0:
                 meeting.team_reminder_sent_at = now
 
-        if meeting.admin_fact_notified_at is None and meeting.scheduled_date <= today:
-            admin_ids = _admin_user_ids(db)
-            if admin_ids:
-                _send_to_users(
-                    db,
-                    admin_ids,
-                    None,
-                    "reporting",
-                    f"Актуализируйте факт встречи «{MEETING_TITLES[meeting.kind]}»",
-                    body=f"Плановая дата: {meeting.scheduled_date.strftime('%d.%m.%Y')}. Укажите: проведена, перенесена или отменена.",
-                    importance="high",
-                    action_url=f"#/reporting-meetings?meeting={meeting.id}",
-                    group_key=f"reporting_fact_{meeting.id}",
-                )
-                meeting.admin_fact_notified_at = now
     db.flush()

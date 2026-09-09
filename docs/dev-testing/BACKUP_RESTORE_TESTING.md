@@ -2,14 +2,15 @@
 title: Проверка backup и restore Backlog coordinator
 scope: target-dev-testing
 status: ready-for-devops-review
-last_updated: 2026-09-01
+last_updated: 2026-09-07
 ---
 
 # Проверка резервного копирования и восстановления
 
 Репозиторий содержит `scripts/backup-production.ps1` и
-`scripts/verify-backup.ps1`: первый создаёт PostgreSQL custom dumps двух БД и
-archive uploads с SHA-256 manifest, второй проверяет checksum и читаемость
+`scripts/verify-backup.ps1`: первый создаёт PostgreSQL custom dumps трёх БД
+(`dmb_backlog`, `agent_sessions`, `prioritiser`) и archive uploads с SHA-256
+manifest, второй проверяет checksum и читаемость
 форматов. Проверка archive не заменяет restore в отдельные БД/volumes по
 сценариям ниже.
 

@@ -24,10 +24,10 @@ foreach ($entry in $manifest.files) {
     $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($hash -ne $entry.sha256) { throw "Checksum mismatch: $($entry.name)" }
     if ($entry.name -like "*.dump") {
-        docker run --rm -v "${baseDir}:/backup:ro" postgres:16-alpine pg_restore --list "/backup/$($entry.name)" *> $null
+        docker run --rm -v "${baseDir}:/backup:ro" postgres:16-alpine@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571 pg_restore --list "/backup/$($entry.name)" *> $null
         if ($LASTEXITCODE -ne 0) { throw "pg_restore could not read $($entry.name)" }
     } elseif ($entry.name -like "*.tgz") {
-        docker run --rm -v "${baseDir}:/backup:ro" alpine:3.22 tar -tzf "/backup/$($entry.name)" *> $null
+        docker run --rm -v "${baseDir}:/backup:ro" alpine:3.22@sha256:7c8cb692ae09657cbc4a3f3cbd0e8d5a2690ba38386aaaf252dbb060bf5eb2e6 tar -tzf "/backup/$($entry.name)" *> $null
         if ($LASTEXITCODE -ne 0) { throw "tar could not read $($entry.name)" }
     }
     Write-Host "[ok] $($entry.name)"

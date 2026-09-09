@@ -1,6 +1,6 @@
-console.log('[DMB] teamBacklog.js v20260902.1 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, getToolbarSearchValue, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=97';
-import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=91';
+console.log('[DMB] teamBacklog.js v20260907.1 loaded');
+import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, getToolbarSearchValue, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=98';
+import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=92';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
 import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=83';
 import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=80';
@@ -11,6 +11,7 @@ import { formatTaskPublicId } from '../taskPublicId.js';
 import { highlightSearchText } from '../htmlUtils.js';
 import { getSelectedItems, reconcileSelection, setAllSelection } from './tableSelection.js';
 import { calculateTaskCv, cvZone } from '../taskMetrics.js';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=11';
 
 function renderExternalTeamLink(value, label) {
   const url = safeExternalUrl(value);
@@ -42,6 +43,7 @@ let teamTasksLoadInProgress = false;
 let teamTasksReloadQueued = false;
 const teamSelectedTaskIds = new Set();
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
+let teamOperationsMenuCleanup = null;
 
 
 export function renderTeamBacklog(app) {
@@ -75,6 +77,8 @@ export function renderTeamBacklog(app) {
       excel: true,
       onQuickEdit: true,
       onBulkOps: true,
+      bulkOpsTitle: 'Операции',
+      bulkOpsMenu: true,
       savedViews: true,
       quickFilters: renderQuickFilters(),
     })}
@@ -174,7 +178,7 @@ export async function initTeamBacklog(app) {
     onAddTask: () => openCreateTaskModal(app),
     onRefresh: () => loadTeamTasks(app),
     onQuickEdit: () => { if (teamCurrentView === 'table') { if (isQuickEdit('team')) { requestExitQuickEdit('team'); } else { enterQuickEdit('team'); } } },
-    onBulkOps: () => { if (teamCurrentView === 'table') openTeamBulkOps(app); },
+    onBulkOps: () => { if (teamCurrentView === 'table') openTeamOperationsMenu(app); },
     showSavedViewRevert: false,
     getSavedViewState: () => ({
       view: teamCurrentView,
@@ -417,7 +421,7 @@ function renderTeamTableView(list) {
                 </thead>
                 <tbody id="team-tasks-tbody">
                     ${list.length === 0
-                        ? '<tr><td colspan="' + (visibleCols.length + (showCheckbox ? 1 : 0)) + '">' + renderViewState({ kind: 'empty', title: 'Задачи команды не найдены', message: 'Измените фильтры или создайте новую задачу.' }) + '</td></tr>'
+                        ? '<tr><td class="table-view-state-cell" colspan="' + (visibleCols.length + (showCheckbox ? 1 : 0)) + '">' + renderViewState({ kind: 'empty', title: 'Задачи команды не найдены', message: 'Измените фильтры или создайте новую задачу.' }) + '</td></tr>'
                         : list.map(task => renderTeamTableRow(task, visibleCols, showCheckbox)).join('')}
                 </tbody>
             </table>
@@ -434,6 +438,7 @@ function renderTeamTableView(list) {
         saveTeamColumnState();
     }
 
+    fitTableViewState(container);
     updateStickyOffsets();
     initStickyTableHeader('team-tasks-table');
 
@@ -691,7 +696,10 @@ function updateBulkBar() {
     const action = document.getElementById('team-bulk-selected');
     if (action) action.textContent = `Массовые операции (${checked})`;
     const toolbarAction = document.getElementById('team-bulk-open');
-    if (toolbarAction) toolbarAction.title = checked > 0 ? `Массовые операции (${checked} выбрано)` : 'Массовые операции';
+    if (toolbarAction) {
+        toolbarAction.title = checked > 0 ? `Операции (${checked} задач выбрано)` : 'Операции';
+        toolbarAction.setAttribute('aria-label', toolbarAction.title);
+    }
     const selectAll = document.getElementById('select-all');
     if (selectAll) {
         selectAll.checked = editable.length > 0 && checked === editable.length;
@@ -737,6 +745,130 @@ async function openTeamBulkOps(app) {
         teamSelectedTaskIds.clear();
         await loadTeamTasks(app);
     }
+}
+
+function closeTeamOperationsMenu({ restoreFocus = false } = {}) {
+    if (teamOperationsMenuCleanup) {
+        const cleanup = teamOperationsMenuCleanup;
+        teamOperationsMenuCleanup = null;
+        cleanup(restoreFocus);
+        return;
+    }
+    document.getElementById('team-operations-menu')?.remove();
+    document.getElementById('team-bulk-open')?.setAttribute('aria-expanded', 'false');
+}
+
+function openTeamOperationsMenu(app) {
+    const trigger = document.getElementById('team-bulk-open');
+    if (!trigger) return;
+    if (document.getElementById('team-operations-menu')) {
+        closeTeamOperationsMenu({ restoreFocus: true });
+        return;
+    }
+
+    const selectedCount = getTeamSelectedTasks().length;
+    const bulkHint = selectedCount > 0
+        ? `Изменить выбранные задачи: ${selectedCount}`
+        : 'Выбрать задачи и поля для изменения';
+    const canOpenReporting = canUseReportingStatusWorkspace(app);
+    const isAdmin = app.store.get('currentUser')?.permissions?.admin === 'full';
+    const menu = document.createElement('div');
+    menu.id = 'team-operations-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Операции с задачами');
+    menu.style.cssText = [
+        'position:fixed',
+        'z-index:1200',
+        'width:min(340px,calc(100vw - 24px))',
+        'padding:8px',
+        'border:1px solid var(--border-color)',
+        'border-radius:12px',
+        'background:var(--bg-primary)',
+        'box-shadow:0 16px 40px rgba(15,23,42,.18)',
+        'display:grid',
+        'gap:6px',
+    ].join(';');
+    menu.innerHTML = `
+      <button type="button" role="menuitem" data-team-operation="bulk" style="display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;width:100%;padding:10px;border:0;border-radius:9px;background:transparent;color:var(--text-primary);text-align:left;cursor:pointer;font:inherit;">
+        <span aria-hidden="true" style="width:34px;height:34px;border-radius:9px;background:var(--accent-light);color:var(--accent);display:grid;place-items:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m16 3 5 5"/><path d="M14 10 21 3"/><path d="M8 12h3"/><path d="M8 16h8"/></svg></span>
+        <span style="min-width:0;"><strong style="display:block;font-size:13px;line-height:1.35;">Конструктор массовых изменений</strong><small style="display:block;margin-top:2px;color:var(--text-secondary);font-size:11px;line-height:1.35;">${bulkHint}</small></span>
+      </button>
+      ${canOpenReporting ? `
+      <button type="button" role="menuitem" data-team-operation="reporting" style="display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;width:100%;padding:10px;border:0;border-radius:9px;background:transparent;color:var(--text-primary);text-align:left;cursor:pointer;font:inherit;">
+        <span aria-hidden="true" style="width:34px;height:34px;border-radius:9px;background:var(--success-light);color:var(--success);display:grid;place-items:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span>
+        <span style="min-width:0;"><strong style="display:block;font-size:13px;line-height:1.35;">Статусы к отчётным встречам</strong><small style="display:block;margin-top:2px;color:var(--text-secondary);font-size:11px;line-height:1.35;">${isAdmin ? 'Заполнить статусы всех команд' : 'Заполнить статусы задач своей команды'}</small></span>
+      </button>` : ''}`;
+    document.body.appendChild(menu);
+    trigger.setAttribute('aria-expanded', 'true');
+
+    const positionMenu = () => {
+        const rect = trigger.getBoundingClientRect();
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        const left = Math.max(12, Math.min(window.innerWidth - menuWidth - 12, rect.right - menuWidth));
+        const below = rect.bottom + 8;
+        const top = below + menuHeight <= window.innerHeight - 12
+            ? below
+            : Math.max(12, rect.top - menuHeight - 8);
+        menu.style.left = `${Math.round(left)}px`;
+        menu.style.top = `${Math.round(top)}px`;
+    };
+    const setHover = (button, active) => {
+        button.style.background = active ? 'var(--bg-secondary)' : 'transparent';
+    };
+    menu.querySelectorAll('[role="menuitem"]').forEach(button => {
+        button.addEventListener('mouseenter', () => setHover(button, true));
+        button.addEventListener('mouseleave', () => setHover(button, false));
+        button.addEventListener('focus', () => setHover(button, true));
+        button.addEventListener('blur', () => setHover(button, false));
+    });
+
+    const onDocumentClick = (event) => {
+        if (!menu.contains(event.target) && event.target !== trigger) closeTeamOperationsMenu();
+    };
+    const onKeydown = (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeTeamOperationsMenu({ restoreFocus: true });
+            return;
+        }
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            const items = [...menu.querySelectorAll('[role="menuitem"]')];
+            const current = items.indexOf(document.activeElement);
+            if (current >= 0) {
+                event.preventDefault();
+                const direction = event.key === 'ArrowDown' ? 1 : -1;
+                items[(current + direction + items.length) % items.length]?.focus();
+            }
+        }
+    };
+    const onViewportChange = () => closeTeamOperationsMenu();
+    teamOperationsMenuCleanup = (restoreFocus) => {
+        document.removeEventListener('click', onDocumentClick, true);
+        document.removeEventListener('keydown', onKeydown);
+        window.removeEventListener('resize', onViewportChange);
+        window.removeEventListener('scroll', onViewportChange, true);
+        window.removeEventListener('hashchange', onViewportChange);
+        menu.remove();
+        trigger.setAttribute('aria-expanded', 'false');
+        if (restoreFocus && trigger.isConnected) trigger.focus();
+    };
+
+    menu.querySelector('[data-team-operation="bulk"]')?.addEventListener('click', () => {
+        closeTeamOperationsMenu();
+        openTeamBulkOps(app);
+    });
+    menu.querySelector('[data-team-operation="reporting"]')?.addEventListener('click', () => {
+        closeTeamOperationsMenu();
+        window.location.hash = reportingStatusHref({ source: 'team-backlog' });
+    });
+    document.addEventListener('click', onDocumentClick, true);
+    document.addEventListener('keydown', onKeydown);
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
+    window.addEventListener('hashchange', onViewportChange);
+    positionMenu();
+    menu.querySelector('[role="menuitem"]')?.focus();
 }
 
 function metricFormat(val) {

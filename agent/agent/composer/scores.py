@@ -32,7 +32,7 @@ def completeness_score(state: DialogueState) -> int:
             # content receives only part of the section weight.
             confidence = max(0.0, min(1.0, float(slot.confidence)))
             factor = 0.55 + 0.35 * confidence
-            if slot.confirmed or state.confirmed:
+            if slot.confirmed:
                 factor += 0.10
             if slot.assumption:
                 factor -= 0.20
@@ -48,8 +48,10 @@ def confidence_level(state: DialogueState, completeness: int) -> str:
     average = sum(slot.confidence for slot in relevant) / len(relevant)
     assumptions = sum(1 for slot in relevant if slot.assumption)
     low_confidence = sum(1 for slot in relevant if slot.confidence < 0.7)
-    open_count = sum(1 for slot in state.slots.values() if slot.status == "skipped")
-    if completeness >= 80 and state.confirmed and open_count == 0 \
+    open_count = sum(1 for slot in state.slots.values() if slot.status in {"skipped", "unknown"})
+    durable_open = any(item.get("status", "open") != "resolved"
+                       for item in getattr(state, "requirement_assumptions", []) + getattr(state, "requirement_conflicts", []))
+    if completeness >= 80 and all(slot.confirmed for slot in relevant) and open_count == 0 and not durable_open \
             and assumptions == 0 and low_confidence == 0 and average >= 0.85:
         return "high"
     if completeness >= 55 and average >= 0.6 and assumptions <= 1:

@@ -46,6 +46,7 @@ SQLite-fallback для изолированных тестов). Полный п
 | Метод | Путь | Назначение |
 |---|---|---|
 | POST | `/api/agent/chat` | Отправить сообщение пользователя (`session_id`, `message`, `context`) |
+| POST | `/api/agent/chat-stream` | Получить текст ответа по SSE и финальный `AgentResponse` |
 | POST | `/api/agent/new-session` | Создать сессию (`user_id`, `context`) |
 | POST | `/api/agent/reset` | Удалить сессию (`session_id`) |
 | GET  | `/api/agent/session/{session_id}` | Получить текущее состояние сессии |
@@ -53,12 +54,18 @@ SQLite-fallback для изолированных тестов). Полный п
 | POST | `/api/agent/session/{session_id}/archive?archived=…` | Архивировать или восстановить сессию |
 | POST | `/api/agent/send-for-review` | Подтвердить отправку драфта на ревью (`session_id`, `task_id`, `title`) |
 | POST | `/api/agent/reopen-review` | Вернуть отправленный запрос в диалог с комментарием ревьюера |
+| POST | `/api/agent/cancel-review` | Компенсировать rollback backend для конкретного `task_id` |
 | POST | `/api/agent/edit-draft-section` | Изменить поле готового драфта (`session_id`, `field`, `value`) |
 | GET  | `/api/agent/config` | Провайдер, интенты, статистика KB, MCP-серверы, инструменты |
 
 Ответ — `AgentResponse`:
 `session_id`, `action`, `message`, `blocks` (draft_preview / actions),
 `phase`, `slots`, `progress`, `draft`, `can_generate_draft`.
+
+Потоковый endpoint передаёт события `ready`, `status`, `delta`, при
+необходимости `replace`, и завершает поток событием `result`. Он стримит только
+безопасную пользовательскую формулировку; внутреннее structured-решение модели
+остаётся серверным. `/chat` сохранён как совместимый JSON-контракт.
 
 Действия (`action`): `welcome`, `domain_clarify`, `reflect`, `reflect_correction`,
 `question`, `clarify`, `incident_triage`, `summarize`, `edit`, `draft_ready`,
@@ -93,7 +100,7 @@ agent/
   kb_seed/        исходные документы БЗ (products, modules, processes, roles, …)
   prompts/        системный промпт для LLM-провайдера
   telemetry.py    OpenTelemetry tracing и X-Trace-ID
-  tests/          pytest (230 тестов собрано 01.09.2026)
+  tests/          pytest; фактический collection получать перед релизом
 ```
 
 Каталог верхнего уровня `tests/` содержит отдельный live E2E-сценарий. Он не

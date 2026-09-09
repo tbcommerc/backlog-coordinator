@@ -3,6 +3,7 @@ from pathlib import Path
 
 from config import (
     DEFAULT_AGENT_SECRET,
+    DEFAULT_PRIORITISER_SECRET,
     DEFAULT_SECRET_KEY,
     settings,
     should_run_startup_maintenance,
@@ -10,6 +11,11 @@ from config import (
     should_run_notification_scheduler,
     validate_runtime_settings,
 )
+
+
+@pytest.fixture(autouse=True)
+def _explicit_prioritiser_secret(monkeypatch):
+    monkeypatch.setattr(settings, "PRIORITISER_SECRET", "unique-prioritiser-secret")
 
 
 def test_development_mode_allows_local_defaults(monkeypatch):
@@ -39,6 +45,18 @@ def test_production_rejects_unsafe_agent_secret(monkeypatch, agent_secret):
         validate_runtime_settings()
 
 
+@pytest.mark.parametrize("prioritiser_secret", ["", DEFAULT_PRIORITISER_SECRET])
+def test_production_rejects_unsafe_prioritiser_secret(monkeypatch, prioritiser_secret):
+    monkeypatch.setattr(settings, "DEBUG", False)
+    monkeypatch.setattr(settings, "SECRET_KEY", "s" * 32)
+    monkeypatch.setattr(settings, "AGENT_SECRET", "unique-agent-secret")
+    monkeypatch.setattr(settings, "PRIORITISER_SECRET", prioritiser_secret)
+    monkeypatch.setattr(settings, "REDIS_URL", "redis://localhost:6379/0")
+
+    with pytest.raises(RuntimeError, match="PRIORITISER_SECRET"):
+        validate_runtime_settings()
+
+
 def test_production_accepts_explicit_secrets(monkeypatch):
     monkeypatch.setattr(settings, "DEBUG", False)
     monkeypatch.setattr(settings, "SECRET_KEY", "s" * 32)
@@ -46,6 +64,7 @@ def test_production_accepts_explicit_secrets(monkeypatch):
     monkeypatch.setattr(settings, "REDIS_URL", "redis://localhost:6379/0")
     monkeypatch.setattr(settings, "DATABASE_URL", "postgresql+psycopg://dmb:test@db/dmb_backlog")
     monkeypatch.setattr(settings, "ATTACHMENT_STORAGE_DIR", Path("Z:/dmb-shared/attachments"))
+    monkeypatch.setattr(settings, "CLAMAV_HOST", "clamav")
     validate_runtime_settings()
 
 

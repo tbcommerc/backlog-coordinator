@@ -1,6 +1,6 @@
 # Путеводитель по кодовой базе — AS-IS
 
-> Статус: проверено по структуре репозитория и точкам входа на 2026-09-01.
+> Статус: проверено по структуре репозитория и точкам входа на 2026-09-09.
 
 ## Быстрый маршрут
 
@@ -12,6 +12,9 @@
 - `backend/database.py` — SQLAlchemy engine/session; PostgreSQL-схема меняется Alembic.
 - `backend/alembic/versions/` — последовательность production-миграций.
 - `backend/event_outbox.py`, `idempotency.py`, `worker_lock.py` — гарантии многопользовательского режима.
+- `backend/interservice.py` — ограниченные повторы и circuit breaker для вызовов BA Agent и Prioritiser.
+- `backend/attachment_scanner.py` — потоковая проверка вложений через ClamAV INSTREAM.
+- `backend/requirement_artifacts.py` — canonical hash, снимки редакций и история решений по требованиям.
 - `backend/metrics.py`, `telemetry.py`, `audit_context.py` — наблюдаемость и корреляция запросов.
 - `backend/routers/` — HTTP-операции по функциональным областям.
 - `frontend/index.html` — оболочка SPA.
@@ -19,6 +22,8 @@
 - `frontend/js/router.js` — клиентские маршруты.
 - `frontend/js/api.js` — HTTP-клиент и обновление сессии.
 - `frontend/js/eventStream.js` — авторизованный SSE и переподключение по cursor.
+- `frontend/js/notificationStore.js`, `notificationUtils.js` — общий ревизионный snapshot и преобразование уведомлений для разных поверхностей SPA.
+- `frontend/js/localSpellcheck.js` — единая политика нативной русской проверки орфографии для содержательных полей.
 - `frontend/js/taskPublicId.js`, `taskMetrics.js` — единое отображение ID и расчётных метрик задачи.
 - `frontend/js/components/` — страницы, таблицы и модальные окна.
 - `frontend/css/tokens.css` — дизайн-токены.
@@ -36,8 +41,10 @@ powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 ```
 
 Backend также раздаёт frontend. Зависимости перечислены в
-`backend/requirements.txt`; тестовые — в `backend/requirements-dev.txt`.
-У frontend нет `package.json`: его тесты запускаются непосредственно через Node.js.
+`backend/requirements.txt`; воспроизводимые runtime/dev-наборы закреплены в
+`backend/requirements.lock` и `backend/requirements-dev.lock`.
+Frontend unit-тесты запускаются через Node.js, а `package.json` и
+`package-lock.json` закрепляют Playwright 1.63.0 и команды `test:unit`/`test:e2e`.
 
 ## Где вносить изменения
 
@@ -56,7 +63,8 @@ Backend также раздаёт frontend. Зависимости перечи�
 
 - Backend-тесты находятся в `backend/tests/` и используют pytest.
 - Frontend-тесты находятся в `frontend/tests/` и запускаются Node.js.
-- Актуальный CI описан в `.github/workflows/quality.yml`.
+- Browser-тесты находятся в `frontend/e2e/` и запускаются Playwright Chromium.
+- Актуальный CI находится в корне репозитория: `../../.github/workflows/quality.yml`.
 - Перед тестом нужно проверить фикстуры: наборы, создающие пользователей, роли,
   команды или справочники, нельзя направлять на штатную БД.
 

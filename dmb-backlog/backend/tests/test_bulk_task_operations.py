@@ -119,8 +119,16 @@ def test_bulk_preview_calculates_result_without_writes(db):
 
 def test_bulk_comment_adds_to_feed_without_overwriting_task_field_or_version(db):
     team = Team(name="Bulk comments team")
-    mentioned = User(email="mentioned@example.test", password_hash="x", name="Mentioned", is_active=True)
-    db.add_all([team, mentioned])
+    db.add(team)
+    db.flush()
+    mentioned = User(
+        email="mentioned@example.test",
+        password_hash="x",
+        name="Mentioned",
+        team_id=team.id,
+        is_active=True,
+    )
+    db.add(mentioned)
     db.flush()
     task = Task(team_id=team.id, title="Bulk comment task", comment="Старое поле", version=6)
     db.add(task)

@@ -62,7 +62,13 @@ from auth import (
     can_make_pip_decision,
     task_read_scope_clause,
 )
-from notifications import notify_status_change, notify_assignment, notify_comment, notify_mention
+from notifications import (
+    invalid_mention_user_ids,
+    notify_assignment,
+    notify_comment,
+    notify_mention,
+    task_comment_recipient_ids,
+)
 from routers.task_collaboration_router import is_task_lock_active
 
 router = APIRouter(dependencies=[Depends(require_backlog_page_access)])
@@ -1075,7 +1081,6 @@ def apply_pip_decision(
     ))
     task.status_id = target_status.id
     task.version = (task.version or 0) + 1
-    notify_status_change(db, task, current_status_name, target_name, current_user.id)
     _commit_versioned_task(db, task.id, payload.version)
     db.refresh(task)
     return task_to_response(task, db)
@@ -1128,7 +1133,11 @@ def update_task(
 
         update_data = task_data.model_dump(exclude_unset=True)
         update_data.pop('client_request_id', None)
-        logger.info(f"[update_task] task_id={task_id}, update_data={update_data}")
+        logger.info(
+            "[update_task] task_id=%s changed_fields=%s",
+            task_id,
+            sorted(field for field in update_data if field != "version"),
+        )
 
         requested_actual_fields = set(update_data) & set(ACTUAL_EFFORT_FIELDS)
         if requested_actual_fields and not is_task_global_editor(current_user):
@@ -1247,24 +1256,9 @@ def update_task(
                 ))
             task.key_project_status_updated_at = datetime.now(timezone.utc)
 
-        # Notifications: status change
-        new_status_id = task.status_id
-        if old_status_id != new_status_id:
-            if old_status_id:
-                old_status = db.query(TaskStatus).filter(TaskStatus.id == old_status_id).first()
-                old_name = old_status.name if old_status else str(old_status_id)
-            else:
-                old_name = "Не установлен"
-            if new_status_id:
-                new_status = db.query(TaskStatus).filter(TaskStatus.id == new_status_id).first()
-                new_name = new_status.name if new_status else str(new_status_id)
-            else:
-                new_name = "Не установлен"
-            notify_status_change(db, task, old_name, new_name, current_user.id)
-
         # Notifications: assignment change
         new_owner_id = task.owner_id
-        if old_owner_id != new_owner_id and new_owner_id:
+        if old_owner_id != new_owner_id:
             notify_assignment(db, task, new_owner_id, current_user.id)
 
         # Version, task fields, tags, history and notifications are committed
@@ -1519,8 +1513,13 @@ def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db
         mentioned_ids = list(dict.fromkeys(fields.get('mentioned_user_ids') or []))
         if not comment_text: errors.append('Введите текст комментария')
         if len(comment_text) > 5000: errors.append('Комментарий не должен превышать 5000 символов')
-        active_ids = {uid for (uid,) in db.query(User.id).filter(User.id.in_(mentioned_ids), User.is_active == True).all()} if mentioned_ids else set()
-        if set(mentioned_ids) != active_ids: errors.append('Упомянуты несуществующие или неактивные пользователи')
+        invalid_mentions = {
+            user_id
+            for task in tasks
+            for user_id in invalid_mention_user_ids(db, task, mentioned_ids)
+        }
+        if invalid_mentions:
+            errors.append('Упомянуты неактивные пользователи или пользователи без доступа к задаче')
     else:
         for field in fields:
             if field in FORBIDDEN_BULK_FIELDS:
@@ -1564,9 +1563,9 @@ def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db
             task_changes = 1
             applied_changes += 1
             mentioned_ids = list(dict.fromkeys(fields.get('mentioned_user_ids') or []))
-            notifications += len([uid for uid in mentioned_ids if uid != current_user.id])
-            if task.owner_id and task.owner_id != current_user.id and task.owner_id not in mentioned_ids:
-                notifications += 1
+            valid_mentions = set(mentioned_ids) - set(invalid_mention_user_ids(db, task, mentioned_ids))
+            comment_recipients = set(task_comment_recipient_ids(db, task)) - valid_mentions - {current_user.id}
+            notifications += len(valid_mentions - {current_user.id}) + len(comment_recipients)
         elif request.action == 'update':
             planned = {key: value for key, value in fields.items() if key not in {'tags_add', 'tags_remove'} and hasattr(task, key)}
             if 'tags_add' in fields or 'tags_remove' in fields:
@@ -1586,9 +1585,7 @@ def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db
             else: task_changes += 1; applied_changes += 1
         if task_changes:
             changed_tasks += 1
-            planned_status_id = planned.get('status_id', old_status_id)
             planned_owner_id = planned.get('owner_id', old_owner_id)
-            if planned_status_id != old_status_id: notifications += 1
             if planned_owner_id != old_owner_id and planned_owner_id: notifications += 1
 
     return BulkPreviewResponse(
@@ -1664,9 +1661,19 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
         mentioned_ids = list(dict.fromkeys(fields_to_update.get('mentioned_user_ids') or []))
         if not comment_text or len(comment_text) > 5000:
             raise HTTPException(status_code=400, detail='Комментарий должен содержать от 1 до 5000 символов')
-        active_ids = {uid for (uid,) in db.query(User.id).filter(User.id.in_(mentioned_ids), User.is_active == True).all()} if mentioned_ids else set()
-        if set(mentioned_ids) != active_ids:
-            raise HTTPException(status_code=422, detail='Упомянуты несуществующие или неактивные пользователи')
+        invalid_mentions = {
+            user_id
+            for task in tasks
+            for user_id in invalid_mention_user_ids(db, task, mentioned_ids)
+        }
+        if invalid_mentions:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    'message': 'Упомянуты неактивные пользователи или пользователи без доступа к задаче',
+                    'user_ids': sorted(invalid_mentions),
+                },
+            )
     else:
         for field in fields_to_update.keys():
             if field in FORBIDDEN_BULK_FIELDS:
@@ -1719,7 +1726,6 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
         task_change_count = 0
         old_status_id = task.status_id
         old_owner_id = task.owner_id
-        old_status_name = task.status.name if task.status else str(task.status_id or "Не установлен")
         if request.action == "close":
             changes = {'status_id': done_status.id if done_status else task.status_id, 'progress': 100}
             for field, value in changes.items():
@@ -1733,7 +1739,6 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
                 applied_changes += 1
             if done_status:
                 task.status_id = done_status.id
-            new_status_name = "ВЫПОЛНЕНА"
         elif request.action == "hold":
             new_status_id = hold_status.id if hold_status else task.status_id
             if task.status_id != new_status_id:
@@ -1743,7 +1748,6 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
                 applied_changes += 1
             else:
                 skipped_changes += 1
-            new_status_name = "ХОЛД"
         elif request.action == "delete":
             if not task.is_deleted:
                 db.add(TaskHistory(task_id=task.id, changed_by=current_user.id, field_name='is_deleted', old_value='False', new_value='True'))
@@ -1752,22 +1756,30 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
                 applied_changes += 1
             else:
                 skipped_changes += 1
-            new_status_name = None
         elif request.action == "comment":
-            db.add(TaskComment(
+            comment = TaskComment(
                 task_id=task.id, user_id=current_user.id, text=comment_text,
                 mentioned_user_ids=json.dumps(mentioned_ids) if mentioned_ids else None,
-            ))
+            )
+            db.add(comment)
+            db.flush()
             db.add(TaskHistory(
                 task_id=task.id, changed_by=current_user.id, field_name='comment',
                 old_value=None, new_value=comment_text[:200],
             ))
             if mentioned_ids:
-                notify_mention(db, task, mentioned_ids, current_user.name, current_user.id)
-            notify_comment(db, task, current_user.id, excluded_recipient_ids=set(mentioned_ids))
+                notify_mention(
+                    db, task, mentioned_ids, current_user.name, current_user.id,
+                    comment_id=comment.id,
+                )
+            notify_comment(
+                db, task, current_user.id,
+                excluded_recipient_ids=set(mentioned_ids),
+                commenter_name=current_user.name,
+                comment_id=comment.id,
+            )
             task_change_count = 1
             applied_changes += 1
-            new_status_name = None
         elif request.action == "update" and fields_to_update:
             current_tag_names = [tag.name for tag in (task.tags or []) if tag and tag.name]
             next_tag_names = list(current_tag_names)
@@ -1811,7 +1823,6 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
                     ))
                     task_change_count += 1
                     applied_changes += 1
-            new_status_name = None
 
         if task_change_count > 0 and request.action != 'comment':
             task.version = (task.version or 0) + 1
@@ -1820,10 +1831,7 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
             changed_task_ids.append(task.id)
         else:
             unchanged_task_ids.append(task.id)
-        if old_status_id != task.status_id:
-            resolved_status = db.query(TaskStatus).filter(TaskStatus.id == task.status_id).first() if task.status_id else None
-            notify_status_change(db, task, old_status_name, resolved_status.name if resolved_status else (new_status_name or "Не установлен"), current_user.id)
-        if old_owner_id != task.owner_id and task.owner_id:
+        if old_owner_id != task.owner_id:
             notify_assignment(db, task, task.owner_id, current_user.id)
 
     db.add(AuditLog(
@@ -1900,7 +1908,10 @@ def import_tasks(
     if not check_permission(current_user, "backlog_team", "write_own"):
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    content = file.file.read()
+    max_import_size = 10 * 1024 * 1024
+    content = file.file.read(max_import_size + 1)
+    if len(content) > max_import_size:
+        raise HTTPException(status_code=413, detail="CSV файл слишком большой (максимум 10 МБ)")
     if not content:
         raise HTTPException(status_code=400, detail="Файл пуст")
 

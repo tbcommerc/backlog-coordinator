@@ -18,6 +18,23 @@ class _Response:
         return json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
 
 
+class _StreamResponse:
+    status = 200
+    headers = {"Content-Type": "text/event-stream"}
+
+    def __init__(self, lines):
+        self.lines = lines
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return None
+
+    def __iter__(self):
+        return iter(self.lines)
+
+
 def _rate_limit(retry_after="0"):
     return urllib.error.HTTPError(
         "https://example.test/chat/completions", 429, "Too Many Requests",
@@ -112,3 +129,27 @@ def test_chat_json_requests_json_object(monkeypatch):
 
     assert provider.chat_json([{"role": "user", "content": "test"}]) == '{"ok":true}'
     assert captured["response_format"] == {"type": "json_object"}
+
+
+def test_chat_stream_yields_provider_deltas(monkeypatch):
+    captured = {}
+
+    def respond(request, **_kwargs):
+        captured.update(json.loads(request.data.decode("utf-8")))
+        return _StreamResponse([
+            b'data: {"choices":[{"delta":{"role":"assistant"}}]}\n',
+            b'\n',
+            'data: {"choices":[{"delta":{"content":"Первый "}}]}\n'.encode("utf-8"),
+            b'\n',
+            'data: {"choices":[{"delta":{"content":"ответ"},"finish_reason":null}]}\n'.encode("utf-8"),
+            b'\n',
+            b'data: [DONE]\n',
+            b'\n',
+        ])
+
+    monkeypatch.setattr("urllib.request.urlopen", respond)
+
+    chunks = list(OpenAICompatProvider().chat_stream([{"role": "user", "content": "test"}]))
+
+    assert chunks == ["Первый ", "ответ"]
+    assert captured["stream"] is True

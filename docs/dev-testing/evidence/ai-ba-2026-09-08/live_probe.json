@@ -1,0 +1,20 @@
+{
+  "method": "Single synthetic live-model turn; in-memory Python store; no HTTP/UI/backend DB; local file provider selection with utf-8-sig encoding; no settings files changed; external request budget is one, automatic external retries are blocked",
+  "model": "glm-5.1",
+  "provider": "openai_compat",
+  "input": "Нужен экран истории изменения лимита по клиенту. Его используют риск-менеджеры при рассмотрении заявки. На экране должны быть старое и новое значение, дата, инициатор и причина. Пользователь должен отфильтровать историю по периоду и инициатору.",
+  "seconds": 1.78,
+  "http_requests": 1,
+  "provider_response_meta": {},
+  "action": "unavailable",
+  "reply": "ИИ-модель сейчас недоступна, поэтому я не могу корректно продолжить сбор требований. Попробуйте ещё раз позже или обратитесь к администратору сервиса.",
+  "facts": {},
+  "decision": {},
+  "execution_observation": {
+    "http_status": 401,
+    "error_type": "HTTPError",
+    "source": "Observed execution stderr: Agentic BA LLM decision failed: HTTP Error 401: Unauthorized",
+    "user_authorization": "explicit consent before execution",
+    "model_response_received": false
+  }
+}

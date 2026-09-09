@@ -51,6 +51,8 @@ class MarkdownKnowledgeSource:
                 section=chunk.section or None,
                 uri=uri,
                 status=chunk.status,
+                version=chunk.version,
+                updated_at=chunk.updated_at,
                 metadata=metadata,
             )
             results.append(RetrievalResult(

@@ -2,7 +2,7 @@
 title: Навигатор документации Backlog coordinator
 scope: documentation-index
 status: active
-last_reviewed: 2026-09-01
+last_reviewed: 2026-09-09
 ---
 
 # Документация Backlog coordinator
@@ -38,8 +38,8 @@ last_reviewed: 2026-09-01
 | [`PROJECT_OVERVIEW_AS_IS.md`](PROJECT_OVERVIEW_AS_IS.md) | Первичное знакомство, границы и точки входа | AS-IS VERIFIED на 01.09.2026 |
 | [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) | Подтверждённые возможности и системное поведение | AS-IS VERIFIED на 01.09.2026 |
 | [`BUSINESS_REQUIREMENTS.md`](BUSINESS_REQUIREMENTS.md) | Правила фиксации требований и открытые бизнес-вопросы | OPEN QUESTIONS; утверждённый BRD-источник не найден |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Компоненты и технические связи | AS-IS VERIFIED по источникам на 01.09.2026 |
-| [`CODEBASE_GUIDE.md`](CODEBASE_GUIDE.md) | Структура кода и маршруты изменений | AS-IS VERIFIED по дереву и точкам входа на 01.09.2026 |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Компоненты и технические связи | AS-IS VERIFIED по источникам на 09.09.2026 |
+| [`CODEBASE_GUIDE.md`](CODEBASE_GUIDE.md) | Структура кода и маршруты изменений | AS-IS VERIFIED по дереву и точкам входа на 09.09.2026 |
 | [`API_SPEC.md`](API_SPEC.md) | Индекс HTTP API и сквозные правила | VERIFIED INDEX по FastAPI registry на 01.09.2026; поля брать из OpenAPI |
 | [`DATA_MODEL.md`](DATA_MODEL.md) | Сущности, таблицы и связи | AS-IS VERIFIED по `backend/models.py` и Alembic на 01.09.2026 |
 | [`db-schema.dbml`](db-schema.dbml) | Визуальное представление схемы | Производный материал; сверять с `backend/models.py` |
@@ -48,11 +48,11 @@ last_reviewed: 2026-09-01
 | [`STICKY_BACKLOG_TABLES.md`](STICKY_BACKLOG_TABLES.md) | Закрепление панелей и таблиц | AS-IS VERIFIED по реализации и tests на 01.09.2026 |
 | [`IMPORT_SPEC.md`](IMPORT_SPEC.md) | Фактический импорт CSV и клиентская обработка Excel | AS-IS VERIFIED по service/router/frontend на 01.09.2026 |
 | [`error-codes.md`](error-codes.md) | Реально обрабатываемые HTTP-ошибки и типы ошибок импорта | AS-IS VERIFIED по backend/frontend на 01.09.2026 |
-| [`TESTING.md`](TESTING.md) | Наборы тестов, безопасный запуск и CI | AS-IS VERIFIED по tests/workflow на 01.09.2026 |
-| [`SECURITY.md`](SECURITY.md) | Реализованные меры и подтверждённые ограничения безопасности | AS-IS VERIFIED по источникам на 01.09.2026 |
+| [`TESTING.md`](TESTING.md) | Наборы тестов, безопасный запуск и CI | AS-IS VERIFIED по tests/workflow на 09.09.2026 |
+| [`SECURITY.md`](SECURITY.md) | Реализованные меры и подтверждённые ограничения безопасности | AS-IS VERIFIED по источникам на 09.09.2026 |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Локальный запуск и поставляемая стендовая topology | AS-IS VERIFIED по scripts/Compose на 01.09.2026; внешние HA/TLS решения остаются вне репозитория |
 | [`SCHEMA_CHANGES.md`](SCHEMA_CHANGES.md) | Изменение схемы БД | AS-IS VERIFIED по models/Alembic на 01.09.2026 |
-| [`NOTIFICATION_SERVICE_TOP_DOWN.md`](proposals/NOTIFICATION_SERVICE_TOP_DOWN.md) | Проектирование уведомлений | TO-BE; не описание текущей реализации |
+| [`NOTIFICATION_SERVICE_TOP_DOWN.md`](proposals/NOTIFICATION_SERVICE_TOP_DOWN.md) | Утверждённая продуктовая модель уведомлений и её реализация | AS-IS VERIFIED / PRODUCT DECISION на 07.09.2026 |
 | [`CODE_REVIEW_2026-08-19.md`](archive/reviews/CODE_REVIEW_2026-08-19.md) | История выявленных проблем и решений | Исторический аудит на конкретную дату |
 
 ## Приоритет источников

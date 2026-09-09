@@ -4,7 +4,7 @@ Used for demo, development and tests. Natural-language generation is handled
 by template generators in the dialogue engine; this provider only exposes a
 minimal chat() so that the rest of the code never depends on network access.
 """
-from typing import List, Optional
+from typing import Iterator, List, Optional
 
 from .base import LLMProvider
 
@@ -32,6 +32,15 @@ class MockProvider:
             "Уточните, пожалуйста, детали по вашему запросу: "
             + (last_user[:200] if last_user else "опишите суть потребности.")
         )
+
+    def chat_stream(
+        self,
+        messages: List[dict],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.3,
+        max_tokens: int = 1024,
+    ) -> Iterator[str]:
+        yield self.chat(messages, system_prompt, temperature, max_tokens)
 
     def embed(self, text: str) -> Optional[List[float]]:
         return None

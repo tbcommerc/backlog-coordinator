@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     AGENT_DECISION_MAX_TOKENS: int = 3072
+    AGENT_LLM_HISTORY_MESSAGES: int = 40
+    AGENT_HISTORY_MESSAGES: int = 100
+    AGENT_SLOT_HISTORY_ITEMS: int = 20
+    MESSAGE_RECEIPT_RETENTION_DAYS: int = 7
     # Security
     AGENT_SECRET: str = "dmb-agent-local-secret-2026"
 

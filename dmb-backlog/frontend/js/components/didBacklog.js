@@ -1,6 +1,7 @@
 import { escapeHtml } from '../htmlUtils.js';
 import { renderViewState, bindViewStateAction } from './viewState.js';
 import { formatErrorMessage } from '../uiFeedback.js';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=11';
 
 export const DID_COLUMNS = [
   ['did_client_group', 'Группировка для клиентов ДИД', 12],
@@ -12,6 +13,7 @@ export const DID_COLUMNS = [
   ['deadline_name', 'Срок выполнения', 10], ['financial_effect', 'Фин. эффект, млн ₽', 12],
 ];
 const ENDPOINT = '/reports/did-backlog';
+const COLUMN_LABELS = { did_client_group: 'Клиент ДИД', team_name: 'Команда', task_type_name: 'Тип', business_customer_contact: 'Заказчик', department_name: 'Подразделение', deadline_name: 'Срок', financial_effect: 'Эффект, млн ₽' };
 export const defaultDidPrefs = quarter => ({ quarter, filters: {}, sortField: null, sortDir: 'asc', widths: Object.fromEntries(DID_COLUMNS.map(([k, , w]) => [k, w])) });
 const gap = (row, key) => row.gaps.includes(key);
 export const didValueKey = value => typeof value === 'number' ? String(value) : String(value ?? '').trim();
@@ -32,14 +34,14 @@ export function didVisibleRows(rows, prefs) {
   });
 }
 
-export function renderDidBacklog() {
+export function renderDidBacklog(app) {
   return `<section class="did-report animate-fade-in" id="did-report">
-    <div class="did-heading"><a class="btn btn-ghost btn-sm" href="#/reports" aria-label="К статусам для встреч">←</a><div><h1>Бэклог для отправки на бизнес-заказчиков ДИД</h1><p class="text-muted">Квартальный портфель задач и финансовый эффект для бизнес-заказчиков</p></div></div>
-    <div class="action-bar"><span class="badge badge-info">Статус-отчёт</span><div class="did-actions">
+    <header class="did-heading toolbar-title-row"><div class="toolbar-title-wrap"><h1 class="toolbar-title">Бэклог для бизнес-заказчиков ДИД</h1><p class="toolbar-subtitle">Квартальный портфель задач для отправки бизнес-заказчикам</p></div><div class="toolbar-actions did-actions">
+      ${canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary btn-sm" href="${reportingStatusHref({ source: 'report', kind: 'did' })}"><i data-lucide="clipboard-pen-line"></i>Заполнить статусы</a>` : ''}
       <button class="btn btn-secondary btn-sm" data-did-export="xlsx" disabled><i data-lucide="file-spreadsheet"></i>Excel</button>
       <button class="btn btn-secondary btn-sm" data-did-export="pdf" disabled><i data-lucide="printer"></i>PDF</button>
-      <button class="btn btn-secondary btn-sm" data-did-refresh><i data-lucide="refresh-cw"></i>Обновить</button></div></div>
-    <div id="did-content" aria-live="polite"><div class="card empty-state">Загрузка отчёта…</div></div>
+      <span class="toolbar-actions-divider" aria-hidden="true"></span><button class="btn btn-secondary btn-sm square-icon" data-did-refresh aria-label="Обновить отчёт" title="Обновить отчёт"><i data-lucide="refresh-cw"></i></button></div></header>
+    <div id="did-content"><div class="card">${renderViewState({ kind: 'loading', title: 'Загрузка отчёта…' })}</div></div>
   </section>`;
 }
 
@@ -62,18 +64,22 @@ export async function initDidBacklog(app) {
   const controls = () => root.querySelectorAll('[data-did-export]').forEach(button => { button.disabled = loading || !canExport; });
   function render() {
     if (!alive() || !prefs) return;
+    const scroll = root.querySelector('.did-table-scroll');
+    const scrollPosition = scroll ? { left: scroll.scrollLeft, top: scroll.scrollTop } : null;
+    const rulesOpen = root.querySelector('.did-rules')?.open || false;
     const view = visible();
     const empties = view.reduce((n, r) => n + r.gaps.length, 0), gaps = view.filter(r => r.gaps.length).length;
     const hasFilters = Object.values(prefs.filters).some(v => v.length);
     const resized = DID_COLUMNS.some(([key, , width]) => Math.abs(prefs.widths[key] - width) > .001);
-    content.innerHTML = `<div class="did-quarter-bar card"><label>Квартал<select class="input" data-did-quarter ${loading ? 'disabled' : ''}>${calendar.quarters.map(q => `<option ${q === prefs.quarter ? 'selected' : ''}>${escapeHtml(q)}</option>`).join('')}</select></label>
-      <p>«Квартальная/годовая цель» и «AD-HOC» за выбранный квартал. Годовые цели — в IV квартале. Исключены «Холд», «Отклонена», «Не актуальна».</p>
-      <span class="did-completeness ${empties ? 'has-gaps' : 'complete'}">${view.length ? (empties ? `Не заполнено: ${empties} · задач с пробелами: ${gaps} из ${view.length}` : '✓ Все данные заполнены') : 'Нет данных для проверки'}</span></div>
-      <div class="card did-table-card" aria-busy="${loading}"><table class="did-table"><colgroup>${DID_COLUMNS.map(([key]) => `<col style="width:${prefs.widths[key]}%">`).join('')}</colgroup><thead><tr>${DID_COLUMNS.map(([key, label], index) => {
+    content.innerHTML = `<div class="did-controls"><div class="did-quarter-bar"><label for="did-quarter"><i data-lucide="calendar-days" aria-hidden="true"></i>Квартал</label><select id="did-quarter" class="input" data-did-quarter ${loading ? 'disabled' : ''}>${calendar.quarters.map(q => `<option ${q === prefs.quarter ? 'selected' : ''}>${escapeHtml(q)}</option>`).join('')}</select><span class="did-scope">Цели и AD-HOC</span><details class="did-rules" ${rulesOpen ? 'open' : ''}><summary><i data-lucide="info" aria-hidden="true"></i>Правила отчёта<i data-lucide="chevron-down" aria-hidden="true"></i></summary><div>Задачи типов «Квартальная/годовая цель» и «AD-HOC» за выбранный квартал. Годовые цели включаются в IV квартал. Исключены статусы «Холд», «Отклонена», «Не актуальна».</div></details></div>
+      ${hasFilters ? `<div class="active-filters-row did-active-filters" aria-label="Активные фильтры">${DID_COLUMNS.filter(([key]) => prefs.filters[key]?.length).map(([key, label]) => `<span class="active-filter-chip"><span class="chip-label">${escapeHtml(COLUMN_LABELS[key] || label)}:</span><span class="chip-value" title="${escapeHtml(prefs.filters[key].join(', '))}">${escapeHtml(prefs.filters[key].length === 1 ? prefs.filters[key][0] : `Выбрано: ${prefs.filters[key].length}`)}</span><button class="chip-clear" data-did-remove-filter="${key}" aria-label="Снять фильтр: ${escapeHtml(label)}">×</button></span>`).join('')}<button class="btn btn-ghost btn-sm" data-did-clear>Сбросить фильтры</button></div>` : ''}</div>
+      <div class="did-completeness ${view.length ? (empties ? 'has-gaps' : 'complete') : ''}" role="status"><i data-lucide="${empties ? 'alert-circle' : view.length ? 'check-circle' : 'info'}" aria-hidden="true"></i><span>${loading ? 'Загрузка данных…' : view.length ? (empties ? `<strong>Не заполнено полей: ${empties}</strong><span>В ${gaps} из ${view.length} задач. Отмечены в таблице.</span>` : '<strong>Все данные заполнены</strong><span>Отчёт готов к отправке.</span>') : 'Нет данных для проверки'}</span></div>
+      <div class="card did-table-card" aria-busy="${loading}"><div class="did-table-scroll" tabindex="0" role="region" aria-label="Таблица бэклога ДИД"><table class="did-table"><caption class="sr-only">Бэклог для бизнес-заказчиков ДИД — ${escapeHtml(prefs.quarter)}</caption><colgroup>${DID_COLUMNS.map(([key]) => `<col style="width:${prefs.widths[key]}%">`).join('')}</colgroup><thead><tr>${DID_COLUMNS.map(([key, label], index) => {
         const selected = prefs.filters[key] || [];
-        return `<th scope="col" aria-sort="${prefs.sortField === key ? (prefs.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}"><div class="did-th"><button class="did-sort" data-did-sort="${key}">${escapeHtml(label)}${prefs.sortField === key ? (prefs.sortDir === 'asc' ? ' ↑' : ' ↓') : ''}</button><button class="did-filter ${selected.length ? 'active' : ''}" data-did-filter="${key}" aria-label="Фильтр: ${escapeHtml(label)}" aria-expanded="${openFilter === key}"><i data-lucide="filter"></i>${selected.length || ''}</button></div>${index < 8 ? `<span class="did-resize" data-did-resize="${index}" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Ширина: ${escapeHtml(label)}" aria-valuemin="4" aria-valuemax="${prefs.widths[key] + prefs.widths[DID_COLUMNS[index + 1][0]] - 4}" aria-valuenow="${prefs.widths[key]}"></span>` : ''}</th>`;
-      }).join('')}</tr></thead><tbody>${loading ? '<tr><td colspan="9" class="did-empty">Загрузка отчёта…</td></tr>' : view.length ? view.map(row => `<tr data-did-task="${row.id}" tabindex="0" aria-label="Открыть задачу: ${escapeHtml(row.title || 'не заполнено')}">${DID_COLUMNS.map(([key]) => `<td class="${gap(row, key) ? 'did-gap' : ''} ${key === 'financial_effect' ? 'did-number' : ''}" title="${escapeHtml(gap(row, key) ? 'Значение не заполнено' : String(row[key]))}"><span class="${key === 'title' ? 'did-title' : 'did-value'} ${['did_client_group', 'team_name'].includes(key) && !gap(row, key) ? 'did-badge' : ''}">${escapeHtml(didDisplay(row, key))}</span></td>`).join('')}</tr>`).join('') : `<tr><td colspan="9" class="did-empty"><strong>${total ? 'Нет совпадений' : 'Нет задач'}</strong><p>${total ? 'Измените или сбросьте фильтры.' : 'За выбранный квартал нет задач, соответствующих правилам отчёта.'}</p></td></tr>`}</tbody></table>
-      <div class="did-footer"><span>${view.length} из ${total} задач</span>${hasFilters ? '<button class="btn btn-ghost btn-sm" data-did-clear>Сбросить все фильтры</button>' : ''}${resized ? '<button class="btn btn-ghost btn-sm" data-did-widths>Вернуть исходные ширины</button>' : ''}<span class="did-save-state" role="status">${saveError ? 'Не удалось сохранить настройки' : saved ? '✓ Настройки сохранены' : ''}</span><button class="btn btn-ghost btn-sm" data-did-reset>Сбросить настройки</button></div></div><p class="did-width-hint">Ширину колонок можно менять, потянув границу заголовка. Для клавиатуры — стрелки влево и вправо.</p>`;
+        return `<th scope="col" aria-sort="${prefs.sortField === key ? (prefs.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}"><div class="did-th"><button class="did-sort" data-did-sort="${key}" title="Сортировать: ${escapeHtml(label)}"><span class="did-sort-label">${escapeHtml(COLUMN_LABELS[key] || label)}</span>${prefs.sortField === key ? `<span class="did-sort-indicator" aria-hidden="true">${prefs.sortDir === 'asc' ? '↑' : '↓'}</span>` : ''}</button><button class="did-filter ${selected.length ? 'active' : ''}" data-did-filter="${key}" aria-label="Фильтр: ${escapeHtml(label)}" aria-expanded="${openFilter === key}"><i data-lucide="filter"></i>${selected.length || ''}</button></div>${index < 8 ? `<span class="did-resize" data-did-resize="${index}" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Ширина: ${escapeHtml(label)}" aria-valuemin="4" aria-valuemax="${prefs.widths[key] + prefs.widths[DID_COLUMNS[index + 1][0]] - 4}" aria-valuenow="${prefs.widths[key]}"></span>` : ''}</th>`;
+      }).join('')}</tr></thead><tbody>${loading ? `<tr><td colspan="9" class="did-empty"><div class="did-empty-content">${renderViewState({ kind: 'loading', title: 'Загрузка отчёта…' })}</div></td></tr>` : view.length ? view.map(row => `<tr data-did-task="${row.id}" tabindex="0" aria-label="Открыть задачу: ${escapeHtml(row.title || 'не заполнено')}">${DID_COLUMNS.map(([key]) => `<td class="${gap(row, key) ? 'did-gap' : ''} ${key === 'financial_effect' ? 'did-number' : ''}" title="${escapeHtml(gap(row, key) ? 'Значение не заполнено' : String(row[key]))}"><span class="${key === 'title' ? 'did-title' : 'did-value'} ${['did_client_group', 'team_name'].includes(key) && !gap(row, key) ? 'did-badge' : ''}">${escapeHtml(didDisplay(row, key))}</span></td>`).join('')}</tr>`).join('') : `<tr><td colspan="9" class="did-empty"><div class="did-empty-content"><strong>${total ? 'Нет совпадений' : 'Нет задач'}</strong><p>${total ? 'Измените или сбросьте фильтры.' : 'За выбранный квартал нет задач, соответствующих правилам отчёта.'}</p></div></td></tr>`}</tbody></table>
+      </div><div class="did-footer"><span class="did-row-count">${view.length} из ${total} задач</span>${resized ? '<button class="btn btn-ghost btn-sm" data-did-widths>Вернуть ширины</button>' : ''}<span class="did-save-state" role="status">${saveError ? 'Не удалось сохранить настройки' : saved ? '✓ Настройки сохранены' : ''}</span><button class="btn btn-ghost btn-sm" data-did-reset title="Сбросить квартал, фильтры, сортировку и ширины колонок"><i data-lucide="rotate-ccw"></i>Сбросить настройки</button></div></div>`;
+    if (scrollPosition && !loading) { const nextScroll = root.querySelector('.did-table-scroll'); nextScroll.scrollLeft = scrollPosition.left; nextScroll.scrollTop = scrollPosition.top; }
     controls(); iconRefresh();
   }
   function persist() {
@@ -150,6 +156,7 @@ export async function initDidBacklog(app) {
     if (!event.target.closest('.did-filter-panel')) closeFilter();
     if (button?.dataset.didSort) { const key = button.dataset.didSort; prefs.sortDir = prefs.sortField === key && prefs.sortDir === 'asc' ? 'desc' : 'asc'; prefs.sortField = key; render(); persist(); }
     else if (button?.hasAttribute('data-did-clear')) { prefs.filters = {}; render(); persist(); }
+    else if (button?.dataset.didRemoveFilter) { delete prefs.filters[button.dataset.didRemoveFilter]; render(); persist(); }
     else if (button?.hasAttribute('data-did-widths')) { prefs.widths = defaultDidPrefs(prefs.quarter).widths; render(); persist(); }
     else if (button?.hasAttribute('data-did-reset')) {
       ++saveVersion; loading = true; controls();
@@ -158,7 +165,7 @@ export async function initDidBacklog(app) {
       prefs = defaultDidPrefs(calendar.current_quarter); await load();
     } else if (!event.target.closest('thead, .did-filter-panel')) {
       const row = event.target.closest('[data-did-task]');
-      if (row) { try { const { openTaskModal, setOnTaskSaved } = await import('./modal.js'); const task = await app.api.get(`/tasks/${row.dataset.didTask}`); setOnTaskSaved(() => { if (alive()) load(); }); openTaskModal(task); } catch (error) { window.toast?.(error.message, 'error'); } }
+      if (row) { try { const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=92'); const task = await app.api.get(`/tasks/${row.dataset.didTask}`); setOnTaskSaved(() => { if (alive()) load(); }); openTaskModal(task); } catch (error) { window.toast?.(error.message, 'error'); } }
     }
   });
   root.addEventListener('change', event => {

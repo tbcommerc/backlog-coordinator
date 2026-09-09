@@ -97,7 +97,7 @@ export function renderSidebar() {
                     <i data-lucide="briefcase"></i>
                     <span>Мои запросы</span>
                 </a>
-                <a href="#/customer/create" class="sidebar-item sidebar-item-sub" aria-label="Создать запрос">
+                <a href="#/customer/create" class="sidebar-item sidebar-item-sub" aria-label="ИИ-ассистент">
                     <i data-lucide="bot"></i>
                     <span>ИИ-ассистент</span>
                 </a>
@@ -147,7 +147,7 @@ export function initSidebar() {
         const user = window.app?.store?.get('currentUser');
         const perms = user?.permissions;
         if (perms?.customer_portal_mode === 'only') {
-            const allowedLabels = new Set(['Мои запросы', 'Создать запрос']);
+            const allowedLabels = new Set(['Мои запросы', 'ИИ-ассистент']);
             document.querySelectorAll('.sidebar-item').forEach(el => {
                 if (!allowedLabels.has(el.getAttribute('aria-label'))) {
                     el.style.display = 'none';
@@ -172,7 +172,7 @@ export function initSidebar() {
             'Аналитика PO/PL': 'analytics',
             'Аналитика для ИТ': 'analytics',
             'Мои запросы': 'customer',
-            'Создать запрос': 'customer',
+            'ИИ-ассистент': 'customer',
             'Настройки': 'settings',
             'Администрирование': 'admin',
             'Аудит действий': 'admin',

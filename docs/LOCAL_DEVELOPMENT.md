@@ -1,7 +1,7 @@
 # Локальный запуск Backlog coordinator
 
 > AS-IS проверено по `scripts/start-project.ps1`, status/stop scripts и
-> `compose.yaml` 02.09.2026.
+> `compose.yaml` 07.09.2026.
 
 ## Что запускается
 
@@ -42,9 +42,16 @@ powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 6. запускает AI-агента, агент приоритизации и Backlog coordinator в скрытых фоновых процессах;
 7. проверяет все HTTP health endpoint.
 
+HTTP-проверка принимает стандартные состояния `ok`, `ready` и `healthy` и
+завершается сразу после готовности сервиса. Стандартный таймаут — 60 секунд;
+для первого запуска Task Prioritiser предусмотрено до 900 секунд на загрузку
+модели эмбеддингов.
+
 Первичная установка зависимостей агента приоритизации занимает больше времени:
 его стек включает локальную модель эмбеддингов. Изолированное окружение исключает
 конфликт версий FastAPI и Pydantic с основным backend.
+Модель сохраняется в проектном runtime-кэше `.runtime/hf-cache`, чтобы запуск не
+зависел от свободного места в системном пользовательском кэше.
 
 Провайдер, ключ, endpoint и модель LLM для агента приоритизации при каждом
 едином запуске синхронизируются из `agent/.env`. Поэтому оба агента используют
@@ -74,6 +81,9 @@ powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 powershell -ExecutionPolicy Bypass -File scripts/project-status.ps1
 powershell -ExecutionPolicy Bypass -File scripts/stop-project.ps1
 ```
+
+Скрипт статуса выводит отдельно состояние процесса (`process`) и результат
+HTTP-проверки (`health`): наличие живого PID само по себе не считается готовностью.
 
 Остановка сохраняет PostgreSQL-данные в Docker volume. Для остановки только
 Python-сервисов с сохранением запущенной инфраструктуры используется:

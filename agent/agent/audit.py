@@ -4,7 +4,6 @@ Writes JSON lines to agent_logs/audit.log. Every dialogue event, refusal,
 escalation and draft version is recorded.
 """
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,7 +29,7 @@ def log_dialogue(session_id: str, user_id: int, role: str, message: str, respons
         "session_id": session_id,
         "user_id": user_id,
         "role": role,
-        "message_preview": message[:300],
+        "message_length": len(message),
         "response_action": response_action,
     })
 
@@ -40,7 +39,7 @@ def log_refusal(session_id: str, user_id: int, reason: str, message: str):
         "session_id": session_id,
         "user_id": user_id,
         "reason": reason,
-        "message_preview": message[:300],
+        "message_length": len(message),
     })
 
 

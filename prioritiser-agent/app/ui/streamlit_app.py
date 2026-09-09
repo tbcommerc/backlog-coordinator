@@ -343,6 +343,15 @@ with tab_attribution:
         "Фактический доход фронта за период, млн ₽", value=1000.0, step=50.0
     )
     only_closed = st.checkbox("Только закрытые инициативы", value=True)
+    with session_scope() as session:
+        available_task_keys = list(
+            session.scalars(select(Task.task_key).order_by(Task.task_key)).all()
+        )
+    task_keys = st.multiselect(
+        "Инициативы отчётного периода",
+        options=available_task_keys,
+        help="Выборка фиксируется в результате запуска и не выводится из текстовой метки периода.",
+    )
 
     if st.button("Запустить атрибуцию"):
         try:
@@ -351,6 +360,7 @@ with tab_attribution:
                     session,
                     period=period,
                     front_actual_revenue_mln=revenue,
+                    task_keys=task_keys,
                     actor="ui",
                     only_closed=only_closed,
                 )

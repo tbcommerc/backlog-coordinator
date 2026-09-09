@@ -12,6 +12,11 @@ import mimetypes
 from contextlib import suppress
 import os
 import stat
+import json
+import urllib.request
+import json
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 
 from config import (
@@ -256,6 +261,44 @@ async def readiness_check():
     checks["attachment_storage"] = "ok" if storage_ready else "unavailable"
     if not storage_ready:
         ready = False
+
+    async def probe(name: str, url: str) -> None:
+        nonlocal ready
+        try:
+            def request() -> None:
+                with urllib.request.urlopen(url, timeout=3) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                    if payload.get("status") not in {"ready", "ok"}:
+                        raise ValueError("dependency is not ready")
+            await asyncio.to_thread(request)
+            checks[name] = "ok"
+        except Exception as exc:
+            ready = False
+            checks[name] = f"error:{type(exc).__name__}"
+
+    await asyncio.gather(
+        probe("agent", f"{settings.AGENT_BASE_URL.rstrip('/')}/api/agent/ready"),
+        probe("prioritiser", f"{settings.PRIORITISER_BASE_URL.rstrip('/')}/ready"),
+    )
+
+    async def probe(name: str, url: str) -> None:
+        nonlocal ready
+        try:
+            def request() -> None:
+                with urllib.request.urlopen(url, timeout=3) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                    if payload.get("status") not in {"ready", "ok"}:
+                        raise ValueError("dependency is not ready")
+            await asyncio.to_thread(request)
+            checks[name] = "ok"
+        except Exception as exc:
+            ready = False
+            checks[name] = f"error:{type(exc).__name__}"
+
+    await asyncio.gather(
+        probe("agent", f"{settings.AGENT_BASE_URL.rstrip('/')}/api/agent/ready"),
+        probe("prioritiser", f"{settings.PRIORITISER_BASE_URL.rstrip('/')}/ready"),
+    )
 
     return JSONResponse(
         status_code=200 if ready else 503,

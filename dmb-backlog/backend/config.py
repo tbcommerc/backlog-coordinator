@@ -10,6 +10,7 @@ from typing import Optional
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_SECRET_KEY = "your-secret-key-change-in-production-dmb2026"
 DEFAULT_AGENT_SECRET = "dmb-agent-local-secret-2026"
+DEFAULT_PRIORITISER_SECRET = "dmb-prioritiser-local-secret-2026"
 
 
 class Settings(BaseSettings):
@@ -55,6 +56,9 @@ class Settings(BaseSettings):
     # volume (or a path backed by network/object-storage gateway) visible to
     # every backend instance.
     ATTACHMENT_STORAGE_DIR: Path = BASE_DIR / "uploads"
+    CLAMAV_HOST: Optional[str] = None
+    CLAMAV_PORT: int = 3310
+    CLAMAV_TIMEOUT_SECONDS: float = 30.0
     
     # Security
     SECRET_KEY: str = DEFAULT_SECRET_KEY
@@ -69,9 +73,14 @@ class Settings(BaseSettings):
     AGENT_BASE_URL: str = "http://127.0.0.1:9000"
     AGENT_SECRET: str = DEFAULT_AGENT_SECRET
     AGENT_TIMEOUT_SECONDS: float = 180.0
+    INTERSERVICE_MAX_ATTEMPTS: int = 3
+    INTERSERVICE_RETRY_BASE_SECONDS: float = 0.1
+    INTERSERVICE_CIRCUIT_FAILURE_THRESHOLD: int = 5
+    INTERSERVICE_CIRCUIT_RESET_SECONDS: float = 30.0
 
     # Task prioritisation and financial effect agent
     PRIORITISER_BASE_URL: str = "http://127.0.0.1:9100"
+    PRIORITISER_SECRET: str = DEFAULT_PRIORITISER_SECRET
     PRIORITISER_TIMEOUT_SECONDS: float = 180.0
     
     class Config:
@@ -96,6 +105,11 @@ def validate_runtime_settings() -> None:
 
     if not settings.AGENT_SECRET or settings.AGENT_SECRET == DEFAULT_AGENT_SECRET:
         errors.append("AGENT_SECRET must be set to a non-default value")
+    if (
+        not settings.PRIORITISER_SECRET
+        or settings.PRIORITISER_SECRET == DEFAULT_PRIORITISER_SECRET
+    ):
+        errors.append("PRIORITISER_SECRET must be set to a non-default value")
     if not settings.REDIS_URL:
         errors.append("REDIS_URL must be configured for production rate limiting")
     if settings.DATABASE_URL.lower().startswith("sqlite"):
@@ -115,6 +129,8 @@ def validate_runtime_settings() -> None:
     local_upload_dir = (settings.BASE_DIR / "uploads").resolve()
     if settings.ATTACHMENT_STORAGE_DIR.resolve() == local_upload_dir:
         errors.append("ATTACHMENT_STORAGE_DIR must point to shared storage in production")
+    if not settings.CLAMAV_HOST:
+        errors.append("CLAMAV_HOST must be configured in production")
 
     if errors:
         raise RuntimeError("Unsafe production configuration: " + "; ".join(errors))

@@ -8,6 +8,7 @@ template text so the chat never breaks.
 import logging
 import re
 import time
+from collections.abc import Callable
 
 from ..config import settings
 from .openai_compat import OpenAICompatProvider
@@ -88,3 +89,39 @@ def rephrase(text: str) -> str:
         _trip()
         logger.warning("LLM rephrase failed; disabling rephrasing for %.0fs", REPHRASE_COOLDOWN)
         return text
+
+
+def rephrase_stream(text: str, on_delta: Callable[[str], None]) -> tuple[str, str]:
+    """Stream a natural rewrite and return ``(final_text, streamed_text)``.
+
+    ``final_text`` is always safe to persist. If an incomplete or invariant-
+    breaking candidate was already emitted, the caller can replace it with the
+    returned final text before publishing the structured result.
+    """
+    if not enabled() or not text or _tripped():
+        return text, ""
+    provider = OpenAICompatProvider()
+    if not provider.available():
+        return text, ""
+    parts: list[str] = []
+    try:
+        for delta in provider.chat_stream(
+            [{"role": "user", "content": text}],
+            system_prompt=REPHRASE_SYSTEM,
+            temperature=0.4,
+            max_tokens=512,
+            timeout=max(REPHRASE_TIMEOUT, 15.0),
+        ):
+            if not delta:
+                continue
+            parts.append(delta)
+            on_delta(delta)
+        streamed = "".join(parts)
+        candidate = streamed.strip()
+        if candidate and _preserves_invariants(text, candidate):
+            return candidate, streamed
+        return text, streamed
+    except Exception:
+        _trip()
+        logger.warning("Streaming LLM rephrase failed; disabling rephrasing for %.0fs", REPHRASE_COOLDOWN)
+        return text, "".join(parts)

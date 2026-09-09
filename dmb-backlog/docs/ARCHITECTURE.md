@@ -2,7 +2,7 @@
 title: Архитектура Backlog coordinator
 scope: as-is
 status: verified
-last_verified: 2026-09-02
+last_verified: 2026-09-09
 evidence:
   - backend/main.py
   - backend/config.py
@@ -15,12 +15,17 @@ evidence:
   - backend/telemetry.py
   - backend/metrics.py
   - frontend/js/
-  - .github/workflows/quality.yml
+  - ../../.github/workflows/quality.yml
 ---
 
 # Архитектура Backlog coordinator
 
 Документ описывает только подтверждённую реализацию. Модель данных, поля API и пользовательские сценарии вынесены в профильные документы и должны сверяться с кодом отдельно.
+
+Межсервисные вызовы backend → BA Agent/Prioritiser имеют ограниченные повторы
+с экспоненциальной задержкой и circuit breaker. Повторяются транспортные ошибки
+и 502/503/504; ошибки 4xx возвращаются без повтора. Вложения проверяются по
+сигнатуре и ClamAV INSTREAM до фиксации метаданных в БД.
 
 ## Контекст
 
@@ -53,6 +58,8 @@ FastAPI backend :8000
 - `frontend/js/api.js` — HTTP-клиент и обновление access-токена.
 - `frontend/js/auth.js` — login/logout и профиль пользователя.
 - `frontend/js/store.js` — клиентское состояние.
+- `frontend/js/notificationStore.js` — ревизионный snapshot уведомлений для shell,
+  dashboard и центра; объединяет параллельные запросы и SSE-инвалидации.
 - `frontend/js/components/` — страницы и UI-компоненты.
 - `frontend/css/` — токены, базовые стили и стили компонентов/страниц.
 
@@ -72,6 +79,14 @@ Frontend обслуживается самим FastAPI через `/static`; к�
 ### AI Business Analyst Agent
 
 Backlog вызывает Agent по `AGENT_BASE_URL` и передаёт `X-Agent-Secret`. Agent является отдельным приложением и процессом; его архитектура описана в `../../agent/docs/ARCHITECTURE.md`.
+
+Основной chat UI использует сквозной SSE: браузер вызывает backend
+`/api/v1/agent/chat-stream`, backend проверяет принадлежность сессии и без
+буферизации ретранслирует поток Agent. Agent сначала получает и валидирует
+structured-решение диалога, затем отдельным presentation-вызовом LLM потоково
+формирует только пользовательский текст. После проверки инвариантов поток
+завершается полным структурированным результатом; внутренний JSON модели в
+браузер не передаётся. JSON `/agent/chat` остаётся контрактом совместимости.
 
 ### Task Prioritiser
 
@@ -183,7 +198,9 @@ process-local cache. Уникальная DB-запись резервирует
 SSE-сессия не удерживает connection из SQLAlchemy pool. Персональные события
 сопоставляются с пользователем; task, requirement и report events проходят
 соответствующую серверную проверку области доступа. Polling уведомлений раз в
-60 секунд остаётся fallback.
+60 секунд остаётся fallback. Для согласования счётчиков и двух компактных лент
+frontend читает `/notifications/snapshot` с ревизией `event_outbox`; отдельные
+list-запросы остаются у полной фильтруемой ленты и проверки новых toast-событий.
 
 ## Наблюдаемость и поставка
 
@@ -192,7 +209,11 @@ SSE-сессия не удерживает connection из SQLAlchemy pool. Пе
   коммитится и откатывается вместе с бизнес-изменением.
 - `/api/v1/health` является liveness; `/api/v1/health/ready` проверяет БД, Redis,
   общий каталог вложений и возвращает размер/возраст pending outbox.
-- `.github/workflows/quality.yml` выполняет compile backend, pytest, JavaScript syntax checks, frontend unit tests и `pip-audit`.
+- Notification UX агрегируется счётчиком `dmb_notification_ux_events_total` и
+  histogram `dmb_notification_ux_duration_seconds` только по enum-измерениям;
+  персональные и текстовые данные в метрики не попадают.
+- Корневой `../../.github/workflows/quality.yml` выполняет compile backend, pytest,
+  JavaScript syntax checks, frontend unit tests и `pip-audit`.
 - Локальные PostgreSQL и Redis описаны в корневом `compose.yaml`; стендовая
   multi-replica топология Python-сервисов — в `compose.production.yaml`.
 - `/metrics` отдаёт Prometheus-метрики HTTP, DB pool, outbox, SSE, scheduler и

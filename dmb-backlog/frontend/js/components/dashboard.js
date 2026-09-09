@@ -3,12 +3,21 @@
  * Personalized by role: Team mode (PO/PL/IT PL) vs Tribe mode (ЛТ)
  */
 
-import { formatTaskPublicId } from '../taskPublicId.js';
-import { calculateTaskCv } from '../taskMetrics.js';
+import {
+    formatNotificationTime,
+    notificationAccessibleLabel,
+    notificationActionLabel,
+    notificationCategoryMeta,
+    notificationImportanceMeta,
+    openNotificationTarget,
+    recordNotificationUxEvent,
+} from '../notificationUtils.js?v=3';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=11';
 
 const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 const MONTH_NAMES_SHORT = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-const EVENT_TYPE_ICONS = { milestone: 'flag', planned_event: 'calendar-check', cyclic: 'refresh-cw', event: 'circle' };
+const EVENT_TYPE_ICONS = { milestone: 'flag', planned_event: 'calendar-check', cyclic: 'refresh-cw', event: 'circle', pip: 'milestone' };
+let notificationStoreUnsubscribe = null;
 
 function greetingByTime() {
     const h = new Date().getHours();
@@ -24,46 +33,6 @@ function roleLabel(user) {
 
 window._tlState = { view: 'quarter', year: new Date().getFullYear(), quarter: Math.floor(new Date().getMonth() / 3) + 1, month: new Date().getMonth() + 1, events: [] };
 
-function getStatus(t) {
-    return t.status_name || t.status || '';
-}
-
-function getDeadline(t) {
-    return t.deadline_name || t.deadline || '';
-}
-
-function isActiveStatus(s) {
-    return ['СБОР ТРЕБОВАНИЙ', 'ПРОВЕРКА ТРЕБОВАНИЙ', 'УТОЧНЕНИЕ ТРЕБОВАНИЙ', 'ЭКСПРЕСС-ОЦЕНКА', 'ПРИНЯТИЕ РЕШЕНИЯ', 'ПРИНЯТА В РАБОТУ'].includes(s);
-}
-
-function isAttentionStatus(s) {
-    return ['СБОР ТРЕБОВАНИЙ', 'ЭКСПРЕСС-ОЦЕНКА', 'ХОЛД', 'ЭСКАЛАЦИЯ НА ЛТ', 'УТОЧНЕНИЕ ТРЕБОВАНИЙ', 'ПРОВЕРКА ТРЕБОВАНИЙ'].includes(s);
-}
-
-function isRiskStatus(s) {
-    return s === 'ХОЛД' || s === 'ЭСКАЛАЦИЯ НА ЛТ' || s === 'ОТКЛОНЕНА';
-}
-
-function renderStatus(status) {
-    const statusClass = status ? status.replace(/\s+/g, '_') : 'backlog';
-    const colors = {
-        'НОВАЯ_ЗАДАЧА': 'badge-status-backlog',
-        'НАЗНАЧЕНА_КОМАНДА': 'badge-status-backlog',
-        'СБОР_ТРЕБОВАНИЙ': 'badge-status-backlog',
-        'ПРОВЕРКА_ТРЕБОВАНИЙ': 'badge-status-backlog',
-        'УТОЧНЕНИЕ_ТРЕБОВАНИЙ': 'badge-status-backlog',
-        'ЭКСПРЕСС-ОЦЕНКА': 'badge-status-backlog',
-        'ПРИНЯТИЕ_РЕШЕНИЯ': 'badge-status-review',
-        'ПРИНЯТА_В_РАБОТУ': 'badge-status-in_progress',
-        'ЭСКАЛАЦИЯ_НА_ЛТ': 'badge-status-on_hold',
-        'ХОЛД': 'badge-status-on_hold',
-        'ОТКЛОНЕНА': 'badge-danger',
-        'НЕ_АКТУАЛЬНА': 'badge-low',
-        'ВЫПОЛНЕНА': 'badge-status-done'
-    };
-    return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${status || 'СБОР ТРЕБОВАНИЙ'}</span>`;
-}
-
 function getQuarter(date) {
     return Math.floor(date.getMonth() / 3) + 1;
 }
@@ -73,87 +42,10 @@ function getQuarterLabel(q, year) {
     return `${labels[q] || q} кв. ${year}`;
 }
 
-const NOTIF_CAT_ICONS = {
-    risk: 'alert-triangle', deadline: 'clock', status_change: 'refresh-cw',
-    assignment: 'user-plus', mention: 'at-sign', comment: 'message-circle',
-    express: 'zap', stale: 'timer', attrs: 'file-text', system: 'info',
-};
-
-const NOTIF_CAT_COLORS = {
-    risk: '#f43f5e', deadline: '#f59e0b', status_change: '#6366f1',
-    assignment: '#10b981', mention: '#a855f7', comment: '#3b82f6',
-    express: '#f59e0b', stale: '#64748b', attrs: '#64748b', system: '#64748b',
-};
-
-const STATUS_COLORS = {
-    'НОВАЯ ЗАДАЧА': '#64748b', 'НАЗНАЧЕНА КОМАНДА': '#64748b',
-    'СБОР ТРЕБОВАНИЙ': '#6366f1', 'ПРОВЕРКА ТРЕБОВАНИЙ': '#818cf8',
-    'УТОЧНЕНИЕ ТРЕБОВАНИЙ': '#a5b4fc', 'ЭКСПРЕСС-ОЦЕНКА': '#8b5cf6',
-    'ПРИНЯТИЕ РЕШЕНИЯ': '#f59e0b', 'ПРИНЯТА В РАБОТУ': '#10b981',
-    'ЭСКАЛАЦИЯ НА ЛТ': '#f43f5e', 'ХОЛД': '#f97316',
-    'ОТКЛОНЕНА': '#ef4444', 'НЕ АКТУАЛЬНА': '#94a3b8',
-    'ВЫПОЛНЕНА': '#22c55e',
-};
-
-function formatNotifTime(dateStr) {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diff = now - d;
-    const mins = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    if (mins < 1) return 'Только что';
-    if (mins < 60) return `${mins} мин. назад`;
-    if (hours < 24) return `${hours} ч. назад`;
-    if (days < 7) return `${days} д. назад`;
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-}
-
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
-}
-
-function animateCounter(el, target, duration = 600) {
-    if (!el || target === 0) { if (el) el.textContent = '0'; return; }
-    const start = performance.now();
-    const from = 0;
-    function tick(now) {
-        const progress = Math.min((now - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        el.textContent = Math.round(from + (target - from) * eased);
-        if (progress < 1) requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-}
-
-function formatMoney(val) {
-    if (val == null) return '—';
-    if (val >= 1e9) return (val / 1e9).toFixed(1) + ' млрд';
-    if (val >= 1e6) return (val / 1e6).toFixed(1) + ' млн';
-    if (val >= 1e3) return (val / 1e3).toFixed(0) + ' тыс';
-    return val.toFixed(0);
-}
-
-function isTribeRole(user) {
-    return ['Лидер трайба', 'Администратор'].includes(user?.role_name);
-}
-
-function isMyTask(task, user) {
-    return task.owner_id === user?.id;
-}
-
-function statCard(id, icon, gradient, label, animDelay) {
-    return `
-        <div class="dash-stat-card ${gradient} animate-slide-up" style="animation-delay:${animDelay}s">
-            <div class="dash-stat-icon"><i data-lucide="${icon}"></i></div>
-            <div class="dash-stat-body">
-                <div class="dash-stat-value" id="${id}">0</div>
-                <div class="dash-stat-label">${label}</div>
-            </div>
-        </div>`;
 }
 
 // ==================== TIMELINE ====================
@@ -319,8 +211,8 @@ function renderQuarterTimeline(st, today, realToday) {
                         <span class="dash-quarter-bar-pct">${pct}%</span>
                     </div>
                     <div style="display:flex;gap:2px;background:var(--bg-tertiary);border-radius:var(--radius-md,8px);padding:2px;">
-                        <button type="button" data-tl-action="view-quarter" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'quarter' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'quarter' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'quarter' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
                         <button type="button" data-tl-action="view-month" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'month' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'month' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'month' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'month' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Месяц</button>
+                        <button type="button" data-tl-action="view-quarter" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'quarter' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'quarter' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'quarter' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
                     </div>
                 </div>
             </div>
@@ -418,8 +310,8 @@ function renderMonthTimeline(st, today, realToday) {
                         <span class="dash-quarter-bar-pct">${pct}%</span>
                     </div>
                     <div style="display:flex;gap:2px;background:var(--bg-tertiary);border-radius:var(--radius-md,8px);padding:2px;">
-                        <button type="button" data-tl-action="view-quarter" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'quarter' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'quarter' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'quarter' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
                         <button type="button" data-tl-action="view-month" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'month' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'month' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'month' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'month' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Месяц</button>
+                        <button type="button" data-tl-action="view-quarter" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'quarter' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'quarter' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'quarter' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
                     </div>
                 </div>
             </div>
@@ -511,419 +403,270 @@ function refreshTimeline(app) {
 
 function renderNotificationsWidget() {
     return `
-    <div class="widget notif-risk-col">
+    <section class="widget dashboard-actions" aria-labelledby="dashboard-actions-title">
         <div class="widget-header">
-            <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--accent-light);color:var(--accent);">
-                <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <div class="dashboard-widget-icon is-accent">
+                <i data-lucide="list-checks"></i>
             </div>
-            <h3>Важные уведомления <span class="dash-notif-count" id="dash-notif-count"></span></h3>
-            <a href="#/notifications" class="btn btn-ghost btn-sm">Все →</a>
+            <div class="dashboard-widget-heading">
+                <h2 id="dashboard-actions-title">Требует вашего действия</h2>
+                <p>То, что сейчас ждёт ответа или решения</p>
+            </div>
+            <span class="dashboard-widget-count" id="dash-notif-count" aria-live="polite"></span>
+            <a href="#/notifications" class="dashboard-widget-link" aria-label="Все уведомления"><span class="dashboard-link-full">Все уведомления</span><span class="dashboard-link-short" aria-hidden="true">Все</span></a>
         </div>
-        <div class="widget-body" id="dash-notif-body" style="padding:var(--space-2);">
-            <p class="text-muted text-center" style="padding:var(--space-6);">Загрузка...</p>
+        <div class="widget-body dashboard-list-body" id="dash-notif-body">
+            <p class="dashboard-list-state">Загрузка…</p>
         </div>
-    </div>`;
+    </section>`;
 }
 
-function renderRisksWidget() {
+const MEETING_META = {
+    directorate: { label: 'Директорская оперативка', icon: 'briefcase' },
+    did: { label: 'Оперативка ДИД', icon: 'layers' },
+    key_projects: { label: 'Встреча по ключевым проектам', icon: 'key-round' },
+};
+
+function localDateIso(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseCalendarDate(value) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))
+        ? new Date(`${value}T12:00:00`)
+        : null;
+}
+
+function relativeDateLabel(value) {
+    const date = parseCalendarDate(value);
+    if (!date) return '';
+    const today = parseCalendarDate(localDateIso());
+    const days = Math.round((date - today) / 86400000);
+    return new Intl.RelativeTimeFormat('ru-RU', { numeric: 'auto' }).format(days, 'day');
+}
+
+function renderUpcomingDatesWidget() {
     return `
-    <div class="widget notif-risk-col">
+    <section class="widget dashboard-dates" aria-labelledby="dashboard-dates-title">
         <div class="widget-header">
-            <div class="stat-icon" style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--danger-light);color:var(--danger);">
-                <i data-lucide="alert-triangle" style="width:20px;height:20px;"></i>
+            <div class="dashboard-widget-icon is-neutral"><i data-lucide="calendar-days"></i></div>
+            <div class="dashboard-widget-heading">
+                <h2 id="dashboard-dates-title">Ближайшие даты</h2>
+                <p>Встречи и события календаря</p>
             </div>
-            <h3>Топ рисков</h3>
         </div>
-        <div class="widget-body" id="top-risks" style="padding:var(--space-2);">
-            <p class="text-muted text-center" style="padding:var(--space-6);">Загрузка...</p>
+        <div class="widget-body dashboard-list-body" id="dashboard-dates-body">
+            <p class="dashboard-list-state">Загрузка…</p>
         </div>
-    </div>`;
+    </section>`;
 }
 
-// ==================== TEAM MODE ====================
-
-function renderTeamDashboard(app) {
+function renderDashboardShell(app) {
     const user = app.store.get('currentUser');
-    const teamName = user?.team_name || '';
-
     return `
-    <div class="page-header animate-fade-in">
-        <h1>${greetingByTime()}, ${escapeHtml(user?.name?.split(' ')[0] || 'Гость')}</h1>
-        <p>${roleLabel(user)}</p>
-    </div>
-
-    <div id="timeline-container">${renderTimeline()}</div>
-
-    ${renderNotificationsWidget()}`;
-}
-
-async function initTeamDashboard(app) {
-    await loadTimelineData(app);
-    await renderNotifications();
-}
-
-function renderAttentionList(tasks, user) {
-    const el = document.getElementById('dash-attention-body');
-    const countEl = document.getElementById('dash-attention-count');
-    if (!el) return;
-
-    const attention = tasks
-        .filter(t => !['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'].includes(getStatus(t)))
-        .filter(t => isMyTask(t, user) || isAttentionStatus(getStatus(t)))
-        .sort((a, b) => {
-            const urgency = { 'ЭСКАЛАЦИЯ НА ЛТ': 0, 'ХОЛД': 1, 'ЭКСПРЕСС-ОЦЕНКА': 2, 'СБОР ТРЕБОВАНИЙ': 3, 'УТОЧНЕНИЕ ТРЕБОВАНИЙ': 3, 'ПРОВЕРКА ТРЕБОВАНИЙ': 3 };
-            return (urgency[getStatus(a)] ?? 9) - (urgency[getStatus(b)] ?? 9);
-        })
-        .slice(0, 5);
-
-    if (countEl && attention.length > 0) {
-        countEl.textContent = attention.length;
-    }
-
-    if (attention.length === 0) {
-        el.innerHTML = '<div class="dash-empty-state"><i data-lucide="check-circle-2" style="width:32px;height:32px;color:var(--success);margin-bottom:var(--space-2);"></i><p>Всё под контролем!</p></div>';
-        if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' });
-        return;
-    }
-
-    el.innerHTML = attention.map(t => {
-        const borderColor = isRiskStatus(getStatus(t)) ? 'var(--danger)' : 'var(--warning)';
-        const icon = isRiskStatus(getStatus(t)) ? 'alert-triangle' : 'clock';
-        return `
-        <div class="dash-attention-item" data-task-id="${t.id}" style="border-left:3px solid ${borderColor};">
-            <div class="dash-attention-icon" style="background:${borderColor}15;color:${borderColor};">
-                <i data-lucide="${icon}" style="width:16px;height:16px;"></i>
-            </div>
-            <div class="dash-attention-body">
-                <div class="dash-attention-title">${formatTaskPublicId(t)} ${escapeHtml(t.title)}</div>
-                <div class="dash-attention-meta">${renderStatus(getStatus(t))}${getDeadline(t) ? ' · ' + escapeHtml(getDeadline(t)) : ''}</div>
-            </div>
-        </div>`;
-    }).join('');
-
-    el.addEventListener('click', (e) => {
-        const item = e.target.closest('.dash-attention-item[data-task-id]');
-        if (item?.dataset.taskId) {
-            document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: parseInt(item.dataset.taskId) } }));
-        }
-    });
-
-    if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' });
-}
-
-function renderStatusBar(tasks) {
-    const el = document.getElementById('dash-status-bar-body');
-    if (!el) return;
-
-    const statusCounts = {};
-    tasks.forEach(t => {
-        const s = getStatus(t) || 'НОВАЯ ЗАДАЧА';
-        statusCounts[s] = (statusCounts[s] || 0) + 1;
-    });
-
-    const total = tasks.length || 1;
-    const sorted = Object.entries(statusCounts).sort((a, b) => b[1] - a[1]);
-
-    el.innerHTML = `
-        <div class="dash-stacked-bar">
-            ${sorted.map(([status, count]) => {
-                const pct = Math.round((count / total) * 100);
-                const color = STATUS_COLORS[status] || '#64748b';
-                return `<div class="dash-stacked-seg" style="width:${pct}%;background:${color};" title="${escapeHtml(status)}: ${count}"></div>`;
-            }).join('')}
-        </div>
-        <div class="dash-stacked-legend">
-            ${sorted.map(([status, count]) => {
-                const color = STATUS_COLORS[status] || '#64748b';
-                return `<div class="dash-legend-item"><span class="dash-legend-dot" style="background:${color};"></span>${escapeHtml(status)} <span class="dash-legend-count">${count}</span></div>`;
-            }).join('')}
-        </div>`;
-}
-
-// ==================== TRIBE MODE ====================
-
-function renderTribeDashboard(app) {
-    const user = app.store.get('currentUser');
-
-    return `
-    <div class="page-header animate-fade-in">
+    <div class="page-header animate-fade-in dashboard-page-header">
         <h1>${greetingByTime()}, ${escapeHtml(user?.name?.split(' ')[0] || 'Гость')}</h1>
         <p>${escapeHtml(roleLabel(user))}</p>
     </div>
-
     <div id="timeline-container">${renderTimeline()}</div>
-
-    ${renderNotificationsWidget()}`;
+    <div class="dashboard-workspace animate-slide-up">
+        ${renderNotificationsWidget()}
+        ${renderUpcomingDatesWidget()}
+    </div>`;
 }
 
-async function initTribeDashboard(app) {
-    await loadTimelineData(app);
-    await renderNotifications();
+function normalizeMeetingDate(item, app) {
+    const meta = MEETING_META[item.kind] || { label: item.title || 'Отчётная встреча', icon: 'calendar-check' };
+    const title = item.title || meta.label;
+    const context = title.trim().toLocaleLowerCase('ru-RU') === meta.label.trim().toLocaleLowerCase('ru-RU')
+        ? 'Отчётная встреча'
+        : meta.label;
+    return {
+        key: `meeting:${item.id}`,
+        date: item.scheduled_date,
+        title,
+        context,
+        icon: meta.icon,
+        color: 'var(--accent)',
+        href: canUseReportingStatusWorkspace(app)
+            ? reportingStatusHref({ source: 'dashboard', kind: item.kind, meetingId: item.id })
+            : '',
+    };
 }
 
-function renderDonutChart(byStatus) {
-    const canvas = document.getElementById('dash-donut-chart');
-    if (!canvas || typeof Chart === 'undefined') return;
-
-    const labels = Object.keys(byStatus);
-    const data = Object.values(byStatus);
-    const colors = labels.map(s => STATUS_COLORS[s] || '#64748b');
-
-    new Chart(canvas, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data,
-                backgroundColor: colors,
-                borderWidth: 2,
-                borderColor: 'var(--bg-secondary)',
-                hoverOffset: 6,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '65%',
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        color: 'var(--text-secondary)',
-                        font: { size: 11, family: 'Inter' },
-                        padding: 10,
-                        usePointStyle: true,
-                        pointStyleWidth: 10,
-                        generateLabels(chart) {
-                            const ds = chart.data.datasets[0];
-                            return chart.data.labels.map((label, i) => ({
-                                text: `${label} (${ds.data[i]})`,
-                                fillStyle: ds.backgroundColor[i],
-                                strokeStyle: ds.backgroundColor[i],
-                                pointStyle: 'circle',
-                                index: i,
-                            }));
-                        }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label(ctx) {
-                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                            const pct = Math.round((ctx.parsed / total) * 100);
-                            return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
-                        }
-                    }
-                }
-            }
-        },
-        plugins: [{
-            id: 'centerText',
-            beforeDraw(chart) {
-                const { ctx, width, height } = chart;
-                const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                ctx.save();
-                ctx.font = 'bold 28px Inter';
-                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1e293b';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(total, width / 2, height / 2 - 8);
-                ctx.font = '12px Inter';
-                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#94a3b8';
-                ctx.fillText('задач', width / 2, height / 2 + 14);
-                ctx.restore();
-            }
-        }]
-    });
+function normalizeTimelineDate(item) {
+    return {
+        key: `timeline:${item.id}`,
+        date: item.date,
+        title: item.title || 'Событие календаря',
+        context: item.project_name || 'Календарь проектов',
+        icon: EVENT_TYPE_ICONS[item.event_type] || 'calendar',
+        color: item.color || 'var(--text-secondary)',
+        href: '',
+    };
 }
 
-function renderCvTop(tasks) {
-    const el = document.getElementById('dash-cv-top');
-    if (!el) return;
-
-    const evaluated = tasks.map(t => ({ ...t, cv: calculateTaskCv(t) }));
-    const high = evaluated.filter(t => t.cv != null && t.cv <= 0.3).sort((a, b) => a.cv - b.cv).slice(0, 3);
-    const low = evaluated.filter(t => t.cv == null || t.cv > 1).sort((a, b) => (b.cv ?? Infinity) - (a.cv ?? Infinity)).slice(0, 3);
-
-    if (high.length === 0 && low.length === 0) {
-        el.innerHTML = '<p class="text-muted text-center" style="padding:var(--space-4);">Нет данных для расчёта C/V</p>';
-        return;
-    }
-
-    el.innerHTML = `
-        ${high.length > 0 ? `
-            <div class="dash-cv-section">
-                <div class="dash-cv-section-title"><i data-lucide="trending-down" style="width:14px;height:14px;color:var(--success);"></i> Эффективный C/V</div>
-                ${high.map(t => `
-                    <div class="dash-cv-item" data-task-id="${t.id}" style="cursor:pointer;">
-                        <div class="dash-cv-body">
-                            <div class="dash-cv-title">${formatTaskPublicId(t)} ${escapeHtml(t.title).substring(0, 35)}${t.title?.length > 35 ? '…' : ''}</div>
-                            <div class="dash-cv-meta">${escapeHtml(t.team_name || '')}</div>
-                        </div>
-                        <div class="dash-cv-value dash-cv-high">${t.cv.toFixed(2)}</div>
-                    </div>
-                `).join('')}
-            </div>
-        ` : ''}
-        ${low.length > 0 ? `
-            <div class="dash-cv-section">
-                <div class="dash-cv-section-title"><i data-lucide="alert-triangle" style="width:14px;height:14px;color:var(--danger);"></i> Красная зона C/V</div>
-                ${low.map(t => `
-                    <div class="dash-cv-item" data-task-id="${t.id}" style="cursor:pointer;">
-                        <div class="dash-cv-body">
-                            <div class="dash-cv-title">${formatTaskPublicId(t)} ${escapeHtml(t.title).substring(0, 35)}${t.title?.length > 35 ? '…' : ''}</div>
-                            <div class="dash-cv-meta">${escapeHtml(t.team_name || '')}</div>
-                        </div>
-                        <div class="dash-cv-value dash-cv-low">${t.cv == null ? 'Нет данных' : t.cv.toFixed(2)}</div>
-                    </div>
-                `).join('')}
-            </div>
-        ` : ''}
-    `;
-
-    el.addEventListener('click', (e) => {
-        const item = e.target.closest('.dash-cv-item[data-task-id]');
-        if (item?.dataset.taskId) {
-            document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: parseInt(item.dataset.taskId) } }));
-        }
-    });
-
-    if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' });
-}
-
-function renderTeamProgress(byTeam) {
-    const el = document.getElementById('dash-team-progress');
-    if (!el) return;
-
-    const teams = Object.entries(byTeam)
-        .map(([name, data]) => ({ name, ...data }))
-        .sort((a, b) => b.active - a.active);
-
-    if (teams.length === 0) {
-        el.innerHTML = '<p class="text-muted text-center" style="padding:var(--space-4);">Нет данных</p>';
-        return;
-    }
-
-    el.innerHTML = teams.map(t => {
-        const pct = Math.round(t.avg_progress || 0);
-        const barColor = pct >= 70 ? 'var(--success)' : pct >= 40 ? 'var(--warning)' : 'var(--danger)';
-        return `
-        <div class="dash-team-row">
-            <div class="dash-team-name">${escapeHtml(t.name)}</div>
-            <div class="dash-team-bar-wrap">
-                <div class="dash-team-bar">
-                    <div class="dash-team-bar-fill" style="width:${pct}%;background:${barColor};"></div>
+function renderUpcomingDates(items) {
+    const body = document.getElementById('dashboard-dates-body');
+    if (!body) return;
+    if (!items.length) {
+        body.innerHTML = '<div class="dashboard-empty"><i data-lucide="calendar-check"></i><div><strong>Ближайших дат нет</strong><span>Новые встречи и события появятся здесь.</span></div></div>';
+    } else {
+        body.innerHTML = items.map(item => {
+            const date = parseCalendarDate(item.date);
+            const day = date?.toLocaleDateString('ru-RU', { day: '2-digit' }) || '—';
+            const month = date?.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '') || '';
+            const weekday = date?.toLocaleDateString('ru-RU', { weekday: 'short' }).replace('.', '') || '';
+            const content = `
+                <time class="dashboard-date-tile" datetime="${escapeHtml(item.date)}"><strong>${day}</strong><span>${escapeHtml(month)}</span></time>
+                <div class="dashboard-date-copy">
+                    <div class="dashboard-date-title">${escapeHtml(item.title)}</div>
+                    <div class="dashboard-date-meta"><span>${escapeHtml(weekday)}</span><span>${escapeHtml(relativeDateLabel(item.date))}</span><span>${escapeHtml(item.context)}</span></div>
                 </div>
-            </div>
-            <div class="dash-team-val">${pct}%</div>
-            <div class="dash-team-count">${t.active} / ${t.total}</div>
-        </div>`;
-    }).join('');
+                <span class="dashboard-date-icon" style="color:${escapeHtml(item.color)}"><i data-lucide="${escapeHtml(item.icon)}"></i></span>`;
+            return item.href
+                ? `<a class="dashboard-date-item is-link" href="${escapeHtml(item.href)}">${content}</a>`
+                : `<div class="dashboard-date-item">${content}</div>`;
+        }).join('');
+    }
+    try { window.lucide?.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' }); } catch (_) {}
+}
+
+async function loadUpcomingDates(app) {
+    const body = document.getElementById('dashboard-dates-body');
+    if (!body) return;
+    const today = localDateIso();
+    const year = new Date().getFullYear();
+    const requests = await Promise.allSettled([
+        app.api.get(`/reporting-meetings?include_closed=false&include_completeness=false&date_from=${today}`),
+        app.api.get(`/timeline?year=${year}`),
+        app.api.get(`/timeline?year=${year + 1}`),
+    ]);
+    const fulfilled = requests.filter(result => result.status === 'fulfilled');
+    if (!fulfilled.length) {
+        body.innerHTML = '<div class="dashboard-list-error" role="alert"><span>Не удалось загрузить ближайшие даты</span><button type="button" class="btn btn-secondary btn-sm" data-retry-dashboard-dates>Повторить</button></div>';
+        body.querySelector('[data-retry-dashboard-dates]')?.addEventListener('click', () => loadUpcomingDates(app));
+        return;
+    }
+    const meetings = requests[0].status === 'fulfilled' ? (requests[0].value?.items || []) : [];
+    const timelineItems = requests.slice(1).flatMap(result => result.status === 'fulfilled' ? (result.value?.items || []) : []);
+    const unique = new Map();
+    [...meetings.map(item => normalizeMeetingDate(item, app)), ...timelineItems.map(normalizeTimelineDate)]
+        .filter(item => item.date && item.date >= today)
+        .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title, 'ru'))
+        .forEach(item => {
+            const key = `${item.date}|${item.title.trim().toLocaleLowerCase('ru-RU')}`;
+            if (!unique.has(key)) unique.set(key, item);
+        });
+    renderUpcomingDates([...unique.values()].slice(0, 3));
+}
+
+async function initTeamDashboard(app) {
+    await Promise.all([
+        loadTimelineData(app),
+        loadUpcomingDates(app),
+        renderNotifications(app.notificationStore?.snapshot || null),
+    ]);
 }
 
 // ==================== SHARED WIDGETS ====================
 
-async function renderNotifications() {
+async function renderNotifications(snapshot = null) {
     const notifBody = document.getElementById('dash-notif-body');
     const notifCount = document.getElementById('dash-notif-count');
     if (!notifBody) return;
     try {
-        const notifData = await window.app?.api?.get('/notifications');
-        const allItems = notifData?.items || [];
-        if (notifCount) notifCount.textContent = allItems.length;
-        const items = allItems.slice(0, 5);
+        const notifData = snapshot || await window.app?.notificationStore?.refresh({ source:'dashboard' });
+        const candidates = [
+            ...(notifData?.action_items || []),
+            ...(notifData?.recent_items || []).filter(item => !item.is_read && !item.is_resolved),
+        ];
+        const seen = new Set();
+        const items = candidates.filter(item => {
+            const key = item.target?.url || item.action_url || `notification:${item.id}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return !item.is_resolved;
+        }).slice(0, 4);
+        if (notifCount) {
+            notifCount.textContent = items.length ? String(items.length) : '';
+            notifCount.hidden = items.length === 0;
+        }
         if (items.length === 0) {
-            notifBody.innerHTML = '<p class="text-muted text-center" style="padding:var(--space-4);">Нет уведомлений</p>';
+            notifBody.innerHTML = '<div class="dashboard-empty"><i data-lucide="circle-check-big"></i><div><strong>Обязательных действий сейчас нет</strong><span>Можно продолжать работу по текущему плану.</span></div></div>';
+            try { window.lucide?.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' }); } catch (_) {}
             return;
         }
         notifBody.innerHTML = items.map(n => {
-            const icon = NOTIF_CAT_ICONS[n.category] || 'bell';
-            const color = NOTIF_CAT_COLORS[n.category] || '#64748b';
-            const time = formatNotifTime(n.created_at);
+            const { icon, label: category } = notificationCategoryMeta(n.category);
+            const { color } = notificationImportanceMeta(n.importance);
+            const time = formatNotificationTime(n.created_at);
+            const isUnread = !n.is_read && !n.is_resolved;
             return `
-            <div class="dash-notif-item" data-task-id="${n.task_id || ''}" ${n.task_id ? 'style="cursor:pointer;"' : ''}>
+            <button type="button" class="dash-notif-item dash-action-item ${isUnread ? 'is-unread' : 'is-read'} importance-${escapeHtml(n.importance || 'low')}" data-notif-id="${n.id}" data-task-id="${n.task_id || ''}" data-category="${escapeHtml(n.category || '')}" data-resolved="false" data-action-url="${encodeURIComponent(n.target?.url || n.action_url || '')}" aria-label="${escapeHtml(notificationAccessibleLabel(n))}">
                 <div class="dash-notif-icon" style="background:${color}22;color:${color};">
                     <i data-lucide="${icon}" style="width:16px;height:16px;"></i>
                 </div>
                 <div class="dash-notif-body">
-                    <div class="dash-notif-title">${escapeHtml(n.title)}</div>
+                    <div class="dash-notif-title-row"><span class="dash-notif-title">${escapeHtml(n.title)}</span>${isUnread ? '<span class="dashboard-unread-dot" aria-label="Новое"></span>' : ''}</div>
+                    <div class="dash-notif-meta"><span>${escapeHtml(category)}</span><time datetime="${escapeHtml(n.created_at || '')}">${escapeHtml(time)}</time></div>
                 </div>
-                <div class="dash-notif-time">${time}</div>
-                ${n.task_id ? '<i data-lucide="external-link" style="width:14px;height:14px;flex-shrink:0;color:var(--text-muted);"></i>' : ''}
-            </div>`;
+                <span class="dash-notif-action">${escapeHtml(notificationActionLabel(n))}<i data-lucide="arrow-right" aria-hidden="true"></i></span>
+            </button>`;
         }).join('');
-        notifBody.addEventListener('click', (e) => {
-            const item = e.target.closest('.dash-notif-item[data-task-id]');
-            if (item?.dataset.taskId) {
-                document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: parseInt(item.dataset.taskId) } }));
+        notifBody.onclick = async (e) => {
+            const item = e.target.closest('.dash-notif-item[data-notif-id]');
+            if (!item) return;
+            const notificationId = Number(item.dataset.notifId);
+            if (notificationId && item.classList.contains('is-unread')) {
+                try { await window.app.api.put('/notifications/read', { ids: [notificationId] }); }
+                catch (error) { window.toast?.(window.formatErrorMessage?.(error)||'Не удалось обновить отметку о прочтении','warning'); }
             }
-        });
+            const notification = {
+                task_id: Number(item.dataset.taskId) || null,
+                action_url: decodeURIComponent(item.dataset.actionUrl || ''),
+                category: item.dataset.category || '',
+                is_resolved: item.dataset.resolved === 'true',
+            };
+            recordNotificationUxEvent(window.app, 'notification_primary_action_clicked', {
+                surface:'dashboard', category:notification.category || null,
+            });
+            openNotificationTarget(window.app, notification, { surface:'dashboard' });
+            window.app.notificationStore?.invalidate().catch(() => {});
+        };
         if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' });
-    } catch {
-        notifBody.innerHTML = '<p class="text-muted text-center" style="padding:var(--space-4);">Ошибка загрузки</p>';
-    }
-}
-
-function renderRisks(tasks, teamId) {
-    const el = document.getElementById('top-risks');
-    if (!el) return;
-
-    const risks = tasks.filter(t => t && t.id && isRiskStatus(getStatus(t)))
-        .filter(t => !teamId || t.team_id === teamId);
-    const limit = 3;
-    const visible = risks.slice(0, limit);
-    const extra = risks.length - limit;
-
-    if (!risks.length) {
-        el.innerHTML = '<div class="dash-empty-state"><i data-lucide="shield-check" style="width:32px;height:32px;color:var(--success);margin-bottom:var(--space-2);"></i><p>Рисков нет</p></div>';
-        if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' });
-        return;
-    }
-
-    el.innerHTML = `
-        ${visible.map(t => `
-            <div class="risk-item" data-task-id="${t.id}">
-                <div class="risk-icon"><i data-lucide="alert-triangle" style="width:18px;height:18px;"></i></div>
-                <div class="risk-body">
-                    <div class="risk-title">${escapeHtml(t.title || 'Без названия')}</div>
-                    <div class="risk-meta">${renderStatus(getStatus(t))}${getDeadline(t) ? ' · ' + escapeHtml(getDeadline(t)) : ''}</div>
-                </div>
-            </div>
-        `).join('')}
-        ${extra > 0 ? `<a href="#/notifications" class="dash-notif-more">Ещё ${extra}</a>` : ''}
-    `;
-
-    el.addEventListener('click', (e) => {
-        const item = e.target.closest('.risk-item[data-task-id]');
-        if (item?.dataset.taskId) {
-            document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: parseInt(item.dataset.taskId) } }));
+    } catch (error) {
+        const cachedSnapshot = window.app?.notificationStore?.snapshot;
+        if (!snapshot && cachedSnapshot) {
+            await renderNotifications(cachedSnapshot);
+            notifBody.insertAdjacentHTML('afterbegin', '<div class="dash-notif-stale" role="status"><span>Показаны последние полученные действия</span><button type="button" class="btn btn-secondary btn-sm" data-retry-dash-notifications>Обновить</button></div>');
+            notifBody.querySelector('[data-retry-dash-notifications]')?.addEventListener('click',()=>renderNotifications());
+            return;
         }
-    });
-
-    if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' });
+        notifBody.innerHTML = `<div class="dash-notif-error" role="alert"><span>${escapeHtml(window.formatErrorMessage?.(error)||'Не удалось загрузить уведомления')}</span><button type="button" class="btn btn-secondary btn-sm" data-retry-dash-notifications>Повторить</button></div>`;
+        notifBody.querySelector('[data-retry-dash-notifications]')?.addEventListener('click',()=>renderNotifications());
+    }
 }
 
 // ==================== MAIN ====================
 
 export function renderDashboard(app) {
-    const user = app.store.get('currentUser');
-    if (isTribeRole(user)) {
-        return renderTribeDashboard(app);
-    }
-    return renderTeamDashboard(app);
+    return renderDashboardShell(app);
 }
 
 export async function initDashboard(app) {
     try {
-        const user = app.store.get('currentUser');
+        notificationStoreUnsubscribe?.();
+        notificationStoreUnsubscribe = app.notificationStore?.subscribe(({ snapshot }) => {
+            if (snapshot) renderNotifications(snapshot);
+        }) || null;
 
-        if (isTribeRole(user)) {
-            await initTribeDashboard(app);
-        } else {
-            await initTeamDashboard(app);
-        }
+        await initTeamDashboard(app);
 
-        const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=90');
+        const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=92');
         setOnTaskSaved(() => initDashboard(app));
 
     } catch (e) {

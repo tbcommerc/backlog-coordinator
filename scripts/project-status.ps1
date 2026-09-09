@@ -5,6 +5,12 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue) -and (Test-Path (Joi
     $env:Path = "$perUserDockerBin;$env:Path"
 }
 
+$serviceHealthUrls = @{
+    backend = "http://127.0.0.1:8000/api/v1/health/ready"
+    agent = "http://127.0.0.1:9000/api/agent/ready"
+    prioritiser = "http://127.0.0.1:9100/ready"
+}
+
 foreach ($service in @("backend", "agent", "prioritiser")) {
     $pidPath = Join-Path $runtimeDir "$service.pid"
     $running = $false
@@ -12,7 +18,18 @@ foreach ($service in @("backend", "agent", "prioritiser")) {
         $processId = [int](Get-Content -Raw $pidPath)
         $running = $null -ne (Get-Process -Id $processId -ErrorAction SilentlyContinue)
     }
-    Write-Host ("{0}: {1}" -f $service, $(if ($running) { "running" } else { "stopped" }))
+    $processState = if ($running) { "running" } else { "stopped" }
+    $healthState = "unreachable"
+    if ($running) {
+        try {
+            $response = Invoke-RestMethod -Uri $serviceHealthUrls[$service] -TimeoutSec 3 -ErrorAction Stop
+            $healthy = ($response.status -in @("ok", "ready")) -or ($response.ok -eq $true)
+            $healthState = if ($healthy) { "ready" } else { "not-ready" }
+        } catch {
+            $healthState = "unreachable"
+        }
+    }
+    Write-Host ("{0}: process={1}, health={2}" -f $service, $processState, $healthState)
 }
 
 if (Get-Command docker -ErrorAction SilentlyContinue) {

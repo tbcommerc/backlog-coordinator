@@ -10,25 +10,19 @@ const ACCENTS = [
 ];
 
 const NOTIF_GROUPS = [
-  { title: 'Важные события', description: 'События, которые могут потребовать вашего внимания', categories: [
-    { key: 'risk', label: 'Риски и эскалации', description: 'Холд, эскалация на ЛТ или отклонение задачи' },
-    { key: 'deadline', label: 'Приближение дедлайна', description: 'Напоминания о приближающихся сроках' },
-    { key: 'stale', label: 'Застоявшиеся задачи', description: 'Задачи без изменений более 14 дней' },
+  { title: 'Обязательные уведомления', description: 'Персональные события и действия, которые нельзя отключить', categories: [
+    { key: 'assignment', label: 'Назначение исполнителем', description: 'Вы стали исполнителем задачи', mandatory: true },
+    { key: 'reporting', label: 'Обновление статусов к встрече', description: 'В задачах команды не заполнены отчётные статусы', mandatory: true },
+    { key: 'mention', label: 'Упоминания через @', description: 'Вас упомянули в комментарии к доступной задаче', mandatory: true },
   ] },
-  { title: 'Работа с задачами', description: 'Изменения в задачах и назначениях', categories: [
-    { key: 'status_change', label: 'Смена статуса' },
-    { key: 'assignment', label: 'Назначение ответственным' },
-    { key: 'express', label: 'Экспресс-импорт' },
-    { key: 'attrs', label: 'Незаполненные атрибуты' },
-  ] },
-  { title: 'Обсуждения и система', description: 'Комментарии, упоминания и служебные сообщения', categories: [
-    { key: 'mention', label: 'Упоминания в комментариях' },
-    { key: 'comment', label: 'Новые комментарии' },
-    { key: 'system', label: 'Системные сообщения' },
+  { title: 'Командные обсуждения', description: 'Комментарии в задачах вашей основной команды', categories: [
+    { key: 'comment', label: 'Новые комментарии', description: 'Автор и упомянутые получатели не дублируются' },
   ] },
 ];
 
 let notificationSaveChain = Promise.resolve();
+let savedNotificationPrefs = { comment: true };
+let failedNotificationPrefs = null;
 let systemThemeListener = null;
 
 export function renderSettings(app) {
@@ -61,7 +55,7 @@ export function renderSettings(app) {
     <div class="settings-page animate-fade-in">
       <div class="page-header settings-page-header">
         <div><h1>Персональные настройки</h1><p>Настройте интерфейс и уведомления под свой рабочий процесс</p></div>
-        <div class="settings-local-note"><i data-lucide="laptop"></i><span>Интерфейс сохраняется на этом устройстве</span></div>
+        <div class="settings-local-note"><i data-lucide="laptop"></i><span>Внешний вид хранится на этом устройстве, уведомления — в учётной записи</span></div>
       </div>
       <div class="settings-layout">
         <nav class="settings-nav" aria-label="Разделы настроек">
@@ -206,40 +200,56 @@ async function loadNotificationPrefs(app) {
   try {
     const resp = await app.api.get('/notifications/preferences');
     const prefs = resp.preferences || {};
+    savedNotificationPrefs = { comment: prefs.comment !== false };
     const isEnabled = key => prefs[key] !== false;
-    const allEnabled = NOTIF_GROUPS.flatMap(group => group.categories).every(category => isEnabled(category.key));
     container.innerHTML = `
-      <label class="settings-notification-master"><span><strong>Все уведомления</strong><small>Быстро включить или отключить все категории</small></span><input type="checkbox" class="settings-switch-input" id="notif-master-toggle" ${allEnabled ? 'checked' : ''}><span class="settings-switch" aria-hidden="true"></span></label>
-      ${NOTIF_GROUPS.map(group => `<section class="settings-notification-group"><div class="settings-notification-group-header"><h3>${group.title}</h3><p>${group.description}</p></div>${group.categories.map(category => `<label class="settings-notification-row"><span><strong>${category.label}</strong>${category.description ? `<small>${category.description}</small>` : ''}</span><input type="checkbox" class="settings-switch-input notif-pref-toggle" data-category="${category.key}" ${isEnabled(category.key) ? 'checked' : ''}><span class="settings-switch" aria-hidden="true"></span></label>`).join('')}</section>`).join('')}`;
+      ${NOTIF_GROUPS.map(group => `<section class="settings-notification-group"><div class="settings-notification-group-header"><h3>${group.title}</h3><p>${group.description}</p></div>${group.categories.map(category => category.mandatory
+        ? `<div class="settings-notification-row"><span><strong>${category.label}</strong><small>${category.description}</small></span><span class="badge badge-success">Всегда включено</span></div>`
+        : `<label class="settings-notification-row"><span><strong>${category.label}</strong>${category.description ? `<small>${category.description}</small>` : ''}</span><input type="checkbox" class="settings-switch-input notif-pref-toggle" data-category="${category.key}" ${isEnabled(category.key) ? 'checked' : ''}><span class="settings-switch" aria-hidden="true"></span></label>`).join('')}</section>`).join('')}`;
     container.addEventListener('change', event => {
-      if (event.target.id === 'notif-master-toggle') {
-        container.querySelectorAll('.notif-pref-toggle').forEach(toggle => { toggle.checked = event.target.checked; });
-      } else if (event.target.classList.contains('notif-pref-toggle')) {
-        const toggles = [...container.querySelectorAll('.notif-pref-toggle')];
-        container.querySelector('#notif-master-toggle').checked = toggles.every(toggle => toggle.checked);
-      } else return;
+      if (!event.target.classList.contains('notif-pref-toggle')) return;
       queueNotificationSave(app);
     });
   } catch (err) {
-    container.innerHTML = '<div class="settings-error"><i data-lucide="circle-alert"></i><div><strong>Не удалось загрузить настройки</strong><p>Обновите страницу и попробуйте ещё раз.</p></div></div>';
+    container.innerHTML = '<div class="settings-error"><i data-lucide="circle-alert"></i><div><strong>Не удалось загрузить настройки</strong><p>Проверьте соединение и повторите попытку.</p><button type="button" class="btn btn-secondary btn-sm" data-retry-notification-prefs>Повторить</button></div></div>';
+    container.querySelector('[data-retry-notification-prefs]')?.addEventListener('click',()=>loadNotificationPrefs(app));
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 }
 
-function queueNotificationSave(app) {
+function applyNotificationPrefs(preferences) {
+  document.querySelectorAll('.notif-pref-toggle').forEach(toggle => {
+    toggle.checked = preferences[toggle.dataset.category] !== false;
+  });
+}
+
+function queueNotificationSave(app, explicitPreferences = null) {
   const status = document.getElementById('notif-prefs-save-status');
-  const preferences = {};
-  document.querySelectorAll('.notif-pref-toggle').forEach(toggle => { preferences[toggle.dataset.category] = toggle.checked; });
+  const preferences = explicitPreferences ? { ...explicitPreferences } : {};
+  if (!explicitPreferences) document.querySelectorAll('.notif-pref-toggle').forEach(toggle => { preferences[toggle.dataset.category] = toggle.checked; });
+  failedNotificationPrefs = null;
+  document.querySelectorAll('.notif-pref-toggle').forEach(toggle => { toggle.disabled = true; });
   if (status) { status.className = 'settings-save-status saving'; status.innerHTML = '<span class="spinner"></span> Сохраняем…'; }
-  notificationSaveChain = notificationSaveChain.catch(() => {}).then(() => app.api.put('/notifications/preferences', { preferences })).then(() => {
+  notificationSaveChain = notificationSaveChain.catch(() => {}).then(() => app.api.put('/notifications/preferences', { preferences })).then(resp => {
+    savedNotificationPrefs = { comment: resp?.preferences?.comment !== false };
+    applyNotificationPrefs(savedNotificationPrefs);
     if (!status) return;
     status.className = 'settings-save-status success';
     status.innerHTML = '<i data-lucide="check"></i> Все изменения сохранены';
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }).catch(() => {
+    failedNotificationPrefs = { ...preferences };
+    applyNotificationPrefs(savedNotificationPrefs);
     if (!status) return;
     status.className = 'settings-save-status error';
-    status.innerHTML = '<i data-lucide="circle-alert"></i> Не удалось сохранить изменения';
+    status.innerHTML = '<i data-lucide="circle-alert"></i> Изменения не сохранены <button type="button" class="btn btn-ghost btn-sm" data-retry-notification-save>Повторить</button>';
+    status.querySelector('[data-retry-notification-save]')?.addEventListener('click',()=>{
+      if (!failedNotificationPrefs) return;
+      applyNotificationPrefs(failedNotificationPrefs);
+      queueNotificationSave(app, failedNotificationPrefs);
+    });
     if (typeof lucide !== 'undefined') lucide.createIcons();
+  }).finally(() => {
+    document.querySelectorAll('.notif-pref-toggle').forEach(toggle => { toggle.disabled = false; });
   });
 }

@@ -114,31 +114,44 @@ def test_standard_filters(client, auth_headers, db):
     assert data["total"] == 1
 
 
-def test_directorate_report_uses_filled_status_in_current_quarter(client, auth_headers, db):
+def test_directorate_report_uses_ready_status_without_quarter_filter(client, auth_headers, db):
     from models import Deadline, Priority, ReportingMeeting, Task, TaskReportingStatus, Team
-    from routers.reports_router import _directorate_deadline_names
 
     today = date.today()
     quarter = (today.month - 1) // 3 + 1
     deadline_name = f"{quarter}Q {today.year}"
     deadline = Deadline(code="TEST_DIRECTORATE_PERIOD", name=deadline_name)
+    other_deadline = Deadline(code="TEST_DIRECTORATE_OTHER_PERIOD", name=f"1Q {today.year + 2}")
     medium = Priority(name="Средний")
     team = Team(name="Тестовая команда директорской")
-    db.add_all([deadline, medium, team])
+    empty_team = Team(name="Команда без готовых статусов")
+    db.add_all([deadline, other_deadline, medium, team, empty_team])
     db.flush()
     included = Task(
-        title="Заполненный статус текущего квартала",
+        title="Готовый статус текущего квартала",
         team_id=team.id,
         deadline_id=deadline.id,
         priority_id=medium.id,
         directorate_status="Устаревший текст задачи",
     )
-    excluded = Task(
-        title="Пустой статус не попадает в отчёт",
+    included_other_period = Task(
+        title="Готовый статус другого квартала",
+        team_id=team.id,
+        deadline_id=other_deadline.id,
+        priority_id=medium.id,
+    )
+    not_ready = Task(
+        title="Заполненный, но не готовый статус",
         team_id=team.id,
         deadline_id=deadline.id,
         priority_id=medium.id,
-        directorate_status="Этот legacy-текст не является источником отчёта",
+    )
+    previous_meeting = ReportingMeeting(
+        kind="directorate",
+        occurrence_key="test-directorate-previous",
+        scheduled_date=today,
+        original_scheduled_date=today,
+        state="held",
     )
     meeting = ReportingMeeting(
         kind="directorate",
@@ -147,11 +160,34 @@ def test_directorate_report_uses_filled_status_in_current_quarter(client, auth_h
         original_scheduled_date=today,
         state="planned",
     )
-    db.add_all([included, excluded, meeting])
+    db.add_all([included, included_other_period, not_ready, previous_meeting, meeting])
     db.flush()
     db.add_all([
-        TaskReportingStatus(meeting_id=meeting.id, task_id=included.id, status_text="Статус текущей встречи"),
-        TaskReportingStatus(meeting_id=meeting.id, task_id=excluded.id, status_text="   "),
+        TaskReportingStatus(
+            meeting_id=previous_meeting.id,
+            task_id=included.id,
+            status_text="Статус предыдущей встречи",
+            is_ready=True,
+        ),
+        TaskReportingStatus(
+            meeting_id=meeting.id,
+            task_id=included.id,
+            status_text="Статус текущей встречи",
+            is_ready=True,
+            directorate_attention=True,
+        ),
+        TaskReportingStatus(
+            meeting_id=meeting.id,
+            task_id=included_other_period.id,
+            status_text="Статус вне текущего квартала",
+            is_ready=True,
+        ),
+        TaskReportingStatus(
+            meeting_id=meeting.id,
+            task_id=not_ready.id,
+            status_text="Черновик статуса",
+            is_ready=False,
+        ),
     ])
     db.commit()
 
@@ -159,11 +195,24 @@ def test_directorate_report_uses_filled_status_in_current_quarter(client, auth_h
 
     assert response.status_code == 200, response.text
     data = response.json()
-    assert data["total_tasks"] == 1
-    assert data["teams"][0]["tasks"][0]["title"] == "Заполненный статус текущего квартала"
-    assert data["teams"][0]["tasks"][0]["directorate_status"] == "Статус текущей встречи"
-    assert _directorate_deadline_names(date(2026, 9, 30)) == ["3Q 2026"]
-    assert _directorate_deadline_names(date(2026, 10, 1)) == ["4Q 2026", "Y2026"]
+    assert data["total_tasks"] == 2
+    assert data["total_teams"] == 2
+    empty_team_data = next(item for item in data["teams"] if item["team_name"] == empty_team.name)
+    assert empty_team_data == {"team_name": empty_team.name, "total": 0, "tasks": []}
+    tasks = {item["title"]: item for item in data["teams"][0]["tasks"]}
+    assert set(tasks) == {"Готовый статус текущего квартала", "Готовый статус другого квартала"}
+    assert tasks["Готовый статус текущего квартала"]["directorate_status"] == "Статус текущей встречи"
+    assert tasks["Готовый статус текущего квартала"]["previous_directorate_status"] == "Статус предыдущей встречи"
+    assert tasks["Готовый статус текущего квартала"]["directorate_attention"] is True
+    assert tasks["Готовый статус текущего квартала"]["can_edit_attention"] is True
+
+    marker_response = client.put(
+        f"/api/v1/tasks/{included.id}/reporting-statuses/{meeting.id}/directorate-attention",
+        headers=auth_headers,
+        json={"enabled": False, "version": tasks["Готовый статус текущего квартала"]["reporting_status_version"]},
+    )
+    assert marker_response.status_code == 200, marker_response.text
+    assert marker_response.json()["directorate_attention"] is False
 
 
 def test_joined_field_filters(client, auth_headers, db):
@@ -266,7 +315,7 @@ def test_pip_report_uses_managed_status_and_exposes_planning_fields(client, auth
     assert item["priority_score"] == 87
 
 
-def test_progress_report_uses_current_quarter_and_relative_traffic_light(client, auth_headers, db):
+def test_quarterly_goals_report_uses_current_quarter_and_relative_traffic_light(client, auth_headers, db):
     from models import Deadline, Report
     from routers.reports_router import _current_quarter_progress, _progress_indicator
 
@@ -285,8 +334,8 @@ def test_progress_report_uses_current_quarter_and_relative_traffic_light(client,
     tasks[3].deadline_id = None
 
     report = Report(
-        key="progress",
-        name="Светофоры по квартальным задачам",
+        key="quarterly-goals",
+        name="Светофоры по квартальным целям",
         type="standard",
         filters=None,
         fields='["id"]',
@@ -311,3 +360,28 @@ def test_progress_report_uses_current_quarter_and_relative_traffic_light(client,
     assert _progress_indicator(50, 100)[0] == "yellow"
     assert _progress_indicator(49, 100)[0] == "red"
     assert _progress_indicator(120, 100)[0] == "green"
+
+
+def test_standard_report_registry_reuses_legacy_progress_report(db):
+    from models import Report
+    from routers.reports_router import ensure_standard_reports
+
+    legacy = Report(
+        key="progress",
+        name="Светофоры по квартальным задачам",
+        description="Старое описание",
+        type="standard",
+        is_public=True,
+    )
+    db.add(legacy)
+    db.commit()
+    legacy_id = legacy.id
+
+    ensure_standard_reports(db)
+
+    migrated = db.query(Report).filter(Report.key == "quarterly-goals").all()
+    assert len(migrated) == 1
+    assert migrated[0].id == legacy_id
+    assert migrated[0].name == "Светофоры по квартальным целям"
+    assert migrated[0].description == "Статус достижения квартальных целей команд трайба"
+    assert db.query(Report).filter(Report.key == "progress").count() == 0

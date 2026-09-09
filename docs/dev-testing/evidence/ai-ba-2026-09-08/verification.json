@@ -1,0 +1,35 @@
+{
+  "reproductions": [
+    {
+      "script": "reproduce.py",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "script": "dialogue_reproduce.py",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "script": "artifact_reproduce.py",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "script": "integration_reproduce.py",
+      "exit_code": 0,
+      "stderr": ""
+    }
+  ],
+  "agent_suite": {
+    "passed": 258,
+    "warnings": 13,
+    "seconds": 10.55,
+    "method": "agent/tests under mock; isolated session stores"
+  },
+  "frontend_suite": {
+    "test_files_passed": 4,
+    "failed": 0,
+    "method": "four targeted Node test files"
+  }
+}

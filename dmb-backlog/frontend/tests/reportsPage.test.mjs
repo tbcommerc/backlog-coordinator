@@ -16,14 +16,20 @@ assert.equal((pdCard.match(/В разработке/g) || []).length, 1);
 assert.match(page, /class="report-count"[^>]*role="status"[^>]*aria-live="polite"/);
 assert.match(page, /report-count-spinner/);
 assert.doesNotMatch(page, /id="count-directorate">0<\/div>/);
-assert.match(page, /Светофоры по квартальным задачам/);
+assert.match(page, /Светофоры по квартальным целям/);
+const quarterlyGoalsCard = page.match(/<div class="cursor-pointer grad-cyan report-card"[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/)?.[0] || '';
+assert.match(quarterlyGoalsCard, /data-report="quarterly-goals"/);
+assert.doesNotMatch(quarterlyGoalsCard, /В разработке/);
 assert.doesNotMatch(page, /Прогресс по задачам/);
 assert.doesNotMatch(page, /id="reporting-meetings-panel"/);
 
 const management = renderReportingMeetingsManagement({});
 assert.match(management, /Управление отчётными встречами/);
 assert.match(management, /id="reporting-meetings-panel"/);
-assert.match(management, /Историческая версия/);
+assert.match(management, /class="meeting-status-help"/);
+assert.match(management, /Как работают отчётные статусы/);
+assert.ok(management.indexOf('meeting-status-help') < management.indexOf('reporting-meetings-panel'));
+assert.doesNotMatch(management, /Календарь отчётных встреч/);
 
 assert.match(reportsSource, /if \(!data\.teams\.length\) \{[\s\S]*renderReportTable\(\[\], config\.fields\)/);
 assert.doesNotMatch(reportsSource, /if \(!list \|\| !list\.length\) return/);

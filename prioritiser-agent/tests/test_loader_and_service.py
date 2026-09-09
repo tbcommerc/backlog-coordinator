@@ -126,9 +126,18 @@ class TestRecomputeTask:
 
 
 class TestAttribution:
+    @staticmethod
+    def _population(loaded):
+        return list(loaded.scalars(select(Task.task_key)).all())
+
     def test_distributes_residual_across_serving_teams(self, loaded):
         recompute_all(loaded)
-        result = run_attribution(loaded, period="3Q 2026", front_actual_revenue_mln=5000.0)
+        result = run_attribution(
+            loaded,
+            period="3Q 2026",
+            front_actual_revenue_mln=5000.0,
+            task_keys=self._population(loaded),
+        )
 
         assert result["residual_mln"] > 0
         assert result["teams"]
@@ -137,7 +146,12 @@ class TestAttribution:
 
     def test_serving_tasks_receive_external_value(self, loaded):
         recompute_all(loaded)
-        run_attribution(loaded, period="3Q 2026", front_actual_revenue_mln=5000.0)
+        run_attribution(
+            loaded,
+            period="3Q 2026",
+            front_actual_revenue_mln=5000.0,
+            task_keys=self._population(loaded),
+        )
 
         assigned = [
             t
@@ -152,11 +166,39 @@ class TestAttribution:
         инициативами самого фронта."""
         recompute_all(loaded)
         with pytest.raises(AttributionError, match="остаток"):
-            run_attribution(loaded, period="3Q 2026", front_actual_revenue_mln=1.0)
+            run_attribution(
+                loaded,
+                period="3Q 2026",
+                front_actual_revenue_mln=1.0,
+                task_keys=self._population(loaded),
+            )
 
     def test_rejects_non_positive_revenue(self, loaded):
         with pytest.raises(AttributionError):
-            run_attribution(loaded, period="3Q 2026", front_actual_revenue_mln=0.0)
+            run_attribution(
+                loaded,
+                period="3Q 2026",
+                front_actual_revenue_mln=0.0,
+                task_keys=self._population(loaded),
+            )
+
+    def test_requires_explicit_period_population(self, loaded):
+        with pytest.raises(AttributionError, match="непустую выборку"):
+            run_attribution(
+                loaded,
+                period="3Q 2026",
+                front_actual_revenue_mln=5000.0,
+                task_keys=[],
+            )
+
+    def test_rejects_unknown_task_in_population(self, loaded):
+        with pytest.raises(AttributionError, match="не найдены"):
+            run_attribution(
+                loaded,
+                period="3Q 2026",
+                front_actual_revenue_mln=5000.0,
+                task_keys=["TASK-DOES-NOT-EXIST"],
+            )
 
 
 class TestWeightValidation:

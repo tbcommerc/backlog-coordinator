@@ -2,7 +2,7 @@
 
 Дата проверки: 1 сентября 2026 года. Статус: **AS-IS VERIFIED** в пределах перечисленных ниже источников. Документ описывает реализованное состояние, а не целевую архитектуру.
 
-Основные источники проверки: `backend/main.py`, `backend/config.py`, `backend/models.py`, `backend/routers/`, `backend/rate_limit.py`, `frontend/js/`, `agent/agent/`, профильные тесты и `.github/workflows/quality.yml`. При расхождении с кодом приоритет имеет исполняемая реализация.
+Основные источники проверки: `backend/main.py`, `backend/config.py`, `backend/models.py`, `backend/routers/`, `backend/rate_limit.py`, `frontend/js/`, `agent/agent/`, профильные тесты и корневой `../../.github/workflows/quality.yml`. При расхождении с кодом приоритет имеет исполняемая реализация.
 
 ## Назначение
 
@@ -185,7 +185,7 @@ cd D:\Проект\dmb-backlog\backend
 pytest tests -v
 ```
 
-Фактический GitHub Actions workflow `.github/workflows/quality.yml` выполняет Python compile, backend pytest, проверку синтаксиса JavaScript, frontend unit tests и `pip-audit`. Ruff, ESLint, browser smoke и secret scan в этом workflow не подтверждены.
+Фактический GitHub Actions workflow `../../.github/workflows/quality.yml` выполняет Python compile, backend pytest, проверку синтаксиса JavaScript, frontend unit tests и `pip-audit`. Ruff, ESLint, browser smoke и secret scan в этом workflow не подтверждены.
 
 ## Эксплуатационные ограничения As-Is
 

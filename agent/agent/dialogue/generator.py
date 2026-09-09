@@ -10,13 +10,13 @@ from .state import DialogueState, SLOT_LABELS
 WELCOME_BUSINESS = (
     "Здравствуйте! Я ассистент по формированию требований к платформе "
     "сопровождения инвестиционных сделок. Помогу описать потребность и "
-    "подготовить драфт для передачи PO / BA на ревью.\n\n"
+    "подготовить черновик для передачи владельцу продукта или бизнес-аналитику на ревью.\n\n"
     "С чего начнём?"
 )
 
 WELCOME_TECHNICAL = (
     "Ассистент аналитика по требованиям к платформе сопровождения "
-    "инвестиционных сделок. Могу оформить драфт бизнес-требования для ревью "
+    "инвестиционных сделок. Могу оформить черновик бизнес-требования для ревью "
     "PO / BA, с проверкой по базе знаний.\n\nУкажите тип обращения."
 )
 
@@ -45,6 +45,7 @@ def summarize(state: DialogueState, notes: list | None = None) -> str:
     parts = ["Проверим, что я всё понял правильно. Собранное:"]
     fields = (
         ("Потребность", "need_statement"),
+        ("Текущий процесс", "as_is"),
         ("Целевой результат", "to_be"),
         ("Пользователь и доступ", "role"),
         ("Процесс", "process"),
@@ -57,22 +58,44 @@ def summarize(state: DialogueState, notes: list | None = None) -> str:
         ("Критерии приёмки", "acceptance_criteria"),
         ("Зависимости", "dependencies"),
         ("Риски", "risks"),
-        ("Открытые вопросы", "open_questions"),
+        ("Регуляторные ограничения", "regulatory_flags"),
     )
     for label, key in fields:
+        slot = state.get_slot(key)
         value = state.get(key)
+        if slot and slot.status in {"unknown", "skipped", "not_applicable"}:
+            status_label = {"unknown": "пока неизвестно", "skipped": "отложено", "not_applicable": "не применимо"}[slot.status]
+            parts.append(f"• {label}: {status_label}" + (f" — {value}" if value else ""))
+            continue
         if value:
-            parts.append(f"• {label}: {value}")
+            marker = " [предположение]" if slot and slot.assumption else ""
+            parts.append(f"• {label}{marker}: {value}")
+    for assumption in getattr(state, "requirement_assumptions", []):
+        if assumption.get("status") not in {"resolved", "rejected"}:
+            parts.append(f"• Неподтверждённое предположение: {assumption.get('text', '')}")
+    for conflict in getattr(state, "requirement_conflicts", []):
+        if conflict.get("status") == "open":
+            parts.append(f"• Противоречие: {conflict.get('message') or conflict.get('question') or conflict.get('field')}")
+    from .gaps import synchronize_gaps
+    from .quality import assess_quality
+    # The same registered gaps are shown in the summary and delivered to review.
+    gaps = synchronize_gaps(state, assess_quality(state))
+    for gap in gaps:
+        if gap.status != "resolved" and gap.question:
+            # The registry also contains displayed conflicts and assumptions.
+            question = gap.question.strip()
+            if not any(question in part for part in parts):
+                parts.append(f"• Требует уточнения: {question}")
     for note in notes or []:
         if note.strip():
             parts.append(f"• Правка: {note.strip()[:240]}")
     parts.append("")
-    parts.append("Всё верно? Подтвердите резюме — после этого я подготовлю драфт. Если нужны изменения, опишите их своими словами.")
+    parts.append("Всё верно? Подтвердите резюме — после этого я подготовлю черновик. Подтверждение резюме сохраняет отмеченные предположения и открытые вопросы. Если нужны изменения, опишите их своими словами.")
     return "\n".join(parts)
 
 
 def confirm_question() -> str:
-    return "Подтверждаете сформулированную потребность? После подтверждения я подготовлю драфт бизнес-требования."
+    return "Подтверждаете сформулированную потребность? После подтверждения я подготовлю черновик бизнес-требования."
 
 
 def draft_ready_message(completeness: int, confidence: str) -> str:
@@ -107,7 +130,7 @@ def clarify_answer(question: str, evidence: list) -> str:
 
 
 def edit_prompt() -> str:
-    return "Что нужно исправить? Опишите правку своими словами, я внесу её в драфт."
+    return "Что нужно исправить? Опишите правку своими словами, я внесу её в черновик."
 
 
 def confirm_after_edit() -> str:

@@ -1,0 +1,125 @@
+{
+  "scope": "In-memory artifact audit; no live LLM or service evaluation",
+  "cases": {
+    "acceptance_classifier": [
+      {
+        "text": "1. Всё должно работать удобно и быстро",
+        "accepted_as_measurable": true
+      },
+      {
+        "text": "Если возможно, сделать всё хорошо",
+        "accepted_as_measurable": true
+      },
+      {
+        "text": "Отчёт формируется за 60 секунд; Всё остальное работает удобно",
+        "accepted_as_measurable": true
+      },
+      {
+        "text": "При пустой выборке пользователь видит сообщение «Данные отсутствуют»",
+        "accepted_as_measurable": false
+      }
+    ],
+    "vague_acceptance_high_quality": {
+      "acceptance_criteria": [
+        "1. Всё должно работать удобно и быстро"
+      ],
+      "business_value": "Для красоты",
+      "quality_score": 100,
+      "quality_level": "high",
+      "quality_issues": [],
+      "conflicts": [],
+      "review_blocked": false
+    },
+    "negated_integration_false_conflict": {
+      "problem_statement": "Нужен локальный отчёт без интеграций",
+      "target_process": "Формировать отчёт локально без интеграций",
+      "data_integrations": [
+        "Нет интеграций"
+      ],
+      "quality_score": 80,
+      "quality_level": "medium",
+      "quality_issues": [],
+      "conflicts": [
+        {
+          "code": "integration_conflict",
+          "message": "Описание одновременно требует и исключает интеграцию.",
+          "severity": "critical",
+          "slot": "data_integrations",
+          "question": "Нужен ли обмен данными с внешней системой?"
+        }
+      ],
+      "review_blocked": true
+    },
+    "cross_field_conflict_not_detected": {
+      "business_rules": [
+        "Оператору запрещено формировать отчёт"
+      ],
+      "acceptance_criteria": [
+        "Оператору доступно формирование отчёта"
+      ],
+      "quality_score": 100,
+      "quality_level": "high",
+      "quality_issues": [],
+      "conflicts": [],
+      "review_blocked": false
+    },
+    "explicit_not_applicable_lost": {
+      "input": {
+        "data_integrations": "Не применимо",
+        "dependencies": "Не применимо",
+        "risks": "Не применимо"
+      },
+      "artifact_fields": {
+        "data_integrations": [],
+        "dependencies": [],
+        "risks": []
+      },
+      "artifact_provenance": {
+        "data_integrations": null,
+        "dependencies": null,
+        "risks": null
+      },
+      "open_questions": [
+        "Требуется уточнение: Регуляторные аспекты"
+      ]
+    },
+    "model_and_update_conflicts_lost": {
+      "decision_contradictions": [
+        "Роль оператора не согласована с ограничением доступа только руководителю",
+        "Критерии приёмки: «Отчёт формируется за 60 секунд» / «Отчёт формируется за 10 минут»"
+      ],
+      "retained_acceptance_criteria": [
+        "Отчёт формируется за 60 секунд"
+      ],
+      "artifact_gaps": [],
+      "quality_score": 100,
+      "quality_level": "high",
+      "quality_issues": [],
+      "conflicts": [],
+      "review_blocked": false
+    },
+    "unknown_integration_missing_typed_gap": {
+      "input": "Не знаю",
+      "open_questions": [
+        "Не уточнено: Данные и интеграции",
+        "Требуется уточнение: Регуляторные аспекты"
+      ],
+      "integration_gaps": []
+    },
+    "missing_acceptance_still_high": {
+      "quality_score": 87,
+      "quality_level": "high",
+      "quality_issues": [
+        {
+          "code": "missing_required",
+          "message": "Не раскрыто: Критерии приёмки.",
+          "severity": "critical",
+          "slot": "acceptance_criteria",
+          "question": "Уточните: Критерии приёмки."
+        }
+      ],
+      "conflicts": [],
+      "review_blocked": false
+    }
+  }
+}

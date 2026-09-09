@@ -546,6 +546,8 @@ class TaskReportingStatus(Base):
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
     status_text = Column(Text, nullable=True)
     did_demo = Column(Boolean, nullable=False, default=False)
+    is_ready = Column(Boolean, nullable=False, default=False)
+    directorate_attention = Column(Boolean, nullable=False, default=False)
     source = Column(String(30), nullable=False, default="native")
     carried_from_status_id = Column(Integer, ForeignKey("task_reporting_statuses.id"), nullable=True)
     version = Column(Integer, nullable=False, default=0)
@@ -667,7 +669,7 @@ class Notification(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
-    type = Column(String(50), nullable=False, default="system", comment='Тип уведомления: system, status_change, assignment, mention, comment, lock')
+    type = Column(String(50), nullable=False, default="system", comment='Стабильный код события; активные: task.assigned, meeting.status_update.required, comment.user_mentioned, task.comment.added')
     message = Column(String(500), nullable=False, default="", comment='Краткое сообщение (для обратной совместимости)')
     category = Column(String(50), nullable=False, default="system")
     title = Column(String(300), nullable=False)
@@ -809,6 +811,8 @@ class RequirementRequest(Base):
     assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True, unique=True, index=True)
     reject_reason = Column(Text, nullable=True)
+    revision_history = Column(JSON, nullable=False, default=list)
+    status_history = Column(JSON, nullable=False, default=list)
     version = Column(Integer, nullable=False, default=0)
     __mapper_args__ = {
         "version_id_col": version,

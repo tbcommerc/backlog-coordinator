@@ -10,7 +10,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import List, Optional
+from typing import Iterator, List, Optional
 
 from ..config import settings
 from .base import LLMProvider
@@ -126,6 +126,93 @@ class OpenAICompatProvider:
             max_tokens=max_tokens, timeout=timeout,
             response_format={"type": "json_object"},
         )
+
+    def chat_stream(
+        self,
+        messages: List[dict],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.3,
+        max_tokens: int = 1024,
+        timeout: float = 60.0,
+    ) -> Iterator[str]:
+        """Yield text deltas from an OpenAI-compatible SSE response."""
+        payload_messages = []
+        if system_prompt:
+            payload_messages.append({"role": "system", "content": system_prompt})
+        payload_messages.extend(messages or [])
+        payload = {
+            "model": settings.OPENAI_MODEL,
+            "messages": payload_messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        yield from self._stream_post("/chat/completions", payload, timeout=timeout)
+
+    def _stream_post(self, path: str, payload: dict, timeout: float) -> Iterator[str]:
+        url = settings.OPENAI_BASE_URL.rstrip("/") + path
+        body = json.dumps(payload).encode("utf-8")
+        host = (urllib.parse.urlparse(url).hostname or "").lower()
+        is_opencode_zen = host == "opencode.ai" and "/zen/" in url
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+            "User-Agent": "opencode/latest/1.18.21/cli" if is_opencode_zen else "DMB-AI-Business-Analyst/1.0",
+        }
+        if is_opencode_zen:
+            headers["x-opencode-client"] = "cli"
+
+        emitted = False
+        for attempt in range(3):
+            req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    response_headers = getattr(resp, "headers", None)
+                    self.last_response_meta = {
+                        "http_status": getattr(resp, "status", None),
+                        "content_type": response_headers.get("Content-Type") if response_headers else None,
+                        "stream": True,
+                    }
+                    for raw_line in resp:
+                        line = raw_line.decode("utf-8", errors="replace").strip()
+                        if not line.startswith("data:"):
+                            continue
+                        data = line[5:].strip()
+                        if data == "[DONE]":
+                            return
+                        try:
+                            chunk = json.loads(data)
+                            choice = chunk["choices"][0]
+                            self.last_response_meta["finish_reason"] = choice.get("finish_reason")
+                            content = choice.get("delta", {}).get("content")
+                        except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+                            continue
+                        if isinstance(content, list):
+                            content = "".join(
+                                str(part.get("text") or "") for part in content if isinstance(part, dict)
+                            )
+                        if content:
+                            emitted = True
+                            yield str(content)
+                    return
+            except urllib.error.HTTPError as exc:
+                if emitted or exc.code not in {429, 502, 503, 504}:
+                    raise
+                if attempt == 2:
+                    detail = exc.read().decode("utf-8", errors="replace")[:500]
+                    raise LLMRateLimitError(
+                        f"LLM provider HTTP {exc.code} persisted after 3 attempts: {detail}"
+                    ) from exc
+                retry_after = exc.headers.get("Retry-After") if exc.headers else None
+                try:
+                    delay = min(10.0, max(0.5, float(retry_after)))
+                except (TypeError, ValueError):
+                    delay = float(2 ** attempt)
+                time.sleep(delay)
+            except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+                if emitted or attempt == 2:
+                    raise RuntimeError(f"LLM provider streaming failed: {exc}") from exc
+                time.sleep(float(2 ** attempt))
 
     def _chat_completion(
         self,

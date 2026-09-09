@@ -494,6 +494,24 @@ class TaskResponse(TaskBase):
         from_attributes = True
 
 
+class CustomerTaskResponse(BaseModel):
+    """Read-only customer projection without internal planning and lock fields."""
+
+    id: int
+    public_id: str = Field(pattern=r'^TASK-\d{3}-\d{3}$')
+    title: str
+    description: Optional[str] = None
+    progress: int = Field(default=0, ge=0, le=100)
+    created_at: datetime
+    updated_at: datetime
+    team_name: Optional[str] = None
+    status_name: Optional[str] = None
+    deadline_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class TaskListResponse(BaseModel):
     items: List[TaskResponse]
     total: int
@@ -649,9 +667,20 @@ class ReportResponse(ReportBase):
 
 # ==================== NOTIFICATION ====================
 
+class NotificationTargetResponse(BaseModel):
+    kind: Literal["task", "task_discussion", "task_reporting", "reporting_statuses", "request", "inbox"]
+    url: str
+    task_id: Optional[int] = None
+    tab: Optional[Literal["com", "rep"]] = None
+    comment_id: Optional[int] = None
+    meeting_id: Optional[int] = None
+    request_id: Optional[int] = None
+
+
 class NotificationResponse(BaseModel):
     id: int
     task_id: Optional[int] = None
+    type: str
     category: str
     title: str
     body: Optional[str] = None
@@ -665,6 +694,7 @@ class NotificationResponse(BaseModel):
     created_at: datetime
     read_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
+    target: Optional[NotificationTargetResponse] = None
 
     class Config:
         from_attributes = True
@@ -677,16 +707,51 @@ class NotificationListResponse(BaseModel):
     per_page: int
 
 
+class NotificationSummaryResponse(BaseModel):
+    unread: int
+    requires_action: int
+    today: int
+    by_category: Dict[str, int]
+
+
+class NotificationSnapshotResponse(BaseModel):
+    revision: int
+    summary: NotificationSummaryResponse
+    recent_items: List[NotificationResponse]
+    recent_total: int
+    action_items: List[NotificationResponse]
+    action_total: int
+
+
+class NotificationUxEventRequest(BaseModel):
+    event: Literal[
+        "notification_opened",
+        "notification_primary_action_clicked",
+        "notification_target_opened",
+        "notification_target_failed",
+        "notification_fetch_failed",
+        "notification_realtime_lag_detected",
+    ]
+    surface: Literal["center", "bell", "dashboard", "toast"]
+    category: Optional[Literal["assignment", "reporting", "mention", "comment", "request"]] = None
+    state: Optional[Literal["unread", "read", "resolved"]] = None
+    duration_ms: Optional[int] = Field(None, ge=0, le=300_000)
+
+
+class NotificationIdsRequest(BaseModel):
+    ids: List[int] = Field(min_length=1, max_length=5000)
+
+
 class UnreadCountResponse(BaseModel):
     count: int
 
 
 class NotificationPreferencesResponse(BaseModel):
-    preferences: dict
+    preferences: Dict[Literal["comment"], bool]
 
 
 class NotificationPreferencesUpdate(BaseModel):
-    preferences: dict
+    preferences: Dict[Literal["comment"], bool]
 
 
 NOTIFICATION_TEMPLATE_EVENTS = {

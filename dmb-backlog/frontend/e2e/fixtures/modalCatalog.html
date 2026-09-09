@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Каталог модальных окон</title>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/did-backlog.css">
+  <link rel="stylesheet" href="/css/feedback.css">
+  <link rel="stylesheet" href="/css/modal-system.css">
+  <style>
+    body { min-height:100vh; padding:32px; background:var(--bg-secondary); color:var(--text-primary); }
+    .catalog-head { max-width:1240px; margin:0 auto 24px; }
+    .catalog-head h1 { margin:0 0 6px; font-size:26px; }
+    .catalog-head p { margin:0; color:var(--text-secondary); }
+    .catalog-grid { width:min(1240px,100%); margin:auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+    .catalog-stage { min-width:0; overflow:hidden; border:1px solid var(--border-color); border-radius:18px; background:var(--bg-primary); box-shadow:var(--shadow-sm); }
+    .catalog-label { padding:12px 16px; border-bottom:1px solid var(--border-color); color:var(--text-secondary); font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+    .catalog-stage > :is(.modal-overlay,.admin-modal-overlay,.feedback-confirm-overlay,.conflict-overlay,.modal-backdrop) { position:relative!important; inset:auto!important; z-index:0!important; width:100%; min-height:410px; height:100%; }
+    .catalog-stage > dialog.customer-reference-dialog { position:relative!important; inset:auto!important; margin:24px auto; max-height:360px; }
+    .catalog-stage .modal-body { max-height:245px; }
+    .catalog-stage--wide { grid-column:1/-1; }
+    .catalog-stage--wide > .modal-overlay { min-height:500px; }
+    .catalog-stage #task-detail-overlay { position:relative; inset:auto; min-height:500px; height:500px; z-index:0; }
+    .catalog-stage #task-detail-overlay .modal { max-height:460px; }
+    .catalog-stage #task-detail-overlay .mbody { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:18px; }
+    .catalog-stage #task-detail-overlay .task-title-card { grid-column:1/-1; padding:16px; }
+    .catalog-stage #task-detail-overlay .field { min-height:84px; padding:12px; }
+    .catalog-stage #task-detail-overlay .mfoot { min-height:54px; }
+    .catalog-form { display:grid; gap:14px; }
+    .catalog-form label { display:grid; gap:6px; font-size:12px; font-weight:600; }
+    .catalog-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .catalog-summary > div { padding:14px; border-radius:10px; background:var(--bg-tertiary); }
+    .catalog-summary span { display:block; color:var(--text-secondary); font-size:11px; }
+    .catalog-summary strong { display:block; margin-top:4px; font-size:22px; }
+    @media(max-width:760px){ body{padding:12px}.catalog-grid{grid-template-columns:1fr}.catalog-stage--wide{grid-column:auto}.catalog-stage > :is(.modal-overlay,.admin-modal-overlay,.feedback-confirm-overlay,.conflict-overlay,.modal-backdrop){min-height:500px}.catalog-stage #task-detail-overlay{display:none} }
+  </style>
+</head>
+<body>
+  <header class="catalog-head">
+    <h1>Модальные окна</h1>
+    <p>Эталонные состояния общей оболочки и неизменённой workspace-карточки задачи.</p>
+  </header>
+  <main class="catalog-grid">
+    <section class="catalog-stage" data-catalog="confirm">
+      <div class="catalog-label">Small · подтверждение</div>
+      <div class="feedback-confirm-overlay">
+        <div class="feedback-confirm app-modal app-modal--small" role="alertdialog" aria-modal="true" aria-labelledby="catalog-confirm-title">
+          <div class="feedback-confirm-header"><h3 id="catalog-confirm-title">Отклонить задачу?</h3></div>
+          <div class="feedback-confirm-body"><p>Задача будет переведена в отклонённые. Продолжить?</p></div>
+          <div class="feedback-confirm-actions"><button class="btn btn-secondary">Отмена</button><button class="btn btn-danger">Отклонить</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="catalog-stage" data-catalog="form">
+      <div class="catalog-label">Standard · форма</div>
+      <div class="modal-overlay">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="catalog-form-title">
+          <div class="modal-header"><div><h3 class="modal-title" id="catalog-form-title">Назначить дату встречи</h3><p class="app-modal__subtitle">Статус для ключевых проектов</p></div><button class="modal-close" aria-label="Закрыть">×</button></div>
+          <div class="modal-body"><form class="catalog-form"><label>Дата встречи<input class="input" type="date" value="2026-09-15"></label><label>Комментарий<textarea class="input" rows="3">Подготовить актуальный статус и риски.</textarea></label><div class="app-modal__notice app-modal__notice--info">Участники получат уведомление после сохранения.</div></form></div>
+          <div class="modal-footer"><button class="btn btn-secondary">Отмена</button><button class="btn btn-primary">Сохранить</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="catalog-stage" data-catalog="admin">
+      <div class="catalog-label">Medium · административная форма</div>
+      <div class="admin-modal-overlay">
+        <div class="admin-modal app-modal--medium" role="dialog" aria-modal="true" aria-labelledby="catalog-admin-title">
+          <div class="modal-header-sticky"><div><h3 class="modal-title" id="catalog-admin-title">Редактирование проекта</h3><button class="modal-close-x" aria-label="Закрыть">×</button></div></div>
+          <div class="modal-body-scroll"><form class="catalog-form"><label>Название<input class="input" value="Цифровой профиль клиента"></label><label>Команда<select class="input"><option>Core Platform</option></select></label><div class="app-modal__notice app-modal__notice--warning">Проверьте ответственного перед сохранением.</div></form></div>
+          <div class="modal-footer-sticky"><div><button class="btn btn-secondary">Отмена</button><button class="btn btn-primary">Сохранить</button></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="catalog-stage" data-catalog="conflict">
+      <div class="catalog-label">Alert · конфликт версий</div>
+      <div class="conflict-overlay">
+        <div class="conflict-modal" role="alertdialog" aria-modal="true" aria-labelledby="catalog-conflict-title">
+          <div class="conflict-modal-header app-modal__header"><div class="conflict-icon">⚠</div><div><h3 class="conflict-title" id="catalog-conflict-title">Конфликт версий</h3><p class="conflict-subtitle">Данные изменены другим пользователем.</p></div></div>
+          <div class="app-modal__body"><div class="conflict-versions"><span>Ваша версия: <strong>12</strong></span><span class="conflict-arrow">→</span><span>Текущая: <strong>13</strong></span></div></div>
+          <div class="conflict-actions app-modal__footer"><button class="conflict-btn conflict-btn-primary">Обновить с сервера</button><button class="conflict-btn conflict-btn-ghost">Отмена</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="catalog-stage catalog-stage--wide" data-catalog="native-dialog">
+      <div class="catalog-label">Native dialog · справочник</div>
+      <dialog class="customer-reference-dialog" open aria-labelledby="catalog-reference-title">
+        <div class="did-filter-panel-head"><h2 id="catalog-reference-title">Клиенты ДИД</h2><button class="modal-close" aria-label="Закрыть">×</button></div>
+        <p class="text-muted">Группировка задач в отчёте для бизнес-заказчиков ДИД.</p>
+        <div class="customer-reference-list"><div class="customer-reference-row"><span>Корпоративный бизнес</span><button class="btn btn-secondary btn-sm">Изменить</button></div><div class="customer-reference-row"><span>Розничный бизнес</span><button class="btn btn-secondary btn-sm">Изменить</button></div></div>
+        <button class="btn btn-primary" data-new>Добавить запись</button><div data-editor></div>
+      </dialog>
+    </section>
+
+    <section class="catalog-stage catalog-stage--wide" data-catalog="result">
+      <div class="catalog-label">Wide · результат операции</div>
+      <div class="modal-overlay">
+        <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="catalog-result-title">
+          <div class="modal-header"><div><h3 class="modal-title" id="catalog-result-title">Результат массовой операции</h3><p class="app-modal__subtitle">Операция 8f2d41c0</p></div><button class="modal-close" aria-label="Закрыть">×</button></div>
+          <div class="modal-body"><div class="catalog-summary"><div><span>Изменено</span><strong style="color:var(--success)">24</strong></div><div><span>Ошибок</span><strong style="color:var(--danger)">2</strong></div></div><div class="app-modal__error">TASK-000-142 · версия задачи устарела</div></div>
+          <div class="modal-footer"><button class="btn btn-primary">Закрыть</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="catalog-stage catalog-stage--wide" data-catalog="task">
+      <div class="catalog-label">Workspace · карточка задачи (композиция сохранена)</div>
+      <div class="modal-overlay" id="task-detail-overlay">
+        <div class="task-detail-modal modal" role="dialog" aria-modal="true" aria-labelledby="catalog-task-title">
+          <div class="mhead"><div class="head-row1"><div class="row-badges"><button class="tid">TASK-000-250</button><span class="task-head-chip task-head-chip--type">Разработка</span></div><div class="row-status"><span class="task-head-chip task-head-chip--status">В работе</span></div><div class="row-actions"><button class="iconbtn" aria-label="Копировать ссылку">↗</button><button class="iconbtn close" aria-label="Закрыть карточку задачи">×</button></div></div><div class="head-title" id="catalog-task-title">Интеграция расчёта приоритета в карточку задачи</div></div>
+          <div class="tabs"><button class="tab on">Основное</button><button class="tab">Оценка</button><button class="tab">Комментарии</button><span id="tabInd"></span></div>
+          <div class="mbody"><div class="task-title-card"><strong>Краткое описание</strong><p>Текущая структура, вкладки и цветовой акцент карточки не меняются.</p></div><div class="field"><span class="flabel">Статус</span><strong>В работе</strong></div><div class="field"><span class="flabel">Команда</span><strong>Core Platform</strong></div><div class="field"><span class="flabel">Приоритет</span><strong>P2</strong></div></div>
+          <div class="mfoot"><div class="factions"><button class="btn ghost">Закрыть</button><button class="btn primary">Редактировать</button></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

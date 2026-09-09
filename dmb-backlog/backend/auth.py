@@ -289,7 +289,7 @@ def require_backlog_page_access(current_user: User = Depends(get_current_user)) 
 def require_role(allowed_roles: list):
     """Dependency factory: require user to have one of allowed roles"""
     def role_checker(current_user: User = Depends(get_current_user)):
-        if current_user.role and current_user.role.name not in allowed_roles:
+        if not current_user.role or current_user.role.name not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions"

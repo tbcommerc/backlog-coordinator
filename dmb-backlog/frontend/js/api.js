@@ -41,6 +41,18 @@ export class APIError extends Error {
     }
 }
 
+export function parseServerSentEvent(block) {
+    let event = 'message';
+    const data = [];
+    String(block || '').split(/\r?\n/).forEach(line => {
+        if (line.startsWith('event:')) event = line.slice(6).trim() || 'message';
+        else if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+    });
+    if (!data.length) return null;
+    try { return { event, data: JSON.parse(data.join('\n')) }; }
+    catch { return null; }
+}
+
 export class API {
     constructor() {
         this.baseURL = '/api/v1';
@@ -203,6 +215,66 @@ export class API {
      * @returns {Promise<*>}
      */
     async patch(path, data, requestOptions = {}) { return this.request('PATCH', path, data, requestOptions); }
+
+    /**
+     * Consume an authenticated Server-Sent Events response from a POST request.
+     * The promise resolves with the payload of the final `result` event.
+     */
+    async stream(path, data, { signal, onEvent } = {}) {
+        const url = `${this.baseURL}${path}`;
+        const request = () => fetch(url, {
+            method: 'POST',
+            headers: { ...this.getHeaders(), Accept: 'text/event-stream' },
+            credentials: 'same-origin',
+            signal,
+            body: JSON.stringify(data),
+        });
+        let response = await request();
+        if (response.status === 401) {
+            const refreshed = await this.refreshToken();
+            if (refreshed) response = await request();
+            else {
+                this.setAccessToken(null);
+                localStorage.removeItem('dmb_tokens');
+                localStorage.removeItem('dmb_user');
+                window.location.reload();
+                throw new APIError('Authentication expired', 401);
+            }
+        }
+        if (!response.ok) return this.handleResponse(response);
+        if (!response.body) throw new APIError('Поток ответа недоступен', 502, 'stream_unavailable');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let result = null;
+        const consume = async block => {
+            const message = parseServerSentEvent(block);
+            if (!message) return;
+            if (message.event === 'error') {
+                throw new APIError(
+                    message.data?.message || 'Поток ответа прерван',
+                    502,
+                    message.data?.code || 'stream_failed',
+                    message.data,
+                );
+            }
+            if (message.event === 'result') result = message.data;
+            await onEvent?.(message);
+        };
+
+        while (true) {
+            const { value, done } = await reader.read();
+            buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+            const blocks = buffer.split(/\r?\n\r?\n/);
+            buffer = blocks.pop() || '';
+            for (const block of blocks) await consume(block);
+            if (done) break;
+        }
+        if (buffer.trim()) await consume(buffer);
+        if (!result) throw new APIError('Ассистент не завершил поток ответа', 502, 'stream_incomplete');
+        return result;
+    }
 
     /**
      * Download an authenticated file without exposing a public storage URL.

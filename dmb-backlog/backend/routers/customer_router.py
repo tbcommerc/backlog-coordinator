@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from database import get_db
-from models import Task, User
-from schemas import TaskListResponse
+from models import RequirementRequest, Task, User
+from schemas import CustomerTaskResponse, TaskListResponse
 from auth import get_current_user
 from routers.tasks_router import task_to_response
 
@@ -38,3 +38,31 @@ def get_customer_tasks(
         per_page=per_page,
         pages=(total + per_page - 1) // per_page,
     )
+
+
+@router.get("/tasks/{task_id}", response_model=CustomerTaskResponse)
+def get_customer_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Получить одну задачу только в области текущего бизнес-заказчика."""
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.is_deleted == False,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    in_customer_scope = (
+        current_user.business_customer_id is not None
+        and task.business_customer_id == current_user.business_customer_id
+    )
+    linked_to_own_request = db.query(RequirementRequest.id).filter(
+        RequirementRequest.task_id == task.id,
+        RequirementRequest.user_id == current_user.id,
+        RequirementRequest.is_deleted == False,
+    ).first() is not None
+    if not in_customer_scope and not linked_to_own_request:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    return task_to_response(task, db)

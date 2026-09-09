@@ -138,6 +138,7 @@ def test_requirement_request_mapper_rejects_second_review_decision():
     """No user, role, team or credential rows are created by this isolated test."""
     engine = create_engine("sqlite:///:memory:")
     RequirementRequest.__table__.create(engine)
+    EventOutbox.__table__.create(engine)
     Session = sessionmaker(bind=engine, expire_on_commit=False)
 
     seed = Session()

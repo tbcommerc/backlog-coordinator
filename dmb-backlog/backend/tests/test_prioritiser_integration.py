@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from types import SimpleNamespace
 
@@ -120,6 +121,32 @@ def test_agent_contract_rejects_placeholder_response():
                 },
             }
         )
+
+
+def test_prioritiser_client_sends_service_secret(monkeypatch):
+    captured = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return json.dumps({"status": "error", "error": "test"}).encode()
+
+    def fake_urlopen(request, timeout):
+        captured["secret"] = request.get_header("X-prioritiser-secret")
+        return Response()
+
+    monkeypatch.setattr(prioritiser_router.settings, "PRIORITISER_SECRET", "service-test-secret")
+    monkeypatch.setattr(prioritiser_router.urllib.request, "urlopen", fake_urlopen)
+
+    result = prioritiser_router._call_prioritiser("/agent/value/full", {"task": {}})
+
+    assert result["status"] == "error"
+    assert captured["secret"] == "service-test-secret"
 
 
 def test_insufficient_value_forwards_real_missing_inputs():

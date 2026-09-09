@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { API } from '../js/api.js';
+import { API, parseServerSentEvent } from '../js/api.js';
 
 
 test('parallel refresh requests share one in-flight HTTP call', async () => {
@@ -71,4 +71,47 @@ test('structured conflict exposes a readable message and code', async () => {
       return true;
     },
   );
+});
+
+
+test('SSE parser keeps event names and JSON payloads', () => {
+  assert.deepEqual(
+    parseServerSentEvent('event: delta\ndata: {"text":"Ответ"}'),
+    { event: 'delta', data: { text: 'Ответ' } },
+  );
+  assert.equal(parseServerSentEvent('event: delta\ndata: not-json'), null);
+});
+
+
+test('authenticated stream handles fragmented events and returns final result', async () => {
+  const originalFetch = globalThis.fetch;
+  const encoder = new TextEncoder();
+  const chunks = [
+    'event: ready\ndata: {"stream":true}\n\nevent: del',
+    'ta\ndata: {"text":"Первый "}\n\nevent: delta\ndata: {"text":"ответ"}\n\n',
+    'event: result\ndata: {"message":"Первый ответ","session_id":"s1"}\n\n',
+  ];
+  const seen = [];
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'text/event-stream' },
+    body: new ReadableStream({
+      start(controller) {
+        chunks.forEach(chunk => controller.enqueue(encoder.encode(chunk)));
+        controller.close();
+      },
+    }),
+  });
+
+  try {
+    const api = new API();
+    const result = await api.stream('/agent/chat-stream', { message: 'Тест' }, {
+      onEvent: message => seen.push(message),
+    });
+    assert.equal(seen.filter(item => item.event === 'delta').length, 2);
+    assert.deepEqual(result, { message: 'Первый ответ', session_id: 's1' });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

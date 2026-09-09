@@ -361,8 +361,12 @@ function showCreateDuplicateWarning(tasks) {
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '1200';
     const dialog = document.createElement('div');
-    dialog.className = 'create-duplicate-dialog';
+    dialog.className = 'create-duplicate-dialog app-modal app-modal--medium';
+    dialog.setAttribute('role', 'alertdialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'create-duplicate-title');
     const title = document.createElement('h3');
+    title.id = 'create-duplicate-title';
     title.textContent = 'Возможные дубликаты';
     const text = document.createElement('p');
     text.textContent = 'Найдены задачи с похожими названиями. Проверьте их перед созданием новой.';
@@ -389,7 +393,14 @@ function showCreateDuplicateWarning(tasks) {
     const proceed = document.createElement('button');
     proceed.type = 'button'; proceed.className = 'btn btn-primary btn-sm'; proceed.textContent = 'Всё равно создать';
     actions.append(back, proceed);
-    dialog.append(title, text, list, actions);
+    const header = document.createElement('div');
+    header.className = 'app-modal__header';
+    header.appendChild(title);
+    const body = document.createElement('div');
+    body.className = 'app-modal__body';
+    body.append(text, list);
+    actions.classList.add('app-modal__footer');
+    dialog.append(header, body, actions);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
     const finish = result => { overlay.remove(); document.removeEventListener('keydown', onKeydown); resolve(result); };
@@ -1022,8 +1033,8 @@ function showConflictModal(errorData, app) {
   const hasChanges = diffRows.length > 0;
 
   overlay.innerHTML = `
-    <div class="conflict-modal conflict-modal--wide">
-      <div class="conflict-modal-header">
+    <div class="conflict-modal conflict-modal--wide" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
+      <div class="conflict-modal-header app-modal__header">
         <div class="conflict-icon">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -1031,10 +1042,11 @@ function showConflictModal(errorData, app) {
           </svg>
         </div>
         <div>
-          <h3 class="conflict-title">Конфликт версий</h3>
+          <h3 class="conflict-title" id="conflict-title">Конфликт версий</h3>
           <p class="conflict-subtitle">Задача была изменена другим пользователем. Выберите значения для каждого изменённого поля.</p>
         </div>
       </div>
+      <div class="app-modal__body">
       <div class="conflict-versions">
         <span>Ваша версия: <strong>${submittedVer}</strong></span>
         <span class="conflict-arrow">&rarr;</span>
@@ -1057,7 +1069,8 @@ function showConflictModal(errorData, app) {
           </div>`
         : `<div class="diff-empty">Все поля совпадают — различий не обнаружено</div>`
       }
-      <div class="conflict-actions conflict-actions--row">
+      </div>
+      <div class="conflict-actions conflict-actions--row app-modal__footer">
         <button class="conflict-btn conflict-btn-primary" id="conflict-btn-save-selected" ${!hasChanges ? 'disabled' : ''}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           Сохранить выбранные
@@ -1070,7 +1083,7 @@ function showConflictModal(errorData, app) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           Обновить с сервера
         </button>
-        <button class="conflict-btn conflict-btn-ghost" id="conflict-btn-cancel">Отмена</button>
+        <button class="conflict-btn conflict-btn-ghost" id="conflict-btn-cancel" data-modal-close>Отмена</button>
       </div>
     </div>
   `;
@@ -1695,7 +1708,7 @@ function renderTaskDetailModalLegacy(task, app) {
               <button class="task-detail-btn-icon" id="td-edit-btn" title="Редактировать">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
-              <button class="task-detail-btn-icon task-detail-btn-close" id="td-close-btn" title="Закрыть">
+              <button class="task-detail-btn-icon task-detail-btn-close" id="td-close-btn" title="Закрыть" aria-label="Закрыть карточку задачи">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -2710,7 +2723,7 @@ function renderCreateTaskForm() {
         <div class="mhead">
           <div class="head-row1"><div class="row-badges"><span class="task-head-chip task-head-chip--type">Новая задача</span><span class="header-unsaved-indicator" id="create-unsaved-indicator" role="status" aria-live="polite" hidden><i aria-hidden="true"></i>Не сохранено</span></div>
           <div class="row-actions">
-            <button class="iconbtn close" id="create-close-btn" title="Закрыть">
+            <button class="iconbtn close" id="create-close-btn" title="Закрыть" aria-label="Закрыть форму создания задачи">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button></div></div>
           <h2 class="head-title" id="create-task-title">Создание новой задачи</h2>
@@ -3559,17 +3572,13 @@ export function showConfirmModal(message, title = 'Подтверждение', 
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '1200';
 
-    const okBtnStyle = danger
-      ? 'background:var(--danger);color:white;border:none;'
-      : '';
-
     overlay.innerHTML = `
-      <div style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:400px;width:90%;position:relative;">
-        <h3 style="margin:0 0 16px 0;font-size:16px;color:var(--text-primary);">${escapeHtml(title)}</h3>
-        <p style="margin:0 0 20px 0;font-size:14px;color:var(--text-secondary);">${escapeHtml(message)}</p>
-        <div style="display:flex;gap:12px;justify-content:flex-end;">
-          <button class="btn btn-secondary btn-sm" id="confirm-cancel">${escapeHtml(cancelText)}</button>
-          <button class="btn btn-primary btn-sm" id="confirm-ok" style="${okBtnStyle}">${escapeHtml(okText)}</button>
+      <div class="app-modal app-modal--small" role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message">
+        <div class="app-modal__header"><h3 class="app-modal__title" id="confirm-modal-title">${escapeHtml(title)}</h3></div>
+        <div class="app-modal__body"><p class="app-modal__subtitle" id="confirm-modal-message">${escapeHtml(message)}</p></div>
+        <div class="app-modal__footer">
+          <button type="button" class="btn btn-secondary btn-sm" id="confirm-cancel" data-modal-close>${escapeHtml(cancelText)}</button>
+          <button type="button" class="btn ${danger ? 'btn-danger' : 'btn-primary'} btn-sm" id="confirm-ok">${escapeHtml(okText)}</button>
         </div>
       </div>
     `;
@@ -3619,13 +3628,13 @@ function showEditExitModal() {
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '1200';
     overlay.innerHTML = `
-      <div role="dialog" aria-modal="true" aria-labelledby="edit-exit-title" style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:620px;width:90%;position:relative;">
-        <h3 id="edit-exit-title" style="margin:0 0 16px 0;font-size:16px;color:var(--text-primary);">Отменить изменения?</h3>
-        <p style="margin:0 0 20px 0;font-size:14px;color:var(--text-secondary);">Все несохранённые изменения будут потеряны. Это действие нельзя отменить.</p>
-        <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;">
+      <div class="app-modal app-modal--medium" role="alertdialog" aria-modal="true" aria-labelledby="edit-exit-title">
+        <div class="app-modal__header"><h3 class="app-modal__title" id="edit-exit-title">Отменить изменения?</h3></div>
+        <div class="app-modal__body"><p class="app-modal__subtitle">Все несохранённые изменения будут потеряны. Это действие нельзя отменить.</p></div>
+        <div class="app-modal__footer">
           <button type="button" class="btn btn-secondary btn-sm" data-edit-exit="continue">Продолжить редактирование</button>
           <button type="button" class="btn btn-primary btn-sm" data-edit-exit="save">Сохранить изменения</button>
-          <button type="button" class="btn btn-sm" data-edit-exit="discard" style="background:var(--danger);color:white;border:none;">Отменить изменения</button>
+          <button type="button" class="btn btn-danger btn-sm" data-edit-exit="discard">Отменить изменения</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -3752,8 +3761,12 @@ export function showErrorModal(saved, errors, errorDetails) {
     }
 
     overlay.innerHTML = `
-      <div style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:${isDetailed ? '750px' : '500px'};width:90%;position:relative;">
-        <h3 style="margin:0 0 12px 0;font-size:16px;color:var(--text-primary);">Результат сохранения</h3>
+      <div class="app-modal ${isDetailed ? 'app-modal--large' : 'app-modal--medium'}" role="dialog" aria-modal="true" aria-labelledby="error-modal-title">
+        <div class="app-modal__header">
+          <h3 class="app-modal__title" id="error-modal-title">Результат сохранения</h3>
+          <button type="button" class="modal-close" data-modal-close aria-label="Закрыть">&times;</button>
+        </div>
+        <div class="app-modal__body">
         <div style="display:flex;gap:16px;margin-bottom:16px;">
           <div style="flex:1;padding:12px;background:var(--success-light);border-radius:8px;text-align:center;">
             <div style="font-size:24px;font-weight:700;color:var(--success);">${saved}</div>
@@ -3765,7 +3778,8 @@ export function showErrorModal(saved, errors, errorDetails) {
           </div>
         </div>
         ${detailsHtml}
-        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
+        </div>
+        <div class="app-modal__footer">
           <button class="btn btn-primary btn-sm" id="error-ok">Понятно</button>
         </div>
       </div>
@@ -3782,6 +3796,7 @@ export function showErrorModal(saved, errors, errorDetails) {
     }
 
     okBtn?.addEventListener('click', handleClose);
+    overlay.querySelector('[data-modal-close]')?.addEventListener('click', handleClose);
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) handleClose();
     });
@@ -3914,14 +3929,15 @@ function showBulkResultModal(result, tasks, fallbackError = '') {
       </div>
       ${group.key === 'error' && group.ids.length ? `<div style="padding:0 12px 10px;text-align:right;"><button class="btn btn-secondary btn-xs" data-copy-error-ids>Копировать ID</button></div>` : ''}
     </details>`).join('');
-  overlay.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-result-title" style="background:var(--bg-primary);border-radius:12px;max-width:620px;width:94%;max-height:85vh;display:flex;flex-direction:column;">
-    <div style="padding:14px 16px;border-bottom:1px solid var(--border-color);"><div id="bulk-result-title" style="font-size:15px;font-weight:600;">Результат массовой операции</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${result?.operation_id ? `Операция ${escapeHtml(result.operation_id.slice(0, 8))}` : 'Операция не выполнена'}</div></div>
-    <div style="padding:14px 16px;display:grid;gap:8px;overflow:auto;">${groupHtml || '<div style="font-size:13px;color:var(--text-muted);">Нет данных о результате</div>'}</div>
-    <div style="padding:10px 16px;border-top:1px solid var(--border-color);text-align:right;"><button class="btn btn-primary btn-sm" data-close-bulk-result>Закрыть</button></div>
+  overlay.innerHTML = `<div class="modal modal-md" role="dialog" aria-modal="true" aria-labelledby="bulk-result-title">
+    <div class="modal-header"><div><div class="modal-title" id="bulk-result-title">Результат массовой операции</div><div class="app-modal__subtitle">${result?.operation_id ? `Операция ${escapeHtml(result.operation_id.slice(0, 8))}` : 'Операция не выполнена'}</div></div><button type="button" class="modal-close" data-modal-close aria-label="Закрыть">&times;</button></div>
+    <div class="modal-body" style="display:grid;gap:8px;">${groupHtml || '<div style="font-size:13px;color:var(--text-muted);">Нет данных о результате</div>'}</div>
+    <div class="modal-footer"><button class="btn btn-primary btn-sm" data-close-bulk-result>Закрыть</button></div>
   </div>`;
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
   overlay.querySelector('[data-close-bulk-result]')?.addEventListener('click', close);
+  overlay.querySelector('[data-modal-close]')?.addEventListener('click', close);
   overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
   overlay.querySelector('[data-copy-error-ids]')?.addEventListener('click', async () => {
     const ids = (result?.error_task_ids || []).join(', ');
@@ -4115,20 +4131,20 @@ export function showBulkOpsModal(app, scope, tasks) {
       }
 
       overlay.innerHTML = `
-        <div class="modal" style="background:var(--bg-primary);border-radius:12px;max-width:720px;width:95%;position:relative;max-height:90vh;display:flex;flex-direction:column;">
-          <div style="padding:8px 16px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:12px;">
+        <div class="modal modal-md" role="dialog" aria-modal="true" aria-labelledby="bc-modal-title">
+          <div class="modal-header">
             <div style="display:flex;gap:8px;">
               <span style="width:24px;height:24px;border-radius:50%;background:${step >= 1 ? 'var(--accent)' : 'var(--bg-secondary)'};color:${step >= 1 ? 'white' : 'var(--text-muted)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">1</span>
               <span style="width:24px;height:24px;border-radius:50%;background:${step >= 2 ? 'var(--accent)' : 'var(--bg-secondary)'};color:${step >= 2 ? 'white' : 'var(--text-muted)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">2</span>
             </div>
             <div style="flex:1;">
-              <div style="font-size:14px;font-weight:600;color:var(--text-primary);">Массовые операции</div>
-              <div id="bc-subtitle" style="font-size:11px;color:var(--text-muted);">${subtitle}</div>
+              <div class="modal-title" id="bc-modal-title">Массовые операции</div>
+              <div class="app-modal__subtitle" id="bc-subtitle">${subtitle}</div>
             </div>
-            <button id="bc-modal-close" style="width:32px;height:32px;border:none;background:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:18px;">✕</button>
+            <button type="button" class="modal-close" id="bc-modal-close" data-modal-close aria-label="Закрыть">✕</button>
           </div>
-          <div class="modal-body-scroll" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;">${bodyContent}</div>
-          <div style="padding:4px 16px 2px 16px;display:flex;justify-content:space-between;gap:12px;">
+          <div class="modal-body modal-body-scroll" style="display:flex;flex-direction:column;">${bodyContent}</div>
+          <div class="modal-footer" style="justify-content:space-between;">
             <button id="bc-cancel" class="btn btn-secondary btn-sm">Отмена</button>
             <div style="display:flex;gap:8px;">
               ${step === 2 ? '<button id="bc-back" class="btn btn-secondary btn-sm">← Назад к выбору задач</button>' : ''}
@@ -4595,13 +4611,15 @@ export function importTasksFromExcel(app, onSuccess) {
   overlay.id = 'import-tasks-overlay';
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="import-tasks-modal" style="background:var(--bg-primary);border-radius:12px;padding:24px;max-width:640px;width:90%;max-height:90vh;overflow-y:auto;position:relative;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <h2 style="margin:0;font-size:18px;color:var(--text-primary);">Импорт задач из файла</h2>
-        <button class="btn btn-ghost btn-sm" id="import-close-btn" style="padding:4px;">
+    <div class="import-tasks-modal app-modal app-modal--medium" role="dialog" aria-modal="true" aria-labelledby="import-tasks-title">
+      <div class="app-modal__header">
+        <h2 class="app-modal__title" id="import-tasks-title">Импорт задач из файла</h2>
+        <button type="button" class="modal-close" id="import-close-btn" data-modal-close aria-label="Закрыть">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
+
+      <div class="app-modal__body">
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <a href="#" id="download-template-link" style="font-size:13px;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:6px;">
@@ -4653,7 +4671,9 @@ export function importTasksFromExcel(app, onSuccess) {
         </div>
       </div>
 
-      <div style="display:flex;gap:12px;justify-content:flex-end;">
+      </div>
+
+      <div class="app-modal__footer">
         <button class="btn btn-secondary btn-sm" id="import-cancel-btn" style="padding:8px 16px;">Отмена</button>
         <button class="btn btn-primary btn-sm" id="import-submit-btn" disabled style="padding:8px 16px;">Импортировать</button>
       </div>
@@ -5414,6 +5434,9 @@ function buildCardState(task) {
     cv: t.cv,
     finEffect: fin(t.financial_effect),
     finJust: t.financial_effect_justification || '',
+    metricKrPlan: num(t.metric_kr_plan),
+    metricKrFact: num(t.metric_kr_fact),
+    metricKrUnit: t.metric_kr_unit || '',
     priorityScore: t.priority_score == null ? null : Number(t.priority_score),
     priorityJust: t.priority_justification || '',
     weightPercent: num(t.assessment_weight),
@@ -5510,7 +5533,7 @@ function cardRenderHeader() {
   h += '</div><div class="row-status">';
   h += '<span class="task-head-chip task-head-chip--status ' + cardStatusCls(t.status) + '" id="hStatus">' + escapeHtml(t.status) + '</span>';
   h += '<span class="task-head-chip task-head-chip--priority ' + cardPrioCls(t.priority) + '" id="hPrio">' + escapeHtml(t.priority) + '</span>';
-  h += '</div><div class="row-actions">' + (cardState.editing ? '<span class="editbadge"><span class="editbadge-mark" aria-hidden="true">' + cardIcon('warning') + '</span>Редактирование</span>' : '') + '<button class="iconbtn" data-action="copy-link" title="Копировать ссылку на задачу" aria-label="Копировать ссылку на задачу">' + cardIcon('link') + '</button><button class="iconbtn close" data-action="close" title="Закрыть (Esc)">' + cardIcon('x') + '</button></div></div>';
+  h += '</div><div class="row-actions">' + (cardState.editing ? '<span class="editbadge"><span class="editbadge-mark" aria-hidden="true">' + cardIcon('warning') + '</span>Редактирование</span>' : '') + '<button class="iconbtn" data-action="copy-link" title="Копировать ссылку на задачу" aria-label="Копировать ссылку на задачу">' + cardIcon('link') + '</button><button class="iconbtn close" data-action="close" title="Закрыть (Esc)" aria-label="Закрыть карточку задачи">' + cardIcon('x') + '</button></div></div>';
   h += '<div class="head-title" id="headerTitle" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</div>';
   el.innerHTML = h;
 }
@@ -5598,12 +5621,12 @@ function showPrioritiserRequirementsModal(kind, items) {
   overlay.id = 'prioritiser-requirements-overlay';
   overlay.className = 'modal-overlay prioritiser-requirements-overlay';
   overlay.style.zIndex = '1250';
-  overlay.innerHTML = '<div class="prioritiser-requirements-modal" role="dialog" aria-modal="true" aria-labelledby="prioritiser-requirements-title">' +
-    '<button type="button" class="prioritiser-requirements-x" aria-label="Закрыть">' + cardIcon('x') + '</button>' +
-    '<h3 id="prioritiser-requirements-title">Не хватает данных для расчёта ' + calculation + '</h3>' +
-    '<p>Заполните отмеченные поля в карточке задачи и повторите расчёт.</p>' +
-    cardPrioritiserChecklist(items, 'agent-check-list-modal') +
-    '<div class="prioritiser-requirements-actions"><button type="button" class="btn btn-primary btn-sm" data-action="close-requirements">Закрыть</button></div>' +
+  overlay.innerHTML = '<div class="prioritiser-requirements-modal app-modal app-modal--small" role="dialog" aria-modal="true" aria-labelledby="prioritiser-requirements-title">' +
+    '<div class="app-modal__header"><h3 class="app-modal__title" id="prioritiser-requirements-title">Не хватает данных для расчёта ' + calculation + '</h3>' +
+    '<button type="button" class="prioritiser-requirements-x" data-modal-close aria-label="Закрыть">' + cardIcon('x') + '</button></div>' +
+    '<div class="app-modal__body"><p>Заполните отмеченные поля в карточке задачи и повторите расчёт.</p>' +
+    cardPrioritiserChecklist(items, 'agent-check-list-modal') + '</div>' +
+    '<div class="prioritiser-requirements-actions app-modal__footer"><button type="button" class="btn btn-primary btn-sm" data-action="close-requirements">Закрыть</button></div>' +
     '</div>';
   const host = document.getElementById('task-detail-overlay') || document.body;
   host.appendChild(overlay);
@@ -5766,13 +5789,14 @@ function cardBodyMainV30(t, e) {
     + cardIcell('Другие вовлечённые команды · ' + t.otherTeams.length, edit('otherTeams') ? cardChipsTeams(teams, t.otherTeams, 'otherTeams') : cardChipsStatic(t.otherTeams), { span2: true, editKey: e ? '' : 'otherTeams' }) + '</div></div>';
   h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Заказчик</span></div><div class="cl-grid duo">'
     + cardIcell(taskFormLabel('customer'), '<div class="person-ival"><span class="ava32" id="custAva">' + getInitials(t.customer) + '</span><div class="person-assignee-control">' + (edit('customer') ? taskFormEditControl('customer', t.customer) : '<span class="person-name">' + escapeHtml(cardPerson(t.customer)) + '</span>') + '</div></div>', { editKey: e ? '' : 'customer', valueClass: 'customer-row-field' })
-    + cardIcell('Подразделение', cardCustomerReference('customerDeptId', cardDict.departments, t.customerDeptId, t.customerDept, edit('customerDeptId')), { editKey: e ? '' : 'customerDeptId', valueClass: 'customer-row-field' })
-    + cardIcell('Клиент ДИД', cardCustomerReference('didClientId', cardDict.didClientGroups, t.didClientId, t.didClientName, edit('didClientId')), { editKey: e ? '' : 'didClientId', valueClass: 'customer-row-field' })
+    + cardIcell('Подразделение', cardCustomerReference('customerDeptId', cardDict?.departments, t.customerDeptId, t.customerDept, edit('customerDeptId')), { editKey: e ? '' : 'customerDeptId', valueClass: 'customer-row-field' })
+    + cardIcell('Клиент ДИД', cardCustomerReference('didClientId', cardDict?.didClientGroups, t.didClientId, t.didClientName, edit('didClientId')), { editKey: e ? '' : 'didClientId', valueClass: 'customer-row-field' })
     + cardIcell(taskFormLabel('channel'), fullEdit ? taskFormEditControl('channel', t.channel) : cardV(escapeHtml(t.channel)), { valueClass: 'customer-row-field' })
     + cardIcell(taskFormLabel('receivedAt'), fullEdit ? taskFormEditControl('receivedAt', t.receivedAt) : cardV(cardFmtDate(t.receivedAt)), { valueClass: 'customer-row-field' }) + '</div></div>';
   h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('tag') + '<span>Классификация</span></div><div class="cl-grid classify">'
     + cardIcell(taskFormLabel('project'), edit('project') ? taskFormEditControl('project', t.project) : '<span class="vchip">' + cardIcon('folder') + escapeHtml(t.project) + '</span>', { editKey: e ? '' : 'project', valueClass: 'classification-inline-field' })
     + cardIcell(taskFormLabel('type'), edit('type') ? taskFormEditControl('type', t.type) : '<span class="ttype">' + escapeHtml(t.type) + '</span>', { editKey: e ? '' : 'type', valueClass: 'classification-inline-field' })
+    + cardIcell('Метрический KR', '<span class="metric-kr-values">План: ' + (t.metricKrPlan == null ? '—' : cardFmtNum(t.metricKrPlan) + (t.metricKrUnit ? ' ' + escapeHtml(t.metricKrUnit) : '')) + ' <span class="vs">·</span> Факт: ' + (t.metricKrFact == null ? '—' : cardFmtNum(t.metricKrFact) + (t.metricKrUnit ? ' ' + escapeHtml(t.metricKrUnit) : '')) + '</span>')
     + cardIcell('Метки', cardChipsTags(tags, t.tags, 'tags', edit('tags')), { editKey: e ? '' : 'tags' }) + '</div></div></div>';
   return h + cardSec('Ключевые показатели', 'trend') + cardKpiBlockV30(t, fullEdit) + cardEffortDisclosure(t, fullEdit);
 }
@@ -6731,16 +6755,17 @@ function cardShowConflict(detail, app) {
   const rows = cardConflictRows(serverTask);
   const hasChanges = rows.length > 0;
   overlay.innerHTML = `
-    <div class="conflict-modal conflict-modal--wide">
-      <div class="conflict-modal-header">
+    <div class="conflict-modal conflict-modal--wide" role="alertdialog" aria-modal="true" aria-labelledby="card-conflict-title">
+      <div class="conflict-modal-header app-modal__header">
         <div class="conflict-icon">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
         <div>
-          <h3 class="conflict-title">Конфликт версий</h3>
+          <h3 class="conflict-title" id="card-conflict-title">Конфликт версий</h3>
           <p class="conflict-subtitle">Задача была изменена другим пользователем. Выберите значения для каждого изменённого поля.</p>
         </div>
       </div>
+      <div class="app-modal__body">
       <div class="conflict-versions">
         <span>Ваша версия: <strong>${submittedVer}</strong></span>
         <span class="conflict-arrow">&rarr;</span>
@@ -6751,11 +6776,12 @@ function cardShowConflict(detail, app) {
             <thead><tr><th style="width:28px;"></th><th style="width:28px;"></th><th>Поле</th><th>На сервере</th><th>Ваше значение</th></tr></thead>
             <tbody>${rows}</tbody></table></div>`
         : '<div class="diff-empty">Все поля совпадают — различий не обнаружено</div>'}
-      <div class="conflict-actions conflict-actions--row">
+      </div>
+      <div class="conflict-actions conflict-actions--row app-modal__footer">
         <button class="conflict-btn conflict-btn-primary" id="cc-btn-save" ${!hasChanges ? 'disabled' : ''}>Сохранить выбранные</button>
         <button class="conflict-btn conflict-btn-danger" id="cc-btn-force">Принудительно сохранить</button>
         <button class="conflict-btn conflict-btn-secondary" id="cc-btn-refresh">Обновить с сервера</button>
-        <button class="conflict-btn conflict-btn-ghost" id="cc-btn-cancel">Отмена</button>
+        <button class="conflict-btn conflict-btn-ghost" id="cc-btn-cancel" data-modal-close>Отмена</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);

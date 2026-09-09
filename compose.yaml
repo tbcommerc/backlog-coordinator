@@ -2,7 +2,7 @@ name: dmb-platform
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
     environment:
       POSTGRES_DB: dmb_backlog
       POSTGRES_USER: dmb
@@ -19,7 +19,7 @@ services:
       retries: 30
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c
     ports:
       - "6379:6379"
     volumes:

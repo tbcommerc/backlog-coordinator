@@ -106,6 +106,7 @@ const filterableColumns = [
   { key: 'owner_name', label: 'Исполнитель', columnKey: 'owner', group: 'Ответственные', type: 'select', valueKeys: ['owner_name', 'owner'] },
   { key: 'created_by_name', label: 'Автор задачи', columnKey: 'created_by', group: 'Ответственные', type: 'select', valueKeys: ['created_by_name', 'created_by'] },
   { key: 'business_customer', label: 'Бизнес-заказчик', columnKey: 'business_customer', group: 'Ответственные', type: 'select', valueKeys: ['business_customer_name', 'business_customer'] },
+  { key: 'did_client_group', label: 'Клиент ДИД', columnKey: 'did_client_group', group: 'Ответственные', type: 'select', valueKeys: ['did_client_group_name', 'did_client_group_id', 'did_client_group'] },
   { key: 'department_name', label: 'Подразделение', columnKey: 'department', group: 'Ответственные', type: 'select', valueKeys: ['department_name', 'department'] },
   { key: 'involved_teams', label: 'Вовлечённые команды', columnKey: 'involved_teams', group: 'Ответственные', type: 'select', valueKeys: ['involved_team_names', 'involved_teams'], multipleValue: true },
   { key: 'channel_name', label: 'Канал', columnKey: 'channel', group: 'Ответственные', type: 'select', valueKeys: ['channel_name', 'channel'] },
@@ -726,15 +727,22 @@ export function renderToolbar(scope, opts = {}) {
   const addTaskHtml = (canWrite && opts.addTask) ? `<button class="btn btn-primary btn-sm toolbar-add-task" id="${scope}-add-task-btn" title="Добавить задачу" aria-label="Добавить задачу"><i data-lucide="plus" style="width:15px;height:15px;flex-shrink:0;"></i><span class="toolbar-add-task-label">Добавить задачу</span></button>` : '';
   const savedViewsHtml = opts.savedViews ? renderSavedViewsControl(scope) : '';
 
-  const bulkOpsBtn = opts.onBulkOps ? `<button class="btn btn-secondary btn-sm square-icon qe-toggle" id="${scope}-bulk-open" title="Массовые операции" style="white-space:nowrap;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg></button>` : '';
+  const bulkOpsTitle = escapeAttr(opts.bulkOpsTitle || 'Массовые операции');
+  const bulkOpsMenuAttrs = opts.bulkOpsMenu ? ' aria-haspopup="menu" aria-expanded="false"' : '';
+  const bulkOpsBtn = opts.onBulkOps ? `<button class="btn btn-secondary btn-sm square-icon qe-toggle" id="${scope}-bulk-open" title="${bulkOpsTitle}" aria-label="${bulkOpsTitle}"${bulkOpsMenuAttrs} style="white-space:nowrap;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg></button>` : '';
 
   const quickEditBtn = opts.onQuickEdit ? `<button class="btn btn-secondary btn-sm square-icon qe-toggle" id="${scope}-inline-edit" title="Быстрое редактирование" style="white-space:nowrap;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>` : '';
 
   const importBtn = (canWrite && opts.onImport) ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-import-excel" title="Импорт из Excel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button>` : '';
-
-  const actionDivider = opts.viewToggle !== false && (quickEditBtn || bulkOpsBtn || importBtn || opts.excel !== false || opts.refresh !== false)
-    ? '<span class="toolbar-actions-divider" aria-hidden="true"></span>'
-    : '';
+  const exportBtn = opts.excel !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-export-excel" title="Экспорт в CSV"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>` : '';
+  const refreshBtn = opts.refresh !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-refresh" title="Обновить"><i data-lucide="refresh-ccw" style="width:15px;height:15px;"></i></button>` : '';
+  const hasNonTransferActions = !!(addTaskHtml || savedViewsHtml || opts.columnSettings || opts.viewToggle !== false || quickEditBtn || bulkOpsBtn || refreshBtn);
+  const transferActionsHtml = (importBtn || exportBtn) ? `
+      <span class="toolbar-import-export-group" role="group" aria-label="Импорт и экспорт">
+        ${hasNonTransferActions ? '<span class="toolbar-actions-divider" aria-hidden="true"></span>' : ''}
+        ${importBtn}
+        ${exportBtn}
+      </span>` : '';
 
   const hasActions = !!(addTaskHtml || bulkOpsBtn || quickEditBtn || importBtn || opts.viewToggle !== false || opts.columnSettings || opts.excel !== false || opts.refresh !== false);
 
@@ -744,12 +752,10 @@ export function renderToolbar(scope, opts = {}) {
       ${savedViewsHtml}
       ${opts.columnSettings ? columnSettingsHtml : ''}
       ${opts.viewToggle !== false ? viewToggleHtml : ''}
-      ${actionDivider}
       ${quickEditBtn}
       ${bulkOpsBtn}
-      ${importBtn}
-      ${opts.excel !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-export-excel" title="Экспорт в CSV"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>` : ''}
-      ${opts.refresh !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-refresh" title="Обновить"><i data-lucide="refresh-ccw" style="width:15px;height:15px;"></i></button>` : ''}
+      ${transferActionsHtml}
+      ${refreshBtn}
     </div>` : '';
 
   return `
@@ -1052,6 +1058,16 @@ export function initToolbarControls(scope, opts = {}) {
   }
 }
 
+function syncFilterCatalogViewportHeight(panel) {
+  if (!panel || panel.classList.contains('hidden')) return;
+  const viewportBottomGap = 8;
+  const availableHeight = Math.max(
+    0,
+    Math.floor(window.innerHeight - panel.getBoundingClientRect().top - viewportBottomGap),
+  );
+  panel.style.setProperty('--filter-catalog-available-height', `${availableHeight}px`);
+}
+
 export function initToolbar(scope, allTasks, onFilterChange) {
   filterChangeCallbacks[scope] = onFilterChange;
   allTasksCache[scope] = allTasks;
@@ -1106,7 +1122,14 @@ export function initToolbar(scope, allTasks, onFilterChange) {
         : '<polyline points="6 9 12 15 18 9"></polyline>';
     }
     updateStickyOffsets();
-    if (open) requestAnimationFrame(() => $(`f-${scope}-catalog-search`)?.focus());
+    if (open) {
+      requestAnimationFrame(() => {
+        syncFilterCatalogViewportHeight(ext);
+        $(`f-${scope}-catalog-search`)?.focus();
+      });
+    } else {
+      ext.style.removeProperty('--filter-catalog-available-height');
+    }
   }
 
   $(`btn-ext-${scope}`)?.addEventListener('click', () => {
@@ -1148,6 +1171,7 @@ export function initToolbar(scope, allTasks, onFilterChange) {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       renderFilterButtons(scope, allTasks);
+      syncFilterCatalogViewportHeight($(`f-${scope}-ext-filters`));
     }, 150);
   });
 
@@ -1546,6 +1570,8 @@ export function updateStickyOffsets() {
   requestAnimationFrame(() => {
     const toolbar = document.querySelector('.sticky-toolbar');
     if (!toolbar) return;
+    document.querySelectorAll('.filter-catalog-panel:not(.hidden)')
+      .forEach(syncFilterCatalogViewportHeight);
     if (toolbar !== observedToolbar && typeof ResizeObserver !== 'undefined') {
       toolbarOffsetObserver?.disconnect();
       observedToolbar = toolbar;

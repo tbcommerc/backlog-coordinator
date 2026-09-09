@@ -44,11 +44,13 @@ class RetrievalResult:
             return f"{self.record.title} · {self.record.section}"
         return self.record.title or self.record.source_id
 
-    def to_dict(self, text_limit: int | None = 600) -> dict[str, Any]:
+    def to_dict(self, text_limit: int | None = None) -> dict[str, Any]:
         """Serialize with legacy keys used by Q&A and requirement drafts."""
         text = self.record.content
         if text_limit is not None:
-            text = text[:text_limit]
+            if len(text) > text_limit:
+                # Mark display truncation explicitly; the default retains the full record.
+                text = text[:text_limit].rsplit(" ", 1)[0] + " … [фрагмент сокращён]"
         return {
             "doc_id": self.record.source_id,
             "source": self.source_label,

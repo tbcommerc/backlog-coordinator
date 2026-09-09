@@ -74,13 +74,18 @@ export function clearFieldError(field) {
 
 export function confirmAction({ title = 'Подтвердите действие', message = '', confirmText = 'Подтвердить', cancelText = 'Отмена', destructive = false } = {}) {
   return new Promise((resolve) => {
+    const focusOrigin = document.activeElement;
     const host = document.getElementById('feedback-dialog-container') || document.body;
     const overlay = document.createElement('div');
     overlay.className = 'feedback-confirm-overlay';
     overlay.innerHTML = `
-      <div class="feedback-confirm" role="alertdialog" aria-modal="true" aria-labelledby="feedback-confirm-title" aria-describedby="feedback-confirm-message">
-        <h3 id="feedback-confirm-title">${escapeHtml(title)}</h3>
-        <p id="feedback-confirm-message">${escapeHtml(message)}</p>
+      <div class="feedback-confirm app-modal app-modal--small" role="alertdialog" aria-modal="true" aria-labelledby="feedback-confirm-title" aria-describedby="feedback-confirm-message">
+        <div class="feedback-confirm-header">
+          <h3 id="feedback-confirm-title">${escapeHtml(title)}</h3>
+        </div>
+        <div class="feedback-confirm-body">
+          <p id="feedback-confirm-message">${escapeHtml(message)}</p>
+        </div>
         <div class="feedback-confirm-actions">
           <button type="button" class="btn btn-secondary" data-feedback-cancel>${escapeHtml(cancelText)}</button>
           <button type="button" class="btn ${destructive ? 'btn-danger' : 'btn-primary'}" data-feedback-confirm>${escapeHtml(confirmText)}</button>
@@ -89,7 +94,16 @@ export function confirmAction({ title = 'Подтвердите действие
     host.appendChild(overlay);
     const cancel = overlay.querySelector('[data-feedback-cancel]');
     const confirm = overlay.querySelector('[data-feedback-confirm]');
-    const finish = (answer) => { overlay.remove(); resolve(answer); };
+    let settled = false;
+    const finish = (answer) => {
+      if (settled) return;
+      settled = true;
+      overlay.remove();
+      if (focusOrigin?.isConnected && typeof focusOrigin.focus === 'function') {
+        window.requestAnimationFrame(() => focusOrigin.focus());
+      }
+      resolve(answer);
+    };
     cancel.addEventListener('click', () => finish(false));
     confirm.addEventListener('click', () => finish(true));
     overlay.addEventListener('click', (event) => { if (event.target === overlay) finish(false); });

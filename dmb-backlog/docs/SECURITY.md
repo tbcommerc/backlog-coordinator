@@ -2,7 +2,7 @@
 title: Безопасность Backlog coordinator
 scope: as-is
 status: verified
-last_verified: 2026-09-01
+last_verified: 2026-09-09
 evidence:
   - backend/auth.py
   - backend/routers/auth_router.py
@@ -13,6 +13,7 @@ evidence:
   - backend/event_outbox.py
   - backend/telemetry.py
   - backend/config.py
+  - backend/attachment_scanner.py
   - frontend/js/api.js
   - frontend/js/auth.js
   - frontend/js/htmlUtils.js
@@ -44,8 +45,11 @@ Login, refresh и logout вызывают `_require_trusted_origin`. При `DEB
 
 - `SECRET_KEY` отсутствует, равен известному dev-значению или короче 32 символов;
 - `AGENT_SECRET` отсутствует или равен известному dev-значению;
-- не настроен `REDIS_URL`.
-- `DATABASE_URL` указывает на SQLite.
+- `PRIORITISER_SECRET` отсутствует или равен известному dev-значению;
+- не настроен `REDIS_URL`;
+- `DATABASE_URL` указывает на SQLite;
+- каталог вложений остался локальным `backend/uploads` вместо общего хранилища;
+- не задан `CLAMAV_HOST`.
 
 Файл `.env` исключён из Git. Реальный процесс управления и ротации секретов вне репозитория не подтверждён.
 
@@ -73,6 +77,12 @@ Backend использует несколько уровней проверок:
 
 Точная матрица ролей не фиксируется здесь вручную: источниками являются `backend/auth.py`, зарегистрированные dependencies роутеров и `backend/tests/test_security_contracts.py`. Клиентское скрытие меню и маршрутов не является авторизацией.
 
+Межсервисные вызовы разделены по capability secrets: BA agent проверяет
+`X-Agent-Secret`, Prioritiser — `X-Prioritiser-Secret`, а его `/admin/*` требует
+независимый `X-Methodologist-Secret`. Production-запуск backend отклоняет
+локальные значения секретов; `/health` Prioritiser остаётся публичным только
+внутри закрытой app network.
+
 ## Refresh cookie и CSRF
 
 Система использует cookie только для refresh-токена, поэтому утверждение «cookie не используются» неверно. Риск CSRF для auth endpoints снижается сочетанием:
@@ -96,7 +106,9 @@ Frontend активно использует `innerHTML`, поэтому нел�
 
 Наличие экранирования подтверждается unit-тестами, включая `frontend/tests/htmlUtils.test.mjs` и контрактные проверки модулей. При добавлении нового HTML-шаблона каждое динамическое значение должно быть явно экранировано или назначено через безопасное DOM API.
 
-Политика CSP в приложении не подтверждена. Пример Nginx из исторического документа не является реализованной защитой.
+Production Nginx задаёт `frame-ancestors 'none'`, `object-src 'none'`,
+`base-uri 'self'`, `form-action 'self'`, а также `nosniff`, `DENY`,
+`same-origin` Referrer-Policy и запрет camera/microphone/geolocation.
 
 ## SQL и схема БД
 
@@ -107,10 +119,16 @@ Frontend активно использует `innerHTML`, поэтому нел�
 ## Вложения
 
 - Файлы сохраняются под сгенерированным именем в `backend/uploads/{task_id}`.
-- Размер загрузки ограничен 50 MiB.
+- Размер загрузки ограничен 50 MiB и контролируется при потоковой записи чанками 1 MiB.
+- Активные исполняемые расширения запрещены; для PDF, PNG, JPEG и ZIP/Office
+  проверяется сигнатура содержимого.
 - Скачивание выполняется через авторизованный endpoint с проверкой доступа к задаче.
 - Путь скачивания нормализуется и проверяется через `os.path.commonpath`.
-- MIME type берётся из данных загрузки; антивирусная проверка содержимого не подтверждена.
+- MIME type остаётся метаданными клиента и не заменяет сигнатурные проверки.
+- При заданном `CLAMAV_HOST` файл до фиксации метаданных передаётся в ClamAV по
+  протоколу INSTREAM; `FOUND`, неожиданный ответ и недоступность сканера прерывают
+  загрузку. В production `CLAMAV_HOST` обязателен, в локальном DEBUG-контуре
+  отсутствие адреса явно отключает внешний сканер.
 
 ## Аудит и журналы
 
@@ -128,11 +146,13 @@ Frontend активно использует `innerHTML`, поэтому нел�
 
 ## Подтверждённые ограничения
 
-- Нет универсального CSP в коде приложения.
-- Нет подтверждённого antivirus/content scanning для вложений.
+- CSP задаётся production Nginx; при обходе этого ingress заголовки отсутствуют.
+- Эффективность антивирусной проверки зависит от внешнего ClamAV; его базы,
+  обновление сигнатур и эксплуатационный мониторинг находятся вне приложения.
 - Memory rate limiter не подходит для multi-instance.
 - Audit middleware не атомарен с бизнес-транзакцией.
-- Health endpoint не проверяет зависимости.
+- `/api/v1/health` намеренно является liveness без зависимостей;
+  `/api/v1/health/ready` проверяет БД, Redis, общее хранилище, BA Agent и Prioritiser.
 - Nginx, firewall, TLS termination, SIEM, backup и incident-response процессы не представлены исполняемой конфигурацией репозитория.
 
 ## Проверки
@@ -144,6 +164,7 @@ Frontend активно использует `innerHTML`, поэтому нел�
 - `backend/tests/test_auth_cookie_policy.py`;
 - `backend/tests/test_rate_limit.py`;
 - `backend/tests/test_admin_safety.py`;
+- `backend/tests/test_attachment_scanner.py`;
 - `frontend/tests/htmlUtils.test.mjs`;
 - `frontend/tests/moduleContracts.test.mjs`.
 

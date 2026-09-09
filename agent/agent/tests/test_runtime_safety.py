@@ -1,7 +1,8 @@
 import pytest
 
+import agent.llm.rephrase as rephrase_module
 from agent.config import DEFAULT_AGENT_SECRET, settings, validate_runtime_settings
-from agent.llm.rephrase import _preserves_invariants
+from agent.llm.rephrase import _preserves_invariants, rephrase_stream
 
 
 def test_rephrase_rejects_changed_numbers():
@@ -11,6 +12,47 @@ def test_rephrase_rejects_changed_numbers():
 def test_rephrase_preserves_list_structure():
     assert _preserves_invariants("- Первый\n- Второй", "- Один\n- Два")
     assert not _preserves_invariants("- Первый\n- Второй", "Первый и второй")
+
+
+def test_rephrase_stream_forwards_provider_chunks(monkeypatch):
+    class Provider:
+        def available(self):
+            return True
+
+        def chat_stream(self, *args, **kwargs):
+            yield "Срок — "
+            yield "5 дней"
+
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "openai_compat")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "provider-key")
+    monkeypatch.setattr(rephrase_module, "OpenAICompatProvider", Provider)
+    monkeypatch.setattr(rephrase_module, "_cooldown_until", 0.0)
+    deltas = []
+
+    final, streamed = rephrase_stream("Срок — 5 дней", deltas.append)
+
+    assert deltas == ["Срок — ", "5 дней"]
+    assert streamed == "Срок — 5 дней"
+    assert final == streamed
+
+
+def test_rephrase_stream_returns_safe_original_after_invalid_stream(monkeypatch):
+    class Provider:
+        def available(self):
+            return True
+
+        def chat_stream(self, *args, **kwargs):
+            yield "Срок — 7 дней"
+
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "openai_compat")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "provider-key")
+    monkeypatch.setattr(rephrase_module, "OpenAICompatProvider", Provider)
+    monkeypatch.setattr(rephrase_module, "_cooldown_until", 0.0)
+
+    final, streamed = rephrase_stream("Срок — 5 дней", lambda _delta: None)
+
+    assert streamed == "Срок — 7 дней"
+    assert final == "Срок — 5 дней"
 
 
 def test_production_rejects_default_secret(monkeypatch):

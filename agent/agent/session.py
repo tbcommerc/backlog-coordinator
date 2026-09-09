@@ -7,7 +7,7 @@ import json
 import threading
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import Column, Integer, MetaData, String, Table, Text, create_engine, delete, inspect, select, text, update
@@ -32,6 +32,9 @@ def _slot_from_dict(d: dict) -> Slot:
         source=d.get("source", ""),
         confirmed=d.get("confirmed", False),
         assumption=d.get("assumption", False),
+        evidence=d.get("evidence", ""),
+        message_id=d.get("message_id", ""),
+        provenance=d.get("provenance", []),
     )
 
 
@@ -49,6 +52,9 @@ def state_to_dict(state: DialogueState) -> dict:
             "source": s.source,
             "confirmed": s.confirmed,
             "assumption": s.assumption,
+            "evidence": s.evidence,
+            "message_id": s.message_id,
+            "provenance": s.provenance,
         } for k, s in state.slots.items()},
         "history": state.history,
         "ood_strikes": state.ood_strikes,
@@ -110,6 +116,8 @@ def state_to_dict(state: DialogueState) -> dict:
         "last_user_signal": state.last_user_signal,
         "last_extracted_slots": state.last_extracted_slots,
         "last_agent_decision": state.last_agent_decision,
+        "requirement_conflicts": state.requirement_conflicts,
+        "requirement_assumptions": state.requirement_assumptions,
         "requirement_shape": state.requirement_shape,
     }
 
@@ -180,6 +188,8 @@ def state_from_dict(data: dict) -> DialogueState:
         last_user_signal=data.get("last_user_signal", ""),
         last_extracted_slots=data.get("last_extracted_slots", []),
         last_agent_decision=data.get("last_agent_decision", {}),
+        requirement_conflicts=data.get("requirement_conflicts", []),
+        requirement_assumptions=data.get("requirement_assumptions", []),
         requirement_shape=data.get("requirement_shape", ""),
     )
     slots = {}
@@ -188,6 +198,24 @@ def state_from_dict(data: dict) -> DialogueState:
     state.slots = slots
     state.__post_init__()
     return state
+
+
+def _session_summary_phase(state: DialogueState) -> str:
+    """Return the user-visible lifecycle phase from authoritative state fields.
+
+    Older rows may contain a stale ``state.phase`` because runtime responses used
+    to compute the phase without persisting it. Draft/review/finished flags are
+    therefore checked before the stored phase.
+    """
+    if state.review_status and state.review_task_id:
+        return "sent_for_review"
+    if state.draft:
+        return "draft_ready"
+    if state.finished:
+        return "done"
+    if state.summary_text:
+        return "confirm"
+    return state.phase or "welcome"
 
 
 class SessionStore:
@@ -367,11 +395,16 @@ class SessionStore:
     def get_cached_response(self, session_id: str, message_id: str) -> dict | None:
         if not message_id:
             return None
+        cutoff = (
+            datetime.now(timezone.utc)
+            - timedelta(days=max(1, settings.MESSAGE_RECEIPT_RETENTION_DAYS))
+        ).isoformat()
         with self._engine.connect() as conn:
             row = conn.execute(
                 select(self._message_receipts.c.response_json).where(
                     self._message_receipts.c.session_id == session_id,
                     self._message_receipts.c.message_id == message_id,
+                    self._message_receipts.c.created_at >= cutoff,
                 )
             ).first()
         return json.loads(row[0]) if row else None
@@ -386,6 +419,15 @@ class SessionStore:
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         with self._engine.begin() as conn:
+            cutoff = (
+                datetime.now(timezone.utc)
+                - timedelta(days=max(1, settings.MESSAGE_RECEIPT_RETENTION_DAYS))
+            ).isoformat()
+            conn.execute(
+                delete(self._message_receipts).where(
+                    self._message_receipts.c.created_at < cutoff
+                )
+            )
             if self._engine.dialect.name == "postgresql":
                 stmt = postgresql_insert(self._message_receipts).values(**values)
                 conn.execute(stmt.on_conflict_do_nothing())
@@ -403,6 +445,11 @@ class SessionStore:
             with self._engine.begin() as conn:
                 conn.execute(
                     delete(self._sessions).where(self._sessions.c.session_id == session_id)
+                )
+                conn.execute(
+                    delete(self._message_receipts).where(
+                        self._message_receipts.c.session_id == session_id
+                    )
                 )
 
     def list_for_user(self, user_id: int, limit: int = 50) -> list[dict]:
@@ -427,14 +474,27 @@ class SessionStore:
             title = "Новый диалог"
             phase = ""
             archived = False
+            has_draft = False
+            last_message_role = ""
+            needs_user_response = False
             try:
                 state = state_from_dict(json.loads(state_json))
-                phase = state.phase
+                phase = _session_summary_phase(state)
                 archived = state.archived
                 for entry in state.history:
                     if entry.get("role") == "user" and entry.get("content"):
                         title = entry["content"].strip().replace("\n", " ")[:80]
                         break
+                has_draft = bool(state.draft)
+                last_message_role = next(
+                    (entry.get("role", "") for entry in reversed(state.history) if entry.get("content")),
+                    "",
+                )
+                needs_user_response = (
+                    last_message_role == "assistant"
+                    and phase not in {"draft_ready", "sent_for_review", "done"}
+                    and not state.finished
+                )
             except Exception:
                 pass
             result.append({
@@ -444,6 +504,9 @@ class SessionStore:
                 "updated_at": updated_at,
                 "last_message_at": last_message_at,
                 "archived": archived,
+                "has_draft": has_draft,
+                "last_message_role": last_message_role,
+                "needs_user_response": needs_user_response,
             })
         return result
 

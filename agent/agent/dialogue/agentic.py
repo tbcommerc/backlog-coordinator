@@ -10,11 +10,12 @@ from dataclasses import dataclass, field
 import hashlib
 import json
 import logging
+import math
 import re
 
 from ..config import settings
 from ..llm.factory import get_llm
-from .state import COLLECTION_SLOTS, INTENTS, SLOT_LABELS, DialogueState
+from .state import COLLECTION_SLOTS, INTENTS, SLOT_LABELS, DialogueState, value_status
 
 logger = logging.getLogger("agentic_ba")
 
@@ -24,6 +25,11 @@ class LLMUnavailable(RuntimeError):
 
 ALLOWED_ACTIONS = {"ask", "reflect", "summarize", "draft", "answer"}
 ALLOWED_SLOTS = set(COLLECTION_SLOTS) | {"need_statement", "open_questions"}
+ALLOWED_OPERATIONS = {"add", "replace", "remove", "confirm", "defer"}
+COMPOUND_SLOTS = {
+    "users", "scenarios", "business_rules", "acceptance_criteria", "data_integrations",
+    "dependencies", "risks", "regulatory_flags", "open_questions",
+}
 
 SYSTEM = """Ты — ведущий бизнес-аналитик платформы сопровождения инвестиционных сделок.
 Веди естественное исследовательское интервью, а не анкету. Извлекай все явно
@@ -52,8 +58,9 @@ SYSTEM = """Ты — ведущий бизнес-аналитик платфор
 Не предлагай варианты ответов и не повторяй уже известное. Верни только JSON.
 
 Соблюдай семантику полей:
-- role — только пользовательская роль, непосредственно работающая с системой;
-  согласующая группа, комиссия и руководство не являются role.
+- role — пользовательская роль, непосредственно работающая с системой.
+  Согласующий менеджер или член комиссии тоже может быть пользователем; отличай
+  участника работы в системе от внешней стороны, принимающей результат проекта.
 - process — бизнес-процесс, в котором используется система; способ внедрения,
   этапность и «один релиз» не являются process.
 - scenarios — действия пользователя и реакция системы; перечень экранов, объём
@@ -73,6 +80,17 @@ SYSTEM = """Ты — ведущий бизнес-аналитик платфор
 и confidence не выше 0.6. Не расширяй состав групп и перечень объектов за
 пределы пользовательской цитаты.
 
+operation определяет изменение факта: add добавляет новый элемент без удаления
+старых; replace заменяет прежнее значение целиком только по явной правке
+пользователя; remove удаляет указанное прежнее значение по прямому указанию;
+confirm подтверждает ранее обсуждённое значение; defer сохраняет неизвестность
+или неприменимость (answer_status=unknown|not_applicable|deferred).
+По умолчанию используй add. При дополнении списка возвращай только добавляемый
+элемент. При replace верни полное итоговое значение. У replace/remove/confirm
+цитата должна быть из текущей реплики. Не считай повторение гипотезы её
+подтверждением. Учитывай requirement_state: unknown и deferred уже обсуждались,
+assumption не является установленным фактом. Нерешённые conflicts не забывай.
+
 Допустимые поля: intent, need_statement, role, department, process, product,
 module, as_is, to_be, users, scenarios, business_rules, acceptance_criteria,
 data_integrations, value, priority, regulatory_flags, dependencies, risks,
@@ -80,7 +98,7 @@ open_questions.
 
 Структура:
 {"facts":[{"field":"...","value":"...","evidence":"точная цитата пользователя","confidence":0.0,"assumption":false,
-"correction":false}],"next_action":"ask|reflect|summarize|draft|answer",
+"correction":false,"operation":"add","answer_status":"known"}],"next_action":"ask|reflect|summarize|draft|answer",
 "focus":"поле или пустая строка","reply":"одна естественная реплика",
 "ready_for_draft":false,"use_knowledge_base":false,"knowledge_query":"",
 "assumptions":[],"contradictions":[]}
@@ -98,6 +116,11 @@ class Fact:
     assumption: bool = False
     correction: bool = False
     evidence: str = ""
+    operation: str = ""  # Empty supports decisions from older providers
+    answer_status: str = "known"
+    message_id: str = ""
+    grounded: bool = False
+    current_support: bool = False
 
 
 @dataclass
@@ -112,6 +135,8 @@ class TurnDecision:
     use_knowledge_base: bool = False
     knowledge_query: str = ""
     source: str = "fallback"
+    application_results: list[dict] = field(default_factory=list)
+    _guard_key: tuple | None = field(default=None, repr=False)
 
     def as_dict(self) -> dict:
         return {
@@ -125,6 +150,7 @@ class TurnDecision:
             "use_knowledge_base": self.use_knowledge_base,
             "knowledge_query": self.knowledge_query,
             "source": self.source,
+            "application_results": self.application_results,
         }
 
 
@@ -138,37 +164,73 @@ def _json_object(text: str) -> dict:
 
 
 def _validate(data: dict) -> TurnDecision:
+    """Validate JSON types without truthiness or null-to-string coercion."""
+    if not isinstance(data, dict):
+        raise ValueError("decision must be an object")
+
+    def boolean(raw, key, default=False):
+        value = raw.get(key, default)
+        if type(value) is not bool:
+            raise ValueError(f"{key} must be a boolean")
+        return value
+
+    def string(raw, key, default="", limit=12000):
+        value = raw.get(key, default)
+        if not isinstance(value, str) or len(value) > limit:
+            raise ValueError(f"{key} must be a bounded string")
+        return value.strip()
+
+    def strings(key):
+        values = data.get(key, [])
+        if not isinstance(values, list) or len(values) > 50:
+            raise ValueError(f"{key} must be a bounded list")
+        if any(not isinstance(item, str) or len(item) > 4000 for item in values):
+            raise ValueError(f"{key} must contain strings")
+        return [item.strip() for item in values if item.strip()]
+
+    raw_facts = data.get("facts", [])
+    if not isinstance(raw_facts, list) or len(raw_facts) > 100:
+        raise ValueError("facts must be a bounded list")
     facts = []
-    for raw in data.get("facts", []) if isinstance(data.get("facts"), list) else []:
-        if not isinstance(raw, dict) or raw.get("field") not in ALLOWED_SLOTS:
+    for raw in raw_facts:
+        if not isinstance(raw, dict):
+            raise ValueError("fact must be an object")
+        if not isinstance(raw.get("field"), str):
+            raise ValueError("field must be a string")
+        if raw.get("field") not in ALLOWED_SLOTS:
             continue
-        value = str(raw.get("value", "")).strip()
-        if not value:
-            continue
-        try:
-            confidence = min(1.0, max(0.0, float(raw.get("confidence", 0.8))))
-        except (TypeError, ValueError):
-            confidence = 0.8
+        operation = string(raw, "operation")
+        if operation and operation not in ALLOWED_OPERATIONS:
+            raise ValueError("unsupported fact operation")
+        status = string(raw, "answer_status", "known")
+        if status not in {"known", "unknown", "not_applicable", "deferred"}:
+            raise ValueError("unsupported answer_status")
+        value = string(raw, "value")
+        if not value and operation not in {"remove", "confirm", "defer"}:
+            raise ValueError("fact value must not be empty")
+        confidence = raw.get("confidence", 0.8)
+        if type(confidence) not in (int, float) or not math.isfinite(confidence) or not 0 <= confidence <= 1:
+            raise ValueError("confidence must be a finite number between zero and one")
         facts.append(Fact(
             field=raw["field"], value=value, confidence=confidence,
-            assumption=bool(raw.get("assumption", False)),
-            correction=bool(raw.get("correction", False)),
-            evidence=str(raw.get("evidence", "")).strip(),
+            assumption=boolean(raw, "assumption"),
+            correction=boolean(raw, "correction"),
+            evidence=string(raw, "evidence", limit=4000),
+            operation=operation, answer_status=status,
         ))
-    action = str(data.get("next_action", "ask"))
+    action = string(data, "next_action", "ask")
     if action not in ALLOWED_ACTIONS:
         action = "ask"
-    focus = str(data.get("focus", ""))
+    focus = string(data, "focus")
     if focus not in ALLOWED_SLOTS:
         focus = ""
     return TurnDecision(
         facts=facts, next_action=action, focus=focus,
-        reply=str(data.get("reply", "")).strip(),
-        assumptions=[str(x) for x in data.get("assumptions", []) if str(x).strip()],
-        contradictions=[str(x) for x in data.get("contradictions", []) if str(x).strip()],
-        ready_for_draft=bool(data.get("ready_for_draft", False)),
-        use_knowledge_base=bool(data.get("use_knowledge_base", False)),
-        knowledge_query=str(data.get("knowledge_query", "")).strip(),
+        reply=string(data, "reply"),
+        assumptions=strings("assumptions"), contradictions=strings("contradictions"),
+        ready_for_draft=boolean(data, "ready_for_draft"),
+        use_knowledge_base=boolean(data, "use_knowledge_base"),
+        knowledge_query=string(data, "knowledge_query", limit=4000),
         source="llm",
     )
 
@@ -181,6 +243,12 @@ class AgenticBA:
         "нуж", "хочу", "треб", "измен", "добав", "убрат", "удал", "сдела",
         "перекрас", "редизайн", "дизайн", "исправ", "автоматиз", "доработ",
     )
+
+    @staticmethod
+    def enabled() -> bool:
+        """Whether the optional LLM decision layer can be used safely."""
+        llm = get_llm()
+        return getattr(llm, "name", "mock") != "mock" and bool(llm.available())
 
     @staticmethod
     def _normalise_evidence(value: str) -> str:
@@ -200,19 +268,68 @@ class AgenticBA:
     @classmethod
     def _semantic_rejection(cls, fact: Fact) -> str:
         low = fact.value.lower()
-        if fact.field == "role" and any(marker in low for marker in cls._ROLE_NON_USER):
+        if fact.field == "role" and re.fullmatch(
+            r"(?:совместная |приёмочная |приемочная )?(?:рабочая группа|комиссия|руководство)", low
+        ):
             return "согласующая сторона не является пользовательской ролью"
-        if fact.field == "process" and any(marker in low for marker in cls._ROLLOUT):
+        if fact.field == "process" and re.search(
+            r"^(?:одномоментн\w*|поэтапн\w*|один релиз|этап внедрения)|(?:вся|всей) платформ\w*$", low
+        ):
             return "стратегия внедрения не является бизнес-процессом"
-        if fact.field == "scenarios" and any(marker in low for marker in cls._ROLLOUT):
+        if fact.field == "scenarios" and re.search(r"(?:за один релиз|одномоментный переход)$", low):
             return "план релиза не является пользовательским сценарием"
-        if fact.field == "value" and any(marker in low for marker in cls._VALUE_NON_EFFECT):
+        if fact.field == "value" and low.strip(".! ") in cls._VALUE_NON_EFFECT:
             return "источник инициативы не является бизнес-ценностью"
         return ""
 
     @classmethod
+    def _value_supported(cls, value: str, evidence: str) -> bool:
+        """Conservative lexical support; this is not a claim of semantic entailment."""
+        value, evidence = cls._normalise_evidence(value), cls._normalise_evidence(evidence)
+        if value and value in evidence:
+            return True
+        if not value or not evidence:
+            return False
+        if set(re.findall(r"\d+(?:[.,]\d+)?", value)) - set(re.findall(r"\d+(?:[.,]\d+)?", evidence)):
+            return False
+        if re.search(r"\bне\b", evidence) and not re.search(r"\bне\b", value):
+            return False
+        ignored = {"нужно", "должен", "должна", "система", "платформа", "пользователь", "может"}
+        words = [word for word in re.findall(r"[a-zа-яё]+", value) if len(word) > 2 and word not in ignored]
+        source = {word[:5] for word in re.findall(r"[a-zа-яё]+", evidence) if len(word) > 2}
+        return bool(words) and sum(word[:5] in source for word in words) / len(words) >= 0.75
+
+    @classmethod
+    def _contextual_absence(cls, state: DialogueState, message: str, fact: Fact) -> bool:
+        """Interpret a closed-question 'no' without inventing entities or rules."""
+        absent_values = {
+            "data_integrations": {"интеграции не нужны", "нет интеграций", "без интеграций", "интеграции не требуются"},
+            "dependencies": {"зависимостей нет", "нет зависимостей", "зависимости отсутствуют"},
+            "risks": {"рисков нет", "нет рисков", "риски не выявлены"},
+            "regulatory_flags": {"нет регуляторных аспектов", "регуляторные аспекты отсутствуют", "регуляторных ограничений нет"},
+        }
+        if state.last_asked_slot != fact.field or fact.field not in absent_values:
+            return False
+        if cls._normalise_evidence(message).strip(".!? ") != "нет":
+            return False
+        if cls._normalise_evidence(fact.evidence).strip(".!? ") != "нет":
+            return False
+        if cls._normalise_evidence(fact.value).strip(".!? ") not in absent_values[fact.field]:
+            return False
+        question = next((item.get("content", "") for item in reversed(state.history)
+                         if item.get("role") == "assistant"), "").lower()
+        subjects = {"data_integrations": "интеграц", "dependencies": "зависим", "risks": "риск", "regulatory_flags": "регулятор"}
+        return subjects[fact.field] in question and "?" in question and not re.search(r"\bне\b", question) and bool(re.search(
+            r"(?:^|[.!]\s*)(?:нужн[аыо]?\b|требу\w*\s+ли\b|есть\s+ли\b|имеются\s+ли\b|предусмотрены\s+ли\b)", question))
+
+    @classmethod
     def guard_facts(cls, state: DialogueState, message: str, decision: TurnDecision) -> None:
         """Reject semantic slot mismatches and calibrate unsupported confidence."""
+        guard_key = (id(state), len(state.history), message)
+        if decision._guard_key == guard_key:
+            return
+        decision._guard_key = guard_key
+        decision.application_results = []
         accepted = []
         has_need_statement = bool(state.get("need_statement")) or any(
             fact.field == "need_statement" for fact in decision.facts
@@ -231,19 +348,76 @@ class AgenticBA:
                         "Тип обращения не заполнен: модель вернула описание потребности вместо кода типа."
                     )
                     continue
-            rejection = cls._semantic_rejection(fact)
+            rejection = cls._semantic_rejection(fact) if fact.operation not in {"remove", "confirm", "defer"} else ""
             if rejection:
-                decision.contradictions.append(
-                    f"{SLOT_LABELS.get(fact.field, fact.field)} не заполнено: {rejection}."
-                )
+                note = f"{SLOT_LABELS.get(fact.field, fact.field)} не заполнено: {rejection}."
+                if note not in decision.contradictions:
+                    decision.contradictions.append(note)
+                decision.application_results.append({
+                    "field": fact.field, "operation": fact.operation or "add",
+                    "status": "rejected", "reason": rejection,
+                })
                 continue
-            if fact.evidence and not cls._evidence_is_supported(state, message, fact.evidence):
+            operation = fact.operation or ("replace" if fact.correction else "add")
+            current = state.get(fact.field) or ""
+            support_value = fact.value
+            if operation == "add" and fact.field in COMPOUND_SLOTS and current:
+                old_parts = {part.strip().casefold() for part in re.split(r"[;\n]+", str(current))}
+                additions = [part.strip() for part in re.split(r"[;\n]+", fact.value) if part.strip().casefold() not in old_parts]
+                if additions:
+                    support_value = "; ".join(additions)
+            if not fact.evidence and support_value and cls._normalise_evidence(support_value) in cls._normalise_evidence(message):
+                fact.evidence = support_value
+            elif support_value and cls._normalise_evidence(support_value) in cls._normalise_evidence(message) \
+                    and not cls._value_supported(support_value, fact.evidence):
+                fact.evidence = support_value
+            intent_markers = {
+                "feature": ("добав", "нуж", "созда", "новый", "новая", "хочу"),
+                "change": ("измен", "исправ", "доработ", "обнов"),
+                "problem": ("неудоб", "проблем", "меша"),
+                "incident": ("ошиб", "сбой", "не работа", "падает"),
+                "clarification": ("как ", "почему", "объясн", "что "),
+            }
+            if fact.field == "intent" and not fact.evidence and any(
+                marker in message.lower() for marker in intent_markers.get(fact.value, ())
+            ):
+                fact.evidence = message
+            exact_source = bool(fact.evidence) and cls._evidence_is_supported(state, message, fact.evidence)
+            fact.current_support = bool(fact.evidence) and cls._normalise_evidence(fact.evidence) in cls._normalise_evidence(message)
+            fact.grounded = exact_source and cls._value_supported(support_value, fact.evidence)
+            if exact_source and cls._contextual_absence(state, message, fact):
+                fact.grounded = True
+            if fact.field == "intent" and exact_source and any(
+                marker in fact.evidence.lower() for marker in intent_markers.get(fact.value, ())
+            ):
+                fact.grounded = True
+            if re.search(r"\b(?:не уверен|не уверена|возможно|предполагаю|наверное)\b", message.lower()):
+                fact.grounded = False
+            if operation in {"remove", "confirm", "defer"} and fact.current_support:
+                # The quote describes the operation; it need not repeat the stored value.
+                markers = {"remove": ("убер", "убрат", "удал", "исключ", "не нуж", "отмен"),
+                           "defer": ("не знаю", "не уверен", "уточн", "позже", "не примен", "не отно")}
+                quote = fact.evidence.lower().strip(".!? ")
+                if operation == "confirm":
+                    fact.grounded = bool(re.search(r"\bподтверждаю\b", quote) or re.fullmatch(
+                        r"(?:да|верно|вс[её] верно|согласен|согласна|правильно|так)", quote))
+                    if re.search(r"\bне\b", quote):
+                        fact.grounded = False
+                else:
+                    fact.grounded = any(marker in quote for marker in markers[operation])
+                    if operation == "remove" and re.search(r"\bне (?:нужно |надо |следует )?(?:удал|убир|убра|исключ|отмен)", quote):
+                        fact.grounded = False
+            fact.current_support = fact.current_support and fact.grounded
+            if not fact.grounded:
                 fact.assumption = True
                 fact.confidence = min(fact.confidence, 0.6)
-            elif not fact.evidence and not fact.assumption:
-                # Старые/совместимые провайдеры могут не вернуть evidence. Факт
-                # сохраняется, но больше не получает ложную абсолютную уверенность.
-                fact.confidence = min(fact.confidence, 0.8)
+            if fact.assumption:
+                fact.confidence = min(fact.confidence, 0.6)
+            fact.message_id = ""
+            if exact_source:
+                origin = next((item for item in reversed(state.history)
+                               if item.get("role") == "user" and cls._normalise_evidence(fact.evidence) in cls._normalise_evidence(item.get("content", ""))), {})
+                fact.message_id = origin.get("message_id", "")
             accepted.append(fact)
         decision.facts = accepted
 
@@ -304,9 +478,21 @@ class AgenticBA:
             raise LLMUnavailable("LLM provider is not configured")
         payload = {
             "requirement": {k: s.value for k, s in state.slots.items() if s.status == "filled"},
+            "requirement_state": {
+                k: {"value": s.value, "status": s.status, "confidence": s.confidence,
+                    "assumption": s.assumption, "confirmed": s.confirmed,
+                    "evidence": s.evidence, "message_id": s.message_id,
+                    "provenance": [{"evidence": item.get("evidence", ""),
+                                    "message_id": item.get("message_id", ""),
+                                    "assumption": item.get("assumption", False)} for item in s.provenance]}
+                for k, s in state.slots.items() if s.status != "empty" or s.value is not None
+            },
+            "requirement_conflicts": [item for item in state.requirement_conflicts if item.get("status") == "open"],
+            "requirement_assumptions": [item for item in state.requirement_assumptions if item.get("status") == "open"],
+            "open_gaps": [vars(gap) for gap in state.gaps if gap.status != "resolved"],
             "missing_hard": state.get_missing_mandatory_hard(),
             "last_question_focus": state.last_asked_slot or "",
-            "history": state.history,
+            "history": state.history[-max(2, settings.AGENT_LLM_HISTORY_MESSAGES):],
             "user_message": message,
             "dialogue_mode": state.dialogue_mode,
             "questions_asked": state.question_count,
@@ -363,21 +549,152 @@ class AgenticBA:
 
     @staticmethod
     def apply(state: DialogueState, decision: TurnDecision) -> list[str]:
+        """Apply grounded operations and retain unresolved alternatives across turns.
+
+        The return value stays compatible with older orchestrators. Per-fact
+        application_results is the authoritative acknowledgement contract.
+        """
         updated = []
+
+        def remember(collection, item):
+            identity = json.dumps({key: item.get(key) for key in ("code", "field", "text", "old_value", "new_value", "message")}, ensure_ascii=False, sort_keys=True)
+            item["id"] = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+            existing = next((old for old in collection if old.get("id") == item["id"]), None)
+            if existing is None:
+                collection.append(item)
+            elif existing.get("status") == "resolved":
+                existing.update(item)
+
+        def conflict(fact, current, reason):
+            message = f"{SLOT_LABELS.get(fact.field, fact.field)}: «{current}» / «{fact.value}»"
+            if message not in decision.contradictions:
+                decision.contradictions.append(message)
+            remember(state.requirement_conflicts, {
+                "code": "fact_conflict", "severity": "critical", "field": fact.field, "slot": fact.field,
+                "message": message, "question": f"Уточните итоговое значение: {SLOT_LABELS.get(fact.field, fact.field)}.",
+                "old_value": current, "new_value": fact.value, "evidence": fact.evidence,
+                "message_id": fact.message_id, "status": "open", "resolution": "", "reason": reason,
+            })
+
+        def result(fact, operation, status, reason=""):
+            decision.application_results.append({"field": fact.field, "operation": operation, "status": status, "reason": reason})
+
+        for note in decision.contradictions:
+            remember(state.requirement_conflicts, {
+                "code": "model_conflict", "severity": "warning", "field": "", "slot": "",
+                "message": note, "question": note, "status": "open", "resolution": "",
+            })
         for fact in decision.facts:
+            operation = fact.operation or ("replace" if fact.correction else "add")
+            if fact.answer_status != "known" or value_status(fact.value) in {"unknown", "not_applicable"}:
+                operation = "defer"
+            slot = state.get_slot(fact.field)
             current = state.get(fact.field)
-            if current and current != fact.value:
-                if not fact.correction:
-                    decision.contradictions.append(
-                        f"{SLOT_LABELS.get(fact.field, fact.field)}: «{current}» / «{fact.value}»"
-                    )
+            if not fact.grounded or fact.assumption:
+                remember(state.requirement_assumptions, {
+                    "field": fact.field, "slot": fact.field, "text": fact.value, "status": "open",
+                    "evidence": fact.evidence, "message_id": fact.message_id, "source": "llm",
+                })
+                result(fact, operation, "rejected", "Нет достаточной пользовательской опоры; сохранено как предположение")
+                continue
+            if operation in {"replace", "remove", "confirm"} and not (fact.current_support and not fact.assumption):
+                reason = "Изменение требует подтверждающей цитаты из текущей реплики"
+                if current and fact.value and current != fact.value:
+                    conflict(fact, current, reason)
+                result(fact, operation, "rejected", reason)
+                continue
+            if operation == "defer":
+                if current and not fact.current_support:
+                    result(fact, operation, "rejected", "Нельзя заменить известный факт неопределённостью без текущего ответа")
                     continue
-                state.record_slot_change(fact.field, current, fact.value, reason="agentic_correction")
-            state.set(fact.field, fact.value, fact.confidence, source="llm_extraction",
-                      assumption=fact.assumption)
-            updated.append(fact.field)
+                status = fact.answer_status
+                status = value_status(fact.value) if status == "known" else status
+                value = "Не применимо" if status == "not_applicable" else "Не знаю"
+            elif operation == "confirm":
+                if not current or (fact.value and fact.value != current):
+                    result(fact, operation, "rejected", "Подтверждение должно относиться к существующему значению")
+                    continue
+                value = current
+            elif operation == "remove":
+                if not current:
+                    result(fact, operation, "unchanged")
+                    continue
+                if fact.value and fact.value != current:
+                    parts = state.list_values(fact.field)
+                    if fact.field not in COMPOUND_SLOTS or fact.value not in parts:
+                        result(fact, operation, "rejected", "Удаляемый элемент не найден")
+                        continue
+                    value = "; ".join(part for part in parts if part != fact.value)
+                else:
+                    value = ""
+            elif operation == "add" and current:
+                if current == fact.value:
+                    result(fact, operation, "unchanged")
+                    continue  # Repetition cannot promote or demote epistemic status.
+                if fact.field not in COMPOUND_SLOTS:
+                    conflict(fact, current, "Новая версия не является явным исправлением")
+                    result(fact, operation, "conflict", "Требуется выбор итоговой версии")
+                    continue
+                parts = state.list_values(fact.field)
+                seen = {part.casefold() for part in parts}
+                incoming = [part.strip() for part in re.split(r"[;\n]+", fact.value) if part.strip()]
+                def numeric_rule(text):
+                    numbers = tuple(re.findall(r"\d+(?:[.,]\d+)?", text))
+                    skeleton = re.sub(r"\d+(?:[.,]\d+)?", "#", text.casefold())
+                    return re.sub(r"\s+", " ", skeleton).strip(), numbers
+                incompatible = any(
+                    numeric_rule(old)[0] == numeric_rule(new)[0]
+                    and numeric_rule(old)[1] != numeric_rule(new)[1]
+                    for old in parts for new in incoming
+                )
+                if incompatible:
+                    conflict(fact, current, "Дополнение меняет числовое значение существующего правила")
+                    result(fact, operation, "conflict", "Уточните новое значение существующего правила")
+                    continue
+                for part in incoming:
+                    if part and part.casefold() not in seen:
+                        parts.append(part)
+                        seen.add(part.casefold())
+                value = "; ".join(parts)
+                if value == current:
+                    result(fact, operation, "unchanged")
+                    continue
+            else:
+                value = fact.value
+            if current and current != value:
+                state.record_slot_change(fact.field, current, value, reason=f"agentic_{operation}")
+            provenance = list(slot.provenance) if slot and operation == "add" else []
+            if slot and current and operation == "add" and not provenance:
+                provenance.append({"value": current, "evidence": slot.evidence, "message_id": slot.message_id,
+                                   "assumption": slot.assumption, "source": slot.source})
+            origin = {"value": fact.value, "evidence": fact.evidence, "message_id": fact.message_id,
+                      "assumption": fact.assumption, "source": "llm_extraction"}
+            if origin not in provenance:
+                provenance.append(origin)
+            assumption = fact.assumption or bool(slot and operation == "add" and slot.assumption)
+            confidence = min(slot.confidence, fact.confidence) if slot and current and operation == "add" else fact.confidence
+            state.set(fact.field, value, confidence, source="llm_extraction", assumption=assumption,
+                      confirmed=operation == "confirm", evidence=fact.evidence,
+                      message_id=fact.message_id, provenance=provenance)
+            if operation == "defer" and fact.answer_status == "deferred":
+                state.get_slot(fact.field).status = "skipped"
+            if operation in {"replace", "confirm"} or (operation == "remove" and not value):
+                state.resolve_field_conflicts(fact.field, value, f"agentic_{operation}")
+                state.resolve_field_assumptions(fact.field, f"agentic_{operation}")
+            if assumption and value_status(value) == "filled":
+                remember(state.requirement_assumptions, {
+                    "field": fact.field, "slot": fact.field, "text": fact.value, "status": "open",
+                    "evidence": fact.evidence, "message_id": fact.message_id, "source": "llm",
+                })
+            if fact.field not in updated:
+                updated.append(fact.field)
+            result(fact, operation, "applied")
         if decision.assumptions:
-            state.sources.extend({"type": "assumption", "text": x} for x in decision.assumptions)
+            for note in decision.assumptions:
+                remember(state.requirement_assumptions, {"field": "", "slot": "", "text": note, "status": "open", "source": "llm"})
+                source = {"type": "assumption", "text": note}
+                if source not in state.sources:
+                    state.sources.append(source)
         return updated
 
 

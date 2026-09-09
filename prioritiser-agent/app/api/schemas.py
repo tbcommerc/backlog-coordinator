@@ -100,8 +100,9 @@ class ReferenceOut(BaseModel):
 
 
 class AttributionIn(BaseModel):
-    period: str
-    front_actual_revenue_mln: float
+    period: str = Field(min_length=1, max_length=32)
+    front_actual_revenue_mln: float = Field(gt=0)
+    task_keys: list[str] = Field(min_length=1, max_length=5000)
     actor: str = "methodologist"
     only_closed: bool = True
 

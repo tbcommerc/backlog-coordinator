@@ -242,6 +242,7 @@ def cmd_attribution(args: argparse.Namespace) -> int:
                 session,
                 period=args.period,
                 front_actual_revenue_mln=args.front_revenue,
+                task_keys=args.task_key,
                 actor=args.actor,
                 only_closed=not args.include_open,
             )
@@ -550,6 +551,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_attr.add_argument("--period", required=True, help="отчётный период, например «3Q 2026»")
     p_attr.add_argument("--front-revenue", type=float, required=True,
                         help="фактический доход фронта за период, млн ₽")
+    p_attr.add_argument(
+        "--task-key",
+        action="append",
+        required=True,
+        help="зафиксированный ID задачи периода; укажите аргумент для каждой задачи",
+    )
     p_attr.add_argument("--include-open", action="store_true",
                         help="учитывать незакрытые инициативы")
     p_attr.add_argument("--actor", default="cli")

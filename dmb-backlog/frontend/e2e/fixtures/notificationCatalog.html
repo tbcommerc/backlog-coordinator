@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Каталог уведомлений</title>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/feedback.css">
+  <style>
+    body { min-height:100vh; margin:0; padding:32px; background:var(--bg-secondary); color:var(--text-primary); }
+    .catalog-shell { width:min(1240px,100%); margin:auto; }
+    .catalog-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:24px; }
+    .catalog-header h1 { margin:0 0 6px; font-size:28px; }
+    .catalog-header p { max-width:760px; margin:0; color:var(--text-secondary); line-height:1.55; }
+    .catalog-theme { flex:none; }
+    .catalog-section { margin-top:24px; padding:22px; border:1px solid var(--border-color); border-radius:18px; background:var(--bg-primary); box-shadow:var(--shadow-sm); }
+    .catalog-section-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+    .catalog-section h2 { margin:0; font-size:18px; }
+    .catalog-section-head p { margin:4px 0 0; color:var(--text-secondary); font-size:13px; line-height:1.5; }
+    .catalog-label { display:inline-flex; align-items:center; min-height:24px; padding:3px 8px; border-radius:999px; background:var(--bg-tertiary); color:var(--text-secondary); font-size:11px; font-weight:700; white-space:nowrap; }
+    .catalog-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .catalog-grid--four { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .catalog-stage { min-width:0; padding:16px; border:1px dashed var(--border-color); border-radius:14px; background:var(--bg-secondary); }
+    .catalog-stage-title { margin:0 0 12px; color:var(--text-secondary); font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+
+    /* Static samples use the production toast markup, with only fixed positioning disabled. */
+    .catalog-toast-stack { display:flex; flex-direction:column; gap:12px; }
+    .catalog-toast-stack .toast { width:100%; min-width:0; max-width:none; display:grid; grid-template-columns:20px minmax(0,1fr) 24px; align-items:start; gap:10px 12px; padding:16px; animation:none; }
+    .catalog-toast-stack .toast-icon { grid-column:1; grid-row:1; }
+    .catalog-toast-stack .toast-message { grid-column:2; grid-row:1; min-width:0; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
+    .catalog-toast-stack .toast-close { grid-column:3; grid-row:1; min-height:24px; }
+    .catalog-toast-stack .toast-action { grid-column:2; grid-row:2; justify-self:start; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+    .catalog-card-toast { display:flex; align-items:center; gap:10px; min-width:0; padding:12px 18px; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-elevated); color:var(--text-primary); box-shadow:var(--shadow-lg); font-size:13px; font-weight:600; }
+    .catalog-card-toast > span { min-width:0; flex:1; overflow-wrap:anywhere; line-height:1.5; }
+    .catalog-card-toast.is-warning { border-left:3px solid var(--warning); }
+    .catalog-card-toast.is-error { border-left:3px solid var(--danger); }
+    .catalog-card-toast.is-info { border-left:3px solid var(--info); }
+    .catalog-card-toast.is-success { border-left:3px solid var(--success); }
+
+    .catalog-dropdown { position:relative!important; inset:auto!important; width:100%!important; max-height:none!important; overflow:visible!important; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-primary); box-shadow:var(--shadow-md); }
+    .catalog-dropdown-title { padding:12px; border-bottom:1px solid var(--border-color); font-size:14px; font-weight:600; }
+    .catalog-dropdown-footer { display:block; padding:10px; color:var(--accent); font-size:13px; font-weight:600; text-align:center; text-decoration:none; }
+    .catalog-notification-list { display:flex; flex-direction:column; gap:9px; }
+    .catalog-dashboard { display:flex; flex-direction:column; gap:8px; }
+    .catalog-dashboard .dash-notif-item + .dash-notif-item { margin-top:0; }
+    .catalog-notification-list .notification-card { grid-template-columns:40px minmax(0,1fr) 201px; }
+    .catalog-icon { font-size:17px; line-height:1; }
+
+    .catalog-controls { display:flex; flex-wrap:wrap; gap:8px; }
+    .catalog-live-stage { position:relative; min-height:190px; margin-top:16px; overflow:hidden; border:1px dashed var(--border-color); border-radius:14px; background:var(--bg-secondary); }
+    .catalog-live-stage #toast-container { position:absolute; right:16px; bottom:16px; }
+    .catalog-note { margin:14px 0 0; padding:12px 14px; border-left:3px solid var(--warning); border-radius:8px; background:color-mix(in srgb,var(--warning) 8%,var(--bg-primary)); color:var(--text-secondary); font-size:12px; line-height:1.55; }
+    @media(max-width:900px) {
+      body { padding:20px; }
+      .catalog-grid--four { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .catalog-notification-list .notification-card { grid-template-columns:38px minmax(0,1fr); }
+      .catalog-notification-list .notification-card-actions { grid-column:2; justify-content:flex-start; }
+    }
+    @media(max-width:560px) {
+      body { padding:12px; }
+      .catalog-header, .catalog-section-head { align-items:stretch; flex-direction:column; }
+      .catalog-theme { align-self:flex-start; }
+      .catalog-section { padding:14px; }
+      .catalog-grid, .catalog-grid--four { grid-template-columns:1fr; }
+      .catalog-toast-stack .toast { width:100%; }
+      .catalog-live-stage { min-height:260px; }
+      .catalog-live-stage #toast-container { width:calc(100% - 24px); right:12px; bottom:12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="catalog-shell">
+    <header class="catalog-header">
+      <div>
+        <h1>Каталог уведомлений</h1>
+        <p>Все визуальные состояния системных toast, уведомлений карточки задачи, popup колокольчика и карточек центра уведомлений. Витрина подключает production CSS и реальную функцию показа глобального toast.</p>
+      </div>
+      <button type="button" class="btn btn-secondary catalog-theme" id="catalog-theme">Тёмная тема</button>
+    </header>
+
+    <section class="catalog-section" data-catalog="global-toasts">
+      <div class="catalog-section-head"><div><h2>Глобальные toast</h2><p>Единая сетка: значок, переносимый текст, закрытие; действие располагается второй строкой.</p></div><span class="catalog-label">uiFeedback.showToast</span></div>
+      <div class="catalog-grid">
+        <div class="catalog-stage"><p class="catalog-stage-title">Базовые состояния</p><div class="catalog-toast-stack">
+          <div class="toast toast-success" role="status"><span class="toast-icon">✓</span><span class="toast-message">Задача успешно сохранена</span><button class="toast-close" type="button" aria-label="Закрыть">×</button></div>
+          <div class="toast toast-info" role="status"><span class="toast-icon">ℹ</span><span class="toast-message">Данные обновлены с сервера</span><button class="toast-close" type="button" aria-label="Закрыть">×</button></div>
+          <div class="toast toast-warning" role="status"><span class="toast-icon">⚠</span><span class="toast-message">Состав доступных задач изменился. Обновите текущий список.</span><button class="toast-close" type="button" aria-label="Закрыть">×</button></div>
+          <div class="toast toast-error" role="alert"><span class="toast-icon">✕</span><span class="toast-message">Сервис временно недоступен. Повторите попытку позже.</span><button class="toast-close" type="button" aria-label="Закрыть">×</button></div>
+        </div></div>
+        <div class="catalog-stage"><p class="catalog-stage-title">Действие и граничные случаи</p><div class="catalog-toast-stack">
+          <div class="toast toast-success" role="status"><span class="toast-icon">✓</span><span class="toast-message">Все уведомления отмечены прочитанными</span><button class="toast-action" type="button">Отменить</button><button class="toast-close" type="button" aria-label="Закрыть">×</button></div>
+          <div class="toast toast-error" role="alert"><span class="toast-icon">✕</span><span class="toast-message">Не удалось сохранить изменения из-за конфликта версий. Обновите данные и повторите попытку.</span><button class="toast-action" type="button">Обновить и повторить</button><button class="toast-close" type="button" aria-label="Закрыть">×</button></div>
+          <div class="toast toast-warning" role="status"><span class="toast-icon">⚠</span><span class="toast-message">ОченьДлинныйТехническийИдентификаторБезПробелов-2026-09-07-проверка-переноса</span><button class="toast-close" type="button" aria-label="Закрыть">×</button></div>
+        </div></div>
+      </div>
+    </section>
+
+    <section class="catalog-section" data-catalog="card-toasts">
+      <div class="catalog-section-head"><div><h2>Toast внутри карточки задачи</h2><p>Локальная обратная связь при редактировании, сохранении и расчёте приоритета.</p></div><span class="catalog-label">modal.cardToast</span></div>
+      <div class="catalog-grid--four catalog-grid">
+        <div class="catalog-card-toast is-success" role="status"><b>✓</b><span>Сохранено · изменений: 3</span></div>
+        <div class="catalog-card-toast is-info" role="status"><b>ℹ</b><span>Данные обновлены с сервера</span></div>
+        <div class="catalog-card-toast is-warning" role="status"><b>⚠</b><span>Задача уже редактируется другим пользователем</span></div>
+        <div class="catalog-card-toast is-error" role="alert"><b>✕</b><span>Не удалось сохранить отчётный статус</span></div>
+      </div>
+      <div class="catalog-stage" style="margin-top:16px"><p class="catalog-stage-title">Действие отмены</p><div class="catalog-card-toast is-success" role="status"><b>✓</b><span>Задача сохранена</span><button type="button" class="toast-action-btn">Отменить</button></div></div>
+      <p class="catalog-note"><strong>Найденное расхождение:</strong> текущая функция карточки не добавляет классы типа и не назначает role, поэтому warning/error в production визуально не различаются; fallback для warning также вызывает глобальный info.</p>
+    </section>
+
+    <section class="catalog-section" data-catalog="bell-popup">
+      <div class="catalog-section-head"><div><h2>Popup колокольчика</h2><p>Нормальное, пустое и ошибочное состояния. Элементы являются кнопками и доступны с клавиатуры.</p></div><span class="catalog-label">navbar popup</span></div>
+      <div class="catalog-grid--four catalog-grid">
+        <div class="catalog-dropdown"><div class="catalog-dropdown-title">Уведомления</div><div>
+          <button type="button" class="notif-dropdown-item is-unread"><span class="notif-dropdown-icon" style="background:#f59e0b18;color:#f59e0b"><span class="catalog-icon">▣</span></span><span class="notif-dropdown-copy"><span class="notif-dropdown-title">Обновите статусы к встрече</span><span class="notif-dropdown-meta">Встречи · 12 мин.</span></span></button>
+          <button type="button" class="notif-dropdown-item"><span class="notif-dropdown-icon" style="background:#3b82f618;color:#3b82f6"><span class="catalog-icon">@</span></span><span class="notif-dropdown-copy"><span class="notif-dropdown-title">Вас упомянули в комментарии к задаче</span><span class="notif-dropdown-meta">Упоминания · 2 ч.</span></span></button>
+        </div><a class="catalog-dropdown-footer" href="#">Все уведомления →</a></div>
+        <div class="catalog-dropdown"><div class="catalog-dropdown-title">Уведомления</div><div class="notif-dropdown-state" role="status">Загружаем уведомления…</div></div>
+        <div class="catalog-dropdown"><div class="catalog-dropdown-title">Уведомления</div><div class="notif-dropdown-state" role="status">Нет уведомлений</div></div>
+        <div class="catalog-dropdown"><div class="catalog-dropdown-title">Уведомления</div><div class="notif-dropdown-state notif-dropdown-error" role="alert"><span>Сервер недоступен. Проверьте подключение и попробуйте ещё раз.</span><button type="button" class="btn btn-secondary btn-sm">Повторить</button></div></div>
+      </div>
+    </section>
+
+    <section class="catalog-section" data-catalog="center-cards">
+      <div class="catalog-section-head"><div><h2>Карточки центра уведомлений</h2><p>Состояния непрочитано, прочитано и закрыто с общими метаданными и действием.</p></div><span class="catalog-label">notification center</span></div>
+      <div class="notification-center"><div class="catalog-notification-list" role="list">
+        <article role="listitem" class="notification-card is-unread importance-high"><div class="notification-card-icon" style="background:#f59e0b15;color:#f59e0b"><span class="catalog-icon">▣</span></div><div class="notification-card-content"><div class="notification-card-title-row"><span class="notification-unread-dot" aria-hidden="true"></span><h3>Обновите статусы к встрече</h3><span class="notification-new-label">Новое</span><span class="notification-priority notification-title-priority">Высокий</span></div><div class="notification-card-meta"><span class="notification-topic">Встречи</span><time datetime="2026-09-07T08:00:00Z">12 мин. назад</time></div><p>Заполните актуальный статус, риски и следующий шаг по ключевым проектам.</p></div><div class="notification-card-actions"><button class="btn btn-primary btn-sm" type="button">Заполнить статусы →</button><button class="notification-icon-btn notification-read-btn" type="button" aria-label="Отметить прочитанным">✉</button></div></article>
+        <article role="listitem" class="notification-card is-read importance-medium"><div class="notification-card-icon" style="background:#3b82f615;color:#3b82f6"><span class="catalog-icon">@</span></div><div class="notification-card-content"><div class="notification-card-title-row"><h3>Вас упомянули в комментарии</h3></div><div class="notification-card-meta"><span class="notification-topic">Упоминания</span><time datetime="2026-09-06T14:30:00Z">Вчера</time></div><p>Проверьте уточнение по сроку реализации задачи.</p></div><div class="notification-card-actions"><button class="btn btn-primary btn-sm" type="button">Открыть обсуждение →</button><button class="notification-icon-btn notification-unread-btn" type="button" aria-label="Отметить непрочитанным">✉</button></div></article>
+        <article role="listitem" class="notification-card is-read is-resolved importance-low"><div class="notification-card-icon" style="background:#22c55e15;color:#22c55e"><span class="catalog-icon">✓</span></div><div class="notification-card-content"><div class="notification-card-title-row"><h3>Назначение подтверждено</h3></div><div class="notification-card-meta"><span class="notification-topic">Назначения</span><span class="notification-resolved-label">Закрыто</span><time datetime="2026-09-01T09:00:00Z">1 сент.</time></div></div><div class="notification-card-actions"><button class="btn btn-primary btn-sm" type="button">Открыть контекст →</button></div></article>
+      </div></div>
+    </section>
+
+    <section class="catalog-section" data-catalog="dashboard-cards">
+      <div class="catalog-section-head"><div><h2>Компактные уведомления на дашборде</h2><p>Те же признаки важности и прочтения в сокращённой подаче.</p></div><span class="catalog-label">dashboard</span></div>
+      <div class="catalog-dashboard">
+        <button type="button" class="dash-notif-item is-unread importance-high"><span class="dash-notif-icon" style="background:#f59e0b"><span class="catalog-icon">▣</span></span><span class="dash-notif-body"><span class="dash-notif-title-row"><span class="dash-notif-title">Обновите статусы к встрече</span><span class="notification-new-label">Новое</span><span class="notification-priority notification-title-priority">Высокий</span></span><span class="dash-notif-meta"><span>Встречи</span><time datetime="2026-09-07T08:00:00Z">12 мин. назад</time></span></span><span class="dash-notif-action">Заполнить статусы →</span></button>
+        <button type="button" class="dash-notif-item is-read importance-medium"><span class="dash-notif-icon" style="background:#3b82f6"><span class="catalog-icon">@</span></span><span class="dash-notif-body"><span class="dash-notif-title-row"><span class="dash-notif-title">Новый комментарий к задаче TASK-000-250</span></span><span class="dash-notif-meta"><span>Комментарии</span><time datetime="2026-09-06T14:30:00Z">Вчера</time></span></span><span class="dash-notif-action">Открыть обсуждение →</span></button>
+      </div>
+    </section>
+
+    <section class="catalog-section" data-catalog="live">
+      <div class="catalog-section-head"><div><h2>Интерактивная проверка</h2><p>Кнопки вызывают реальную production-функцию. Можно проверить стек, закрытие, автоскрытие и действие.</p></div><span class="catalog-label">live</span></div>
+      <div class="catalog-controls">
+        <button type="button" class="btn btn-secondary" data-live-type="success">Success</button><button type="button" class="btn btn-secondary" data-live-type="info">Info</button><button type="button" class="btn btn-secondary" data-live-type="warning">Warning</button><button type="button" class="btn btn-secondary" data-live-type="error">Error</button><button type="button" class="btn btn-primary" id="live-action">Toast с действием</button>
+      </div>
+      <div class="catalog-live-stage"><div id="toast-container" aria-live="polite" aria-atomic="true"></div></div>
+    </section>
+  </main>
+  <script type="module">
+    import { showToast } from '/js/uiFeedback.js';
+    const messages = { success:'Изменения сохранены', info:'Данные обновлены с сервера', warning:'Проверьте обязательные поля', error:'Failed to fetch' };
+    document.querySelectorAll('[data-live-type]').forEach(button => button.addEventListener('click', () => showToast(messages[button.dataset.liveType], button.dataset.liveType, { persistent:true })));
+    document.getElementById('live-action').addEventListener('click', () => showToast('Все уведомления отмечены прочитанными', 'success', { persistent:true, actionLabel:'Отменить', onAction:() => { document.body.dataset.actionTriggered='true'; } }));
+    document.getElementById('catalog-theme').addEventListener('click', event => { const dark=document.documentElement.dataset.theme==='dark'; document.documentElement.dataset.theme=dark?'light':'dark'; event.currentTarget.textContent=dark?'Тёмная тема':'Светлая тема'; });
+  </script>
+</body>
+</html>

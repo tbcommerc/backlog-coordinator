@@ -19,13 +19,27 @@ const reviewPage = readFileSync(new URL('../js/components/reviewPage.js', import
 const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
 const eventStream = readFileSync(new URL('../js/eventStream.js', import.meta.url), 'utf8');
 
+assert.match(router, /this\.navigationGeneration = 0/);
+assert.match(router, /generation !== this\.navigationGeneration/);
+assert.match(router, /window\.location\.hash\.slice\(1\)/);
+
+assert.match(app, /id="login-email" type="email" autocomplete="username" placeholder="name@example\.com"/, 'login page must request an email without exposing a personal identity');
+assert.doesNotMatch(app, /value="[^\"]+@[^\"]+"/, 'login page must not embed a personal email address');
+assert.match(app, /aria-controls="app-sidebar" aria-expanded="false"/, 'mobile menu trigger must expose its controlled drawer');
+assert.match(app, /sidebar\.toggleAttribute\('inert', hidden\)/, 'closed mobile navigation must leave the accessibility tree');
+assert.match(app, /toggleMobileSidebar\(false, \{ restoreFocus: true \}\)/, 'closing mobile navigation must restore focus');
+
 assert.match(taskTable, /renderTasksTableStateMarkup\(\{ kind: 'loading', title: 'Загружаем задачи…' \}\)/, 'DMB backlog must render loading inside the table shell');
 assert.match(taskTable, /<tbody id="tasks-tbody" aria-live="polite">[\s\S]*renderViewState\(state\)/, 'DMB backlog state must stay inside tbody');
 assert.match(taskTable, /class="table-view-state-cell"[\s\S]*fitTableViewState\(container\)/, 'DMB backlog states must be centered in the visible table viewport');
+assert.equal(taskTable.match(/class="table-view-state-cell"/g)?.length, 2, 'DMB filtered-empty and loading/error states must share visible-viewport centering');
+assert.equal(taskTable.match(/fitTableViewState\(container\)/g)?.length, 2, 'DMB table render must fit both filtered-empty and loading/error states');
 assert.match(taskTable, /renderTasksTableState\(\{[\s\S]*kind: 'error'/, 'DMB backlog error must preserve the table shell');
 assert.match(teamBacklog, /renderTeamTableStateMarkup\(\{ kind: 'loading', title: 'Загружаем задачи команды…' \}\)/, 'team backlog must render loading inside the table shell');
 assert.match(teamBacklog, /<tbody id="team-tasks-tbody" aria-live="polite">[\s\S]*renderViewState\(state\)/, 'team backlog state must stay inside tbody');
 assert.match(teamBacklog, /class="table-view-state-cell"[\s\S]*fitTableViewState\(container\)/, 'team backlog states must be centered in the visible table viewport');
+assert.equal(teamBacklog.match(/class="table-view-state-cell"/g)?.length, 2, 'team filtered-empty and loading/error states must share visible-viewport centering');
+assert.equal(teamBacklog.match(/fitTableViewState\(container\)/g)?.length, 2, 'team table render must fit both filtered-empty and loading/error states');
 assert.match(teamBacklog, /renderTeamTableState\(\{[\s\S]*kind: 'error'/, 'team backlog error must preserve the table shell');
 
 assert.match(modal, /isTaskDateInFuture\(receivedAt\)/);
@@ -135,7 +149,7 @@ assert.doesNotMatch(agentChat, /Создан новый диалог\. Опиш�
 assert.match(agentChat, /function updateRequirementWorkspace\(/);
 assert.match(agentChat, /if \(sentRequestId\) \{\s*hideDraftPanel\(\);\s*updateRequirementWorkspace\(\);\s*return;\s*\}/);
 assert.match(agentChat, /chat-request-created/);
-assert.match(agentChat, /Запрос #\$\{escapeHtml\(resp\.request_id\)\} готов к ревью/);
+assert.match(agentChat, /Запрос #\$\{escapeHtml\(resp\.request_id\)\}\$\{resp\.request_version/);
 assert.match(agentChat, /data-lucide="arrow-up-right"/);
 assert.match(pagesCss, /\.chat-task-link-copy/);
 assert.match(pagesCss, /\.chat-request-created-avatar/);
@@ -216,10 +230,10 @@ assert.match(pagesCss, /\.requirement-map-group-fields\s*\{[\s\S]*?grid-template
 assert.match(pagesCss, /\.chat-sessions-list\s*\{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
 assert.match(reviewPage, /id="review-status-filter"/);
 assert.match(reviewPage, /function renderAttentionPanel\(draft\)/);
-assert.match(reviewPage, /status:'in_review'/);
+assert.match(reviewPage, /status:\s*'in_review'/);
 assert.match(reviewPage, /Вернуть на уточнение/);
 assert.match(reviewPage, /Передать в проработку/);
-assert.match(reviewPage, /d\.quality_score/);
+assert.match(reviewPage, /draft\.quality_score/);
 assert.match(pagesCss, /\.review-detail-layout/);
 assert.match(pagesCss, /\.review-journey/);
 
@@ -366,8 +380,9 @@ assert.match(filterToolbar, /width="21" height="21"/);
 assert.match(filterToolbar, /title="Настройка отображения столбцов" aria-label="Настройка отображения столбцов"/);
 assert.match(filterToolbar, /data-view="table" title="Табличное представление" aria-label="Табличное представление"/);
 assert.match(filterToolbar, /data-view="cards" title="Карточное представление" aria-label="Карточное представление"/);
-assert.match(filterToolbar, /\$\{savedViewsHtml\}[\s\S]*\$\{opts\.columnSettings \? columnSettingsHtml : ''\}[\s\S]*\$\{opts\.viewToggle !== false \? viewToggleHtml : ''\}[\s\S]*\$\{actionDivider\}[\s\S]*\$\{quickEditBtn\}[\s\S]*\$\{bulkOpsBtn\}[\s\S]*\$\{importBtn\}[\s\S]*export-excel[\s\S]*btn-refresh/, 'backlog toolbar actions must follow the requested grouping');
+assert.match(filterToolbar, /\$\{savedViewsHtml\}[\s\S]*\$\{opts\.columnSettings \? columnSettingsHtml : ''\}[\s\S]*\$\{opts\.viewToggle !== false \? viewToggleHtml : ''\}[\s\S]*\$\{quickEditBtn\}[\s\S]*\$\{bulkOpsBtn\}[\s\S]*\$\{transferActionsHtml\}[\s\S]*\$\{refreshBtn\}/, 'backlog toolbar actions must separate import/export while keeping refresh rightmost');
 assert.match(componentsCss, /\.toolbar-actions-divider\s*\{[\s\S]*width:\s*1px[\s\S]*height:\s*22px[\s\S]*background:\s*var\(--border-color\)/, 'toolbar action groups must use a compact vertical divider');
+assert.match(componentsCss, /\.toolbar-import-export-group\s*\{[\s\S]*display:\s*inline-flex[\s\S]*flex:\s*0 0 auto/, 'import/export and their divider must wrap as one toolbar group');
 assert.match(componentsCss, /\.toolbar-actions \.view-toggle\s*\{[\s\S]*box-sizing:\s*border-box[\s\S]*height:\s*34px/, 'table/card toggle must match the height of toolbar action buttons');
 assert.match(componentsCss, /\.toolbar-actions \.view-toggle \.toggle-btn\s*\{[\s\S]*height:\s*30px[\s\S]*padding-top:\s*0[\s\S]*padding-bottom:\s*0/, 'segmented view buttons must fit the shared toolbar height');
 assert.match(filterToolbar, /function syncTableOnlyActions\(isTable\)[\s\S]*button\.disabled = !isTable[\s\S]*aria-disabled[\s\S]*syncTableOnlyActions\(isTableView\)/, 'table-only toolbar actions must stay visible and become disabled in card view');

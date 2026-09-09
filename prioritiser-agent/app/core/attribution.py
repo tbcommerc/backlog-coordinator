@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import select
@@ -37,6 +38,7 @@ def run_attribution(
     session: Session,
     period: str,
     front_actual_revenue_mln: float,
+    task_keys: Sequence[str],
     actor: str = "methodologist",
     only_closed: bool = True,
 ) -> dict[str, Any]:
@@ -48,8 +50,24 @@ def run_attribution(
     if front_actual_revenue_mln <= 0:
         raise AttributionError("фактический доход фронта должен быть положительным")
 
+    population = [key.strip() for key in task_keys if key and key.strip()]
+    if not population:
+        raise AttributionError(
+            "для атрибуции требуется явно зафиксировать непустую выборку task_keys"
+        )
+    if len(population) != len(set(population)):
+        raise AttributionError("выборка task_keys содержит дубликаты")
+
     refs = ReferenceBundle(session)
-    tasks = list(session.scalars(select(Task)).all())
+    tasks = list(
+        session.scalars(select(Task).where(Task.task_key.in_(population))).all()
+    )
+    found = {task.task_key for task in tasks}
+    missing = sorted(set(population) - found)
+    if missing:
+        preview = ", ".join(missing[:10])
+        suffix = "…" if len(missing) > 10 else ""
+        raise AttributionError(f"задачи из выборки не найдены: {preview}{suffix}")
 
     def is_closed(task: Task) -> bool:
         status = (task.status or "").upper()
@@ -85,6 +103,8 @@ def run_attribution(
 
     result: dict[str, Any] = {
         "period": period,
+        "population_task_keys": sorted(population),
+        "population_size": len(population),
         "front_actual_revenue_mln": front_actual_revenue_mln,
         "attributed_front_initiatives_mln": round(attributed_front, 2),
         "residual_mln": round(residual, 2),

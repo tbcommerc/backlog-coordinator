@@ -695,10 +695,10 @@ function renderEffortChips(item) {
 
 function showImportModal() {
     const html = `
-    <div class="modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;" id="qe-modal">
-        <div style="background:var(--bg-primary);border-radius:12px;padding:24px;width:600px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-            <h3 style="margin:0 0 4px;font-size:16px;">Добавить задачи из бэклога</h3>
-            <p style="font-size:12px;color:var(--text-secondary);margin:0 0 12px;">Задачи будут переведены в статус «ЭКСПРЕСС-ОЦЕНКА».</p>
+    <div class="modal-overlay" id="qe-modal">
+        <div class="app-modal app-modal--medium" role="dialog" aria-modal="true" aria-labelledby="qe-import-title">
+            <div class="app-modal__header"><div><h3 class="app-modal__title" id="qe-import-title">Добавить задачи из бэклога</h3><p class="app-modal__subtitle">Задачи будут переведены в статус «ЭКСПРЕСС-ОЦЕНКА».</p></div><button type="button" class="modal-close" data-modal-close aria-label="Закрыть">×</button></div>
+            <div class="app-modal__body">
             <input type="text" id="import-search" placeholder="Поиск по названию..." style="width:100%;padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:13px;margin-bottom:12px;">
             <div id="import-results" style="min-height:60px;color:var(--text-muted);font-size:13px;overflow-y:auto;max-height:50vh;">Введите название для поиска...</div>
             <div id="import-footer" style="display:none;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color);">
@@ -710,9 +710,8 @@ function showImportModal() {
                     <button class="btn btn-primary btn-sm" id="import-selected-btn" disabled>Добавить выбранные</button>
                 </div>
             </div>
-            <div style="display:flex;justify-content:flex-end;margin-top:12px;">
-                <button class="btn btn-secondary btn-sm" id="qe-modal-close-btn">Закрыть</button>
             </div>
+            <div class="app-modal__footer"><button class="btn btn-secondary btn-sm" id="qe-modal-close-btn">Закрыть</button></div>
         </div>
     </div>`;
     document.body.insertAdjacentHTML('beforeend', html);
@@ -722,6 +721,7 @@ function showImportModal() {
         if (e.target === overlay) overlay.remove();
     });
     document.getElementById('qe-modal-close-btn').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('[data-modal-close]')?.addEventListener('click', () => overlay.remove());
 
     let searchTimer = null;
     document.getElementById('import-search').addEventListener('input', (e) => {
@@ -899,12 +899,12 @@ function revealImportedTasks(taskIds) {
 function showConfirm({ title, message, confirmLabel, danger = false, errorMessage, onConfirm }) {
     const confirmClass = danger ? 'btn-danger' : 'btn-primary';
     const html = `
-    <div class="modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;" id="qe-modal">
-        <div style="background:var(--bg-primary);border-radius:12px;padding:24px;width:400px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-            <h3 style="margin:0 0 12px;font-size:16px;">${escHtml(title)}</h3>
-            <p style="font-size:13px;color:var(--text-secondary);margin:0 0 16px;">${escHtml(message)}</p>
-            <div style="display:flex;justify-content:flex-end;gap:8px;">
-                <button class="btn btn-secondary btn-sm" id="qe-confirm-cancel">Отмена</button>
+    <div class="modal-overlay" id="qe-modal">
+        <div class="app-modal app-modal--small" role="alertdialog" aria-modal="true" aria-labelledby="qe-confirm-title" aria-describedby="qe-confirm-message">
+            <div class="app-modal__header"><h3 class="app-modal__title" id="qe-confirm-title">${escHtml(title)}</h3></div>
+            <div class="app-modal__body"><p class="app-modal__subtitle" id="qe-confirm-message">${escHtml(message)}</p></div>
+            <div class="app-modal__footer">
+                <button class="btn btn-secondary btn-sm" id="qe-confirm-cancel" data-modal-close>Отмена</button>
                 <button class="btn ${confirmClass} btn-sm" id="qe-confirm-action">${escHtml(confirmLabel)}</button>
             </div>
         </div>
@@ -1595,11 +1595,12 @@ function showCompleteEstimateModal() {
 
     const html = `
     <div class="modal-overlay qe-complete-overlay" id="qe-modal">
-        <div class="qe-complete-modal" role="dialog" aria-modal="true" aria-labelledby="qe-complete-title">
-            <div class="qe-complete-heading">
+        <div class="qe-complete-modal app-modal app-modal--medium" role="alertdialog" aria-modal="true" aria-labelledby="qe-complete-title">
+            <div class="app-modal__header"><div class="qe-complete-heading">
                 <div class="qe-complete-icon"><i data-lucide="check-circle"></i></div>
                 <div><h3 id="qe-complete-title">Завершить экспресс-оценку?</h3><p>Все ${tasks.length} задач перейдут в статус «ПРИНЯТИЕ РЕШЕНИЯ».</p></div>
-            </div>
+            </div></div>
+            <div class="app-modal__body">
             ${unestimatedCount > 0 ? `<div class="qe-complete-warning"><i data-lucide="alert-triangle"></i> Без оценки: ${unestimatedCount} задач. Они также будут переведены на следующий этап.</div>` : ''}
             <div class="qe-complete-kpis">
                 <div><span>Задач</span><strong>${tasks.length}</strong></div>
@@ -1611,8 +1612,9 @@ function showCompleteEstimateModal() {
             <details class="qe-complete-details"><summary>Показать сводку по компетенциям</summary>
                 <div class="qe-complete-table-wrap"><table><thead><tr><th>Компетенция</th><th>Demand</th><th>Capacity</th><th>Утилизация</th><th>Отклонение</th></tr></thead><tbody>${tableRows}</tbody></table></div>
             </details>
-            <div class="qe-complete-actions">
-                <button class="btn btn-secondary btn-sm" id="qe-complete-cancel">Отмена</button>
+            </div>
+            <div class="qe-complete-actions app-modal__footer">
+                <button class="btn btn-secondary btn-sm" id="qe-complete-cancel" data-modal-close>Отмена</button>
                 <button class="btn btn-primary btn-sm" id="qe-complete-confirm"><i data-lucide="check"></i> Подтвердить завершение</button>
             </div>
         </div>

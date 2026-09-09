@@ -1,0 +1,99 @@
+{
+  "generated_at_utc": "2026-09-08T12:14:18.611111+00:00",
+  "workspace": "D:\\Проект",
+  "method": "Read-only execution of current source with isolated in-memory dependencies; no application or DB imports.",
+  "source_sha256": {
+    "dmb-backlog/backend/routers/agent_router.py": "836a5072abe6f5ad9729940231fb659bdf5261a1cfcc5ad80528767dc0e847bd",
+    "dmb-backlog/backend/models.py": "e5c63adcda7269ec9f1c08e0bd77fc84d018c8b0098f6aaa2f1b956e5d5ec53a",
+    "dmb-backlog/frontend/js/components/requestPresentation.js": "77474637ba17e49b4a976582ff7f8a031ef9e4351fdcb2131e2533a3d00df38e",
+    "dmb-backlog/frontend/js/components/reviewPage.js": "3ce5af45274be7722caa9045f92a36b99e526e298e9793208a003b66e3c54f45",
+    "agent/agent/api/router.py": "00ac728a8bdd111f311bc8aaa613ac84b632fd13fd0516cd23da5c57511fb077",
+    "agent/agent/orchestrator.py": "3c8bd366294daf0f3e73313926c3160db52a44cd9c24699918e9e8d7cf4dde8d"
+  },
+  "transfer_loss": {
+    "kind": "actual pure backend renderer",
+    "checks": {
+      "need_preserved": true,
+      "process_preserved": true,
+      "priority_preserved": true,
+      "acceptance_preserved": true,
+      "risks_preserved": false,
+      "dependencies_preserved": false,
+      "conflicts_preserved": false,
+      "review_findings_preserved": false,
+      "gaps_preserved": false,
+      "provenance_preserved": false
+    },
+    "loss_reproduced": true,
+    "limitation": "Structured RequirementRequest.draft retains these fields; the loss is in description copied to Task.",
+    "rendered_description": "**Проблема:** NEED_MARKER\n**Бизнес-процесс:** PROCESS_MARKER\n**Приоритет:** PRIORITY_MARKER\n**Критерии приёмки:** ACCEPTANCE_MARKER\n**Полнота (completeness):** 0\n**Уверенность:** \n**Статус:** Draft"
+  },
+  "snapshot_race": {
+    "kind": "actual backend submission with a controlled concurrent-edit interleaving",
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/api/agent/session/audit-session"
+      },
+      {
+        "method": "POST",
+        "path": "/api/agent/send-for-review"
+      }
+    ],
+    "confirmed_draft": {
+      "title": "Requirements audit",
+      "problem_statement": "DRAFT_B_AFTER_EXPLICIT_EDIT"
+    },
+    "persisted_draft": {
+      "title": "Requirements audit",
+      "problem_statement": "DRAFT_A"
+    },
+    "response_draft": {
+      "title": "Requirements audit",
+      "problem_statement": "DRAFT_B_AFTER_EXPLICIT_EDIT"
+    },
+    "same_confirmed_and_persisted_draft": false,
+    "mismatch_reproduced": true,
+    "limitation": "Agent HTTP and DB are simulated; this establishes the backend snapshot gap, not live race frequency."
+  },
+  "returned_claim": {
+    "kind": "actual backend actions, claim, resume and submission functions with in-memory dependencies",
+    "actions_before_customer_resubmission": [
+      "claim"
+    ],
+    "status_after_claim": "in_review",
+    "review_comment_after_claim": null,
+    "author_resume_http_status": 409,
+    "submitting_latest_draft_response": {
+      "success": true,
+      "session_id": "audit-session",
+      "action": "sent",
+      "message": "Этот диалог уже отправлен на ревью.",
+      "request_id": 7,
+      "request_status": "in_review",
+      "request_version": 3,
+      "request_url": "#/customer/request/7",
+      "duplicate": true
+    },
+    "latest_agent_draft": {
+      "title": "Requirements audit",
+      "problem_statement": "AFTER_CUSTOMER_CORRECTION"
+    },
+    "persisted_request_draft": {
+      "title": "Requirements audit",
+      "problem_statement": "BEFORE_CUSTOMER_CORRECTION"
+    },
+    "silent_discard_reproduced": true,
+    "limitation": "Authorization predicate and persistence are mocked; no live user or protected record was modified."
+  },
+  "frontend_projection": {
+    "kind": "actual pure frontend exports on a focused schema-compatible fixture",
+    "signal_count": 0,
+    "signal_groups": [],
+    "displays_process": false,
+    "displays_priority": false,
+    "displays_department": false,
+    "passport_claims_customer_confirmation": true,
+    "limitation": "Some quality issues are also copied to open_questions by the composer; this probe isolates which properties the reviewer view itself consumes."
+  }
+}

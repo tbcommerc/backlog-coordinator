@@ -3,13 +3,19 @@ from fastapi.testclient import TestClient
 
 from agent.main import app
 from agent.api import router as api_router
-from agent.orchestrator import AgentOrchestrator
+from agent.agentic_orchestrator import AgenticOrchestrator
+from agent.dialogue.agentic import Fact, TurnDecision
 from agent.session import SessionStore
 
 
 @pytest.fixture()
-def client(tmp_path):
-    api_router._orchestrator = AgentOrchestrator(SessionStore(str(tmp_path / "api.db")))
+def client(tmp_path, monkeypatch):
+    api_router._orchestrator = AgenticOrchestrator(SessionStore(str(tmp_path / "api.db")))
+    def decision(state, text):
+        facts = [] if text.lower() in {"да", "да, всё верно"} else [Fact("need_statement", text, 0.9, evidence=text)]
+        return TurnDecision(facts=facts, next_action="ask", focus="to_be",
+                            reply="Как должен выглядеть целевой результат?", source="llm")
+    monkeypatch.setattr("agent.agentic_orchestrator.agentic_ba.decide_strict", decision)
     with TestClient(app) as c:
         yield c
 
@@ -61,6 +67,36 @@ def test_chat_message_id_is_idempotent(client):
     assert second.json() == first.json()
     state = api_router._orchestrator.store.get(sid)
     assert state.history == history_after_first
+
+
+def test_chat_stream_preserves_validated_reply_without_second_model_call(client, monkeypatch):
+    created = client.post("/api/agent/new-session", headers=SECRET, json={"user_id": 17})
+    sid = created.json()["session_id"]
+
+    def stream_reply(_source, on_delta):
+        raise AssertionError("Validated active reply must not be rewritten by a second model")
+
+    monkeypatch.setattr(api_router, "rephrase_stream", stream_reply)
+    payload = {
+        "session_id": sid,
+        "message_id": "stream-message-1",
+        "message": "Нужен контроль расчётов по сделкам",
+    }
+    response = client.post("/api/agent/chat-stream", headers=SECRET, json=payload)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert 'event: ready' in response.text
+    assert response.text.count('event: delta') >= 1
+    assert 'event: result' in response.text
+    assert "Как должен выглядеть целевой результат?" in response.text
+    assert api_router._orchestrator.store.get(sid).history[-1]["content"] == "Как должен выглядеть целевой результат?"
+
+    history = list(api_router._orchestrator.store.get(sid).history)
+    replay = client.post("/api/agent/chat-stream", headers=SECRET, json=payload)
+    assert 'event: result' in replay.text
+    assert 'event: delta' not in replay.text
+    assert api_router._orchestrator.store.get(sid).history == history
 
 
 def test_user_message_is_persisted_before_processing_failure(client, monkeypatch):
@@ -132,7 +168,9 @@ def test_send_for_review_rejects_unconfirmed_draft(client):
 def _force_confirmed_draft(client, sid):
     orch = api_router._orchestrator
     state = orch.store.get(sid)
-    state.draft = {"title": "Тест", "completeness_score": 80}
+    state.draft = {"title": "Тест", "completeness_score": 80,
+                   "problem_statement": "Нужна сверка", "target_process": "Система сверяет расчёты",
+                   "primary_role": "Оператор", "process": "Сверка расчётов"}
     state.confirmed = True
     orch.store.save(state)
 

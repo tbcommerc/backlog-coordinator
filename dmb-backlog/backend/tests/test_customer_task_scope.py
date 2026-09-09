@@ -4,8 +4,16 @@ import pytest
 from fastapi import HTTPException
 
 from auth import create_access_token
-from models import BusinessCustomer, Role, Task, Team, User
-from routers.agent_router import AgentRequestStatusUpdate, agent_request_status, can_review_request
+from models import BusinessCustomer, RequirementRequest, Role, Task, Team, User
+from routers.agent_router import (
+    ASSIGNABLE_REQUEST_ANALYST_ROLES,
+    AgentRequestStatusUpdate,
+    _deadline_is_overdue,
+    _request_available_actions,
+    agent_request_status,
+    agent_team_ba,
+    can_review_request,
+)
 from routers.customer_router import get_customer_tasks
 from main import app
 
@@ -116,3 +124,115 @@ def test_explicit_review_access_survives_role_rename():
     user = SimpleNamespace(role_name="Переименованная роль", role=role, team_id=None)
     assert can_review_request(user, request_team_id=10)
     assert can_review_request(user, request_team_id=11)
+
+
+def test_request_owner_without_review_capability_cannot_claim_review():
+    request = SimpleNamespace(id=17, user_id=5, team_id=10, is_deleted=False)
+
+    class QueryStub:
+        def filter(self, *args):
+            return self
+
+        def first(self):
+            return request
+
+    db = SimpleNamespace(query=lambda _model: QueryStub())
+    role = SimpleNamespace(review_access="none", customer_portal_only=False)
+    owner = SimpleNamespace(
+        id=5,
+        role=role,
+        role_name="Владелец запроса",
+        team_id=10,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        agent_request_status(
+            request.id,
+            AgentRequestStatusUpdate(status="in_review", version=0),
+            db=db,
+            current_user=owner,
+        )
+
+    assert exc_info.value.status_code == 403
+
+
+def test_review_deadline_and_available_actions_are_server_decisions():
+    reviewer = SimpleNamespace(
+        id=5,
+        role_name="BA/Участник команды",
+        role=SimpleNamespace(review_access="team", customer_portal_only=False),
+        team_id=10,
+    )
+    own_request = SimpleNamespace(status="in_review", reviewer_id=5, team_id=10)
+    colleague_request = SimpleNamespace(status="in_review", reviewer_id=6, team_id=10)
+    unowned_request = SimpleNamespace(status="in_review", reviewer_id=None, team_id=10)
+
+    assert _deadline_is_overdue("2020-01-01", "in_review") is True
+    assert _deadline_is_overdue("2020-01-01", "in_progress") is False
+    assert _request_available_actions(own_request, reviewer) == ["approve", "return", "reject", "release"]
+    assert _request_available_actions(colleague_request, reviewer) == []
+    assert _request_available_actions(unowned_request, reviewer) == []
+
+
+def test_in_progress_rejects_non_ba_assignee_before_mutating_request():
+    request = SimpleNamespace(
+        id=17,
+        user_id=8,
+        team_id=10,
+        is_deleted=False,
+        status="in_review",
+        version=0,
+        reviewer_id=5,
+    )
+
+    class QueryStub:
+        def __init__(self, model):
+            self.model = model
+
+        def join(self, *args):
+            return self
+
+        def filter(self, *args):
+            return self
+
+        def first(self):
+            return request if self.model is RequirementRequest else None
+
+    db = SimpleNamespace(query=lambda model: QueryStub(model))
+    reviewer = SimpleNamespace(
+        id=5,
+        role_name="BA/Участник команды",
+        role=SimpleNamespace(review_access="team", customer_portal_only=False),
+        team_id=10,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        agent_request_status(
+            request.id,
+            AgentRequestStatusUpdate(status="in_progress", version=0, assignee_id=99),
+            db=db,
+            current_user=reviewer,
+        )
+
+    assert exc_info.value.status_code == 422
+    assert "бизнес-аналитика" in exc_info.value.detail
+    assert request.status == "in_review"
+    assert ASSIGNABLE_REQUEST_ANALYST_ROLES == {"ba/участник команды", "ba/бизнес-аналитик"}
+
+
+def test_ba_directory_rejects_user_outside_review_scope_before_query():
+    class DbMustNotBeQueried:
+        def query(self, *_args):
+            raise AssertionError("BA directory must not be queried without review access")
+
+    outsider = SimpleNamespace(
+        id=8,
+        role_name="Бизнес-заказчик",
+        role=SimpleNamespace(review_access="none", customer_portal_only=True),
+        team_id=11,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        agent_team_ba(team_id=10, db=DbMustNotBeQueried(), current_user=outsider)
+
+    assert exc_info.value.status_code == 403

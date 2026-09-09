@@ -1,6 +1,6 @@
 console.log('[DMB] taskTable.js v20260902.1 loaded');
 import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, getToolbarSearchValue, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=97';
-import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=91';
+import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=92';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
 import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=83';
 import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=80';
@@ -425,7 +425,7 @@ function renderTableView(list) {
         </thead>
         <tbody id="tasks-tbody">
           ${list.length === 0
-            ? '<tr><td colspan="' + (visibleCols.length + (showCheckbox ? 1 : 0)) + '">' + renderViewState({ kind: 'empty', title: 'Задачи не найдены', message: 'Измените фильтры или создайте новую задачу.' }) + '</td></tr>'
+            ? '<tr><td class="table-view-state-cell" colspan="' + (visibleCols.length + (showCheckbox ? 1 : 0)) + '">' + renderViewState({ kind: 'empty', title: 'Задачи не найдены', message: 'Измените фильтры или создайте новую задачу.' }) + '</td></tr>'
             : list.map(task => renderTableRow(task, visibleCols, showCheckbox)).join('')}
         </tbody>
       </table>
@@ -441,6 +441,7 @@ function renderTableView(list) {
     saveBacklogColumnState();
   }
 
+  fitTableViewState(container);
   updateStickyOffsets();
   initStickyTableHeader('tasks-table');
 

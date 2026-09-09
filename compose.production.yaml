@@ -11,9 +11,17 @@ x-backend-environment: &backend-environment
   AGENT_SECRET: "${DMB_AGENT_SECRET:?set DMB_AGENT_SECRET}"
   AGENT_BASE_URL: "http://agent:9000"
   PRIORITISER_BASE_URL: "http://prioritiser:9100"
+  PRIORITISER_SECRET: "${DMB_PRIORITISER_SECRET:?set DMB_PRIORITISER_SECRET}"
   PRIORITISER_TIMEOUT_SECONDS: "180"
+  INTERSERVICE_MAX_ATTEMPTS: "3"
+  INTERSERVICE_RETRY_BASE_SECONDS: "0.1"
+  INTERSERVICE_CIRCUIT_FAILURE_THRESHOLD: "5"
+  INTERSERVICE_CIRCUIT_RESET_SECONDS: "30"
   CORS_ORIGINS: "${DMB_CORS_ORIGINS:?set DMB_CORS_ORIGINS as JSON array}"
   ATTACHMENT_STORAGE_DIR: "/data/attachments"
+  CLAMAV_HOST: "clamav"
+  CLAMAV_PORT: "3310"
+  CLAMAV_TIMEOUT_SECONDS: "30"
   OTEL_ENABLED: "true"
   OTEL_SERVICE_NAME: "dmb-backlog"
   OTEL_DEPLOYMENT_ENVIRONMENT: "${DMB_ENVIRONMENT:-production}"
@@ -36,7 +44,7 @@ x-agent-environment: &agent-environment
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
     restart: unless-stopped
     environment:
       POSTGRES_DB: dmb_backlog
@@ -53,7 +61,7 @@ services:
     networks: [data]
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: "${DMB_REDIS_PASSWORD:?set DMB_REDIS_PASSWORD}"
@@ -92,6 +100,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      clamav:
+        condition: service_healthy
       agent:
         condition: service_healthy
       prioritiser:
@@ -107,6 +117,13 @@ services:
     deploy:
       replicas: 2
     networks: [app, data, observability]
+
+  clamav:
+    image: clamav/clamav:1.4.3@sha256:d39ad368e587cc204f71675c3982adbc6717b8c4cb309a7ee9a3213f7e684c50
+    restart: unless-stopped
+    volumes:
+      - dmb-clamav-data:/var/lib/clamav
+    networks: [app]
 
   scheduler:
     build:
@@ -136,7 +153,7 @@ services:
       otel-collector:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/api/agent/health', timeout=5)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/api/agent/ready', timeout=5)"]
       interval: 10s
       timeout: 6s
       retries: 12
@@ -145,30 +162,55 @@ services:
       replicas: 2
     networks: [app, data, observability]
 
+  prioritiser-migration:
+    build:
+      context: .
+      dockerfile: prioritiser-agent/Dockerfile
+    environment:
+      PRIORITISER_DB_URL: "${DMB_PRIORITISER_DATABASE_URL:?set DMB_PRIORITISER_DATABASE_URL with URL-encoded credentials}"
+      PRIORITISER_DEBUG: "false"
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [data]
+    restart: "no"
+
   prioritiser:
     build:
       context: .
       dockerfile: prioritiser-agent/Dockerfile
     restart: unless-stopped
     environment:
-      PRIORITISER_DB_URL: "sqlite:////data/prioritiser.db"
+      PRIORITISER_DB_URL: "${DMB_PRIORITISER_DATABASE_URL:?set DMB_PRIORITISER_DATABASE_URL with URL-encoded credentials}"
+      PRIORITISER_DEBUG: "false"
+      PRIORITISER_SERVICE_SECRET: "${DMB_PRIORITISER_SECRET:?set DMB_PRIORITISER_SECRET}"
+      PRIORITISER_METHODOLOGIST_SECRET: "${DMB_PRIORITISER_METHODOLOGIST_SECRET:?set DMB_PRIORITISER_METHODOLOGIST_SECRET}"
       PRIORITISER_LLM_PROVIDER: "${DMB_LLM_PROVIDER:?set the shared non-mock LLM provider}"
       PRIORITISER_OPENAI_API_KEY: "${DMB_OPENAI_API_KEY:?set the shared LLM provider key}"
       PRIORITISER_OPENAI_BASE_URL: "${DMB_OPENAI_BASE_URL:-https://api.openai.com/v1}"
       PRIORITISER_OPENAI_MODEL: "${DMB_OPENAI_MODEL:-gpt-4o-mini}"
       PRIORITISER_RAG_ALLOW_K3: "0"
-    volumes:
-      - dmb-prioritiser-data:/data
+      PRIORITISER_RAG_LOCAL_FILES_ONLY: "true"
+    depends_on:
+      prioritiser-migration:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/health', timeout=5)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/ready', timeout=5)"]
       interval: 10s
       timeout: 6s
       retries: 12
       start_period: 30s
-    networks: [app]
+    networks: [app, data]
 
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.27-alpine@sha256:62223d644fa234c3a1cc785ee14242ec47a77364226f1c811d2f669f96dc2ac8
     restart: unless-stopped
     ports:
       - "${DMB_HTTP_BIND:-127.0.0.1:8080}:8080"
@@ -185,7 +227,7 @@ services:
     networks: [app]
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.132.0
+    image: otel/opentelemetry-collector-contrib:0.132.0@sha256:0b3b73f3d10af5f08c04b6ef3958f272d0866b2437033c31a4952773dfa178b7
     restart: unless-stopped
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     volumes:
@@ -196,7 +238,7 @@ services:
     networks: [observability]
 
   jaeger:
-    image: jaegertracing/all-in-one:1.76.0
+    image: jaegertracing/all-in-one:1.76.0@sha256:968b31672178558da8a0c1bfc86336647d756ee6997ca196698796f5262adef1
     restart: unless-stopped
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
@@ -211,7 +253,7 @@ services:
     networks: [observability]
 
   prometheus:
-    image: prom/prometheus:v3.5.0
+    image: prom/prometheus:v3.5.0@sha256:8672a850efe2f9874702406c8318704edb363587f8c2ca88586b4c8fdb5cea24
     restart: unless-stopped
     command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
     volumes:
@@ -229,12 +271,12 @@ volumes:
     name: "${DMB_VOLUME_PREFIX:-dmb-platform}-redis"
   dmb-attachments:
     name: "${DMB_VOLUME_PREFIX:-dmb-platform}-attachments"
+  dmb-clamav-data:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-clamav"
   dmb-prometheus-data:
     name: "${DMB_VOLUME_PREFIX:-dmb-platform}-prometheus"
   dmb-jaeger-data:
     name: "${DMB_VOLUME_PREFIX:-dmb-platform}-jaeger"
-  dmb-prioritiser-data:
-    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-prioritiser"
 
 networks:
   app:

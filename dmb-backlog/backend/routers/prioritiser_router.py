@@ -18,6 +18,7 @@ from auth import authorize_task, get_current_user
 from config import settings
 from database import get_db
 from metrics import inc_counter, observe_histogram
+from interservice import request_with_resilience
 from models import Task, Team, User
 from routers.tasks_router import update_task
 from schemas import PrioritiserTaskUpdate, TaskResponse, TaskUpdate
@@ -104,21 +105,31 @@ def _call_prioritiser(path: str, payload: dict) -> dict:
     request = urllib.request.Request(
         url,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "X-Prioritiser-Secret": settings.PRIORITISER_SECRET,
+        },
         method="POST",
     )
     started_at = time.monotonic()
     outcome = "success"
     try:
-        with urllib.request.urlopen(request, timeout=settings.PRIORITISER_TIMEOUT_SECONDS) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            if not isinstance(result, dict):
-                raise ValueError("prioritiser response is not an object")
-            try:
-                PrioritiserAgentEnvelope.model_validate(result)
-            except ValidationError as error:
-                raise ValueError("prioritiser response violates the contract") from error
-            return result
+        body = request_with_resilience(
+            "prioritiser", request,
+            timeout=settings.PRIORITISER_TIMEOUT_SECONDS,
+            attempts=settings.INTERSERVICE_MAX_ATTEMPTS,
+            base_delay=settings.INTERSERVICE_RETRY_BASE_SECONDS,
+            failure_threshold=settings.INTERSERVICE_CIRCUIT_FAILURE_THRESHOLD,
+            reset_seconds=settings.INTERSERVICE_CIRCUIT_RESET_SECONDS,
+        )
+        result = json.loads(body.decode("utf-8"))
+        if not isinstance(result, dict):
+            raise ValueError("prioritiser response is not an object")
+        try:
+            PrioritiserAgentEnvelope.model_validate(result)
+        except ValidationError as error:
+            raise ValueError("prioritiser response violates the contract") from error
+        return result
     except urllib.error.HTTPError as error:
         outcome = f"http_{error.code}"
         body = error.read().decode("utf-8", errors="replace")[:1000]

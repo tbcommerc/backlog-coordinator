@@ -1,0 +1,483 @@
+/*
+ * Единый визуальный контракт модальных окон.
+ * Карточка задачи и форма создания задачи намеренно исключены: их workspace-
+ * композиция остаётся специализированной и меняется только точечно ниже.
+ */
+
+:is(
+  .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+  .admin-modal-overlay,
+  .feedback-confirm-overlay,
+  .conflict-overlay,
+  .modal-backdrop
+) {
+  box-sizing: border-box;
+  padding: 16px;
+  background: rgba(15, 23, 42, .52);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  overflow: hidden;
+}
+
+:is(
+  .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+  .admin-modal-overlay,
+  .feedback-confirm-overlay,
+  .conflict-overlay,
+  .modal-backdrop
+) > :is(
+  .modal,
+  .admin-modal,
+  .feedback-confirm,
+  .conflict-modal,
+  .prioritiser-requirements-modal,
+  .qe-complete-modal,
+  .app-modal
+),
+dialog.customer-reference-dialog {
+  box-sizing: border-box;
+  width: min(100%, var(--modal-width, 560px));
+  max-width: var(--modal-width, 560px);
+  max-height: calc(100dvh - 32px);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
+}
+
+:is(.modal, .admin-modal, .feedback-confirm, .conflict-modal, .app-modal).modal-sm,
+.app-modal--small { --modal-width: 420px; }
+:is(.modal, .admin-modal, .feedback-confirm, .conflict-modal, .app-modal).modal-md,
+.app-modal--medium { --modal-width: 680px; }
+:is(.modal, .admin-modal, .feedback-confirm, .conflict-modal, .app-modal).modal-lg,
+.app-modal--large { --modal-width: 920px; }
+:is(.modal, .admin-modal, .feedback-confirm, .conflict-modal, .app-modal).modal-xl,
+.app-modal--wide { --modal-width: 920px; }
+.conflict-modal--wide { --modal-width: 920px; }
+.chat-submit-dialog { --modal-width: 680px; }
+.chat-edit-dialog { --modal-width: 620px; }
+.meeting-management-dialog { --modal-width: 560px; }
+.meeting-data-dialog { --modal-width: 920px; }
+.modal-timeline { --modal-width: 480px; }
+.prioritiser-requirements-modal { --modal-width: 460px; }
+.qe-complete-modal { --modal-width: 680px; }
+dialog.customer-reference-dialog { --modal-width: 760px; }
+
+dialog.customer-reference-dialog::backdrop {
+  background: rgba(15, 23, 42, .52);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+:is(.modal-header, .app-modal__header, .feedback-confirm-header) {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+:is(.modal-title, .app-modal__title, .feedback-confirm-header h3) {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  line-height: 1.35;
+}
+
+.app-modal__subtitle {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+:is(.modal-body, .app-modal__body, .feedback-confirm-body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 20px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--bg-primary);
+}
+
+:is(.modal-footer, .modal-footer-sticky, .app-modal__footer, .feedback-confirm-actions) {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+/*
+ * Геометрия футера — часть общего контракта, а не настройка конкретной формы.
+ * Дополнительный селектор семейства модалок не даёт старым component/page-
+ * правилам незаметно менять расстояние действий от краёв поверхности.
+ */
+:is(
+  .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+  .admin-modal-overlay,
+  .feedback-confirm-overlay,
+  .conflict-overlay,
+  .modal-backdrop
+) :is(.modal-footer, .modal-footer-sticky, .app-modal__footer, .feedback-confirm-actions) {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 16px 24px;
+  gap: 10px;
+}
+
+/* Отмена и другие вторичные действия всегда читаются как полноценные кнопки. */
+:is(
+  .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+  .admin-modal-overlay,
+  .feedback-confirm-overlay,
+  .conflict-overlay,
+  .modal-backdrop
+) :is(
+  .modal-footer,
+  .modal-footer-sticky,
+  .app-modal__footer,
+  .feedback-confirm-actions
+) :is(.btn-secondary, .btn-ghost, .modal-cancel-btn, .conflict-btn-ghost) {
+  border: 1px solid color-mix(in srgb, var(--text-secondary) 42%, var(--border-color));
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+}
+
+:is(
+  .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+  .admin-modal-overlay,
+  .feedback-confirm-overlay,
+  .conflict-overlay,
+  .modal-backdrop
+) :is(
+  .modal-footer,
+  .modal-footer-sticky,
+  .app-modal__footer,
+  .feedback-confirm-actions
+) :is(.btn-secondary, .btn-ghost, .modal-cancel-btn, .conflict-btn-ghost):hover {
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.admin-modal .modal-header-sticky {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.admin-modal .modal-header-sticky > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px;
+  margin: 0 !important;
+}
+
+.admin-modal .modal-body-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.admin-modal .modal-footer-sticky {
+  padding: 16px 24px;
+}
+
+.admin-modal .modal-footer-sticky > div {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+}
+
+:is(
+  .modal-close,
+  .modal-close-x,
+  .prioritiser-requirements-x,
+  .customer-reference-dialog [data-close]
+) {
+  box-sizing: border-box;
+  flex: 0 0 40px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+:is(
+  .modal-close,
+  .modal-close-x,
+  .prioritiser-requirements-x,
+  .customer-reference-dialog [data-close]
+) :is(svg, i) {
+  width: 20px;
+  height: 20px;
+}
+
+:is(
+  .modal-close,
+  .modal-close-x,
+  .prioritiser-requirements-x,
+  .customer-reference-dialog [data-close]
+):hover {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border-color));
+  background: color-mix(in srgb, var(--danger) 9%, var(--bg-tertiary));
+  color: var(--danger);
+}
+
+:is(
+  .modal-close,
+  .modal-close-x,
+  .prioritiser-requirements-x,
+  .customer-reference-dialog [data-close]
+):active { transform: scale(.96); }
+
+:is(
+  .modal-close,
+  .modal-close-x,
+  .prioritiser-requirements-x,
+  .customer-reference-dialog [data-close]
+):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.app-modal__notice,
+:is(.meeting-dialog-warning, .review-modal-consequence) {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.review-modal-discard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.app-modal__notice--info { border-color: color-mix(in srgb, var(--info) 34%, var(--border-color)); background: color-mix(in srgb, var(--info) 8%, var(--bg-primary)); }
+.app-modal__notice--warning { border-color: color-mix(in srgb, var(--warning) 38%, var(--border-color)); background: color-mix(in srgb, var(--warning) 9%, var(--bg-primary)); }
+.app-modal__notice--danger { border-color: color-mix(in srgb, var(--danger) 36%, var(--border-color)); background: color-mix(in srgb, var(--danger) 8%, var(--bg-primary)); }
+.app-modal__notice--success { border-color: color-mix(in srgb, var(--success) 34%, var(--border-color)); background: color-mix(in srgb, var(--success) 8%, var(--bg-primary)); }
+
+.app-modal__state {
+  min-height: 140px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 28px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.app-modal__error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 38%, var(--border-color));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg-primary));
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+
+/* Подтверждения — та же оболочка, но без декоративной кнопки закрытия. */
+.feedback-confirm { --modal-width: 420px; }
+.feedback-confirm-header h3 { margin: 0; }
+.feedback-confirm-body p { margin: 0; }
+.feedback-confirm-actions { flex-wrap: wrap; }
+
+.prioritiser-requirements-modal .prioritiser-requirements-x {
+  position: static;
+  inset: auto;
+}
+
+.prioritiser-requirements-modal .app-modal__header h3,
+.prioritiser-requirements-modal .app-modal__body p {
+  margin: 0;
+}
+
+.prioritiser-requirements-modal .app-modal__body p { margin-bottom: 18px; }
+
+/* Конфликт остаётся решающим диалогом, но использует общую поверхность. */
+.conflict-modal {
+  padding: 0;
+}
+
+.conflict-modal .conflict-modal-header { justify-content: flex-start; }
+.conflict-actions { margin-top: 0; }
+
+/* Нативный справочник получает обычные зоны прокрутки и крупное закрытие. */
+dialog.customer-reference-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+}
+
+dialog.customer-reference-dialog > :is(.did-filter-panel-head, p, [data-error], .customer-reference-list, [data-new], [data-editor]) {
+  margin-inline: 24px;
+}
+
+dialog.customer-reference-dialog > .did-filter-panel-head {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+dialog.customer-reference-dialog > p { margin-top: 20px; }
+dialog.customer-reference-dialog > .customer-reference-list { min-height: 0; overflow-y: auto; }
+dialog.customer-reference-dialog > [data-new] { align-self: flex-start; margin-block: 16px 20px; }
+dialog.customer-reference-dialog > [data-editor] { margin-bottom: 20px; }
+
+/* Карточка задачи: только более заметное закрытие, без изменения layout. */
+:is(#task-detail-overlay, #create-task-overlay) :is(.iconbtn.close, .task-detail-btn-close) {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+:is(#task-detail-overlay, #create-task-overlay) :is(.iconbtn.close, .task-detail-btn-close) svg {
+  width: 20px;
+  height: 20px;
+}
+
+:is(#task-detail-overlay, #create-task-overlay) :is(.iconbtn.close, .task-detail-btn-close):hover {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border-color));
+  background: color-mix(in srgb, var(--danger) 9%, var(--bg-tertiary));
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  :is(
+    .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+    .admin-modal-overlay,
+    .feedback-confirm-overlay,
+    .conflict-overlay,
+    .modal-backdrop
+  ) { padding: 8px; }
+
+  :is(
+    .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+    .admin-modal-overlay,
+    .feedback-confirm-overlay,
+    .conflict-overlay,
+    .modal-backdrop
+  ) > :is(.modal, .admin-modal, .feedback-confirm, .conflict-modal, .prioritiser-requirements-modal, .qe-complete-modal, .app-modal),
+  dialog.customer-reference-dialog {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 16px);
+    border-radius: 12px;
+  }
+
+  :is(.modal-header, .app-modal__header, .feedback-confirm-header) { padding: 16px 16px 14px; }
+  :is(.modal-body, .app-modal__body, .feedback-confirm-body) { padding: 16px; }
+  :is(.modal-footer, .modal-footer-sticky, .app-modal__footer, .feedback-confirm-actions) {
+    padding: 14px 16px;
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  :is(
+    .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+    .admin-modal-overlay,
+    .feedback-confirm-overlay,
+    .conflict-overlay,
+    .modal-backdrop
+  ) :is(.modal-footer, .modal-footer-sticky, .app-modal__footer, .feedback-confirm-actions) {
+    padding: 14px 16px;
+  }
+
+  :is(.modal-footer, .modal-footer-sticky, .app-modal__footer, .feedback-confirm-actions) > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .admin-modal .modal-footer-sticky > div {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .admin-modal .modal-footer-sticky > div > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  :is(
+    .modal-close,
+    .modal-close-x,
+    .prioritiser-requirements-x,
+    .customer-reference-dialog [data-close],
+    :is(#task-detail-overlay, #create-task-overlay) :is(.iconbtn.close, .task-detail-btn-close)
+  ) {
+    flex-basis: 44px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .conflict-actions { align-items: stretch; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+    .admin-modal-overlay,
+    .feedback-confirm-overlay,
+    .conflict-overlay,
+    .modal-backdrop
+  ),
+  :is(
+    .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
+    .admin-modal-overlay,
+    .feedback-confirm-overlay,
+    .conflict-overlay,
+    .modal-backdrop
+  ) > * { animation: none !important; }
+}

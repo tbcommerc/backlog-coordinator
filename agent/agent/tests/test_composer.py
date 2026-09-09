@@ -61,7 +61,7 @@ def test_defect_draft_intent_incident():
     s.set("need_statement", "Не работает выгрузка")
     draft = build_defect_draft(s, None)
     assert draft.intent == "incident"
-    assert draft.priority == "Высокий"
+    assert draft.priority == ""  # Incident classification does not establish urgency.
 
 
 def test_regular_draft_does_not_invent_medium_priority():

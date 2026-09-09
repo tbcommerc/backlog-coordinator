@@ -25,12 +25,19 @@ class SendForReviewRequest(BaseModel):
     task_id: int
     title: str = ""
     user_id: Optional[int] = None
+    expected_draft_hash: str = Field(default="", max_length=64)
 
 
 class ReopenReviewRequest(BaseModel):
     session_id: str = ""
     user_id: Optional[int] = None
     comment: str = Field(default="", max_length=5000)
+
+
+class CancelReviewRequest(BaseModel):
+    session_id: str = ""
+    task_id: int
+    user_id: Optional[int] = None
 
 
 class EditDraftSectionRequest(BaseModel):
@@ -50,11 +57,14 @@ class AgentResponse(BaseModel):
     slots: dict = Field(default_factory=dict)
     progress: list = Field(default_factory=list)
     draft: Optional[dict] = None
+    draft_revision: str = ""
     can_generate_draft: bool = False
     history: list = Field(default_factory=list)
     quality: dict = Field(default_factory=dict)
     request_id: Optional[int] = None
     expected_slot: str = ""
+    dialogue_mode: str = ""
+    sources: list = Field(default_factory=list)
 
 
 class ConfigResponse(BaseModel):

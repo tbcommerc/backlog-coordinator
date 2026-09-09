@@ -13,6 +13,8 @@ DATA_DIR = REPO_ROOT / "data"
 REFERENCES_DIR = DATA_DIR / "references"
 KNOWLEDGE_DIR = DATA_DIR / "knowledge"
 VAR_DIR = REPO_ROOT / "var"
+DEFAULT_SERVICE_SECRET = "dmb-prioritiser-local-secret-2026"
+DEFAULT_METHODOLOGIST_SECRET = "dmb-prioritiser-methodologist-local-secret-2026"
 
 
 class Settings(BaseSettings):
@@ -25,7 +27,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    debug: bool = True
     db_url: str = "sqlite:///var/prioritiser.db"
+    service_secret: str = DEFAULT_SERVICE_SECRET
+    methodologist_secret: str = DEFAULT_METHODOLOGIST_SECRET
 
     # mock | openai_compat | anthropic | gigachat | gigacode
     # Рабочий default обязан обращаться к настроенной модели. Mock разрешён
@@ -61,6 +66,9 @@ class Settings(BaseSettings):
     # лексический поиск и не находит формулировки, отличные от запроса дословно.
     rag_vector: bool = True
     rag_embedding_model: str = "intfloat/multilingual-e5-base"
+    rag_embedding_revision: str = "d13f1b27baf31030b7fd040960d60d909913633f"
+    rag_model_cache_dir: str = ""
+    rag_local_files_only: bool = False
 
     # Корпус K3 индексируется, когда пакет установлен. Выключатель нужен для
     # демонстраций и внешних показов, где материалы этой классификации

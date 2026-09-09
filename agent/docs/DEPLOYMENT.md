@@ -145,6 +145,7 @@ retention и централизованный сбор определяет вл
 ..\.venv\Scripts\python.exe -m pytest agent\tests -q -p no:cacheprovider
 ```
 
-На 01.09.2026 collection содержит 230 тестов. Для многорепличного допуска нужны
+Фактический размер collection получают перед релизом после установки
+`requirements-dev.lock`. Для многорепличного допуска нужны
 отдельные smoke проверки PostgreSQL, повторов `message_id`, trace propagation и
 failover; unit-тесты не заменяют стендовую проверку.

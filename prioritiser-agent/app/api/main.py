@@ -6,17 +6,20 @@
 * админ — справочники и ex-post атрибуция, доступ методолога (US-4, US-6);
 * служебные — RAG и здоровье сервиса.
 
-Аутентификация в прототипе не реализована: по ТЗ (И4) это корпоративный
-AD/OIDC, подключать который вне контура банка бессмысленно. Точка расширения —
-зависимость `require_methodologist`.
+Внутренний API защищён отдельным service secret Координатора, а операции
+методолога — независимым capability secret. В банковском контуре эти
+зависимости заменяются корпоративной identity (AD/OIDC) без изменения handlers.
 """
 
 from __future__ import annotations
 
+import hmac
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, Query
-from sqlalchemy import func, select
+from fastapi import Depends, FastAPI, HTTPException, Query, Security
+from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
@@ -43,7 +46,7 @@ from app.api.contract import (
 )
 from app.config import get_settings
 from app.core.attribution import AttributionError, run_attribution
-from app.core.db import get_session_factory, init_db
+from app.core.db import get_engine, get_session_factory, init_db
 from app.core.models import PriorityHistory, Reference, Task
 from app.core.references import (
     REFERENCE_NAMES,
@@ -87,21 +90,50 @@ def get_db() -> Session:
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-def require_methodologist() -> str:
-    """Заглушка авторизации методолога.
+service_secret_header = APIKeyHeader(
+    name="X-Prioritiser-Secret",
+    scheme_name="PrioritiserServiceSecret",
+    auto_error=False,
+)
+methodologist_secret_header = APIKeyHeader(
+    name="X-Methodologist-Secret",
+    scheme_name="PrioritiserMethodologistSecret",
+    auto_error=False,
+)
 
-    В контуре банка сюда подключается AD/OIDC (И4). Оставлено отдельной
-    зависимостью, чтобы админ-эндпоинты закрывались одной правкой.
-    """
-    return "methodologist"
+
+def _verify_secret(provided: str | None, expected: str, capability: str) -> str:
+    if not expected:
+        raise HTTPException(status_code=503, detail=f"{capability} secret is not configured")
+    if not provided or not hmac.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="invalid service credentials")
+    return capability
+
+
+def require_service(
+    secret: Annotated[str | None, Security(service_secret_header)],
+) -> str:
+    return _verify_secret(secret, get_settings().service_secret, "coordinator")
+
+
+def require_methodologist(
+    secret: Annotated[str | None, Security(methodologist_secret_header)],
+) -> str:
+    return _verify_secret(secret, get_settings().methodologist_secret, "methodologist")
 
 
 Methodologist = Annotated[str, Depends(require_methodologist)]
+ServiceCaller = Annotated[str, Depends(require_service)]
 
 
 @app.on_event("startup")
 def _startup() -> None:
     init_db()
+    settings = get_settings()
+    if settings.rag_vector or settings.value_analogy:
+        from app.rag.embeddings import start_encoder_warmup
+
+        start_encoder_warmup(settings.rag_embedding_model)
 
 
 def _get_task(session: Session, task_key: str) -> Task:
@@ -124,9 +156,69 @@ def health() -> dict[str, Any]:
     }
 
 
+@app.get("/ready")
+def ready() -> JSONResponse:
+    """Check persistence, provider configuration and local RAG artifacts."""
+    settings = get_settings()
+    checks: dict[str, str] = {}
+    is_ready = True
+    try:
+        with get_engine().connect() as connection:
+            connection.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        is_ready = False
+        checks["database"] = f"error:{type(exc).__name__}"
+
+    provider = settings.llm_provider.strip().lower()
+    if provider == "mock" and not settings.debug:
+        is_ready = False
+        checks["llm"] = "mock_forbidden"
+    elif provider == "openai_compat" and not settings.openai_api_key:
+        is_ready = False
+        checks["llm"] = "credentials_missing"
+    elif provider == "anthropic" and not settings.anthropic_api_key:
+        is_ready = False
+        checks["llm"] = "credentials_missing"
+    elif provider == "gigachat" and not settings.gigachat_credentials:
+        is_ready = False
+        checks["llm"] = "credentials_missing"
+    elif provider == "gigacode" and not settings.gigacode_base_url:
+        is_ready = False
+        checks["llm"] = "endpoint_missing"
+    elif provider not in {"mock", "openai_compat", "anthropic", "gigachat", "gigacode"}:
+        is_ready = False
+        checks["llm"] = "provider_unsupported"
+    else:
+        checks["llm"] = "configured"
+
+    if settings.strategy_provider == "rest" and not settings.strategy_decomposer_url:
+        is_ready = False
+        checks["strategy_provider"] = "endpoint_missing"
+    else:
+        checks["strategy_provider"] = "configured"
+
+    if settings.rag_vector or settings.value_analogy:
+        from app.rag.embeddings import get_encoder_status, start_encoder_warmup
+
+        start_encoder_warmup(settings.rag_embedding_model)
+        embedding_status = get_encoder_status(settings.rag_embedding_model)
+        checks["embedding_model"] = embedding_status
+        if embedding_status != "ok":
+            is_ready = False
+    else:
+        checks["embedding_model"] = "disabled"
+
+    return JSONResponse(
+        status_code=200 if is_ready else 503,
+        content={"status": "ready" if is_ready else "not_ready", "checks": checks},
+    )
+
+
 @app.get("/backlog", response_model=list[TaskOut])
 def get_backlog(
     session: DbSession,
+    _: ServiceCaller,
     sort: str = Query("priority", pattern="^(priority|value|cv|key)$"),
     team: str | None = None,
     priority: str | None = Query(None, pattern="^P[1-5]$"),
@@ -156,6 +248,7 @@ def get_backlog(
 @app.get("/backlog/external", response_model=list[TaskExternalOut])
 def get_backlog_external(
     session: DbSession,
+    _: ServiceCaller,
     limit: int = Query(1000, ge=1, le=5000),
 ) -> list[Task]:
     """Выгрузка для Стратком и внешней отчётности (US-7): только value_external."""
@@ -164,18 +257,22 @@ def get_backlog_external(
 
 
 @app.get("/tasks/{task_key}", response_model=TaskOut)
-def get_task(task_key: str, session: DbSession) -> Task:
+def get_task(task_key: str, session: DbSession, _: ServiceCaller) -> Task:
     return _get_task(session, task_key)
 
 
 @app.get("/tasks/{task_key}/history", response_model=list[PriorityHistoryOut])
-def get_task_history(task_key: str, session: DbSession) -> list[PriorityHistory]:
+def get_task_history(
+    task_key: str, session: DbSession, _: ServiceCaller
+) -> list[PriorityHistory]:
     task = _get_task(session, task_key)
     return sorted(task.history, key=lambda h: h.id)
 
 
 @app.patch("/tasks/{task_key}", response_model=TaskOut)
-def update_task(task_key: str, payload: TaskUpdateIn, session: DbSession) -> Task:
+def update_task(
+    task_key: str, payload: TaskUpdateIn, session: DbSession, _: ServiceCaller
+) -> Task:
     """Правка атрибутов с немедленным пересчётом (Ф25, US-2)."""
     task = _get_task(session, task_key)
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -189,6 +286,7 @@ def update_task(task_key: str, payload: TaskUpdateIn, session: DbSession) -> Tas
 def recompute_one(
     task_key: str,
     session: DbSession,
+    _: ServiceCaller,
     use_llm: bool = True,
     refresh_strategy: bool = False,
 ) -> Task:
@@ -200,7 +298,9 @@ def recompute_one(
 
 
 @app.post("/recompute-all", response_model=RecomputeOut)
-def recompute_everything(payload: RecomputeIn, session: DbSession) -> RecomputeOut:
+def recompute_everything(
+    payload: RecomputeIn, session: DbSession, _: ServiceCaller
+) -> RecomputeOut:
     stats = recompute_all(
         session,
         reason=payload.reason,
@@ -212,7 +312,7 @@ def recompute_everything(payload: RecomputeIn, session: DbSession) -> RecomputeO
 
 
 @app.get("/stats")
-def get_stats(session: DbSession) -> dict[str, Any]:
+def get_stats(session: DbSession, _: ServiceCaller) -> dict[str, Any]:
     total = session.scalar(select(func.count()).select_from(Task)) or 0
     by_priority = {p: 0 for p in PRIORITY_ORDER}
     for priority, count in session.execute(
@@ -242,7 +342,9 @@ def get_stats(session: DbSession) -> dict[str, Any]:
 
 
 @app.get("/reports/low-confidence", response_model=list[TaskOut])
-def low_confidence_report(session: DbSession, limit: int = 200) -> list[Task]:
+def low_confidence_report(
+    session: DbSession, _: ServiceCaller, limit: int = 200
+) -> list[Task]:
     """US-5: где качество оценки Value самое низкое."""
     query = (
         select(Task)
@@ -283,7 +385,7 @@ def write_reference(
     session.flush()
     # Изменение справочника — триггер пересчёта (Ф25). Модель при этом не
     # опрашивается: классификация задач от весов и констант не зависит.
-    recompute_all(session, reason=REASON_REFERENCES, use_llm=True)
+    recompute_all(session, reason=REASON_REFERENCES, use_llm=False)
     return ReferenceOut(name=row.name, version=row.version, payload=row.payload)
 
 
@@ -296,6 +398,7 @@ def post_attribution(
             session,
             period=payload.period,
             front_actual_revenue_mln=payload.front_actual_revenue_mln,
+            task_keys=payload.task_keys,
             actor=payload.actor,
             only_closed=payload.only_closed,
         )
@@ -308,6 +411,7 @@ def post_attribution(
 
 @app.get("/rag/search", response_model=RagQueryOut)
 def rag_search(
+    _: ServiceCaller,
     q: str,
     top_k: int = Query(5, ge=1, le=20),
     layer: str | None = Query(None, pattern="^(knowledge|backlog|methodology)$"),
@@ -327,7 +431,7 @@ def rag_search(
     response_model=CoordinatorValueOut | ErrorResponse,
     summary="Рассчитай Value(internal) по инициативе",
 )
-def agent_value(request: ValueRequest, session: DbSession):
+def agent_value(request: ValueRequest, session: DbSession, _: ServiceCaller):
     """Только Value. Приоритет здесь не считается — на него отдельный запрос."""
     response = handle_request(request.task, "value", session)
     if isinstance(response, ErrorResponse) or response.value is None:
@@ -340,7 +444,7 @@ def agent_value(request: ValueRequest, session: DbSession):
     response_model=AgentResponse | ErrorResponse,
     summary="То же, но с разбором по методам, драйверами и аудитом",
 )
-def agent_value_full(request: ValueRequest, session: DbSession):
+def agent_value_full(request: ValueRequest, session: DbSession, _: ServiceCaller):
     """Подробный ответ для отладки и для интерфейса методолога."""
     return handle_request(request.task, "value", session)
 
@@ -350,7 +454,7 @@ def agent_value_full(request: ValueRequest, session: DbSession):
     response_model=CoordinatorPriorityOut | ErrorResponse,
     summary="Определи приоритет по инициативе",
 )
-def agent_priority(request: PriorityRequest, session: DbSession):
+def agent_priority(request: PriorityRequest, session: DbSession, _: ServiceCaller):
     response = handle_request(request.task, "priority", session)
     if isinstance(response, ErrorResponse) or response.priority is None:
         return response
@@ -362,11 +466,11 @@ def agent_priority(request: PriorityRequest, session: DbSession):
     response_model=AgentResponse | ErrorResponse,
     summary="То же, но с разбором по факторам, овверрайдами и аудитом",
 )
-def agent_priority_full(request: PriorityRequest, session: DbSession):
+def agent_priority_full(request: PriorityRequest, session: DbSession, _: ServiceCaller):
     """Подробный ответ для отладки и для интерфейса методолога."""
     return handle_request(request.task, "priority", session)
 
 
 @app.get("/agent/snapshot", summary="Версия зашитого слепка исторических Value")
-def agent_snapshot() -> dict[str, Any]:
+def agent_snapshot(_: ServiceCaller) -> dict[str, Any]:
     return get_snapshot().describe()

@@ -3,25 +3,20 @@ draft business requirement (JSON) with sources, open questions, scores and
 assumption markers.
 """
 import uuid
+from copy import deepcopy
 from datetime import datetime, timezone
 
 from ..context import UserContext
-from ..dialogue.state import DialogueState, SLOT_LABELS, QUALITY_PROGRESS_SLOTS
-from ..dialogue.quality import assess_quality
+from ..dialogue.state import DialogueState, SLOT_LABELS
+from ..dialogue.quality import assess_quality, split_criteria
 from ..guardrails.output_harness import validate_draft_schema
 from ..kb.sources import requirements_history_source
 from ..dialogue.gaps import synchronize_gaps
 from .reviewer import has_blocking_findings, review_draft
-from .schema import RequirementDraft, DraftSource, to_markdown
+from .schema import RequirementDraft, DraftSource, FIELD_SLOTS, to_markdown
 from .scores import completeness_score, confidence_level
 
 MIN_COMPLETENESS = 60
-
-_OPEN_QUESTION_SLOTS = [
-    "department", "module", "scenarios", "business_rules", "data_integrations",
-    "dependencies", "risks", "regulatory_flags",
-]
-
 
 def _list(value) -> list:
     if not value:
@@ -50,6 +45,13 @@ def check_duplicates(state: DialogueState) -> list[dict]:
     return requirements_history_source.find_similar(query, limit=3)
 
 
+def _artifact_value(state: DialogueState, key: str):
+    slot = state.slots.get(key)
+    if slot and slot.status == "not_applicable":
+        return slot.value or "Не применимо"
+    return state.get(key)
+
+
 def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDraft:
     completeness = completeness_score(state)
     confidence = confidence_level(state, completeness)
@@ -57,24 +59,8 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
     state.quality_assessment = quality.as_dict()
     gaps = synchronize_gaps(state, quality)
 
-    open_questions = []
-    # Preserve concrete questions explicitly supplied by the user/model. They
-    # are more useful to reviewers than generic messages about missing slots.
-    for question in _list(state.get("open_questions")):
-        if question not in open_questions:
-            open_questions.append(question)
-    open_question_slots = list(dict.fromkeys(_OPEN_QUESTION_SLOTS + QUALITY_PROGRESS_SLOTS))
-    for key in open_question_slots:
-        if state.slots[key].status == "skipped":
-            open_questions.append(f"Не уточнено: {SLOT_LABELS.get(key, key)}")
-    for key in ("dependencies", "risks", "regulatory_flags"):
-        if state.slots[key].status != "filled":
-            question = f"Требуется уточнение: {SLOT_LABELS.get(key, key)}"
-            if question not in open_questions:
-                open_questions.append(question)
-    for issue in quality.issues:
-        if issue.question and issue.question not in open_questions:
-            open_questions.append(issue.question)
+    active_gaps = [gap for gap in gaps if gap.status != "resolved"]
+    open_questions = list(dict.fromkeys(gap.question for gap in active_gaps))
 
     assumptions = []
     if completeness < MIN_COMPLETENESS:
@@ -92,43 +78,47 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
             if text not in assumptions:
                 assumptions.append(text)
 
-    regulatory_flags = _list(state.get("regulatory_flags"))
-    product = state.get("product") or ""
-    if "структурн" in product.lower() and not any("комплаенс" in f.lower() for f in regulatory_flags):
-        regulatory_flags.append("Обязательное комплаенс-ревью (структурный продукт)")
-    if state.slots["department"].status == "skipped":
-        regulatory_flags.append("Требуется проверка комплаенс/риск-менеджмента")
+    assumption_details = [dict(item) for item in getattr(state, "requirement_assumptions", [])]
+    for item in assumption_details:
+        if item.get("status", "open") == "resolved" or not item.get("text"):
+            continue
+        text = f"[предположение] {item['text']}"
+        if text not in assumptions:
+            assumptions.append(text)
 
-    field_slots = {
-        "problem_statement": "need_statement", "current_process": "as_is", "target_process": "to_be",
-        "business_value": "value", "user_roles": "users", "product": "product",
-        "department": "department",
-        "module": "module", "scenarios": "scenarios", "business_rules": "business_rules",
-        "data_integrations": "data_integrations", "acceptance_criteria": "acceptance_criteria",
-        "dependencies": "dependencies", "risks": "risks", "regulatory_flags": "regulatory_flags",
-    }
+    regulatory_flags = _list(_artifact_value(state, "regulatory_flags"))
+    product = _artifact_value(state, "product") or ""
+    # An inferred product category or a skipped department does not establish
+    # a regulatory obligation. Missing applicability is already a registry gap.
+
     field_provenance = {}
     field_confidence = {}
-    for field, slot_key in field_slots.items():
+    field_status = {}
+    for field, slot_key in FIELD_SLOTS.items():
         slot = state.slots.get(slot_key)
-        if slot and slot.status == "filled":
+        if slot:
+            field_status[field] = slot.status
+        if slot and slot.status != "empty":
             field_provenance[field] = {
                 "source": slot.source or "unknown", "assumption": slot.assumption,
                 "confirmed": slot.confirmed,
+                "status": slot.status, "raw_value": slot.value,
+                "evidence": getattr(slot, "evidence", ""), "message_id": getattr(slot, "message_id", ""),
+                "claims": deepcopy(getattr(slot, "provenance", [])),
             }
             field_confidence[field] = round(float(slot.confidence), 2)
 
-    blocking_slots = set(profile_for_slot for profile_for_slot in (
-        "need_statement", "to_be", "role", "process", "acceptance_criteria"
-    ))
+    blocking_slots = set(state.get_missing_mandatory_hard())
     open_question_details = []
     for question in open_questions:
-        matching_slot = next((key for key in QUALITY_PROGRESS_SLOTS
-                              if SLOT_LABELS.get(key, key) in question), "")
+        matching = [gap for gap in active_gaps if gap.question == question]
         open_question_details.append({
             "text": question,
-            "blocking": matching_slot in blocking_slots or question.startswith("Уточните:"),
-            "slot": matching_slot,
+            "blocking": any(gap.slot in blocking_slots for gap in matching) or any(
+                issue.question == question and issue.severity == "critical" for issue in quality.conflicts
+            ),
+            "slot": matching[0].slot if matching else "",
+            "gap_id": matching[0].id if matching else "",
         })
 
     draft = RequirementDraft(
@@ -136,28 +126,34 @@ def build_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDra
         title=_make_title(state),
         intent=state.get("intent") or "",
         problem_statement=state.get("need_statement") or "",
-        current_process=state.get("as_is") or "",
+        current_process=_artifact_value(state, "as_is") or "",
         target_process=state.get("to_be") or "",
-        business_value=state.get("value") or "",
-        user_roles=_list(state.get("role")) + _list(state.get("users")),
-        department=state.get("department") or "",
+        business_value=_artifact_value(state, "value") or "",
+        user_roles=list(dict.fromkeys(_list(state.get("role")) + _list(state.get("users")))),
+        primary_role=state.get("role") or "",
+        affected_users=_list(_artifact_value(state, "users")),
+        process=state.get("process") or "",
+        department=_artifact_value(state, "department") or "",
         product=product,
-        module=state.get("module") or "",
-        scenarios=_list(state.get("scenarios")),
-        business_rules=_list(state.get("business_rules")),
-        data_integrations=_list(state.get("data_integrations")),
-        acceptance_criteria=_list(state.get("acceptance_criteria")),
+        module=_artifact_value(state, "module") or "",
+        scenarios=_list(_artifact_value(state, "scenarios")),
+        business_rules=_list(_artifact_value(state, "business_rules")),
+        data_integrations=_list(_artifact_value(state, "data_integrations")),
+        acceptance_criteria=split_criteria(_artifact_value(state, "acceptance_criteria")),
         open_questions=open_questions,
         open_question_details=open_question_details,
-        dependencies=_list(state.get("dependencies")),
-        risks=_list(state.get("risks")),
+        dependencies=_list(_artifact_value(state, "dependencies")),
+        risks=_list(_artifact_value(state, "risks")),
         assumptions=assumptions,
+        assumption_details=assumption_details,
+        conflict_history=[dict(item) for item in getattr(state, "requirement_conflicts", [])],
         regulatory_flags=regulatory_flags,
         priority=state.get("priority") or "",
         duplicates=state.duplicates,
-        sources=[DraftSource(**s) for s in state.sources],
+        sources=[DraftSource(**s) for s in state.sources if s.get("type") != "assumption"],
         field_provenance=field_provenance,
         field_confidence=field_confidence,
+        field_status=field_status,
         completeness_score=completeness,
         confidence=confidence,
         quality_score=quality.score,
@@ -192,46 +188,15 @@ def draft_mtime() -> str:
 
 
 def build_defect_draft(state: DialogueState, ctx: UserContext | None) -> RequirementDraft:
-    """Short defect draft for the incident path (intentionally minimal)."""
-    completeness = min(completeness_score(state), 45)
-    need = state.get("need_statement") or ""
-    quality = assess_quality(state)
-    state.quality_assessment = quality.as_dict()
-    return RequirementDraft(
-        id=f"DRAFT-{uuid.uuid4().hex[:8].upper()}",
-        title=(need.split(".")[0].strip()[:180] or "Дефект платформы"),
-        intent="incident",
-        problem_statement=need,
-        current_process="",
-        target_process="",
-        business_value="",
-        user_roles=_list(state.get("role")),
-        department=state.get("department") or "",
-        product=state.get("product") or "",
-        module=state.get("module") or "",
-        scenarios=[],
-        business_rules=[],
-        data_integrations=[],
-        acceptance_criteria=[],
-        open_questions=["Необходима диагностика инцидента владельцем модуля"],
-        dependencies=[],
-        risks=["Дефект может блокировать операционную деятельность"],
-        assumptions=["[предположение] Требуется верификация инцидента поддержкой платформы."],
-        regulatory_flags=[],
-        priority="Высокий",
-        duplicates=state.duplicates,
-        sources=[DraftSource(**s) for s in state.sources],
-        completeness_score=completeness,
-        confidence="low",
-        quality_score=quality.score,
-        quality_level=quality.level,
-        quality_profile=quality.profile,
-        quality_issues=[issue.as_dict() for issue in quality.issues],
-        conflicts=[issue.as_dict() for issue in quality.conflicts],
-        status="Draft",
-        created_by={
-            "user_id": ctx.user_id if ctx else None,
-            "name": ctx.name if ctx else "",
-            "role": ctx.role_name if ctx else "",
-        },
-    )
+    """A short incident interview must still preserve all already supplied facts."""
+    incident = deepcopy(state)
+    incident.set("intent", "incident", source="system")
+    questions = _list(incident.get("open_questions"))
+    questions.append("Необходима диагностика инцидента владельцем модуля")
+    incident.set("open_questions", "; ".join(dict.fromkeys(questions)), source="system")
+    draft = build_draft(incident, ctx)
+    draft.completeness_score = min(draft.completeness_score, 45)
+    draft.confidence = "low"
+    state.quality_assessment = incident.quality_assessment
+    state.gaps = incident.gaps
+    return draft

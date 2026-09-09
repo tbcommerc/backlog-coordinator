@@ -32,7 +32,7 @@ SLOT_ANSWERS = {
     "users": "Бэк-офицеры и контролёр",
     "scenarios": "Повторный запрос после сбоя",
     "business_rules": "Повторный запрос только после трёх попыток",
-    "acceptance_criteria": "Оповещение приходит в течение минуты",
+    "acceptance_criteria": "После несостоявшегося расчёта сделки оператор получает оповещение в течение 1 минуты",
     "data_integrations": "Данные из расчётной системы",
     "value": "Экономия двух часов в день",
     "priority": "Высокий",
@@ -63,6 +63,30 @@ def test_session_list_uses_last_message_time_not_generic_save_time(tmp_path):
     assert next(
         item["last_message_at"] for item in after if item["session_id"] == older.session_id
     ) == older_message_time
+
+
+def test_session_list_exposes_user_facing_lifecycle_signals(tmp_path):
+    store = SessionStore(str(tmp_path / "session_lifecycle.db"))
+
+    awaiting = store.new_session(42)
+    awaiting.add_message("user", "Нужно подготовить требование")
+    awaiting.add_message("assistant", "Какой результат вы ожидаете?")
+    store.save(awaiting)
+
+    ready = store.new_session(42)
+    ready.phase = "welcome"  # Legacy rows may contain a stale persisted phase.
+    ready.add_message("user", "Сформируй требование")
+    ready.add_message("assistant", "Черновик требования сформирован.")
+    ready.draft = {"title": "Готовое требование"}
+    store.save(ready)
+
+    by_id = {item["session_id"]: item for item in store.list_for_user(42)}
+    assert by_id[awaiting.session_id]["needs_user_response"] is True
+    assert by_id[awaiting.session_id]["last_message_role"] == "assistant"
+    assert by_id[ready.session_id]["phase"] == "draft_ready"
+    assert by_id[ready.session_id]["has_draft"] is True
+    assert by_id[ready.session_id]["needs_user_response"] is False
+    store.engine.dispose()
 
 
 def test_session_store_rejects_stale_state_save(tmp_path):
@@ -117,7 +141,7 @@ def test_reopen_for_revision_checks_session_owner(orch):
 
 
 def _drive_to_draft(orch, sid, ctx=None, max_steps=25):
-    """Answer the dialogue deterministically until a draft is produced."""
+    """Exercise legacy collection with self-contained, observable answers."""
     resp = orch.handle_message(
         sid,
         "Нужно, чтобы бэк-офицеры видели, по каким сделкам с облигациями не прошли расчёты, "
@@ -140,6 +164,8 @@ def _drive_to_draft(orch, sid, ctx=None, max_steps=25):
             resp = orch.handle_message(sid, SLOT_ANSWERS[state.last_asked_slot], ctx)
         else:
             resp = orch.handle_message(sid, "пропустить", ctx)
+        if resp.action in {"out_of_domain", "escalated", "unavailable", "error"}:
+            pytest.fail(f"Legacy draft fixture stopped at {state.last_asked_slot}: {resp.action}: {resp.message}")
     return orch.store.get(sid)
 
 
@@ -275,6 +301,15 @@ def test_confirm_and_send_validated_draft(orch):
     assert state.review_status == "needs_review"
     assert state.review_task_id == 111
 
+    wrong = orch.cancel_review_submission(sid, task_id=112, user_id=6)
+    assert wrong.action == "unchanged"
+    assert orch.store.get(sid).review_task_id == 111
+
+    cancelled = orch.cancel_review_submission(sid, task_id=111, user_id=6)
+    assert cancelled.action == "cancelled"
+    assert orch.store.get(sid).review_status == ""
+    assert orch.store.get(sid).review_task_id is None
+
 
 def test_confirm_and_send_checks_owner(orch):
     sid = orch.new_session(6).session_id
@@ -363,6 +398,28 @@ def test_explicit_draft_section_edit_checks_owner(orch):
     _drive_to_draft(orch, sid)
     response = orch.edit_draft_section(sid, "product", "Акции", 999)
     assert response.action == "error"
+
+
+def test_submitted_draft_is_read_only_until_explicit_reopen(orch):
+    sid = orch.new_session(15).session_id
+    state = _drive_to_draft(orch, sid)
+    before = state.draft["target_process"]
+    state.review_status = "needs_review"
+    state.review_task_id = 501
+    orch.store.save(state)
+
+    response = orch.edit_draft_section(sid, "target_process", "Несогласованная правка", 15)
+
+    assert response.action == "sent_locked"
+    assert response.request_id == 501
+    assert orch.store.get(sid).draft["target_process"] == before
+
+
+def test_response_exposes_dialogue_mode_and_sources(orch):
+    response = orch.new_session(16)
+
+    assert isinstance(response.dialogue_mode, str)
+    assert isinstance(response.sources, list)
 
 
 def test_ready_draft_can_be_returned_to_editing(orch):

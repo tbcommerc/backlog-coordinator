@@ -40,23 +40,26 @@ if ($LASTEXITCODE -ne 0) { throw "Production PostgreSQL service is not available
 
 $backlogDump = Join-Path $target "dmb_backlog_$stamp.dump"
 $agentDump = Join-Path $target "agent_sessions_$stamp.dump"
+$prioritiserDump = Join-Path $target "prioritiser_$stamp.dump"
 $attachmentsArchive = Join-Path $target "attachments_$stamp.tgz"
 try {
-    docker @composeArgs stop nginx backend agent scheduler
+    docker @composeArgs stop nginx backend agent scheduler prioritiser
     if ($LASTEXITCODE -ne 0) { throw "Could not quiesce application writers" }
 
     Export-Database "dmb_backlog" $backlogDump
     Export-Database "agent_sessions" $agentDump
+    Export-Database "prioritiser" $prioritiserDump
 
     $targetForDocker = $target -replace '\\', '/'
-    docker run --rm -v "${VolumePrefix}-attachments:/source:ro" -v "${targetForDocker}:/backup" alpine:3.22 tar -czf "/backup/$(Split-Path -Leaf $attachmentsArchive)" -C /source .
+    docker run --rm -v "${VolumePrefix}-attachments:/source:ro" -v "${targetForDocker}:/backup" alpine:3.22@sha256:7c8cb692ae09657cbc4a3f3cbd0e8d5a2690ba38386aaaf252dbb060bf5eb2e6 tar -czf "/backup/$(Split-Path -Leaf $attachmentsArchive)" -C /source .
     if ($LASTEXITCODE -ne 0) { throw "Attachment archive failed" }
+
 } finally {
-    docker @composeArgs up -d agent backend scheduler nginx
+    docker @composeArgs up -d prioritiser agent backend scheduler nginx
     if ($LASTEXITCODE -ne 0) { Write-Error "Backup finished with an application restart failure" }
 }
 
-$files = @($backlogDump, $agentDump, $attachmentsArchive)
+$files = @($backlogDump, $agentDump, $prioritiserDump, $attachmentsArchive)
 $manifest = [pscustomobject]@{
     created_at = (Get-Date).ToUniversalTime().ToString("o")
     format = 1

@@ -2,7 +2,7 @@ import { escapeHtml } from '../htmlUtils.js';
 import { confirmAction, formatErrorMessage, showToast } from '../uiFeedback.js';
 
 
-let state = { page: 1, perPage: 50, search: '', data: { items: [], total: 0, pages: 0 }, loading: true };
+let state = { page: 1, perPage: 50, search: '', data: { items: [], total: 0, pages: 0 }, loading: true, lastUpdatedAt: null };
 
 
 function formatDate(value) {
@@ -20,6 +20,7 @@ async function load(app) {
   if (state.search) params.set('search', state.search);
   try {
     state.data = await app.api.get(`/admin/outbox/dead-letters?${params}`);
+    state.lastUpdatedAt = new Date();
   } catch (error) {
     state.data = { items: [], total: 0, pages: 0, error: formatErrorMessage(error) };
   } finally {
@@ -34,24 +35,45 @@ function eventPayload(item) {
 }
 
 
+function attemptTone(attempts) {
+  const count = Number(attempts || 0);
+  if (count >= 10) return ' is-critical';
+  if (count >= 5) return ' is-warning';
+  return '';
+}
+
+
+function renderOverview() {
+  const visible = state.data.items?.length || 0;
+  const total = Number(state.data.total || 0);
+  const updated = state.lastUpdatedAt
+    ? `Обновлено ${state.lastUpdatedAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+    : 'Данные ещё не обновлены';
+  return `<div class="outbox-overview-metrics" aria-live="polite">
+    <div class="outbox-metric is-danger"><span>Требуют внимания</span><strong>${total}</strong></div>
+    <div class="outbox-metric"><span>Показано на странице</span><strong>${visible}</strong></div>
+    <div class="outbox-update-state"><i data-lucide="clock-3" aria-hidden="true"></i><span>${escapeHtml(updated)}</span></div>
+  </div>`;
+}
+
+
 function renderRows() {
-  if (state.loading) return '<tr><td colspan="8" class="admin-empty-cell">Загрузка…</td></tr>';
-  if (state.data.error) return `<tr><td colspan="8" class="admin-empty-cell">${escapeHtml(state.data.error)}</td></tr>`;
-  if (!state.data.items?.length) return `<tr><td colspan="8" class="admin-empty-cell outbox-empty-state">
+  if (state.loading) return '<tr><td colspan="7" class="admin-empty-cell outbox-loading-state"><i data-lucide="loader-circle" aria-hidden="true"></i><span>Загружаем события…</span></td></tr>';
+  if (state.data.error) return `<tr><td colspan="7" class="admin-empty-cell outbox-error-state"><i data-lucide="cloud-off" aria-hidden="true"></i><strong>Не удалось загрузить события</strong><span>${escapeHtml(state.data.error)}</span></td></tr>`;
+  if (!state.data.items?.length) return `<tr><td colspan="7" class="admin-empty-cell outbox-empty-state">
     <i data-lucide="circle-check" aria-hidden="true"></i>
     <strong>Ошибок доставки нет</strong>
-    <span>Все системные события были успешно отправлены.</span>
+    <span>${state.search ? 'По текущему запросу ничего не найдено.' : 'Все системные события были успешно отправлены.'}</span>
   </td></tr>`;
   return state.data.items.map(item => `
     <tr>
-      <td>${item.id}</td>
-      <td><strong>${escapeHtml(item.event_type)}</strong><div class="text-muted">${escapeHtml(item.aggregate_type)}${item.aggregate_id == null ? '' : ` #${item.aggregate_id}`}</div></td>
-      <td>${item.aggregate_version ?? '—'}</td>
-      <td>${item.attempts}</td>
-      <td>${escapeHtml(formatDate(item.dead_lettered_at))}</td>
-      <td class="audit-fields" title="${escapeHtml(item.last_error || '')}">${escapeHtml(item.last_error || '—')}</td>
-      <td><details><summary>Показать</summary><pre class="outbox-payload">${eventPayload(item)}</pre></details></td>
-      <td><button type="button" class="btn btn-primary btn-sm" data-requeue-id="${item.id}" data-attempts="${item.attempts}">Отправить снова</button></td>
+      <td data-label="Событие"><div class="outbox-event-cell"><span class="outbox-event-id">#${escapeHtml(item.id)}</span><strong>${escapeHtml(item.event_type)}</strong></div></td>
+      <td data-label="Объект"><div class="outbox-aggregate"><strong>${escapeHtml(item.aggregate_type || '—')}</strong><span>${item.aggregate_id == null ? 'Без ID' : `ID ${escapeHtml(item.aggregate_id)}`} · версия ${escapeHtml(item.aggregate_version ?? '—')}</span></div></td>
+      <td data-label="Попыток"><span class="outbox-attempts${attemptTone(item.attempts)}">${escapeHtml(item.attempts)}</span></td>
+      <td data-label="Зафиксировано"><time class="outbox-date" datetime="${escapeHtml(item.dead_lettered_at || '')}">${escapeHtml(formatDate(item.dead_lettered_at))}</time></td>
+      <td data-label="Причина"><div class="outbox-error-message" title="${escapeHtml(item.last_error || '')}"><i data-lucide="circle-alert" aria-hidden="true"></i><span>${escapeHtml(item.last_error || 'Причина не указана')}</span></div></td>
+      <td data-label="Данные"><details class="outbox-details"><summary><i data-lucide="braces" aria-hidden="true"></i><span>JSON</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary><pre class="outbox-payload">${eventPayload(item)}</pre></details></td>
+      <td data-label="Действие"><button type="button" class="btn btn-primary btn-sm outbox-requeue" data-requeue-id="${escapeHtml(item.id)}" data-attempts="${escapeHtml(item.attempts)}"><i data-lucide="rotate-ccw" aria-hidden="true"></i>Отправить снова</button></td>
     </tr>`).join('');
 }
 
@@ -70,27 +92,34 @@ function renderPagination() {
 function renderBody() {
   const body = document.getElementById('outbox-dead-letter-body');
   const pagination = document.getElementById('outbox-dead-letter-pagination');
+  const overview = document.getElementById('outbox-overview-metrics');
+  const total = document.getElementById('outbox-total-count');
   if (body) body.innerHTML = renderRows();
   if (pagination) pagination.innerHTML = renderPagination();
+  if (overview) overview.innerHTML = renderOverview();
+  if (total) total.textContent = `${Number(state.data.total || 0)} событий`;
+  window.lucide?.createIcons();
 }
 
 
 export function renderOutboxDeadLetters() {
-  return `<div class="page-header animate-fade-in">
-    <div><h1>Ошибки доставки событий</h1><p>События, которые система не смогла отправить автоматически</p></div>
+  return `<div class="page-header outbox-page-header animate-fade-in">
+    <div class="outbox-title-block"><span class="outbox-kicker"><i data-lucide="shield-alert" aria-hidden="true"></i>Администрирование</span><h1>Ошибки доставки событий</h1><p>Контроль событий, которые не удалось передать во внешние сервисы</p></div>
+    <button id="outbox-refresh-btn" class="btn btn-secondary"><i data-lucide="refresh-cw" aria-hidden="true"></i>Обновить</button>
   </div>
   <main class="outbox-page">
-    <section class="outbox-explanation" aria-label="Как работать с ошибками доставки">
-      <i data-lucide="info" aria-hidden="true"></i>
-      <div><strong>Что это значит?</strong><p>Система несколько раз попыталась отправить эти события, но получила ошибку. Устраните её причину, а затем отправьте событие снова.</p></div>
+    <section class="outbox-overview" aria-label="Состояние очереди ошибок">
+      <div class="outbox-overview-copy"><span class="outbox-overview-icon"><i data-lucide="triangle-alert" aria-hidden="true"></i></span><div><strong>Очередь требует проверки</strong><p>Устраните причину сбоя во внешнем сервисе, затем верните событие в очередь кнопкой «Отправить снова».</p></div></div>
+      <div id="outbox-overview-metrics">${renderOverview()}</div>
     </section>
-    <div class="admin-action-row outbox-toolbar">
-      <input id="outbox-search" class="input" value="${escapeHtml(state.search)}" placeholder="Поиск по типу события или тексту ошибки" aria-label="Поиск ошибок доставки">
-      <button id="outbox-search-btn" class="btn btn-secondary">Найти</button>
-      <button id="outbox-refresh-btn" class="btn btn-ghost">Обновить</button>
+    <div class="admin-action-row outbox-toolbar" role="search">
+      <label class="outbox-search-field" for="outbox-search"><i data-lucide="search" aria-hidden="true"></i><input id="outbox-search" class="input" type="search" value="${escapeHtml(state.search)}" placeholder="Тип события, объект или текст ошибки" autocomplete="off"></label>
+      <button id="outbox-search-btn" class="btn btn-secondary"><i data-lucide="search" aria-hidden="true"></i>Найти</button>
+      <span class="outbox-toolbar-hint">Поиск выполняется по всей очереди ошибок</span>
     </div>
     <div class="admin-section outbox-table-wrap">
-      <table class="admin-table outbox-table"><thead><tr><th>ID</th><th>Тип события</th><th>Версия</th><th>Попыток</th><th>Ошибка зафиксирована</th><th>Причина</th><th>Технические данные</th><th>Действие</th></tr></thead>
+      <div class="outbox-table-heading"><div><h2>События с ошибкой</h2><p>Повторная отправка доступна отдельно для каждого события</p></div><span id="outbox-total-count">${escapeHtml(state.data.total || 0)} событий</span></div>
+      <table class="admin-table outbox-table"><thead><tr><th>Событие</th><th>Объект</th><th>Попыток</th><th>Зафиксировано</th><th>Причина</th><th>Данные</th><th>Действие</th></tr></thead>
       <tbody id="outbox-dead-letter-body">${renderRows()}</tbody></table>
       <div id="outbox-dead-letter-pagination">${renderPagination()}</div>
     </div>

@@ -1,7 +1,16 @@
 # Production runbook многопользовательского стенда
 
 > Стендовый baseline проверен по Compose, Nginx, observability и operator scripts
-> 01.09.2026. Фактический запуск на целевом стенде подтверждается отдельным протоколом.
+> 07.09.2026. Фактический запуск на целевом стенде подтверждается отдельным протоколом.
+
+Production Compose использует три отдельные PostgreSQL-БД: `dmb_backlog`,
+`agent_sessions` и `prioritiser`. Схема Prioritiser накатывается одноразовым
+`prioritiser-migration` через Alembic. Вложения проходят ClamAV до создания
+записи в БД; недоступный сканер блокирует загрузку с 503.
+
+`/api/v1/health` — liveness. `/api/v1/health/ready` дополнительно проверяет БД,
+Redis, общее хранилище и readiness BA Agent/Prioritiser (`/api/agent/ready`,
+`/ready`).
 
 ## Назначение
 
@@ -20,12 +29,13 @@ Redis, Nginx, Prometheus, OpenTelemetry Collector и Jaeger. TLS заверша�
 - Docker Engine и Docker Compose v2;
 - внешний HTTPS origin и TLS ingress;
 - согласованные PostgreSQL/Redis пароли и URL с percent-encoded credentials;
-- уникальные `SECRET_KEY` и общий `AGENT_SECRET`;
+- уникальные `SECRET_KEY`, общий `AGENT_SECRET`, `DMB_PRIORITISER_SECRET` и
+  отдельный `DMB_PRIORITISER_METHODOLOGIST_SECRET`;
 - реальный OpenAI-compatible LLM endpoint/model/key;
 - каталог вне репозитория для env-файла и зашифрованное backup-хранилище;
 - заранее заведённые владельцем системы пользователи/роли/команды.
-- закрытая внутренняя сеть для `agent:9000` и `prioritiser:9100`: у prioritiser
-  пока нет service authentication, поэтому его нельзя публиковать через ingress.
+- закрытая внутренняя сеть для `agent:9000` и `prioritiser:9100`; service secrets
+  дополняют сетевую изоляцию, но не заменяют TLS ingress и корпоративную identity.
 
 Проект не создаёт и не изменяет пользователей, роли, команды и справочники при
 развёртывании. `RUN_STARTUP_SEED=false` и `RUN_STARTUP_MAINTENANCE=false`
@@ -142,7 +152,8 @@ docker compose --env-file C:\secure\dmb-production.env -f compose.production.yam
 
 ## 7. Backup и проверка
 
-Создание согласованного набора PostgreSQL dumps и uploads archive:
+Создание согласованного набора PostgreSQL dumps, uploads archive и archive
+остановленного volume Prioritiser:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/backup-production.ps1 `
@@ -158,8 +169,9 @@ powershell -ExecutionPolicy Bypass -File scripts/verify-backup.ps1 `
   -ManifestPath E:\encrypted-backups\dmb\manifest_YYYYMMDDTHHMMSSZ.json
 ```
 
-Сценарий сначала останавливает Nginx и все writers, а в `finally` запускает их
-обратно; это даёт согласованный cross-database/uploads момент ценой короткого
+Сценарий сначала останавливает Nginx, Prioritiser и все writers, а в `finally`
+запускает их обратно; это даёт согласованный cross-database/uploads/Prioritiser
+момент ценой короткого
 окна недоступности. Online snapshot требует отдельной реализации на целевой
 storage-платформе. Backup содержит рабочие данные и должен немедленно переноситься в encrypted
 storage с ограниченным доступом. Полноценный restore drill выполняется только в

@@ -16,6 +16,7 @@ $prioritiserPythonExe = Join-Path $prioritiserVenvDir "Scripts\python.exe"
 $dmbEnv = Join-Path $projectRoot "dmb-backlog\.env"
 $agentEnv = Join-Path $projectRoot "agent\.env"
 $prioritiserEnv = Join-Path $projectRoot "prioritiser-agent\.env"
+$prioritiserModelCache = Join-Path $runtimeDir "hf-cache"
 
 New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
 
@@ -60,7 +61,7 @@ function Wait-HttpHealth {
             $response = Invoke-RestMethod -Uri $Url -TimeoutSec 3
             $statusProperty = $response.PSObject.Properties["status"]
             $okProperty = $response.PSObject.Properties["ok"]
-            if (($statusProperty -and $statusProperty.Value -eq "ok") -or
+            if (($statusProperty -and $statusProperty.Value -in @("ok", "ready", "healthy")) -or
                 ($okProperty -and $okProperty.Value -eq $true)) {
                 Write-Host "[ok] $Name"
                 return
@@ -72,12 +73,21 @@ function Wait-HttpHealth {
     throw "$Name health check failed: $Url"
 }
 
+function Test-DockerEngine {
+    try {
+        docker info *> $null
+        return $LASTEXITCODE -eq 0
+    } catch {
+        return $false
+    }
+}
+
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     throw "Docker is not installed. Install Docker Desktop and run this script again."
 }
 
-docker info *> $null
-if ($LASTEXITCODE -ne 0) {
+$dockerEngineReady = Test-DockerEngine
+if (-not $dockerEngineReady) {
     $dockerDesktopCandidates = @(
         (Join-Path $env:LOCALAPPDATA "Programs\DockerDesktop\Docker Desktop.exe"),
         (Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe")
@@ -89,10 +99,10 @@ if ($LASTEXITCODE -ne 0) {
         $deadline = (Get-Date).AddSeconds(120)
         do {
             Start-Sleep -Seconds 2
-            docker info *> $null
-        } while ($LASTEXITCODE -ne 0 -and (Get-Date) -lt $deadline)
+            $dockerEngineReady = Test-DockerEngine
+        } while (-not $dockerEngineReady -and (Get-Date) -lt $deadline)
     }
-    if ($LASTEXITCODE -ne 0) {
+    if (-not $dockerEngineReady) {
         throw "Docker Engine is unavailable. Start Docker Desktop and try again."
     }
 }
@@ -110,6 +120,10 @@ if (-not (Test-Path $prioritiserEnv)) {
 $sharedSecret = Get-EnvValue -Path $agentEnv -Name "AGENT_SECRET"
 if (-not $sharedSecret) { $sharedSecret = Get-EnvValue -Path $dmbEnv -Name "AGENT_SECRET" }
 if (-not $sharedSecret) { $sharedSecret = "dmb-agent-local-secret-2026" }
+$prioritiserSecret = Get-EnvValue -Path $dmbEnv -Name "PRIORITISER_SECRET"
+if (-not $prioritiserSecret) { $prioritiserSecret = "dmb-prioritiser-local-secret-2026" }
+$methodologistSecret = Get-EnvValue -Path $prioritiserEnv -Name "PRIORITISER_METHODOLOGIST_SECRET"
+if (-not $methodologistSecret) { $methodologistSecret = "dmb-prioritiser-methodologist-local-secret-2026" }
 
 Set-EnvValue $dmbEnv "DEBUG" "true"
 Set-EnvValue $dmbEnv "DATABASE_URL" "postgresql+psycopg://dmb:dmb_local_dev@127.0.0.1:5432/dmb_backlog"
@@ -120,12 +134,16 @@ Set-EnvValue $dmbEnv "RUN_NOTIFICATION_SCHEDULER" "true"
 Set-EnvValue $dmbEnv "AGENT_BASE_URL" "http://127.0.0.1:9000"
 Set-EnvValue $dmbEnv "AGENT_SECRET" $sharedSecret
 Set-EnvValue $dmbEnv "PRIORITISER_BASE_URL" "http://127.0.0.1:9100"
+Set-EnvValue $dmbEnv "PRIORITISER_SECRET" $prioritiserSecret
 Set-EnvValue $dmbEnv "PRIORITISER_TIMEOUT_SECONDS" "180"
 Set-EnvValue $agentEnv "DEBUG" "true"
 Set-EnvValue $agentEnv "AGENT_PORT" "9000"
 Set-EnvValue $agentEnv "SESSION_DATABASE_URL" "postgresql+psycopg://dmb:dmb_local_dev@127.0.0.1:5432/agent_sessions"
 Set-EnvValue $agentEnv "AGENT_SECRET" $sharedSecret
 Set-EnvValue $prioritiserEnv "PRIORITISER_DB_URL" "sqlite:///var/prioritiser.db"
+Set-EnvValue $prioritiserEnv "PRIORITISER_SERVICE_SECRET" $prioritiserSecret
+Set-EnvValue $prioritiserEnv "PRIORITISER_METHODOLOGIST_SECRET" $methodologistSecret
+Set-EnvValue $prioritiserEnv "PRIORITISER_RAG_MODEL_CACHE_DIR" $prioritiserModelCache
 $sharedLlmProvider = Get-EnvValue -Path $agentEnv -Name "LLM_PROVIDER"
 if (-not $sharedLlmProvider) {
     throw "LLM_PROVIDER is not configured in agent/.env. Configure a real provider before starting the project."
@@ -218,7 +236,7 @@ $agentProcess = Start-Process -FilePath $pythonExe `
     -RedirectStandardOutput $agentOut -RedirectStandardError $agentErr `
     -WindowStyle Hidden -PassThru
 Set-Content -LiteralPath (Join-Path $runtimeDir "agent.pid") -Value $agentProcess.Id -Encoding ascii
-Wait-HttpHealth "http://127.0.0.1:9000/api/agent/health" "AI agent"
+Wait-HttpHealth "http://127.0.0.1:9000/api/agent/ready" "AI agent"
 
 Write-Host "Starting task prioritiser..."
 $prioritiserProcess = Start-Process -FilePath $prioritiserPythonExe `
@@ -227,7 +245,7 @@ $prioritiserProcess = Start-Process -FilePath $prioritiserPythonExe `
     -RedirectStandardOutput $prioritiserOut -RedirectStandardError $prioritiserErr `
     -WindowStyle Hidden -PassThru
 Set-Content -LiteralPath (Join-Path $runtimeDir "prioritiser.pid") -Value $prioritiserProcess.Id -Encoding ascii
-Wait-HttpHealth "http://127.0.0.1:9100/health" "Task prioritiser"
+Wait-HttpHealth "http://127.0.0.1:9100/ready" "Task prioritiser" -TimeoutSeconds 900
 
 Write-Host "Starting DMB Backlog..."
 $backendProcess = Start-Process -FilePath $pythonExe `

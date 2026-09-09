@@ -1,4 +1,4 @@
-import { showConfirmModal, showErrorModal } from './modal.js?v=90';
+import { showConfirmModal, showErrorModal } from './modal.js?v=92';
 import { updateStickyOffsets } from './filterToolbar.js?v=97';
 
 console.log('[DMB] quickEdit.js v20260804 loaded');
@@ -195,10 +195,10 @@ function showQuickEditExitModal() {
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '1200';
     overlay.innerHTML = `
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="qe-exit-title" style="background:var(--bg-primary);border-radius:12px;max-width:520px;width:94%;padding:20px;">
-        <div id="qe-exit-title" style="font-size:16px;font-weight:600;color:var(--text-primary);">Несохранённые изменения</div>
-        <p style="margin:10px 0 18px;color:var(--text-secondary);font-size:13px;line-height:1.5;">В режиме быстрого редактирования есть несохранённые изменения. Что сделать перед выходом?</p>
-        <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+      <div class="modal modal-md" role="alertdialog" aria-modal="true" aria-labelledby="qe-exit-title">
+        <div class="modal-header"><div class="modal-title" id="qe-exit-title">Несохранённые изменения</div></div>
+        <div class="modal-body"><p class="app-modal__subtitle">В режиме быстрого редактирования есть несохранённые изменения. Что сделать перед выходом?</p></div>
+        <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-sm" data-qe-exit="continue">Продолжить редактирование</button>
           <button type="button" class="btn btn-secondary btn-sm" data-qe-exit="discard">Выйти без сохранения</button>
           <button type="button" class="btn btn-primary btn-sm" data-qe-exit="save">Сохранить и выйти</button>

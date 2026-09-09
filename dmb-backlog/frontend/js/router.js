@@ -1,18 +1,19 @@
-import { renderDashboard, initDashboard } from './components/dashboard.js';
-import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=115';
-import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=114';
-import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js';
-import { renderKanban, initKanban } from './components/kanbanBoard.js?v=4';
-import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=6';
+import { renderDashboard, initDashboard } from './components/dashboard.js?v=6';
+import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=116';
+import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=117';
+import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js?v=30';
+import { renderKanban, initKanban } from './components/kanbanBoard.js?v=5';
+import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=19';
 import { renderAnalytics, initAnalytics } from './components/analytics.js?v=18';
-import { renderNotifications, initNotifications } from './components/notifications.js?v=9';
+import { renderNotifications, initNotifications } from './components/notifications.js?v=11';
 import { renderSettings, initSettings } from './components/settings.js';
-import { renderAdmin, initAdmin } from './components/admin.js';
-import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage } from './components/customerPortal.js';
-import { renderAgentChat, initAgentChat } from './components/agentChat.js?v=17';
+import { renderAdmin, initAdmin } from './components/admin.js?v=1';
+import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage, renderCustomerTaskPage, initCustomerTaskPage } from './components/customerPortal.js';
+import { renderAgentChat, initAgentChat } from './components/agentChat.js?v=20';
 import { renderAuditLog, initAuditLog } from './components/auditLog.js';
-import { renderOutboxDeadLetters, initOutboxDeadLetters } from './components/outboxDeadLetters.js';
+import { renderOutboxDeadLetters, initOutboxDeadLetters } from './components/outboxDeadLetters.js?v=1';
 import { renderReviewPage, initReviewPage, renderReviewDetailPage, initReviewDetailPage } from './components/reviewPage.js?v=1';
+import { renderReportingStatuses, initReportingStatuses } from './components/reportingStatuses.js?v=11';
 
 export class Router {
     constructor(app) {
@@ -24,6 +25,7 @@ export class Router {
             '/express-estimate': { render: renderExpressEstimate, init: initExpressEstimate },
             '/kanban': { render: renderKanban, init: initKanban },
             '/reports': { render: renderReports, init: initReports },
+            '/reporting-statuses': { render: renderReportingStatuses, init: initReportingStatuses },
             '/reporting-meetings': { render: renderReportingMeetingsManagement, init: initReportingMeetingsManagement },
             '/reports/detail': { render: renderReportPage, init: initReportPage },
             '/analytics/tribe': { render: (app) => renderAnalytics('tribe', app), init: (app) => initAnalytics('tribe', app) },
@@ -43,6 +45,7 @@ export class Router {
         this.lastHash = null;
         this.lastDeepLinkedTask = null;
         this.focusSidebarWasCollapsed = null;
+        this.navigationGeneration = 0;
     }
 
     init() {
@@ -122,6 +125,7 @@ export class Router {
     }
 
     async handleRoute() {
+        const generation = ++this.navigationGeneration;
         const hash = window.location.hash.slice(1) || this.defaultRoute;
         const [path, query = ''] = hash.split('?');
         const from = this.lastHash;
@@ -129,7 +133,8 @@ export class Router {
         const user = this.app?.store?.get('currentUser');
         const businessCustomerAllowedPaths = new Set(['/customer', '/customer/create']);
         const isCustomerRequestDetail = /^\/customer\/request\/\d+$/.test(path);
-        if (user?.permissions?.customer_portal_mode === 'only' && !businessCustomerAllowedPaths.has(path) && !isCustomerRequestDetail) {
+        const isCustomerTaskDetail = /^\/customer\/task\/\d+$/.test(path);
+        if (user?.permissions?.customer_portal_mode === 'only' && !businessCustomerAllowedPaths.has(path) && !isCustomerRequestDetail && !isCustomerTaskDetail) {
             if (window.location.hash !== '#/customer') {
                 history.replaceState(null, '', '#/customer');
             }
@@ -170,12 +175,19 @@ export class Router {
         // dynamic route: /customer/request/{id}
         let dynamicHandler = null;
         const requestMatch = path.match(/^\/customer\/request\/(\d+)$/);
+        const customerTaskMatch = path.match(/^\/customer\/task\/(\d+)$/);
         const reviewMatch = path.match(/^\/review\/(\d+)$/);
         if (requestMatch) {
           const requestId = requestMatch[1];
           dynamicHandler = {
             render: () => renderRequestPage(this.app, requestId),
             init: () => initRequestPage(this.app, requestId),
+          };
+        } else if (customerTaskMatch) {
+          const taskId = customerTaskMatch[1];
+          dynamicHandler = {
+            render: () => renderCustomerTaskPage(this.app, taskId),
+            init: () => initCustomerTaskPage(this.app, taskId),
           };
         } else if (reviewMatch) {
           const requestId = reviewMatch[1];
@@ -190,7 +202,9 @@ export class Router {
         if (resolved) {
             const container = document.getElementById('page-content');
             if (container) {
-                container.innerHTML = await resolved.render(this.app);
+                const markup = await resolved.render(this.app);
+                if (generation !== this.navigationGeneration || (window.location.hash.slice(1) || this.defaultRoute) !== hash) return;
+                container.innerHTML = markup;
 
                 if (window.lucide) {
                     window.lucide.createIcons();
@@ -206,6 +220,7 @@ export class Router {
                         '/express-estimate': 'Экспресс-оценка',
                         '/kanban': 'Канбан-доска',
                         '/reports': 'Статусы для встреч',
+                        '/reporting-statuses': 'Заполнение статусов',
                         '/reporting-meetings': 'Управление отчётными встречами',
                         '/reports/detail': 'Статус-отчёт',
                         '/analytics/tribe': 'Аналитика ЛТ',
@@ -220,7 +235,7 @@ export class Router {
                         '/customer/create': 'ИИ-ассистент',
                         '/review': 'Ревью запросов',
                     };
-                    const pageName = names[path] || (requestMatch ? 'Запрос' : '') || (reviewMatch ? 'Ревью запроса' : path);
+                    const pageName = names[path] || (requestMatch ? 'Запрос' : '') || (customerTaskMatch ? 'Задача по запросу' : '') || (reviewMatch ? 'Ревью запроса' : path);
                     // For multi-segment paths like /analytics/tribe, only show the final name
                     const segments = path.split('/').filter(Boolean);
                     if (segments.length <= 1 || !names[path]) {
@@ -245,7 +260,9 @@ export class Router {
 
                 // Call page-specific init
                 if (resolved.init) {
-                    setTimeout(() => resolved.init(this.app), 50);
+                    setTimeout(() => {
+                        if (generation === this.navigationGeneration && (window.location.hash.slice(1) || this.defaultRoute) === hash) resolved.init(this.app);
+                    }, 50);
                 }
                 this.openDeepLinkedTask(path, query);
             }

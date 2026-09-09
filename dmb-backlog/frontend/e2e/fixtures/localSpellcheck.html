@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local spellcheck fixture</title>
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+</head>
+<body style="padding:40px">
+  <label for="semantic-title">Название</label>
+  <textarea id="semantic-title" style="display:block;width:420px;margin-top:8px"></textarea>
+  <label for="technical-search" style="display:block;margin-top:24px">Поиск</label>
+  <input id="technical-search" type="search" style="display:block;width:420px;margin-top:8px">
+  <script type="module">
+    import { initLocalSpellcheck } from '/js/localSpellcheck.js';
+    initLocalSpellcheck();
+  </script>
+</body>
+</html>

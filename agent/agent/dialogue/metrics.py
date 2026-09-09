@@ -104,7 +104,7 @@ class MetricsTracker:
         metrics = SessionMetrics(
             session_id=state.session_id,
             user_id=state.user_id,
-            started_at=time.time(),
+            started_at=state.session_started_at or time.time(),
         )
         self.sessions[metrics.session_id] = metrics
 
@@ -138,7 +138,7 @@ class MetricsTracker:
             metrics.draft_created = True
             metrics.completed = True
             if not metrics.draft_created_at:
-                metrics.draft_created_at = time.time()
+                metrics.draft_created_at = state.draft_created_at or time.time()
         
         if state.review_status == "needs_review":
             metrics.sent_to_review = True

@@ -1,10 +1,13 @@
 /**
  * DMB Backlog - Reports Page
  */
-import { renderDidBacklog, initDidBacklog } from './didBacklog.js';
+import { renderDidBacklog, initDidBacklog } from './didBacklog.js?v=4';
+import { renderDirectorateReport, initDirectorateReport } from './directorateReport.js?v=10';
 import { escapeHtml } from '../htmlUtils.js';
 import { bindViewStateAction, renderViewState } from './viewState.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=11';
+import { confirmAction } from '../uiFeedback.js';
 
 function renderInvolvedTeams(teams) {
   if (!teams || !teams.length) return '—';
@@ -67,14 +70,13 @@ const reportConfig = {
     icon: 'send', gradient: 'grad-slate', isCustom: true,
     customEndpoint: '/reports/did-backlog', fields: [], filters: []
   },
-  progress: {
-    name: 'Светофоры по квартальным задачам',
-    desc: 'Текущий прогресс по выполнению задач текущего квартала, отклонения, риски',
+  'quarterly-goals': {
+    name: 'Светофоры по квартальным целям',
+    desc: 'Статус достижения квартальных целей команд трайба',
     icon: 'trending-up',
     gradient: 'grad-cyan',
-    inDevelopment: true,
     isDb: true,
-    key: 'progress',
+    key: 'quarterly-goals',
     managedFields: true,
     hideCharts: true,
     filters: [],
@@ -224,7 +226,10 @@ function getUpcomingMeetingDates(kind, meeting) {
 
 function renderUpcomingMeetingDates(meeting) {
   const dates = getUpcomingMeetingDates(meeting.kind, meeting);
-  const heading = '<div class="meeting-section-heading"><div class="meeting-section-label">Следующие встречи</div></div>';
+  const planAction = canManageReportingMeetings
+    ? `<button type="button" class="meeting-plan-button" data-meeting-action="plan" data-meeting-id="${meeting.id}"><i data-lucide="calendar-plus"></i>Планировать график</button>`
+    : '';
+  const heading = `<div class="meeting-section-heading"><div class="meeting-section-label">Следующие встречи</div>${planAction}</div>`;
   if (!dates.length) {
     const hint = meeting.kind === 'did'
       ? (meeting.scheduled_date ? 'Других встреч в ближайшие 90 дней нет.' : 'После назначения первой даты появится график на каждые две недели.')
@@ -243,12 +248,15 @@ function renderReportingMeetingCard(meeting, historical = false) {
   const meta = meetingKindMeta[meeting.kind] || { cadence: '', icon: 'calendar-days', tone: 'blue' };
   const localToday = localDateIso();
   const canComplete = meeting.state === 'planned' && Boolean(meeting.scheduled_date) && meeting.scheduled_date <= localToday;
-  const completeness = meeting.total_tasks
-    ? `${meeting.filled_tasks} из ${meeting.total_tasks} задач заполнено`
+  const completionSummary = meeting.total_tasks
+    ? `${meeting.filled_tasks} из ${meeting.total_tasks}`
     : 'Нет активных задач';
+  const missingSummary = !meeting.total_tasks
+    ? 'Статусы не требуются'
+    : (meeting.missing_tasks ? `${meeting.missing_tasks} без статуса` : 'Все заполнено');
   const completionPercent = meeting.total_tasks ? Math.round((meeting.filled_tasks / meeting.total_tasks) * 100) : 0;
   const warning = meeting.teams_without_recipients
-    ? `<div class="meeting-warning">У ${meeting.teams_without_recipients} команд нет активного PO/PL/CL — напоминание некому отправить</div>`
+    ? `<div class="meeting-warning">У ${meeting.teams_without_recipients} команд нет активного PO/PL/CL или BA/участника — напоминание некому отправить</div>`
     : '';
   const completeHint = !meeting.scheduled_date
     ? 'Сначала назначьте дату встречи'
@@ -256,29 +264,26 @@ function renderReportingMeetingCard(meeting, historical = false) {
   const stateLabel = meetingStateLabels[meeting.state] || meeting.state;
   const headerState = meeting.is_overdue ? ''
     : `<span class="meeting-state meeting-state--${meeting.state}">${escapeHtml(stateLabel)}</span>`;
+  const overdueMessage = 'Дата просрочена. Требуется подтвердить факт проведения встречи, отменить или перенести её.';
   const overdueNotice = meeting.is_overdue ? `
-    <div class="meeting-overdue-notice"><span class="meeting-overdue-symbol" aria-hidden="true">!</span><span>Дата просрочена. Требуется подтвердить факт проведения встречи, отменить или перенести её.</span></div>` : '';
+    <div class="meeting-overdue-notice" title="${escapeHtml(overdueMessage)}" aria-label="${escapeHtml(overdueMessage)}"><span class="meeting-overdue-symbol" aria-hidden="true">!</span><span>${escapeHtml(overdueMessage)}</span></div>` : '';
   const lifecycleActions = canManageReportingMeetings && isOpen && !historical ? `
-      <button class="meeting-management-action is-success" data-meeting-action="complete" data-meeting-id="${meeting.id}" aria-label="Подтвердить, что встреча состоялась"${canComplete ? '' : ` disabled title="${escapeHtml(completeHint)}"`}><i data-lucide="check-circle"></i>Встреча состоялась</button>
+      <button class="meeting-management-action is-success" data-meeting-action="complete" data-meeting-id="${meeting.id}" aria-label="Подтвердить, что встреча состоялась"${canComplete ? '' : ` disabled title="${escapeHtml(completeHint)}"`}><i data-lucide="check-circle"></i>Состоялась</button>
       <button class="meeting-management-action" data-meeting-action="schedule" data-meeting-id="${meeting.id}"><i data-lucide="calendar"></i>${meeting.scheduled_date ? 'Изменить дату' : 'Назначить дату'}</button>
-      <button class="meeting-management-action is-danger" data-meeting-action="cancel" data-meeting-id="${meeting.id}" aria-label="Отменить встречу"><i data-lucide="calendar-x-2"></i>Отменить встречу</button>` : '';
+      <button class="meeting-management-action is-danger" data-meeting-action="cancel" data-meeting-id="${meeting.id}" aria-label="Отменить встречу"><i data-lucide="calendar-x-2"></i>Отменить</button>` : '';
   const manageActions = `<div class="meeting-management-actions" aria-label="Управление встречей">
       ${lifecycleActions}
       <button class="meeting-management-action is-history" data-meeting-action="history" data-meeting-id="${meeting.id}"><i data-lucide="history"></i>История</button>
-      ${canManageReportingMeetings && !historical ? `<button type="button" class="meeting-management-action meeting-plan-button" data-meeting-action="plan" data-meeting-id="${meeting.id}"><i data-lucide="calendar-plus"></i>Планировать встречи</button>` : ''}
     </div>`;
-  const actions = isOpen && canPrepareReportingMeetings
-    ? `<button class="meeting-action is-primary" data-meeting-action="prepare" data-meeting-id="${meeting.id}"><i data-lucide="list-checks"></i>Статусы встречи</button>`
-    : '';
+  const statusActionLabel = isOpen && !historical ? 'Открыть статусы' : 'Открыть срез статусов';
   return `
     <article class="reporting-meeting-card meeting-tone--${meta.tone}${meeting.is_overdue ? ' is-overdue' : ''}${historical ? ' is-history-card' : ''}" data-meeting-card="${meeting.id}" tabindex="-1">
       <div class="meeting-card-head">
         <div class="meeting-card-meta"><span class="meeting-kind-icon"><i data-lucide="${meta.icon}"></i></span><div class="meeting-cadence">${escapeHtml(meta.cadence)}</div></div>
-        ${headerState}
-        <h3>${escapeHtml(meeting.title)}</h3>
+        <div class="meeting-card-title-row"><h3>${escapeHtml(meeting.title)}</h3>${headerState}</div>
       </div>
       <div class="meeting-date-control">
-        <div class="meeting-primary-date${meeting.scheduled_date ? '' : ' is-pending'}">
+        <div class="meeting-primary-date${meeting.scheduled_date ? '' : ' is-pending'}${meeting.is_overdue ? ' is-overdue' : ''}">
           <div class="meeting-primary-date-head"><span>${historical ? 'Дата встречи' : 'Ближайшая встреча'}</span></div>
           <div class="meeting-primary-date-main">
             <strong title="${escapeHtml(formatMeetingDate(meeting.scheduled_date))}">${escapeHtml(formatMeetingPrimaryDate(meeting.scheduled_date))}</strong>
@@ -286,19 +291,19 @@ function renderReportingMeetingCard(meeting, historical = false) {
           ${overdueNotice}
           ${meeting.original_scheduled_date && meeting.original_scheduled_date !== meeting.scheduled_date ? `<small>Перенесена с ${escapeHtml(formatMeetingDate(meeting.original_scheduled_date))}</small>` : ''}
         </div>
-        ${manageActions}
+        <div class="meeting-upcoming-slot">${historical ? '' : renderUpcomingMeetingDates(meeting)}</div>
       </div>
-      <div class="meeting-upcoming-slot">${historical ? '' : renderUpcomingMeetingDates(meeting)}</div>
-      <div class="meeting-fill-status${canPrepareReportingMeetings ? ' is-actionable' : ''}" ${canPrepareReportingMeetings ? `data-meeting-action="prepare" data-meeting-id="${meeting.id}" role="button" tabindex="0" aria-label="Открыть подготовку статусов"` : ''}>
-        <div class="meeting-progress"><span>${escapeHtml(completeness)}</span><strong>${completionPercent}%</strong></div>
+      ${manageActions}
+      <div class="meeting-fill-status${canPrepareReportingMeetings ? ' is-actionable' : ''}" ${canPrepareReportingMeetings ? `data-meeting-action="prepare" data-meeting-id="${meeting.id}" role="button" tabindex="0" aria-label="${statusActionLabel}. Готовность ${completionPercent}%"` : ''}>
+        <div class="meeting-progress"><span>Готовность статусов</span><strong>${completionPercent}%</strong></div>
         <div class="meeting-progress-track" aria-label="Заполнено ${completionPercent}%"><span style="width:${completionPercent}%"></span></div>
-        <div class="meeting-missing${meeting.missing_tasks ? '' : ' is-complete'}">${meeting.missing_tasks ? `${meeting.missing_tasks} задач ещё не заполнено` : 'Все статусы заполнены'}</div>
+        <div class="meeting-progress-detail"><span>${escapeHtml(completionSummary)}</span><span class="meeting-missing${meeting.missing_tasks ? '' : ' is-complete'}">${escapeHtml(missingSummary)}</span></div>
+        ${canPrepareReportingMeetings ? `<div class="meeting-fill-cta"><i data-lucide="list-checks"></i>${statusActionLabel}</div>` : ''}
       </div>
-      <div class="meeting-messages">
+      ${meeting.change_reason || warning ? `<div class="meeting-messages">
         ${meeting.change_reason ? `<div class="meeting-reason"><i data-lucide="info"></i><span>${escapeHtml(meeting.change_reason)}</span></div>` : ''}
         ${warning}
-      </div>
-      ${actions ? `<div class="meeting-actions">${actions}</div>` : ''}
+      </div>` : ''}
     </article>`;
 }
 
@@ -314,10 +319,6 @@ function renderReportingMeetingsPanel() {
     .sort((a, b) => String(a.scheduled_date || '9999').localeCompare(String(b.scheduled_date || '9999')));
   const cards = getMeetingCards(filtered);
   panel.innerHTML = `
-    <div class="meeting-panel-heading">
-      <div><h2>Календарь отчётных встреч</h2><p>Проектный офис назначает дату и фиксирует факт; PO/PL/CL заполняют статусы в карточках задач.</p></div>
-      ${canManageReportingMeetings ? '<span class="badge badge-info">Управление доступно</span>' : ''}
-    </div>
     ${renderMeetingToolbar()}
     ${meetingView === 'timeline' || !cards.length
       ? renderMeetingTimeline(filtered)
@@ -384,8 +385,7 @@ function showReportingMeetingForm(meeting, mode) {
                 <textarea class="input" id="meeting-change-reason" name="reason" rows="3" placeholder="Укажите причину, если дата изменяется"></textarea>
                 <div class="form-hint">Обязательна при выборе даты, отличной от текущей.</div>
               </div>` : ''}` : isComplete ? `
-              <div class="meeting-dialog-warning is-success"><i data-lucide="check-circle"></i><span>Текущие отчётные статусы будут зафиксированы и станут статусами предыдущей встречи. Заполнено ${meeting.filled_tasks || 0} из ${meeting.total_tasks || 0} задач.</span></div>
-              ${meeting.missing_tasks ? `<label class="meeting-force-confirm"><input type="checkbox" name="force"> Завершить встречу, несмотря на ${meeting.missing_tasks} незаполненных задач</label>` : ''}` : `
+              <div class="meeting-dialog-warning is-success"><i data-lucide="check-circle"></i><span>Текущие отчётные статусы будут зафиксированы и станут статусами предыдущей встречи. Заполнено ${meeting.filled_tasks || 0} из ${meeting.total_tasks || 0} задач.</span></div>` : `
               <div class="meeting-dialog-warning"><i data-lucide="triangle-alert"></i><span>Встреча будет отменена. Заполненные статусы перенесутся в следующую встречу, не заменяя уже подготовленные данные.</span></div>
               <div class="form-group">
                 <label class="form-label" for="meeting-cancel-reason">Причина отмены <span class="required">*</span></label>
@@ -467,13 +467,7 @@ function showReportingMeetingForm(meeting, mode) {
         return;
       }
       if (isComplete) {
-        if (meeting.missing_tasks && !form.elements.force?.checked) {
-          error.textContent = 'Подтвердите завершение встречи с неполными статусами.';
-          error.hidden = false;
-          form.elements.force?.focus();
-          return;
-        }
-        close({ force: !!form.elements.force?.checked });
+        close({});
         return;
       }
       if (!reason) {
@@ -1213,7 +1207,7 @@ function renderReportContent(config, reportKey, data) {
   const risk = tasks.filter(t => riskStatuses.some(s => String(t[statusField] || '').toUpperCase() === s.toUpperCase())).length;
   const avg = total ? Math.round(tasks.reduce((s, t) => s + (t.progress || 0), 0) / total) : 0;
 
-  if (reportKey === 'progress') {
+  if (reportKey === 'quarterly-goals') {
     const yellow = tasks.filter(t => t.progress_indicator === 'yellow').length;
     const red = tasks.filter(t => t.progress_indicator === 'red').length;
     const progressCounts = {
@@ -1318,7 +1312,7 @@ function setReportCount(el, value, label) {
 }
 
 export function renderReports(app) {
-  const standardKeys = ['directorate', 'did-operational', 'pip', 'did-backlog', 'progress', 'pd-estimates'];
+  const standardKeys = ['directorate', 'did-operational', 'pip', 'did-backlog', 'quarterly-goals', 'pd-estimates'];
   const customKeys = ['reg-directors'];
 
   function renderCard(key, cfg) {
@@ -1350,9 +1344,9 @@ export function renderReports(app) {
   const customCards = customKeys.map(k => renderCard(k, reportConfig[k])).join('');
 
   return `
-    <div class="page-header animate-fade-in">
-      <h1>Статусы для встреч</h1>
-      <p>Готовые отчёты для оперативок и директорских</p>
+    <div class="page-header reporting-status-page-header animate-fade-in">
+      <div><h1>Статусы для встреч</h1><p>Готовые отчёты для оперативок и директорских</p></div>
+      ${canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary" href="${reportingStatusHref({ source: 'report' })}"><i data-lucide="clipboard-pen-line"></i>Заполнить статусы</a>` : ''}
     </div>
     <div id="reports-content">
     <div style="margin-bottom:32px;">
@@ -1382,17 +1376,21 @@ export function renderReportingMeetingsManagement() {
     <h1>Управление отчётными встречами</h1>
     <p>Расписание, готовность статусов и фиксация версий после проведения встречи</p>
   </div>
-  <section id="reporting-meetings-panel" class="reporting-meetings-panel"><div class="card">Загрузка отчётных встреч…</div></section>
-  <details class="meeting-version-guide">
-    <summary>Как фиксируются отчётные статусы</summary>
-    <section class="meeting-version-flow" aria-label="Жизненный цикл статусов">
-      <div><span>1</span><strong>Предстоящая встреча</strong><small>Команды готовят текущие статусы</small></div>
+  <aside class="meeting-status-help" aria-labelledby="meeting-status-help-title">
+    <div class="meeting-status-help-head">
+      <span class="meeting-status-help-icon"><i data-lucide="info"></i></span>
+      <div><h2 id="meeting-status-help-title">Как работают отчётные статусы</h2><p>Коротко о подготовке и фиксации статусов к каждой встрече.</p></div>
+      ${canManageReportingMeetings ? '<span class="badge badge-info">Управление доступно</span>' : ''}
+    </div>
+    <section class="meeting-status-help-flow" aria-label="Жизненный цикл статусов">
+      <div><span>1</span><strong>Подготовка</strong><small>Команды обновляют и подтверждают статусы</small></div>
       <i data-lucide="arrow-right"></i>
-      <div><span>2</span><strong>Фиксация факта</strong><small>Проектный офис подтверждает проведение</small></div>
+      <div><span>2</span><strong>Проведение</strong><small>Проектный офис фиксирует состоявшуюся встречу</small></div>
       <i data-lucide="arrow-right"></i>
-      <div><span>3</span><strong>Историческая версия</strong><small>Статусы становятся неизменяемым срезом</small></div>
+      <div><span>3</span><strong>История</strong><small>Подтверждённые статусы сохраняются как срез</small></div>
     </section>
-  </details>`;
+  </aside>
+  <section id="reporting-meetings-panel" class="reporting-meetings-panel"><div class="card">Загрузка отчётных встреч…</div></section>`;
 }
 
 export async function initReportingMeetingsManagement(app) {
@@ -1706,12 +1704,14 @@ function renderReportCharts(tasks) {
 
 function getReportKeyFromUrl() {
   const m = window.location.hash.match(/[?&]r=([^&]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
+  const key = m ? decodeURIComponent(m[1]) : null;
+  return key === 'progress' ? 'quarterly-goals' : key;
 }
 
 export function renderReportPage(app) {
   currentReport = getReportKeyFromUrl() || currentReport;
-  if (currentReport === 'did-backlog') return renderDidBacklog();
+  if (currentReport === 'directorate') return renderDirectorateReport(app);
+  if (currentReport === 'did-backlog') return renderDidBacklog(app);
   const config = reportConfig[currentReport];
   if (!config) return '<p class="text-muted">Отчёт не выбран</p>';
 
@@ -1730,6 +1730,7 @@ export function renderReportPage(app) {
       <div class="action-bar action-bar--end" style="justify-content:space-between;">
         <span class="badge badge-info" style="font-size:var(--text-xs);">${config.isPlaceholder ? 'В разработке' : 'Статус-отчёт'}</span>
         <div class="flex gap-2" style="flex-wrap:wrap;">
+          ${canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary btn-sm" href="${reportingStatusHref({ source: 'report', kind: currentReport === 'directorate' ? 'directorate' : currentReport === 'did-operational' ? 'did' : '' })}"><i data-lucide="clipboard-pen-line"></i>Заполнить статусы</a>` : ''}
           ${!config.isPlaceholder ? `
           <button class="btn btn-secondary btn-sm" id="report-excel">
             <i data-lucide="file-spreadsheet" style="width:14px;height:14px;"></i>
@@ -1742,7 +1743,7 @@ export function renderReportPage(app) {
         </div>
       </div>
 
-      ${currentReport === 'progress' ? `
+      ${currentReport === 'quarterly-goals' ? `
       <div class="dashboard-stats" id="progress-widgets" style="margin-bottom:var(--space-6);">
         <button type="button" class="stat-card progress-widget" data-progress-filter="all" style="text-align:left;cursor:pointer;font-family:inherit">
           <div class="stat-icon" style="background:var(--info-light);color:var(--info);"><i data-lucide="list"></i></div>
@@ -1819,6 +1820,7 @@ export function renderReportPage(app) {
 export function initReportPage(app) {
   currentReport = getReportKeyFromUrl() || currentReport;
   if (!currentReport) return;
+  if (currentReport === 'directorate') { initDirectorateReport(app); return; }
   if (currentReport === 'did-backlog') { initDidBacklog(app); return; }
   loadReportData(app);
 
@@ -1846,7 +1848,7 @@ export function initReportPage(app) {
 
   document.getElementById('progress-widgets')?.addEventListener('click', (e) => {
     const widget = e.target.closest('.progress-widget');
-    if (!widget || currentReport !== 'progress' || !cachedReportData) return;
+    if (!widget || currentReport !== 'quarterly-goals' || !cachedReportData) return;
     const filter = widget.dataset.progressFilter;
     const current = reportColumnFilters.progress_indicator || [];
     const requested = filter === 'deviations' ? ['yellow', 'red'] : (filter === 'all' ? [] : [filter]);
@@ -1854,7 +1856,7 @@ export function initReportPage(app) {
     if (alreadyActive && filter !== 'all') delete reportColumnFilters.progress_indicator;
     else if (requested.length) reportColumnFilters.progress_indicator = requested;
     else delete reportColumnFilters.progress_indicator;
-    renderReportContent(reportConfig.progress, 'progress', cachedReportData);
+    renderReportContent(reportConfig['quarterly-goals'], 'quarterly-goals', cachedReportData);
   });
 
   document.getElementById('report-excel')?.addEventListener('click', () => {
@@ -1881,7 +1883,7 @@ export function initReportPage(app) {
     }
   });
 
-  document.getElementById('report-body')?.addEventListener('click', (e) => {
+  document.getElementById('report-body')?.addEventListener('click', async (e) => {
     const config = reportConfig[currentReport];
 
     const decisionButton = e.target.closest('.pip-decision-btn');
@@ -1890,7 +1892,12 @@ export function initReportPage(app) {
       const taskId = Number(decisionButton.dataset.taskId);
       const version = Number(decisionButton.dataset.taskVersion);
       if (!taskId || !['reject', 'accept'].includes(decision)) return;
-      if (decision === 'reject' && !window.confirm('Отклонить эту задачу?')) return;
+      if (decision === 'reject' && !(await confirmAction({
+        title: 'Отклонить задачу?',
+        message: 'Задача будет переведена в отклонённые. Продолжить?',
+        confirmText: 'Отклонить',
+        destructive: true,
+      }))) return;
 
       const rowButtons = decisionButton.closest('tr')?.querySelectorAll('.pip-decision-btn') || [];
       rowButtons.forEach(btn => { btn.disabled = true; });

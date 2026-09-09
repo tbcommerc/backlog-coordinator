@@ -22,7 +22,7 @@ from services.task_metrics import calculate_cost_value_ratio
 from models import (
     Task, Team, Channel, BusinessCustomer, Department, Project, TaskType,
     Priority, Deadline, TaskStatus, User, TaskHistory, TaskJiraLink,
-    FieldLabel, DidClientGroup,
+    FieldLabel, DidClientGroup, AuditLog,
 )
 
 # Импортируемые поля (белый список)
@@ -120,6 +120,8 @@ def parse_csv(content: str, delimiter: str) -> List[dict]:
             continue
         # csv.DictReader возвращает None для недостающих значений
         rows.append({k.strip(): v for k, v in raw.items() if k is not None})
+        if len(rows) > 10_000:
+            raise ValueError("CSV содержит больше 10000 строк")
     return rows
 
 
@@ -323,7 +325,10 @@ def process_row(row_num: int, raw: dict, field_map: dict, db_key_to_label: dict,
                 candidates = preferred or matches
                 rid = candidates[0][0] if len(candidates) == 1 else None
             if rid is None:
-                errors.append(make_error(row_num, key, db_key_to_label, value, 'customer_reference_not_found',
+                error_type = REFERENCE_BY_KEY.get(key, {}).get(
+                    'type', f"{key.removesuffix('_id')}_not_found",
+                )
+                errors.append(make_error(row_num, key, db_key_to_label, value, error_type,
                     f'Значение «{value}» не найдено; поле оставлено незаполненным', fatal=False))
             task_data[key] = rid
             continue
@@ -469,8 +474,13 @@ def persist_task(db: Session, task: Task, jira_links: List[str],
             field_name=field_name, old_value=old_val, new_value=new_val,
         ))
 
-    # The central SQLAlchemy audit hook records this task in the same
-    # transaction as the import itself.
+    db.add(AuditLog(
+        user_id=current_user_id,
+        action="import",
+        entity_type="task",
+        entity_id=task.id,
+        details='{"source":"csv_import"}',
+    ))
 
 
 # ==================== MAIN ENTRY ====================
@@ -514,7 +524,10 @@ def import_tasks_from_csv(db: Session, raw: bytes, current_user: User) -> dict:
             continue
 
         try:
-            persist_task(db, task, jira_links=_jira_of(task), current_user_id=current_user.id)
+            # Ошибка одной строки откатывает только её savepoint и не переводит
+            # всю Session в failed state, поэтому последующие строки надёжны.
+            with db.begin_nested():
+                persist_task(db, task, jira_links=_jira_of(task), current_user_id=current_user.id)
         except Exception as e:  # noqa: BLE001
             result['errors'].append(make_error(
                 row_num, '', db_key_to_label, '',
@@ -531,7 +544,7 @@ def import_tasks_from_csv(db: Session, raw: bytes, current_user: User) -> dict:
     except Exception as e:  # noqa: BLE001
         db.rollback()
         result['created'] = 0
-        result['task_ids'] = []
+        created_task_ids = []
         result['errors'].append({
             'row': None, 'field': '', 'field_label': '',
             'value': '', 'type': 'unknown_error',

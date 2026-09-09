@@ -23,6 +23,8 @@ class Chunk:
     products: list = field(default_factory=list)
     modules: list = field(default_factory=list)
     processes: list = field(default_factory=list)
+    version: str | None = None
+    updated_at: str | None = None
 
     @property
     def source_label(self) -> str:
@@ -41,6 +43,8 @@ class Document:
     processes: list
     content: str
     chunks: list = field(default_factory=list)
+    version: str | None = None
+    updated_at: str | None = None
 
 
 def _split_sections(text: str):
@@ -89,6 +93,8 @@ class KnowledgeBase:
                 modules=meta.get("modules", []),
                 processes=meta.get("processes", []),
                 content=content,
+                version=meta.get("version"),
+                updated_at=meta.get("updated_at"),
             )
             for section_title, section_text in _split_sections(content):
                 chunk = Chunk(
@@ -102,6 +108,8 @@ class KnowledgeBase:
                     products=doc.products,
                     modules=doc.modules,
                     processes=doc.processes,
+                    version=doc.version,
+                    updated_at=doc.updated_at,
                 )
                 doc.chunks.append(chunk)
                 self.chunks.append(chunk)

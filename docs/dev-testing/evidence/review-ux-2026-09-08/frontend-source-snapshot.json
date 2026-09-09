@@ -1,0 +1,29 @@
+{
+  "checked_at_utc": "2026-09-08T12:33:25.1187722Z",
+  "checked_at_moscow": "2026-09-08T15:33:25.1187722+03:00",
+  "scope": "Source hashes and focused line-reference recheck, no application changes",
+  "parallel_changes_observed": true,
+  "note": "pages.css changed outside this audit while it was running. The report references were updated to this snapshot; use function/selector names if the working tree changes again.",
+  "files": [
+    {
+      "path": "D:/\u041f\u0440\u043e\u0435\u043a\u0442/dmb-backlog/frontend/js/components/reviewPage.js",
+      "sha256": "3CE5AF45274BE7722CAA9045F92A36B99E526E298E9793208A003B66E3C54F45",
+      "last_write_utc": "2026-09-06T22:24:43.6742123Z"
+    },
+    {
+      "path": "D:/\u041f\u0440\u043e\u0435\u043a\u0442/dmb-backlog/frontend/js/components/requestPresentation.js",
+      "sha256": "77474637BA17E49B4A976582FF7F8A031EF9E4351FDCB2131E2533A3D00DF38E",
+      "last_write_utc": "2026-09-06T22:19:29.7991442Z"
+    },
+    {
+      "path": "D:/\u041f\u0440\u043e\u0435\u043a\u0442/dmb-backlog/frontend/css/pages.css",
+      "sha256": "667EFF271EEF5B69532F267DEAF83ECFE7A794ED3E4825AA269CA4DF9F1E7217",
+      "last_write_utc": "2026-09-08T12:28:54.2775381Z"
+    },
+    {
+      "path": "D:/\u041f\u0440\u043e\u0435\u043a\u0442/dmb-backlog/frontend/css/modal-system.css",
+      "sha256": "6B92F865F78411F1223365790AFF433D67D78FCBE65D844E163D0D3D0E467CD2",
+      "last_write_utc": "2026-09-07T18:23:08.0193282Z"
+    }
+  ]
+}

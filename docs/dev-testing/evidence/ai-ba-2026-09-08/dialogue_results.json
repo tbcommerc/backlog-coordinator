@@ -1,0 +1,267 @@
+{
+  "audit_date": "2026-09-08",
+  "scope": "Current working tree; pure in-memory deterministic reproductions; no network or database",
+  "case_count": 7,
+  "cases": {
+    "silent_addition_loss": {
+      "first_turn": {
+        "reply": "Лимит 10 млн зафиксирован. Как проверить отказ?\n\nОсновное уже собрано; при желании можно подготовить черновик сейчас, а этот вопрос оставить бизнес-аналитику.",
+        "actual_rules": "Операции доступны только в рабочие дни",
+        "decision_conflicts": [
+          "Бизнес-правила: «Операции доступны только в рабочие дни» / «Операции доступны только в рабочие дни; лимит 10 млн рублей»"
+        ]
+      },
+      "next_turn": {
+        "actual_rules": [
+          "Операции доступны только в рабочие дни"
+        ],
+        "criteria": [
+          "При операции на 11 млн отображается отказ"
+        ],
+        "decision_conflicts": [],
+        "draft_conflicts": [],
+        "gaps": [
+          {
+            "id": "gap-a004ad1fd0",
+            "category": "quality",
+            "criticality": "high",
+            "question": "Уточните: Текущее состояние (As-Is).",
+            "source": "quality:missing_required",
+            "slot": "as_is",
+            "status": "open",
+            "resolution": ""
+          },
+          {
+            "id": "gap-53ce4edef5",
+            "category": "quality",
+            "criticality": "high",
+            "question": "Уточните: Ценность / эффект.",
+            "source": "quality:missing_required",
+            "slot": "value",
+            "status": "open",
+            "resolution": ""
+          }
+        ]
+      }
+    },
+    "evidence_and_readiness": {
+      "user_message": "Нужно поле ИНН в карточке сделки",
+      "can_generate_draft": true,
+      "slots": {
+        "role": {
+          "key": "role",
+          "value": "Все сотрудники банка",
+          "status": "filled",
+          "confidence": 1.0,
+          "source": "llm_extraction",
+          "confirmed": false,
+          "assumption": false
+        },
+        "process": {
+          "key": "process",
+          "value": "расчёты",
+          "status": "filled",
+          "confidence": 0.8,
+          "source": "llm_extraction",
+          "confirmed": false,
+          "assumption": false
+        },
+        "to_be": {
+          "key": "to_be",
+          "value": "Раскрывать ИНН всем сотрудникам",
+          "status": "filled",
+          "confidence": 0.6,
+          "source": "llm_extraction",
+          "confirmed": false,
+          "assumption": true
+        }
+      },
+      "review_findings": [
+        {
+          "code": "acceptance_open",
+          "message": "Критерии приёмки оставлены открытым вопросом.",
+          "severity": "warning",
+          "field": "acceptance_criteria"
+        },
+        {
+          "code": "no_external_sources",
+          "message": "Черновик не содержит ссылок на внешние источники.",
+          "severity": "warning",
+          "field": "sources"
+        }
+      ],
+      "provenance": {
+        "problem_statement": {
+          "source": "llm_extraction",
+          "assumption": false,
+          "confirmed": false
+        },
+        "target_process": {
+          "source": "llm_extraction",
+          "assumption": true,
+          "confirmed": false
+        },
+        "primary_role": {
+          "source": "llm_extraction",
+          "assumption": false,
+          "confirmed": false
+        },
+        "process": {
+          "source": "llm_extraction",
+          "assumption": false,
+          "confirmed": false
+        }
+      }
+    },
+    "malformed_schema": {
+      "string_booleans": {
+        "actual_role": "администратор",
+        "decision": {
+          "facts": [
+            {
+              "field": "role",
+              "value": "администратор",
+              "confidence": 0.8,
+              "assumption": true,
+              "correction": true,
+              "evidence": ""
+            }
+          ],
+          "next_action": "ask",
+          "focus": "",
+          "reply": "",
+          "assumptions": [],
+          "contradictions": [],
+          "ready_for_draft": true,
+          "use_knowledge_base": true,
+          "knowledge_query": "",
+          "source": "llm"
+        }
+      },
+      "null_core": {
+        "can_generate_draft": true,
+        "slots": {
+          "need_statement": "None",
+          "to_be": "None",
+          "role": "None",
+          "process": "None"
+        }
+      }
+    },
+    "assumption_promotion": {
+      "user_message": "Пока не уверен в автоматическом пересчёте",
+      "before": {
+        "key": "to_be",
+        "value": "Система автоматически пересчитывает лимит",
+        "status": "filled",
+        "confidence": 0.5,
+        "source": "user_message",
+        "confirmed": false,
+        "assumption": true
+      },
+      "after": {
+        "key": "to_be",
+        "value": "Система автоматически пересчитывает лимит",
+        "status": "filled",
+        "confidence": 0.8,
+        "source": "llm_extraction",
+        "confirmed": false,
+        "assumption": false
+      }
+    },
+    "context_loss": {
+      "payload_keys": [
+        "requirement",
+        "missing_hard",
+        "last_question_focus",
+        "history",
+        "user_message",
+        "dialogue_mode",
+        "questions_asked",
+        "can_generate_draft",
+        "fatigue_level"
+      ],
+      "requirement": {
+        "role": "инвестор"
+      },
+      "history_length": 40,
+      "history_has_unknown": false,
+      "persisted_unknown_status": "unknown",
+      "persisted_role_metadata": {
+        "key": "role",
+        "value": "инвестор",
+        "status": "filled",
+        "confidence": 0.5,
+        "source": "user_message",
+        "confirmed": false,
+        "assumption": true
+      },
+      "omitted_context": {
+        "sources": [
+          {
+            "type": "assumption",
+            "text": "Работа без электронной подписи"
+          }
+        ],
+        "last_agent_decision": {
+          "contradictions": [
+            "Срок 1 час либо 1 день"
+          ]
+        }
+      }
+    },
+    "false_semantic_rejections": [
+      {
+        "field": "role",
+        "value": "Согласующий менеджер",
+        "accepted": false,
+        "issues": [
+          "Пользователь не заполнено: согласующая сторона не является пользовательской ролью."
+        ]
+      },
+      {
+        "field": "role",
+        "value": "Комиссия использует платформу для согласования сделок",
+        "accepted": false,
+        "issues": [
+          "Пользователь не заполнено: согласующая сторона не является пользовательской ролью."
+        ]
+      },
+      {
+        "field": "process",
+        "value": "Внедрение нового инвестиционного продукта",
+        "accepted": false,
+        "issues": [
+          "Процесс не заполнено: стратегия внедрения не является бизнес-процессом."
+        ]
+      },
+      {
+        "field": "scenarios",
+        "value": "Менеджер проверяет, что внедрённое ограничение блокирует сделку",
+        "accepted": false,
+        "issues": [
+          "Сценарии не заполнено: план релиза не является пользовательским сценарием."
+        ]
+      }
+    ],
+    "unknown_statuses_and_questions": {
+      "value_statuses": {
+        "Пока не знаю": "filled",
+        "не уверен": "filled",
+        "Не знаю, уточню у коллег": "filled",
+        "Не знаю": "unknown",
+        "Не применимо": "not_applicable"
+      },
+      "single_question_false_positives": [
+        {
+          "before": "Как оператор должен понимать, какие сделки исключены из отчёта?",
+          "after": "Какой конкретный результат должен увидеть пользователь?"
+        },
+        {
+          "before": "Как система покажет, какой лимит был превышен?",
+          "after": "Что именно должно отображаться или происходить после изменения?"
+        }
+      ]
+    }
+  }
+}

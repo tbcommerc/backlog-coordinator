@@ -17,7 +17,6 @@ from schemas import (
     TaskResponse, SuccessResponse
 )
 from auth import get_current_user, check_permission, authorize_task
-from notifications import notify_express_import, notify_status_change
 from services.task_metrics import calculate_cost_value_ratio
 
 router = APIRouter()
@@ -473,9 +472,6 @@ def complete_quick_estimate(
             task.status_id = decision_status.id
             task.previous_status_id = None
             task.version = (task.version or 0) + 1
-            notify_status_change(
-                db, task, qe_status.name, decision_status.name, current_user.id,
-            )
         db.commit()
     except StaleDataError:
         db.rollback()
@@ -599,7 +595,9 @@ def _task_to_response(task: Task) -> TaskResponse:
         effort_days=task.effort_days,
         effort_rub=task.effort_rub,
         financial_effect=task.financial_effect,
-        progress=task.progress,
+        # Legacy rows may contain NULL even though the public API contract
+        # exposes progress as an integer. Keep the import picker available.
+        progress=task.progress if task.progress is not None else 0,
         link_mockups=task.link_mockups,
         link_jira=task.link_jira,
         rejection_reason=task.rejection_reason,
@@ -685,7 +683,6 @@ def import_task_to_estimate(
     task.previous_status_id = task.status_id
     task.status_id = qe_status.id
     task.version = (task.version or 0) + 1
-    notify_express_import(db, task, current_user.name)
     _commit_task_change(db, task.id, payload.version)
     db.refresh(task)
 

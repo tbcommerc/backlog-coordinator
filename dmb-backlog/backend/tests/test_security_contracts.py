@@ -17,6 +17,7 @@ from auth import (
     can_comment_task,
     can_edit_task,
     require_non_business_customer_access,
+    require_role,
 )
 admin_router = importlib.import_module("routers.admin_router")
 express_router = importlib.import_module("routers.express_router")
@@ -25,6 +26,19 @@ task_collaboration_router = importlib.import_module("routers.task_collaboration_
 task_analytics_router = importlib.import_module("routers.task_analytics_router")
 task_analytics_service = importlib.import_module("services.task_analytics")
 timeline_router = importlib.import_module("routers.timeline_router")
+
+
+def test_require_role_denies_user_without_role():
+    checker = require_role(["Администратор"])
+    with pytest.raises(HTTPException) as exc_info:
+        checker(SimpleNamespace(role=None))
+    assert exc_info.value.status_code == 403
+
+
+def test_task_update_logging_does_not_include_values():
+    source = inspect.getsource(tasks_router.update_task)
+    assert "changed_fields=%s" in source
+    assert "update_data={update_data}" not in source
 
 
 ROLE_MATRIX = [
@@ -226,6 +240,17 @@ def test_collaboration_handlers_are_not_duplicated_in_tasks_router():
     }
     assert names.isdisjoint(vars(tasks_router))
     assert names <= set(vars(task_collaboration_router))
+
+
+def test_attachment_upload_is_chunked_and_rejects_active_content():
+    source = inspect.getsource(task_collaboration_router.upload_task_attachment)
+    assert "read(UPLOAD_CHUNK_SIZE)" in source
+    assert "file.file.read()" not in source
+    assert ".html" in task_collaboration_router.BLOCKED_ATTACHMENT_EXTENSIONS
+    task_collaboration_router._validate_attachment_signature(".pdf", b"%PDF-1.7")
+    with pytest.raises(HTTPException) as exc_info:
+        task_collaboration_router._validate_attachment_signature(".pdf", b"not a pdf")
+    assert exc_info.value.status_code == 400
 
 
 def test_task_analytics_routes_are_registered_in_dedicated_router():

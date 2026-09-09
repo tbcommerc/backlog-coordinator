@@ -258,8 +258,24 @@ textarea:focus-visible {
 .animate-spin { animation: spin 1s linear infinite; }
 
 /* ==================== SKIP LINK ==================== */
-.skip-link:focus {
+.skip-link {
+    position: fixed;
     top: 0;
+    left: var(--space-3);
+    z-index: 9999;
+    padding: 8px 16px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    background: var(--accent);
+    color: white;
+    transform: translateY(-120%);
+    transition: transform var(--transition-fast);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+    top: 0;
+    color: white;
+    transform: translateY(0);
 }
 
 /* ==================== LAYOUT ==================== */

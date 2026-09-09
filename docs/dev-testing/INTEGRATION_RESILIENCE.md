@@ -2,7 +2,7 @@
 title: Интеграционные и отказные испытания
 scope: target-dev-testing
 status: ready-for-devops-review
-last_updated: 2026-09-01
+last_updated: 2026-09-07
 ---
 
 # Интеграционные и отказные испытания
@@ -45,6 +45,7 @@ Fault injection выполняется только DevOps в DEV, соглас�
 | IR-13 | Access token истёк при сохранении | сохранить обычное изменение | refresh rotation и один повтор, без дубля | не требуется |
 | IR-14 | KB отсутствует/manifest invalid | вызвать config/clarification | startup/config диагностичны; выдуманного KB-ответа нет | вернуть утверждённую KB |
 | IR-15 | Scheduler restart | дождаться/вызвать тестовый цикл | нет дублей уведомлений; один экземпляр | штатный restart |
+| IR-16 | Commit backend падает после успешного send-for-review | отправить готовый draft | request отсутствует; Agent получил `cancel-review` для того же task ID; повтор доступен | убрать fault, повторить отправку |
 
 ## 4. Evidence
 

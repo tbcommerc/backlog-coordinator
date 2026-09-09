@@ -29,6 +29,9 @@ tasks_all.json
 .test-tmp-agent/
 .tmp/
 .tmp_pytest/
+node_modules/
+test-results/
+playwright-report/
 graphify-out/
 *.db.bak*
 *.xlsx.bak

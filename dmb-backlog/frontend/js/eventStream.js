@@ -25,7 +25,7 @@ function dispatchEventMessage(app, message) {
   if (message.id) {
     try { sessionStorage.setItem(cursorKey(app), message.id); } catch (_) { /* no-op */ }
   }
-  const detail = message.data || {};
+  const detail = { ...(message.data || {}), revision: message.id || null };
   if (String(message.event).startsWith('notification.')) {
     document.dispatchEvent(new CustomEvent('dmb:notification-changed', { detail }));
   }

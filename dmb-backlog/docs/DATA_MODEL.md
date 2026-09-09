@@ -2,7 +2,7 @@
 title: Модель данных Backlog coordinator
 scope: as-is
 status: verified
-last_verified: 2026-09-04
+last_verified: 2026-09-08
 source_of_truth: backend/models.py
 evidence:
   - backend/models.py
@@ -159,18 +159,20 @@ evidence:
 
 ## Уведомления
 
-- `notifications` — пользовательские уведомления, category/type, содержимое, action URL, группировка и состояния read/dismissed/resolved;
-- `notification_templates` — шаблоны и расписание повторения;
-- `user_notification_preferences` — JSON preferences пользователя.
+- `notifications` — пользовательские уведомления, category/type, содержимое, action URL, группировка и состояния read/dismissed/resolved. Активные category: `assignment`, `reporting`, `mention`, `comment`, `request`; активные type: `task.assigned`, `meeting.status_update.required`, `comment.user_mentioned`, `task.comment.added`, `request.review.<status>`. Повтор по открытому `group_key` обновляет target/importance/timestamp, увеличивает `group_count` и возвращает карточку в unread. Domain resolve автоматически делает запись read; незакрытый `reporting` нельзя dismiss;
+- `notification_templates` — legacy-хранилище шаблонов; административная вкладка скрыта, а runtime активных сценариев не читает эту таблицу;
+- `user_notification_preferences` — JSON preferences пользователя; в активном контракте сохраняется только логический флаг `comment`.
 
 `notifications.user_id → users.id`, опциональная задача — `task_id → tasks.id`.
+Наличие строки не гарантирует её выдачу: list/count/summary повторно применяют
+текущий task read scope и скрывают task-linked содержимое после отзыва доступа.
 
 ## Отчёты и настройки интерфейса
 
 ### Отчётные встречи и статусы
 
 - `reporting_meetings` хранит конкретные экземпляры трёх типов встреч, плановую и исходную даты, состояние `date_pending/planned/held/cancelled`, причину изменения, версии и отметки отправленных уведомлений.
-- `task_reporting_statuses` хранит один статус задачи на одну встречу (`meeting_id + task_id` уникальны), признак демо ДИД, источник переноса и отдельную optimistic-lock версию.
+- `task_reporting_statuses` хранит один статус задачи на одну встречу (`meeting_id + task_id` уникальны), явный признак подтверждённой готовности `is_ready`, встречный маркер `directorate_attention` для показа лидеру трайба, признак демо ДИД, источник переноса и отдельную optimistic-lock версию. Маркер не переносится в модель задачи и используется только формой подготовки и директорским отчётом.
 - `task_reporting_status_revisions` сохраняет историю изменений текста и признака демо.
 - `reporting_meeting_history` фиксирует назначения, переносы, проведение и отмену встреч.
 
@@ -187,6 +189,8 @@ evidence:
 
 - `agent_sessions` связывает пользователя backlog с идентификатором сессии внешнего Agent;
 - `requirement_requests` хранит черновик требования, статус, Agent session и связи с автором, командой, reviewer и assignee.
+- Проверено 08.09.2026: `revision_history` (JSON-массив) хранит отдельные отправленные снимки draft, их SHA-256, автора, время и последовательный номер редакции; `status_history` хранит решения, комментарии, актора, редакцию и опциональные структурированные метаданные (например, результаты рассмотрения findings). Backend дополняет историю новыми записями, сохраняя прежние снимки при повторной отправке. Техническая `version` отдельно защищает конкурентные изменения. Поля добавляет миграция `c1a9e8b7d602`; на рабочих БД в рамках этой доработки она не выполнялась.
+- Для существующего запроса при первом изменении сохраняется доступный `legacy_snapshot`; неизвестные прошлые редакции не реконструируются. У прежнего комментария `legacy_event=true`, `created_at=null`, а `observed_at` обозначает момент сохранения доступного свидетельства, не дату решения.
 
 Связи `user_id`, `reviewer_id`, `assignee_id → users.id`; `team_id → teams.id`.
 

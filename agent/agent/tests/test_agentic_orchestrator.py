@@ -15,7 +15,6 @@ def orch(tmp_path):
 def test_model_decision_owns_next_question_without_phase_machine(orch, monkeypatch):
     decision = TurnDecision(
         facts=[
-            Fact("intent", "change", 0.95),
             Fact("need_statement", "Добавить в карточку сделки клиента и ИНН", 0.95),
             Fact("to_be", "В карточке отображаются клиент и ИНН", 0.9),
         ],
@@ -24,7 +23,7 @@ def test_model_decision_owns_next_question_without_phase_machine(orch, monkeypat
     )
     monkeypatch.setattr("agent.agentic_orchestrator.agentic_ba.decide_strict", lambda state, text: decision)
     sid = orch.new_session(1).session_id
-    response = orch.handle_message(sid, "Нужно добавить в карточку сделки клиента и ИНН")
+    response = orch.handle_message(sid, "Добавить в карточку сделки клиента и ИНН. В карточке отображаются клиент и ИНН")
 
     assert response.message == "Откуда должны поступать наименование клиента и ИНН?"
     assert response.expected_slot == "data_integrations"
@@ -36,7 +35,7 @@ def test_answer_with_question_word_is_processed_by_model_not_kb_router(orch, mon
         TurnDecision(facts=[Fact("need_statement", "Перекрасить кнопки", 0.95)],
                      next_action="ask", focus="business_rules",
                      reply="В какой цвет нужно перекрасить кнопки?", source="llm"),
-        TurnDecision(facts=[Fact("business_rules", "кнопки зелёного цвета", 0.9)],
+        TurnDecision(facts=[Fact("business_rules", "кнопки зелёного цвета", 0.9, evidence="Когда кнопки станут зелёного цвета")],
                      next_action="ask", focus="acceptance_criteria",
                      reply="Есть ли кнопки, которые должны сохранить текущий цвет?", source="llm"),
     ])
@@ -80,7 +79,7 @@ def test_user_turn_is_persisted_before_model_failure(orch, monkeypatch):
     }
 
 
-def test_invalid_model_json_uses_question_instead_of_unavailable(orch, monkeypatch):
+def test_invalid_model_json_fails_closed_without_recovering_facts(orch, monkeypatch):
     def invalid_json(_state, _text):
         try:
             raise ValueError("LLM response has no JSON object")
@@ -92,12 +91,12 @@ def test_invalid_model_json_uses_question_instead_of_unavailable(orch, monkeypat
 
     response = orch.handle_message(sid, "Нужен контроль расчётов", message_id="invalid-json-turn")
 
-    assert response.action == "question"
-    assert "недоступн" not in response.message.lower()
+    assert response.action == "unavailable"
+    assert orch.store.get(sid).get("need_statement") is None
     assert [item["role"] for item in orch.store.get(sid).history[-2:]] == ["user", "assistant"]
 
 
-def test_invalid_json_recovers_need_from_misfiled_intent(orch, monkeypatch):
+def test_invalid_json_does_not_promote_misfiled_intent(orch, monkeypatch):
     def invalid_json(_state, _text):
         try:
             raise ValueError("LLM response has no JSON object")
@@ -112,9 +111,8 @@ def test_invalid_json_recovers_need_from_misfiled_intent(orch, monkeypatch):
     response = orch.handle_message(state.session_id, "Я уже сформулировал потребность выше")
     restored = orch.store.get(state.session_id)
 
-    assert restored.get("need_statement") == "Изменить дизайн всей системы в корпоративных зелёных тонах"
-    assert restored.get_slot("need_statement").source == "semantic_recovery"
-    assert response.expected_slot == "to_be"
+    assert restored.get("need_statement") is None
+    assert response.action == "unavailable"
     assert "какую проблему или изменение" not in response.message.lower()
 
 
@@ -162,7 +160,7 @@ def test_sent_session_is_not_exposed_as_draft_ready(orch):
     assert restored.phase == "sent_for_review"
     assert restored.request_id == 12
     assert continued.phase == "sent_for_review"
-    assert continued.action == "sent"
+    assert continued.action == "sent_locked"
     assert continued.request_id == 12
 
 
@@ -243,11 +241,11 @@ def test_model_summary_first_requests_acceptance_then_product(orch, monkeypatch)
     decisions = iter([
         TurnDecision(
             facts=[
-                Fact("intent", "change", 0.95),
                 Fact("need_statement", "Автоматизировать реестр облигаций по сделкам", 0.95),
                 Fact("to_be", "Система выгружает реестр в Excel", 0.95),
                 Fact("role", "бэк-офицер", 0.95),
                 Fact("process", "расчёты по сделкам", 0.95),
+                Fact("value", "Сокращение времени подготовки реестра с 20 до 2 минут", 0.95),
             ],
             next_action="summarize", source="llm",
         ),
@@ -263,7 +261,7 @@ def test_model_summary_first_requests_acceptance_then_product(orch, monkeypatch)
     monkeypatch.setattr("agent.agentic_orchestrator.agentic_ba.decide_strict", lambda state, text: next(decisions))
     sid = orch.new_session(42).session_id
 
-    acceptance = orch.handle_message(sid, "Нужна автоматическая выгрузка реестра облигаций")
+    acceptance = orch.handle_message(sid, "Автоматизировать реестр облигаций по сделкам. Система выгружает реестр в Excel. Пользователь: бэк-офицер; процесс: расчёты по сделкам. Сокращение времени подготовки реестра с 20 до 2 минут")
     product = orch.handle_message(sid, "Файл формируется не позднее 60 секунд")
     summary = orch.handle_message(sid, "Облигации и еврооблигации")
 
@@ -274,7 +272,7 @@ def test_model_summary_first_requests_acceptance_then_product(orch, monkeypatch)
     assert summary.action == "summarize"
 
 
-def test_ready_for_draft_stops_optional_interview(orch, monkeypatch):
+def test_ready_for_draft_checks_business_gaps_before_summary(orch, monkeypatch):
     decision = TurnDecision(
         facts=[
             Fact("need_statement", "Повторить отправку инструкции из карточки", 0.95),
@@ -289,11 +287,12 @@ def test_ready_for_draft_stops_optional_interview(orch, monkeypatch):
     monkeypatch.setattr("agent.agentic_orchestrator.agentic_ba.decide_strict", lambda state, text: decision)
     sid = orch.new_session(5).session_id
 
-    response = orch.handle_message(sid, "Нужно разрешить повторную отправку")
+    response = orch.handle_message(sid, "Повторить отправку инструкции из карточки. Бэк-офицер повторно отправляет инструкцию. Пользователь: бэк-офицер; процесс: отправка расчётной инструкции")
 
-    assert response.action == "summarize"
+    assert response.action == "question"
+    assert response.expected_slot == "acceptance_criteria"
     assert "Какая очередь" not in response.message
-    assert orch.store.get(sid).summary_text
+    assert not orch.store.get(sid).summary_text
 
 
 def test_progress_question_is_answered_and_finishes_collection(orch, monkeypatch):
@@ -316,9 +315,9 @@ def test_progress_question_is_answered_and_finishes_collection(orch, monkeypatch
     ])
     monkeypatch.setattr("agent.agentic_orchestrator.agentic_ba.decide_strict", lambda state, text: next(decisions))
     sid = orch.new_session(6).session_id
-    orch.handle_message(sid, "Нужно разрешить повторную отправку")
+    orch.handle_message(sid, "Повторить отправку инструкции. Повтор доступен в карточке. Пользователь: бэк-офицер; процесс: отправка расчётной инструкции")
 
-    response = orch.handle_message(sid, "Повтор только для временных ошибок. Много ещё вопросов?")
+    response = orch.handle_message(sid, "Повтор разрешён для временных ошибок. Много ещё вопросов?")
 
     assert response.action == "summarize"
     assert response.message.startswith("Основное уже собрано")
@@ -355,11 +354,12 @@ def test_solution_design_question_is_deferred_for_business_user(orch, monkeypatc
     monkeypatch.setattr("agent.agentic_orchestrator.agentic_ba.decide_strict", lambda state, text: decision)
     sid = orch.new_session(8).session_id
 
-    response = orch.handle_message(sid, "Нужно разрешить повторную отправку")
+    response = orch.handle_message(sid, "Повторить отправку инструкции. Повтор доступен в карточке. Пользователь: бэк-офицер; процесс: отправка расчётной инструкции")
 
-    assert response.action == "summarize"
+    assert response.action == "question"
+    assert response.expected_slot == "acceptance_criteria"
     assert "синхронный запрос или" not in response.message
-    assert "системному аналитику или архитектору" in response.message
+    assert "системному аналитику или архитектору" in orch.store.get(sid).get("open_questions")
 
 
 def test_solution_design_question_is_allowed_for_explicit_technical_request(orch, monkeypatch):
@@ -372,7 +372,7 @@ def test_solution_design_question_is_allowed_for_explicit_technical_request(orch
     monkeypatch.setattr("agent.agentic_orchestrator.agentic_ba.decide_strict", lambda state, text: decision)
     sid = orch.new_session(9).session_id
 
-    response = orch.handle_message(sid, "Нужно проработать технические требования")
+    response = orch.handle_message(sid, "Нужно проработать технические требования: Проработать повторную отправку")
 
     assert response.action == "question"
     assert "синхронный запрос" in response.message
@@ -391,7 +391,7 @@ def test_compound_model_question_is_reduced_to_one_question(orch, monkeypatch):
     )
     sid = orch.new_session(50).session_id
 
-    response = orch.handle_message(sid, "Нужно обновить дизайн платформы")
+    response = orch.handle_message(sid, "Обновить дизайн платформы")
 
     assert response.message == "Кто будет пользоваться обновлённой платформой?"
     assert response.message.count("?") == 1
@@ -419,7 +419,8 @@ def test_brandbook_dialogue_does_not_misfile_acceptors_and_rollout(orch, monkeyp
 
     response = orch.handle_message(
         sid,
-        "Есть брендбук; принимать будет совместная рабочая группа; переход одномоментный",
+        "Привести платформу к новому стилю Банка. Все экраны соответствуют синей гамме брендбука. "
+        "Утверждённый брендбук. Принимать будет совместная рабочая группа; переход одномоментный. Соответствие брендбуку",
     )
     state = orch.store.get(sid)
 
@@ -428,4 +429,31 @@ def test_brandbook_dialogue_does_not_misfile_acceptors_and_rollout(orch, monkeyp
     assert state.get("scenarios") is None
     assert state.get("value") is None
     assert response.action == "question"
-    assert response.expected_slot in {"role", "process"}
+    assert response.action in {"question", "clarify"}
+
+
+def test_model_knowledge_decision_executes_retrieval(orch, monkeypatch):
+    decision = TurnDecision(
+        next_action="answer",
+        reply="",
+        use_knowledge_base=True,
+        knowledge_query="как работает приоритизация",
+        source="llm",
+    )
+    calls = []
+    monkeypatch.setattr(
+        "agent.agentic_orchestrator.agentic_ba.decide_strict",
+        lambda state, text: decision,
+    )
+    monkeypatch.setattr(
+        "agent.agentic_orchestrator.retrieval.answer_from_kb",
+        lambda query, k=4: calls.append((query, k)) or [{"text": "Приоритет рассчитывается по восьми факторам."}],
+    )
+    sid = orch.new_session(52).session_id
+
+    response = orch.handle_message(sid, "Как работает приоритизация?")
+
+    assert calls == [("как работает приоритизация", 4)]
+    assert response.action == "clarify"
+    assert "восьми факторам" in response.message
+    assert orch.store.get(sid).sources[0]["text"].startswith("Приоритет")
