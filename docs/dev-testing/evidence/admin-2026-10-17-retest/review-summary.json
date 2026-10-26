@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-17",
+  "scope": "F01-F17 review; fixture API only, no database writes",
+  "findings_fixed": 7,
+  "browser_unique_pass": 68,
+  "browser_single_final_combined_run": false,
+  "review_tests_pass": 6,
+  "original_regressions_rechecked": 11,
+  "node_focused_pass": 15,
+  "backend_isolated_pass": 4,
+  "node_full_pass": 377,
+  "node_full_total": 377,
+  "node_full_unresolved": [],
+  "node_full_previous_pass": 375,
+  "node_full_skipped": 0,
+  "node_full_command": "npm run test:unit",
+  "node_full_followup": "Updated stale route and review-resolution test contracts; application and database unchanged"
+}

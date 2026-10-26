@@ -1,7 +1,7 @@
 # Контракт с Backlog coordinator
 
 > AS-IS сверено с `app/api/contract.py`, `app/service/scenarios.py` и FastAPI
-> endpoint `/agent/*` 07.09.2026.
+> endpoint `/agent/*` 10.09.2026.
 
 Агент-приоритизатор встраивается в Backlog coordinator как **вызываемый сервис
 без состояния**. Backlog coordinator владеет базой и интерфейсом; агент считает.
@@ -276,6 +276,13 @@ Backlog coordinator должен уметь искать похожие зада
   "llm_calls": 2,
   "model": "gigachat:GigaChat-Pro",
   "duration_ms": 3480,
+  "phase_duration_ms": {
+    "value_classification": 740,
+    "analogy_index": 0,
+    "value_calculation": 12,
+    "factor_assessments": 2610,
+    "priority_scoring": 2
+  },
   "computed_at": "2026-08-13T10:24:11Z"
 }
 ```
@@ -283,6 +290,11 @@ Backlog coordinator должен уметь искать похожие зада
 Версии справочников в ответе нужны, чтобы отличить «агент передумал» от
 «методолог поменял веса». Без этого расхождение двух оценок одной задачи
 необъяснимо.
+
+`llm_calls` считает фактические обращения к модели, а не попадания в LLM-кэш.
+`phase_duration_ms` — инженерная телеметрия для поиска задержек; эти значения
+не участвуют в Value, факторах или выборе приоритета. Для ответа, целиком
+восстановленного из истории, словарь содержит фазу `response_cache`.
 
 ## Повторяемость
 

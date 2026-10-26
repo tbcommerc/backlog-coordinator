@@ -5,7 +5,20 @@
 export function renderSidebar() {
     const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
     const user = window.app?.store?.get('currentUser');
+    const agentV2Link = `
+                <a href="#/agent-v2" class="sidebar-item" aria-label="ИИ-ассистент V2">
+                    <i data-lucide="wand-2"></i>
+                    <span>ИИ-ассистент V2</span>
+                </a>`;
     const adminAccess = user?.permissions?.admin || 'none';
+    const taskEditScope = user?.permissions?.task_edit || 'none';
+    const canCaptureMeetings = user?.permissions?.customer_portal_mode !== 'only'
+        && (taskEditScope === 'all' || (taskEditScope === 'team' && user?.team_id != null));
+    const meetingCaptureLink = canCaptureMeetings ? `
+                <a href="#/meeting-capture" class="sidebar-item" aria-label="Поручения из встреч">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>Поручения из встреч</span>
+                </a>` : '';
     const deadLetterLink = adminAccess === 'full' ? `
                 <a href="#/outbox-dead-letters" class="sidebar-item" aria-label="Ошибки доставки событий">
                     <i data-lucide="alert-triangle"></i>
@@ -20,10 +33,10 @@ export function renderSidebar() {
                     <i data-lucide="shield"></i>
                     <span>Администрирование</span>
                 </a>
-                <a href="#/audit-log" class="sidebar-item" aria-label="Аудит действий">
+                ${adminAccess === 'full' ? `<a href="#/audit-log" class="sidebar-item" aria-label="Аудит действий">
                     <i data-lucide="scroll-text"></i>
                     <span>Аудит действий</span>
-                </a>
+                </a>` : ''}
                 ${deadLetterLink}` : '';
     const developmentBadge = `
                     <span class="item-badge sidebar-development-badge" title="В разработке" aria-label="В разработке">
@@ -59,6 +72,8 @@ export function renderSidebar() {
                     <i data-lucide="users"></i>
                     <span>Бэклог команды</span>
                 </a>
+                <a href="#/work-projects" class="sidebar-item" aria-label="Структура работ проекта"><i data-lucide="folder"></i><span>Структура работ проекта</span></a>
+                <a href="#/work-tasks" class="sidebar-item" aria-label="Рабочие задачи"><i data-lucide="list-checks"></i><span>Рабочие задачи</span></a>
                 <a href="#/express-estimate" class="sidebar-item" aria-label="Экспресс-оценка">
                     <i data-lucide="zap"></i>
                     <span>Экспресс-оценка</span>
@@ -101,6 +116,9 @@ export function renderSidebar() {
                     <i data-lucide="bot"></i>
                     <span>ИИ-ассистент</span>
                 </a>
+                ${agentV2Link}
+                <a href="#/backlog-assistant" class="sidebar-item" aria-label="Помощник по бэклогу"><i data-lucide="messages-square"></i><span>Помощник по бэклогу</span></a>
+                ${meetingCaptureLink}
                 <a href="#/review" class="sidebar-item" aria-label="Ревью запросов">
                     <i data-lucide="clipboard-check"></i>
                     <span>Ревью запросов</span>
@@ -121,7 +139,7 @@ export function renderSidebar() {
                 ${adminLinks}
             </div>
         </nav>
-        <button class="sidebar-toggle" title="Свернуть/развернуть" aria-label="Свернуть или развернуть боковую панель">
+        <button class="btn btn-ghost btn-sm square-icon ui-btn sidebar-toggle" title="Свернуть/развернуть" aria-label="Свернуть или развернуть боковую панель">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
     </aside>
@@ -129,6 +147,13 @@ export function renderSidebar() {
 }
 
 export function initSidebar() {
+    const boardApp = window.app, boardUser = boardApp?.store?.get('currentUser');
+    if(boardUser && boardUser.permissions?.customer_portal_mode !== 'only') {
+        boardApp.api.get('/work-tasks/options').then(options=>{
+            if(window.app?.store?.get('currentUser')?.id !== boardUser.id)return;
+            document.querySelector('a.sidebar-item[href="#/kanban"]')?.toggleAttribute('hidden',options.board_enabled===true);
+        }).catch(()=>{});
+    }
     const sidebar = document.querySelector('.sidebar');
     const toggle = sidebar?.querySelector('.sidebar-toggle');
     if (!sidebar || !toggle) return;
@@ -147,7 +172,7 @@ export function initSidebar() {
         const user = window.app?.store?.get('currentUser');
         const perms = user?.permissions;
         if (perms?.customer_portal_mode === 'only') {
-            const allowedLabels = new Set(['Мои запросы', 'ИИ-ассистент']);
+            const allowedLabels = new Set(['Мои запросы', 'ИИ-ассистент', 'ИИ-ассистент V2', 'Помощник по бэклогу']);
             document.querySelectorAll('.sidebar-item').forEach(el => {
                 if (!allowedLabels.has(el.getAttribute('aria-label'))) {
                     el.style.display = 'none';
@@ -161,6 +186,7 @@ export function initSidebar() {
             return;
         }
         if (!perms) return; // no permissions data yet — keep everything visible
+        const adminAccess = perms.admin || 'none';
         const map = {
             'Бэклог DMB': 'backlog_dmb',
             'Канбан-доска': 'backlog_dmb',
@@ -178,10 +204,12 @@ export function initSidebar() {
             'Аудит действий': 'admin',
             'Dead-letter outbox': 'admin',
         };
+        const fullAdminAssistantLabels = new Set(['ИИ-ассистент']);
         document.querySelectorAll('.sidebar-item').forEach(el => {
             const label = el.getAttribute('aria-label');
             const perm = map[label];
-            if (perm && (perms[perm] || 'none') === 'none') {
+            const hasFullAdminAssistantAccess = adminAccess === 'full' && fullAdminAssistantLabels.has(label);
+            if (perm && (perms[perm] || 'none') === 'none' && !hasFullAdminAssistantAccess) {
                 el.style.display = 'none';
             }
             if (label === 'Ревью запросов') {

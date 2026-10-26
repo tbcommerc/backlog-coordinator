@@ -1,6 +1,10 @@
 import { escapeHtml } from '../htmlUtils.js';
 
 export const REQUEST_STATUS = Object.freeze({
+  completed: { label: 'Выполнен', badge: 'badge-status-done', group: 'done' },
+  not_relevant: { label: 'Не актуален', badge: 'badge-low', group: 'closed' },
+  task_rejected: { label: 'Задача отклонена', badge: 'badge-danger', group: 'closed' },
+  task_deleted: { label: 'Задача удалена', badge: 'badge-warning', group: 'closed' },
   draft: { label: 'Черновик', badge: 'badge-low', group: 'action' },
   submitted: { label: 'Ожидает ревью', badge: 'badge-info', group: 'review' },
   in_review: { label: 'На ревью', badge: 'badge-medium', group: 'review' },
@@ -84,8 +88,8 @@ export function toList(value) {
 }
 
 export function getRequestStage(item = {}) {
+  if (['completed', 'not_relevant', 'task_rejected', 'task_deleted', 'rejected'].includes(item.status)) return REQUEST_STATUS[item.status];
   if (item.task_status && TASK_STAGE[item.task_status]) return TASK_STAGE[item.task_status];
-  if (item.task_id && item.status === 'in_progress' && Number(item.task_progress) >= 100) return TASK_STAGE['ВЫПОЛНЕНА'];
   return REQUEST_STATUS[item.status] || { label: 'В обработке', badge: 'badge-medium', group: 'work' };
 }
 
@@ -96,10 +100,10 @@ export function renderRequestStatusBadge(item = {}) {
 
 export function renderRequestJourney(item = {}) {
   const status = item.status || 'draft';
-  const taskDone = item.task_status === 'ВЫПОЛНЕНА' || (item.task_id && Number(item.task_progress) >= 100);
+  const taskDone = getRequestStage(item).group === 'done';
   const current = status === 'draft' ? 0 : ['submitted', 'in_review', 'returned'].includes(status) ? 1 : status === 'in_progress' && !taskDone ? 2 : 3;
   const completeThrough = status === 'rejected' ? 1 : current - 1;
-  const labels = ['Создан', status === 'returned' ? 'Уточнение' : 'Ревью', 'Проработка', status === 'rejected' ? 'Отклонён' : taskDone ? 'Завершён' : 'Результат'];
+  const labels = ['Создан', status === 'returned' ? 'Уточнение' : 'Ревью', 'Проработка', status === 'rejected' ? 'Отклонён' : ['completed', 'not_relevant', 'task_rejected', 'task_deleted'].includes(status) ? getRequestStage(item).label : taskDone ? 'Завершён' : 'Результат'];
   return `<nav class="review-journey request-journey${status === 'rejected' ? ' is-rejected' : ''}" aria-label="Путь запроса"><span class="request-journey-mobile">Этап ${current + 1} из 4 · ${escapeHtml(labels[current])}</span>${labels.map((label, index) => {
     const classes = [index <= completeThrough ? 'is-complete' : '', index === current ? 'is-current' : '', index > completeThrough && index < current ? 'is-skipped' : '', index === current && status === 'rejected' ? 'is-terminal' : ''].filter(Boolean).join(' ');
     return `<div class="${classes}"${index === current ? ' aria-current="step"' : ''}><span>${index <= completeThrough ? '<i data-lucide="check"></i>' : index + 1}</span><strong>${label}</strong></div>`;

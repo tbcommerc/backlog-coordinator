@@ -1,7 +1,15 @@
 console.log('[DMB] tableUtils.js v20260901.1 loaded');
 import { calculateTaskCv } from '../taskMetrics.js';
+import { escapeHtml } from '../htmlUtils.js';
 
-const PRIORITY_WEIGHT = { 'ВЫСОКИЙ': 3, 'СРЕДНИЙ': 2, 'НИЗКИЙ': 1 };
+const PRIORITY_ORDER = { 'ВЫСОКИЙ': 1, 'СРЕДНИЙ': 2, 'НИЗКИЙ': 3 };
+const referenceSortOrders = {
+  status: new Map([
+    'НОВАЯ ЗАДАЧА', 'НАЗНАЧЕНА КОМАНДА', 'СБОР ТРЕБОВАНИЙ', 'ПРОВЕРКА ТРЕБОВАНИЙ',
+    'УТОЧНЕНИЕ ТРЕБОВАНИЙ', 'ЭКСПРЕСС-ОЦЕНКА', 'ПРИНЯТИЕ РЕШЕНИЯ', 'ПРИНЯТА В РАБОТУ',
+    'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА', 'ВЫПОЛНЕНА', 'ЭСКАЛАЦИЯ НА ЛТ', 'ХОЛД',
+  ].map((name, index) => [name.toLocaleLowerCase('ru-RU'), index + 1])),
+};
 
 const NAME_KEYS = {
   status: 'status_name',
@@ -14,11 +22,40 @@ const NAME_KEYS = {
   project: 'project_name',
   owner: 'owner_name',
   business_customer: 'business_customer_name',
+  did_client_group: 'did_client_group_name',
+  created_by: 'created_by_name',
 };
+
+export function setReferenceSortOrders(orders = {}) {
+  Object.entries(orders).forEach(([key, entries]) => {
+    referenceSortOrders[key] = new Map(
+      (entries || []).map((entry, index) => [
+        String(entry.value ?? entry.name ?? '').trim().toLocaleLowerCase('ru-RU'),
+        Number.isFinite(Number(entry.sort_order)) ? Number(entry.sort_order) : index,
+      ])
+    );
+  });
+}
+
+function referenceOrder(key, value) {
+  if (value == null) return null;
+  return referenceSortOrders[key]?.get(String(value).trim().toLocaleLowerCase('ru-RU')) ?? null;
+}
+
+function deadlineOrder(value) {
+  const text = String(value || '').trim().toLocaleUpperCase('ru-RU');
+  if (!text) return null;
+  if (/^(?:БЕЗ\s+СРОКА|NO[_\s-]?DEADLINE)$/.test(text)) return Number.MAX_SAFE_INTEGER;
+  const quarter = text.match(/^(?:([1-4])\s*Q|Q\s*([1-4]))\s*(20\d{2})$/);
+  if (quarter) return Number(quarter[3]) * 10 + Number(quarter[1] || quarter[2]);
+  const year = text.match(/^(?:Y\s*)?(20\d{2})(?:\s*Г(?:ОД)?\.?)?$/);
+  if (year) return Number(year[1]) * 10 + 5;
+  return null;
+}
 
 // Base widths follow rendered value formats rather than potentially long labels.
 const COLUMN_BASE = {
-  id: 105, title: 220, description: 180, comment: 180, rejection_reason: 180,
+  id: 170, title: 220, description: 180, comment: 180, rejection_reason: 180,
   financial_effect_justification: 180,
   date_received: 110, status: 120, priority: 105, team: 130, channel: 110,
   business_customer: 150, department: 150, project: 150, task_type: 125,
@@ -34,7 +71,7 @@ const COLUMN_BASE = {
 };
 
 const COLUMN_MAX = {
-  id: 110, title: 300, description: 240, comment: 240, rejection_reason: 220,
+  id: 190, title: 300, description: 240, comment: 240, rejection_reason: 220,
   financial_effect_justification: 220,
   date_received: 120, status: 150, priority: 115, team: 170, channel: 140,
   business_customer: 180, department: 180, project: 180, task_type: 150,
@@ -85,6 +122,7 @@ export function autoSizeColumns(table, cols, widths, minWidths, opts = {}) {
 export function applyColumnWidths(table, cols, widths, opts = {}) {
   const offset = opts.offset || 0;
   const fixed = opts.fixed || {};
+  if (fixed.id) fixed.id = Math.max(COLUMN_BASE.id, fixed.id);
   const colEls = Array.from(table.querySelectorAll('colgroup > col'));
   const autoCols = cols.filter(k => !fixed[k]);
   autoCols.forEach(key => {
@@ -110,6 +148,7 @@ export function applyColumnWidths(table, cols, widths, opts = {}) {
   table.style.width = Math.ceil(intrinsicWidth + extraWidth) + 'px';
   table.style.minWidth = '0';
   table.style.tableLayout = 'fixed';
+  pinIdentityColumn(table, cols, offset);
 
   if (typeof ResizeObserver !== 'undefined' && table.id && table.parentElement) {
     const current = widthObservers[table.id];
@@ -123,15 +162,22 @@ export function applyColumnWidths(table, cols, widths, opts = {}) {
 }
 
 function sortValue(task, key) {
-  if (key === 'priority') return PRIORITY_WEIGHT[task.priority_name] ?? 0;
+  const nameKey = NAME_KEYS[key];
+  const displayValue = nameKey && task[nameKey] != null ? task[nameKey] : task[key];
+  const configuredOrder = referenceOrder(key, displayValue);
+  if (configuredOrder != null) return configuredOrder;
+  if (displayValue == null || displayValue === '') return null;
+  if (key === 'priority') return PRIORITY_ORDER[task.priority_name] ?? Number.MAX_SAFE_INTEGER;
   if (key === 'progress') return task.progress ?? 0;
   if (key === 'cv') {
     return calculateTaskCv(task);
   }
-  if (key === 'deadline') return task.deadline_id ?? task.deadline_name ?? task.deadline;
-  const nameKey = NAME_KEYS[key];
-  if (nameKey && task[nameKey] != null) return task[nameKey];
-  return task[key];
+  if (key === 'deadline') return deadlineOrder(task.deadline_name ?? task.deadline);
+  if (key === 'did_demo') return task.did_demo ? 1 : 0;
+  if (Array.isArray(displayValue)) {
+    return displayValue.map(item => String(item?.name ?? item)).sort((a, b) => a.localeCompare(b, 'ru')).join(', ');
+  }
+  return displayValue;
 }
 
 export function applyColumnSort(list, key, dir) {
@@ -143,13 +189,13 @@ export function applyColumnSort(list, key, dir) {
     const vb = sortValue(b, key);
     if (va == null) return 1;
     if (vb == null) return -1;
-    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * m;
+    if (typeof va === 'number' && typeof vb === 'number') return ((va - vb) * m) || (Number(a.id) - Number(b.id));
     const sa = String(va);
     const sb = String(vb);
     const na = parseFloat(sa);
     const nb = parseFloat(sb);
-    if (!isNaN(na) && !isNaN(nb) && sa.trim() !== '' && sb.trim() !== '') return (na - nb) * m;
-    return sa.localeCompare(sb, 'ru') * m;
+    if (!isNaN(na) && !isNaN(nb) && sa.trim() !== '' && sb.trim() !== '') return ((na - nb) * m) || (Number(a.id) - Number(b.id));
+    return (sa.localeCompare(sb, 'ru') * m) || (Number(a.id) - Number(b.id));
   });
   return arr;
 }
@@ -166,7 +212,47 @@ export function toggleSortState(state, key) {
 export function headerCellHtml(label, key, sortKey, sortDir) {
   const icon = key === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
   const cls = key === sortKey ? ' class="th-sorted"' : '';
-  return `<th data-sort="${key}"${cls}><span class="th-label">${label}</span><span class="sort-icon">${icon}</span><span class="th-resize-handle"></span></th>`;
+  const order = key === sortKey ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+  return `<th data-sort="${key}"${cls} aria-sort="${order}"><button type="button" class="btn btn-ghost btn-sm ui-btn table-sort-button" aria-label="Сортировать: ${escapeHtml(label)}"><span class="th-label">${escapeHtml(label)}</span><span class="sort-icon" aria-hidden="true">${icon}</span></button><span class="th-resize-handle" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Ширина колонки: ${escapeHtml(label)}" aria-valuemin="${key === 'id' ? COLUMN_BASE.id : MIN_RESIZE}" aria-valuenow="${COLUMN_BASE[key] || DEFAULT_MIN}" title="Изменить ширину: ← / →; Home — автоматическая ширина"></span></th>`;
+}
+
+export function visibleTaskColumns(order, settings) {
+  settings.id = true;
+  if (order[0] !== 'id') order.splice(0, order.length, 'id', ...order.filter(key => key !== 'id'));
+  return ['id', ...order.filter(key => key !== 'id' && settings[key])];
+}
+
+function pinIdentityColumn(table, cols, offset) {
+  if (!['tasks-table', 'team-tasks-table'].includes(table.id)) return;
+  const index = cols.indexOf('id') + offset;
+  const left = offset ? 40 : 0;
+  table.querySelectorAll('tr').forEach(row => {
+    if (offset && row.children.length > 1) row.children[0].classList.add('table-pinned-selection');
+    const cell = row.children[index];
+    if (cell && !cell.hasAttribute('colspan')) {
+      cell.classList.add('table-pinned-id');
+      cell.style.setProperty('--pinned-id-left', `${left}px`);
+    }
+  });
+  table.querySelectorAll('th[data-sort]').forEach(th => {
+    th.querySelector('.th-resize-handle')?.setAttribute('aria-valuenow', String(Math.round(th.getBoundingClientRect().width)));
+  });
+}
+
+export function scrollTableToStart(containerId) {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const container = document.getElementById(containerId);
+    const scroller = container?.closest('.main-content');
+    if (!container || !scroller) return;
+    const toolbar = document.querySelector('.sticky-toolbar');
+    const toolbarBottom = toolbar && ['fixed', 'sticky'].includes(getComputedStyle(toolbar).position) ? toolbar.getBoundingClientRect().bottom : scroller.getBoundingClientRect().top;
+    const editor = [...document.querySelectorAll('.qe-toolbar')].find(el => getComputedStyle(el).display !== 'none');
+    const top = editor && getComputedStyle(editor).position === 'sticky' ? Math.max(toolbarBottom, editor.getBoundingClientRect().bottom) : toolbarBottom;
+    scroller.scrollTop += container.getBoundingClientRect().top - top;
+    const table = container.querySelector('table') || container;
+    table.tabIndex = -1;
+    table.focus({ preventScroll: true });
+  }));
 }
 
 export function registerTableInteractions(tableId, opts = {}) {
@@ -182,6 +268,14 @@ export function registerTableInteractions(tableId, opts = {}) {
     document.addEventListener('click', onHeaderClick);
     document.addEventListener('dblclick', onHeaderDblClick);
     document.addEventListener('mousedown', onHeaderMouseDown);
+    document.addEventListener('keydown', onHeaderKeyDown);
+    document.addEventListener('click', async event => {
+      const copy = event.target.closest('[data-copy-task-id]');
+      if (!copy) return;
+      event.stopPropagation();
+      try { await navigator.clipboard.writeText(copy.dataset.copyTaskId); window.toast?.('ID скопирован', 'success'); }
+      catch { window.toast?.('Не удалось скопировать ID. Выделите и скопируйте текст вручную.', 'warning'); }
+    });
   }
 }
 
@@ -205,6 +299,31 @@ function onHeaderClick(e) {
   if (!table || !registered.sort[table.id]) return;
   e.preventDefault();
   registered.sort[table.id](th.dataset.sort, th);
+  requestAnimationFrame(() => {
+    const selector = `th[data-sort="${th.dataset.sort}"] .table-sort-button`;
+    const target = document.querySelector(`#sticky-header-wrapper [data-source-table="${table.id}"] ${selector}`)
+      || document.getElementById(table.id)?.querySelector(selector);
+    target?.focus({ preventScroll: true });
+  });
+}
+
+function onHeaderKeyDown(event) {
+  const handle = event.target.closest('.th-resize-handle');
+  if (!handle || !['ArrowLeft', 'ArrowRight', 'Home'].includes(event.key)) return;
+  const th = handle.closest('th');
+  const table = getOriginalTable(th);
+  const layout = table && registered.layout[table.id]?.();
+  const fixed = table && registered.fixed[table.id]?.();
+  if (!layout || !fixed) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const key = th.dataset.sort;
+  if (event.key === 'Home') delete fixed[key];
+  else fixed[key] = Math.max(key === 'id' ? COLUMN_BASE.id : MIN_RESIZE, th.getBoundingClientRect().width + (event.key === 'ArrowRight' ? 1 : -1) * (event.shiftKey ? 50 : 10));
+  const offset = Math.max(0, table.querySelectorAll('colgroup > col').length - layout.cols.length);
+  applyColumnWidths(table, layout.cols, registered.widths[table.id](), { offset, fixed });
+  handle.setAttribute('aria-valuenow', String(Math.round(table.querySelector(`th[data-sort="${key}"]`).getBoundingClientRect().width)));
+  registered.resizeEnd[table.id]?.(key, fixed[key]);
 }
 
 function onHeaderMouseDown(e) {

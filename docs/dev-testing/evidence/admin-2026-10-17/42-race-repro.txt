@@ -1,0 +1,365 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/work-reports"
+      - generic: Контроль исполнения
+    - link:
+      - /url: "#/work-projects"
+      - generic: Структура работ проекта
+    - link:
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+    - link:
+      - /url: "#/reporting-meetings"
+      - generic: Отчётные встречи
+    - link:
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link:
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+    - link:
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Администрирование
+  - button "Открыть поиск":
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button:
+    - generic: QA
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - combobox "Раздел администрирования":
+      - option "Команды"
+      - option "Проекты"
+      - option "Бизнес-заказчики"
+      - option "Пользователи" [selected]
+      - option "Роли"
+      - option "Таймлайн"
+      - option "Справочники"
+      - option "Отображение"
+      - option "Отчёты"
+      - option "Журнал действий"
+  - searchbox "Поиск"
+  - combobox "Фильтр":
+    - option "Все статусы" [selected]
+    - option "Активен"
+    - option "Завершен"
+    - option "Архивный"
+  - status: "Найдено: 25"
+  - button "Добавить проект":
+    - text: Добавить проект
+  - tabpanel "Проекты":
+    - table:
+      - rowgroup:
+        - 'row "ID #18 Подробнее Код ai_assistant_ib Название AI ПОМОЩНИК IB Статус — Редактировать Удалить"':
+          - 'cell "ID #18 Подробнее"':
+            - text: "ID #18"
+            - button "Подробнее"
+          - cell "Код ai_assistant_ib"
+          - cell "Название AI ПОМОЩНИК IB"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #19 Подробнее Код ai_client_reference Название AI-СПРАВКА ПО КЛИЕНТУ Статус — Редактировать Удалить"':
+          - 'cell "ID #19 Подробнее"':
+            - text: "ID #19"
+            - button "Подробнее"
+          - cell "Код ai_client_reference"
+          - cell "Название AI-СПРАВКА ПО КЛИЕНТУ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #20 Подробнее Код bi Название BI Статус — Редактировать Удалить"':
+          - 'cell "ID #20 Подробнее"':
+            - text: "ID #20"
+            - button "Подробнее"
+          - cell "Код bi"
+          - cell "Название BI"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #21 Подробнее Код data Название DATA Статус — Редактировать Удалить"':
+          - 'cell "ID #21 Подробнее"':
+            - text: "ID #21"
+            - button "Подробнее"
+          - cell "Код data"
+          - cell "Название DATA"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #22 Подробнее Код ib Название IB Статус — Редактировать Удалить"':
+          - 'cell "ID #22 Подробнее"':
+            - text: "ID #22"
+            - button "Подробнее"
+          - cell "Код ib"
+          - cell "Название IB"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #23 Подробнее Код mis Название MIS Статус — Редактировать Удалить"':
+          - 'cell "ID #23 Подробнее"':
+            - text: "ID #23"
+            - button "Подробнее"
+          - cell "Код mis"
+          - cell "Название MIS"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #2 Подробнее Код options_revaluation Название АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ Статус — Редактировать Удалить"':
+          - 'cell "ID #2 Подробнее"':
+            - text: "ID #2"
+            - button "Подробнее"
+          - cell "Код options_revaluation"
+          - cell "Название АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #3 Подробнее Код vendor_replacement Название ВЕНДОРОЗАМЕЩЕНИЕ Статус — Редактировать Удалить"':
+          - 'cell "ID #3 Подробнее"':
+            - text: "ID #3"
+            - button "Подробнее"
+          - cell "Код vendor_replacement"
+          - cell "Название ВЕНДОРОЗАМЕЩЕНИЕ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #4 Подробнее Код pm_sigma Название ВЫВОД PM В СИГМУ Статус — Редактировать Удалить"':
+          - 'cell "ID #4 Подробнее"':
+            - text: "ID #4"
+            - button "Подробнее"
+          - cell "Код pm_sigma"
+          - cell "Название ВЫВОД PM В СИГМУ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #5 Подробнее Код dashboards Название ДАШБОРДЫ Статус — Редактировать Удалить"':
+          - 'cell "ID #5 Подробнее"':
+            - text: "ID #5"
+            - button "Подробнее"
+          - cell "Код dashboards"
+          - cell "Название ДАШБОРДЫ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #6 Подробнее Код desk_real_estate Название ДЕСК НЕДВИЖИМОСТИ Статус — Редактировать Удалить"':
+          - 'cell "ID #6 Подробнее"':
+            - text: "ID #6"
+            - button "Подробнее"
+          - cell "Код desk_real_estate"
+          - cell "Название ДЕСК НЕДВИЖИМОСТИ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #7 Подробнее Код core_integrations Название ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ Статус — Редактировать Удалить"':
+          - 'cell "ID #7 Подробнее"':
+            - text: "ID #7"
+            - button "Подробнее"
+          - cell "Код core_integrations"
+          - cell "Название ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #8 Подробнее Код import_substitution Название ИМПОРТОЗАМЕЩЕНИЕ Статус — Редактировать Удалить"':
+          - 'cell "ID #8 Подробнее"':
+            - text: "ID #8"
+            - button "Подробнее"
+          - cell "Код import_substitution"
+          - cell "Название ИМПОРТОЗАМЕЩЕНИЕ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #9 Подробнее Код client_card Название КАРТОЧКА КЛИЕНТА Статус — Редактировать Удалить"':
+          - 'cell "ID #9 Подробнее"':
+            - text: "ID #9"
+            - button "Подробнее"
+          - cell "Код client_card"
+          - cell "Название КАРТОЧКА КЛИЕНТА"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #10 Подробнее Код leads_for_km Название ЛИДЫ ДЛЯ КМ Статус — Редактировать Удалить"':
+          - 'cell "ID #10 Подробнее"':
+            - text: "ID #10"
+            - button "Подробнее"
+          - cell "Код leads_for_km"
+          - cell "Название ЛИДЫ ДЛЯ КМ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #11 Подробнее Код leads_from_km Название ЛИДЫ ОТ КМ Статус — Редактировать Удалить"':
+          - 'cell "ID #11 Подробнее"':
+            - text: "ID #11"
+            - button "Подробнее"
+          - cell "Код leads_from_km"
+          - cell "Название ЛИДЫ ОТ КМ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #12 Подробнее Код routing Название МАРШРУТИЗАЦИЯ Статус — Редактировать Удалить"':
+          - 'cell "ID #12 Подробнее"':
+            - text: "ID #12"
+            - button "Подробнее"
+          - cell "Код routing"
+          - cell "Название МАРШРУТИЗАЦИЯ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #1 Подробнее Код new_strategy_did Название НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД Статус — Редактировать Удалить"':
+          - 'cell "ID #1 Подробнее"':
+            - text: "ID #1"
+            - button "Подробнее"
+          - cell "Код new_strategy_did"
+          - cell "Название НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #13 Подробнее Код pipeline_scanner Название ПАЙПЛАЙН-СКАНЕР СДЕЛОК Статус — Редактировать Удалить"':
+          - 'cell "ID #13 Подробнее"':
+            - text: "ID #13"
+            - button "Подробнее"
+          - cell "Код pipeline_scanner"
+          - cell "Название ПАЙПЛАЙН-СКАНЕР СДЕЛОК"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - 'row "ID #25 Подробнее Код other_goals Название ПРОЧИЕ ЦЕЛИ Статус — Редактировать Удалить"':
+          - 'cell "ID #25 Подробнее"':
+            - text: "ID #25"
+            - button "Подробнее"
+          - cell "Код other_goals"
+          - cell "Название ПРОЧИЕ ЦЕЛИ"
+          - text: Описание
+          - cell "Статус —"
+          - text: Ответственный PL Создан
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+    - navigation "Страницы списка":
+      - generic: 1–20 из 25
+      - button "Назад" [disabled]:
+        - generic: Назад
+      - generic: 1 / 2
+      - button "Далее":
+        - generic: Далее

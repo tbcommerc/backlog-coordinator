@@ -1,0 +1,23 @@
+{
+  "top5_objects_found": 21,
+  "top5_objects_total": 21,
+  "cases": 80,
+  "passed": 80,
+  "baseline_passed": 68,
+  "core_passed": 60,
+  "core_total": 60,
+  "security_passed": 20,
+  "security_total": 20,
+  "top5_passed": 10,
+  "top5_total": 10,
+  "numeric_cases_passed": 21,
+  "numeric_cases_total": 21,
+  "access_denials": 3,
+  "server_fallbacks": 1,
+  "live_runs": 72,
+  "complete_model_cycles": 68,
+  "p50_seconds": 13.72,
+  "p95_seconds": 21.69,
+  "format_repairs": 0,
+  "cleanup_confirmed": 72
+}

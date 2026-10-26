@@ -6,7 +6,7 @@ const modal = readFileSync(new URL('../js/components/modal.js', import.meta.url)
 const styles = readFileSync(new URL('../css/components.css', import.meta.url), 'utf8');
 
 test('карточка помечает доступные для inline-редактирования поля', () => {
-  for (const key of ['title', 'description', 'status', 'priority', 'deadline', 'progress', 'assignee', 'team', 'otherTeams', 'customer', 'project', 'type', 'tags']) {
+  for (const key of ['title', 'description', 'comment', 'status', 'priority', 'deadline', 'progress', 'effortDays', 'weightPercent', 'forecastPercent', 'assignee', 'team', 'otherTeams', 'customer', 'project', 'type', 'tags']) {
     assert.match(modal, new RegExp(`editKey: e \\? '' : '${key}'|data-inline-edit="${key}"`));
   }
 });
@@ -91,7 +91,7 @@ test('панель изменений показывает контекст и �
 });
 
 test('чип режима редактирования стоит перед кнопками шапки и имеет единую форму', () => {
-  assert.match(modal, /<div class="row-actions">[\s\S]*?class="editbadge"[\s\S]*?class="editbadge-mark"[^>]*>' \+ cardIcon\('warning'\) \+ '<\/span>Редактирование[\s\S]*?data-action="copy-link"[\s\S]*?data-action="close"/);
+  assert.match(modal, /<div class="row-actions">[\s\S]*?class="editbadge"[\s\S]*?class="editbadge-mark"[^>]*>' \+ cardIcon\('warning'\) \+ '<\/span>Редактирование[\s\S]*?'data-action': 'copy-link'[\s\S]*?'data-action': 'close'/);
   assert.match(modal, /warning: '<path d="M10\.3 3\.6[\s\S]*?M12 9v4M12 17h\.01/);
   assert.doesNotMatch(modal, /task-head-chip--type[\s\S]{0,200}<span class="editbadge"/);
   assert.match(styles, /\.editbadge\{[\s\S]*?height:24px;[\s\S]*?border-radius:6px;[\s\S]*?padding:3px 10px;/);
@@ -112,7 +112,7 @@ test('безопасные inline-поля сохраняются автомат
 
 test('быстрый режим показывает редактор только у выбранного поля', () => {
   assert.match(modal, /const edit = key => e && \(!cardState\.entryField \|\| cardState\.entryField === key\)/);
-  for (const key of ['title', 'description', 'status', 'priority', 'deadline', 'progress', 'assignee', 'team', 'customer', 'project', 'type']) {
+  for (const key of ['title', 'description', 'comment', 'status', 'priority', 'deadline', 'progress', 'effortDays', 'weightPercent', 'forecastPercent', 'assignee', 'team', 'customer', 'project', 'type']) {
     assert.match(modal, new RegExp(`edit\\('${key}'\\) \\?`));
   }
   assert.match(modal, /cardChipsTags\(tags, t\.tags, 'tags', edit\('tags'\)\)/);
@@ -122,9 +122,10 @@ test('быстрый режим показывает редактор тольк
 });
 
 test('после сохранения доступна безопасная отмена с проверкой версии', () => {
-  assert.match(modal, /async function cardUndoSavedChanges\(app, previousSnapshot\)/);
+  assert.match(modal, /async function cardUndoSavedChanges\(app, previousSnapshot, expectedTaskId = currentTask\?\.id\)/);
   assert.match(modal, /const patch = \{ version: currentTask\.version \|\| 0, client_request_id: newTaskRequestId\(\) \}/);
-  assert.match(modal, /cardToastAction\([^;]*cardUndoSavedChanges\(app, previousSnapshot\)/);
+  assert.match(modal, /cardToastAction\([^;]*cardUndoSavedChanges\(app, previousSnapshot, savedTaskId\)/);
+  assert.match(modal, /if \(!cardMatchesCurrentTask\(taskId\)\)/);
   assert.match(styles, /\.toast-action-btn/);
 });
 
@@ -146,7 +147,7 @@ test('поиск словаря находится первой строкой �
   assert.match(modal, /panel\.append\(search\);/);
   assert.match(modal, /panel\.append\(optionsList\);/);
   assert.match(modal, /select\.hidden = true/);
-  assert.match(modal, /trigger\.className = 'dict-combobox-trigger'/);
+  assert.match(modal, /trigger\.className = 'dict-combobox-trigger ui-control'/);
   assert.match(modal, /focusTarget\.classList\.contains\('dict-combobox-trigger'\)/);
   assert.doesNotMatch(modal, /wrapper\.append\(search, select\)/);
   assert.match(styles, /\.dict-search-popover\[hidden\]\{display:none\}/);
@@ -158,21 +159,20 @@ test('фильтр исполнителей явно указывает на м�
 });
 
 test('выбор исполнителя расположен справа от аватара', () => {
-  assert.match(modal, /class="ava32" id="assigneeAva"/);
+  assert.match(modal, /uiAvatar\(\{ name: t\.assignee, size: 32, id: 'assigneeAva' \}\)/);
   assert.match(modal, /class="person-assignee-control"/);
-  assert.match(modal, /set\('assigneeAva', el => \{ el\.textContent = getInitials\(t\.assignee\); \}\)/);
-  assert.match(styles, /\.person-ival\{[\s\S]*?grid-template-columns:30px minmax\(0,1fr\);/);
-  assert.match(styles, /\.task-detail-modal \.person-ival>\.ava32\{[\s\S]*?width:30px;[\s\S]*?height:30px;/);
+  assert.match(modal, /set\('assigneeAva', el => \{ el\.outerHTML = uiAvatar\(/);
+  assert.match(styles, /\.person-ival\{[\s\S]*?grid-template-columns:32px minmax\(0,1fr\);/);
   assert.match(styles, /\.person-assignee-control \.dict-combobox-trigger\{width:100%;min-width:0\}/);
 });
 
 test('бизнес-заказчик редактируется inline через поисковый справочник', () => {
   assert.match(modal, /cardIcell\(taskFormLabel\('customer'\)[\s\S]*?edit\('customer'\) \? taskFormEditControl\('customer', t\.customer\)/);
-  assert.match(modal, /id="custAva"[\s\S]*?class="person-assignee-control"/);
+  assert.match(modal, /uiAvatar\(\{ name: t\.customer, size: 32, id: 'custAva' \}\)[\s\S]*?class="person-assignee-control"/);
   assert.match(modal, /editKey: e \? '' : 'customer'/);
   assert.match(modal, /selector: '\[data-k="customer"\]', label: 'Бизнес-заказчик'/);
   assert.match(modal, /business_customer_id: m\.customerId \? m\.customerId\(d\.customer\) : null/);
-  assert.match(modal, /set\('custAva', el => \{ el\.textContent = getInitials\(t\.customer\); \}\)/);
+  assert.match(modal, /set\('custAva', el => \{ el\.outerHTML = uiAvatar\(/);
   assert.match(modal, /set\('custDept', el => \{ el\.textContent = t\.customerDept \|\| '—'; \}\)/);
   assert.match(modal, /if \(k === 'customer'\) \{[\s\S]*?cardState\.draft\.customerDept = cardCustomerDepartment\(v, ''\)/);
 });
@@ -207,7 +207,10 @@ test('поля проекта и типа задачи имеют одинако
 test('кнопки расчёта вызывают backend-интеграцию приоритизатора', () => {
   assert.match(modal, /function cardPrioritiserButton\(kind\)/);
   assert.match(modal, /async function cardRunPrioritiser\(kind, app\)/);
-  assert.match(modal, /api\.post\(`\/tasks\/\$\{currentTask\.id\}\/prioritiser\/\$\{kind\}`/);
+  assert.match(modal, /api\.post\(`\/tasks\/\$\{taskId\}\/prioritiser\/\$\{kind\}`/);
+  assert.match(modal, /_taskCardRequestGate\.start\('prioritiser-calculation', taskId\)/);
+  assert.match(modal, /\{ signal: request\.signal \}/);
+  assert.match(modal, /_taskCardRequestGate\.isCurrent\(request\.token, taskId\)/);
   assert.match(modal, /if \(a === 'ai-calc-fin'\) \{ await cardRunPrioritiser\('value', app\); return; \}/);
   assert.match(modal, /if \(a === 'ps-calc'\) \{ await cardRunPrioritiser\('priority', app\); return; \}/);
   assert.doesNotMatch(modal, /function cardAiSuggest\(/);
@@ -218,8 +221,8 @@ test('финансовый эффект сохраняется только по
   assert.match(modal, /function cardRenderPrioritiserValueProposal\(\)/);
   assert.match(modal, /Number\.isFinite\(valueMln\)/);
   assert.match(modal, /Агент вернул некорректный финансовый эффект/);
-  assert.match(modal, /data-action="ai-value-reject"/);
-  assert.match(modal, /data-action="ai-value-accept"/);
+  assert.match(modal, /'data-action': 'ai-value-reject'/);
+  assert.match(modal, /'data-action': 'ai-value-accept'/);
   assert.match(modal, /Финансовый эффект рассчитан\. Проверьте и примите результат\./);
   assert.match(modal, /prioritiser\/value\/approve/);
   assert.match(modal, /if \(a === 'ai-value-accept'\) \{ await cardAcceptPrioritiserValue\(app\); return; \}/);
@@ -241,8 +244,8 @@ test('кнопки агентов показывают чек-лист обяз�
     assert.match(modal, new RegExp(label));
   }
   assert.match(modal, /class="agent-check-tooltip"[^>]*role="tooltip"/);
-  assert.match(modal, /aria-describedby="' \+ tooltipId/);
-  assert.match(styles, /\.agent-check-wrap:hover \.agent-check-tooltip,[\s\S]*?\.agent-check-wrap:focus-within \.agent-check-tooltip/);
+  assert.match(modal, /'aria-describedby': tooltipId/);
+  assert.match(modal, /bindTooltip\(\{ trigger, panel \}\)/);
   assert.match(styles, /\.agent-check-item\.ready \.agent-check-mark/);
   assert.match(styles, /\.agent-check-item\.missing \.agent-check-mark/);
 });
@@ -278,4 +281,86 @@ test('вкладка ссылок показывает файлы перед с�
   assert.match(modal, /\['sys', 'Ссылки и файлы', 'link'\]/);
   assert.match(modal, /function cardBodySys[\s\S]*?h \+= cardBodyFiles\(\);[\s\S]*?h \+= cardSec\('Системная информация'/);
   assert.match(modal, /cardState\.tab === 'sys'\) h = cardBodySys\(t, fullEdit\);/);
+});
+
+test('legacy files канонизируется в sys во всех путях активации', () => {
+  assert.match(modal, /export function normalizeTaskCardTab\(tab\) \{[\s\S]*?tab === 'files' \? 'sys' : tab/);
+  assert.match(modal, /function cardTabFromRoute\(\) \{[\s\S]*?return normalizeTaskCardTab\(requested\)/);
+  const activationStart = modal.indexOf('async function cardActivateTab');
+  const activationEnd = modal.indexOf('function cardIcon', activationStart);
+  const activation = modal.slice(activationStart, activationEnd);
+  assert.match(activation, /const validTab = normalizeTaskCardTab\(tab\)/);
+  assert.match(activation, /return validTab/);
+  assert.doesNotMatch(activation, /validTab === 'files'/);
+});
+
+test('число файлов обновляет вкладку и список после загрузки данных', () => {
+  const loadStart = modal.indexOf('async function loadAttachments');
+  const loadEnd = modal.indexOf('async function uploadFile', loadStart);
+  const loadAttachments = modal.slice(loadStart, loadEnd);
+  assert.match(loadAttachments, /cardState\.filesCount = _attachmentsCache\.length/);
+  assert.match(loadAttachments, /cardRenderTabs\(\)/);
+  assert.match(loadAttachments, /renderAttachmentsList\(\)/);
+  assert.match(modal, /if \(x\[0\] === 'sys'\) return 'Ссылки и файлы' \+ \(cardState\.filesCount/);
+  assert.match(modal, /function cardHydrateAttachments\(\)[\s\S]*?renderAttachmentsList\(\);[\s\S]*?initAttachmentForm\(currentTask\.id, window\.app\)/);
+  assert.doesNotMatch(modal, /cardState\.tab === 'files'\) h = cardBodyFiles\(\)/);
+});
+
+test('зона загрузки файлов доступна с клавиатуры и имеет явное имя', () => {
+  const filesStart = modal.indexOf('function cardBodyFiles');
+  const filesEnd = modal.indexOf('function cardHydrateAttachments', filesStart);
+  const filesBody = modal.slice(filesStart, filesEnd);
+  assert.match(filesBody, /id="attachment-drop-zone"[^>]*role="button"[^>]*tabindex="0"[^>]*aria-label="Добавить файлы к задаче"[^>]*aria-describedby="attachment-drop-hint"/);
+  assert.match(filesBody, /<svg aria-hidden="true"/);
+  assert.match(filesBody, /id="attachment-file-input"[^>]*class="attachment-file-input-hidden"[^>]*tabindex="-1"[^>]*aria-hidden="true"/);
+  assert.match(modal, /dropZone\.addEventListener\('keydown', \(e\) => \{[\s\S]*?e\.key !== 'Enter' && e\.key !== ' '[\s\S]*?fileInput\.click\(\)/);
+  assert.match(styles, /\.attachment-drop-zone:focus-visible[\s\S]*?outline: 2px solid var\(--primary\)/);
+});
+
+test('вкладки реализуют ARIA tab pattern и клавиатурную навигацию', () => {
+  assert.match(modal, /id="tabs" role="tablist" aria-label="Разделы карточки задачи" aria-orientation="horizontal"/);
+  assert.match(modal, /uiTab\(\{ id: 'task-tab-' \+ x\[0\], label: label\(x\), panelId: 'mbody', selected/);
+  assert.match(modal, /el\.setAttribute\('role', 'tabpanel'\)/);
+  assert.match(modal, /el\.setAttribute\('aria-labelledby', 'task-tab-' \+ cardState\.tab\)/);
+  for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End']) assert.match(modal, new RegExp(`'${key}'`));
+  assert.match(modal, /tabNavigationTarget\(document\.getElementById\('tabs'\), e\)/);
+  assert.match(modal, /const activeTab = await cardActivateTab\(nextTab\.dataset\.tab, app\)/);
+  assert.match(modal, /document\.getElementById\('task-tab-' \+ activeTab\)\?\.focus/);
+  assert.match(modal, /async function cardConfirmTabChange\(nextTab\)[\s\S]*?confirmTaskCardDiscard/);
+  assert.equal((modal.match(/await cardConfirmTabChange\(/g) || []).length, 3);
+});
+
+test('диалог получает доступное имя от единственного активного заголовка', () => {
+  assert.match(modal, /role="dialog" aria-modal="true" aria-labelledby="task-detail-title"/);
+  assert.match(modal, /<h1 class="head-title" id="task-detail-title"/);
+  const bodyStart = modal.indexOf('function cardBodyMainV30');
+  const bodyEnd = modal.indexOf('function cardEffortTable', bodyStart);
+  assert.doesNotMatch(modal.slice(bodyStart, bodyEnd), /<h1 class="task-title"/);
+});
+
+test('описание рендерится безопасным Markdown и длинный текст можно раскрыть', () => {
+  assert.match(modal, /import \{ renderTaskCardMarkdown \} from '\.\.\/taskCardMarkdown\.js'/);
+  assert.match(modal, /renderTaskCardMarkdown\(t\.description\)/);
+  assert.match(modal, /class="ui-link task-description-toggle" data-action="toggle-description"/);
+  assert.match(modal, /content\.scrollHeight > collapsedHeight \+ 1/);
+  assert.match(modal, /button\.textContent = cardState\.descriptionExpanded \? 'Свернуть' : 'Показать полностью'/);
+  assert.match(modal, /if \(ev\.target\.closest\('\.task-description-content a'\)\) return/);
+  assert.match(modal, /if \(e\.target\.closest\?\.\('\.task-description-content a'\)\) return/);
+  assert.match(styles, /\.task-description-shell\.is-collapsible:not\(\.is-expanded\) \.task-description-content\{[\s\S]*?max-height:var\(--task-description-collapsed-height\);[\s\S]*?overflow:hidden/);
+});
+
+test('переполнение вкладок обозначено градиентами и явными кнопками прокрутки', () => {
+  assert.match(modal, /id="task-tabs-shell"/);
+  assert.match(modal, /data-action="scroll-tabs-left" aria-label="Прокрутить вкладки влево"/);
+  assert.match(modal, /data-action="scroll-tabs-right" aria-label="Прокрутить вкладки вправо"/);
+  assert.match(modal, /tabs\.scrollWidth - tabs\.clientWidth/);
+  assert.match(styles, /\.tabs-shell::before,[\s\S]*?\.tabs-shell::after/);
+  assert.match(styles, /\.tabs-shell\.can-scroll-left::before,[\s\S]*?\.tabs-shell\.can-scroll-right::after\{opacity:1\}/);
+});
+
+test('подписи полей читаемы без избыточного капса, пассивные рамки ослаблены', () => {
+  assert.match(styles, /\.desc-label\{[\s\S]*?font-size:12px;[\s\S]*?text-transform:none/);
+  assert.match(styles, /\.ilab\{[\s\S]*?font-size:12px;[\s\S]*?text-transform:none/);
+  assert.match(styles, /\.flabel,[\s\S]*?\.kl\{[\s\S]*?font-size:12px/);
+  assert.match(styles, /\.field,\.stats,\.bigcard\{background:var\(--bg-secondary\);border-color:transparent\}/);
 });

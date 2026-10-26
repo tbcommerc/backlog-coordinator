@@ -1,0 +1,323 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Бэклог DMB
+  - button "Открыть поиск":
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button:
+    - generic: ДФ
+- main:
+  - heading "Бэклог DMB" [level=1]
+  - paragraph: Все задачи платформы
+  - button "Пользовательские представления":
+  - button "Сохранить представление":
+  - button "Настройка отображения столбцов":
+  - generic "Режим отображения":
+    - button "Табличное представление":
+    - button "Карточное представление":
+  - button "Быстрое редактирование" [disabled]:
+  - button "Массовые операции":
+  - group "Импорт и экспорт":
+    - button "Экспорт в CSV":
+  - button "Обновить":
+  - textbox "Поиск по ID, названию и описанию":
+    - /placeholder: Поиск по ID и названию…
+  - generic "Закреплённые фильтры":
+    - 'button "Статус: Все"':
+      - generic: "Статус:"
+      - generic: Все
+    - 'button "Приоритет: Все"':
+      - generic: "Приоритет:"
+      - generic: Все
+    - 'button "Команда: Все"':
+      - generic: "Команда:"
+      - generic: Все
+    - 'button "Срок: Все"':
+      - generic: "Срок:"
+      - generic: Все
+    - 'button "Проект: Все"':
+      - generic: "Проект:"
+      - generic: Все
+  - button "Все фильтры":
+    - generic: Все фильтры
+  - button "Сброс":
+    - text: Сброс
+  - paragraph: Нет прав на изменение задач в этой выборке.
+  - button "Быстрые фильтры":
+    - generic: Быстрые фильтры
+  - table:
+    - rowgroup:
+      - 'row "Сортировать: ID Ширина колонки: ID Сортировать: Задача Ширина колонки: Задача Сортировать: Статус Ширина колонки: Статус Сортировать: Приоритет Ширина колонки: Приоритет Сортировать: Команда Ширина колонки: Команда Сортировать: Дедлайн Ширина колонки: Дедлайн Сортировать: Трудозатраты (дни) Ширина колонки: Трудозатраты (дни) Сортировать: Фин. эффект Ширина колонки: Фин. эффект Сортировать: C/V Ширина колонки: C/V Сортировать: Прогресс Ширина колонки: Прогресс"':
+        - 'columnheader "Сортировать: ID Ширина колонки: ID"':
+          - 'button "Сортировать: ID"':
+            - generic: ID
+            - generic: ↕
+          - 'separator "Ширина колонки: ID"'
+        - 'columnheader "Сортировать: Задача Ширина колонки: Задача"':
+          - 'button "Сортировать: Задача"':
+            - generic: Задача
+            - generic: ↕
+          - 'separator "Ширина колонки: Задача"'
+        - 'columnheader "Сортировать: Статус Ширина колонки: Статус"':
+          - 'button "Сортировать: Статус"':
+            - generic: Статус
+            - generic: ↕
+          - 'separator "Ширина колонки: Статус"'
+        - 'columnheader "Сортировать: Приоритет Ширина колонки: Приоритет"':
+          - 'button "Сортировать: Приоритет"':
+            - generic: Приоритет
+            - generic: ↕
+          - 'separator "Ширина колонки: Приоритет"'
+        - 'columnheader "Сортировать: Команда Ширина колонки: Команда"':
+          - 'button "Сортировать: Команда"':
+            - generic: Команда
+            - generic: ↕
+          - 'separator "Ширина колонки: Команда"'
+        - 'columnheader "Сортировать: Дедлайн Ширина колонки: Дедлайн"':
+          - 'button "Сортировать: Дедлайн"':
+            - generic: Дедлайн
+            - generic: ↕
+          - 'separator "Ширина колонки: Дедлайн"'
+        - 'columnheader "Сортировать: Трудозатраты (дни) Ширина колонки: Трудозатраты (дни)"':
+          - 'button "Сортировать: Трудозатраты (дни)"':
+            - generic: Трудозатраты (дни)
+            - generic: ↕
+          - 'separator "Ширина колонки: Трудозатраты (дни)"'
+        - 'columnheader "Сортировать: Фин. эффект Ширина колонки: Фин. эффект"':
+          - 'button "Сортировать: Фин. эффект"':
+            - generic: Фин. эффект
+            - generic: ↕
+          - 'separator "Ширина колонки: Фин. эффект"'
+        - 'columnheader "Сортировать: C/V Ширина колонки: C/V"':
+          - 'button "Сортировать: C/V"':
+            - generic: C/V
+            - generic: ↕
+          - 'separator "Ширина колонки: C/V"'
+        - 'columnheader "Сортировать: Прогресс Ширина колонки: Прогресс"':
+          - 'button "Сортировать: Прогресс"':
+            - generic: Прогресс
+            - generic: ↕
+          - 'separator "Ширина колонки: Прогресс"'
+    - rowgroup:
+      - row "TASK-000-261 Копировать TASK-000-261 UX-NOTIF-20261014 — проверка назначения и упоминания НОВАЯ ЗАДАЧА СРЕДНИЙ Проектный офис — — — Нет данных 0% 0%":
+        - cell "TASK-000-261 Копировать TASK-000-261":
+          - generic "TASK-000-261"
+          - button "Копировать TASK-000-261": ⧉
+        - cell "UX-NOTIF-20261014 — проверка назначения и упоминания":
+          - strong: UX-NOTIF-20261014 — проверка назначения и упоминания
+        - cell "НОВАЯ ЗАДАЧА":
+          - generic: НОВАЯ ЗАДАЧА
+        - cell "СРЕДНИЙ":
+          - generic: СРЕДНИЙ
+        - cell "Проектный офис":
+          - generic: Проектный офис
+        - cell "—":
+          - generic: —
+        - cell "—"
+        - cell "—"
+        - cell "Нет данных":
+          - generic: Нет данных
+        - cell "0% 0%":
+          - progressbar "Прогресс"
+          - generic: 0%
+      - 'row "TASK-000-001 Копировать TASK-000-001 UX-NOTIF-CLONE: квартальное подтверждение НОВАЯ ЗАДАЧА ВЫСОКИЙ Pre-Trade 4Q 2026 30 дн 2,45 0.14 15% 15%"':
+        - cell "TASK-000-001 Копировать TASK-000-001":
+          - generic "TASK-000-001"
+          - button "Копировать TASK-000-001": ⧉
+        - 'cell "UX-NOTIF-CLONE: квартальное подтверждение"':
+          - strong: "UX-NOTIF-CLONE: квартальное подтверждение"
+        - cell "НОВАЯ ЗАДАЧА":
+          - generic: НОВАЯ ЗАДАЧА
+        - cell "ВЫСОКИЙ":
+          - generic: ВЫСОКИЙ
+        - cell "Pre-Trade":
+          - generic: Pre-Trade
+        - cell "4Q 2026":
+          - generic: 4Q 2026
+        - cell "30 дн"
+        - cell "2,45"
+        - cell "0.14":
+          - generic: "0.14"
+        - cell "15% 15%":
+          - progressbar "Прогресс"
+          - generic: 15%
+  - status: "Найдено: 2 задачи"
+- dialog "UX-NOTIF-20261014 — проверка назначения и упоминания":
+  - button "TASK-000-261":
+    - text: TASK-000-261
+  - generic: AD-HOC
+  - generic: НОВАЯ ЗАДАЧА
+  - generic: СРЕДНИЙ
+  - button "Копировать ссылку на задачу":
+  - button "Закрыть карточку задачи":
+  - heading "UX-NOTIF-20261014 — проверка назначения и упоминания" [level=1]
+  - button "Прокрутить вкладки влево" [disabled]: ‹
+  - tablist "Разделы карточки задачи":
+    - tab "Основное" [selected]:
+      - generic: Основное
+    - tab "Отчётные статусы":
+      - generic: Отчётные статусы
+    - tab "Комментарии · 6":
+      - generic: Комментарии · 6
+    - tab "Ссылки и файлы":
+      - generic: Ссылки и файлы
+    - tab "Лог изменений · 6":
+      - generic: Лог изменений · 6
+  - button "Прокрутить вкладки вправо": ›
+  - tabpanel "Основное":
+    - generic: Название
+    - generic: UX-NOTIF-20261014 — проверка назначения и упоминания
+    - generic: Описание
+    - paragraph: —
+    - text: ↓
+    - generic: Внутренний комментарий задачи
+    - generic: —
+    - heading "Паспорт задачи" [level=3]:
+      - text: Паспорт задачи
+    - generic: Исполнение
+    - generic: Статус задачи
+    - generic: НОВАЯ ЗАДАЧА
+    - generic: Приоритет
+    - generic: СРЕДНИЙ
+    - generic: Срок выполнения
+    - generic: Прогресс
+    - progressbar "Прогресс"
+    - generic: 0%
+    - generic: Оценки
+    - generic: Hard —
+    - generic: Soft —
+    - generic: Оценка и прогноз
+    - generic: Общая оценка трудозатрат, ч/д
+    - generic: —
+    - generic: Вес оценки, %
+    - generic: —
+    - generic: Прогноз выполнения, %
+    - generic: —
+    - generic: Команда
+    - generic: Исполнитель
+    - generic: UТ
+    - generic: U. тест
+    - generic: Ответственная команда
+    - text: Проектный офис
+    - generic: Другие вовлечённые команды · 0
+    - generic: —
+    - generic: Заказчик
+    - generic: Бизнес-заказчик
+    - generic: "?"
+    - generic: —
+    - generic: Подразделение
+    - generic: —
+    - generic: Клиент ДИД
+    - generic: —
+    - generic: Канал поступления
+    - generic: Встреча/Звонок
+    - generic: Дата получения
+    - generic: 14 окт. 2026 г.
+    - generic: Классификация
+    - generic: Проект
+    - generic: Тип задачи
+    - generic: AD-HOC
+    - generic: Метрический KR
+    - generic: "План: — · Факт: —"
+    - generic: Метки
+    - generic: —
+    - heading "Ключевые показатели" [level=3]:
+      - text: Ключевые показатели
+    - generic: План (ЭО)
+    - text: Оценка трудозатрат
+    - generic "Только чтение":
+    - generic: — ч/д
+    - text: Стоимость по ЭО
+    - generic "Только чтение":
+    - generic: —
+    - text: C/V по ЭО
+    - generic "Только чтение":
+    - generic: —
+    - generic: Факт (ФТЗ)
+    - text: Фактические трудозатраты
+    - generic "Только чтение":
+    - generic: — ч/д
+    - text: Стоимость по ФТЗ
+    - generic "Только чтение":
+    - generic: —
+    - text: C/V по ФТЗ
+    - generic "Только чтение":
+    - generic: —
+    - generic: Priority Score
+    - generic "Автоматически":
+    - button "AI-расчет" [disabled]:
+      - generic: AI-расчет
+    - generic: —
+    - generic: / 100
+    - generic "› Обоснование агента"
+    - generic: Финансовый эффект
+    - button "AI-расчет" [disabled]:
+      - generic: AI-расчет
+    - generic: —
+    - generic: млн ₽
+    - generic "› Обоснование расчёта"
+    - 'generic "Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ) › Развернуть"':
+      - text: "Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)"
+      - generic: › Развернуть
+  - generic: "Автор: Т. Бабяк · Создана: 14 окт. 2026 г., 21:22 · Изменена: 14 окт. 2026 г., 21:22"
+  - button "Только просмотр. Действие доступно только для задач вашей команды." [disabled]:
+    - generic: Только просмотр

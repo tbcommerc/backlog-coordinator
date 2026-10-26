@@ -1,0 +1,178 @@
+[
+  {
+    "overflow": false,
+    "regions": [
+      {
+        "class": "",
+        "h": 624,
+        "w": 220,
+        "x": 304,
+        "y": 273
+      },
+      {
+        "class": "agent-v2-workspace-topbar",
+        "h": 59,
+        "w": 1305,
+        "x": 543,
+        "y": 274
+      },
+      {
+        "class": "agent-v2-navigator",
+        "h": 1706,
+        "w": 228,
+        "x": 543,
+        "y": 332
+      },
+      {
+        "class": "agent-v2-document",
+        "h": 1706,
+        "w": 663,
+        "x": 770,
+        "y": 332
+      },
+      {
+        "class": "agent-v2-copilot",
+        "h": 1706,
+        "w": 414,
+        "x": 1433,
+        "y": 332
+      }
+    ],
+    "viewport": [
+      1920,
+      1080
+    ]
+  },
+  {
+    "overflow": false,
+    "regions": [
+      {
+        "class": "",
+        "h": 624,
+        "w": 220,
+        "x": 304,
+        "y": 273
+      },
+      {
+        "class": "agent-v2-workspace-topbar",
+        "h": 59,
+        "w": 751,
+        "x": 543,
+        "y": 274
+      },
+      {
+        "class": "agent-v2-navigator",
+        "h": 1706,
+        "w": 180,
+        "x": 543,
+        "y": 332
+      },
+      {
+        "class": "agent-v2-document",
+        "h": 1706,
+        "w": 571,
+        "x": 723,
+        "y": 332
+      },
+      {
+        "class": "agent-v2-copilot",
+        "h": 1358,
+        "w": 751,
+        "x": 543,
+        "y": 2038
+      }
+    ],
+    "viewport": [
+      1366,
+      768
+    ]
+  },
+  {
+    "overflow": false,
+    "regions": [
+      {
+        "class": "",
+        "h": 392,
+        "w": 587,
+        "x": 121,
+        "y": 283
+      },
+      {
+        "class": "agent-v2-workspace-topbar",
+        "h": 59,
+        "w": 586,
+        "x": 121,
+        "y": 693
+      },
+      {
+        "class": "agent-v2-navigator",
+        "h": 1796,
+        "w": 180,
+        "x": 121,
+        "y": 752
+      },
+      {
+        "class": "agent-v2-document",
+        "h": 1796,
+        "w": 406,
+        "x": 301,
+        "y": 752
+      },
+      {
+        "class": "agent-v2-copilot",
+        "h": 1609,
+        "w": 586,
+        "x": 121,
+        "y": 2547
+      }
+    ],
+    "viewport": [
+      768,
+      1024
+    ]
+  },
+  {
+    "overflow": false,
+    "regions": [
+      {
+        "class": "",
+        "h": 544,
+        "w": 256,
+        "x": 24,
+        "y": 376
+      },
+      {
+        "class": "agent-v2-workspace-topbar",
+        "h": 147,
+        "w": 255,
+        "x": 25,
+        "y": 938
+      },
+      {
+        "class": "agent-v2-navigator",
+        "h": 1309,
+        "w": 255,
+        "x": 25,
+        "y": 5825
+      },
+      {
+        "class": "agent-v2-document",
+        "h": 2199,
+        "w": 255,
+        "x": 25,
+        "y": 1085
+      },
+      {
+        "class": "agent-v2-copilot",
+        "h": 2541,
+        "w": 255,
+        "x": 25,
+        "y": 3284
+      }
+    ],
+    "viewport": [
+      320,
+      740
+    ]
+  }
+]

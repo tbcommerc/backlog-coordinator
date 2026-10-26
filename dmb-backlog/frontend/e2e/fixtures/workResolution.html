@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Размещение запроса — изолированная проверка</title>
+<script src="/js/lib/lucide.min.js"></script>
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/pages.css"><link rel="stylesheet" href="/css/responsive.css">
+<link rel="stylesheet" href="/css/feedback.css"><link rel="stylesheet" href="/css/modal-system.css">
+<link rel="stylesheet" href="/css/work-tasks.css"><link rel="stylesheet" href="/css/ui/kit.css">
+</head><body><button id="open-resolution" class="btn btn-primary">Разместить запрос</button>
+<script type="module">
+import { openWorkResolution } from '/js/components/workResolution.js';
+import { initModalAccessibility } from '/js/modalAccessibility.js';
+document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'light';
+initModalAccessibility();
+window.__writes=[]; window.__hold=false; window.__fail=false; window.__refreshed=0;
+window.__readFail=false; window.__fulfilled=false;
+const app={api:{
+  get:async path=>{
+    if(path==='/requests/7/fulfillment') {
+      if(window.__readFail){window.__readFail=false;throw Error('Результат временно недоступен');}
+      return {version:4,coverage:'partial',fulfillment:window.__fulfilled?'fulfilled':'pending',review_decision:true,works:[{public_id:'WRK-11',title:'Работа',status:'done',scope_text:'Потребность',result_text:'Проверено'}]};
+    }
+    if(path==='/work-tasks/options')return {teams:[{id:10,name:'Команда приёмки'}],projects:[{id:3,name:'Проект'}]};
+    if(path==='/admin/task-types'||path==='/admin/channels')return [{id:1,name:'Основной'}];
+    if(path.startsWith('/work-tasks?')||path.startsWith('/tasks?')){
+      if(window.__holdSearch)await new Promise(resolve=>window.__releaseSearch=resolve);
+      return {items:[{id:11,public_id:'WRK-11',title:'Работа с длинным названием для проверки переноса результата поиска'}]};
+    }
+    throw Error('Unexpected fixture GET '+path);
+  },
+  request:async(method,path,body,options)=>{
+    window.__writes.push({method,path,body,options});
+    if(window.__hold)await new Promise(resolve=>window.__release=resolve);
+    if(window.__fail){window.__fail=false;throw Error('Версия изменилась. Проверьте черновик и повторите.');}
+    return {};
+  }
+},router:{refreshCurrentRoute:async()=>{window.__refreshed++;}}};
+app.api.post=async(path,body)=>{await app.api.request('POST',path,body);window.__fulfilled=true;};
+window.__showFulfillment=async(reviewer=true)=>{
+  const {mountFulfillment}=await import('/js/components/workResolution.js');
+  let root=document.getElementById('fulfillment');if(!root){root=document.createElement('section');root.id='fulfillment';document.body.append(root);}
+  return mountFulfillment(root,app,7,reviewer);
+};
+document.querySelector('#open-resolution').onclick=event=>openWorkResolution(app,{id:7,version:4,title:'Размещение проверенного запроса',description:'Ожидаемый результат',team_id:10},event.currentTarget);
+document.documentElement.dataset.fixtureReady='true';
+</script></body></html>

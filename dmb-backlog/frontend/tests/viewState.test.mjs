@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const htmlSource = readFileSync(new URL('../js/htmlUtils.js', import.meta.url), 'utf8');
-const htmlUrl = `data:text/javascript;base64,${Buffer.from(htmlSource).toString('base64')}`;
-const stateSource = readFileSync(new URL('../js/components/viewState.js', import.meta.url), 'utf8')
-  .replace("'../htmlUtils.js'", JSON.stringify(htmlUrl));
-const stateUrl = `data:text/javascript;base64,${Buffer.from(stateSource).toString('base64')}`;
-const { fitTableViewState, renderViewState } = await import(stateUrl);
+import { fitTableViewState, renderViewState } from '../js/components/viewState.js';
 
 const error = renderViewState({
   kind: 'error',
@@ -20,6 +15,14 @@ assert.match(error, /&lt;script&gt;/);
 
 const loading = renderViewState({ kind: 'loading' });
 assert.match(loading, /aria-busy="true"/);
+assert.match(loading, /content-loading-state/, 'content loading must use the shared typography contract');
+assert.doesNotMatch(error, /content-loading-state/, 'error typography must remain independent from loading');
+
+const feedbackCss = readFileSync(new URL('../css/feedback.css', import.meta.url), 'utf8');
+assert.match(feedbackCss, /\.content-loading-state\s*\{[^}]*font-size:\s*var\(--text-sm\)/s);
+assert.match(feedbackCss, /\.content-loading-state\s*\{[^}]*font-weight:\s*var\(--font-normal,\s*400\)/s);
+assert.match(feedbackCss, /\.content-loading-state\s+:is\([^)]*strong[^)]*\)\s*\{[^}]*font:\s*inherit/s,
+  'nested headings and strong labels must not reintroduce bold loading text');
 
 const state = { style: {} };
 const scrollContainer = {

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Размеры общих контролов</title>
+  <script src="/js/lib/lucide.min.js"></script>
+  <link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css"><link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/modal-system.css"><link rel="stylesheet" href="/css/ui/kit.css?v=8">
+  <style>
+    body { overflow:auto; padding:16px; }
+    [data-context] { position:static!important; display:block!important; padding:0!important; background:none!important; }
+    .size-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px; }
+    .size-row .input { width:140px; }
+  </style>
+</head>
+<body>
+  <main id="matrix"></main>
+  <script type="module">
+    import { button, control } from '/js/ui/primitives.js?v=1';
+    import { setButtonBusy } from '/js/ui/controls.js';
+    const sizes = ['extra-small', 'small', 'default', 'large'];
+    const contexts = ['page', 'task-detail-overlay', 'create-task-overlay'];
+    document.getElementById('matrix').innerHTML = contexts.map(context => `<section data-context="${context}" id="${context}">${sizes.map(size => `<div class="size-row" data-size="${size}">
+      ${button({ label:'Сохранить', icon:'check', size, attrs:{'data-case':'text'} })}
+      ${button({ label:'Удалить', icon:'trash-2', size, iconOnly:true, className:'iconbtn close', attrs:{'data-case':'icon'} })}
+      ${button({ label:'Сохранение', size, attrs:{'data-case':'busy'} })}
+      ${button({ label:'Ожидание', size, iconOnly:true, attrs:{'data-case':'busy-icon'} })}
+      ${button({ label:'Недоступно', size, attrs:{disabled:true, 'data-case':'disabled'} })}
+      ${control({size, value:'Значение', attrs:{'aria-label':'Текст', 'data-case':'input'}})}
+      ${control({size, kind:'select', options:[{value:'1',label:'Выбор'}], attrs:{'aria-label':'Выбор', 'data-case':'select'}})}
+    </div>`).join('')}${button({label:'Скрытое действие',attrs:{hidden:true,'data-hidden':'true'}})}</section>`).join('');
+    document.getElementById('matrix').insertAdjacentHTML('beforeend', '<button class="btn btn-secondary reporting-status-load-more" data-stacked><span>Показать ещё</span><small>Отображено 50 из 100</small></button>');
+    document.querySelectorAll('[data-case="busy"], [data-case="busy-icon"]').forEach(button => setButtonBusy(button, true));
+    window.lucide.createIcons();
+    document.documentElement.dataset.ready = 'true';
+  </script>
+</body>
+</html>

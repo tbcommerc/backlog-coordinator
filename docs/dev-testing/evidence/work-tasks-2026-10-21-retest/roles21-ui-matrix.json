@@ -1,0 +1,92 @@
+[
+  {
+    "profile": "qa.tribe-lead",
+    "read": true,
+    "reopen": false,
+    "create": false
+  },
+  {
+    "profile": "qa.ba-no-team",
+    "read": true,
+    "reopen": false,
+    "create": false
+  },
+  {
+    "profile": "qa.it-pl-a",
+    "read": true,
+    "reopen": true,
+    "create": true
+  },
+  {
+    "profile": "qa.it-pl-b",
+    "read": true,
+    "reopen": false,
+    "create": true
+  },
+  {
+    "profile": "qa.pl-a",
+    "read": true,
+    "reopen": true,
+    "create": true
+  },
+  {
+    "profile": "qa.cl-a",
+    "read": true,
+    "reopen": true,
+    "create": true
+  },
+  {
+    "profile": "qa.po-b",
+    "read": true,
+    "reopen": false,
+    "create": true
+  },
+  {
+    "profile": "qa.ba-a-peer",
+    "read": true,
+    "reopen": true,
+    "create": true
+  },
+  {
+    "profile": "qa.admin",
+    "read": true,
+    "reopen": true,
+    "create": true
+  },
+  {
+    "profile": "qa.customer-b",
+    "redirect": "http://127.0.0.1:8000/#/customer",
+    "leakedWork": false
+  },
+  {
+    "profile": "qa.customer-unlinked",
+    "redirect": "http://127.0.0.1:8000/#/customer",
+    "emptyPortal": true,
+    "leakedWork": false
+  },
+  {
+    "profile": "qa.ba-a",
+    "scenario": "mobile create/ready/start/submit/rework/resubmit",
+    "pass": true
+  },
+  {
+    "profile": "qa.po-a",
+    "scenario": "notification/return/accept",
+    "pass": true
+  },
+  {
+    "profile": "qa.ba-b",
+    "scenario": "decline/accept cross-team",
+    "pass": true
+  },
+  {
+    "profile": "qa.customer-a",
+    "scenario": "request16 confirmed results and internal-route redirect",
+    "pass": true
+  },
+  {
+    "profile": "qa.no-access",
+    "scenario": "work57 unavailable, no content",
+    "pass": true
+  }
+]

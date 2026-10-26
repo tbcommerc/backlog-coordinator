@@ -1,0 +1,10 @@
+{
+  "model": "glm-5.3-flash",
+  "runtime": "native-synthetic-only",
+  "opencode_version": "1.17.13",
+  "parallel": 1,
+  "started_at": "2026-10-15T14:01:29.870622+00:00",
+  "prompt_sha256": "831abc9740a3ca76ba4670b14f5eab9145444ddd44a54ba1d0c45282b6a603c4",
+  "schema_sha256": "222c031b395330f2da9846402a549e12483f01dd22408a37b40630a6aef08745",
+  "corpus_sha256": "33db1e8fc73aeee6ee2b21a4c12d4354c6a6dbf77e004c9f2cb243bbded1e0e2"
+}

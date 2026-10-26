@@ -36,13 +36,19 @@ from routers import express_router
 from routers import notifications_router
 from routers import timeline_router
 from routers import agent_router
+from routers.meeting_capture_router import router as meeting_capture_router
+from routers.work_reporting_router import router as work_reporting_router
+from routers.work_tasks_router import router as work_tasks_router
+from routers.work_files_router import router as work_files_router
+from routers.work_resolution_router import router as work_resolution_router
+from routers.work_relations_router import router as work_relations_router
 from routers import prioritiser_router
 from routers.events_router import router as events_router
 from routers.reporting_meetings_router import (
     router as reporting_meetings_router,
     task_router as task_reporting_router,
 )
-from auth import require_non_business_customer_access
+from auth import get_current_user, require_non_business_customer_access
 
 
 logger = logging.getLogger("dmb_backlog.startup")
@@ -81,21 +87,24 @@ async def lifespan(app: FastAPI):
                 db.close()
         except Exception:
             logger.exception("Startup actual_effort_days recalculation failed")
-
-        # Sync standard reports registry with DB (idempotent, additive)
-        try:
-            from database import SessionLocal
-            from routers.reports_router import ensure_standard_reports
-            db = SessionLocal()
-            try:
-                ensure_standard_reports(db)
-            finally:
-                db.close()
-        except Exception:
-            logger.exception("Startup standard reports sync failed")
         logger.info("Startup maintenance enabled")
     else:
         logger.info("Startup maintenance disabled")
+
+    # Standard reports are product configuration, not optional data maintenance.
+    # Keep the registry available on every normal start, including production
+    # where RUN_STARTUP_MAINTENANCE must remain disabled.
+    try:
+        from database import SessionLocal
+        from routers.reports_router import ensure_standard_reports
+        db = SessionLocal()
+        try:
+            ensure_standard_reports(db)
+        finally:
+            db.close()
+        logger.info("Standard reports registry synchronized")
+    except Exception:
+        logger.exception("Startup standard reports sync failed")
 
     # Startup verification: log user count for safety
     try:
@@ -128,7 +137,15 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Notification scheduler disabled; run a separate worker if required")
 
-    yield
+    from services.meeting_analysis import MeetingAnalysisWorker
+    from routers.agent_router import _call_agent
+    from database import SessionLocal
+    meeting_worker = MeetingAnalysisWorker(SessionLocal, _call_agent)
+    meeting_worker.start()
+    try:
+        yield
+    finally:
+        meeting_worker.stop()
 
     if scheduler_task is not None:
         scheduler_task.cancel()
@@ -157,6 +174,24 @@ app.add_middleware(
 )
 
 # Custom middleware
+from account_middleware import AccountSecurityMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
+
+@app.exception_handler(RequestValidationError)
+async def private_validation_error(request, exc):
+    return JSONResponse(status_code=422, content={"detail": [
+        {"loc": list(error["loc"]), "type": error["type"], "msg": "Недопустимое значение"}
+        for error in exc.errors()]})
+
+@app.exception_handler(SQLAlchemyError)
+async def database_unavailable(request, exc):
+    return JSONResponse(status_code=503, content={"detail": "DATABASE_UNAVAILABLE"})
+
+app.add_middleware(AccountSecurityMiddleware)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.AUTH_ALLOWED_HOSTS)
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(AuditMiddleware)
 
@@ -166,6 +201,8 @@ configure_telemetry(app, engine=engine, settings=settings)
 # Routers
 non_customer_dependencies = [Depends(require_non_business_customer_access)]
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
+from routers.backlog_assistant_gateway_router import router as backlog_assistant_gateway_router
+app.include_router(backlog_assistant_gateway_router, prefix="/api/v1/backlog-assistant", tags=["Backlog Assistant"])
 # Static analytics paths must be registered before ``/{task_id}``, otherwise
 # FastAPI treats ``analytics`` as a task id and returns a validation error.
 app.include_router(task_analytics_router, prefix="/api/v1/tasks", tags=["Task analytics"], dependencies=non_customer_dependencies)
@@ -183,17 +220,68 @@ app.include_router(customer_references_router, prefix="/api/v1/admin/customer-re
 app.include_router(admin_router.router, prefix="/api/v1/admin", dependencies=non_customer_dependencies)
 app.include_router(customer_router, prefix="/api/v1/customer", tags=["Customer Portal"])
 app.include_router(express_router, prefix="/api/v1", tags=["Express Estimate"], dependencies=non_customer_dependencies)
-app.include_router(notifications_router.router, prefix="/api/v1", tags=["Notifications"], dependencies=non_customer_dependencies)
+# Recipient-owned inbox; every operation remains authenticated and owner-scoped.
+app.include_router(notifications_router.router, prefix="/api/v1", tags=["Notifications"], dependencies=[Depends(get_current_user)])
 app.include_router(events_router, prefix="/api/v1", tags=["Events"])
 app.include_router(timeline_router, prefix="/api/v1/timeline", tags=["Timeline"], dependencies=non_customer_dependencies)
 app.include_router(agent_router.router, prefix="/api/v1", tags=["AI Assistant"])
+app.include_router(meeting_capture_router, prefix="/api/v1/meeting-capture", tags=["Meeting capture"])
+app.include_router(work_reporting_router, prefix="/api/v1", tags=["Work reporting"])
+app.include_router(work_tasks_router, prefix="/api/v1", tags=["Work tasks"])
+app.include_router(work_files_router, prefix="/api/v1", tags=["Work files"])
+app.include_router(work_resolution_router, prefix="/api/v1", tags=["Work resolution"])
+app.include_router(work_relations_router, prefix="/api/v1", tags=["Work relations"])
 app.include_router(prioritiser_router.router, prefix="/api/v1/tasks", tags=["Task prioritiser"], dependencies=non_customer_dependencies)
+
+# V2 imports and routes do not exist in the process when the kill switch is off.
+# This is deliberately not a top-level import: flag-off isolation is testable.
+if settings.ASSISTANT_V2_ENABLED:
+    from routers.assistant_v2_adapter_router import router as assistant_v2_adapter_router
+    from routers.assistant_v2_gateway_router import router as assistant_v2_gateway_router
+    from services.assistant_v2_gateway import pilot_allowed as assistant_v2_pilot_allowed
+
+    app.include_router(assistant_v2_gateway_router, prefix="/api/v2/assistant", tags=["AI Assistant V2"])
+    app.include_router(assistant_v2_adapter_router, prefix="/internal/assistant-v2/v1", tags=["AI Assistant V2 internal"])
+else:
+    assistant_v2_pilot_allowed = lambda _user: False
+
+# Fork-based V2 is a separate opt-in feature and does not import or contact the
+# older greenfield prototype. Its gateway is absent from the process when off.
+if settings.AGENT_V2_ENABLED and not settings.AGENT_V2_KILL_SWITCH:
+    from routers.agent_v2_router import router as agent_v2_router
+    from routers.requirement_reviews_router import router as requirement_reviews_router
+    from services.agent_v2_gateway import (
+        operator_role as agent_v2_operator_role,
+        pilot_allowed as agent_v2_pilot_allowed,
+    )
+
+    app.include_router(agent_v2_router, prefix="/api/v2/agent", tags=["AI Assistant V2 fork"])
+    app.include_router(requirement_reviews_router, prefix="/api", dependencies=non_customer_dependencies)
+else:
+    agent_v2_pilot_allowed = lambda _user: False
+    agent_v2_operator_role = lambda _user: ""
 
 
 # Health check
 @app.get("/api/v1/health")
 async def health_check():
     return {"status": "ok", "version": settings.APP_VERSION}
+
+
+@app.get("/api/v1/features")
+def feature_bootstrap(current_user=Depends(get_current_user)):
+    """Small shell bootstrap; does not import or contact V2 while disabled."""
+    return {
+        "assistant_v2": {
+            "enabled": settings.ASSISTANT_V2_ENABLED,
+            "pilot_allowed": bool(assistant_v2_pilot_allowed(current_user)),
+        },
+        "agent_v2": {
+            "enabled": settings.AGENT_V2_ENABLED and not settings.AGENT_V2_KILL_SWITCH,
+            "pilot_allowed": bool(agent_v2_pilot_allowed(current_user)),
+            "operator_role": agent_v2_operator_role(current_user),
+        },
+    }
 
 
 @app.get("/metrics", include_in_schema=False)
@@ -276,29 +364,49 @@ async def readiness_check():
             ready = False
             checks[name] = f"error:{type(exc).__name__}"
 
-    await asyncio.gather(
+    dependency_probes = [
         probe("agent", f"{settings.AGENT_BASE_URL.rstrip('/')}/api/agent/ready"),
-        probe("prioritiser", f"{settings.PRIORITISER_BASE_URL.rstrip('/')}/ready"),
-    )
+    ]
+    if settings.PRIORITISER_ENABLED:
+        dependency_probes.append(
+            probe("prioritiser", f"{settings.PRIORITISER_BASE_URL.rstrip('/')}/ready")
+        )
+    else:
+        checks["prioritiser"] = "disabled"
+    await asyncio.gather(*dependency_probes)
 
-    async def probe(name: str, url: str) -> None:
-        nonlocal ready
+    # V2 is an explicitly non-blocking pilot dependency. Its state is visible to
+    # operators but can never make core DMB/V1 readiness fail.
+    if settings.ASSISTANT_V2_ENABLED:
         try:
-            def request() -> None:
-                with urllib.request.urlopen(url, timeout=3) as response:
+            def request_assistant_v2() -> None:
+                with urllib.request.urlopen(f"{settings.ASSISTANT_V2_BASE_URL.rstrip('/')}/ready", timeout=3) as response:
                     payload = json.loads(response.read().decode("utf-8"))
-                    if payload.get("status") not in {"ready", "ok"}:
+                    if payload.get("status") != "ready":
                         raise ValueError("dependency is not ready")
-            await asyncio.to_thread(request)
-            checks[name] = "ok"
+            await asyncio.to_thread(request_assistant_v2)
+            checks["assistant_v2"] = "ok"
         except Exception as exc:
-            ready = False
-            checks[name] = f"error:{type(exc).__name__}"
+            checks["assistant_v2"] = f"non_blocking_error:{type(exc).__name__}"
+    else:
+        checks["assistant_v2"] = "disabled"
 
-    await asyncio.gather(
-        probe("agent", f"{settings.AGENT_BASE_URL.rstrip('/')}/api/agent/ready"),
-        probe("prioritiser", f"{settings.PRIORITISER_BASE_URL.rstrip('/')}/ready"),
-    )
+    if settings.AGENT_V2_ENABLED and not settings.AGENT_V2_KILL_SWITCH:
+        try:
+            def request_agent_v2() -> None:
+                with urllib.request.urlopen(
+                    f"{settings.AGENT_V2_BASE_URL.rstrip('/')}/api/agent-v2/ready",
+                    timeout=3,
+                ) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                    if payload.get("status") != "ready":
+                        raise ValueError("dependency is not ready")
+            await asyncio.to_thread(request_agent_v2)
+            checks["agent_v2"] = "ok"
+        except Exception as exc:
+            checks["agent_v2"] = f"non_blocking_error:{type(exc).__name__}"
+    else:
+        checks["agent_v2"] = "disabled"
 
     return JSONResponse(
         status_code=200 if ready else 503,

@@ -2,7 +2,7 @@
 DMB Backlog - CSV import service for tasks.
 
 Полный flow импорта задач из CSV:
-  1. Декодирование файла (UTF-8-SIG -> Windows-1251).
+  1. Декодирование UTF-8/Windows-1251 или UTF-16 с BOM.
   2. Автоопределение разделителя (запятая или точка с запятой).
   3. Построение маппинга "русская метка из field_labels -> ключ БД" по умолчанию.
   4. Построчная валидация (справочники, обязательные поля, форматы).
@@ -10,6 +10,9 @@ DMB Backlog - CSV import service for tasks.
 
 Ошибочные строки пропускаются, валидные импортируются. Ошибки не прерывают обработку файла.
 """
+import math
+from pydantic import TypeAdapter, ValidationError
+from schemas import TaskBase
 import csv
 import io
 import re
@@ -90,38 +93,50 @@ OWNER_FIELD = {'key': 'owner_id', 'type': 'owner_not_found',
 # ==================== PARSING ====================
 
 def decode_content(raw: bytes) -> str:
-    """Декодирует байты файла: UTF-8-SIG (BOM) -> Windows-1251."""
-    for enc in ('utf-8-sig', 'cp1251'):
+    """Decode UTF-8/Windows-1251 or BOM-marked UTF-16; reject NUL."""
+    encodings = ('utf-16',) if raw.startswith((b'\xff\xfe', b'\xfe\xff')) else ('utf-8-sig', 'cp1251')
+    for enc in encodings:
         try:
-            return raw.decode(enc)
+            text = raw.decode(enc)
+            if '\x00' in text:
+                raise ValueError('CSV содержит NUL; для UTF-16 необходим BOM')
+            return text
         except (UnicodeDecodeError, AttributeError):
             continue
-    raise ValueError("Не удалось декодировать файл. Убедитесь, что файл в формате UTF-8 или Windows-1251")
+    raise ValueError("Не удалось декодировать файл. Используйте UTF-8, Windows-1251 или UTF-16 с BOM")
 
 
 def detect_delimiter(content: str) -> str:
-    """Автоопределение разделителя: точка с запятой или запятая."""
-    first_line = content.split('\n', 1)[0] if content else ''
-    semicolons = first_line.count(';')
-    commas = first_line.count(',')
-    if semicolons > commas:
-        return ';'
-    if commas > semicolons:
-        return ','
-    return ';' if semicolons > 0 else ','
+    """Count separators outside quotes in the first nonempty header line."""
+    content = content.lstrip('\ufeff')
+    first_line = next((line for line in content.splitlines() if line.strip()), '')
+    quoted = False
+    semicolons = commas = 0
+    for char in first_line:
+        if char == '"':
+            quoted = not quoted
+        elif not quoted:
+            semicolons += char == ';'
+            commas += char == ','
+    return ';' if semicolons >= commas and semicolons else ','
 
 
 def parse_csv(content: str, delimiter: str) -> List[dict]:
     """Парсит CSV в список dict (первая строка — заголовки)."""
-    reader = csv.DictReader(io.StringIO(content), delimiter=delimiter)
+    content = re.sub(r'^(?:[ \t]*\r?\n)+', '', content.lstrip('\ufeff'))
+    reader = csv.DictReader(io.StringIO(content, newline=''), delimiter=delimiter, strict=True)
     rows = []
-    for raw in reader:
-        if not raw:
-            continue
-        # csv.DictReader возвращает None для недостающих значений
-        rows.append({k.strip(): v for k, v in raw.items() if k is not None})
-        if len(rows) > 10_000:
-            raise ValueError("CSV содержит больше 10000 строк")
+    try:
+        validate_import_headers(reader.fieldnames or [])
+        for raw in reader:
+            if not raw or not any(str(v).strip() for v in raw.values() if v is not None):
+                continue
+            # csv.DictReader возвращает None для недостающих значений
+            rows.append({k.strip(): v for k, v in raw.items() if k is not None})
+            if len(rows) > 10_000:
+                raise ValueError("CSV содержит больше 10000 строк")
+    except csv.Error as exc:
+        raise ValueError('Некорректный CSV: проверьте кавычки и структуру строк') from exc
     return rows
 
 
@@ -129,6 +144,16 @@ def parse_csv(content: str, delimiter: str) -> List[dict]:
 
 def _norm(value: str) -> str:
     return re.sub(r'\s+', ' ', str(value).strip().lower())
+
+
+def validate_import_headers(headers, field_map=None):
+    seen = set()
+    for header in headers:
+        normalized = _norm(header)
+        key = (field_map or {}).get(normalized, normalized)
+        if key in seen:
+            raise ValueError('Повторяющаяся колонка: ' + str(header))
+        seen.add(key)
 
 
 def field_label(db_key: str, db_key_to_label: dict) -> str:
@@ -182,7 +207,9 @@ def _index_from(items, *attrs):
 def load_reference_indexes(db: Session) -> Dict[str, dict]:
     """Загружает справочники в память: нормализованное имя -> id."""
     refs = {}
-    refs['teams'] = _index_from(db.query(Team).all(), 'name', 'abbr')
+    teams = db.query(Team).all()
+    refs['teams'] = _index_from(teams, 'name', 'abbr')
+    refs['team_ids'] = {team.id for team in teams}
     refs['channels'] = _index_from(db.query(Channel).all(), 'name', 'code')
     refs['business_customers'] = _index_from(db.query(BusinessCustomer).all(), 'name')
     refs['did_client_groups'] = _index_from(db.query(DidClientGroup).filter_by(is_active=True).all(), 'name', 'code')
@@ -222,27 +249,42 @@ def _parse_date(value: str) -> Optional[date]:
     return None
 
 
+NUMBER_ADAPTERS = {
+    key: TypeAdapter(TaskBase.model_fields[key].rebuild_annotation())
+    for key in INTEGER_FIELDS | FLOAT_FIELDS if key in TaskBase.model_fields
+}
+
+
 def _parse_number(value: str, is_int: bool):
-    """Возвращает (число | None, ошибка | None)."""
-    if is_int:
-        try:
-            return int(str(value).strip()), None
-        except (ValueError, TypeError):
-            try:
-                fval = float(str(value).strip())
-                if fval.is_integer():
-                    return int(fval), None
-            except (ValueError, TypeError):
-                pass
-            return None, True
+    """Finite decimal notation, matching the preview; return (value, error)."""
+    text = str(value).strip()
+    if not re.fullmatch(r'-?[0-9]+(?:\.[0-9]+)?', text):
+        return None, True
     try:
-        return float(str(value).strip()), None
-    except (ValueError, TypeError):
+        number = float(text)
+        if not math.isfinite(number) or (is_int and '.' in text and any(c != '0' for c in text.split('.')[1])):
+            return None, True
+        return (int(text.split('.')[0]) if is_int else number), None
+    except (ValueError, OverflowError):
         return None, True
 
 
+def _number_in_range(key, value):
+    try:
+        if key in NUMBER_ADAPTERS:
+            NUMBER_ADAPTERS[key].validate_python(value)
+        return True
+    except ValidationError:
+        return False
+
+
 def _parse_bool(value) -> bool:
-    return str(value).strip().lower() in ('true', '1', 'yes', 'да', 'y')
+    text = str(value).strip().lower()
+    if text in ('true', '1', 'yes', 'да', 'y'):
+        return True
+    if text in ('false', '0', 'no', 'нет', 'n'):
+        return False
+    raise ValueError('Ожидается да/нет, true/false, yes/no, y/n или 1/0')
 
 
 def make_error(row: int, db_key: str, db_key_to_label: dict, value: Any,
@@ -290,7 +332,9 @@ def process_row(row_num: int, raw: dict, field_map: dict, db_key_to_label: dict,
             for v in _split_list(value):
                 tid = _lookup(refs['teams'], v)
                 if tid is None and str(v).strip().isdigit():
-                    tid = int(str(v).strip())
+                    candidate = int(str(v).strip())
+                    if candidate in refs.get('team_ids', set(refs['teams'].values())):
+                        tid = candidate
                 if tid is None:
                     errors.append(make_error(
                         row_num, key, db_key_to_label, v, 'team_not_found',
@@ -369,7 +413,7 @@ def process_row(row_num: int, raw: dict, field_map: dict, db_key_to_label: dict,
 
         if key in INTEGER_FIELDS:
             parsed, err = _parse_number(value, is_int=True)
-            if parsed is None or err:
+            if parsed is None or err or not _number_in_range(key, parsed):
                 errors.append(make_error(
                     row_num, key, db_key_to_label, value, 'invalid_number',
                     f'Неверный числовой формат: "{value}"', fatal=True,
@@ -380,7 +424,7 @@ def process_row(row_num: int, raw: dict, field_map: dict, db_key_to_label: dict,
 
         if key in FLOAT_FIELDS:
             parsed, err = _parse_number(value, is_int=False)
-            if parsed is None or err:
+            if parsed is None or err or not _number_in_range(key, parsed):
                 errors.append(make_error(
                     row_num, key, db_key_to_label, value, 'invalid_number',
                     f'Неверный числовой формат: "{value}"', fatal=True,
@@ -390,7 +434,16 @@ def process_row(row_num: int, raw: dict, field_map: dict, db_key_to_label: dict,
             continue
 
         if key in BOOLEAN_FIELDS:
-            task_data[key] = _parse_bool(value)
+            try:
+                task_data[key] = _parse_bool(value)
+            except ValueError as exc:
+                errors.append(make_error(row_num, key, db_key_to_label, value,
+                    'invalid_boolean', str(exc), fatal=True))
+            continue
+
+        if key == 'title' and len(value) > 255:
+            errors.append(make_error(row_num, key, db_key_to_label, value,
+                'invalid_length', 'Название задачи не должно превышать 255 символов', fatal=True))
             continue
 
         task_data[key] = value
@@ -492,6 +545,8 @@ def import_tasks_from_csv(db: Session, raw: bytes, current_user: User) -> dict:
     rows = parse_csv(content, delimiter)
 
     field_map, db_key_to_label, required_fields = build_field_map(db)
+    if rows:
+        validate_import_headers(rows[0].keys(), field_map)
     refs = load_reference_indexes(db)
 
     result = {
@@ -512,7 +567,7 @@ def import_tasks_from_csv(db: Session, raw: bytes, current_user: User) -> dict:
         except Exception as e:  # noqa: BLE001 — неизвестная ошибка (тип 16)
             result['errors'].append(make_error(
                 row_num, '', db_key_to_label, '',
-                'unknown_error', f'Неизвестная ошибка при обработке строки: {e}', fatal=True,
+                'unknown_error', 'Не удалось обработать строку. Проверьте данные или обратитесь к администратору.', fatal=True,
             ))
             result['skipped'] += 1
             continue
@@ -531,7 +586,7 @@ def import_tasks_from_csv(db: Session, raw: bytes, current_user: User) -> dict:
         except Exception as e:  # noqa: BLE001
             result['errors'].append(make_error(
                 row_num, '', db_key_to_label, '',
-                'unknown_error', f'Неизвестная ошибка при обработке строки: {e}', fatal=True,
+                'unknown_error', 'Не удалось обработать строку. Проверьте данные или обратитесь к администратору.', fatal=True,
             ))
             result['skipped'] += 1
             continue
@@ -544,11 +599,12 @@ def import_tasks_from_csv(db: Session, raw: bytes, current_user: User) -> dict:
     except Exception as e:  # noqa: BLE001
         db.rollback()
         result['created'] = 0
+        result['skipped'] = result['total']
         created_task_ids = []
         result['errors'].append({
             'row': None, 'field': '', 'field_label': '',
             'value': '', 'type': 'unknown_error',
-            'message': f'Неизвестная ошибка при сохранении импорта: {e}', 'fatal': True,
+            'message': 'Не удалось сохранить импорт. Изменения отменены; обратитесь к администратору.', 'fatal': True,
         })
     result['task_ids'] = created_task_ids
     return result

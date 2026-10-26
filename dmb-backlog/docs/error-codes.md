@@ -18,11 +18,12 @@
 
 ## Типы ошибок импорта CSV
 
+Проверки значений сверены 17.10.2026. `invalid_number` также обозначает нарушение диапазона, NaN/Infinity и экспоненциальную запись. `unknown_error` не содержит исходное исключение, SQL или внутренние параметры.
+
 Фатальные ошибки пропускают строку:
 
 - `team_not_found`
 - `channel_not_found`
-- `business_customer_not_found`
 - `department_not_found`
 - `project_not_found`
 - `task_type_not_found`
@@ -33,6 +34,8 @@
 - `invalid_date`
 - `invalid_number`
 - `invalid_progress`
+- `invalid_boolean` — неизвестное непустое значение did_demo
+- `invalid_length` — название длиннее 255 символов
 - `unknown_error`
 
 `owner_not_found` нефатальна: строка может быть импортирована без исполнителя.
@@ -56,3 +59,7 @@
 ```
 
 Подробнее: [импорт CSV](IMPORT_SPEC.md) и [индекс API](API_SPEC.md).
+
+## Заказчик и клиент ДИД — проверено 17.10.2026
+
+`business_customer_not_found` и `did_client_group_not_found` — нефатальные предупреждения: неизвестное/неоднозначное значение оставляет поле пустым. Если поле обязательно по field_labels, дополнительно возникает фатальная `required_missing`, строка пропускается. Разрешение одноимённых заказчиков учитывает подразделение строки; справочники не создаются.

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Экспресс-оценка — проверка размеров</title>
+  <script src="/js/lib/lucide.min.js"></script>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/modal-system.css">
+  <link rel="stylesheet" href="/css/ui/kit.css?v=8">
+  <style>body { overflow: auto; } #page-content { padding: 24px; } @media(max-width:640px) { #page-content { padding: 12px; } }</style>
+</head>
+<body>
+  <main id="page-content"></main>
+  <script type="module">
+    import { renderExpressEstimate, initExpressEstimate } from '/js/components/expressEstimate.js?v=37';
+    const params = new URLSearchParams(location.search);
+    document.documentElement.dataset.theme = params.get('theme') || 'light';
+    const tasks = [
+      { id: 11, title: 'Отчёт по заявкам', epics: [] },
+      { id: 12, title: 'Развитие витрины', epics: [{ id: 21, title: 'Сводный отчёт', priority: 'ВЫСОКИЙ', stories: [
+        { id: 31, title: 'Добавить фильтры', effort_test_auto: 199, effort_delivery: 1000 },
+        { id: 32, title: 'Настроить выгрузку', effort_be: 10, effort_fe: 20 },
+      ] }] },
+    ];
+    window.__writes = [];
+    if (params.get('ready') === 'true') tasks[0].epics = [{ id: 22, title: 'Оценённый эпик', effort_be: 5, stories: [] }];
+    window.toast = () => {};
+    const user = { id: 1, team_id: 1, team_name: 'Команда витрины' };
+    const app = { store: { get: key => key === 'currentUser' ? user : null }, api: {
+      async get(path) {
+        if (path === '/quick-estimate') return { tasks: structuredClone(tasks) };
+        if (path === '/teams/1/resources' || path === '/teams/competency-costs') return [];
+        throw new Error(`Unexpected read: ${path}`);
+      },
+      async post(path) { window.__writes.push(path); throw new Error('Writes are forbidden'); },
+      async put(path) { window.__writes.push(path); throw new Error('Writes are forbidden'); },
+      async delete(path) { window.__writes.push(path); throw new Error('Writes are forbidden'); },
+    } };
+    window.app = app;
+    document.getElementById('page-content').innerHTML = renderExpressEstimate(app);
+    await initExpressEstimate(app);
+    document.documentElement.dataset.fixtureReady = 'true';
+  </script>
+</body>
+</html>

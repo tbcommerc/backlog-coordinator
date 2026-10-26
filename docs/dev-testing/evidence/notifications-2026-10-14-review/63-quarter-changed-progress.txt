@@ -1,0 +1,116 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Обновить прогресс и статусы
+  - button "Открыть поиск":
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button:
+    - generic: ДФ
+- main:
+  - region "Обновить прогресс и статусы":
+    - heading "Обновить прогресс и статусы" [level=1]
+    - link "К уведомлениям":
+      - /url: "#/notifications"
+    - generic: 4Q 2026
+    - strong: План с первого месяца — 14%
+    - generic: Факт, план и светофор пересчитываются после каждого изменения
+    - generic "Фильтры по состоянию":
+      - button "1 Все задачи" [pressed]:
+        - generic: "1"
+        - generic: Все задачи
+      - button "0 Без факта":
+        - generic: "0"
+        - generic: Без факта
+      - button "0 Обновить":
+        - generic: "0"
+        - generic: Обновить
+    - searchbox "Поиск по задачам квартала"
+    - article:
+      - 'button "TASK-000-001 UX-NOTIF-CLONE: квартальное подтверждение"':
+        - generic: TASK-000-001
+        - strong: "UX-NOTIF-CLONE: квартальное подтверждение"
+      - generic: Pre-Trade · ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ
+      - generic: Зелёный
+      - region "Факт выполнения":
+        - generic: Факт выполнения
+        - status: 15%
+        - generic: выполнено
+        - 'slider "Факт выполнения для TASK-000-001: UX-NOTIF-CLONE: квартальное подтверждение"': "15"
+      - region "Старт в квартале":
+        - generic: Старт в квартале
+        - 'group "Месяц старта для TASK-000-001: UX-NOTIF-CLONE: квартальное подтверждение"':
+          - button "1 месяц" [active] [pressed]:
+            - generic: "1"
+            - generic: месяц
+          - button "2 месяц":
+            - generic: "2"
+            - generic: месяц
+          - button "3 месяц":
+            - generic: "3"
+            - generic: месяц
+      - term: План на сегодня
+      - definition: 14%
+      - term: Отклонение
+      - definition: 0 п.п.
+      - text: Автосохранение
+      - status: Сохранено
+      - button "Отменить"

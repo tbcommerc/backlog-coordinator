@@ -1,0 +1,83 @@
+/* Scoped extensions for authored documents and immutable human review packages. */
+#agent-v2-workspace.agent-v2-guided{overflow:clip}
+.agent-v2-guided .agent-v2-view-switch{position:sticky;top:0;z-index:6;background:var(--bg-secondary);box-shadow:0 3px 8px rgba(15,23,42,.08)}
+.agent-v2-guided .agent-v2-view-switch [aria-pressed=true]{background:var(--accent-solid);color:var(--action-primary-text);font-weight:var(--font-medium)}
+.agent-v2-review-orientation{padding:14px 16px;background:var(--bg-tertiary);border-radius:var(--radius-md);margin-top:16px}
+.agent-v2-review-orientation p{margin:6px 0 0;color:var(--text-secondary);font-size:13px;line-height:1.5}
+.agent-v2-finding.is-guided{padding:0;border:1px solid var(--border-color);border-radius:var(--radius-md);background:var(--bg-secondary)}
+.agent-v2-finding.is-guided[open]{border-color:var(--accent-text)}
+.agent-v2-finding-summary{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:start;gap:12px;padding:16px;cursor:pointer;list-style:none}
+.agent-v2-finding-summary::-webkit-details-marker{display:none}
+.agent-v2-finding-summary:after{content:'Раскрыть ↓';grid-column:2;color:var(--text-primary);font-size:12px;font-weight:600}
+.agent-v2-finding[open]>.agent-v2-finding-summary:after{content:'Свернуть ↑'}
+.agent-v2-finding-summary:focus-visible{outline:3px solid var(--accent-text);outline-offset:2px;border-radius:var(--radius-md)}
+.agent-v2-finding-number{display:grid;place-items:center;min-height:28px;border-radius:50%;background:var(--accent-light);color:var(--text-primary);font-weight:600}
+.agent-v2-finding-summary strong{display:block;font-size:14px;margin:3px 0 6px}
+.agent-v2-finding-preview{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:13px;line-height:1.5;color:var(--text-secondary)}
+.agent-v2-finding[open] .agent-v2-finding-preview{display:block}
+.agent-v2-finding-state{font-size:12px;line-height:1.5;color:var(--text-secondary);padding-top:4px}
+.is-guided>.agent-v2-finding-body{padding:0 16px 16px 56px}
+.is-guided>.agent-v2-finding-body>.agent-v2-finding-meta{display:none}
+.agent-v2-finding-evidence{margin:0 0 16px;padding:12px;background:var(--bg-tertiary);border-radius:var(--radius-sm)}
+.agent-v2-finding-evidence>summary{cursor:pointer;font-size:13px;font-weight:600;line-height:1.5}
+.agent-v2-action-help{color:var(--text-secondary);max-width:720px}
+.agent-v2-return-to-review{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px;margin:12px 0;background:var(--accent-light);border-radius:var(--radius-md);font-size:13px}
+@media(max-width:600px){.agent-v2-finding-summary{grid-template-columns:24px minmax(0,1fr);padding:12px;gap:8px}.agent-v2-finding-state{grid-column:2}.is-guided>.agent-v2-finding-body{padding:0 12px 12px}.agent-v2-guided .agent-v2-view-switch{display:grid;grid-template-columns:1fr 1fr}.agent-v2-finding .agent-v2-action-row{align-items:stretch;flex-direction:column}}
+.agent-v2-transfer{margin:16px 0;padding:14px;border:1px solid var(--border-color);border-radius:var(--radius-sm);background:var(--bg-tertiary);overflow-wrap:anywhere;font-size:13px;line-height:1.5}
+.agent-v2-transfer summary{cursor:pointer;font-weight:600;padding:6px 0}
+.agent-v2-transfer blockquote{margin:8px 0;padding-left:12px;border-left:3px solid var(--border-color)}
+.agent-v2-action-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.agent-v2-session{color:var(--text-primary)}
+.agent-v2-action-row .btn{white-space:normal;text-align:left}
+.agent-v2-text-sources{display:grid;gap:12px;margin-top:18px;min-width:0}
+.agent-v2-text-sources h3{margin:0;font-size:14px}
+.agent-v2-text-sources summary,.agent-v2-quality-details>summary{cursor:pointer;font-weight:600;padding:8px 0;overflow-wrap:anywhere}
+.agent-v2-text-sources form,#agent-v2-document-instruction,.agent-v2-finding-form{display:grid;gap:10px}
+.agent-v2-text-sources p{white-space:pre-wrap;max-height:320px;overflow:auto;overflow-wrap:anywhere;font-size:12px;line-height:1.5}
+.agent-v2-source{border-bottom:1px solid var(--border-color)}
+.agent-v2-review-warning{padding:10px 12px;border-left:3px solid var(--warning);background:var(--warning-light);border-radius:var(--radius-sm);line-height:1.5;overflow-wrap:anywhere}
+.agent-v2-document-findings{display:grid;gap:14px;margin-top:14px}
+.agent-v2-finding{padding-top:14px;border-top:1px solid var(--border-color);min-width:0}
+.agent-v2-finding h4{margin:10px 0 6px;font-size:14px}
+.agent-v2-finding p,.agent-v2-finding blockquote{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;font-size:13px}
+.agent-v2-finding blockquote{margin:10px 0;padding:8px 12px;border-left:3px solid var(--border-color);background:var(--bg-tertiary)}
+.agent-v2-finding-meta{display:flex;gap:10px;justify-content:space-between;font-size:12px;color:var(--text-secondary)}
+.agent-v2-finding-meta strong{color:var(--text-primary)}
+.agent-v2-finding-form{margin-top:12px}
+.agent-v2-proposal{margin-top:12px;border-top:1px solid var(--border-color);padding-top:12px}
+.agent-v2-proposal .agent-v2-patch-values p{white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto}
+.agent-v2-page .agent-v2-operation-choice,.agent-v2-page .agent-v2-degraded-ack{display:flex;align-items:flex-start;gap:8px}
+.agent-v2-page .agent-v2-operation-choice input,.agent-v2-page .agent-v2-degraded-ack input{width:auto;flex:none;margin-top:3px}
+.agent-v2-operation-choice span{margin-left:auto;color:var(--text-secondary);font-size:var(--type-meta-size);line-height:var(--type-meta-line);}
+.agent-v2-br-list{margin:0;padding-left:22px;display:grid;gap:12px}
+.agent-v2-br-list p{white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0 8px}
+.agent-v2-quality-details{padding:0 4px}
+.agent-v2-review .btn{margin-top:8px;white-space:normal}
+.agent-v2-degraded-ack{padding:10px 0;line-height:1.4}
+.agent-v2-source-evidence summary,.agent-v2-version-comparison>summary{cursor:pointer;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+.agent-v2-source-evidence blockquote{max-height:320px;overflow:auto}
+.agent-v2-version-comparison .agent-v2-patch-values p{white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto}
+.review-subject-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px;flex-shrink:0}
+.requirement-reviews{min-width:0;display:grid;gap:18px;padding:20px;border:1px solid var(--border-color);border-radius:var(--radius-lg);background:var(--bg-secondary);color:var(--text-primary)}
+.requirement-reviews h1{font-size:var(--text-xl);margin:0 0 6px}
+.requirement-reviews h2{font-size:var(--text-lg);margin:8px 0}
+.requirement-reviews h3{font-size:var(--text-base);margin:8px 0}
+.requirement-reviews p{line-height:1.5;overflow-wrap:anywhere}
+.requirement-review-layout{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,1fr);gap:24px;align-items:start;margin-top:20px}
+.requirement-review-layout>*{min-width:0}
+.requirement-review-layout>aside{display:grid;gap:18px}
+.requirement-review-layout .agent-v2-section{margin-bottom:14px}
+.requirement-review-snapshot .agent-v2-section-value,.requirement-review-prewrap{white-space:pre-wrap;overflow-wrap:anywhere}
+.requirement-review-cards{display:grid;gap:12px}
+.requirement-review-card{display:block;color:inherit;text-decoration:none}
+.requirement-review-card:hover{border-color:var(--accent-text)}
+.requirement-review-card:focus-visible,.review-subject-tabs a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.requirement-review-explainer{color:var(--text-secondary);padding:12px;background:var(--bg-tertiary);border-radius:var(--radius-md)}
+#requirement-review-decision{display:grid;gap:12px;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px}
+#requirement-review-decision label{display:grid;gap:8px;font-weight:600;font-size:13px}
+#requirement-review-decision textarea{width:100%;resize:vertical;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius-md);background:var(--bg-secondary);color:inherit;font:inherit}
+#requirement-review-decision textarea:focus{outline:3px solid var(--accent-medium);border-color:var(--accent-text)}
+.requirement-review-resume{white-space:normal}
+.task-requirement-entry{margin:12px 0}
+@media(max-width:900px){.requirement-review-layout{grid-template-columns:1fr}.requirement-reviews{padding:14px}.requirement-reviews .request-list-title-row{flex-wrap:wrap;gap:12px}}
+@media(max-width:600px){.agent-v2-workspace-topbar{flex-wrap:wrap}.agent-v2-workspace-topbar .btn{max-width:100%;white-space:normal}.agent-v2-proposal .agent-v2-patch-values,.agent-v2-version-comparison .agent-v2-patch-values{grid-template-columns:1fr}.agent-v2-action-row .btn{flex:1 1 auto}.agent-v2-finding-meta{flex-wrap:wrap}.requirement-reviews .agent-v2-card{padding:14px}}

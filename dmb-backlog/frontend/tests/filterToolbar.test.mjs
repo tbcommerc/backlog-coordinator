@@ -56,24 +56,8 @@ for (const contract of [
 }
 
 assert.match(componentsCss, /\.filter-catalog-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,/);
-assert.match(responsiveCss, /@media \(max-width: 1024px\)[\s\S]*?\.filter-catalog-panel\s*\{[\s\S]*?position:\s*fixed/);
-assert.match(responsiveCss, /@media \(max-width: 640px\)[\s\S]*?\.pinned-filters-row\s*\{[\s\S]*?overflow-x:\s*auto/);
-assert.match(responsiveCss, /\.filter-catalog-panel\s*\{[\s\S]*?max-height:\s*min\(82dvh/);
-assert.match(
-  componentsCss,
-  /max-height:\s*min\(680px,\s*var\(--filter-catalog-available-height/,
-  'desktop filter catalog must use its measured viewport budget',
-);
-assert.match(
-  toolbar,
-  /window\.innerHeight\s*-\s*panel\.getBoundingClientRect\(\)\.top\s*-\s*viewportBottomGap/,
-  'desktop filter catalog height must account for its actual top edge',
-);
-assert.match(
-  toolbar,
-  /filter-catalog-panel:not\(\.hidden\)[\s\S]*?forEach\(syncFilterCatalogViewportHeight\)/,
-  'open filter catalogs must be remeasured when sticky geometry changes',
-);
+assert.match(toolbar, /const catalogPopover = [\s\S]*?createPopover/);
+assert.match(toolbar, /catalogPopover\?\.position\(\)/);
 assert.match(
   toolbar,
   /class="toolbar-import-export-group"[\s\S]*?toolbar-actions-divider[\s\S]*?\$\{importBtn\}[\s\S]*?\$\{exportBtn\}/,
@@ -83,6 +67,16 @@ assert.match(
   toolbar,
   /\$\{transferActionsHtml\}\s*\$\{refreshBtn\}/,
   'refresh must remain the rightmost toolbar action',
+);
+assert.match(
+  toolbar,
+  /applyPageState\?\.\(view\.state\?\.page \|\| \{\}\);[\s\S]*?filterChangeCallbacks\[scope\]\?\.\(\);[\s\S]*?appliedViewStateKey = savedViewStateKey\(currentState\(\)\)/,
+  'an applied saved view must use the normalized resulting state as its clean baseline',
+);
+assert.match(
+  toolbar,
+  /const baselineStateKey = appliedViewStateKey \|\| savedViewStateKey\(view\?\.state \|\| \{\}\)/,
+  'dirty comparison must prefer the state captured after applying a saved view',
 );
 
 console.log('filter toolbar contracts: OK');

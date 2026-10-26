@@ -1,4 +1,4 @@
-import { recordNotificationUxEvent } from './notificationUtils.js?v=3';
+import { recordNotificationUxEvent } from './notificationUtils.js?v=12';
 
 export class NotificationStore {
   constructor(app) {

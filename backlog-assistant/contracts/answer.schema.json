@@ -1,0 +1,510 @@
+{
+  "$defs": {
+    "Action": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "open_object",
+            "open_results",
+            "copy_summary",
+            "open_existing_assistant"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "object_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Object Ref"
+        },
+        "server_result_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Server Result Ref"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Action",
+      "type": "object"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "fact",
+            "inference",
+            "recommendation"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 60,
+          "title": "Source Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "type",
+        "source_ids"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "Clarification": {
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "maxLength": 500,
+          "title": "Question",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "title": "Options",
+          "type": "array"
+        }
+      },
+      "required": [
+        "question"
+      ],
+      "title": "Clarification",
+      "type": "object"
+    },
+    "Context": {
+      "additionalProperties": false,
+      "properties": {
+        "surface": {
+          "default": "assistant",
+          "enum": [
+            "backlog",
+            "task",
+            "request",
+            "report",
+            "assistant"
+          ],
+          "title": "Surface",
+          "type": "string"
+        },
+        "object_ref": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Object Ref"
+        },
+        "filters": {
+          "$ref": "#/$defs/QuerySpec"
+        },
+        "timezone": {
+          "const": "Europe/Moscow",
+          "default": "Europe/Moscow",
+          "title": "Timezone"
+        }
+      },
+      "title": "Context",
+      "type": "object"
+    },
+    "Coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "matched_total": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Matched Total",
+          "type": "integer"
+        },
+        "displayed_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Displayed Count",
+          "type": "integer"
+        },
+        "history_complete": {
+          "default": false,
+          "title": "History Complete",
+          "type": "boolean"
+        },
+        "omitted_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Omitted Count",
+          "type": "integer"
+        },
+        "unknown_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Unknown Count",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Reasons",
+          "type": "array"
+        }
+      },
+      "title": "Coverage",
+      "type": "object"
+    },
+    "DataBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "table",
+            "list",
+            "metrics"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "server_result_ref": {
+          "title": "Server Result Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "server_result_ref"
+      ],
+      "title": "DataBlock",
+      "type": "object"
+    },
+    "QuerySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "object_type": {
+          "default": "task",
+          "enum": [
+            "task",
+            "request"
+          ],
+          "title": "Object Type",
+          "type": "string"
+        },
+        "team_ids": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 100,
+          "title": "Team Ids",
+          "type": "array"
+        },
+        "project_ids": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 100,
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "status_ids": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 100,
+          "title": "Status Ids",
+          "type": "array"
+        },
+        "priority_ids": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 100,
+          "title": "Priority Ids",
+          "type": "array"
+        },
+        "relationship": {
+          "default": "all",
+          "enum": [
+            "all",
+            "mine",
+            "my_team"
+          ],
+          "title": "Relationship",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period"
+        },
+        "created_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created From"
+        },
+        "created_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created To"
+        },
+        "updated_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated From"
+        },
+        "updated_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated To"
+        },
+        "missing": {
+          "items": {
+            "enum": [
+              "owner",
+              "effort",
+              "effect",
+              "period"
+            ],
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "terms": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Terms",
+          "type": "array"
+        },
+        "sort": {
+          "default": "id",
+          "enum": [
+            "id",
+            "updated_desc"
+          ],
+          "title": "Sort",
+          "type": "string"
+        },
+        "cursor": {
+          "default": 0,
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Cursor",
+          "type": "integer"
+        }
+      },
+      "title": "QuerySpec",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "receipt_ref": {
+          "title": "Receipt Ref",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_id",
+        "receipt_ref",
+        "kind",
+        "version",
+        "fields"
+      ],
+      "title": "Source",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version"
+    },
+    "kind": {
+      "enum": [
+        "answer",
+        "clarification",
+        "no_results",
+        "partial",
+        "unavailable"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "context": {
+      "$ref": "#/$defs/Context"
+    },
+    "as_of": {
+      "format": "date-time",
+      "title": "As Of",
+      "type": "string"
+    },
+    "summary_claims": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "maxItems": 20,
+      "title": "Summary Claims",
+      "type": "array"
+    },
+    "data_blocks": {
+      "items": {
+        "$ref": "#/$defs/DataBlock"
+      },
+      "maxItems": 6,
+      "title": "Data Blocks",
+      "type": "array"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "maxItems": 100,
+      "title": "Sources",
+      "type": "array"
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "clarification": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Clarification"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/Action"
+      },
+      "maxItems": 10,
+      "title": "Actions",
+      "type": "array"
+    },
+    "followups": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 3,
+      "title": "Followups",
+      "type": "array"
+    }
+  },
+  "required": [
+    "kind",
+    "context",
+    "as_of",
+    "coverage"
+  ],
+  "title": "Answer",
+  "type": "object"
+}

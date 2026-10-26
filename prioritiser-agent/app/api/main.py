@@ -14,10 +14,11 @@
 from __future__ import annotations
 
 import hmac
+from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Security
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.security import APIKeyHeader
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
@@ -64,16 +65,6 @@ from app.core.service import (
 from app.rag.search import reset_index, search_corpus
 from app.service import handle_request
 from app.snapshot import get_snapshot
-
-app = FastAPI(
-    title="Агент-приоритизатор инициатив трайба",
-    version="0.1.0",
-    description=(
-        "Вычисляет приоритет P1–P5 и Value для задач Единого бэклога "
-        "по единой методике (ТЗ v2.0)."
-    ),
-)
-
 
 def get_db() -> Session:
     session = get_session_factory()()
@@ -126,7 +117,6 @@ Methodologist = Annotated[str, Depends(require_methodologist)]
 ServiceCaller = Annotated[str, Depends(require_service)]
 
 
-@app.on_event("startup")
 def _startup() -> None:
     init_db()
     settings = get_settings()
@@ -134,6 +124,47 @@ def _startup() -> None:
         from app.rag.embeddings import start_encoder_warmup
 
         start_encoder_warmup(settings.rag_embedding_model)
+    if (
+        settings.value_analogy
+        or (
+            settings.strategy_use_rag
+            and (
+                settings.strategy_provider == "agent"
+                or settings.dependency_provider == "agent"
+            )
+        )
+    ):
+        from app.service.warmup import start_runtime_warmup
+
+        start_runtime_warmup()
+
+
+def _shutdown() -> None:
+    from app.llm.openai_compat import close_http_client
+    from app.service.scenarios import close_assessment_executor
+
+    close_http_client()
+    close_assessment_executor()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _startup()
+    try:
+        yield
+    finally:
+        _shutdown()
+
+
+app = FastAPI(
+    title="Агент-приоритизатор инициатив трайба",
+    version="0.1.0",
+    description=(
+        "Вычисляет приоритет P1–P5 и Value для задач Единого бэклога "
+        "по единой методике (ТЗ v2.0)."
+    ),
+    lifespan=lifespan,
+)
 
 
 def _get_task(session: Session, task_key: str) -> Task:
@@ -154,6 +185,13 @@ def health() -> dict[str, Any]:
         "llm_provider": settings.llm_provider,
         "strategy_provider": settings.strategy_provider,
     }
+
+
+@app.get("/metrics", response_class=PlainTextResponse, include_in_schema=False)
+def metrics() -> str:
+    from app.service.metrics import render_prometheus
+
+    return render_prometheus()
 
 
 @app.get("/ready")
@@ -208,6 +246,26 @@ def ready() -> JSONResponse:
             is_ready = False
     else:
         checks["embedding_model"] = "disabled"
+
+    if (
+        settings.value_analogy
+        or (
+            settings.strategy_use_rag
+            and (
+                settings.strategy_provider == "agent"
+                or settings.dependency_provider == "agent"
+            )
+        )
+    ):
+        from app.service.warmup import get_runtime_warmup_status, start_runtime_warmup
+
+        start_runtime_warmup()
+        runtime_status = get_runtime_warmup_status()
+        checks["runtime_indexes"] = runtime_status
+        if runtime_status != "ok":
+            is_ready = False
+    else:
+        checks["runtime_indexes"] = "disabled"
 
     return JSONResponse(
         status_code=200 if is_ready else 503,

@@ -27,3 +27,13 @@ test('Совместные фильтры и русская сортировка
   prefs.filters.title = ['Январь'];
   assert.equal(didVisibleRows(rows, prefs).length, 0);
 });
+
+test('ДИД использует порядок справочника для клиента, типа и срока', () => {
+  const rows = [
+    { id: 3, did_client_group: 'Альфа', gaps: [], group_order: 3 },
+    { id: 1, did_client_group: 'Янтарь', gaps: [], group_order: 1 },
+    { id: 2, did_client_group: 'Бета', gaps: [], group_order: 2 },
+  ];
+  const prefs = { ...defaultDidPrefs('3Q 2026'), sortField: 'did_client_group' };
+  assert.deepEqual(didVisibleRows(rows, prefs).map(row => row.id), [1, 2, 3]);
+});

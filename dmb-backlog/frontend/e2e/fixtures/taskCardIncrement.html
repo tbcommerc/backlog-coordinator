@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Карточка задачи — frontend increment</title>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/modal-system.css">
+  <link rel="stylesheet" href="/css/ui/kit.css?v=8">
+</head>
+<body>
+  <script type="module">
+    const fixtureParams = new URLSearchParams(window.location.search);
+    const requestedTheme = fixtureParams.get('theme');
+    const readOnly = fixtureParams.get('mode') === 'readonly';
+    document.documentElement.dataset.theme = requestedTheme === 'dark' ? 'dark' : 'light';
+
+    const task = {
+      id: 42,
+      public_id: 'TASK-000-042',
+      version: 4,
+      title: 'Карточка для проверки',
+      description: [
+        '### Контекст',
+        '',
+        '**Проблема:** клиентский путь содержит несколько ручных шагов и плохо масштабируется.',
+        '',
+        'Нужно проверить гипотезу и подготовить безопасный план внедрения:',
+        '',
+        '- описать текущий сценарий',
+        '- собрать метрики времени',
+        '- проверить ограничения API',
+        '- согласовать целевой процесс',
+        '- подготовить прототип',
+        '- провести пользовательскую проверку',
+        '- зафиксировать критерии готовности',
+        '- оценить риски миграции',
+        '- подготовить план отката',
+        '- обновить эксплуатационную документацию',
+        '',
+        '> Сырые HTML-теги в описании не должны исполняться.',
+        '',
+        'Подробнее — в [документации](https://example.test/task-42).',
+      ].join('\n'),
+      comment: 'Только для рабочей группы',
+      date_received: '2026-09-01',
+      team_name: 'Core Platform',
+      team_id: 1,
+      channel_name: 'Портал',
+      channel_id: 2,
+      department_id: 3,
+      department_name: 'Цифровой бизнес',
+      did_client_group_id: 4,
+      did_client_group_name: 'Корпоративные клиенты',
+      business_customer_name: 'Иван Петров',
+      project_name: 'DMB Backlog',
+      project_id: 5,
+      task_type_name: 'Разработка',
+      task_type_id: 6,
+      priority_name: 'Высокий',
+      priority_id: 7,
+      status_name: 'В работе',
+      status_id: 8,
+      deadline_name: '30 дней',
+      deadline_id: 9,
+      owner_name: 'Анна Смирнова',
+      owner_id: 10,
+      progress: 35,
+      effort_days: 17,
+      effort_designee: 1,
+      effort_analytics: 2,
+      effort_be: 3,
+      effort_python_be: 4,
+      effort_fe: 5,
+      effort_test: 6,
+      effort_test_auto: 7,
+      effort_delivery: 8,
+      actual_effort_designee: 1.5,
+      actual_effort_analytics: 2.5,
+      actual_effort_be: 3.5,
+      actual_effort_python_be: 4.5,
+      actual_effort_fe: 5.5,
+      actual_effort_test: 6.5,
+      actual_effort_test_auto: 7.5,
+      actual_effort_delivery: 8.5,
+      assessment_weight: 40,
+      completion_forecast: 75,
+      cv: 2.4,
+      financial_effect: 125.5,
+      financial_effect_justification: 'Экономия за счёт автоматизации клиентского пути',
+      metric_kr_plan: 100,
+      metric_kr_fact: 63,
+      metric_kr_unit: '%',
+      priority_score: 82,
+      priority_justification: 'Высокий клиентский эффект и достижимый срок',
+      hard_score: 'B',
+      soft_score: 'A',
+      directorate_status: 'Идём по плану для директората',
+      prev_directorate_status: 'Согласован целевой сценарий',
+      directorate_status_updated_at: '2026-09-08T09:00:00Z',
+      did_status: 'Готовим демонстрацию ДИД',
+      prev_did_status: 'Прототип принят',
+      did_status_updated_at: '2026-09-08T10:00:00Z',
+      key_project_status: 'Ключевой релиз в графике',
+      prev_key_project_status: 'Риски сняты',
+      key_project_status_updated_at: '2026-09-08T11:00:00Z',
+      did_demo: true,
+      link_mockups: 'https://design.example.test/tasks/42',
+      link_jira: [
+        'https://jira.example.test/browse/DMB-42',
+        'https://jira.example.test/browse/DMB-43',
+      ],
+      link_requirements: [
+        'https://docs.example.test/requirements/task-42',
+      ],
+      created_by_name: 'Тестовый пользователь',
+      created_at: '2026-09-01T10:00:00Z',
+      updated_at: '2026-09-09T12:00:00Z',
+      involved_team_names: ['Data Platform', 'Mobile Experience'],
+      tags: [
+        { id: 21, name: 'Клиентский путь', color: '#2563eb' },
+        { id: 22, name: 'Q4', color: '#16a34a' },
+      ],
+    };
+
+    const reference = {
+      teams: [
+        { id: 1, name: 'Core Platform' },
+        { id: 13, name: 'Data Platform' },
+        { id: 14, name: 'Mobile Experience' },
+      ],
+      users: [
+        { id: 10, name: 'Анна Смирнова', login: 'asmirnova', email: 'anna@example.test', is_active: true },
+        { id: 15, name: 'Павел Орлов', login: 'porlov', email: 'pavel@example.test', is_active: true },
+      ],
+      projects: [{ id: 5, name: 'DMB Backlog' }],
+      statuses: [{ id: 8, name: 'В работе' }],
+      priorities: [{ id: 7, name: 'Высокий' }],
+      deadlines: [{ id: 9, name: '30 дней' }],
+      task_types: [{ id: 6, name: 'Разработка' }],
+      channels: [{ id: 2, name: 'Портал' }],
+      did_client_groups: [{ id: 4, name: 'Корпоративные клиенты' }],
+      business_customers: [{ id: 11, name: 'Иван Петров', department_id: 3 }],
+      departments: [{ id: 3, name: 'Цифровой бизнес' }],
+      tags: [
+        { id: 21, name: 'Клиентский путь', color: '#2563eb' },
+        { id: 22, name: 'Q4', color: '#16a34a' },
+      ],
+    };
+
+    const competencyCosts = [
+      ['Designee', 10000],
+      ['Аналитика', 11000],
+      ['Разработка BE', 12000],
+      ['Разработка python BE', 13000],
+      ['Разработка FE', 14000],
+      ['Tester', 9000],
+      ['Tester Auto', 10500],
+      ['Delivery', 9500],
+    ].map(([competency, rate], index) => ({
+      id: index + 1,
+      competency,
+      rate,
+      year: 2026,
+      is_active: true,
+    }));
+
+    const attachments = [
+      {
+        id: 12,
+        task_id: 42,
+        original_name: 'ux-audit.pdf',
+        mime_type: 'application/pdf',
+        file_size: 1024,
+        user_name: 'Тестовый пользователь',
+        created_at: '2026-09-09T12:00:00Z',
+      },
+      {
+        id: 13,
+        task_id: 42,
+        original_name: 'customer-flow.png',
+        mime_type: 'image/png',
+        file_size: 245760,
+        user_name: 'Анна Смирнова',
+        created_at: '2026-09-09T13:00:00Z',
+      },
+    ];
+
+    const comments = [
+      {
+        id: 21,
+        task_id: 42,
+        user_id: 10,
+        user_name: 'Анна Смирнова',
+        text: 'Проверила клиентский сценарий с @Павел Орлов',
+        mentioned_user_ids: [15],
+        parent_id: null,
+        created_at: '2026-09-09T14:00:00Z',
+        replies: [{
+          id: 22,
+          task_id: 42,
+          user_id: 15,
+          user_name: 'Павел Орлов',
+          text: 'Подтверждаю готовность аналитики',
+          mentioned_user_ids: [],
+          parent_id: 21,
+          created_at: '2026-09-09T14:30:00Z',
+          replies: [],
+        }],
+      },
+      {
+        id: 23,
+        task_id: 42,
+        user_id: 15,
+        user_name: 'Павел Орлов',
+        text: 'Материалы для демонстрации приложены',
+        mentioned_user_ids: [],
+        parent_id: null,
+        created_at: '2026-09-09T15:00:00Z',
+        replies: [],
+      },
+    ];
+
+    const history = [
+      {
+        id: 51,
+        field_name: 'progress',
+        field_label: 'Прогресс',
+        old_value: '25',
+        new_value: '35',
+        changed_at: '2026-09-09T11:00:00Z',
+        changed_by_name: 'Анна Смирнова',
+      },
+      {
+        id: 52,
+        field_name: 'priority_id',
+        field_label: 'Приоритет',
+        old_value: null,
+        new_value: '7',
+        changed_at: '2026-09-09T12:00:00Z',
+        changed_by_name: 'Тестовый пользователь',
+      },
+    ];
+
+    const reportingContext = {
+      items: [
+        {
+          kind: 'directorate',
+          title: 'Директорская оперативка',
+          current_meeting: { id: 61, scheduled_date: '2026-09-20' },
+          previous_meeting: { id: 60, scheduled_date: '2026-08-20' },
+          current_status: { text: 'Идём по плану для директората', did_demo: false, updated_at: '2026-09-08T09:00:00Z', updated_by_name: 'Анна Смирнова', version: 2 },
+          previous_status: { text: 'Согласован целевой сценарий' },
+          can_edit: false,
+          edit_reason: 'Fixture работает в режиме просмотра.',
+        },
+        {
+          kind: 'did',
+          title: 'Встреча ДИД',
+          current_meeting: { id: 63, scheduled_date: '2026-09-22' },
+          previous_meeting: { id: 62, scheduled_date: '2026-08-22' },
+          current_status: { text: 'Готовим демонстрацию ДИД', did_demo: true, updated_at: '2026-09-08T10:00:00Z', updated_by_name: 'Анна Смирнова', version: 3 },
+          previous_status: { text: 'Прототип принят' },
+          can_edit: false,
+          edit_reason: 'Fixture работает в режиме просмотра.',
+        },
+        {
+          kind: 'key_projects',
+          title: 'Ключевые проекты',
+          current_meeting: { id: 65, scheduled_date: '2026-09-25' },
+          previous_meeting: { id: 64, scheduled_date: '2026-08-25' },
+          current_status: { text: 'Ключевой релиз в графике', did_demo: false, updated_at: '2026-09-08T11:00:00Z', updated_by_name: 'Анна Смирнова', version: 4 },
+          previous_status: { text: 'Риски сняты' },
+          can_edit: false,
+          edit_reason: 'Fixture работает в режиме просмотра.',
+        },
+      ],
+    };
+
+    const currentUser = {
+      id: 99,
+      name: 'E2E Редактор',
+      team_id: 1,
+      permissions: readOnly
+        ? { task_edit: 'none', task_comment: 'none' }
+        : { task_edit: 'all', task_comment: 'all' },
+    };
+
+    window.__apiCalls = [];
+    window.__lastRouteTab = null;
+    window.__fileDialogClicks = 0;
+    // In-memory writes only: this fixture never calls the backend.
+    async function saveTaskFixture(payload) {
+      if (window.__holdTaskWrite) {
+        await new Promise(resolve => { window.__releaseTaskWrite = resolve; });
+        window.__holdTaskWrite = false;
+      }
+      if (window.__failTaskWrite) {
+        window.__failTaskWrite = false;
+        throw Object.assign(new Error('Проверьте название'), {
+          status: 422, data: { detail: [{ loc: ['body', 'title'], msg: 'Уточните название задачи' }] },
+        });
+      }
+      Object.assign(task, payload, { version: task.version + 1 });
+      return { ...task };
+    }
+    const api = {
+      async get(path) {
+        window.__apiCalls.push(['get', path]);
+        if (path === '/admin/competency-costs') return competencyCosts;
+        if (path === '/tasks/reference') return reference;
+        if (path === '/admin/task-types') return reference.task_types;
+        if (path === '/admin/channels') return reference.channels;
+        if (path === '/tasks/42/history') return history;
+        if (path === '/tasks/42/comments') return { items: comments };
+        if (path === '/users/') return { items: reference.users };
+        if (path === '/tasks/42/attachments') return { items: attachments };
+        if (path === '/tasks/42/lock') return { locked: false, is_mine: false };
+        if (path === '/tasks/42/viewers') return { viewers: [] };
+        if (path === '/tasks/42/reporting-statuses/context') return reportingContext;
+        if (path === '/tasks/42') return task;
+        return {};
+      },
+      async post(path, payload) {
+        window.__apiCalls.push(['post', path, payload]);
+        if (path === '/tasks/42/lock') return { locked: true, is_mine: true };
+        if (path === '/tasks/') return saveTaskFixture(payload);
+        return {};
+      },
+      async delete(path) { window.__apiCalls.push(['delete', path]); return {}; },
+      async patch(path, payload) { window.__apiCalls.push(['patch', path, payload]); return saveTaskFixture(payload); },
+      async put(path) { window.__apiCalls.push(['put', path]); return task; },
+      async upload(path) { window.__apiCalls.push(['upload', path]); return {}; },
+      async download(path) { window.__apiCalls.push(['download', path]); },
+    };
+
+    window.app = {
+      api,
+      store: {
+        get(key) { return key === 'currentUser' ? currentUser : null; },
+      },
+      router: {
+        pushTaskRoute() {},
+        updateTaskTabRoute(tab) {
+          window.__lastRouteTab = tab;
+          const query = new URLSearchParams(window.location.hash.split('?')[1] || '');
+          query.set('task', String(task.id));
+          query.set('tab', tab);
+          window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/tasks?${query}`);
+        },
+      },
+    };
+    window.__taskCardFixture = { task, reference, competencyCosts, attachments, comments, history, reportingContext, currentUser };
+    window.toast = () => {};
+    window.confirmAction = async () => true;
+    window.formatErrorMessage = error => error?.message || 'Ошибка';
+
+    const { openTaskModal, openCreateTaskModal } = await import('/js/components/modal.js?v=99');
+    if (fixtureParams.get('surface') === 'create') openCreateTaskModal(window.app);
+    else openTaskModal(task);
+    document.documentElement.dataset.fixtureReady = 'true';
+  </script>
+</body>
+</html>

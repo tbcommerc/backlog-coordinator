@@ -30,7 +30,7 @@ export function renderCustomerChat(app) {
         <p>Опишите задачу своими словами — бот поможет оформить запрос</p>
       </div>
       <a href="#/customer" class="btn btn-secondary btn-sm">
-        <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+        <i data-lucide="arrow-left"></i>
         Назад к задачам
       </a>
     </div>
@@ -51,8 +51,8 @@ export function renderCustomerChat(app) {
                 </div>
               </div>
             </div>
-            <button class="btn btn-ghost btn-sm" id="chat-clear-btn" aria-label="Очистить чат">
-              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+            <button class="square-icon btn btn-ghost btn-sm" id="chat-clear-btn" aria-label="Очистить чат">
+              <i data-lucide="trash-2"></i>
             </button>
           </div>
 
@@ -63,23 +63,23 @@ export function renderCustomerChat(app) {
           <div class="chat-input-area">
             <div class="chat-quick-actions" id="chat-quick-actions">
               ${QUICK_ACTIONS.map(action => `
-                <button class="quick-action-chip" data-prompt="${escapeHtml(action.prompt)}">
-                  <i data-lucide="${action.icon}" style="width:14px;height:14px;"></i>
+                <button class="btn btn-secondary btn-sm ui-btn quick-action-chip" data-prompt="${escapeHtml(action.prompt)}">
+                  <i data-lucide="${action.icon}" style=""></i>
                   ${action.label}
                 </button>
               `).join('')}
             </div>
             <div class="chat-input-wrapper">
-              <textarea 
-                id="chat-input" 
-                class="chat-input" 
-                placeholder="Опишите задачу или выберите тип выше..." 
+              <textarea
+                id="chat-input"
+                class="input ui-control chat-input"
+                placeholder="Опишите задачу или выберите тип выше..."
                 rows="1"
               ></textarea>
               <div class="chat-input-actions">
                 <span class="chat-hint">Ctrl+Enter</span>
-                <button class="btn btn-primary chat-send-btn" id="chat-send-btn" disabled>
-                  <i data-lucide="send" style="width:16px;height:16px;"></i>
+                <button aria-label="Отправить сообщение" class="square-icon btn btn-primary chat-send-btn" id="chat-send-btn" disabled>
+                  <i data-lucide="send"></i>
                 </button>
               </div>
             </div>
@@ -116,7 +116,7 @@ export function renderCustomerChat(app) {
           </div>
           <div class="chat-examples-list">
             ${EXAMPLE_PROMPTS.map(prompt => `
-              <button class="chat-example-item" data-prompt="${escapeHtml(prompt)}">
+              <button class="ui-surface-action chat-example-item" data-prompt="${escapeHtml(prompt)}">
                 ${escapeHtml(prompt)}
               </button>
             `).join('')}
@@ -202,7 +202,7 @@ async function sendMessage(app) {
   if (!message || isTyping) return;
 
   const messagesContainer = document.getElementById('chat-messages');
-  
+
   if (chatHistory.length === 0) {
     messagesContainer.innerHTML = '';
   }
@@ -317,7 +317,7 @@ function clearChat() {
   const messagesContainer = document.getElementById('chat-messages');
   const user = window.app.store.get('currentUser');
   const userName = user?.name?.split(' ')[0] || 'Заказчик';
-  
+
   chatHistory = [];
   taskPreview = null;
   messagesContainer.innerHTML = renderWelcomeScreen(userName);

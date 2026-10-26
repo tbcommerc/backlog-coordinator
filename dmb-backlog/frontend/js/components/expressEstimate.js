@@ -1,4 +1,4 @@
-console.log('[DMB] expressEstimate.js v29 loaded');
+console.log('[DMB] expressEstimate.js v20260910.2 loaded');
 
 import { formatTaskPublicId } from '../taskPublicId.js';
 
@@ -33,7 +33,92 @@ let selectedResourceCompetency = null;
 let expressTaskSearch = '';
 let expressTaskFilter = 'all';
 const saveStateTimers = new Map();
+const pendingEstimateSaves = new Set();
 let resourceHelpOutsideHandler = null;
+
+function effortTotal(item) {
+    return EFFORT_FIELDS.reduce((sum, field) => sum + (Number(item?.[field]) || 0), 0);
+}
+
+function effortHasNegativeValue(item) {
+    return EFFORT_FIELDS.some(field => (Number(item?.[field]) || 0) < 0);
+}
+
+function formatRussianCount(value, [one, few, many]) {
+    const absolute = Math.abs(Number(value) || 0);
+    const mod100 = absolute % 100;
+    const mod10 = absolute % 10;
+    const word = mod100 >= 11 && mod100 <= 14
+        ? many
+        : mod10 === 1 ? one : mod10 >= 2 && mod10 <= 4 ? few : many;
+    return `${value} ${word}`;
+}
+
+export function calculateQuickEstimateReadiness(tasks = []) {
+    const blockingTasks = [];
+
+    tasks.forEach(task => {
+        const blockers = [];
+        const epics = task.epics || [];
+        if (epics.length === 0) {
+            blockers.push({
+                code: 'missing_decomposition',
+                entity_type: 'task',
+                entity_id: task.id,
+                entity_title: task.title,
+                message: 'Добавьте хотя бы один эпик.'
+            });
+        }
+
+        epics.forEach(epic => {
+            const stories = epic.stories || [];
+            const terminalItems = stories.length > 0
+                ? stories.map(story => ({ entityType: 'story', item: story }))
+                : [{ entityType: 'epic', item: epic }];
+            terminalItems.forEach(({ entityType, item }) => {
+                const entityLabel = entityType === 'story' ? 'истории' : 'эпика';
+                if (effortHasNegativeValue(item)) {
+                    blockers.push({
+                        code: 'invalid_effort',
+                        entity_type: entityType,
+                        entity_id: item.id,
+                        entity_title: item.title,
+                        message: `Исправьте отрицательные трудозатраты ${entityLabel} «${item.title}».`
+                    });
+                } else if (effortTotal(item) <= 0) {
+                    blockers.push({
+                        code: 'missing_effort',
+                        entity_type: entityType,
+                        entity_id: item.id,
+                        entity_title: item.title,
+                        message: `Укажите трудозатраты ${entityLabel} «${item.title}».`
+                    });
+                }
+            });
+        });
+
+        if (blockers.length > 0) {
+            blockingTasks.push({
+                task_id: task.id,
+                public_id: task.public_id || null,
+                title: task.title,
+                blockers
+            });
+        }
+    });
+
+    return {
+        ready: tasks.length > 0 && blockingTasks.length === 0,
+        total_tasks: tasks.length,
+        ready_tasks: tasks.length - blockingTasks.length,
+        total_blockers: blockingTasks.reduce((sum, task) => sum + task.blockers.length, 0),
+        blocking_tasks: blockingTasks
+    };
+}
+
+function getQuickEstimateReadiness() {
+    return expressData?.readiness || calculateQuickEstimateReadiness(expressData?.tasks || []);
+}
 
 // ==================== Main Render ====================
 
@@ -48,13 +133,13 @@ export function renderExpressEstimate(app) {
         </div>
         <div style="display:flex;gap:8px;">
             <button id="express-complete-btn" class="btn btn-primary btn-sm" disabled title="Завершить экспресс-оценку и перейти к принятию решения">
-                <i data-lucide="check-circle" style="width:16px;height:16px;"></i> Завершить оценку
+                <i data-lucide="check-circle"></i> Завершить оценку
             </button>
             <button id="express-export-btn" class="btn btn-secondary btn-sm" title="Экспорт в Excel">
-                <i data-lucide="download" style="width:16px;height:16px;"></i> Excel
+                <i data-lucide="download"></i> Excel
             </button>
-            <button id="express-refresh-btn" class="btn btn-secondary btn-sm">
-                <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i>
+            <button aria-label="Обновить оценку" id="express-refresh-btn" class="square-icon btn btn-secondary btn-sm">
+                <i data-lucide="refresh-cw"></i>
             </button>
         </div>
     </div>
@@ -88,15 +173,14 @@ async function loadData(app) {
             loadCompetencyCosts(app)
         ]);
         expressData = resp;
+        expressData.readiness = resp.readiness || calculateQuickEstimateReadiness(resp.tasks || []);
         teamResources = resources;
         competencyCosts = costs;
         resourcesEditing = false;
         renderAll();
         const count = (resp.tasks || []).length;
-        const completeButton = document.getElementById('express-complete-btn');
-        if (completeButton) completeButton.disabled = count === 0;
         const el = document.getElementById('express-tasks-count');
-        if (el) el.textContent = `Найдено: ${count} задач`;
+        if (el) el.textContent = `Найдено: ${formatRussianCount(count, ['задача', 'задачи', 'задач'])}`;
     } catch (e) {
         console.error('Load error:', e);
         const el = document.getElementById('express-tasks-count');
@@ -124,6 +208,54 @@ function renderAll() {
     renderTopSection();
     renderHierarchyBlock();
     if (window.lucide) window.lucide.createIcons();
+    updateCompleteControls();
+}
+
+function updateCompleteControls() {
+    const button = document.getElementById('express-complete-btn');
+    if (!button) return;
+    const taskCount = expressData?.tasks?.length || 0;
+    const readiness = getQuickEstimateReadiness();
+    const isSaving = pendingEstimateSaves.size > 0;
+
+    button.disabled = taskCount === 0 || isSaving;
+    button.classList.toggle('btn-primary', readiness.ready && !isSaving);
+    button.classList.toggle('btn-secondary', !readiness.ready || isSaving);
+    if (isSaving) {
+        button.title = 'Дождитесь сохранения текущих оценок';
+        button.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> Сохраняем оценки…';
+    } else if (readiness.ready) {
+        button.title = 'Завершить экспресс-оценку и перейти к принятию решения';
+        button.innerHTML = '<i data-lucide="check-circle"></i> Завершить оценку';
+    } else if (taskCount > 0) {
+        button.title = 'Показать, что мешает завершить экспресс-оценку';
+        button.innerHTML = '<i data-lucide="alert-triangle"></i> Проверить готовность';
+    } else {
+        button.title = 'Добавьте задачи для экспресс-оценки';
+        button.innerHTML = '<i data-lucide="check-circle"></i> Завершить оценку';
+    }
+    if (window.lucide) window.lucide.createIcons();
+}
+
+function syncReadinessFromTasks() {
+    if (!expressData) return;
+    expressData.readiness = calculateQuickEstimateReadiness(expressData.tasks || []);
+
+    const previousCard = document.getElementById('qe-readiness-card');
+    if (previousCard) {
+        previousCard.outerHTML = renderReadinessCard();
+        bindReadinessActions();
+    }
+
+    const blockedTaskIds = new Set(expressData.readiness.blocking_tasks.map(task => task.task_id));
+    document.querySelectorAll('.qe-task-block[data-task-id]').forEach(block => {
+        const blocked = blockedTaskIds.has(Number(block.dataset.taskId));
+        block.classList.toggle('qe-unestimated', blocked);
+        const label = block.querySelector('.qe-task-readiness-label');
+        if (label) label.hidden = !blocked;
+    });
+    applyTaskFilters();
+    updateCompleteControls();
 }
 
 // ==================== Block 1+2: Resources + Chart (Compact) ====================
@@ -152,24 +284,24 @@ function renderTopSection() {
         tableRows = resourceRows.map(r => `
             <tr>
                 <td class="qe-resource-table-name" title="${escAttr(r.competency)}"><strong>${escHtml(COMPETENCY_SHORT_LABELS[r.competency] || r.competency)}</strong><span>${escHtml(r.competency)}</span></td>
-                <td style="text-align:center;"><input title="Количество специалистов Senior" aria-label="Senior: ${escAttr(r.competency)}" type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="senior_count" value="${r.senior_count}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
-                <td style="text-align:center;"><input title="Количество специалистов Middle" aria-label="Middle: ${escAttr(r.competency)}" type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="middle_count" value="${r.middle_count}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
-                <td style="text-align:center;"><input title="Количество специалистов Junior" aria-label="Junior: ${escAttr(r.competency)}" type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="junior_count" value="${r.junior_count}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
-                <td style="text-align:center;"><input title="Суммарные дни отпуска по компетенции" aria-label="Дни отпуска: ${escAttr(r.competency)}" type="number" min="0" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="vacation_days" value="${r.vacation_days}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
-                <td style="text-align:center;"><input title="Рабочие дни в расчётном периоде" aria-label="Рабочие дни: ${escAttr(r.competency)}" type="number" min="1" class="res-edit" data-comp="${escHtml(r.competency)}" data-field="working_days" value="${r.working_days}" style="width:48px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;text-align:center;"></td>
-                <td style="text-align:center;font-weight:700;">${r.capacity.toFixed(1)}</td>
+                <td style="text-align:center"><input title="Количество специалистов Senior" aria-label="Senior: ${escAttr(r.competency)}" type="number" min="0" class="input input-xs ui-control ui-number-cell res-edit" data-comp="${escHtml(r.competency)}" data-field="senior_count" value="${r.senior_count}" style="width:48px;text-align:center"></td>
+                <td style="text-align:center"><input title="Количество специалистов Middle" aria-label="Middle: ${escAttr(r.competency)}" type="number" min="0" class="input input-xs ui-control ui-number-cell res-edit" data-comp="${escHtml(r.competency)}" data-field="middle_count" value="${r.middle_count}" style="width:48px;text-align:center"></td>
+                <td style="text-align:center"><input title="Количество специалистов Junior" aria-label="Junior: ${escAttr(r.competency)}" type="number" min="0" class="input input-xs ui-control ui-number-cell res-edit" data-comp="${escHtml(r.competency)}" data-field="junior_count" value="${r.junior_count}" style="width:48px;text-align:center"></td>
+                <td style="text-align:center"><input title="Суммарные дни отпуска по компетенции" aria-label="Дни отпуска: ${escAttr(r.competency)}" type="number" min="0" class="input input-xs ui-control ui-number-cell res-edit" data-comp="${escHtml(r.competency)}" data-field="vacation_days" value="${r.vacation_days}" style="width:48px;text-align:center"></td>
+                <td style="text-align:center"><input title="Рабочие дни в расчётном периоде" aria-label="Рабочие дни: ${escAttr(r.competency)}" type="number" min="1" class="input input-xs ui-control ui-number-cell res-edit" data-comp="${escHtml(r.competency)}" data-field="working_days" value="${r.working_days}" style="width:48px;text-align:center"></td>
+                <td style="text-align:center;font-weight:700">${r.capacity.toFixed(1)}</td>
             </tr>
         `).join('');
     } else {
         tableRows = resourceRows.map(r => `
             <tr>
                 <td class="qe-resource-table-name" title="${escAttr(r.competency)}"><strong>${escHtml(COMPETENCY_SHORT_LABELS[r.competency] || r.competency)}</strong><span>${escHtml(r.competency)}</span></td>
-                <td style="text-align:center;">${r.senior_count}</td>
-                <td style="text-align:center;">${r.middle_count}</td>
-                <td style="text-align:center;">${r.junior_count}</td>
-                <td style="text-align:center;">${r.vacation_days}</td>
-                <td style="text-align:center;">${r.working_days}</td>
-                <td style="text-align:center;font-weight:700;">${r.capacity.toFixed(1)}</td>
+                <td style="text-align:center">${r.senior_count}</td>
+                <td style="text-align:center">${r.middle_count}</td>
+                <td style="text-align:center">${r.junior_count}</td>
+                <td style="text-align:center">${r.vacation_days}</td>
+                <td style="text-align:center">${r.working_days}</td>
+                <td style="text-align:center;font-weight:700">${r.capacity.toFixed(1)}</td>
             </tr>
         `).join('');
     }
@@ -177,7 +309,7 @@ function renderTopSection() {
     const editBtns = isEdit
         ? `<button class="btn btn-xs btn-danger" id="res-cancel-btn">Отмена</button>
            <button class="btn btn-xs btn-primary" id="res-save-btn">Сохранить</button>`
-        : `<button class="btn btn-xs btn-secondary" id="res-edit-btn"><i data-lucide="pencil" style="width:12px;height:12px;"></i> Редактировать ресурсы</button>`;
+        : `<button class="btn btn-xs btn-secondary" id="res-edit-btn"><i data-lucide="pencil"></i> Редактировать ресурсы</button>`;
 
     el.innerHTML = `
     <div style="display:flex;align-items:center;margin-bottom:8px;">
@@ -206,16 +338,16 @@ function renderTopSection() {
                     </div>
                 </div>
                 <div class="qe-resource-table-wrap">
-                <table class="table qe-resource-table">
+                <table class="ui-table ui-table-editor table qe-resource-table" data-ui-layout="resource">
                     <thead>
                         <tr>
-                            <th style="white-space:nowrap;">Компетенция</th>
-                            <th title="Senior, коэффициент ${CAPACITY_COEFFS.senior}" style="width:56px;text-align:center;">Sr</th>
-                            <th title="Middle, коэффициент ${CAPACITY_COEFFS.middle}" style="width:56px;text-align:center;">Md</th>
-                            <th title="Junior, коэффициент ${CAPACITY_COEFFS.junior}" style="width:56px;text-align:center;">Jr</th>
-                            <th title="Суммарные дни отпуска по компетенции" style="width:56px;text-align:center;">Отп.</th>
-                            <th title="Рабочие дни в расчётном периоде" style="width:56px;text-align:center;">РД</th>
-                            <th title="Доступный Capacity, чел./дн." style="width:64px;text-align:center;">Capacity</th>
+                            <th style="white-space:nowrap">Компетенция</th>
+                            <th title="Senior, коэффициент ${CAPACITY_COEFFS.senior}" style="width:56px;text-align:center">Sr</th>
+                            <th title="Middle, коэффициент ${CAPACITY_COEFFS.middle}" style="width:56px;text-align:center">Md</th>
+                            <th title="Junior, коэффициент ${CAPACITY_COEFFS.junior}" style="width:56px;text-align:center">Jr</th>
+                            <th title="Суммарные дни отпуска по компетенции" style="width:56px;text-align:center">Отп.</th>
+                            <th title="Рабочие дни в расчётном периоде" style="width:56px;text-align:center">РД</th>
+                            <th title="Доступный Capacity, чел./дн." style="width:64px;text-align:center">Capacity</th>
                         </tr>
                     </thead>
                     <tbody>${tableRows}</tbody>
@@ -282,7 +414,7 @@ function renderResourceCockpit() {
             value = `${row.balance > 0 ? '+' : ''}${row.balance.toFixed(1)}`;
         }
         const selected = row.competency === selectedResourceCompetency;
-        return `<button type="button" class="qe-resource-row" data-competency="${escAttr(row.competency)}" aria-selected="${selected}" aria-label="${escAttr(row.competency)}: Demand ${row.needed.toFixed(1)}, Capacity ${row.capacity.toFixed(1)}, ${value}">
+        return `<button type="button" class="ui-surface-action qe-resource-row" data-competency="${escAttr(row.competency)}" aria-selected="${selected}" aria-label="${escAttr(row.competency)}: Demand ${row.needed.toFixed(1)}, Capacity ${row.capacity.toFixed(1)}, ${value}">
             <span class="qe-resource-name" title="${escAttr(row.competency)}">${escHtml(COMPETENCY_SHORT_LABELS[row.competency] || row.competency)}</span>
             <span class="qe-resource-track ${resourceChartMode}"><span class="qe-resource-bar ${row.state}" style="width:${width}%;margin-left:${offset}%"></span></span>
             <span class="qe-resource-values"><b>${row.needed.toFixed(1)}</b><span>/ ${row.capacity.toFixed(1)}</span><em class="${row.state}">${value}</em></span>
@@ -302,8 +434,8 @@ function renderResourceCockpit() {
         <div class="qe-cockpit-head">
             <div><strong>Ресурсный баланс</strong><span>Demand / Capacity · чел./дн.</span></div>
             <div class="qe-cockpit-switch" role="group" aria-label="Режим диаграммы">
-                <button data-mode="util" aria-pressed="${!balanceAxis}">Утилизация</button>
-                <button data-mode="balance" aria-pressed="${balanceAxis}">Баланс</button>
+                <button class="btn btn-secondary btn-sm ui-btn" data-mode="util" aria-pressed="${!balanceAxis}">Утилизация</button>
+                <button class="btn btn-secondary btn-sm ui-btn" data-mode="balance" aria-pressed="${balanceAxis}">Баланс</button>
             </div>
         </div>
         <div class="qe-cockpit-column-head">
@@ -393,18 +525,19 @@ function renderHierarchyBlock() {
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
             <h3 style="font-size:15px;font-weight:600;margin:0;">Экспресс-оценка</h3>
             <button id="express-import-btn" class="btn btn-primary btn-sm">
-                <i data-lucide="plus" style="width:16px;height:16px;"></i> Добавить задачу из бэклога
+                <i data-lucide="plus"></i> Добавить задачу из бэклога
             </button>
         </div>
+        ${tasks.length > 0 ? renderReadinessCard() : ''}
         <div class="qe-list-toolbar" ${tasks.length === 0 ? 'style="display:none;"' : ''}>
             <label class="qe-task-search">
                 <i data-lucide="search" aria-hidden="true"></i>
-                <input id="qe-task-search-input" type="search" value="${escAttr(expressTaskSearch)}" placeholder="Поиск по ID или названию" aria-label="Поиск задач экспресс-оценки">
+                <input class="input ui-control" id="qe-task-search-input" type="search" value="${escAttr(expressTaskSearch)}" placeholder="Поиск по ID или названию" aria-label="Поиск задач экспресс-оценки">
             </label>
-            <div class="qe-estimate-filters" role="group" aria-label="Фильтр по наличию оценки">
-                <button class="qe-estimate-filter${expressTaskFilter === 'all' ? ' active' : ''}" data-filter="all" aria-pressed="${expressTaskFilter === 'all'}">Все</button>
-                <button class="qe-estimate-filter${expressTaskFilter === 'unestimated' ? ' active' : ''}" data-filter="unestimated" aria-pressed="${expressTaskFilter === 'unestimated'}">Без оценки</button>
-                <button class="qe-estimate-filter${expressTaskFilter === 'estimated' ? ' active' : ''}" data-filter="estimated" aria-pressed="${expressTaskFilter === 'estimated'}">Оценённые</button>
+            <div class="qe-estimate-filters" role="group" aria-label="Фильтр по готовности оценки">
+                <button class="btn btn-secondary btn-sm ui-btn qe-estimate-filter${expressTaskFilter === 'all' ? ' active' : ''}" data-filter="all" aria-pressed="${expressTaskFilter === 'all'}">Все</button>
+                <button class="btn btn-secondary btn-sm ui-btn qe-estimate-filter${expressTaskFilter === 'blocked' ? ' active' : ''}" data-filter="blocked" aria-pressed="${expressTaskFilter === 'blocked'}">Требуют внимания</button>
+                <button class="btn btn-secondary btn-sm ui-btn qe-estimate-filter${expressTaskFilter === 'ready' ? ' active' : ''}" data-filter="ready" aria-pressed="${expressTaskFilter === 'ready'}">Готовые</button>
             </div>
             <span id="qe-filtered-count" class="qe-filtered-count"></span>
             <div class="qe-collapse-actions">
@@ -420,9 +553,58 @@ function renderHierarchyBlock() {
 
     document.getElementById('express-import-btn')?.addEventListener('click', showImportModal);
     document.getElementById('express-empty-add-btn')?.addEventListener('click', showImportModal);
+    bindReadinessActions();
     bindListToolbar();
     bindHierarchyActions();
     applyTaskFilters();
+}
+
+function renderReadinessCard() {
+    const readiness = getQuickEstimateReadiness();
+    if (readiness.ready) {
+        return `
+        <section class="qe-readiness-card is-ready" id="qe-readiness-card" aria-live="polite">
+            <div class="qe-readiness-icon"><i data-lucide="check-circle"></i></div>
+            <div class="qe-readiness-copy">
+                <strong>Готово к завершению: ${formatRussianCount(readiness.total_tasks, ['задача', 'задачи', 'задач'])}</strong>
+                <span>Каждая задача декомпозирована, а каждый конечный эпик или история содержит положительную оценку трудозатрат.</span>
+            </div>
+            <span class="qe-readiness-count">Готово ${readiness.ready_tasks} из ${readiness.total_tasks}</span>
+        </section>`;
+    }
+    return `
+    <section class="qe-readiness-card is-blocked" id="qe-readiness-card" aria-live="polite">
+        <div class="qe-readiness-icon"><i data-lucide="alert-triangle"></i></div>
+        <div class="qe-readiness-copy">
+            <strong>Нужно доработать: ${readiness.blocking_tasks.length} из ${formatRussianCount(readiness.total_tasks, ['задачи', 'задач', 'задач'])}</strong>
+            <span>${formatRussianCount(readiness.total_blockers, ['элемент', 'элемента', 'элементов'])} ${readiness.total_blockers === 1 ? 'блокирует' : 'блокируют'} завершение. Добавьте декомпозицию и укажите хотя бы одну положительную оценку для каждого конечного элемента.</span>
+        </div>
+        <button class="btn btn-sm btn-secondary" id="qe-readiness-review-btn">Показать задачи</button>
+    </section>`;
+}
+
+function bindReadinessActions() {
+    document.getElementById('qe-readiness-review-btn')?.addEventListener('click', reviewBlockingTasks);
+}
+
+function setEstimateFilter(filter) {
+    expressTaskFilter = filter;
+    document.querySelectorAll('.qe-estimate-filter').forEach(item => {
+        const active = item.dataset.filter === filter;
+        item.classList.toggle('active', active);
+        item.setAttribute('aria-pressed', String(active));
+    });
+    applyTaskFilters();
+}
+
+function reviewBlockingTasks() {
+    document.getElementById('qe-modal')?.remove();
+    setEstimateFilter('blocked');
+    const firstTaskId = getQuickEstimateReadiness().blocking_tasks[0]?.task_id;
+    const firstBlock = firstTaskId
+        ? document.querySelector(`.qe-task-block[data-task-id="${firstTaskId}"]`)
+        : null;
+    firstBlock?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function bindListToolbar() {
@@ -432,13 +614,7 @@ function bindListToolbar() {
     });
     document.querySelectorAll('.qe-estimate-filter').forEach(button => {
         button.addEventListener('click', () => {
-            expressTaskFilter = button.dataset.filter;
-            document.querySelectorAll('.qe-estimate-filter').forEach(item => {
-                const active = item === button;
-                item.classList.toggle('active', active);
-                item.setAttribute('aria-pressed', String(active));
-            });
-            applyTaskFilters();
+            setEstimateFilter(button.dataset.filter);
         });
     });
     document.getElementById('qe-collapse-all-btn')?.addEventListener('click', () => setHierarchyCollapsed(true));
@@ -447,20 +623,20 @@ function bindListToolbar() {
 
 function applyTaskFilters() {
     const tasks = expressData?.tasks || [];
+    const blockingTaskIds = new Set(getQuickEstimateReadiness().blocking_tasks.map(task => task.task_id));
     const normalizedQuery = expressTaskSearch.trim().toLocaleLowerCase('ru-RU');
     const idQuery = normalizedQuery.replace(/^#/, '');
     let visibleCount = 0;
 
     tasks.forEach(task => {
-        const total = EFFORT_FIELDS.reduce((sum, field) => sum + effectiveEffort({ ...task, _type: 'task' }, field), 0);
-        const estimated = total > 0;
+        const blocked = blockingTaskIds.has(task.id);
         const matchesSearch = !normalizedQuery
             || String(task.id).includes(idQuery)
             || formatTaskPublicId(task).toLowerCase().includes(idQuery)
             || String(task.title || '').toLocaleLowerCase('ru-RU').includes(normalizedQuery);
         const matchesFilter = expressTaskFilter === 'all'
-            || (expressTaskFilter === 'estimated' && estimated)
-            || (expressTaskFilter === 'unestimated' && !estimated);
+            || (expressTaskFilter === 'ready' && !blocked)
+            || (expressTaskFilter === 'blocked' && blocked);
         const visible = matchesSearch && matchesFilter;
         const block = document.querySelector(`.qe-task-block[data-task-id="${task.id}"]`);
         if (block) block.hidden = !visible;
@@ -490,7 +666,8 @@ function setHierarchyCollapsed(collapsed) {
 function renderTaskBlock(task) {
     const epics = task.epics || [];
     const total = EFFORT_FIELDS.reduce((s, f) => s + effectiveEffort({ ...task, _type: 'task' }, f), 0);
-    const estimateClass = total > 0 ? '' : ' qe-unestimated';
+    const isBlocked = getQuickEstimateReadiness().blocking_tasks.some(item => item.task_id === task.id);
+    const estimateClass = isBlocked ? ' qe-unestimated' : '';
     const epicsHtml = epics.map(e => renderEpicBlock(e, task.id)).join('');
     const taskToggleAttrs = epics.length
         ? `class="qe-toggle qe-estimate-row" data-target="task-${task.id}"`
@@ -502,21 +679,21 @@ function renderTaskBlock(task) {
     return `
     <div class="qe-task-block${estimateClass}" data-task-id="${task.id}" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-secondary);border-radius:6px 6px 0 0;" ${taskToggleAttrs}>
-            <div class="qe-entity-title" style="display:flex;align-items:center;gap:8px;width:300px;flex-shrink:0;overflow:hidden;">
+            <div class="qe-entity-title" style="display:flex;align-items:center;gap:8px;overflow:hidden;">
                 ${epics.length ? '<i data-lucide="chevron-down" style="width:16px;height:16px;color:var(--text-muted);transition:transform .2s;flex-shrink:0;"></i>' : ''}
                 <i data-lucide="clipboard-check" style="width:16px;height:16px;color:var(--accent);flex-shrink:0;" title="Задача"></i>
                 <strong style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(task.title)}</strong>
-                <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">(${epics.length} эпиков)</span>
-                ${renderUnestimatedLabel()}
+                <span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-secondary);white-space:nowrap;">(${epics.length} эпиков)</span>
+                <span class="qe-unestimated-label qe-task-readiness-label" ${isBlocked ? '' : 'hidden'} title="Для завершения оценки устраните блокеры">Требует внимания</span>
             </div>
             ${renderEffortInline(task, 'task', true, taskEffort)}
             <span class="qe-effort-total" style="font-weight:700;font-size:13px;min-width:60px;text-align:right;white-space:nowrap;margin-left:auto;" data-total-task="${task.id}">${total.toFixed(1)} ч/д</span>
-            <button class="btn btn-xs btn-secondary qe-exclude-task-btn" data-task-id="${task.id}" title="Исключить из экспресс-оценки" aria-label="Исключить задачу из экспресс-оценки" style="margin-left:8px;"><i data-lucide="minus-circle" style="width:12px;height:12px;"></i></button>
+            <button class="btn btn-sm square-icon btn-secondary qe-exclude-task-btn" data-task-id="${task.id}" title="Исключить из экспресс-оценки" aria-label="Исключить задачу из экспресс-оценки" style="margin-left:8px;"><i data-lucide="minus-circle"></i></button>
         </div>
         <div id="task-${task.id}" style="padding:8px 0 8px 12px;">
             ${epicsHtml}
             <button class="btn btn-xs btn-secondary qe-add-epic-btn" data-task-id="${task.id}" style="margin-top:8px;">
-                <i data-lucide="plus" style="width:14px;height:14px;"></i> Добавить эпик
+                <i data-lucide="plus"></i> Добавить эпик
             </button>
         </div>
     </div>`;
@@ -542,26 +719,26 @@ function renderEpicBlock(epic, taskId) {
     return `
     <div class="qe-epic-block${estimateClass}" data-epic-id="${epic.id}" data-task-id="${taskId}" draggable="true" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:6px;margin-left:16px;">
         <div class="qe-estimate-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px 6px 0 0;position:relative;">
-            <div class="qe-entity-title" style="display:flex;align-items:center;gap:6px;width:272px;flex-shrink:0;overflow:hidden;">
+            <div class="qe-entity-title" style="display:flex;align-items:center;gap:6px;overflow:hidden;">
                 <i data-lucide="grip-vertical" style="width:14px;height:14px;color:var(--text-muted);cursor:grab;flex-shrink:0;" class="qe-drag-handle" data-drag-type="epic" title="Изменить порядок эпика"></i>
                 ${epicToggle}
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><title>Эпик</title><rect width="16" height="16" rx="2.5" fill="#904EE2"/><g transform="translate(5,4)" fill="#FFF"><path d="M5.92 3.76l-.004-.004c.046-.08.08-.162.08-.256 0-.276-.224-.5-.5-.5H3V.5C3 .224 2.776 0 2.5 0c-.172 0-.315.092-.405.223-.028.04-.051.083-.066.13L.08 4.24l.002.002C.035 4.32 0 4.4 0 4.5c0 .276.224.5.5.5H3v2.5c0 .276.224.5.5.5.18 0 .33-.1.418-.242l.003.002.013-.026c.011-.02.023-.04.031-.062l1.958-3.915z"/></g></svg>
-                <input type="text" class="qe-inline-field-input" data-entity="epic" data-id="${epic.id}" data-field="title" data-original="${escHtml(epic.title)}" value="${escHtml(epic.title)}" style="font-size:13px;font-weight:500;padding:4px 6px;border:1px solid transparent;border-radius:4px;background:transparent;min-width:40px;flex:1;overflow:hidden;text-overflow:ellipsis;" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';">
-                <select class="qe-inline-field-select" data-entity="epic" data-id="${epic.id}" data-field="priority" data-original="${epic.priority || ''}" style="font-size:11px;padding:4px 6px;border-radius:4px;background:${priColor}15;color:${priColor};border:1px solid ${priColor}33;font-weight:600;cursor:pointer;max-width:120px;flex-shrink:0;">
+                <input type="text" class="input ui-control qe-inline-field-input" data-entity="epic" data-id="${epic.id}" data-field="title" data-original="${escHtml(epic.title)}" value="${escHtml(epic.title)}" style="min-width:40px;flex:1;overflow:hidden;text-overflow:ellipsis" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';">
+                <select class="input ui-control qe-inline-field-select" data-entity="epic" data-id="${epic.id}" data-field="priority" data-original="${epic.priority || ''}" style="max-width:120px;flex-shrink:0">
                     <option value="">—</option>${priOptions}
                 </select>
-                <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">(${stories.length})</span>
+                <span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">(${stories.length})</span>
                 ${renderUnestimatedLabel()}
             </div>
             ${renderEffortInline(epic, 'epic', hasStories, hasStories ? epicEffort : null)}
             <span class="qe-effort-total" style="font-weight:600;font-size:13px;min-width:60px;text-align:right;white-space:nowrap;margin-left:auto;" data-total-epic="${epic.id}">${total.toFixed(1)}</span>
             ${renderSaveState('epic', epic.id)}
-            <button class="btn btn-xs btn-danger qe-del-epic-btn" data-epic-id="${epic.id}" title="Удалить" style="margin-left:8px;"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>
+            <button class="btn btn-sm square-icon btn-danger qe-del-epic-btn" data-epic-id="${epic.id}" title="Удалить" style="margin-left:8px;"><i data-lucide="trash-2"></i></button>
         </div>
         <div id="epic-${epic.id}" style="padding:6px 0 6px 12px;">
             ${storiesHtml}
             <button class="btn btn-xs btn-secondary qe-add-story-btn" data-epic-id="${epic.id}" style="margin-top:6px;">
-                <i data-lucide="plus" style="width:12px;height:12px;"></i> Добавить историю
+                <i data-lucide="plus"></i> Добавить историю
             </button>
         </div>
     </div>`;
@@ -574,28 +751,28 @@ function renderEpicEditPanel(epic, taskId) {
     const effortInputs = COMPETENCIES.map(c => {
         const field = EFFORT_FIELD_MAP[c];
         const val = epic?.[field] ?? '';
-        return `<td style="padding:2px 3px;text-align:center;"><input title="${escAttr(c)}" aria-label="${escAttr(c)}" type="number" step="0.5" min="0" class="qe-effort-input" data-field="${field}" data-panel-id="${epic?.id || 'new-epic'}" value="${val}" placeholder="0" style="width:52px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:11px;text-align:center;"></td>`;
+        return `<td style="text-align:center"><input title="${escAttr(c)}" aria-label="${escAttr(c)}" type="number" step="0.5" min="0" class="input ui-control ui-number-cell qe-effort-input" data-field="${field}" data-panel-id="${epic?.id || 'new-epic'}" value="${val}" placeholder="0" style="width:52px;text-align:center"></td>`;
     }).join('');
     const total = EFFORT_FIELDS.reduce((s, f) => s + (parseFloat(epic?.[f]) || 0), 0);
-    const effortCells = hasNoStories ? effortInputs : COMPETENCIES.map(() => '<td style="text-align:center;color:var(--text-muted);font-size:11px;">—</td>').join('');
+    const effortCells = hasNoStories ? effortInputs : COMPETENCIES.map(() => '<td style="text-align:center;color:var(--text-muted)">—</td>').join('');
     return `
-    <table style="width:100%;font-size:12px;border-collapse:collapse;">
+    <table class="ui-table ui-table-editor" style="width:100%">
         <thead>
             <tr>
-                <th style="text-align:left;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;">Название</th>
-                <th style="text-align:left;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;width:130px;">Приоритет</th>
-                ${COMPETENCIES.map(c => `<th title="${escAttr(c)}" style="text-align:center;font-size:10px;padding:2px 3px;color:var(--text-secondary);font-weight:500;">${COMPETENCY_SHORT_LABELS[c] || c}</th>`).join('')}
-                <th style="text-align:center;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;min-width:40px;">Итого</th>
-                <th style="width:30px;"></th>
+                <th style="text-align:left">Название</th>
+                <th style="text-align:left;width:130px">Приоритет</th>
+                ${COMPETENCIES.map(c => `<th title="${escAttr(c)}" style="text-align:center">${COMPETENCY_SHORT_LABELS[c] || c}</th>`).join('')}
+                <th style="text-align:center;min-width:40px">Итого</th>
+                <th style="width:30px"></th>
             </tr>
         </thead>
         <tbody>
         <tr>
-            <td style="padding:2px 4px;flex:2;"><input type="text" class="qe-inline-title" data-entity="epic" data-id="${epic?.id || ''}" value="${escHtml(epic?.title || '')}" placeholder="Название эпика" style="width:100%;padding:4px 8px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;"></td>
-            <td style="padding:2px 4px;flex:0 0 130px;"><select class="qe-inline-priority" data-entity="epic" data-id="${epic?.id || ''}" style="width:100%;padding:4px 8px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;"><option value="">—</option>${priOptions}</select></td>
+            <td style="flex:2"><input type="text" class="input ui-control qe-inline-title" data-entity="epic" data-id="${epic?.id || ''}" value="${escHtml(epic?.title || '')}" placeholder="Название эпика" style="width:100%"></td>
+            <td style="flex:0 0 130px"><select class="input ui-control qe-inline-priority" data-entity="epic" data-id="${epic?.id || ''}" style="width:100%"><option value="">—</option>${priOptions}</select></td>
             ${effortCells}
-            <td style="padding:2px 4px;text-align:center;font-weight:700;font-size:12px;min-width:40px;" data-total-panel="${epic?.id || 'new-epic'}">${total.toFixed(1)}</td>
-            <td style="padding:2px 4px;"><button class="btn btn-xs btn-secondary qe-inline-close" data-entity="epic" data-id="${epic?.id || ''}" title="Закрыть (Esc)">&times;</button></td>
+            <td style="text-align:center;font-weight:700;min-width:40px" data-total-panel="${epic?.id || 'new-epic'}">${total.toFixed(1)}</td>
+            <td ><button class="btn btn-xs btn-secondary qe-inline-close" data-entity="epic" data-id="${epic?.id || ''}" title="Закрыть (Esc)">&times;</button></td>
         </tr>
         </tbody>
     </table>`;
@@ -609,16 +786,16 @@ function renderStoryBlock(story, epicId) {
     return `
     <div class="qe-story-block${estimateClass}" data-story-id="${story.id}" data-epic-id="${epicId}" draggable="true" style="border:1px solid var(--border-color);border-radius:6px;margin-bottom:6px;margin-left:32px;">
         <div class="qe-estimate-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-secondary);border-radius:6px 6px 0 0;overflow:visible;position:relative;">
-            <div class="qe-entity-title" style="display:flex;align-items:center;gap:6px;width:228px;flex-shrink:0;overflow:hidden;">
+            <div class="qe-entity-title" style="display:flex;align-items:center;gap:6px;overflow:hidden;">
                 <i data-lucide="grip-vertical" style="width:14px;height:14px;color:var(--text-muted);cursor:grab;flex-shrink:0;" class="qe-drag-handle" data-drag-type="story" title="Изменить порядок истории"></i>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><title>История</title><rect width="16" height="16" rx="2.5" fill="#63BA3C"/><path d="M10 3H6a1 1 0 00-1 1v7a.5.5 0 00.91.269L7.84 9.04a.5.5 0 01.68 0l1.99 2.229A.5.5 0 0011 11V4a1 1 0 00-1-1z" fill="#FFF"/></svg>
-                <input type="text" class="qe-inline-field-input" data-entity="story" data-id="${story.id}" data-field="title" data-original="${escHtml(story.title)}" value="${escHtml(story.title)}" style="font-size:13px;padding:4px 6px;border:1px solid transparent;border-radius:4px;background:transparent;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';">
+                <input type="text" class="input ui-control qe-inline-field-input" data-entity="story" data-id="${story.id}" data-field="title" data-original="${escHtml(story.title)}" value="${escHtml(story.title)}" style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';">
                 ${renderUnestimatedLabel()}
             </div>
             ${renderEffortInline(story, 'story')}
             <span class="qe-effort-total" style="font-weight:600;font-size:13px;min-width:60px;text-align:right;white-space:nowrap;margin-left:auto;" data-total-story="${story.id}">${total.toFixed(1)}</span>
             ${renderSaveState('story', story.id)}
-            <button class="btn btn-xs btn-danger qe-del-story-btn" data-story-id="${story.id}" title="Удалить" style="margin-left:8px;"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>
+            <button class="btn btn-sm square-icon btn-danger qe-del-story-btn" data-story-id="${story.id}" title="Удалить" style="margin-left:8px;"><i data-lucide="trash-2"></i></button>
         </div>
     </div>`;
 }
@@ -627,25 +804,25 @@ function renderStoryEditPanel(story, epicId) {
     const effortInputs = COMPETENCIES.map(c => {
         const field = EFFORT_FIELD_MAP[c];
         const val = story?.[field] ?? '';
-        return `<td style="padding:2px 3px;text-align:center;"><input title="${escAttr(c)}" aria-label="${escAttr(c)}" type="number" step="0.5" min="0" class="qe-effort-input" data-field="${field}" data-panel-id="${story?.id || 'new-story'}" value="${val}" placeholder="0" style="width:52px;padding:3px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:11px;text-align:center;"></td>`;
+        return `<td style="text-align:center"><input title="${escAttr(c)}" aria-label="${escAttr(c)}" type="number" step="0.5" min="0" class="input ui-control ui-number-cell qe-effort-input" data-field="${field}" data-panel-id="${story?.id || 'new-story'}" value="${val}" placeholder="0" style="width:52px;text-align:center"></td>`;
     }).join('');
     const total = EFFORT_FIELDS.reduce((s, f) => s + (parseFloat(story?.[f]) || 0), 0);
     return `
-    <table style="width:100%;font-size:12px;border-collapse:collapse;">
+    <table class="ui-table ui-table-editor" style="width:100%">
         <thead>
             <tr>
-                <th style="text-align:left;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;">Название</th>
-                ${COMPETENCIES.map(c => `<th title="${escAttr(c)}" style="text-align:center;font-size:10px;padding:2px 3px;color:var(--text-secondary);font-weight:500;">${COMPETENCY_SHORT_LABELS[c] || c}</th>`).join('')}
-                <th style="text-align:center;font-size:10px;padding:2px 4px;color:var(--text-secondary);font-weight:500;min-width:40px;">Итого</th>
-                <th style="width:30px;"></th>
+                <th style="text-align:left">Название</th>
+                ${COMPETENCIES.map(c => `<th title="${escAttr(c)}" style="text-align:center">${COMPETENCY_SHORT_LABELS[c] || c}</th>`).join('')}
+                <th style="text-align:center;min-width:40px">Итого</th>
+                <th style="width:30px"></th>
             </tr>
         </thead>
         <tbody>
         <tr>
-            <td style="padding:2px 4px;flex:2;"><input type="text" class="qe-inline-title" data-entity="story" data-id="${story?.id || ''}" value="${escHtml(story?.title || '')}" placeholder="Название истории" style="width:100%;padding:4px 8px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;"></td>
+            <td style="flex:2"><input type="text" class="input ui-control qe-inline-title" data-entity="story" data-id="${story?.id || ''}" value="${escHtml(story?.title || '')}" placeholder="Название истории" style="width:100%"></td>
             ${effortInputs}
-            <td style="padding:2px 4px;text-align:center;font-weight:700;font-size:12px;min-width:40px;" data-total-panel="${story?.id || 'new-story'}">${total.toFixed(1)}</td>
-            <td style="padding:2px 4px;"><button class="btn btn-xs btn-secondary qe-inline-close" data-entity="story" data-id="${story?.id || ''}" title="Закрыть (Esc)">&times;</button></td>
+            <td style="text-align:center;font-weight:700;min-width:40px" data-total-panel="${story?.id || 'new-story'}">${total.toFixed(1)}</td>
+            <td ><button class="btn btn-xs btn-secondary qe-inline-close" data-entity="story" data-id="${story?.id || ''}" title="Закрыть (Esc)">&times;</button></td>
         </tr>
         </tbody>
     </table>`;
@@ -662,7 +839,7 @@ function renderSaveState(entity, id) {
 }
 
 function renderEffortInline(item, entityType, readonly = false, computedValues = null) {
-    return `<div class="qe-effort-grid" style="display:grid;grid-template-columns:repeat(8, 48px);gap:6px;flex-shrink:0;">` +
+    return `<div class="qe-effort-grid">` +
         COMPETENCIES.map(c => {
             const field = EFFORT_FIELD_MAP[c];
             const rawVal = item[field];
@@ -677,7 +854,7 @@ function renderEffortInline(item, entityType, readonly = false, computedValues =
             }
             return `<div style="display:flex;flex-direction:column;align-items:center;">
                 <span class="qe-competency-label" title="${escAttr(c)}">${shortLabel}</span>
-                <input title="${escAttr(c)}" aria-label="${escAttr(c)}" type="number" step="0.5" min="0" class="qe-inline-effort" data-entity="${entityType}" data-id="${item.id}" data-field="${field}" data-original="${val ?? ''}" value="${val ?? ''}" placeholder="0" style="width:48px;padding:5px 4px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;text-align:center;">
+                <input title="${escAttr(c)}" aria-label="${escAttr(c)}" type="number" step="0.5" min="0" class="input ui-control ui-number-cell qe-inline-effort" data-entity="${entityType}" data-id="${item.id}" data-field="${field}" data-original="${val ?? ''}" value="${val ?? ''}" placeholder="0" style="width:48px;text-align:center">
             </div>`;
         }).join('') +
     `</div>`;
@@ -687,7 +864,7 @@ function renderEffortChips(item) {
     return EFFORT_FIELDS.filter(f => (parseFloat(item[f]) || 0) > 0).map(f => {
         const val = parseFloat(item[f]) || 0;
         const label = FIELD_TO_LABEL[f];
-        return `<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);white-space:nowrap;" title="${label}: ${val} ч/д">${label.substring(0, 3)} ${val}</span>`;
+        return `<span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);padding:1px 5px;border-radius:3px;background:var(--bg-tertiary);color:var(--text-secondary);white-space:nowrap;" title="${label}: ${val} ч/д">${label.substring(0, 3)} ${val}</span>`;
     }).join('');
 }
 
@@ -697,9 +874,9 @@ function showImportModal() {
     const html = `
     <div class="modal-overlay" id="qe-modal">
         <div class="app-modal app-modal--medium" role="dialog" aria-modal="true" aria-labelledby="qe-import-title">
-            <div class="app-modal__header"><div><h3 class="app-modal__title" id="qe-import-title">Добавить задачи из бэклога</h3><p class="app-modal__subtitle">Задачи будут переведены в статус «ЭКСПРЕСС-ОЦЕНКА».</p></div><button type="button" class="modal-close" data-modal-close aria-label="Закрыть">×</button></div>
+            <div class="app-modal__header"><div><h3 class="app-modal__title" id="qe-import-title">Добавить задачи из бэклога</h3><p class="app-modal__subtitle">Доступны только задачи на этапах подготовки требований. После добавления они перейдут в статус «ЭКСПРЕСС-ОЦЕНКА».</p></div><button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" data-modal-close aria-label="Закрыть">×</button></div>
             <div class="app-modal__body">
-            <input type="text" id="import-search" placeholder="Поиск по названию..." style="width:100%;padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:13px;margin-bottom:12px;">
+            <input class="input ui-control" type="text" id="import-search" placeholder="Поиск по названию..." style="width:100%;margin-bottom:12px">
             <div id="import-results" style="min-height:60px;color:var(--text-muted);font-size:13px;overflow-y:auto;max-height:50vh;">Введите название для поиска...</div>
             <div id="import-footer" style="display:none;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color);">
                 <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
@@ -756,7 +933,7 @@ async function searchBacklogTasks(q, append = false) {
 
         if (!append) resultsEl.innerHTML = '';
         if (tasks.length === 0 && !append) {
-            resultsEl.innerHTML = '<span style="color:var(--text-muted);">Задач не найдено</span>';
+            resultsEl.innerHTML = '<span style="color:var(--text-muted);">Нет задач, которые можно передать на экспресс-оценку</span>';
             document.getElementById('import-footer').style.display = 'none';
             return;
         }
@@ -772,7 +949,7 @@ async function searchBacklogTasks(q, append = false) {
                 <input type="checkbox" class="import-task-check" data-task-id="${t.id}" data-task-version="${t.version ?? 0}" style="flex-shrink:0;cursor:pointer;">
                 <div style="min-width:0;flex:1;">
                     <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${formatTaskPublicId(t)} ${escHtml(t.title)}</div>
-                    <div style="font-size:11px;color:var(--text-secondary);">${escHtml(t.status_name || '')} &middot; ${escHtml(t.priority_name || '')}</div>
+                    <div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-secondary);">${escHtml(t.status_name || '')} &middot; ${escHtml(t.priority_name || '')}</div>
                 </div>
                 <button class="btn btn-xs btn-secondary import-task-btn" data-task-id="${t.id}" data-task-version="${t.version ?? 0}" style="flex-shrink:0;">Добавить</button>
             `;
@@ -1324,6 +1501,7 @@ async function handleInlineEffortSave(el) {
     const value = el.value === '' ? null : parseFloat(el.value);
     const original = el.dataset.original;
     if (String(value) === String(original || '')) return;
+    const pendingKey = `${entity}-${id}-${field}`;
 
     const data = { [field]: value };
     if (entity === 'epic') {
@@ -1337,7 +1515,9 @@ async function handleInlineEffortSave(el) {
     updateParentDisplays(entity, id);
     applyTaskFilters();
     updateChartData();
+    pendingEstimateSaves.add(pendingKey);
     setSaveState(entity, id, 'saving');
+    syncReadinessFromTasks();
 
     try {
         if (entity === 'epic') {
@@ -1361,6 +1541,9 @@ async function handleInlineEffortSave(el) {
         updateParentDisplays(entity, id);
         applyTaskFilters();
         updateChartData();
+    } finally {
+        pendingEstimateSaves.delete(pendingKey);
+        syncReadinessFromTasks();
     }
 }
 
@@ -1561,11 +1744,54 @@ function calcSummaryByStatusPriority() {
 
 // ==================== Complete Estimate ====================
 
+function showIncompleteEstimateModal(readiness) {
+    const blockerCards = readiness.blocking_tasks.map(task => `
+        <article class="qe-blocker-task" data-task-id="${task.task_id}">
+            <div class="qe-blocker-task-head">
+                <strong>${escHtml(task.public_id || `#${task.task_id}`)} · ${escHtml(task.title)}</strong>
+                <span>${task.blockers.length}</span>
+            </div>
+            <ul>${task.blockers.map(blocker => `<li>${escHtml(blocker.message)}</li>`).join('')}</ul>
+        </article>`).join('');
+    const html = `
+    <div class="modal-overlay qe-complete-overlay" id="qe-modal">
+        <div class="qe-complete-modal app-modal app-modal--medium" role="dialog" aria-modal="true" aria-labelledby="qe-complete-title">
+            <div class="app-modal__header"><div class="qe-complete-heading">
+                <div class="qe-complete-icon is-warning"><i data-lucide="alert-triangle"></i></div>
+                <div><h3 id="qe-complete-title">Экспресс-оценка пока не готова</h3><p>Переход к принятию решения заблокирован, пока не устранены все замечания.</p></div>
+            </div></div>
+            <div class="app-modal__body">
+                <div class="qe-complete-warning"><i data-lucide="shield-alert"></i><span><strong>${formatRussianCount(readiness.blocking_tasks.length, ['задача', 'задачи', 'задач'])} ${readiness.blocking_tasks.length === 1 ? 'требует' : 'требуют'} доработки</strong><br>${formatRussianCount(readiness.total_blockers, ['элемент', 'элемента', 'элементов'])} без корректной оценки.</span></div>
+                <div class="qe-readiness-rule"><strong>Критерий готовности</strong><span>В каждой задаче есть хотя бы один эпик. Каждый конечный эпик или каждая его история содержит минимум одну положительную оценку трудозатрат.</span></div>
+                <div class="qe-blocker-list" aria-label="Блокеры завершения">${blockerCards}</div>
+            </div>
+            <div class="qe-complete-actions app-modal__footer">
+                <button class="btn btn-secondary btn-sm" id="qe-complete-cancel" data-modal-close>Закрыть</button>
+                <button class="btn btn-primary btn-sm" id="qe-complete-review"><i data-lucide="list-filter"></i> Показать задачи</button>
+            </div>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    if (window.lucide) window.lucide.createIcons();
+    const overlay = document.getElementById('qe-modal');
+    overlay.addEventListener('click', event => { if (event.target === overlay) overlay.remove(); });
+    document.getElementById('qe-complete-cancel').addEventListener('click', () => overlay.remove());
+    document.getElementById('qe-complete-review').addEventListener('click', reviewBlockingTasks);
+}
+
 function showCompleteEstimateModal() {
     const tasks = expressData?.tasks || [];
     if (tasks.length === 0) return;
+    if (pendingEstimateSaves.size > 0) {
+        window.toast('Дождитесь сохранения текущих оценок', 'warning');
+        return;
+    }
+    const readiness = getQuickEstimateReadiness();
+    if (!readiness.ready) {
+        showIncompleteEstimateModal(readiness);
+        return;
+    }
     const demand = calcTotalDemand();
-    const unestimatedCount = tasks.filter(task => EFFORT_FIELDS.every(field => effectiveEffort({ ...task, _type: 'task' }, field) <= 0)).length;
     const rows = COMPETENCIES.map(competency => {
         const resource = teamResources.find(item => item.competency === competency);
         const capacity = resource?.capacity || 0;
@@ -1601,7 +1827,7 @@ function showCompleteEstimateModal() {
                 <div><h3 id="qe-complete-title">Завершить экспресс-оценку?</h3><p>Все ${tasks.length} задач перейдут в статус «ПРИНЯТИЕ РЕШЕНИЯ».</p></div>
             </div></div>
             <div class="app-modal__body">
-            ${unestimatedCount > 0 ? `<div class="qe-complete-warning"><i data-lucide="alert-triangle"></i> Без оценки: ${unestimatedCount} задач. Они также будут переведены на следующий этап.</div>` : ''}
+            <div class="qe-complete-ready"><i data-lucide="badge-check"></i> Все критерии готовности выполнены. После подтверждения вернуться к редактированию оценки можно будет только через отдельное решение по задаче.</div>
             <div class="qe-complete-kpis">
                 <div><span>Задач</span><strong>${tasks.length}</strong></div>
                 <div><span>Demand</span><strong>${totalDemand.toFixed(1)} <small>чел./дн.</small></strong></div>
@@ -1610,7 +1836,7 @@ function showCompleteEstimateModal() {
             <h4>Ключевые отклонения</h4>
             <ul class="qe-deviation-list">${deviationItems || '<li class="balanced">Потребность сбалансирована с Capacity по всем компетенциям.</li>'}</ul>
             <details class="qe-complete-details"><summary>Показать сводку по компетенциям</summary>
-                <div class="qe-complete-table-wrap"><table><thead><tr><th>Компетенция</th><th>Demand</th><th>Capacity</th><th>Утилизация</th><th>Отклонение</th></tr></thead><tbody>${tableRows}</tbody></table></div>
+                <div class="qe-complete-table-wrap"><table class="ui-table ui-table-data"><thead><tr><th>Компетенция</th><th>Demand</th><th>Capacity</th><th>Утилизация</th><th>Отклонение</th></tr></thead><tbody>${tableRows}</tbody></table></div>
             </details>
             </div>
             <div class="qe-complete-actions app-modal__footer">
@@ -1627,6 +1853,52 @@ function showCompleteEstimateModal() {
     document.getElementById('qe-complete-confirm').addEventListener('click', completeEstimate);
 }
 
+function showEstimateHandoffModal(taskCount, detail) {
+    const currentUser = expressCurrentApp?.store?.get('currentUser');
+    const permissions = currentUser?.permissions || {};
+    const canOpenPip = permissions.pip_decision === 'available'
+        || (permissions.reports && permissions.reports !== 'none');
+    const destination = canOpenPip
+        ? `/reports/detail?r=pip&source=express-estimate&transferred=${taskCount}`
+        : '/team-backlog';
+    const actionLabel = canOpenPip ? 'Перейти к PI-планированию' : 'Вернуться в бэклог команды';
+    const actionIcon = canOpenPip ? 'arrow-right' : 'list-tree';
+    const accessNote = canOpenPip
+        ? 'Очередь PI уже обновлена. Там можно проверить контекст и принять решение по каждой задаче.'
+        : 'Задачи переданы в очередь PI. Решение зафиксирует лидер трайба или проектный офис.';
+    const html = `
+    <div class="modal-overlay qe-complete-overlay" id="qe-handoff-modal">
+        <div class="qe-complete-modal app-modal app-modal--medium qe-handoff-modal" role="dialog" aria-modal="true" aria-labelledby="qe-handoff-title">
+            <div class="app-modal__header"><div class="qe-complete-heading">
+                <div class="qe-complete-icon is-success"><i data-lucide="route"></i></div>
+                <div><h3 id="qe-handoff-title">Экспресс-оценка завершена</h3><p>${escHtml(detail || `${formatRussianCount(taskCount, ['задача', 'задачи', 'задач'])} передано на принятие решения.`)}</p></div>
+            </div></div>
+            <div class="app-modal__body">
+                <ol class="qe-handoff-steps" aria-label="Этапы движения задач">
+                    <li class="is-done"><span><i data-lucide="check"></i></span><div><strong>Бэклог</strong><small>Задачи отобраны</small></div></li>
+                    <li class="is-done"><span><i data-lucide="check"></i></span><div><strong>Экспресс-оценка</strong><small>Объём подтверждён</small></div></li>
+                    <li class="is-current" aria-current="step"><span>3</span><div><strong>PI-планирование</strong><small>Ожидается решение</small></div></li>
+                </ol>
+                <div class="qe-handoff-next"><i data-lucide="info"></i><span>${escHtml(accessNote)}</span></div>
+            </div>
+            <div class="qe-complete-actions app-modal__footer">
+                <button class="btn btn-secondary btn-sm" id="qe-handoff-stay" data-modal-close>Остаться здесь</button>
+                <button class="btn btn-primary btn-sm" id="qe-handoff-next">${escHtml(actionLabel)}<i data-lucide="${actionIcon}"></i></button>
+            </div>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    window.lucide?.createIcons();
+    const overlay = document.getElementById('qe-handoff-modal');
+    const close = () => overlay?.remove();
+    document.getElementById('qe-handoff-stay')?.addEventListener('click', close);
+    overlay?.addEventListener('click', event => { if (event.target === overlay) close(); });
+    document.getElementById('qe-handoff-next')?.addEventListener('click', () => {
+        close();
+        expressCurrentApp.router.navigate(destination);
+    });
+}
+
 async function completeEstimate() {
     const button = document.getElementById('qe-complete-confirm');
     if (!button || !expressCurrentApp) return;
@@ -1634,14 +1906,22 @@ async function completeEstimate() {
     button.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> Завершаем…';
     if (window.lucide) window.lucide.createIcons();
     try {
+        const taskCount = expressData?.tasks?.length || 0;
         const versions = Object.fromEntries(
             (expressData?.tasks || []).map(task => [task.id, Number(task.version || 0)])
         );
         const result = await expressCurrentApp.api.put('/quick-estimate/complete', { versions });
         document.getElementById('qe-modal')?.remove();
-        window.toast(result?.detail || 'Экспресс-оценка завершена', 'success');
         await loadData(expressCurrentApp);
+        window.toast(result?.detail || 'Экспресс-оценка завершена', 'success');
+        showEstimateHandoffModal(taskCount, result?.detail);
     } catch (error) {
+        if (error?.code === 'quick_estimate_incomplete') {
+            document.getElementById('qe-modal')?.remove();
+            await loadData(expressCurrentApp);
+            showCompleteEstimateModal();
+            return;
+        }
         button.disabled = false;
         button.innerHTML = '<i data-lucide="check"></i> Подтвердить завершение';
         if (window.lucide) window.lucide.createIcons();

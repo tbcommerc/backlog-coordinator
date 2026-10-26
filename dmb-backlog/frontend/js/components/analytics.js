@@ -1,11 +1,15 @@
+import { button as uiButton, control as uiControl, field as uiField, fieldFrame as uiFieldFrame, pageHeader as uiPageHeader } from '../ui/primitives.js';
+import { renderViewState } from './viewState.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
+import { chartPalette, chartTheme, applyChartTheme, loadChartFont } from '../ui/charts.js';
 
 const charts = {};
+let chartThemeObserver = null;
 let ltData = null;
 let poData = null;
-const LT_TYPE_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#8b5cf6', '#0ea5e9', '#f43f5e', '#94a3b8', '#14b8a6', '#f97316', '#ec4899'];
-const LT_MAP_COLORS = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#6366f1', '#14b8a6', '#f97316', '#ec4899'];
+let LT_TYPE_COLORS = chartPalette();
+let LT_MAP_COLORS = chartPalette();
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const state = {
   effort: { period: '', team: '', sortCol: 'share', sortDir: -1, rows: [], arcs: [] }, profile: { period: '', channel: '' },
@@ -25,7 +29,7 @@ const by = (items, key) => items.reduce((r, x) => ((r[key(x)] ||= []).push(x), r
 const taskName = t => t.public_id || formatTaskPublicId(t) || `#${t.id}`;
 const allTeams = t => uniq([t.team_name, ...(t.involved_team_names || [])]);
 const inPeriod = (t, id) => !id || (t.period_ids || []).includes(id);
-const chartTextColor = () => document.documentElement.getAttribute('data-theme') === 'dark' ? '#e2e8f0' : '#334155';
+const chartTextColor = () => chartTheme().textStyle.color;
 const median = values => {
   const sorted = values.slice().sort((a, b) => a - b);
   if (!sorted.length) return 0;
@@ -34,6 +38,8 @@ const median = values => {
 };
 
 function disposeCharts() {
+  chartThemeObserver?.disconnect();
+  chartThemeObserver = null;
   Object.values(charts).forEach(c => { try { c.dispose(); } catch (_) {} });
   Object.keys(charts).forEach(k => delete charts[k]);
 }
@@ -43,7 +49,8 @@ function makeChart(id, option, onClick) {
   if (!el || !window.echarts) return;
   charts[id]?.dispose();
   const chart = window.echarts.init(el);
-  chart.setOption({ backgroundColor: 'transparent', textStyle: { fontFamily: 'Inter, sans-serif' }, ...option });
+  const theme = chartTheme();
+  chart.setOption({ ...theme, ...option, textStyle: { ...theme.textStyle, ...option.textStyle }, tooltip: { ...theme.tooltip, ...option.tooltip }, legend: { ...theme.legend, ...option.legend } });
   if (onClick) chart.on('click', onClick);
   charts[id] = chart;
 }
@@ -96,10 +103,10 @@ function taskRows(tasks, empty = 'Нет задач', { showProject = true } = {
   if (!tasks.length) return `<div class="an-empty">${escapeHtml(empty)}</div>`;
   const projectHead = showProject ? '<span>Проект</span>' : '';
   const projectCell = task => showProject ? `<span>${escapeHtml(task.project_name || 'Без проекта')}</span>` : '';
-  return `<div class="an-task-list ${showProject ? 'has-project' : ''}" role="table" aria-label="Задачи">
-    <div class="an-task-list-head" role="row"><span>ID</span><span>Задача</span>${projectHead}<span>Команда</span><span>Статус</span><span>Срок</span><span>Трудозатраты</span></div>
+  return `<div class="an-task-list ui-data-grid ${showProject ? 'has-project' : ''}" role="table" aria-label="Задачи">
+    <div class="an-task-list-head ui-data-grid-head" role="row"><span>ID</span><span>Задача</span>${projectHead}<span>Команда</span><span>Статус</span><span>Срок</span><span>Трудозатраты</span></div>
     ${tasks.map(t => `
-    <button type="button" class="an-task" data-task-id="${t.id}" role="row" aria-label="Открыть задачу ${escapeHtml(taskName(t))}: ${escapeHtml(t.title)}">
+    <button type="button" class="ui-surface-action an-task" data-task-id="${t.id}" role="row" aria-label="Открыть задачу ${escapeHtml(taskName(t))}: ${escapeHtml(t.title)}">
       <span class="an-task-id">${escapeHtml(taskName(t))}</span>
       <span class="an-task-title">${escapeHtml(t.title)}</span>
       ${projectCell(t)}
@@ -121,7 +128,7 @@ function projectTaskRows(tasks, empty = 'Нет задач') {
     const [project, projectTasks] = groups[0];
     return `<div class="an-project-single"><span class="an-tree-static-icon" aria-hidden="true"></span><span class="an-tree-entity"><small>Проект</small><strong>${escapeHtml(project)}</strong></span><span class="an-tree-count">${projectTasks.length} ${effortPlural(projectTasks.length)}</span></div><div class="an-tree-children an-tree-children--single">${taskRows(projectTasks, empty, { showProject: false })}</div>`;
   }
-  return `<div class="an-project-group-controls"><div class="an-tree-actions"><button type="button" data-project-groups-action="expand">${treeActionIcon('down')}<span>Раскрыть все</span></button><button type="button" data-project-groups-action="collapse">${treeActionIcon('up')}<span>Свернуть все</span></button></div><span>${groups.length} проектов · ${tasks.length} ${effortPlural(tasks.length)}</span></div><div class="an-project-groups">${groups.map(([project, projectTasks], index) => `<details ${index === 0 ? 'open' : ''}><summary><span class="an-tree-toggle-icon" aria-hidden="true"></span><span class="an-tree-entity"><small>Проект</small><strong>${escapeHtml(project)}</strong></span><span class="an-tree-count">${projectTasks.length} ${effortPlural(projectTasks.length)}</span></summary><div class="an-tree-children">${taskRows(projectTasks, empty, { showProject: false })}</div></details>`).join('')}</div>`;
+  return `<div class="an-project-group-controls"><div class="an-tree-actions"><button class="btn btn-secondary btn-sm ui-btn" type="button" data-project-groups-action="expand">${treeActionIcon('down')}<span>Раскрыть все</span></button><button class="btn btn-secondary btn-sm ui-btn" type="button" data-project-groups-action="collapse">${treeActionIcon('up')}<span>Свернуть все</span></button></div><span>${groups.length} проектов · ${tasks.length} ${effortPlural(tasks.length)}</span></div><div class="an-project-groups">${groups.map(([project, projectTasks], index) => `<details ${index === 0 ? 'open' : ''}><summary><span class="an-tree-toggle-icon" aria-hidden="true"></span><span class="an-tree-entity"><small>Проект</small><strong>${escapeHtml(project)}</strong></span><span class="an-tree-count">${projectTasks.length} ${effortPlural(projectTasks.length)}</span></summary><div class="an-tree-children">${taskRows(projectTasks, empty, { showProject: false })}</div></details>`).join('')}</div>`;
 }
 
 function bindTasks(root = document) {
@@ -154,7 +161,7 @@ function showDetail(id, title, tasks, options = '') {
   if (!el) return;
   clearDetail(id);
   const trail = breadcrumbs.length ? `<div class="an-detail-trail" aria-label="Путь детализации">${breadcrumbs.map(item => `<span>${escapeHtml(item)}</span>`).join('<i aria-hidden="true">›</i>')}</div>` : '';
-  el.innerHTML = `<div class="an-detail-head"><div>${trail}<strong tabindex="-1">${escapeHtml(title)}</strong>${subtitle ? `<small>${escapeHtml(subtitle)}</small>` : ''}</div><button type="button" class="an-detail-close" aria-label="Закрыть детализацию">×</button></div>${projectTaskRows(tasks)}`;
+  el.innerHTML = `<div class="an-detail-head"><div>${trail}<strong tabindex="-1">${escapeHtml(title)}</strong>${subtitle ? `<small>${escapeHtml(subtitle)}</small>` : ''}</div><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn an-detail-close" aria-label="Закрыть детализацию">×</button></div>${projectTaskRows(tasks)}`;
   el.classList.add('is-open');
   el.__detailSource = source;
   el.__detailOnClose = onClose;
@@ -219,65 +226,70 @@ function card(id, index, title, description, controls, body, extraClass = '') {
   return `<section class="an-card an-report ${extraClass}" id="${id}" data-report-index="${reportIndex(index)}">${reportHeader(index, title, description, controls)}<div class="an-report-body">${body}</div></section>`;
 }
 
-function control(label, id, content, extraClass = '') { return `<label class="an-control ${extraClass}"><span>${label}</span><select id="${id}">${content}</select></label>`; }
+function control(label, id, options = [], extraClass = '') { return uiField({ id, label, kind: 'select', options: options || [], className: `an-control ${extraClass}` }); }
+
+function analyticsHeader(type) {
+  const content = type === 'tribe' ? ['Аналитика ЛТ', 'Единый обзор потока, взаимодействий, проектов и экономики'] : type === 'it' ? ['Аналитика для ИТ', 'Раздел в разработке'] : ['Аналитика PO/PL', 'Полнота данных, логические конфликты и однородность ведения бэклога'];
+  return uiPageHeader({ title: content[0], description: content[1] });
+}
 
 function projectSearchControl() {
-  return `<label class="an-control p360-project-control"><span>Проект</span><div class="p360-project-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="project-search" type="search" list="project-options" autocomplete="off" placeholder="Найти проект" aria-label="Найти и выбрать проект"><datalist id="project-options"></datalist></div></label>`;
+  return uiFieldFrame({ id: 'project-search', label: 'Проект', className: 'an-control p360-project-control', controlMarkup: `<div class="p360-project-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>${uiControl({ id: 'project-search', type: 'search', attrs: { list: 'project-options', autocomplete: 'off', placeholder: 'Найти проект', 'aria-label': 'Найти и выбрать проект' } })}<datalist id="project-options"></datalist></div>` });
 }
 
 function analyticsNavigation() {
-  return `<nav class="an-report-nav" aria-label="Навигация по отчётам">${LT_REPORTS.map(([id, label], index) => `<button type="button" data-analytics-target="${id}"><span>${reportIndex(index + 1)}</span>${label}</button>`).join('')}</nav>`;
+  return `<nav class="an-report-nav" aria-label="Навигация по отчётам">${LT_REPORTS.map(([id, label], index) => `${uiButton({ label, variant: 'ghost', size: 'small', iconMarkup: `<span class="an-nav-index" aria-hidden="true">${reportIndex(index + 1)}</span>`, attrs: { 'data-analytics-target': id, 'aria-controls': id } })}`).join('')}</nav>`;
 }
 
 function originalEffortTemplate() {
-  const controls = `<div class="an-control"><span>Команда</span><div class="dd" id="effortTeamDd"><button class="dd-btn" id="effortTeamBtn" type="button" aria-haspopup="listbox" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg><span class="dd-label" id="effortTeamName">Весь трайб</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button><div class="dd-panel" id="effortTeamPanel" role="listbox"></div></div></div>${control('Период', 'effort-period', '')}`;
+  const controls = control('Команда', 'effort-team') + control('Период', 'effort-period');
   return `<section class="effort-report rep-card an-card an-report" id="an-effort" data-report-index="01">
     ${reportHeader(1, 'Трудозатраты по типам задач', 'Распределение оценённых трудозатрат по типам задач.', controls, '<span class="rep-sub" id="repSub">—</span>')}
     <div class="rep-body an-report-body"><div><div class="donut-wrap"><svg class="donut" viewBox="0 0 200 200"><circle class="donut-track" cx="100" cy="100" r="78"/><g id="effortSegGroup" transform="rotate(-90 100 100)"></g></svg><div class="donut-center"><div class="dc-num" id="dcNum">0</div><div class="dc-lab">чел.-дней</div><div class="dc-sub" id="dcSub">0 задач</div></div></div><div class="donut-cap">Распределение оценённых трудозатрат по типам задач</div></div>
-      <div class="table-wrap an-table-scroll"><table class="rep-table an-table an-table--standard"><colgroup><col style="width:34%"><col style="width:12%"><col style="width:15%"><col style="width:39%"></colgroup><thead><tr><th class="sortable" data-col="name"><span class="th-in">Тип задачи <span class="arr">↕</span></span></th><th class="sortable" data-col="tasks"><span class="th-in">Задач <span class="arr">↕</span></span></th><th class="sortable" data-col="days"><span class="th-in">Чел.-дни <span class="arr">↕</span></span></th><th class="sortable sorted" data-col="share"><span class="th-in">Доля <span class="arr">↓</span></span></th></tr></thead><tbody id="repTbody"></tbody><tfoot><tr><td>Итого</td><td id="tTasks">0</td><td id="tDays">0</td><td>100%</td></tr></tfoot></table></div>
+      <div class="table-wrap an-table-scroll"><table class="ui-table ui-table-data rep-table an-table an-table--standard"><colgroup><col style="width:34%"><col style="width:12%"><col style="width:15%"><col style="width:39%"></colgroup><thead><tr><th class="sortable" data-col="name"><span class="th-in">Тип задачи <span class="arr">↕</span></span></th><th class="sortable" data-col="tasks"><span class="th-in">Задач <span class="arr">↕</span></span></th><th class="sortable" data-col="days"><span class="th-in">Чел.-дни <span class="arr">↕</span></span></th><th class="sortable sorted" data-col="share"><span class="th-in">Доля <span class="arr">↓</span></span></th></tr></thead><tbody id="repTbody"></tbody><tfoot><tr><td>Итого</td><td id="tTasks">0</td><td id="tDays">0</td><td>100%</td></tr></tfoot></table></div>
     </div><div id="effort-detail" class="an-detail an-report-detail"></div>
   </section>`;
 }
 
 function originalDependencyTemplate() {
-  const filters = control('Период', 'dep-period', '') + control('Тип задачи', 'dep-type', '') + control('Режим', 'dep-mode', '<option value="directed">Направленный</option><option value="undirected">Без направления</option>') + control('Порог связей', 'dep-threshold', '<option>1</option><option>3</option><option>5</option><option>10</option>');
+  const filters = control('Период', 'dep-period', '') + control('Тип задачи', 'dep-type', '') + control('Режим', 'dep-mode', [{ value: 'directed', label: 'Направленный' }, { value: 'undirected', label: 'Без направления' }]) + control('Порог связей', 'dep-threshold', [1, 3, 5, 10].map(value => ({ value, label: value })));
   return `<section class="skp-card an-card an-report" id="an-dep" data-report-index="03">${reportHeader(3, 'Карта зависимостей', 'Основная команда вовлекает команды-партнёры. Толщина ребра и число на нём — количество совместных задач.', filters)}
-    <div class="an-report-body"><div class="dep-layout"><div class="dep-chart-wrap"><div id="dep-chart" class="skp-chart skp-chart--map"></div></div><div class="dep-side-wrap an-table-scroll"><table class="dep-table an-table an-table--compact"><thead><tr><th>Команда</th><th class="dep-bar-cell">Связи</th><th class="dep-num">Команда<br>привлекает</th><th class="dep-num">Привлекают<br>команду</th></tr></thead><tbody id="dep-teams-body"></tbody></table></div></div><div id="dep-detail" class="an-detail dep-lower-detail"></div></div>
+    <div class="an-report-body"><div class="dep-layout"><div class="dep-chart-wrap"><div id="dep-chart" class="skp-chart skp-chart--map"></div></div><div class="dep-side-wrap an-table-scroll"><table class="ui-table ui-table-data dep-table an-table an-table--compact"><thead><tr><th>Команда</th><th class="dep-bar-cell">Связи</th><th class="dep-num">Команда<br>привлекает</th><th class="dep-num">Привлекают<br>команду</th></tr></thead><tbody id="dep-teams-body"></tbody></table></div></div><div id="dep-detail" class="an-detail dep-lower-detail"></div></div>
   </section>`;
 }
 
 function ltTemplate() {
   return `<div class="an-page animate-fade-in is-loading">
-    <div class="page-header"><h1>Аналитика ЛТ</h1><p>Единый обзор потока, взаимодействий, проектов и экономики</p></div>
+    <div class="page-header">${analyticsHeader('tribe')}</div>
     ${analyticsNavigation()}
-    <div class="an-loading-state" role="status"><span aria-hidden="true"></span>Загружаем данные отчётов…</div>
+    <div class="an-loading-state">${renderViewState({ kind: 'loading', title: 'Загружаем данные отчётов…' })}</div>
     ${originalEffortTemplate()}
     ${card('an-profile', 2, 'Профиль команд', 'Матрица специализации команд по типам задач.',
       control('Период', 'profile-period', '') + control('Канал', 'profile-channel', ''),
       '<div id="profile-matrix"></div><div id="profile-detail" class="an-detail"></div>')}
     ${originalDependencyTemplate()}
     ${card('an-sankey', 4, 'Поток задач', 'Подразделение → команда → тип задачи; объём в задачах или человеко-днях.',
-      control('Период', 'sankey-period', '') + control('Канал', 'sankey-channel', '') + control('Мера', 'sankey-mode', '<option value="tasks">Задачи</option><option value="days">Человеко-дни</option>') + '<button class="an-filter-button" id="sankey-swap" type="button">Команда ↔ Тип задачи</button>',
+      control('Период', 'sankey-period', '') + control('Канал', 'sankey-channel', '') + control('Мера', 'sankey-mode', [{ value: 'tasks', label: 'Задачи' }, { value: 'days', label: 'Человеко-дни' }]) + uiButton({ label: 'Команда ↔ Тип задачи', className: 'an-filter-button', attrs: { id: 'sankey-swap' } }),
       '<div id="sankey-chart" class="an-chart an-chart-xl"></div><div id="sankey-detail" class="an-detail"></div>') }
     ${card('an-quarters', 5, 'Проекты по кварталам', 'Активность проектов в доступных периодах; фильтры по основной или привлечённой команде.', '',
       '<div class="an-filter-block"><div class="an-filter-band"><span>Команды</span><div id="quarter-teams" class="an-chips"></div></div><div class="an-filter-band"><span>Типы задач</span><div id="quarter-types" class="an-chips"></div></div></div><div id="quarter-grid"></div><div id="quarter-detail" class="an-detail"></div>')}
     ${card('an-project360', 6, 'Проект 360°', 'Полная картина проекта: сроки, ответственность, структура работ, экономика и задачи.',
       projectSearchControl(), '<div id="project-content"></div><div id="project-detail" class="an-detail"></div>')}
-    <section class="an-card an-report an-roi-card" id="an-roi" data-report-index="07">${reportHeader(7, 'Трудозатраты и финансовый эффект', 'Сопоставление стоимости работ и ожидаемого финансового результата.', control('Период', 'roi-period', '') + control('Команда', 'roi-team', '') + control('Тип задачи', 'roi-type', '') + '<button id="roi-reset" class="btn btn-secondary btn-sm an-reset-btn" type="button">Сбросить</button>', '<span id="roi-count" class="roi-count"></span>')}<div class="an-report-body"><div id="roi-legend" class="roi-legend"></div><div class="roi-wrap"><svg id="roi-svg" viewBox="0 0 940 496" role="img" aria-label="Квадрант: трудозатраты против финансового эффекта по группам проектов"></svg><div id="roi-tooltip" class="roi-tooltip" role="tooltip"></div></div><div class="roi-selection-head"><div class="roi-selection-main"><h3 id="roi-table-title">Все группы</h3><div class="an-tree-actions roi-tree-actions"><button id="roi-expand-all" type="button">${treeActionIcon('down')}<span>Раскрыть все</span></button><button id="roi-collapse-all" type="button">${treeActionIcon('up')}<span>Свернуть все</span></button></div></div><button id="roi-clear-quad" type="button">Показать все квадранты</button></div><div class="roi-tree-table" role="table" aria-label="Проекты, команды и задачи с финансовым эффектом"><div class="roi-tree-head" role="row"><span>Проект</span><span>Команда</span><span>Задач</span><span>Трудозатраты</span><span>Фин. эффект</span><span>CIR</span></div><div id="roi-table-body" class="roi-tree-body" role="rowgroup"></div></div></div></section>
+    <section class="an-card an-report an-roi-card" id="an-roi" data-report-index="07">${reportHeader(7, 'Трудозатраты и финансовый эффект', 'Сопоставление стоимости работ и ожидаемого финансового результата.', control('Период', 'roi-period', '') + control('Команда', 'roi-team', '') + control('Тип задачи', 'roi-type', '') + uiButton({ label: 'Сбросить', size: 'small', className: 'an-reset-btn', attrs: { id: 'roi-reset' } }), '<span id="roi-count" class="roi-count"></span>')}<div class="an-report-body"><div id="roi-legend" class="roi-legend"></div><div class="roi-wrap"><svg id="roi-svg" viewBox="0 0 940 496" role="img" aria-label="Квадрант: трудозатраты против финансового эффекта по группам проектов"></svg><div id="roi-tooltip" class="roi-tooltip" role="tooltip"></div></div><div class="roi-selection-head"><div class="roi-selection-main"><h3 id="roi-table-title">Все группы</h3><div class="an-tree-actions roi-tree-actions"><button class="btn btn-secondary btn-sm ui-btn" id="roi-expand-all" type="button">${treeActionIcon('down')}<span>Раскрыть все</span></button><button class="btn btn-secondary btn-sm ui-btn" id="roi-collapse-all" type="button">${treeActionIcon('up')}<span>Свернуть все</span></button></div></div><button class="btn btn-secondary btn-sm ui-btn" id="roi-clear-quad" type="button">Показать все квадранты</button></div><div class="roi-tree-table ui-data-grid" role="table" aria-label="Проекты, команды и задачи с финансовым эффектом"><div class="roi-tree-head ui-data-grid-head" role="row"><span>Проект</span><span>Команда</span><span>Задач</span><span>Трудозатраты</span><span>Фин. эффект</span><span>CIR</span></div><div id="roi-table-body" class="roi-tree-body" role="rowgroup"></div></div></div></section>
   </div>`;
 }
 
 function poTemplate() {
-  return `<div class="an-page animate-fade-in"><div class="page-header"><h1>Аналитика PO/PL</h1><p>Полнота данных, логические конфликты и однородность ведения бэклога</p></div>
+  return `<div class="an-page animate-fade-in"><div class="page-header">${analyticsHeader('po-pl')}</div>
     ${card('an-complete', '', 'Полнота карточек', 'Девять обязательных полей. Нажмите на ячейку, чтобы увидеть задачи с пропусками.', control('Период', 'complete-period', ''), '<div id="complete-matrix"></div><div id="complete-detail" class="an-detail"></div>')}
     ${card('an-quality', '', 'Конфликты качества', 'Проверки согласованности статуса, прогресса, сроков, факта и классификации.', '', '<div id="quality-checks" class="an-quality-grid"></div><div id="quality-detail" class="an-detail"></div>')}
-    ${card('an-uniform', '', 'Однородность ведения', 'Информационный сигнал: доминирующее значение статуса или приоритета при доле от 80% (минимум 10 задач).', control('Поле', 'uniform-field', '<option value="status_name">Статус</option><option value="priority_name">Приоритет</option>'), '<div id="uniform-content"></div><div id="uniform-detail" class="an-detail"></div>')}
+    ${card('an-uniform', '', 'Однородность ведения', 'Информационный сигнал: доминирующее значение статуса или приоритета при доле от 80% (минимум 10 задач).', control('Поле', 'uniform-field', [{ value: 'status_name', label: 'Статус' }, { value: 'priority_name', label: 'Приоритет' }]), '<div id="uniform-content"></div><div id="uniform-detail" class="an-detail"></div>')}
   </div>`;
 }
 
 export function renderAnalytics(type, app) {
   if (typeof window !== 'undefined') window.__app = app;
-  if (type === 'it') return `<div class="an-page"><div class="page-header"><h1>Аналитика для ИТ</h1><p>Раздел в разработке</p></div></div>`;
+  if (type === 'it') return `<div class="an-page"><div class="page-header">${analyticsHeader('it')}</div></div>`;
   return type === 'tribe' ? ltTemplate() : poTemplate();
 }
 
@@ -329,7 +341,7 @@ function renderProfile() {
     }).join('');
     return `<tr><th>${escapeHtml(team)}</th>${cells}<td class="an-number an-profile-total"><span class="an-profile-value"><strong class="an-profile-count">${teamTotal}</strong><small class="an-profile-share">100%</small></span></td></tr>`;
   }).join('');
-  document.getElementById('profile-matrix').innerHTML = `<div class="an-table-scroll"><table class="an-table an-matrix" style="--profile-columns:${types.length + 1}"><colgroup><col class="an-team-column">${types.map(() => '<col class="an-number-column">').join('')}<col class="an-number-column"></colgroup><thead><tr><th>Команда</th>${types.map(x => `<th class="an-number">${escapeHtml(x)}</th>`).join('')}<th class="an-number">Всего</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  document.getElementById('profile-matrix').innerHTML = `<div class="an-table-scroll"><table class="ui-table ui-table-data ui-table-matrix an-table an-matrix" style="--profile-columns:${types.length + 1}"><colgroup><col class="an-team-column">${types.map(() => '<col class="an-number-column">').join('')}<col class="an-number-column"></colgroup><thead><tr><th>Команда</th>${types.map(x => `<th class="an-number">${escapeHtml(x)}</th>`).join('')}<th class="an-number">Всего</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   document.querySelectorAll('#profile-matrix .an-cell.is-actionable').forEach(el => bindDetailCell(el, 'profile-detail', source => showDetail('profile-detail', `${source.dataset.team} · ${source.dataset.type}`, tasks.filter(t => t.team_name === source.dataset.team && (t.task_type_name || 'Без типа') === source.dataset.type), { subtitle: `${source.dataset.count} ${effortPlural(source.dataset.count)} · ${source.dataset.share}`, breadcrumbs: ['Профиль команд', source.dataset.team, source.dataset.type], source })));
 }
 
@@ -371,9 +383,9 @@ function renderDep() {
     const projectGroups = selectedEdge ? Object.entries(by(selectedEdge.tasks, task => task.project_name || 'Без проекта')).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'ru')) : [];
     const selectedTasks = projectGroups.find(([project]) => project === selectedDependencyProject)?.[1] || [];
     const relationSymbol = state.dep.mode === 'directed' ? '→' : '↔';
-    detail.innerHTML = `<div class="dep-detail-head"><div><div class="an-detail-trail" aria-label="Путь детализации"><span>Зависимости</span><i aria-hidden="true">›</i><span>${escapeHtml(team)}</span></div><strong tabindex="-1">${escapeHtml(team)}</strong><small>задач со связями: ${new Set(stat[team].tasks.map(task => task.id)).size} · связей: ${directions.length}</small></div><button type="button" class="dep-detail-clear" aria-label="Снять выбор команды">Снять выбор ×</button></div>
-      <div class="dep-detail-grid"><div><h3>Кто кого привлекает</h3>${directions.length ? directions.map((edge, index) => `<button type="button" class="dep-direction ${edge === selectedEdge ? 'is-open' : ''}" data-dep-direction="${index}"><span>${escapeHtml(edge.source)}</span><b>${relationSymbol}</b><span>${escapeHtml(edge.target)}</span><strong>${edge.tasks.length}</strong></button>`).join('') : '<div class="dep-empty">Прямых связей команды нет</div>'}</div>
-      <div><h3>${selectedEdge ? `Совместные проекты · ${escapeHtml(selectedEdge.source)} ${relationSymbol} ${escapeHtml(selectedEdge.target)}` : 'Совместные проекты'}</h3>${selectedEdge ? `<div class="dep-projects">${projectGroups.map(([project, tasks], index) => `<button type="button" class="dep-project ${project === selectedDependencyProject ? 'is-open' : ''}" data-dep-project="${index}"><span>${escapeHtml(project)}</span><i style="--dep-project-share:${tasks.length / Math.max(1, projectGroups[0][1].length) * 100}%"></i><strong>${tasks.length}</strong></button>`).join('')}</div>` : '<p class="dep-direction-hint">Выберите связь слева, чтобы увидеть проекты, в которых она возникает</p>'}</div></div>
+    detail.innerHTML = `<div class="dep-detail-head"><div><div class="an-detail-trail" aria-label="Путь детализации"><span>Зависимости</span><i aria-hidden="true">›</i><span>${escapeHtml(team)}</span></div><strong tabindex="-1">${escapeHtml(team)}</strong><small>задач со связями: ${new Set(stat[team].tasks.map(task => task.id)).size} · связей: ${directions.length}</small></div><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn dep-detail-clear" aria-label="Снять выбор команды">Снять выбор ×</button></div>
+      <div class="dep-detail-grid"><div><h3>Кто кого привлекает</h3>${directions.length ? directions.map((edge, index) => `<button type="button" class="ui-surface-action dep-direction ${edge === selectedEdge ? 'is-open' : ''}" data-dep-direction="${index}"><span>${escapeHtml(edge.source)}</span><b>${relationSymbol}</b><span>${escapeHtml(edge.target)}</span><strong>${edge.tasks.length}</strong></button>`).join('') : '<div class="dep-empty">Прямых связей команды нет</div>'}</div>
+      <div><h3>${selectedEdge ? `Совместные проекты · ${escapeHtml(selectedEdge.source)} ${relationSymbol} ${escapeHtml(selectedEdge.target)}` : 'Совместные проекты'}</h3>${selectedEdge ? `<div class="dep-projects">${projectGroups.map(([project, tasks], index) => `<button type="button" class="ui-surface-action dep-project ${project === selectedDependencyProject ? 'is-open' : ''}" data-dep-project="${index}"><span>${escapeHtml(project)}</span><i style="--dep-project-share:${tasks.length / Math.max(1, projectGroups[0][1].length) * 100}%"></i><strong>${tasks.length}</strong></button>`).join('')}</div>` : '<p class="dep-direction-hint">Выберите связь слева, чтобы увидеть проекты, в которых она возникает</p>'}</div></div>
       ${selectedDependencyProject ? `<div class="dep-project-tasks"><div class="dep-project-tasks-head"><strong>${escapeHtml(selectedDependencyProject)}</strong><small>${selectedTasks.length} ${effortPlural(selectedTasks.length)}</small></div>${taskRows(selectedTasks, 'Нет задач', { showProject: false })}</div>` : ''}`;
     detail.classList.add('is-open');
     detail.querySelector('.dep-detail-clear')?.addEventListener('click', () => selectDependencyTeam(''));
@@ -381,7 +393,7 @@ function renderDep() {
     detail.querySelectorAll('[data-dep-project]').forEach(button => button.addEventListener('click', () => { const project = projectGroups[Number(button.dataset.depProject)]?.[0] || ''; selectedDependencyProject = selectedDependencyProject === project ? '' : project; renderDependencyDetail(team); }));
     bindTasks(detail);
   };
-  makeChart('dep-chart', { tooltip: { formatter: p => { if (p.dataType === 'edge') return `${escapeHtml(p.data.source)} → ${escapeHtml(p.data.target)}<br>Совместных задач: <b>${p.data.value}</b>`; const s = stat[p.name] || { asMain: 0, asPartner: 0 }; return `<b>${escapeHtml(p.name)}</b><br>Как основная: ${s.asMain} задач<br>Как партнёр: ${s.asPartner} участий`; } }, series: [{ type: 'graph', layout: 'none', data: nodes, links, directed: state.dep.mode === 'directed', roam: false, draggable: false, ...dependencyGraphLayout(nodes), edgeSymbol: state.dep.mode === 'directed' ? ['none', 'arrow'] : ['none', 'none'], edgeLabel: { show: true, position: 'middle', distance: 0, rotate: false, align: 'center', verticalAlign: 'middle', fontSize: 9.5, fontWeight: 600, color: chartTextColor(), formatter: p => p.data.value, backgroundColor: 'transparent', padding: 0, textBorderColor: chartBg, textBorderWidth: 3 }, emphasis: { focus: 'adjacency', lineStyle: { opacity: .85 } } }] }, p => { if (p.dataType === 'node') selectDependencyTeam(p.name); else if (p.dataType === 'edge') { selectDependencyTeam(p.data.source); selectedDependencyDirection = `${p.data.source}\u0001${p.data.target}`; selectedDependencyProject = ''; renderDependencyDetail(p.data.source); } });
+  makeChart('dep-chart', { tooltip: { formatter: p => { if (p.dataType === 'edge') return `${escapeHtml(p.data.source)} → ${escapeHtml(p.data.target)}<br>Совместных задач: <b>${p.data.value}</b>`; const s = stat[p.name] || { asMain: 0, asPartner: 0 }; return `<b>${escapeHtml(p.name)}</b><br>Как основная: ${s.asMain} задач<br>Как партнёр: ${s.asPartner} участий`; } }, series: [{ type: 'graph', layout: 'none', data: nodes, links, directed: state.dep.mode === 'directed', roam: false, draggable: false, ...dependencyGraphLayout(nodes), edgeSymbol: state.dep.mode === 'directed' ? ['none', 'arrow'] : ['none', 'none'], edgeLabel: { show: true, position: 'middle', distance: 0, rotate: false, align: 'center', verticalAlign: 'middle', fontSize: 11, fontWeight: 600, color: chartTextColor(), formatter: p => p.data.value, backgroundColor: 'transparent', padding: 0, textBorderColor: chartBg, textBorderWidth: 3 }, emphasis: { focus: 'adjacency', lineStyle: { opacity: .85 } } }] }, p => { if (p.dataType === 'node') selectDependencyTeam(p.name); else if (p.dataType === 'edge') { selectDependencyTeam(p.data.source); selectedDependencyDirection = `${p.data.source}\u0001${p.data.target}`; selectedDependencyProject = ''; renderDependencyDetail(p.data.source); } });
   const maxTeamTotal = Math.max(1, ...names.map(name => stat[name].asMain + stat[name].asPartner));
   document.getElementById('dep-teams-body').innerHTML = names.map(name => { const color = LT_MAP_COLORS[names.indexOf(name) % LT_MAP_COLORS.length], s = stat[name]; return `<tr data-team="${escapeHtml(name)}"><td><span class="dep-swatch" style="background:${color}"></span>${escapeHtml(name)}</td><td class="dep-bar-cell"><div class="dep-bar-track" title="привлекает ${s.asMain}, привлекают ${s.asPartner}"><div class="dep-bar-fill" style="width:${s.asMain / maxTeamTotal * 100}%;background:${color}"></div><div class="dep-bar-fill dep-bar-fill-in" style="width:${s.asPartner / maxTeamTotal * 100}%;background:${color}"></div></div></td><td class="dep-num">${s.asMain}</td><td class="dep-num">${s.asPartner}</td></tr>`; }).join('') || '<tr><td colspan="4" class="dep-empty">Нет связей под выбранным порогом</td></tr>';
   const teamRows = [...document.querySelectorAll('#dep-teams-body tr[data-team]')], depChart = charts['dep-chart'];
@@ -460,8 +472,8 @@ function renderSankey() {
 
 function chipSet(id, values, selected, render) {
   const el = document.getElementById(id);
-  el.innerHTML = values.map(v => `<button class="an-chip ${selected.includes(v) ? 'active' : ''}" data-value="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('');
-  el.querySelectorAll('.an-chip').forEach(btn => btn.addEventListener('click', () => { const v = btn.dataset.value, i = selected.indexOf(v); i >= 0 ? selected.splice(i, 1) : selected.push(v); btn.classList.toggle('active', selected.includes(v)); render(); }));
+  el.innerHTML = values.map(v => uiButton({ label: v, variant: 'ghost', size: 'small', className: `an-chip ${selected.includes(v) ? 'active' : ''}`, attrs: { 'data-value': v, 'aria-pressed': selected.includes(v) } })).join('');
+  el.querySelectorAll('.an-chip').forEach(btn => btn.addEventListener('click', () => { const v = btn.dataset.value, i = selected.indexOf(v); i >= 0 ? selected.splice(i, 1) : selected.push(v); btn.classList.toggle('active', selected.includes(v)); btn.setAttribute('aria-pressed', String(selected.includes(v))); render(); }));
 }
 
 function renderQuarters() {
@@ -470,7 +482,7 @@ function renderQuarters() {
   const quarters = ltData.periods.filter(p => /^q\d_\d{4}$/.test(p.id)), projects = uniq(tasks.map(t => t.project_name || 'Без проекта'));
   chipSet('quarter-teams', uniq(ltData.tasks.flatMap(allTeams)), state.quarters.teams, renderQuarters);
   chipSet('quarter-types', uniq(ltData.tasks.map(t => t.task_type_name || 'Без типа')), state.quarters.types, renderQuarters);
-  document.getElementById('quarter-grid').innerHTML = `<div class="an-table-scroll"><table class="an-table an-quarter"><thead><tr><th>Проект</th>${quarters.map(q => `<th>${escapeHtml(q.label)}</th>`).join('')}<th>Всего</th></tr></thead><tbody>${projects.map(project => `<tr><th>${escapeHtml(project)}</th>${quarters.map(q => { const ts = tasks.filter(t => (t.project_name || 'Без проекта') === project && inPeriod(t, q.id)); return `<td class="an-cell ${ts.length ? 'is-actionable' : 'is-empty'}" data-project="${escapeHtml(project)}" data-period="${q.id}" data-count="${ts.length}" style="--heat:${Math.min(1, ts.length / 8)}" ${ts.length ? `aria-label="${escapeHtml(`${project} · ${q.label}: ${ts.length} ${effortPlural(ts.length)}`)}"` : 'aria-disabled="true"'}>${ts.length || '·'}</td>`; }).join('')}<td>${tasks.filter(t => (t.project_name || 'Без проекта') === project).length}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('quarter-grid').innerHTML = `<div class="an-table-scroll"><table class="ui-table ui-table-data ui-table-matrix an-table an-quarter"><thead><tr><th>Проект</th>${quarters.map(q => `<th>${escapeHtml(q.label)}</th>`).join('')}<th>Всего</th></tr></thead><tbody>${projects.map(project => `<tr><th>${escapeHtml(project)}</th>${quarters.map(q => { const ts = tasks.filter(t => (t.project_name || 'Без проекта') === project && inPeriod(t, q.id)); return `<td class="an-cell ${ts.length ? 'is-actionable' : 'is-empty'}" data-project="${escapeHtml(project)}" data-period="${q.id}" data-count="${ts.length}" style="--heat:${Math.min(1, ts.length / 8)}" ${ts.length ? `aria-label="${escapeHtml(`${project} · ${q.label}: ${ts.length} ${effortPlural(ts.length)}`)}"` : 'aria-disabled="true"'}>${ts.length || '·'}</td>`; }).join('')}<td>${tasks.filter(t => (t.project_name || 'Без проекта') === project).length}</td></tr>`).join('')}</tbody></table></div>`;
   document.querySelectorAll('#quarter-grid .an-cell.is-actionable').forEach(el => bindDetailCell(el, 'quarter-detail', source => { const period = quarters.find(q => q.id === source.dataset.period); showDetail('quarter-detail', `${source.dataset.project} · ${period?.label || source.dataset.period}`, tasks.filter(t => (t.project_name || 'Без проекта') === source.dataset.project && inPeriod(t, source.dataset.period)), { subtitle: `${source.dataset.count} ${effortPlural(source.dataset.count)}`, breadcrumbs: ['Проекты по кварталам', source.dataset.project, period?.label || source.dataset.period], source }); }));
 }
 
@@ -507,7 +519,7 @@ function project360() {
   const typeColors = Object.fromEntries(typeNames.map((name, index) => [name, LT_TYPE_COLORS[index % LT_TYPE_COLORS.length]]));
   const typeStats = rows => Object.entries(by(rows, task => task.task_type_name || 'Без типа')).map(([name, typeTasks]) => ({ name, tasks: typeTasks, count: typeTasks.length, effort: typeTasks.reduce((sum, task) => sum + n(task.effort_days), 0) })).sort((a, b) => (state.projectMetric === 'effort' ? b.effort - a.effort : b.count - a.count) || a.name.localeCompare(b.name, 'ru'));
   const metricValue = item => state.projectMetric === 'effort' ? item.effort : item.count;
-  const renderMixBar = (stats, total, team = '') => stats.filter(item => metricValue(item) > 0).map(item => { const share = total ? metricValue(item) / total * 100 : 0; return `<button class="p360-mixseg ${team ? 'is-mini' : ''}" data-p360-type="${escapeHtml(item.name)}" ${team ? `data-p360-team="${escapeHtml(team)}"` : ''} style="width:${share}%;background:${typeColors[item.name]}" title="${escapeHtml(`${item.name}: ${fmt(metricValue(item), 1)} · ${fmt(share, 1)}%`)}"><span>${share >= 8 ? `${fmt(share, 1)}%` : ''}</span></button>`; }).join('');
+  const renderMixBar = (stats, total, team = '') => stats.filter(item => metricValue(item) > 0).map(item => { const share = total ? metricValue(item) / total * 100 : 0; return `<button class="ui-plot-target p360-mixseg ${team ? 'is-mini' : ''}" data-p360-type="${escapeHtml(item.name)}" ${team ? `data-p360-team="${escapeHtml(team)}"` : ''} style="width:${share}%;background:${typeColors[item.name]}" title="${escapeHtml(`${item.name}: ${fmt(metricValue(item), 1)} · ${fmt(share, 1)}%`)}"><span>${share >= 8 ? `${fmt(share, 1)}%` : ''}</span></button>`; }).join('');
   const types = typeStats(tasks);
   const metricTotal = types.reduce((sum, item) => sum + metricValue(item), 0);
   const totalEffort = tasks.reduce((sum, task) => sum + n(task.effort_days), 0);
@@ -522,7 +534,7 @@ function project360() {
     const owners = Object.entries(by(periodTasks, task => task.team_name || 'Без команды'));
     const partners = Object.entries(by(periodTasks.flatMap(task => (task.involved_team_names || []).map(name => ({ name }))), item => item.name));
     const partnerTotal = partners.reduce((sum, [, rows]) => sum + rows.length, 0);
-    return `<button class="p360-quarter ${period.id === ltData.active_period ? 'is-current' : ''} ${period.id === state.projectQuarter ? 'is-selected' : ''}" data-p360-period="${period.id}" type="button" aria-pressed="${period.id === state.projectQuarter}"><span class="p360-quarter-head"><b>${escapeHtml(period.label)}</b><small>${periodTasks.length} ${effortPlural(periodTasks.length)}</small></span><span class="p360-quarter-metrics">${fmt(effort, 1)} ч·д · ${done}/${periodTasks.length} завершено</span><span class="p360-band-label">Основная команда</span><span class="p360-band">${owners.map(([name, rows], index) => `<i style="width:${rows.length / periodTasks.length * 100}%;background:${LT_MAP_COLORS[index % LT_MAP_COLORS.length]}" title="${escapeHtml(name)}: ${rows.length}"></i>`).join('')}</span><span class="p360-band-label">Вовлечённые</span><span class="p360-band p360-band-involved">${partners.map(([name, rows], index) => `<i style="width:${partnerTotal ? rows.length / partnerTotal * 100 : 0}%;background:${LT_MAP_COLORS[(index + 3) % LT_MAP_COLORS.length]}" title="${escapeHtml(name)}: ${rows.length}"></i>`).join('')}</span></button>`;
+    return `<button class="ui-surface-action p360-quarter ${period.id === ltData.active_period ? 'is-current' : ''} ${period.id === state.projectQuarter ? 'is-selected' : ''}" data-p360-period="${period.id}" type="button" aria-pressed="${period.id === state.projectQuarter}"><span class="p360-quarter-head"><b>${escapeHtml(period.label)}</b><small>${periodTasks.length} ${effortPlural(periodTasks.length)}</small></span><span class="p360-quarter-metrics">${fmt(effort, 1)} ч·д · ${done}/${periodTasks.length} завершено</span><span class="p360-band-label">Основная команда</span><span class="p360-band">${owners.map(([name, rows], index) => `<i style="width:${rows.length / periodTasks.length * 100}%;background:${LT_MAP_COLORS[index % LT_MAP_COLORS.length]}" title="${escapeHtml(name)}: ${rows.length}"></i>`).join('')}</span><span class="p360-band-label">Вовлечённые</span><span class="p360-band p360-band-involved">${partners.map(([name, rows], index) => `<i style="width:${partnerTotal ? rows.length / partnerTotal * 100 : 0}%;background:${LT_MAP_COLORS[(index + 3) % LT_MAP_COLORS.length]}" title="${escapeHtml(name)}: ${rows.length}"></i>`).join('')}</span></button>`;
   }).join('');
   const adhoc = tasks.filter(task => /AD.?HOC|ВНЕПЛАН/i.test(task.task_type_name || ''));
   const involvedTasks = tasks.filter(task => (task.involved_team_names || []).length);
@@ -541,9 +553,9 @@ function project360() {
   const accordionOpen = section => state.projectOpenSection === section ? ' open' : '';
   document.getElementById('project-content').innerHTML = `<div class="p360-accordions">
     <section class="p360-accordion p360-always-open"><div class="p360-accordion-body"><div class="p360-timeline-toolbar"><span>Сроки и состав команд по кварталам</span><small>${visibleQuarters.length} ${visibleQuarters.length === 1 ? 'квартал' : visibleQuarters.length < 5 ? 'квартала' : 'кварталов'}</small></div><div class="p360-timeline">${timeline || '<div class="an-empty">У задач проекта нет квартальных сроков</div>'}</div><div id="p360-timeline-detail" class="an-detail p360-timeline-detail"></div></div></section>
-    <details class="p360-accordion" name="p360-sections" data-p360-section="flow"${accordionOpen('flow')}><summary><span>Контур ответственности</span><small class="p360-panel-meta">${teams.length} основных · ${involved.length} вовлечённых</small></summary><div class="p360-accordion-body"><div class="p360-flow-toolbar"><div><select id="p360-flow-period" aria-label="Срок выполнения"></select><select id="p360-flow-channel" aria-label="Спрос"></select><span id="p360-flow-filter-state"></span></div><button id="p360-flow-reset" class="p360-flow-reset" type="button">× Сбросить</button></div><div id="p360-flow" class="p360-flow-wrap"><svg id="p360-flow-svg" viewBox="0 0 940 420" role="img" aria-label="Поток ответственности: заказчики, основные и вовлечённые команды"></svg></div><div id="p360-flow-actions" class="p360-flow-actions"><button id="p360-flow-view-tasks" type="button">Посмотреть задачи</button></div><div id="p360-flow-detail" class="an-detail p360-flow-detail"></div></div></details>
-    <details class="p360-accordion" name="p360-sections" data-p360-section="mix"${accordionOpen('mix')}><summary><span>Структура работ</span><small class="p360-panel-meta">${types.length} типов задач</small></summary><div class="p360-accordion-body"><div class="p360-panel-head"><small>Распределение по типам задач</small><span class="p360-toggle"><button class="${state.projectMetric === 'count' ? 'is-on' : ''}" data-p360-metric="count" type="button">Задачи</button><button class="${state.projectMetric === 'effort' ? 'is-on' : ''}" data-p360-metric="effort" type="button" ${totalEffort ? '' : 'disabled'}>Трудозатраты</button></span></div><div class="p360-mixbar">${renderMixBar(types, metricTotal)}</div><div class="p360-mixlegend">${types.map(item => `<button data-p360-type="${escapeHtml(item.name)}"><i style="background:${typeColors[item.name]}"></i><span>${escapeHtml(item.name)} · ${state.projectMetric === 'effort' ? `${fmt(item.effort, 1)} ч·д` : `${item.count} ${effortPlural(item.count)}`}</span></button>`).join('')}</div><div class="p360-team-mixes"><div class="p360-team-mixes-title">По основным командам</div><div class="p360-team-mix-list">${teamMixes.map(item => `<div class="p360-team-mix-row"><button class="p360-team-mix-name" data-p360-team="${escapeHtml(item.team)}" type="button">${escapeHtml(item.team)}</button><div class="p360-team-mixbar">${renderMixBar(item.stats, item.total, item.team)}</div></div>`).join('')}</div></div></div></details>
-    <details class="p360-accordion" name="p360-sections" data-p360-section="signals"${accordionOpen('signals')}><summary><span>Управленческие сигналы</span><small class="p360-panel-meta">${signals.length} сигналов</small></summary><div class="p360-accordion-body"><div class="p360-signal-list">${signals.map((signal, index) => signal.tasks.length ? `<button class="p360-signal ${signal.cls}" data-p360-signal="${index}" type="button"><i></i><span>${escapeHtml(signal.text)}</span></button>` : `<div class="p360-signal ${signal.cls}"><i></i><span>${escapeHtml(signal.text)}</span></div>`).join('')}</div></div></details>
+    <details class="p360-accordion" name="p360-sections" data-p360-section="flow"${accordionOpen('flow')}><summary><span>Контур ответственности</span><small class="p360-panel-meta">${teams.length} основных · ${involved.length} вовлечённых</small></summary><div class="p360-accordion-body"><div class="p360-flow-toolbar"><div>${uiControl({ id: 'p360-flow-period', kind: 'select', attrs: { 'aria-label': 'Срок выполнения' } })}${uiControl({ id: 'p360-flow-channel', kind: 'select', attrs: { 'aria-label': 'Спрос' } })}<span id="p360-flow-filter-state"></span></div><button id="p360-flow-reset" class="btn btn-secondary btn-sm ui-btn p360-flow-reset" type="button">× Сбросить</button></div><div id="p360-flow" class="p360-flow-wrap"><svg id="p360-flow-svg" viewBox="0 0 940 420" role="img" aria-label="Поток ответственности: заказчики, основные и вовлечённые команды"></svg></div><div id="p360-flow-actions" class="p360-flow-actions"><button class="btn btn-secondary btn-sm ui-btn" id="p360-flow-view-tasks" type="button">Посмотреть задачи</button></div><div id="p360-flow-detail" class="an-detail p360-flow-detail"></div></div></details>
+    <details class="p360-accordion" name="p360-sections" data-p360-section="mix"${accordionOpen('mix')}><summary><span>Структура работ</span><small class="p360-panel-meta">${types.length} типов задач</small></summary><div class="p360-accordion-body"><div class="p360-panel-head"><small>Распределение по типам задач</small><span class="p360-toggle"><button class="btn btn-secondary btn-sm ui-btn ${state.projectMetric === 'count' ? 'is-on' : ''}" data-p360-metric="count" type="button">Задачи</button><button class="btn btn-secondary btn-sm ui-btn ${state.projectMetric === 'effort' ? 'is-on' : ''}" data-p360-metric="effort" type="button" ${totalEffort ? '' : 'disabled'}>Трудозатраты</button></span></div><div class="p360-mixbar">${renderMixBar(types, metricTotal)}</div><div class="p360-mixlegend">${types.map(item => `<button class="btn btn-secondary btn-sm ui-btn" data-p360-type="${escapeHtml(item.name)}"><i style="background:${typeColors[item.name]}"></i><span>${escapeHtml(item.name)} · ${state.projectMetric === 'effort' ? `${fmt(item.effort, 1)} ч·д` : `${item.count} ${effortPlural(item.count)}`}</span></button>`).join('')}</div><div class="p360-team-mixes"><div class="p360-team-mixes-title">По основным командам</div><div class="p360-team-mix-list">${teamMixes.map(item => `<div class="p360-team-mix-row"><button class="ui-surface-action p360-team-mix-name" data-p360-team="${escapeHtml(item.team)}" type="button">${escapeHtml(item.team)}</button><div class="p360-team-mixbar">${renderMixBar(item.stats, item.total, item.team)}</div></div>`).join('')}</div></div></div></details>
+    <details class="p360-accordion" name="p360-sections" data-p360-section="signals"${accordionOpen('signals')}><summary><span>Управленческие сигналы</span><small class="p360-panel-meta">${signals.length} сигналов</small></summary><div class="p360-accordion-body"><div class="p360-signal-list">${signals.map((signal, index) => signal.tasks.length ? `<button class="ui-surface-action p360-signal ${signal.cls}" data-p360-signal="${index}" type="button"><i></i><span>${escapeHtml(signal.text)}</span></button>` : `<div class="p360-signal ${signal.cls}"><i></i><span>${escapeHtml(signal.text)}</span></div>`).join('')}</div></div></details>
   </div>`;
   bindTasks(document.getElementById('project-content'));
 
@@ -688,10 +700,10 @@ function renderRoi() {
       const teamTasks = group.tasks.filter(task => (task.team_name || 'Без команды') === team);
       const teamEffort = teamTasks.reduce((sum, task) => sum + n(task.effort_days), 0);
       const teamKey = `${index}-${teamIndex}`;
-      return `<div class="roi-team-group"><div class="roi-team-row is-collapsed" data-roi-parent="${index}" data-roi-team-row="${teamKey}" role="row"><button type="button" class="roi-team-toggle" aria-expanded="false"><span class="an-tree-toggle-icon roi-chevron" aria-hidden="true"></span><span class="roi-level-label">Команда</span><b>${escapeHtml(team)}</b><small>${teamTasks.length} ${effortPlural(teamTasks.length)}</small></button><span></span><span>${teamTasks.length}</span><span>${fmt(teamEffort, 1)} ч/д</span><span></span><span></span></div><div class="roi-team-children an-tree-children" hidden>${teamTasks.map(task => `<div class="roi-task-row" data-roi-parent="${index}" data-roi-team-task="${teamKey}" role="row"><button type="button" class="roi-task-link" data-task-id="${task.id}"><span class="roi-level-label">Задача</span><span class="roi-task-id">${escapeHtml(taskName(task))}</span><span class="roi-task-title">${escapeHtml(task.title)}</span></button><span></span><span></span><span>${task.effort_days == null ? '—' : `${fmt(task.effort_days, 1)} ч/д`}</span><span>${task.financial_effect == null ? '—' : `${fmt(task.financial_effect, 1)} млн ₽`}</span><span></span></div>`).join('')}</div></div>`;
+      return `<div class="roi-team-group"><div class="roi-team-row is-collapsed" data-roi-parent="${index}" data-roi-team-row="${teamKey}" role="row"><button type="button" class="ui-surface-action roi-team-toggle" aria-expanded="false"><span class="an-tree-toggle-icon roi-chevron" aria-hidden="true"></span><span class="roi-level-label">Команда</span><b>${escapeHtml(team)}</b><small>${teamTasks.length} ${effortPlural(teamTasks.length)}</small></button><span></span><span>${teamTasks.length}</span><span>${fmt(teamEffort, 1)} ч/д</span><span></span><span></span></div><div class="roi-team-children an-tree-children" hidden>${teamTasks.map(task => `<div class="roi-task-row" data-roi-parent="${index}" data-roi-team-task="${teamKey}" role="row"><button type="button" class="ui-link roi-task-link" data-task-id="${task.id}"><span class="roi-level-label">Задача</span><span class="roi-task-id">${escapeHtml(taskName(task))}</span><span class="roi-task-title">${escapeHtml(task.title)}</span></button><span></span><span></span><span>${task.effort_days == null ? '—' : `${fmt(task.effort_days, 1)} ч/д`}</span><span>${task.financial_effect == null ? '—' : `${fmt(task.financial_effect, 1)} млн ₽`}</span><span></span></div>`).join('')}</div></div>`;
     }).join('');
     const teamLabel = group.teamNames.length === 1 ? group.teamNames[0] : `${group.teamNames.length} ${group.teamNames.length < 5 ? 'команды' : 'команд'}`;
-    return `<div class="roi-project-group"><div class="roi-project-row" data-roi-row="${index}" role="row"><button type="button" class="roi-project-toggle" aria-expanded="false"><span class="an-tree-toggle-icon roi-chevron" aria-hidden="true"></span><span class="roi-level-label">Проект</span><span>${escapeHtml(group.name)}</span></button><span>${escapeHtml(teamLabel)}</span><span>${group.tasks.length}</span><span>${fmt(group.effort, 1)} ч/д</span><span>${fmt(group.value, 1)} млн ₽</span><span class="${cir > 100 ? 'roi-cell-bad' : cir <= 30 ? 'roi-cell-good' : ''}">${fmt(cir, 1)}%</span></div><div class="roi-project-children an-tree-children" hidden>${children}</div></div>`;
+    return `<div class="roi-project-group"><div class="roi-project-row" data-roi-row="${index}" role="row"><button type="button" class="ui-surface-action roi-project-toggle" aria-expanded="false"><span class="an-tree-toggle-icon roi-chevron" aria-hidden="true"></span><span class="roi-level-label">Проект</span><span>${escapeHtml(group.name)}</span></button><span>${escapeHtml(teamLabel)}</span><span>${group.tasks.length}</span><span>${fmt(group.effort, 1)} ч/д</span><span>${fmt(group.value, 1)} млн ₽</span><span class="${cir > 100 ? 'roi-cell-bad' : cir <= 30 ? 'roi-cell-good' : ''}">${fmt(cir, 1)}%</span></div><div class="roi-project-children an-tree-children" hidden>${children}</div></div>`;
   }).join('') || '<div class="an-empty">Нет групп в выбранном срезе</div>';
   const setRoiProjectOpen = (row, open) => {
     const index = row.dataset.roiRow;
@@ -770,12 +782,12 @@ function bindAnalyticsNavigation() {
     const marker = nav.getBoundingClientRect().bottom + 24;
     let current = LT_REPORTS[0][0];
     LT_REPORTS.forEach(([id]) => { const report = document.getElementById(id); if (report && report.getBoundingClientRect().top <= marker) current = id; });
-    buttons.forEach(item => item.classList.toggle('is-active', item.dataset.analyticsTarget === current));
+    buttons.forEach(item => { const active = item.dataset.analyticsTarget === current; item.classList.toggle('is-active', active); if (active) item.setAttribute('aria-current', 'location'); else item.removeAttribute('aria-current'); });
   };
   buttons.forEach(button => button.addEventListener('click', () => {
     const target = document.getElementById(button.dataset.analyticsTarget);
     if (!target) return;
-    buttons.forEach(item => item.classList.toggle('is-active', item === button));
+    buttons.forEach(item => { item.classList.toggle('is-active', item === button); if (item === button) item.setAttribute('aria-current', 'location'); else item.removeAttribute('aria-current'); });
     target.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   }));
   if (root) {
@@ -791,13 +803,8 @@ function initEffortControls(teams) {
   const period = document.getElementById('effort-period');
   period.innerHTML = periodOptions(state.effort.period);
   bindSelect('effort-period', state.effort.period, value => { state.effort.period = value; renderEffort(); });
-  const dropdown = document.getElementById('effortTeamDd'), panel = document.getElementById('effortTeamPanel'), label = document.getElementById('effortTeamName');
-  panel.innerHTML = [{ value: '', label: 'Весь трайб' }, ...teams.map(team => ({ value: team, label: team }))].map(item => `<button class="dd-item ${item.value === state.effort.team ? 'sel' : ''}" data-value="${escapeHtml(item.value)}" type="button"><span>${escapeHtml(item.label)}</span><svg class="chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button>`).join('');
-  document.getElementById('effortTeamBtn').addEventListener('click', event => { event.stopPropagation(); const open = dropdown.classList.toggle('open'); event.currentTarget.setAttribute('aria-expanded', String(open)); });
-  panel.querySelectorAll('.dd-item').forEach(button => button.addEventListener('click', () => { state.effort.team = button.dataset.value; label.textContent = state.effort.team || 'Весь трайб'; panel.querySelectorAll('.dd-item').forEach(item => item.classList.toggle('sel', item === button)); dropdown.classList.remove('open'); document.getElementById('effortTeamBtn').setAttribute('aria-expanded', 'false'); renderEffort(); }));
-  if (window.__analyticsEffortOutside) document.removeEventListener('click', window.__analyticsEffortOutside);
-  window.__analyticsEffortOutside = event => { if (!dropdown.contains(event.target)) dropdown.classList.remove('open'); };
-  document.addEventListener('click', window.__analyticsEffortOutside);
+  document.getElementById('effort-team').innerHTML = options(teams, state.effort.team, 'Весь трайб');
+  bindSelect('effort-team', state.effort.team, value => { state.effort.team = value; renderEffort(); });
   document.querySelectorAll('#an-effort .rep-table th.sortable').forEach(th => th.addEventListener('click', () => { const col = th.dataset.col; if (state.effort.sortCol === col) state.effort.sortDir *= -1; else { state.effort.sortCol = col; state.effort.sortDir = col === 'name' ? 1 : -1; } sortEffortRows(true); }));
 }
 
@@ -869,7 +876,7 @@ function deadlineEnd(code) {
 
 function renderCompleteness() {
   const tasks = poData.tasks.filter(task => inPeriod(task, state.complete.period)), teams = uniq(tasks.map(t => t.team_name || 'Без команды')), rows = [['Все команды', tasks], ...teams.map(team => [team, tasks.filter(t => (t.team_name || 'Без команды') === team)])];
-  document.getElementById('complete-matrix').innerHTML = `<div class="an-table-scroll"><table class="an-table an-matrix an-completeness-matrix" style="--profile-columns:${completenessFields.length + 2}"><colgroup><col class="an-team-column"><col class="an-count-column">${completenessFields.map(() => '<col class="an-number-column">').join('')}<col class="an-number-column"></colgroup><thead><tr><th>Команда</th><th class="an-number">Количество задач</th>${completenessFields.map(([, l]) => `<th class="an-number">${escapeHtml(l)}</th>`).join('')}<th class="an-number">Итого</th></tr></thead><tbody>${rows.map(([team, ts], ri) => `<tr class="${ri === 0 ? 'an-total' : ''}"><th title="${escapeHtml(team)}">${escapeHtml(team)}</th><td class="an-number an-task-count">${ts.length}</td>${completenessFields.map(([f, l]) => { const count = ts.filter(t => filled(t, f)).length, share = ts.length ? count / ts.length : 0; return `<td class="an-cell an-number ${share < .8 ? 'an-cell-bad' : ''}" data-team="${escapeHtml(team)}" data-field="${f}" data-label="${escapeHtml(l)}" style="--heat:${share}">${pct(count, ts.length)}</td>`; }).join('')}<td class="an-number">${pct(completenessFields.reduce((s, [f]) => s + ts.filter(t => filled(t, f)).length, 0), ts.length * completenessFields.length)}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('complete-matrix').innerHTML = `<div class="an-table-scroll"><table class="ui-table ui-table-data ui-table-matrix an-table an-matrix an-completeness-matrix" style="--profile-columns:${completenessFields.length + 2}"><colgroup><col class="an-team-column"><col class="an-count-column">${completenessFields.map(() => '<col class="an-number-column">').join('')}<col class="an-number-column"></colgroup><thead><tr><th>Команда</th><th class="an-number">Количество задач</th>${completenessFields.map(([, l]) => `<th class="an-number">${escapeHtml(l)}</th>`).join('')}<th class="an-number">Итого</th></tr></thead><tbody>${rows.map(([team, ts], ri) => `<tr class="${ri === 0 ? 'an-total' : ''}"><th title="${escapeHtml(team)}">${escapeHtml(team)}</th><td class="an-number an-task-count">${ts.length}</td>${completenessFields.map(([f, l]) => { const count = ts.filter(t => filled(t, f)).length, share = ts.length ? count / ts.length : 0; return `<td class="an-cell an-number ${share < .8 ? 'an-cell-bad' : ''}" data-team="${escapeHtml(team)}" data-field="${f}" data-label="${escapeHtml(l)}" style="--heat:${share}">${pct(count, ts.length)}</td>`; }).join('')}<td class="an-number">${pct(completenessFields.reduce((s, [f]) => s + ts.filter(t => filled(t, f)).length, 0), ts.length * completenessFields.length)}</td></tr>`).join('')}</tbody></table></div>`;
   document.querySelectorAll('#complete-matrix .an-cell').forEach(el => el.addEventListener('click', () => { const scope = el.dataset.team === 'Все команды' ? tasks : tasks.filter(t => (t.team_name || 'Без команды') === el.dataset.team); showDetail('complete-detail', `${el.dataset.team} · нет поля «${el.dataset.label}»`, scope.filter(t => !filled(t, el.dataset.field))); }));
 }
 
@@ -889,14 +896,14 @@ function qualityChecks(tasks) {
 }
 function renderQuality() {
   const checks = qualityChecks(poData.tasks);
-  document.getElementById('quality-checks').innerHTML = checks.map(([, label, ts, level], i) => `<button class="an-check ${level} ${ts.length ? 'has-items' : ''}" data-check="${i}"><span>${escapeHtml(label)}</span><strong>${ts.length}</strong><small>${level === 'critical' ? 'Критично' : 'Техническое'}</small></button>`).join('');
+  document.getElementById('quality-checks').innerHTML = checks.map(([, label, ts, level], i) => `<button class="ui-surface-action an-check ${level} ${ts.length ? 'has-items' : ''}" data-check="${i}"><span>${escapeHtml(label)}</span><strong>${ts.length}</strong><small>${level === 'critical' ? 'Критично' : 'Техническое'}</small></button>`).join('');
   document.querySelectorAll('#quality-checks [data-check]').forEach(el => el.addEventListener('click', () => { const c = checks[Number(el.dataset.check)]; showDetail('quality-detail', c[1], c[2], c[3] === 'critical' ? 'Критическая проверка' : 'Техническая проверка'); }));
 }
 
 function renderUniformity(field = 'status_name') {
   const tasks = poData.tasks, min = poData.quality_thresholds?.uniform_min_tasks || 10, threshold = (poData.quality_thresholds?.uniform_share_pct || 80) / 100;
   const teams = uniq(tasks.map(t => t.team_name || 'Без команды')).map(team => { const ts = tasks.filter(t => (t.team_name || 'Без команды') === team), values = Object.entries(by(ts, t => t[field] || 'Не заполнено')).sort((a, b) => b[1].length - a[1].length), top = values[0] || ['—', []]; return { team, tasks: ts, top: top[0], topTasks: top[1], share: ts.length ? top[1].length / ts.length : 0, enough: ts.length >= min }; });
-  document.getElementById('uniform-content').innerHTML = `<div class="an-uniform-list">${teams.map((r, i) => `<button class="an-uniform-row ${r.enough && r.share >= threshold ? 'signal' : ''}" data-uniform="${i}"><span><strong>${escapeHtml(r.team)}</strong><small>${r.tasks.length} задач</small></span><span>${escapeHtml(r.top)}</span><strong>${pct(r.topTasks.length, r.tasks.length)}</strong><small>${!r.enough ? `Мало данных (< ${min})` : r.share >= threshold ? 'Сигнал однородности' : 'Разнообразное распределение'}</small></button>`).join('')}</div>`;
+  document.getElementById('uniform-content').innerHTML = `<div class="an-uniform-list">${teams.map((r, i) => `<button class="ui-surface-action an-uniform-row ${r.enough && r.share >= threshold ? 'signal' : ''}" data-uniform="${i}"><span><strong>${escapeHtml(r.team)}</strong><small>${r.tasks.length} задач</small></span><span>${escapeHtml(r.top)}</span><strong>${pct(r.topTasks.length, r.tasks.length)}</strong><small>${!r.enough ? `Мало данных (< ${min})` : r.share >= threshold ? 'Сигнал однородности' : 'Разнообразное распределение'}</small></button>`).join('')}</div>`;
   document.querySelectorAll('[data-uniform]').forEach(el => el.addEventListener('click', () => { const r = teams[Number(el.dataset.uniform)]; showDetail('uniform-detail', `${r.team} · ${r.top}`, r.topTasks, `Доля ${pct(r.topTasks.length, r.tasks.length)}`); }));
 }
 
@@ -908,16 +915,31 @@ function initPo() {
 }
 
 export async function initAnalytics(type, app) {
+  const pageAtStart = document.querySelector('.an-page');
+  LT_TYPE_COLORS = chartPalette();
+  LT_MAP_COLORS = [4, 3, 1, 2, 5, 0, 7, 8, 9].map(index => LT_TYPE_COLORS[index]);
   disposeCharts();
   try {
-    if (type === 'tribe') { ltData = await app.api.get('/tasks/analytics/lt-reports'); initLt(); }
-    else if (type === 'po-pl') { poData = await app.api.get('/tasks/analytics/po-pl-reports'); initPo(); }
+    if (type === 'tribe') { const [data] = await Promise.all([app.api.get('/tasks/analytics/lt-reports'), loadChartFont()]); if (!pageAtStart?.isConnected) return; ltData = data; initLt(); }
+    else if (type === 'po-pl') { const [data] = await Promise.all([app.api.get('/tasks/analytics/po-pl-reports'), loadChartFont()]); if (!pageAtStart?.isConnected) return; poData = data; initPo(); }
+    chartThemeObserver = new MutationObserver(() => {
+      if (!document.querySelector('.an-page')) { disposeCharts(); return; }
+      Object.values(charts).forEach(applyChartTheme);
+    });
+    chartThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-accent'] });
     if (window.lucide) window.lucide.createIcons();
   } catch (error) {
     console.error('Analytics load error:', error);
     const page = document.querySelector('.an-page');
     page?.classList.remove('is-loading');
     page?.querySelector('.an-loading-state')?.remove();
-    if (page) page.innerHTML += `<div class="an-error">Не удалось загрузить аналитику: ${escapeHtml(error.message || error)}</div>`;
+    if (page) {
+      page.innerHTML = `<div class="page-header">${analyticsHeader(type)}</div>${renderViewState({ kind: error.status === 403 ? 'forbidden' : 'error', title: error.status === 403 ? 'Недостаточно прав' : 'Не удалось загрузить аналитику', message: error.status === 403 ? 'Для этого раздела нужен доступ к аналитике.' : 'Проверьте соединение и повторите попытку.', actionLabel: 'Повторить', actionId: 'analytics-retry' })}`;
+      page.querySelector('#analytics-retry').addEventListener('click', () => {
+        page.outerHTML = renderAnalytics(type, app);
+        initAnalytics(type, app);
+      });
+      window.lucide?.createIcons();
+    }
   }
 }

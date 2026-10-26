@@ -114,6 +114,12 @@ def _audit(**overrides) -> ResponseAudit:
     return ResponseAudit(**{**base, **overrides})
 
 
+def test_audit_accepts_engineering_phase_timings():
+    audit = _audit(phase_duration_ms={"factor_assessments": 1250})
+
+    assert audit.phase_duration_ms == {"factor_assessments": 1250}
+
+
 def test_value_response_round_trips_through_json():
     """Ответ должен собираться и разбираться: его читает чужая система."""
     from app.api.contract import ValueRange

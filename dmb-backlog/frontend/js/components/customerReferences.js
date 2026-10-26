@@ -8,19 +8,47 @@ export async function openCustomerReferences(kind, app) {
   dialog.className = 'customer-reference-dialog';
   document.body.appendChild(dialog);
   let items = [];
+  let initial = '';
+  const snapshot = () => JSON.stringify([...dialog.querySelectorAll('[data-editor] input')].map(input => input.type === 'checkbox' ? input.checked : input.value));
+  const dirty = () => initial && snapshot() !== initial;
+  function discardThen(action) {
+    if (!dirty()) { action(); return; }
+    const keep = dialog.querySelector('[data-discard-prompt] [data-keep]');
+    if (keep) { keep.click(); return; }
+    const origin = document.activeElement;
+    const prompt = document.createElement('div');
+    prompt.dataset.discardPrompt = '';
+    prompt.setAttribute('role', 'alertdialog');
+    prompt.setAttribute('aria-label', 'Несохранённые изменения');
+    prompt.innerHTML = '<p>Несохранённые изменения будут потеряны. Продолжить?</p><button type="button" class="btn btn-secondary" data-keep>Продолжить редактирование</button><button type="button" class="btn btn-danger" data-discard>Сбросить изменения</button>';
+    const background = [...dialog.children].map(node => [node, node.inert]);
+    background.forEach(([node]) => { node.inert = true; });
+    dialog.appendChild(prompt);
+    const dismiss = () => { prompt.remove(); background.forEach(([node, inert]) => { node.inert = inert; }); };
+    prompt.querySelector('[data-keep]').onclick = () => { dismiss(); origin?.focus(); };
+    prompt.querySelector('[data-discard]').onclick = () => { initial = ''; dismiss(); action(); };
+    prompt.querySelector('[data-keep]').focus();
+  }
+  dialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    const keep = dialog.querySelector('[data-discard-prompt] [data-keep]');
+    if (keep) keep.click(); else discardThen(() => dialog.close());
+  });
   dialog.addEventListener('close', () => dialog.remove());
   dialog.showModal();
   const title = 'Клиенты ДИД';
   function render() {
-    dialog.innerHTML = `<div class="did-filter-panel-head"><h2>${title}</h2><button class="modal-close" type="button" data-close data-modal-close aria-label="Закрыть">×</button></div><p class="text-muted">Группировка задач в отчёте для бизнес-заказчиков ДИД.</p><div role="alert" data-error></div><div class="customer-reference-list">${items.map(item => `<div class="customer-reference-row"><span>${escapeHtml(item.name)} ${item.is_active ? '' : '· Неактивна'}</span><button class="btn btn-secondary btn-sm" data-edit="${item.id}">Изменить</button></div>`).join('') || '<p class="empty-state">Справочник пока пуст</p>'}</div><button class="btn btn-primary" data-new>Добавить запись</button><div data-editor></div>`;
-    dialog.querySelector('[data-close]').onclick = () => dialog.close();
-    dialog.querySelector('[data-new]').onclick = () => editor(null);
-    dialog.querySelectorAll('[data-edit]').forEach(b => { b.onclick = () => editor(items.find(i => i.id === Number(b.dataset.edit))); });
+    initial = '';
+    dialog.innerHTML = `<div class="did-filter-panel-head"><h2>${title}</h2><button class="btn btn-ghost btn-lg square-icon ui-btn modal-close" type="button" data-close data-modal-close aria-label="Закрыть">×</button></div><p class="text-muted">Группировка задач в отчёте для бизнес-заказчиков ДИД.</p><div role="alert" data-error></div><div class="customer-reference-list">${items.map(item => `<div class="customer-reference-row"><span>${escapeHtml(item.name)} ${item.is_active ? '' : '· Неактивна'}</span><button class="btn btn-secondary btn-sm" data-edit="${item.id}">Изменить</button></div>`).join('') || '<p class="empty-state">Справочник пока пуст</p>'}</div><button class="btn btn-primary" data-new>Добавить запись</button><div data-editor></div>`;
+    dialog.querySelector('[data-close]').onclick = () => discardThen(() => dialog.close());
+    dialog.querySelector('[data-new]').onclick = () => discardThen(() => editor(null));
+    dialog.querySelectorAll('[data-edit]').forEach(b => { b.onclick = () => discardThen(() => editor(items.find(i => i.id === Number(b.dataset.edit)))); });
   }
   function editor(item) {
     const host = dialog.querySelector('[data-editor]');
     host.innerHTML = `<form class="customer-reference-editor"><h3>${item ? 'Изменить запись' : 'Новая запись'}</h3><label>Название<input class="input" name="name" required maxlength="100" value="${escapeHtml(item?.name || '')}"></label><label>Код<input class="input" name="code" required maxlength="50" value="${escapeHtml(item?.code || '')}"></label><label>Порядок<input class="input" name="order" type="number" min="0" max="100000" value="${item?.sort_order || 0}"></label><label><input name="active" type="checkbox" ${item?.is_active !== false ? 'checked' : ''}> Активна</label><div class="did-actions"><button class="btn btn-primary" type="submit">Сохранить</button><button class="btn btn-secondary" type="button" data-cancel>Отмена</button></div></form>`;
-    host.querySelector('[data-cancel]').onclick = () => { host.innerHTML = ''; };
+    initial = snapshot();
+    host.querySelector('[data-cancel]').onclick = () => discardThen(() => { initial = ''; host.innerHTML = ''; });
     host.querySelector('form').onsubmit = async event => {
       event.preventDefault(); const form = event.target, fields = form.elements;
       const command = { name: fields.name.value, is_active: fields.active.checked, expected: item };
@@ -35,8 +63,8 @@ export async function openCustomerReferences(kind, app) {
     };
     host.querySelector('input').focus();
   }
-  dialog.innerHTML = `<div class="app-modal__state" role="status"><p>Загрузка…</p><button class="btn btn-secondary" data-close data-modal-close>Закрыть</button></div>`;
-  dialog.querySelector('[data-close]').onclick = () => dialog.close();
+  dialog.innerHTML = `<div class="app-modal__state content-loading-state" role="status"><p>Загрузка…</p><button class="btn btn-secondary" data-close data-modal-close>Закрыть</button></div>`;
+  dialog.querySelector('[data-close]').onclick = () => discardThen(() => dialog.close());
   try {
     items = await app.api.get(endpoint);
     if (dialog.isConnected) render();

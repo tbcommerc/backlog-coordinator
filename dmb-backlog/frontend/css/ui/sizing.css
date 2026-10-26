@@ -1,0 +1,94 @@
+/* Shared UI contract. Page compatibility belongs in adapters.css. */
+:root :is(.btn, .iconbtn, .conflict-btn, .toast-action) {
+  --ui-size: var(--control-height);
+  --ui-font: var(--control-font);
+  --ui-line: var(--control-line);
+  --ui-icon: var(--control-icon);
+  --ui-padding-x: var(--control-padding-x);
+  --ui-target: max(var(--ui-size), var(--control-target-min));
+  box-sizing: border-box;
+  align-items: center;
+  height: auto;
+  min-height: var(--ui-target);
+  padding: max(0px, calc((var(--ui-target) - var(--ui-line) - 2px) / 2)) var(--ui-padding-x);
+  gap: var(--control-gap);
+  font-size: var(--ui-font);
+  line-height: var(--ui-line);
+}
+:root :is(.btn-sm, .btn.mini, .conflict-btn, .toast-action) {
+  --ui-size: var(--control-height-sm);
+  --ui-font: var(--control-font-sm);
+  --ui-line: var(--control-line-sm);
+  --ui-icon: var(--control-icon-sm);
+  --ui-padding-x: var(--control-padding-x-sm);
+}
+:root .btn-xs {
+  --ui-size: var(--control-height-xs);
+  --ui-font: var(--control-font-xs);
+  --ui-line: var(--control-line-sm);
+  --ui-icon: var(--control-icon-xs);
+  --ui-padding-x: var(--control-padding-x-xs);
+}
+:root .btn-lg {
+  --ui-size: var(--control-height-lg);
+  --ui-font: var(--control-font-lg);
+  --ui-icon: var(--control-icon-lg);
+  --ui-padding-x: var(--control-padding-x-lg);
+}
+:root .iconbtn.close:not(.btn) {
+  --ui-size: var(--control-height-lg);
+  --ui-icon: var(--control-icon-lg);
+}
+:root :is(.btn.square-icon, .btn.btn-icon, .iconbtn) {
+  width: var(--ui-target);
+  min-width: var(--ui-target);
+  height: var(--ui-target);
+  min-height: var(--ui-target);
+  flex: 0 0 var(--ui-target);
+  padding: 0;
+}
+:root :is(.btn, .iconbtn, .conflict-btn, .toast-action) > :is(svg, [data-lucide], .ui-button-spinner) {
+  width: var(--ui-icon);
+  height: var(--ui-icon);
+  flex: 0 0 var(--ui-icon);
+}
+.ui-icon { width: var(--control-icon); height: var(--control-icon); flex: 0 0 auto; }
+:root :is(.btn, .iconbtn, .conflict-btn, .toast-action)[hidden] { display: none; }
+:root :is(.square-icon, .btn-icon)[aria-busy="true"] > span:not(.ui-button-spinner) { display: none; }
+:root :is(.input:where(input, select), .ui-control):not(:where(textarea, [multiple])) {
+  --ui-size: var(--control-height);
+  --ui-font: var(--control-font);
+  --ui-target: max(var(--ui-size), var(--control-target-min));
+  box-sizing: border-box;
+  height: var(--ui-target);
+  min-height: var(--ui-target);
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: var(--ui-font);
+  line-height: var(--control-line);
+}
+:root :is(.input-sm, .ui-control.input-sm) { --ui-size: var(--control-height-sm); --ui-font: var(--control-font-sm); }
+:root :is(.input-xs, .ui-control.input-xs) { --ui-size: var(--control-height-xs); --ui-font: var(--control-font-xs); }
+:root :is(.input-lg, .ui-control.input-lg) { --ui-size: var(--control-height-lg); --ui-font: var(--control-font-lg); }
+:root .search-input.ui-control { padding-inline: calc(var(--control-icon) + var(--space-5)) var(--space-3); }
+:root .ui-control.ui-search-clearable { padding-inline: calc(var(--control-icon) + var(--space-4)); }
+:root input.ui-number-cell {
+  padding-inline: var(--space-1);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+}
+input.ui-number-cell::-webkit-inner-spin-button,
+input.ui-number-cell::-webkit-outer-spin-button { appearance: none; margin: 0; }
+:root .ui-tab {
+  box-sizing: border-box;
+  min-height: max(var(--control-height), var(--control-target-min));
+  padding: max(0px, calc((max(var(--control-height), var(--control-target-min)) - var(--control-line) - 2px) / 2)) var(--control-padding-x);
+  font-size: var(--control-font);
+  line-height: var(--control-line);
+}
+@media (max-width:1024px) {
+:root .btn.ui-responsive-icon { width:var(--ui-target); min-width:var(--ui-target); height:var(--ui-target); flex:0 0 var(--ui-target); padding:0; }
+.ui-responsive-icon-label,
+.ui-responsive-icon-extra { display:none; }
+}

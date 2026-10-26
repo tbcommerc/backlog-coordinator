@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Приоритеты",
+    "rows": 3,
+    "saveDisabled": true
+  },
+  {
+    "name": "Статусы задачи",
+    "rows": 13,
+    "saveDisabled": true
+  },
+  {
+    "name": "Типы задач",
+    "rows": 5,
+    "saveDisabled": true
+  },
+  {
+    "name": "Каналы",
+    "rows": 4,
+    "saveDisabled": true
+  },
+  {
+    "name": "Сроки",
+    "rows": 8,
+    "saveDisabled": true
+  },
+  {
+    "name": "Подразделения",
+    "rows": 11,
+    "saveDisabled": true
+  },
+  {
+    "name": "Типы команд",
+    "rows": 2,
+    "saveDisabled": true
+  },
+  {
+    "name": "Статусы проектов",
+    "rows": 3,
+    "saveDisabled": true
+  }
+]

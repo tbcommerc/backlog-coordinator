@@ -6,15 +6,20 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
-const previousFocus = new WeakMap();
+// Versioned SPA imports and unversioned component imports may coexist.
+// Keep the origin on the overlay so both instances share the same lifecycle.
+const previousFocus = Symbol.for('ui-kit.dialog.previous-focus');
 let headingSequence = 0;
 
 function visibleFocusable(dialog) {
   return [...dialog.querySelectorAll(FOCUSABLE_SELECTOR)]
-    .filter((element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+    .filter((element) => element.getClientRects().length && !element.disabled
+      && !element.closest('[hidden], [inert], [aria-hidden="true"]')
+      && getComputedStyle(element).visibility !== 'hidden');
 }
 
 export function enhanceDialogOverlay(overlay, focusOrigin = document.activeElement) {
+  if (overlay?.dataset.nonmodal === 'true') return overlay;
   if (!overlay || overlay.dataset.a11yDialogReady === 'true') return overlay;
   const dialog = overlay.matches('dialog, [role="dialog"], [role="alertdialog"]')
     ? overlay
@@ -22,7 +27,7 @@ export function enhanceDialogOverlay(overlay, focusOrigin = document.activeEleme
   if (!dialog) return overlay;
 
   overlay.dataset.a11yDialogReady = 'true';
-  previousFocus.set(overlay, focusOrigin instanceof HTMLElement ? focusOrigin : null);
+  overlay[previousFocus] = focusOrigin instanceof HTMLElement ? focusOrigin : null;
   if (!dialog.hasAttribute('role')) dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
 
@@ -58,15 +63,17 @@ export function enhanceDialogOverlay(overlay, focusOrigin = document.activeEleme
 
 function activeOverlay() {
   return [...document.querySelectorAll(OVERLAY_SELECTOR)]
+    .filter((overlay) => overlay.dataset.nonmodal !== 'true')
     .filter((overlay) => overlay.dataset.a11yDialogReady === 'true')
+    .filter((overlay) => overlay.getClientRects().length && !overlay.closest('[hidden], [inert]'))
     .filter((overlay) => !overlay.matches('dialog') || overlay.open)
     .at(-1);
 }
 
 function restoreFocus(overlay) {
-  const origin = previousFocus.get(overlay);
+  const origin = overlay[previousFocus];
   if (origin?.isConnected) window.requestAnimationFrame(() => origin.focus());
-  previousFocus.delete(overlay);
+  delete overlay[previousFocus];
 }
 
 function handleKeydown(event) {
@@ -102,6 +109,15 @@ function handleKeydown(event) {
 }
 
 export function initModalAccessibility() {
+  // Some legacy openers focus synchronously, before MutationObserver runs.
+  // Capture the element being left at that boundary, including nested dialogs.
+  const handleFocusIn = event => {
+    const overlay = event.target.closest?.(OVERLAY_SELECTOR);
+    if (overlay && overlay.dataset.a11yDialogReady !== 'true') {
+      enhanceDialogOverlay(overlay, event.relatedTarget);
+    }
+  };
+  document.addEventListener('focusin', handleFocusIn, true);
   document.querySelectorAll(OVERLAY_SELECTOR).forEach((overlay) => enhanceDialogOverlay(overlay));
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
@@ -122,5 +138,6 @@ export function initModalAccessibility() {
   return () => {
     observer.disconnect();
     document.removeEventListener('keydown', handleKeydown, true);
+    document.removeEventListener('focusin', handleFocusIn, true);
   };
 }

@@ -20,7 +20,7 @@ test('LT analytics exposes the seven approved reports on one page', () => {
 test('LT analytics uses one report shell, numbered headings and local navigation', () => {
   const html = renderAnalytics('tribe', {});
   assert.match(html, /class="an-report-nav"/);
-  assert.match(html, /class="an-loading-state" role="status"/);
+  assert.match(html, /class="view-state view-state-loading content-loading-state" role="status" aria-busy="true"/);
   for (let index = 1; index <= 7; index += 1) {
     const number = String(index).padStart(2, '0');
     assert.match(html, new RegExp(`data-report-index="${number}"`));
@@ -43,9 +43,9 @@ test('LT analytics shares controls and table primitives without the overflowing 
   const html = renderAnalytics('tribe', {});
   assert.match(html, /id="effort-period"/);
   assert.doesNotMatch(html, /effortPeriodSeg|effort-period-seg/);
-  assert.match(html, /class="rep-table an-table an-table--standard"/);
-  assert.match(html, /class="dep-table an-table an-table--compact"/);
-  assert.match(html, /class="roi-tree-table" role="table"/);
+  assert.match(html, /class="[^"]*rep-table an-table an-table--standard"/);
+  assert.match(html, /class="[^"]*dep-table an-table an-table--compact"/);
+  assert.match(html, /class="roi-tree-table[^"]*" role="table"/);
   assert.doesNotMatch(html, /class="an-display-settings"|Настройки отображения/);
   assert.match(analyticsStyles, /ЕДИНАЯ СИСТЕМА ОТЧЁТОВ АНАЛИТИКИ/);
   assert.match(analyticsStyles, /\.kpi-val,\s*\.dc-num\s*\{\s*font-family:var\(--font-family\)/);
@@ -77,7 +77,7 @@ test('effort and dependency reports keep the original dashboard design', () => {
   assert.match(analyticsSource, /layout:\s*'none'/);
   assert.match(analyticsSource, /roam:\s*false/);
   assert.match(analyticsSource, /edgeLabel:\s*\{/);
-  assert.match(analyticsSource, /edgeLabel:\s*\{[^}]*position:\s*'middle'[^}]*distance:\s*0[^}]*fontSize:\s*9\.5[^}]*textBorderWidth:\s*3/);
+  assert.match(analyticsSource, /edgeLabel:\s*\{[^}]*position:\s*'middle'[^}]*distance:\s*0[^}]*fontSize:\s*11[^}]*textBorderWidth:\s*3/);
   assert.doesNotMatch(analyticsSource, /edgeLabel:\s*\{[^}]*padding:\s*\[2, 4\]/);
   assert.match(analyticsSource, /function dependencyGraphLayout\(nodes = \[\]\)/);
   assert.match(analyticsSource, /width:\s*Math\.round\(size\)/);
@@ -142,8 +142,11 @@ test('analytics period filters mark the current period consistently', () => {
   assert.match(analyticsStyles, /option\.an-period-current\{[^}]*font-weight:700/);
 });
 
-test('all analytics filters share one desktop size', () => {
-  assert.match(analyticsStyles, /\.an-control select,\s*\.roi-toolbar select,\s*\.p360-flow-toolbar select,\s*\.dd-btn,\s*\.an-filter-button\s*\{[\s\S]*?width:180px;[\s\S]*?min-width:180px;[\s\S]*?max-width:180px;[\s\S]*?height:36px;[\s\S]*?min-height:36px/);
+test('analytics owns filter width while the kit owns control height', () => {
+  const filterRule = analyticsStyles.match(/\.an-control select,\s*\.roi-toolbar select,\s*\.p360-flow-toolbar select,\s*\.dd-btn,\s*\.an-filter-button\s*\{([^}]*)\}/)?.[1];
+  assert.ok(filterRule);
+  assert.match(filterRule, /width:180px;[\s\S]*?min-width:180px;[\s\S]*?max-width:180px;/);
+  assert.doesNotMatch(filterRule, /(?:height|padding|font-size|line-height):/);
   assert.match(analyticsStyles, /\.p360-project-control\{min-width:310px\}/);
   assert.match(analyticsStyles, /\.p360-project-search\{[^}]*width:min\(42vw,520px\)/);
   assert.doesNotMatch(analyticsStyles, /#an-dep \.an-report-toolbar \.an-control select/);
@@ -166,7 +169,7 @@ test('PO/PL completeness report filters tasks by the selected period', () => {
 });
 
 test('PO/PL completeness matrix separates task counts and constrains every column', () => {
-  assert.match(analyticsSource, /class="an-table an-matrix an-completeness-matrix" style="--profile-columns:\$\{completenessFields\.length \+ 2\}"/);
+  assert.match(analyticsSource, /class="[^"]*an-table an-matrix an-completeness-matrix" style="--profile-columns:\$\{completenessFields\.length \+ 2\}"/);
   assert.match(analyticsSource, /<col class="an-team-column"><col class="an-count-column">/);
   assert.match(analyticsSource, /<th class="an-number">Количество задач<\/th>/);
   assert.match(analyticsSource, /<th title="\$\{escapeHtml\(team\)\}">\$\{escapeHtml\(team\)\}<\/th><td class="an-number an-task-count">\$\{ts\.length\}<\/td>/);
@@ -218,7 +221,7 @@ test('team profile keeps equal numeric columns and shows each type share within 
 test('task flow supports calm loading, connected-node focus and filter-sized column swapping', () => {
   const html = renderAnalytics('tribe', {});
   assert.doesNotMatch(html, /sankey-reset|Сбросить узел/);
-  assert.match(html, /class="an-filter-button" id="sankey-swap"[^>]*>Команда ↔ Тип задачи/);
+  assert.match(html, /<button[^>]*class="[^"]*ui-btn an-filter-button"[^>]*id="sankey-swap"[^>]*><span>Команда ↔ Тип задачи/);
   assert.doesNotMatch(html, /sankey-sort-(?:department|team|type)|an-display-settings|Настройки отображения/);
   assert.doesNotMatch(analyticsSource, /state\.sankey\.sort/);
   assert.match(analyticsSource, /animation:\s*false/);
@@ -237,7 +240,7 @@ test('team profile hover preserves heat-map cell backgrounds', () => {
   assert.doesNotMatch(analyticsStyles, /\.an-matrix tbody tr:hover>\*\{[^}]*background:/);
   assert.match(analyticsStyles, /\.an-matrix tbody tr:hover>\*:first-child\{box-shadow:inset 3px 0 var\(--accent\)/);
   assert.doesNotMatch(analyticsStyles, /\.an-matrix tbody tr:hover>\*\{[^}]*--primary-color/);
-  assert.match(appShell, /analytics-lt\.css\?v=28/);
+  assert.match(appShell, /analytics-lt\.css\?v=\d+/);
 });
 
 test('Project 360 follows the tribe dashboard reference composition', () => {
@@ -246,7 +249,10 @@ test('Project 360 follows the tribe dashboard reference composition', () => {
     'Контур ответственности', 'Структура работ', 'Управленческие сигналы',
     'Основная команда', 'Все сроки', 'Весь спрос', 'Задачи', 'Трудозатраты',
   ]) assert.match(analyticsSource, new RegExp(section));
-  assert.match(html, /id="project-search" type="search" list="project-options"/);
+  const projectSearch = html.match(/<input[^>]*id="project-search"[^>]*>/)?.[0];
+  assert.ok(projectSearch);
+  assert.match(projectSearch, /type="search"/);
+  assert.match(projectSearch, /list="project-options"/);
   assert.match(html, /<datalist id="project-options"><\/datalist>/);
   assert.match(analyticsSource, /p360-accordion/);
   assert.match(analyticsSource, /name="p360-sections"/);
@@ -286,8 +292,8 @@ test('report 7 follows tribe-backlog-dashboard ROI quadrant', () => {
   assert.match(html, /id="roi-table-body"/);
   assert.match(analyticsSource, /class="roi-task-row"/);
   assert.match(analyticsSource, /class="roi-team-row is-collapsed"/);
-  assert.match(analyticsSource, /class="roi-team-toggle"/);
-  assert.match(analyticsSource, /class="roi-project-toggle"/);
+  assert.match(analyticsSource, /class="ui-surface-action roi-team-toggle"/);
+  assert.match(analyticsSource, /class="ui-surface-action roi-project-toggle"/);
   for (const quadrant of ['Дёшево и ценно', 'Дорого, но ценно', 'Дёшево и не ценно', 'Дорого и не ценно']) assert.match(analyticsSource, new RegExp(quadrant));
   assert.match(analyticsSource, /размер круга — фин\. эффект/);
   assert.doesNotMatch(analyticsSource, /roi-dot.*is-dim/);
@@ -298,7 +304,7 @@ test('analytics detail uses one accessible task table and progressive project gr
   assert.match(analyticsSource, /function bindAnalyticsDetailEscape\(/);
   assert.match(analyticsSource, /aria-label="Закрыть детализацию"/);
   assert.match(analyticsSource, /class="an-detail-trail"/);
-  assert.match(analyticsSource, /class="an-task-list-head" role="row"/);
+  assert.match(analyticsSource, /class="an-task-list-head[^"]*" role="row"/);
   assert.match(analyticsSource, /<span>Статус<\/span><span>Срок<\/span><span>Трудозатраты<\/span>/);
   assert.match(analyticsSource, /groups\.length === 1/);
   assert.match(analyticsStyles, /\.an-project-groups\{max-height:520px;overflow:auto/);

@@ -27,6 +27,14 @@ export class Auth {
     constructor(api, store) {
         this.api = api;
         this.store = store;
+        this.channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('dmb-account-security') : null;
+        if (this.channel) this.channel.onmessage = event => {
+            if (event.data?.type === 'logout') {
+                this.api.setAccessToken(null);
+                localStorage.removeItem('dmb_user');
+                window.location.reload();
+            }
+        };
         localStorage.removeItem('dmb_tokens');
     }
     
@@ -42,24 +50,22 @@ export class Auth {
      * @param {string} password
      * @returns {Promise<LoginResponse>}
      */
-    async login(email, password) {
-        const response = await this.api.post('/auth/login', { email, password });
+    async login(login, password) {
+        const response = await this.api.post('/auth/login', { login, password });
         
         this.api.setAccessToken(response.access_token);
+        this.api.rememberSession(response);
         localStorage.setItem('dmb_user', JSON.stringify(response.user));
         
         return response;
     }
     
     async logout() {
-        try {
-            await this.api.post('/auth/logout');
-        } catch {
-            // Local logout must still complete if the session is already expired.
-        } finally {
-            this.api.setAccessToken(null);
-            localStorage.removeItem('dmb_user');
-        }
+        await this.api.post('/auth/logout');
+        this.api.setAccessToken(null);
+        localStorage.removeItem('dmb_user');
+        this.store?.set('currentUser', null);
+        this.channel?.postMessage({type:'logout'});
     }
 
     async restoreSession() {

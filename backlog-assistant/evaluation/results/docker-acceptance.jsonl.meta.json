@@ -1,0 +1,24 @@
+{
+  "model": "glm-5.3-flash",
+  "runtime": "docker",
+  "opencode_version": "1.17.13",
+  "parallel": 1,
+  "started_at": "2026-10-15T15:16:49.356085+00:00",
+  "prompt_sha256": "55a09f5149b3abf1b8673fdcc62f5afa8b18e3ca3482a8bc509615077a99ddf8",
+  "schema_sha256": "42a954173fad97b1cafafa5c3799986ccba185a201cb8a15aace17b4d9a08fe8",
+  "corpus_sha256": "33db1e8fc73aeee6ee2b21a4c12d4354c6a6dbf77e004c9f2cb243bbded1e0e2",
+  "source_sha256": {
+    "runtime\\opencode.py": "d60d56db500ca03bf9bb37100f0b7026f6d35e5d466705f2865811f73d32df8c",
+    "runtime\\system.txt": "86a594b68f8b5239d6b01844df930edddeb8725f66cd78c868eff00e6f9c0890",
+    "service\\worker.py": "2474432122d6a0ab5b36611887a97772b7cb477a895156f0be07487e57528f0f",
+    "bridge\\tools.py": "6fbf7c9e611528ee0054354a4c2cbbd6fe27ac0c81c5835f36009fdef446ce90",
+    "bridge\\selection.py": "f82f8e75d318f44f20f5082755d14baf73605840b3407803b50d08723e046a56",
+    "bridge\\model.py": "956819e8e6722f929a3b438a53803d4f20c89714232337273142d00e3d8db0de",
+    "contracts\\catalog.py": "7a869debe17b0c96423668436697aa35e0a632689512b2f7696bbaa88a10fce7",
+    "evaluation\\data.py": "f41c9a344af631d2305531aba02903a97cea3022d28c4d0fb9eac6ea834cf6c8",
+    "evaluation\\run.py": "15f0583b95b4c9994ec233c209fe89fb2f0118c2a60522a405daecee5ad82182",
+    "evaluation\\corpus.py": "7cff15ec68b5074c412dac9e83a72ea6674890a958743f9799136b7060d6c653",
+    "..\\dmb-backlog\\backend\\services\\backlog_assistant_integration\\presentation.py": "64729cc9b1fc9ca0470ce13917e8874e6a54206ce35ea43fcac2919d86ad392a",
+    "..\\dmb-backlog\\backend\\services\\backlog_assistant_integration\\normalization.py": "2ee0676913c976a50263ce580d85352ab83186acbdf2c5b6136204213c996a7c"
+  }
+}

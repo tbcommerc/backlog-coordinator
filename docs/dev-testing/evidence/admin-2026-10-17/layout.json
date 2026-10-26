@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Команды",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-teams",
+    "w": 1366
+  },
+  {
+    "name": "Проекты",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-projects",
+    "w": 1366
+  },
+  {
+    "name": "Бизнес-заказчики",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-businessCustomers",
+    "w": 1366
+  },
+  {
+    "name": "Пользователи",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-users",
+    "w": 1366
+  },
+  {
+    "name": "Роли",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-roles",
+    "w": 1366
+  },
+  {
+    "name": "Справочники",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-dictionaries",
+    "w": 1366
+  },
+  {
+    "name": "Отображение",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-display",
+    "w": 1366
+  },
+  {
+    "name": "Таймлайн",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-home",
+    "w": 1366
+  },
+  {
+    "name": "Отчёты",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-reports",
+    "w": 1366
+  },
+  {
+    "name": "Журнал действий",
+    "docW": 1358,
+    "h": 768,
+    "panel": "admin-tab-audit",
+    "w": 1366
+  }
+]

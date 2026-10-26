@@ -1,0 +1,65 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Запрос
+  - button "Открыть поиск":
+  - 'button "Уведомления: не удалось обновить данные"':
+    - generic: "!"
+  - button "Переключить тему":
+  - button:
+    - generic: UТ
+- main:
+  - link "Мои запросы":
+    - /url: "#/customer"
+    - text: Мои запросы
+  - 'heading "UX-NOTIF-CLONE: rejected" [level=1]'
+  - generic: Отклонён
+  - paragraph: "#15 · обновлён 14 окт. 2026 г., 21:43"
+  - navigation "Путь запроса":
+    - generic: Этап 4 из 4 · Отклонён
+  - region "Сводка по запросу":
+    - generic: Ответственный
+    - strong: Команда запроса
+    - generic: Последнее событие
+    - strong: Принято решение · 14 окт. 2026 г., 21:43
+    - generic: Текущий этап с
+    - strong: 14 окт. 2026 г.
+  - generic: Специалист команды · 14 окт. 2026 г., 21:43
+  - strong: Решение по запросу
+  - paragraph: Контрольная причина решения
+  - main:
+    - heading "Суть запроса" [level=2]
+    - generic: Описание пока не заполнено
+    - heading "Ключевые события" [level=2]
+    - paragraph: Решения и изменения по запросу
+    - article:
+      - strong: Принято решение
+      - time: 14 окт. 2026 г., 21:43
+      - paragraph: Контрольная причина решения
+      - text: Команда ревью
+    - article:
+      - strong: Запрос создан
+      - time: 14 окт. 2026 г., 21:43
+      - paragraph: Потребность сформулирована и сохранена в системе
+      - text: UX тест — бизнес-заказчик
+  - complementary:
+    - heading "Следующий шаг" [level=2]
+    - paragraph: Рассмотрение завершено. Решение специалиста показано над содержанием запроса.
+    - generic "Участники и даты Справочная информация":
+      - text: Участники и даты
+      - generic: Справочная информация

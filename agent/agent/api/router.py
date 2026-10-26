@@ -20,6 +20,8 @@ from ..dialogue.state import INTENTS
 from ..kb.loader import kb
 from ..mcp.registry import registry as mcp_registry
 from ..llm.rephrase import rephrase_stream
+from ..meeting_extraction import ExtractionInput, extract_meeting, extraction_failure_detail
+from ..llm.factory import get_llm
 from ..orchestrator import get_orchestrator
 from ..session import SessionConflictError
 from ..tools.base import registry as tool_registry
@@ -46,10 +48,24 @@ def _check_secret(x_agent_secret: str = Header(default="")):
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
+@router.post("/meetings/extract")
+def extract_meeting_endpoint(req: ExtractionInput, _=Depends(_check_secret)):
+    try:
+        return extract_meeting(req, get_llm())
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=502, detail="Не удалось проверить результат разбора. Попробуйте ещё раз.")
+    except Exception as error:
+        # Do not log transcript, model output or provider credentials.
+        detail = extraction_failure_detail(error)
+        if detail:
+            raise HTTPException(status_code=503, detail=detail) from None
+        raise HTTPException(status_code=503, detail="Разбор встреч временно недоступен. Можно добавить пункты вручную.")
+
+
 def _to_ctx(raw: dict | None) -> UserContext | None:
     if not raw:
         return None
-    data = {k: raw.get(k, "") for k in (
+    data = {k: raw.get(k) or "" for k in (
         "name", "email", "role_name", "customer_access", "team_name", "department")}
     data["user_id"] = int(raw.get("user_id", 0) or 0)
     data["is_ba"] = bool(raw.get("is_ba", False))

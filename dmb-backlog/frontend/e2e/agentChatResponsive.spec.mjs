@@ -171,3 +171,17 @@ test('браузер получает финальный ответ через S
   await expect(page.locator('.chat-message-streaming')).toHaveCount(0);
   await expect(page.locator('#agent-chat-input')).not.toHaveAttribute('aria-busy');
 });
+
+test('V1 session action menu shares keyboard navigation, viewport placement and focus return',async({page})=>{
+  await mockAssistant(page);await page.goto('/#/customer/create');
+  const history=page.getByRole('button',{name:'Открыть историю требований',exact:true});
+  await expect(history).toBeVisible();await history.click();
+  const toggle=page.locator('[data-session-menu]').first();
+  // The focus workspace keeps recent sessions in the sidebar.
+  await expect(toggle).toBeAttached();
+  const session=page.locator('[data-session-id]').first();await expect(session).toBeVisible();await session.focus();await expect(session).toBeFocused();await page.keyboard.press('ArrowRight');
+  const menu=page.getByRole('menu',{name:'Действия с требованием'});await expect(menu).toBeVisible();
+  await page.keyboard.press('End');await expect(menu.getByRole('menuitem').last()).toBeFocused();
+  await page.keyboard.press('Home');await expect(menu.getByRole('menuitem').first()).toBeFocused();
+  await page.keyboard.press('Escape');await expect(menu).toBeHidden();await expect(toggle).toBeFocused();
+});

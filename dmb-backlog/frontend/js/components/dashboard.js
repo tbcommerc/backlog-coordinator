@@ -8,11 +8,13 @@ import {
     notificationAccessibleLabel,
     notificationActionLabel,
     notificationCategoryMeta,
+    notificationDeadlineMeta,
     notificationImportanceMeta,
+    notificationReadLocked,
     openNotificationTarget,
     recordNotificationUxEvent,
-} from '../notificationUtils.js?v=3';
-import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=11';
+} from '../notificationUtils.js?v=12';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=21';
 
 const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 const MONTH_NAMES_SHORT = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
@@ -110,6 +112,38 @@ function getMonthLabel(m, year) {
     return MONTH_NAMES[m - 1] + ' ' + year;
 }
 
+function layoutMonthMarkers(events, month, year, todayPct, includeToday) {
+    const markers = events.map(event => ({
+        event,
+        position: monthDayPct(new Date(event.date + 'T00:00:00'), month, year),
+        title: event.title || 'Событие',
+        isToday: false,
+    }));
+    if (includeToday) {
+        markers.push({ event: null, position: todayPct, title: 'Сегодня', isToday: true });
+    }
+
+    const laneEnds = [];
+    markers
+        .sort((a, b) => a.position - b.position || Number(b.isToday) - Number(a.isToday) || a.title.localeCompare(b.title, 'ru'))
+        .forEach(marker => {
+            const estimatedWidth = Math.min(26, Math.max(9, marker.title.length * 0.62 + 3));
+            const start = Math.max(0, marker.position - estimatedWidth / 2);
+            const end = Math.min(100, marker.position + estimatedWidth / 2);
+            let lane = laneEnds.findIndex(laneEnd => laneEnd + 1.5 <= start);
+            if (lane === -1) {
+                lane = laneEnds.length;
+                laneEnds.push(end);
+            } else {
+                laneEnds[lane] = end;
+            }
+            marker.lane = lane;
+            marker.edge = marker.position < 10 ? 'start' : marker.position > 90 ? 'end' : 'center';
+        });
+
+    return { markers, laneCount: Math.max(1, laneEnds.length) };
+}
+
 function renderTimeline() {
     const st = getTimelineState();
     const now = new Date();
@@ -191,12 +225,6 @@ function renderQuarterTimeline(st, today, realToday) {
         return html;
     }
 
-    function navBtnStyle(disabled) {
-        const base = 'flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1px solid var(--border-color);background:var(--bg-primary);display:flex;align-items:center;justify-content:center;';
-        if (disabled) return base + 'opacity:0.4;cursor:not-allowed;color:var(--text-muted);';
-        return base + 'box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;color:var(--text-secondary);';
-    }
-
     return `
     <div class="dash-top-row">
         <div class="dash-quarter-bar">
@@ -211,13 +239,13 @@ function renderQuarterTimeline(st, today, realToday) {
                         <span class="dash-quarter-bar-pct">${pct}%</span>
                     </div>
                     <div style="display:flex;gap:2px;background:var(--bg-tertiary);border-radius:var(--radius-md,8px);padding:2px;">
-                        <button type="button" data-tl-action="view-month" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'month' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'month' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'month' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'month' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Месяц</button>
-                        <button type="button" data-tl-action="view-quarter" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'quarter' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'quarter' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'quarter' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
+                        <button class="btn btn-secondary btn-sm ui-btn" type="button" data-tl-action="view-month" style="font-family:inherit;${st.view === 'month' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Месяц</button>
+                        <button class="btn btn-secondary btn-sm ui-btn" type="button" data-tl-action="view-quarter" style="font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
                     </div>
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <button type="button" data-tl-action="prev-quarter" title="Предыдущий квартал" style="${navBtnStyle(prevDisabled)}" ${prevDisabled ? 'disabled' : ''}><i data-lucide="chevron-left" style="width:20px;height:20px;"></i></button>
+                <button class="btn btn-ghost btn-sm square-icon ui-btn" type="button" data-tl-action="prev-quarter" title="Предыдущий квартал" ${prevDisabled ? 'disabled' : ''}><i data-lucide="chevron-left" style=""></i></button>
                 <div class="dash-quarter-bar-track-wrap" style="flex:1;min-width:0;">
                     <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;">
                         ${markersContent()}
@@ -234,7 +262,7 @@ function renderQuarterTimeline(st, today, realToday) {
                         </div>
                     </div>
                 </div>
-                <button type="button" data-tl-action="next-quarter" title="Следующий квартал" style="${navBtnStyle(nextDisabled)}" ${nextDisabled ? 'disabled' : ''}><i data-lucide="chevron-right" style="width:20px;height:20px;"></i></button>
+                <button class="btn btn-ghost btn-sm square-icon ui-btn" type="button" data-tl-action="next-quarter" title="Следующий квартал" ${nextDisabled ? 'disabled' : ''}><i data-lucide="chevron-right" style=""></i></button>
             </div>
         </div>
     </div>`;
@@ -261,6 +289,7 @@ function renderMonthTimeline(st, today, realToday) {
         const evDate = new Date(e.date + 'T00:00:00');
         return evDate.getMonth() + 1 === m && evDate.getFullYear() === y;
     });
+    const markerLayout = layoutMonthMarkers(filteredEvents, m, y, pct, inMonth);
 
     function dotStyle(color, isPip) {
         const pipRule = isPip ? 'width:10px;height:10px;border-radius:3px;transform:rotate(45deg);' : '';
@@ -269,31 +298,22 @@ function renderMonthTimeline(st, today, realToday) {
     }
 
     function markersContent() {
-        let html = '';
-        if (inMonth) {
-            html += `
-            <div class="dash-quarter-marker" style="left:${pct}%;z-index:5;">
-                <div class="dash-marker-dot" style="background:var(--danger);box-shadow:0 0 0 3px rgba(244,63,94,0.45);width:14px;height:14px;"></div>
-                <div class="dash-marker-label" style="color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent);font-weight:700;">Сегодня</div>
-            </div>`;
-        }
-        filteredEvents.forEach(ev => {
-            const evDate = new Date(ev.date + 'T00:00:00');
-            const pos = monthDayPct(evDate, m, y);
+        return markerLayout.markers.map(marker => {
+            if (marker.isToday) {
+                return `
+                <div class="dash-quarter-marker" style="left:${marker.position}%;z-index:5;">
+                    <div class="dash-marker-dot" style="background:var(--danger);box-shadow:0 0 0 3px rgba(244,63,94,0.45);width:14px;height:14px;"></div>
+                    <div class="dash-marker-label dash-marker-label--${marker.edge}" style="--marker-lane-offset:${marker.lane * 24}px;color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent);font-weight:700;">Сегодня</div>
+                </div>`;
+            }
+            const ev = marker.event;
             const isPip = ev.event_type === 'pip';
-            html += `
-            <div class="dash-quarter-marker ${isPip ? 'dash-quarter-marker-pip' : ''}" style="left:${pos}%;" title="${escapeHtml(ev.title)}">
+            return `
+            <div class="dash-quarter-marker ${isPip ? 'dash-quarter-marker-pip' : ''}" style="left:${marker.position}%;" title="${escapeHtml(ev.title)}">
                 <div class="dash-marker-dot ${isPip ? 'dash-marker-dot-pip' : ''}" style="${dotStyle(ev.color, isPip)}"></div>
-                <div class="dash-marker-label ${isPip ? 'dash-marker-label-pip' : ''}" style="color:${ev.color};background:color-mix(in srgb,${ev.color} 10%,transparent);">${escapeHtml(ev.title)}</div>
+                <div class="dash-marker-label dash-marker-label--${marker.edge} ${isPip ? 'dash-marker-label-pip' : ''}" style="--marker-lane-offset:${marker.lane * 24}px;color:${ev.color};background:color-mix(in srgb,${ev.color} 10%,transparent);">${escapeHtml(ev.title)}</div>
             </div>`;
-        });
-        return html;
-    }
-
-    function navBtnStyle(disabled) {
-        const base = 'flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1px solid var(--border-color);background:var(--bg-primary);display:flex;align-items:center;justify-content:center;';
-        if (disabled) return base + 'opacity:0.4;cursor:not-allowed;color:var(--text-muted);';
-        return base + 'box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;color:var(--text-secondary);';
+        }).join('');
     }
 
     return `
@@ -310,14 +330,14 @@ function renderMonthTimeline(st, today, realToday) {
                         <span class="dash-quarter-bar-pct">${pct}%</span>
                     </div>
                     <div style="display:flex;gap:2px;background:var(--bg-tertiary);border-radius:var(--radius-md,8px);padding:2px;">
-                        <button type="button" data-tl-action="view-month" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'month' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'month' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'month' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'month' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Месяц</button>
-                        <button type="button" data-tl-action="view-quarter" style="font-size:12px;padding:4px 10px;border-radius:calc(var(--radius-md,8px) - 2px);border:1px solid ${st.view === 'quarter' ? 'var(--border-color)' : 'transparent'};background:${st.view === 'quarter' ? 'var(--bg-primary)' : 'transparent'};color:${st.view === 'quarter' ? 'var(--text-primary)' : 'var(--text-secondary)'};cursor:pointer;font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
+                        <button class="btn btn-secondary btn-sm ui-btn" type="button" data-tl-action="view-month" style="font-family:inherit;${st.view === 'month' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Месяц</button>
+                        <button class="btn btn-secondary btn-sm ui-btn" type="button" data-tl-action="view-quarter" style="font-family:inherit;${st.view === 'quarter' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1);' : ''}">Квартал</button>
                     </div>
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <button type="button" data-tl-action="prev-month" title="Предыдущий месяц" style="${navBtnStyle(prevDisabled)}" ${prevDisabled ? 'disabled' : ''}><i data-lucide="chevron-left" style="width:20px;height:20px;"></i></button>
-                <div class="dash-quarter-bar-track-wrap" style="flex:1;min-width:0;">
+                <button class="btn btn-ghost btn-sm square-icon ui-btn" type="button" data-tl-action="prev-month" title="Предыдущий месяц" ${prevDisabled ? 'disabled' : ''}><i data-lucide="chevron-left" style=""></i></button>
+                <div class="dash-quarter-bar-track-wrap dash-quarter-bar-track-wrap--month" style="--month-marker-offset:${(markerLayout.laneCount - 1) * 24}px;flex:1;min-width:0;">
                     <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;">
                         ${markersContent()}
                     </div>
@@ -325,7 +345,7 @@ function renderMonthTimeline(st, today, realToday) {
                         <div class="dash-quarter-bar-fill" style="width:${pct}%"></div>
                     </div>
                 </div>
-                <button type="button" data-tl-action="next-month" title="Следующий месяц" style="${navBtnStyle(nextDisabled)}" ${nextDisabled ? 'disabled' : ''}><i data-lucide="chevron-right" style="width:20px;height:20px;"></i></button>
+                <button class="btn btn-ghost btn-sm square-icon ui-btn" type="button" data-tl-action="next-month" title="Следующий месяц" ${nextDisabled ? 'disabled' : ''}><i data-lucide="chevron-right" style=""></i></button>
             </div>
         </div>
     </div>`;
@@ -381,8 +401,28 @@ async function loadTimelineData(app) {
         let url = `/timeline?year=${st.year}`;
         if (st.view === 'quarter') url += '&quarter=' + st.quarter;
         if (st.view === 'month') url += '&month=' + st.month;
-        const resp = await api.get(url);
-        st.events = resp.items || [];
+        const requests = [api.get(url)];
+        if (st.view === 'month') {
+            const dateFrom = `${st.year}-${String(st.month).padStart(2, '0')}-01`;
+            const dateTo = `${st.year}-${String(st.month).padStart(2, '0')}-${String(daysInMonth(st.month, st.year)).padStart(2, '0')}`;
+            requests.push(api.get(`/reporting-meetings?include_closed=true&include_completeness=false&date_from=${dateFrom}&date_to=${dateTo}`));
+        }
+
+        const [timelineResult, meetingsResult] = await Promise.allSettled(requests);
+        if (timelineResult.status === 'rejected') throw timelineResult.reason;
+
+        const timelineEvents = timelineResult.value?.items || [];
+        const reportingMeetings = meetingsResult?.status === 'fulfilled'
+            ? (meetingsResult.value?.items || []).map(item => ({
+                ...normalizeMeetingDate(item, app || window.app),
+                id: `reporting-meeting:${item.id}`,
+                event_type: 'reporting_meeting',
+            }))
+            : [];
+        if (meetingsResult?.status === 'rejected') {
+            console.error('Reporting meetings timeline load error:', meetingsResult.reason?.message || meetingsResult.reason);
+        }
+        st.events = [...timelineEvents, ...reportingMeetings];
     } catch (e) {
         console.error('Timeline load error:', e.status ? `${e.message} (HTTP ${e.status})` : e.message);
     } finally {
@@ -416,7 +456,7 @@ function renderNotificationsWidget() {
             <a href="#/notifications" class="dashboard-widget-link" aria-label="Все уведомления"><span class="dashboard-link-full">Все уведомления</span><span class="dashboard-link-short" aria-hidden="true">Все</span></a>
         </div>
         <div class="widget-body dashboard-list-body" id="dash-notif-body">
-            <p class="dashboard-list-state">Загрузка…</p>
+            <p class="dashboard-list-state content-loading-state">Загрузка…</p>
         </div>
     </section>`;
 }
@@ -459,7 +499,7 @@ function renderUpcomingDatesWidget() {
             </div>
         </div>
         <div class="widget-body dashboard-list-body" id="dashboard-dates-body">
-            <p class="dashboard-list-state">Загрузка…</p>
+            <p class="dashboard-list-state content-loading-state">Загрузка…</p>
         </div>
     </section>`;
 }
@@ -473,8 +513,8 @@ function renderDashboardShell(app) {
     </div>
     <div id="timeline-container">${renderTimeline()}</div>
     <div class="dashboard-workspace animate-slide-up">
-        ${renderNotificationsWidget()}
         ${renderUpcomingDatesWidget()}
+        ${renderNotificationsWidget()}
     </div>`;
 }
 
@@ -582,14 +622,14 @@ async function renderNotifications(snapshot = null) {
         const notifData = snapshot || await window.app?.notificationStore?.refresh({ source:'dashboard' });
         const candidates = [
             ...(notifData?.action_items || []),
-            ...(notifData?.recent_items || []).filter(item => !item.is_read && !item.is_resolved),
-        ];
+            ...(notifData?.recent_items || []),
+        ].filter(item => !item.is_read && !item.is_resolved);
         const seen = new Set();
         const items = candidates.filter(item => {
             const key = item.target?.url || item.action_url || `notification:${item.id}`;
             if (seen.has(key)) return false;
             seen.add(key);
-            return !item.is_resolved;
+            return true;
         }).slice(0, 4);
         if (notifCount) {
             notifCount.textContent = items.length ? String(items.length) : '';
@@ -604,15 +644,19 @@ async function renderNotifications(snapshot = null) {
             const { icon, label: category } = notificationCategoryMeta(n.category);
             const { color } = notificationImportanceMeta(n.importance);
             const time = formatNotificationTime(n.created_at);
+            const deadline = notificationDeadlineMeta(n);
+            const deadlineBadge = deadline
+                ? `<span class="notification-deadline-badge is-${deadline.tone}"><i data-lucide="calendar-clock" aria-hidden="true"></i><span>Срок ${escapeHtml(deadline.dateLabel)}</span><strong>${escapeHtml(deadline.daysLabel)}</strong></span>`
+                : '';
             const isUnread = !n.is_read && !n.is_resolved;
             return `
-            <button type="button" class="dash-notif-item dash-action-item ${isUnread ? 'is-unread' : 'is-read'} importance-${escapeHtml(n.importance || 'low')}" data-notif-id="${n.id}" data-task-id="${n.task_id || ''}" data-category="${escapeHtml(n.category || '')}" data-resolved="false" data-action-url="${encodeURIComponent(n.target?.url || n.action_url || '')}" aria-label="${escapeHtml(notificationAccessibleLabel(n))}">
+            <button type="button" class="ui-surface-action dash-notif-item dash-action-item ${isUnread ? 'is-unread' : 'is-read'} importance-${escapeHtml(n.importance || 'low')}" data-notif-id="${n.id}" data-task-id="${n.task_id || ''}" data-category="${escapeHtml(n.category || '')}" data-resolved="false" data-read-locked="${notificationReadLocked(n) ? 'true' : 'false'}" data-action-url="${encodeURIComponent(n.target?.url || n.action_url || '')}" aria-label="${escapeHtml(notificationAccessibleLabel(n))}">
                 <div class="dash-notif-icon" style="background:${color}22;color:${color};">
                     <i data-lucide="${icon}" style="width:16px;height:16px;"></i>
                 </div>
                 <div class="dash-notif-body">
                     <div class="dash-notif-title-row"><span class="dash-notif-title">${escapeHtml(n.title)}</span>${isUnread ? '<span class="dashboard-unread-dot" aria-label="Новое"></span>' : ''}</div>
-                    <div class="dash-notif-meta"><span>${escapeHtml(category)}</span><time datetime="${escapeHtml(n.created_at || '')}">${escapeHtml(time)}</time></div>
+                    <div class="dash-notif-meta"><span>${escapeHtml(category)}</span>${deadlineBadge}<time datetime="${escapeHtml(n.created_at || '')}">${escapeHtml(time)}</time></div>
                 </div>
                 <span class="dash-notif-action">${escapeHtml(notificationActionLabel(n))}<i data-lucide="arrow-right" aria-hidden="true"></i></span>
             </button>`;
@@ -621,7 +665,7 @@ async function renderNotifications(snapshot = null) {
             const item = e.target.closest('.dash-notif-item[data-notif-id]');
             if (!item) return;
             const notificationId = Number(item.dataset.notifId);
-            if (notificationId && item.classList.contains('is-unread')) {
+            if (notificationId && item.classList.contains('is-unread') && item.dataset.readLocked !== 'true') {
                 try { await window.app.api.put('/notifications/read', { ids: [notificationId] }); }
                 catch (error) { window.toast?.(window.formatErrorMessage?.(error)||'Не удалось обновить отметку о прочтении','warning'); }
             }
@@ -666,7 +710,7 @@ export async function initDashboard(app) {
 
         await initTeamDashboard(app);
 
-        const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=92');
+        const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=118');
         setOnTaskSaved(() => initDashboard(app));
 
     } catch (e) {

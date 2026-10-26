@@ -1,0 +1,140 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - navigation:
+    - link "Главная":
+      - /url: "#/dashboard"
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic "В разработке":
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic "В разработке":
+    - link "Мои запросы":
+      - /url: "#/customer"
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+    - link "Ревью запросов":
+      - /url: "#/review"
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: "4"
+    - link "Настройки":
+      - /url: "#/settings"
+    - link "Управление отчётными встречами":
+      - /url: "#/reporting-meetings"
+    - link "Администрирование":
+      - /url: "#/admin"
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+    - link "Ошибки доставки событий":
+      - /url: "#/outbox-dead-letters"
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Мои уведомления
+  - combobox "Поиск задач"
+  - 'button "Уведомления: 4 непрочитанных"':
+    - generic: "4"
+  - button "Переключить тему":
+  - button "Т.Бабяк":
+    - generic: ТБ
+    - generic: Т.Бабяк
+- main:
+  - heading "Мои уведомления" [level=1]
+  - paragraph: Назначения, отчётные статусы и обсуждения команды
+  - generic "Сводка уведомлений":
+    - strong: "0"
+    - text: требуют действия
+    - strong: "4"
+    - text: непрочитанных
+    - strong: "4"
+    - text: сегодня
+  - link "Настроить":
+    - /url: "#/settings?section=notifications"
+    - text: Настроить
+  - button "Прочитать все":
+    - generic: Прочитать все
+  - generic "Фильтры уведомлений":
+    - group "Состояние":
+      - generic: Состояние
+      - button "Все" [pressed]:
+        - generic: Все
+      - button "Требуют действия":
+        - generic: Требуют действия
+      - button "Непрочитанные":
+        - generic: Непрочитанные
+      - button "Закрытые":
+        - generic: Закрытые
+    - button "Сбросить" [disabled]:
+      - generic: Сбросить
+    - group "Категория":
+      - generic: Категория
+      - button "Назначения":
+        - generic: Назначения
+      - button "Встречи":
+        - generic: Встречи
+      - button "Упоминания":
+        - generic: Упоминания
+      - button "Комментарии":
+        - generic: Комментарии
+      - button "Запросы":
+        - generic: Запросы
+    - group "Приоритет":
+      - generic: Приоритет
+      - button "Высокий":
+        - generic: Высокий
+      - button "Обычный":
+        - generic: Обычный
+      - button "Информационный":
+        - generic: Информационный
+  - region "Уведомления":
+    - heading "Уведомления" [level=2]
+    - status: 4 уведомления
+    - list:
+      - heading "Сегодня" [level=3]
+      - 'heading "UX тест — без команды упомянул вас в задаче TASK-000-261: «UX-NOTIF-20261014 — проверка назначения и упоминания»" [level=3]'
+      - generic: Новое
+      - generic: Высокий
+      - generic: Упоминание
+      - time: 27 мин. назад
+      - 'button "К обсуждению: UX тест — без команды упомянул вас в задаче TASK-000-261: «UX-NOTIF-20261014 — проверка назначения и упоминания»"':
+        - generic: К обсуждению
+      - button "Отметить прочитанным":
+      - 'heading "UX тест — без команды добавил комментарий к задаче TASK-000-261: «UX-NOTIF-20261014 — проверка назначения и упоминания»" [level=3]'
+      - generic: Новое
+      - generic: Комментарий
+      - time: 33 мин. назад
+      - 'button "К обсуждению: UX тест — без команды добавил комментарий к задаче TASK-000-261: «UX-NOTIF-20261014 — проверка назначения и упоминания»"':
+        - generic: К обсуждению
+      - button "Отметить прочитанным":
+      - 'heading "UX тест — без команды упомянул вас в задаче TASK-000-261: «UX-NOTIF-20261014 — проверка назначения и упоминания»" [level=3]'
+      - generic: Новое
+      - generic: Высокий
+      - generic: Упоминание
+      - time: 38 мин. назад
+      - 'button "К обсуждению: UX тест — без команды упомянул вас в задаче TASK-000-261: «UX-NOTIF-20261014 — проверка назначения и упоминания»"':
+        - generic: К обсуждению
+      - button "Отметить прочитанным":
+      - 'heading "UX тест — без команды добавил комментарий к задаче TASK-000-261: «UX-NOTIF-20261014 — проверка назначения и упоминания»" [level=3]'
+      - generic: Новое
+      - generic: Комментарий
+      - time: 57 мин. назад
+      - 'button "К обсуждению: UX тест — без команды добавил комментарий к задаче TASK-000-261: «UX-NOTIF-20261014 — проверка назначения и упоминания»"':
+        - generic: К обсуждению
+      - button "Отметить прочитанным":

@@ -7,6 +7,7 @@ import json
 import logging
 import socket
 import time
+import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -27,6 +28,7 @@ class OpenAICompatProvider:
 
     def __init__(self):
         self.last_response_meta = {}
+        self._session_id = "dmb-agent-" + uuid.uuid4().hex
 
     def available(self) -> bool:
         return bool(settings.OPENAI_API_KEY)
@@ -48,6 +50,7 @@ class OpenAICompatProvider:
             # Zen applies a separate free-model policy to OpenCode clients.
             # Keep these headers aligned with the locally installed CLI.
             headers["x-opencode-client"] = "cli"
+            headers["x-opencode-session"] = self._session_id
         # OpenCode may return a short burst-limit response even when the account
         # quota is available. Retry only that transient status; auth and other
         # errors must remain visible immediately.
@@ -161,6 +164,7 @@ class OpenAICompatProvider:
         }
         if is_opencode_zen:
             headers["x-opencode-client"] = "cli"
+            headers["x-opencode-session"] = self._session_id
 
         emitted = False
         for attempt in range(3):

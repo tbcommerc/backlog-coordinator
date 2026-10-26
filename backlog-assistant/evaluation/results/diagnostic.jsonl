@@ -1,0 +1,4 @@
+{"id": "E01", "group": "search_card_request", "passed": false, "failures": ["harness:TimeoutError"]}
+{"id": "E11", "group": "search_card_request", "mode": "live_opencode", "seconds": 13.72, "error": "TimeoutError", "calls": [], "answer": null, "candidate": null, "cleaned": true, "failures": ["no_answer:TimeoutError"], "passed": false}
+{"id": "E31", "group": "analytics_changes", "mode": "live_opencode", "seconds": 13.55, "error": "TimeoutError", "calls": [], "answer": null, "candidate": null, "cleaned": true, "failures": ["no_answer:TimeoutError"], "passed": false}
+{"id": "E51", "group": "ambiguous_empty", "mode": "live_opencode", "seconds": 13.73, "error": "TimeoutError", "calls": [], "answer": null, "candidate": null, "cleaned": true, "failures": ["no_answer:TimeoutError"], "passed": false}

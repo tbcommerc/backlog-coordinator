@@ -1,17 +1,13 @@
+import { auditActionLabel, auditEntityLabel } from '../adminLabels.js';
+import { pagination } from '../ui/forms.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { formatErrorMessage, showToast } from '../uiFeedback.js';
 import { renderViewState } from './viewState.js';
+import { button, control, field, fieldFrame, icon, pageHeader } from '../ui/primitives.js';
+import { setButtonBusy } from '../ui/controls.js';
 
 const EMPTY_FILTERS = { user_id: '', action: '', entity_type: '', date_from: '', date_to: '' };
-const ACTION_LABELS = { create: 'Создание', update: 'Изменение', delete: 'Удаление' };
-const ENTITY_LABELS = {
-  tasks: 'Задача', teams: 'Команда', users: 'Пользователь', roles: 'Роль', projects: 'Проект',
-  statuses: 'Статус', priorities: 'Приоритет', channels: 'Канал', deadlines: 'Срок',
-  departments: 'Подразделение', 'task-types': 'Тип задачи', 'team-types': 'Тип команды',
-  'project-statuses': 'Статус проекта', 'business-customers': 'Бизнес-заказчик',
-  'notification-templates': 'Шаблон уведомления', 'column-labels': 'Название колонки',
-  'display-settings': 'Настройки отображения',
-};
+
 
 let auditState = { page: 1, perPage: 50, search: '', filters: { ...EMPTY_FILTERS } };
 let auditData = { items: [], total: 0, pages: 0 };
@@ -46,18 +42,18 @@ function detailSummary(details) {
 
 function resultMeta(details) {
   const status = Number(parseDetails(details).status_code);
-  if (status >= 400) return { label: 'Ошибка', tone: 'danger', icon: 'circle-x' };
-  if (status > 0) return { label: 'Успешно', tone: 'success', icon: 'circle-check' };
+  if (status >= 400) return { label: 'Ошибка', tone: 'danger', icon: 'x-circle' };
+  if (status > 0) return { label: 'Успешно', tone: 'success', icon: 'check-circle' };
   return { label: 'Зафиксировано', tone: 'neutral', icon: 'check' };
 }
 
 function actionBadge(action) {
   const key = String(action || '').toLowerCase();
-  return `<span class="audit-action-badge audit-action-${escapeHtml(key)}">${escapeHtml(ACTION_LABELS[key] || action || '—')}</span>`;
+  return `<span class="audit-action-badge audit-action-${escapeHtml(key)}" title="${escapeHtml(action || '')}">${escapeHtml(auditActionLabel(action))}</span>`;
 }
 
 function entityBadge(type, id) {
-  return `<span class="audit-entity-badge">${escapeHtml(ENTITY_LABELS[type] || type || '—')}</span>${id ? `<span class="audit-entity-id">#${escapeHtml(id)}</span>` : ''}`;
+  return `<span class="audit-entity-badge" title="${escapeHtml(type || '')}">${escapeHtml(auditEntityLabel(type))}</span>${id ? `<span class="audit-entity-id">#${escapeHtml(id)}</span>` : ''}`;
 }
 
 function buildParams() {
@@ -114,7 +110,7 @@ function renderAuditRows() {
       <td>${actionBadge(item.action)}</td>
       <td><div class="audit-entity-cell">${entityBadge(item.entity_type, item.entity_id)}</div></td>
       <td><div class="audit-details" title="${escapeHtml(details.primary)}"><span>${escapeHtml(details.primary)}</span>${details.secondary ? `<small>${escapeHtml(details.secondary)}</small>` : ''}</div></td>
-      <td><div class="audit-request-cell"><code title="${escapeHtml(requestId)}">${escapeHtml(requestId || '—')}</code>${requestId ? `<button type="button" class="audit-copy-btn" data-copy-request="${escapeHtml(requestId)}" aria-label="Скопировать Request ID" title="Скопировать Request ID"><i data-lucide="copy" aria-hidden="true"></i></button>` : ''}</div></td>
+      <td><div class="audit-request-cell"><code title="${escapeHtml(requestId)}">${escapeHtml(requestId || '—')}</code>${requestId ? button({ label: 'Скопировать Request ID', icon: 'copy', iconOnly: true, variant: 'ghost', size: 'small', attrs: { 'data-copy-request': requestId } }) : ''}</div></td>
       <td><code class="audit-ip">${escapeHtml(item.ip_address || '—')}</code></td>
     </tr>`;
   }).join('');
@@ -125,8 +121,8 @@ function activeFilterEntries() {
   return [
     auditState.search && ['search', `Поиск: ${auditState.search}`],
     auditState.filters.user_id && ['user_id', `Пользователь: ${user?.name || auditState.filters.user_id}`],
-    auditState.filters.action && ['action', `Действие: ${ACTION_LABELS[auditState.filters.action] || auditState.filters.action}`],
-    auditState.filters.entity_type && ['entity_type', `Сущность: ${ENTITY_LABELS[auditState.filters.entity_type] || auditState.filters.entity_type}`],
+    auditState.filters.action && ['action', `Действие: ${auditActionLabel(auditState.filters.action)}`],
+    auditState.filters.entity_type && ['entity_type', `Сущность: ${auditEntityLabel(auditState.filters.entity_type)}`],
     auditState.filters.date_from && ['date_from', `С ${auditState.filters.date_from.split('-').reverse().join('.')}`],
     auditState.filters.date_to && ['date_to', `По ${auditState.filters.date_to.split('-').reverse().join('.')}`],
   ].filter(Boolean);
@@ -135,26 +131,22 @@ function activeFilterEntries() {
 function renderActiveFilters() {
   const entries = activeFilterEntries();
   if (!entries.length) return '<span class="audit-filter-summary">Фильтры не выбраны</span>';
-  return `<span class="audit-filter-summary">Активные фильтры:</span>${entries.map(([key, label]) => `<button type="button" class="audit-filter-chip" data-remove-filter="${key}">${escapeHtml(label)}<i data-lucide="x" aria-hidden="true"></i></button>`).join('')}<button type="button" class="btn btn-ghost btn-sm audit-clear-all" data-reset-audit>Сбросить все</button>`;
-}
-
-function option(value, label, selected) {
-  return `<option value="${escapeHtml(value)}"${String(value) === String(selected) ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+  return `<span class="audit-filter-summary">Активные фильтры:</span>${entries.map(([key, label]) => button({ label, icon: 'x', size: 'small', className: 'audit-filter-chip', attrs: { 'data-remove-filter': key, 'aria-label': `Убрать фильтр: ${label}` } })).join('')}${button({ label: 'Сбросить все', variant: 'ghost', size: 'small', className: 'audit-clear-all', attrs: { 'data-reset-audit': true } })}`;
 }
 
 function renderFilterBar() {
   const filters = auditState.filters;
   return `<section class="audit-filter-panel${auditMobileFiltersOpen ? ' is-open' : ''}" aria-labelledby="audit-filter-title">
-    <div class="audit-filter-heading"><div><h2 id="audit-filter-title">Фильтры журнала</h2><p>Уточните период, автора или тип изменения.</p></div><div class="audit-filter-heading-actions"><button type="button" class="btn btn-secondary btn-sm audit-filter-toggle" data-toggle-audit-filters aria-expanded="${auditMobileFiltersOpen}" aria-controls="audit-filter-form"><i data-lucide="sliders-horizontal" aria-hidden="true"></i><span>${auditMobileFiltersOpen ? 'Скрыть' : 'Настроить'}</span></button><button type="button" class="btn btn-ghost btn-sm" data-reset-audit ${activeFilterEntries().length ? '' : 'disabled'}><i data-lucide="rotate-ccw" aria-hidden="true"></i>Сбросить</button></div></div>
+    <div class="audit-filter-heading"><div><h2 id="audit-filter-title">Фильтры журнала</h2><p>Уточните период, автора или тип изменения.</p></div><div class="audit-filter-heading-actions">${button({ label: auditMobileFiltersOpen ? 'Скрыть' : 'Настроить', icon: 'sliders-horizontal', size: 'small', className: 'audit-filter-toggle', attrs: { 'data-toggle-audit-filters': true, 'aria-expanded': auditMobileFiltersOpen, 'aria-controls': 'audit-filter-form' } })}${button({ label: 'Сбросить фильтры', icon: 'rotate-ccw', iconOnly: true, variant: 'ghost', size: 'small', attrs: { 'data-reset-audit': true, disabled: !activeFilterEntries().length } })}</div></div>
     <form id="audit-filter-form" class="audit-filter-grid">
-      <label class="audit-search-field"><span>Поиск</span><div class="audit-input-with-icon"><i data-lucide="search" aria-hidden="true"></i><input id="audit-filter-search" class="input" type="search" maxlength="100" value="${escapeHtml(auditState.search)}" placeholder="Действие, сущность, Request ID или IP"></div></label>
-      <label><span>Пользователь</span><select id="audit-filter-user" class="input"><option value="">Все пользователи</option>${auditFilters.users.map(user => option(user.id, user.name, filters.user_id)).join('')}</select></label>
-      <label><span>Действие</span><select id="audit-filter-action" class="input"><option value="">Все действия</option>${auditFilters.actions.map(action => option(action, ACTION_LABELS[action] || action, filters.action)).join('')}</select></label>
-      <label><span>Сущность</span><select id="audit-filter-entity" class="input"><option value="">Все сущности</option>${auditFilters.entity_types.map(entity => option(entity, ENTITY_LABELS[entity] || entity, filters.entity_type)).join('')}</select></label>
-      <fieldset class="audit-period-field"><legend>Период</legend><div><label><span class="sr-only">Дата с</span><input type="date" id="audit-filter-date-from" class="input" value="${escapeHtml(filters.date_from)}" aria-label="Дата с"></label><span aria-hidden="true">—</span><label><span class="sr-only">Дата по</span><input type="date" id="audit-filter-date-to" class="input" value="${escapeHtml(filters.date_to)}" aria-label="Дата по"></label></div><span class="audit-filter-error" id="audit-date-error" role="alert"></span></fieldset>
-      <button type="submit" class="btn btn-primary audit-apply-btn"><i data-lucide="list-filter" aria-hidden="true"></i>Применить</button>
+      ${fieldFrame({ id: 'audit-filter-search', label: 'Поиск', className: 'audit-search-field', controlMarkup: `<div class="audit-input-with-icon">${icon('search')}${control({ id: 'audit-filter-search', type: 'search', value: auditState.search, attrs: { maxlength: 100, placeholder: 'Действие, сущность, Request ID или IP' } })}</div>` })}
+      ${field({ id: 'audit-filter-user', label: 'Пользователь', kind: 'select', value: filters.user_id, options: [{ value: '', label: 'Все пользователи' }, ...auditFilters.users.map(user => ({ value: user.id, label: user.name }))] })}
+      ${field({ id: 'audit-filter-action', label: 'Действие', kind: 'select', value: filters.action, options: [{ value: '', label: 'Все действия' }, ...auditFilters.actions.map(action => ({ value: action, label: auditActionLabel(action) }))] })}
+      ${field({ id: 'audit-filter-entity', label: 'Сущность', kind: 'select', value: filters.entity_type, options: [{ value: '', label: 'Все сущности' }, ...auditFilters.entity_types.map(entity => ({ value: entity, label: auditEntityLabel(entity) }))] })}
+      <fieldset class="audit-period-field"><legend>Период</legend><div>${control({ type: 'date', id: 'audit-filter-date-from', value: filters.date_from, attrs: { 'aria-label': 'Дата с', 'aria-describedby': 'audit-date-error' } })}<span aria-hidden="true">—</span>${control({ type: 'date', id: 'audit-filter-date-to', value: filters.date_to, attrs: { 'aria-label': 'Дата по', 'aria-describedby': 'audit-date-error' } })}</div><span class="audit-filter-error" id="audit-date-error" role="alert"></span></fieldset>
+      ${button({ label: 'Применить', icon: 'filter', variant: 'primary', className: 'audit-apply-btn', attrs: { type: 'submit' } })}
     </form>
-    ${auditView.filtersUnavailable ? '<p class="audit-filter-notice"><i data-lucide="info" aria-hidden="true"></i>Списки фильтров временно недоступны. Поиск и период продолжают работать.</p>' : ''}
+    ${auditView.filtersUnavailable && auditView.error?.status !== 403 ? '<p class="audit-filter-notice"><i data-lucide="info" aria-hidden="true"></i>Списки фильтров временно недоступны. Поиск и период продолжают работать.</p>' : ''}
     <div class="audit-active-filters" id="audit-active-filters">${renderActiveFilters()}</div>
   </section>`;
 }
@@ -165,11 +157,11 @@ function renderPagination() {
   const page = Math.min(auditState.page, pages);
   const start = total ? (page - 1) * auditState.perPage + 1 : 0;
   const end = Math.min(page * auditState.perPage, total);
-  return `<div class="audit-table-footer"><div class="audit-page-size"><label for="audit-per-page">Строк на странице</label><select id="audit-per-page" class="input">${[25, 50, 100, 200].map(size => option(size, size, auditState.perPage)).join('')}</select></div><span class="audit-range" aria-live="polite">${start}–${end} из ${total}</span><nav class="audit-pagination" aria-label="Страницы журнала"><button type="button" class="btn btn-ghost btn-sm audit-page-btn" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''}><i data-lucide="chevron-left" aria-hidden="true"></i>Назад</button><span>Страница <strong>${page}</strong> из ${pages}</span><button type="button" class="btn btn-ghost btn-sm audit-page-btn" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''}>Далее<i data-lucide="chevron-right" aria-hidden="true"></i></button></nav></div>`;
+  return `<div class="audit-table-footer"><div class="audit-page-size"><label for="audit-per-page">Строк на странице</label>${control({ id: 'audit-per-page', kind: 'select', size: 'small', value: auditState.perPage, options: [25, 50, 100, 200].map(size => ({ value: size, label: size })) })}</div><span class="audit-range" aria-live="polite">${start}–${end} из ${total}</span>${pagination({ page, pages, disabled: auditView.status === 'loading', label: 'Страницы журнала', className: 'audit-pagination', buttonClassName: 'audit-page-btn' })}</div>`;
 }
 
 export function renderAuditLog() {
-  return `<section class="audit-page animate-fade-in" id="audit-page"><header class="page-header audit-page-header"><div><div class="audit-title-line"><h1>Аудит действий</h1><span class="audit-total-badge" id="audit-total-badge">${auditView.status === 'ready' ? `${Number(auditData.total) || 0} событий` : 'Загрузка'}</span></div><p>История изменений и системных операций для контроля и разбора инцидентов.</p></div><button type="button" class="btn btn-secondary audit-refresh-btn" data-refresh-audit><i data-lucide="refresh-cw" aria-hidden="true"></i>Обновить</button></header><div id="audit-filter-bar">${renderFilterBar()}</div><section class="audit-table-card" aria-labelledby="audit-table-title" aria-busy="${auditView.status === 'loading'}"><div class="audit-table-heading"><div><h2 id="audit-table-title">События</h2><p>Сначала показаны последние изменения.</p></div><span class="audit-table-hint"><i data-lucide="shield-check" aria-hidden="true"></i>Журнал доступен только администраторам</span></div><div class="audit-page-table-wrap table-container" tabindex="0" role="region" aria-label="Таблица событий аудита"><table class="audit-page-table"><caption class="sr-only">События аудита системы</caption><thead><tr><th scope="col">Дата и время</th><th scope="col">Пользователь</th><th scope="col">Результат</th><th scope="col">Действие</th><th scope="col">Сущность</th><th scope="col">Изменённые поля</th><th scope="col">Request ID</th><th scope="col">IP-адрес</th></tr></thead><tbody id="audit-table-body">${renderAuditRows()}</tbody></table></div><div id="audit-pagination">${renderPagination()}</div></section></section>`;
+  return `<section class="audit-page animate-fade-in" id="audit-page"><header class="page-header">${pageHeader({ title: 'Аудит действий', description: 'История изменений и системных операций для контроля и разбора инцидентов.', className: 'audit-page-header', actions: `<span class="audit-total-badge" id="audit-total-badge">${auditView.status === 'ready' ? `${Number(auditData.total) || 0} событий` : 'Загрузка'}</span>${button({ label: 'Обновить', icon: 'refresh-cw', size: 'small', className: 'audit-refresh-btn', attrs: { 'data-refresh-audit': true } })}` })}</header><div id="audit-filter-bar">${renderFilterBar()}</div><section class="audit-table-card" aria-labelledby="audit-table-title" aria-busy="${auditView.status === 'loading'}"><div class="audit-table-heading"><div><h2 id="audit-table-title">События</h2><p>Сначала показаны последние изменения.</p></div><span class="audit-table-hint"><i data-lucide="shield-check" aria-hidden="true"></i>Журнал доступен только администраторам</span></div><div class="audit-page-table-wrap table-container" tabindex="0" role="region" aria-label="Таблица событий аудита"><table class="ui-table ui-table-data audit-page-table"><caption class="sr-only">События аудита системы</caption><thead><tr><th scope="col">Дата и время</th><th scope="col">Пользователь</th><th scope="col">Результат</th><th scope="col">Действие</th><th scope="col">Сущность</th><th scope="col">Изменённые поля</th><th scope="col">Request ID</th><th scope="col">IP-адрес</th></tr></thead><tbody id="audit-table-body">${renderAuditRows()}</tbody></table></div><div id="audit-pagination">${renderPagination()}</div></section></section>`;
 }
 
 function collectFilters(root) {
@@ -181,7 +173,9 @@ function validatePeriod(root) {
   const from = root.querySelector('#audit-filter-date-from')?.value || '';
   const to = root.querySelector('#audit-filter-date-to')?.value || '';
   const error = root.querySelector('#audit-date-error');
-  if (from && to && from > to) { if (error) error.textContent = 'Дата начала не может быть позже даты окончания.'; root.querySelector('#audit-filter-date-from')?.focus(); return false; }
+  const invalid = Boolean(from && to && from > to);
+  root.querySelectorAll('#audit-filter-date-from, #audit-filter-date-to').forEach(input => input.setAttribute('aria-invalid', String(invalid)));
+  if (invalid) { if (error) error.textContent = 'Дата начала не может быть позже даты окончания.'; root.querySelector('#audit-filter-date-from')?.focus(); return false; }
   if (error) error.textContent = '';
   return true;
 }
@@ -205,7 +199,7 @@ export async function initAuditLog(app) {
       return;
     }
     const pageButton = event.target.closest('.audit-page-btn');
-    if (pageButton?.dataset.page) { auditState.page = Number(pageButton.dataset.page) || 1; await reloadAudit(app); root.querySelector('.audit-page-table-wrap')?.focus({ preventScroll: true }); return; }
+    if (pageButton?.dataset.page && !pageButton.disabled) { auditState.page = Number(pageButton.dataset.page) || 1; await reloadAudit(app); root.querySelector('.audit-page-table-wrap')?.focus({ preventScroll: true }); return; }
     if (event.target.closest('[data-refresh-audit]')) { await reloadAudit(app); return; }
     const removeButton = event.target.closest('[data-remove-filter]');
     if (removeButton) { removeFilter(removeButton.dataset.removeFilter); await reloadAudit(app); return; }
@@ -230,5 +224,7 @@ function refreshAuditView() {
   if (pagination) pagination.innerHTML = renderPagination();
   if (total) total.textContent = auditView.status === 'ready' ? `${Number(auditData.total) || 0} событий` : auditView.status === 'loading' ? 'Загрузка' : 'Недоступно';
   root.querySelector('.audit-table-card')?.setAttribute('aria-busy', String(auditView.status === 'loading'));
+  setButtonBusy(root.querySelector('[data-refresh-audit]'), auditView.status === 'loading', 'Обновляем…');
+  setButtonBusy(root.querySelector('.audit-apply-btn'), auditView.status === 'loading', 'Загружаем…');
   if (window.lucide) window.lucide.createIcons();
 }

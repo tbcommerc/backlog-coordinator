@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from config import settings
 from database import Base
 import models  # noqa: F401 - registers every model in Base.metadata
+from services.backlog_assistant_integration import ledger  # noqa: F401
 
 config = context.config
 

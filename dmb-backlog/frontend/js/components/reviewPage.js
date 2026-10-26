@@ -1,5 +1,7 @@
 console.log('[DMB] reviewPage.js loaded');
 
+import { renderRequirementReviews, initRequirementReviews } from './requirementReviews.js?v=4';
+
 import {
   getSignalTarget,
   getRequestStage,
@@ -27,7 +29,7 @@ const REVIEW_FEEDBACK_KEY = 'dmb.review.feedback.v1';
 const REVIEW_DRAFT_KEY_PREFIX = 'dmb.review.action-draft.v1';
 const DEFAULT_QUEUE_STATE = Object.freeze({ search: '', mode: 'action', status: 'any', signals: false, aged: false, sort: 'stage_oldest', scrollTop: 0 });
 const MODES = new Set(['action', 'active', 'history', 'my_review', 'my_work', 'all']);
-const STATUSES = new Set(['any', 'submitted', 'in_review', 'returned', 'in_progress', 'approved', 'rejected']);
+const STATUSES = new Set(['any', 'submitted', 'in_review', 'returned', 'in_progress', 'approved', 'rejected', 'completed', 'not_relevant', 'task_rejected', 'task_deleted']);
 const SORTS = new Set(['stage_oldest', 'newest', 'signals', 'quality']);
 const REVIEW_PAGE_SIZE = 250;
 
@@ -41,17 +43,20 @@ let reviewSearchTimer = null;
 let reviewHasMore = false;
 
 export function renderReviewPage() {
-  return `<div class="review-queue-card request-list-panel animate-fade-in" id="review-queue-card">
+  const requirements = new URLSearchParams(globalThis.window?.location?.hash?.split('?')[1] || '').get('tab') === 'requirements';
+  const subjects = `<nav class="review-subject-tabs" aria-label="Предмет ревью"><a class="btn ${requirements ? 'btn-secondary' : 'btn-primary'}" href="#/review" ${requirements ? '' : 'aria-current="page"'}>Запросы пользователей</a><a class="btn ${requirements ? 'btn-primary' : 'btn-secondary'}" href="#/review?tab=requirements" ${requirements ? 'aria-current="page"' : ''}>Редакции БТ</a></nav>`;
+  if (requirements) return subjects + renderRequirementReviews();
+  return `${subjects}<div class="review-queue-card request-list-panel animate-fade-in" id="review-queue-card">
     <div class="customer-request-toolbar review-request-toolbar">
       <div class="toolbar-title-row request-list-title-row">
         <div class="toolbar-title-wrap"><h1 class="toolbar-title" id="review-list-title">Ревью запросов</h1><p class="toolbar-subtitle">Найдите запросы, требующие решения, и безопасно передайте их в проработку</p></div>
         <div class="request-list-title-meta"><span class="text-secondary" id="review-count" role="status" aria-live="polite">Загрузка…</span></div>
       </div>
       <div class="filter-panel customer-request-filter-panel"><div class="filter-toolbar-row customer-request-controls">
-        <label class="relative filter-search-wrap customer-request-search"><span class="sr-only">Поиск</span><i data-lucide="search"></i><input id="review-search" type="search" placeholder="Номер, название, автор или команда" aria-label="Поиск по номеру, названию, автору, команде или ответственному"></label>
+        <label class="relative filter-search-wrap customer-request-search"><span class="sr-only">Поиск</span><i data-lucide="search"></i><input class="input ui-control" id="review-search" type="search" placeholder="Номер, название, автор или команда" aria-label="Поиск по номеру, названию, автору, команде или ответственному"></label>
         <div class="customer-request-main-filters review-filter-grid">
           <label><span>Режим работы</span><select id="review-mode-filter" class="input"><option value="action">Требуют моего действия</option><option value="active">Все активные</option><option value="history">История решений</option><option value="my_review">Моё ревью</option><option value="my_work">Моя проработка</option><option value="all">Все доступные</option></select></label>
-          <label><span>Стадия</span><select id="review-status-filter" class="input"><option value="any">Любая стадия</option><option value="submitted">Ожидает ревью</option><option value="in_review">На ревью</option><option value="returned">Ожидает уточнения</option><option value="in_progress">В проработке</option><option value="approved">Завершён</option><option value="rejected">Отклонён</option></select></label>
+          <label><span>Стадия</span><select id="review-status-filter" class="input"><option value="any">Любая стадия</option><option value="submitted">Ожидает ревью</option><option value="in_review">На ревью</option><option value="returned">Ожидает уточнения</option><option value="in_progress">В проработке</option><option value="completed">Выполнен</option><option value="not_relevant">Не актуален</option><option value="task_rejected">Задача отклонена</option><option value="task_deleted">Задача удалена</option><option value="approved">Проработка завершена</option><option value="rejected">Отклонён</option></select></label>
           <label><span>Порядок</span><select id="review-sort" class="input"><option value="stage_oldest">Дольше на текущем этапе</option><option value="signals">Больше замечаний</option><option value="quality">Низкое качество</option><option value="newest">Недавно обновлённые</option></select></label>
           <label class="review-signals-toggle"><input id="review-signals-only" type="checkbox">Только с замечаниями</label>
         </div>
@@ -69,6 +74,7 @@ export function renderReviewPage() {
 }
 
 export async function initReviewPage(app) {
+  if (document.getElementById('requirement-reviews')) return initRequirementReviews(app);
   reviewApp = app;
   reviewCurrentUser = app.store.get('currentUser') || null;
   restoreQueueControls();
@@ -121,7 +127,7 @@ async function loadReviewQueue(app, { append = false } = {}) {
   }
 }
 
-function renderListLoading() { return '<div class="customer-request-loading" role="status"><span class="spinner"></span><span>Загружаем запросы…</span></div>'; }
+function renderListLoading() { return '<div class="customer-request-loading content-loading-state" role="status"><span class="spinner"></span><span>Загружаем запросы…</span></div>'; }
 function quickFilter(kind, value, icon, label, countId) { return `<button type="button" class="quick-filter-btn" data-review-kind="${kind}" data-review-filter="${value}" aria-pressed="false"><span class="quick-filter-icon"><i data-lucide="${icon}"></i></span><span class="quick-filter-info"><span class="quick-filter-label">${label}</span><strong class="quick-filter-count" id="${countId}">—</strong></span></button>`; }
 
 function updateSummary() {
@@ -233,11 +239,17 @@ export async function renderReviewDetailPage(app, requestId) {
   const requirementContent = `${renderLegacyRequestDescription(linkedRevision?.description || request.description, { supplemental: hasPassport })}${hasPassport ? renderRequirementSections(draft) : ''}`;
   const feedback = takeActionFeedback(request.id);
   const revisionLabel = linkedRevision?.revision || latestRevision(request);
+  const v2 = app.features?.agent_v2;
+  const workspaceEntry = !linkedRevision && v2?.enabled && v2?.pilot_allowed && v2?.operator_role ? `<a class="btn btn-secondary" href="#/agent-v2?object_type=request&object_id=${encodeURIComponent(request.id)}">Проработать БТ в Агенте V2</a>` : '';
   const snapshotNotice = linkedRevision ? `<section class="review-snapshot-notice" role="status"><i data-lucide="archive"></i><div><strong>Снимок принятой редакции ${esc(revisionLabel)}</strong><span>Содержимое зафиксировано и открыто только для чтения. <a href="#/review/${esc(request.id)}">Перейти к актуальной карточке</a></span></div></section>` : '';
-  return `${feedback ? renderActionFeedback(feedback) : ''}<div class="page-header review-detail-header"><a href="#/review" class="review-back"><i data-lucide="arrow-left"></i>Очередь ревью</a><div class="review-title-line"><h1>${esc(linkedRevision?.title || request.title)}</h1>${renderRequestStatusBadge(request)}</div><p>#${request.id} · редакция ${esc(revisionLabel)} · ${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')} · ${date(linkedRevision?.created_at || request.created_at)}</p></div>${snapshotNotice}${renderRequestJourney(request)}${renderRequestSummary(request)}${request.reject_reason ? `<section class="review-return-note${request.status === 'rejected' ? ' is-rejected' : ''}"><i data-lucide="${request.status === 'rejected' ? 'x-circle' : 'message-circle-warning'}"></i><div><strong>${request.status === 'rejected' ? 'Причина отклонения' : 'Комментарий к уточнению'}</strong><span>${esc(request.reject_reason)}</span></div></section>` : ''}<div class="review-detail-layout"><main class="review-detail-main">${renderReviewOutline(draft)}${linkedRevision ? '' : renderLatestRevisionDiff(request)}${renderAttentionPanel(draft)}${requirementContent}${renderRequestHistory(request)}<details class="card review-more review-ai-assessment"><summary>Оценка подготовки запроса <span>Справочные сигналы ИИ</span><i data-lucide="chevron-down"></i></summary><div class="card-body"><div class="review-metrics">${metric('Полнота', completeness, 'Насколько заполнены обязательные разделы требования', draft.completeness_assessed_at || draft.assessed_at)}${metric('Качество', quality, 'Насколько формулировки конкретны, непротиворечивы и проверяемы', draft.quality_assessed_at || draft.assessed_at)}<div><span>Уверенность ИИ</span><strong>${confidence(draft.confidence)}</strong><small>Надёжность автоматической интерпретации</small></div><div><span>Тип обращения</span><strong>${esc(INTENTS[draft.intent] || draft.intent || 'Не определён')}</strong><small>Определён ассистентом по содержанию</small></div></div><p class="review-score-help"><i data-lucide="info"></i><span><strong>75–100%</strong> — высокая оценка, <strong>50–74%</strong> — требуется проверка, <strong>до 49%</strong> — существенные пробелы. Проценты помогают при ревью, но не заменяют решение специалиста.</span></p></div></details></main><aside class="review-detail-aside">${linkedRevision ? '' : `<section class="card review-decision-card"><div class="card-header"><h2 class="card-title">Следующий шаг</h2></div><div class="card-body">${nextStep(request, actions)}</div></section>`}${renderRequestParticipants(request)}</aside></div>`;
+  return `${feedback ? renderActionFeedback(feedback) : ''}<div class="page-header review-detail-header"><a href="#/review" class="review-back"><i data-lucide="arrow-left"></i>Очередь ревью</a><div class="review-title-line"><h1>${esc(linkedRevision?.title || request.title)}</h1>${renderRequestStatusBadge(request)}</div><p>#${request.id} · редакция ${esc(revisionLabel)} · ${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')} · ${date(linkedRevision?.created_at || request.created_at)}</p></div>${snapshotNotice}${workspaceEntry}${renderRequestJourney(request)}${renderRequestSummary(request)}${request.reject_reason ? `<section class="review-return-note${request.status === 'rejected' ? ' is-rejected' : ''}"><i data-lucide="${request.status === 'rejected' ? 'x-circle' : 'message-circle-warning'}"></i><div><strong>${request.status === 'rejected' ? 'Причина отклонения' : 'Комментарий к уточнению'}</strong><span>${esc(request.reject_reason)}</span></div></section>` : ''}<div class="review-detail-layout"><main class="review-detail-main">${renderReviewOutline(draft)}${linkedRevision ? '' : renderLatestRevisionDiff(request)}${renderAttentionPanel(draft)}${requirementContent}${renderRequestHistory(request)}<details class="card review-more review-ai-assessment"><summary>Оценка подготовки запроса <span>Справочные сигналы ИИ</span><i data-lucide="chevron-down"></i></summary><div class="card-body"><div class="review-metrics">${metric('Полнота', completeness, 'Насколько заполнены обязательные разделы требования', draft.completeness_assessed_at || draft.assessed_at)}${metric('Качество', quality, 'Насколько формулировки конкретны, непротиворечивы и проверяемы', draft.quality_assessed_at || draft.assessed_at)}<div><span>Уверенность ИИ</span><strong>${confidence(draft.confidence)}</strong><small>Надёжность автоматической интерпретации</small></div><div><span>Тип обращения</span><strong>${esc(INTENTS[draft.intent] || draft.intent || 'Не определён')}</strong><small>Определён ассистентом по содержанию</small></div></div><p class="review-score-help"><i data-lucide="info"></i><span><strong>75–100%</strong> — высокая оценка, <strong>50–74%</strong> — требуется проверка, <strong>до 49%</strong> — существенные пробелы. Проценты помогают при ревью, но не заменяют решение специалиста.</span></p></div></details></main><aside class="review-detail-aside">${linkedRevision ? '' : `<section class="card review-decision-card"><div class="card-header"><h2 class="card-title">Следующий шаг</h2></div><div class="card-body">${nextStep(request, actions)}</div></section>`}${renderRequestParticipants(request)}</aside></div>`;
 }
 
 export async function initReviewDetailPage(app, requestId) {
+  const fulfillmentRoot = document.createElement('section'); fulfillmentRoot.className='card';
+  document.querySelector('.review-detail-aside')?.append(fulfillmentRoot);
+  import('./workResolution.js?v=2').then(m=>m.mountFulfillment(fulfillmentRoot,app,requestId,true));
+
   document.getElementById('retry-review-detail')?.addEventListener('click', () => app.router.refreshCurrentRoute());
   document.getElementById('dismiss-review-feedback')?.addEventListener('click', event => event.currentTarget.closest('.review-action-feedback')?.remove());
   document.getElementById('btn-claim')?.addEventListener('click', event => runDirectStatusAction(app, event.currentTarget, requestId, { status: 'in_review', version: buttonVersion(event) }, 'Запрос взят на ревью'));
@@ -255,7 +267,7 @@ export async function initReviewDetailPage(app, requestId) {
 function renderReviewOutline(draft = {}) {
   const links = [['Проблема', 'problem_statement'], ['AS-IS', 'current_process'], ['TO-BE', 'target_process'], ['Ценность', 'business_value'], ['Пользователи', 'user_roles'], ['Критерии', 'acceptance_criteria'], ['Сценарии', 'scenarios'], ['Правила', 'business_rules'], ['Интеграции', 'data_integrations'], ['Зависимости', 'dependencies'], ['Риски', 'risks'], ['Регуляторика', 'regulatory_flags']]
     .filter(([, key]) => toCardList(draft[key]).length || signalGroups(draft).some(([, values]) => values.some(value => getSignalTarget(value) === getSignalTarget({ section_key: key })))).map(([label, key]) => [label, getSignalTarget({ section_key: key })]);
-  return `<nav class="review-section-nav" aria-label="Разделы паспорта"><span>Перейти к разделу</span>${links.map(([label, target]) => `<button type="button" data-request-target="${target}">${label}</button>`).join('')}</nav>`;
+  return `<nav class="review-section-nav" aria-label="Разделы паспорта"><span>Перейти к разделу</span>${links.map(([label, target]) => `<button class="btn btn-secondary btn-sm ui-btn" type="button" data-request-target="${target}">${label}</button>`).join('')}</nav>`;
 }
 
 function nextStep(request, actions) {
@@ -277,7 +289,7 @@ function nextStep(request, actions) {
 function renderAttentionPanel(draft) {
   const groups = signalGroups(draft);
   if (!groups.length) return '<section class="review-ready-panel"><i data-lucide="check-circle"></i><div><strong>Ассистент не выявил открытых сигналов</strong><span>Ревьюеру всё равно нужно проверить формулировки и критерии приёмки.</span></div></section>';
-  return `<section class="card review-attention-panel"><div class="card-header"><div><h2 class="card-title">Требует внимания</h2><p class="review-card-subtitle">Каждое замечание показывает важность и открывает связанный раздел паспорта</p></div><span class="review-attention-count">${groups.reduce((total, [, values]) => total + values.length, 0)}</span></div><div class="card-body">${groups.map(([label, values]) => `<div class="review-issue-group"><h3>${esc(label)}</h3><ul>${values.map(value => `<li><button type="button" class="review-signal-link" data-request-target="${esc(getSignalTarget(value, label))}"><span>${esc(humanizeSignal(value))}${signalMeta(value)}</span><i data-lucide="arrow-down-right"></i></button></li>`).join('')}</ul></div>`).join('')}</div></section>`;
+  return `<section class="card review-attention-panel"><div class="card-header"><div><h2 class="card-title">Требует внимания</h2><p class="review-card-subtitle">Каждое замечание показывает важность и открывает связанный раздел паспорта</p></div><span class="review-attention-count">${groups.reduce((total, [, values]) => total + values.length, 0)}</span></div><div class="card-body">${groups.map(([label, values]) => `<div class="review-issue-group"><h3>${esc(label)}</h3><ul>${values.map(value => `<li><button type="button" class="ui-surface-action review-signal-link" data-request-target="${esc(getSignalTarget(value, label))}"><span>${esc(humanizeSignal(value))}${signalMeta(value)}</span><i data-lucide="arrow-down-right"></i></button></li>`).join('')}</ul></div>`).join('')}</div></section>`;
 }
 
 function signalMeta(value) { if (!value || typeof value !== 'object') return ''; const severity = ({ blocker: 'Блокирует', critical: 'Критично', error: 'Критично', warning: 'Важно', info: 'Справочно' })[String(value.severity || value.criticality || '').toLowerCase()] || ''; const status = ({ accepted: 'Риск принят', acknowledged: 'Рассмотрено', open: 'Открыто' })[String(value.status || '').toLowerCase()] || ''; return severity || status ? `<small>${esc([severity, status].filter(Boolean).join(' · '))}</small>` : ''; }
@@ -322,17 +334,14 @@ async function assignModal(app, id, renderedVersion) {
   const trigger = document.getElementById('btn-approve');
   setBusy(trigger, true);
   try {
-    const request = await app.api.get(`/agent/requests/${id}`);
-    if (Number(request.version ?? 0) !== Number(renderedVersion ?? 0)) {
-      modal({ title: 'Запрос изменился', body: `<p class="review-modal-consequence"><i data-lucide="refresh-cw"></i><span>После открытия карточки появилась новая версия. Проверьте изменения перед решением.</span></p>${renderLatestRevisionDiff(request, { compact: true })}`, confirm: 'Обновить запрос', klass: 'btn-primary', action: async () => { await app.router.refreshCurrentRoute(); return true; } });
+    const request = await app.api.get('/agent/requests/' + id);
+    if (Number(request.version) !== Number(renderedVersion)) {
+      modal({ title: 'Запрос изменился', body: '<p>Обновите карточку и проверьте изменения перед решением.</p>', confirm: 'Обновить данные', klass: 'btn-primary', action: async () => { await app.router.refreshCurrentRoute(); return true; } });
       return;
     }
-    if (!request.team_id) return window.toast?.('У запроса не указана команда', 'warning');
-    const users = await app.api.get(`/agent/teams/${request.team_id}/ba`);
-    const issues = signalCount(request.draft);
-    const checklist = issues ? `<label class="review-confirm-check"><input type="checkbox" data-review-required required>Я просмотрел все ${issues} ${plural(issues, 'замечание', 'замечания', 'замечаний')} и принимаю решение по этой редакции</label>` : '';
-    modal({ title: 'Передать в проработку', body: `<p class="review-modal-consequence"><i data-lucide="workflow"></i><span>После подтверждения будет создана задача, выбранный бизнес-аналитик станет ответственным и получит уведомление.</span></p><label class="form-label" for="assignee-select">Ответственный бизнес-аналитик</label><select id="assignee-select" class="input" required aria-required="true" aria-describedby="assignee-hint" data-review-required autofocus><option value="">— Выберите —</option>${users.map(user => `<option value="${user.id}">${esc(user.name)} (${esc(user.role || '—')})</option>`).join('')}</select><small id="assignee-hint" class="review-field-hint">Доступны только активные бизнес-аналитики команды.${users.length ? '' : ' В этой команде подходящие сотрудники не найдены.'}</small>${checklist}`, confirm: 'Создать задачу и передать', klass: 'btn-success', action: async dialog => { const field = dialog.querySelector('#assignee-select'); const assigneeId = Number.parseInt(field.value, 10); if (!assigneeId) return showFieldError(field, 'Выберите ответственного бизнес-аналитика'); const note = readWorkingNote(id, renderedVersion); const findingResolutions = signalGroups(request.draft).flatMap(([group, values]) => values.map(value => ({ group, text: humanizeSignal(value), status: 'acknowledged', resolution: 'Рассмотрено при передаче в проработку' }))); await updateStatus(app, id, { status: 'in_progress', assignee_id: assigneeId, version: request.version ?? 0, action_reason: [issues ? `Проверено замечаний: ${issues}.` : '', note].filter(Boolean).join(' '), finding_resolutions: findingResolutions }, 'Запрос передан в проработку'); clearWorkingNote(id, renderedVersion); return true; }, onRefresh: () => app.router.refreshCurrentRoute() });
-  } catch (error) { window.toast?.(errorMessage(error, 'Не удалось загрузить бизнес-аналитиков'), 'error'); }
+    const module = await import('./workResolution.js?v=2');
+    await module.openWorkResolution(app, request, trigger);
+  } catch (error) { window.toast?.(error.message, 'error'); }
   finally { reviewAssignPending = false; if (trigger?.isConnected) setBusy(trigger, false); }
 }
 
@@ -364,7 +373,7 @@ function modal({ title, body, confirm, klass, action, isDirty = () => false, onR
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   const titleId = `review-modal-title-${Date.now()}`;
-  overlay.innerHTML = `<div class="modal review-modal" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1"><div class="modal-header"><h3 id="${titleId}">${esc(title)}</h3><button type="button" class="modal-close" data-close aria-label="Закрыть диалог">&times;</button></div><div class="modal-body">${body}<div class="review-modal-error" role="alert" tabindex="-1" hidden></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm modal-cancel-btn" data-close>Отмена</button><button type="button" class="btn ${klass} btn-sm" id="modal-confirm">${esc(confirm)}</button></div></div>`;
+  overlay.innerHTML = `<div class="modal review-modal" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1"><div class="modal-header"><h3 id="${titleId}">${esc(title)}</h3><button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" data-close aria-label="Закрыть диалог">&times;</button></div><div class="modal-body">${body}<div class="review-modal-error" role="alert" tabindex="-1" hidden></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm modal-cancel-btn" data-close>Отмена</button><button type="button" class="btn ${klass} btn-sm" id="modal-confirm">${esc(confirm)}</button></div></div>`;
   document.body.appendChild(overlay);
   const dialog = overlay.querySelector('.review-modal');
   const confirmButton = overlay.querySelector('#modal-confirm');
@@ -420,7 +429,7 @@ function modal({ title, body, confirm, klass, action, isDirty = () => false, onR
   window.lucide?.createIcons();
 }
 
-function renderActionFeedback(feedback) { return `<section class="review-action-feedback" role="status"><i data-lucide="circle-check"></i><div><strong>${esc(feedback.message)}</strong><span>${feedback.taskPublicId ? `Создана задача ${esc(feedback.taskPublicId)}. ` : ''}Данные запроса обновлены.</span><div class="review-action-feedback-links"><a class="btn btn-secondary btn-sm" href="#/review">К очереди</a>${feedback.taskId ? `<a class="btn btn-secondary btn-sm" href="#/backlog?task=${esc(feedback.taskId)}">Открыть задачу</a>` : ''}${feedback.nextId ? `<a class="btn btn-primary btn-sm" href="#/review/${esc(feedback.nextId)}">Следующий запрос</a>` : ''}</div></div><button type="button" id="dismiss-review-feedback" aria-label="Скрыть сообщение">&times;</button></section>`; }
+function renderActionFeedback(feedback) { return `<section class="review-action-feedback" role="status"><i data-lucide="circle-check"></i><div><strong>${esc(feedback.message)}</strong><span>${feedback.taskPublicId ? `Создана задача ${esc(feedback.taskPublicId)}. ` : ''}Данные запроса обновлены.</span><div class="review-action-feedback-links"><a class="btn btn-secondary btn-sm" href="#/review">К очереди</a>${feedback.taskId ? `<a class="btn btn-secondary btn-sm" href="#/backlog?task=${esc(feedback.taskId)}">Открыть задачу</a>` : ''}${feedback.nextId ? `<a class="btn btn-primary btn-sm" href="#/review/${esc(feedback.nextId)}">Следующий запрос</a>` : ''}</div></div><button class="btn btn-secondary btn-sm ui-btn" type="button" id="dismiss-review-feedback" aria-label="Скрыть сообщение">&times;</button></section>`; }
 
 function renderActionError(app, error) {
   const container = document.querySelector('.review-decision-card .card-body');

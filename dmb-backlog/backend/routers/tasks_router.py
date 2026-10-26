@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 from services.task_metrics import calculate_cost_value_ratio
+from services.pip_decisions import load_latest_pip_decisions
 from sqlalchemy import desc, asc, func, String, cast, case
 from typing import Optional, List
 from datetime import date, datetime, timezone
@@ -83,6 +84,7 @@ PIP_DECISION_STATUS = "Принятие решения"
 PIP_TARGET_STATUSES = {
     "reject": "Отклонена",
     "accept": "Принята в работу",
+    "rework": "ЭКСПРЕСС-ОЦЕНКА",
 }
 
 SORT_FIELD_MAP = {
@@ -94,7 +96,61 @@ SORT_FIELD_MAP = {
     "source_channel": "channel_id",
     "customer_department": "department_id",
     "owner": "owner_id",
+    "did_client_group": "did_client_group_id",
+    "team": "team_id",
+    "business_customer": "business_customer_id",
+    "created_by": "created_by",
 }
+
+
+def _logical_sort_expression(db: Session, sort_by: str):
+    """Return a stable business rank for task reference fields without joining the paged query."""
+    field_models = {
+        "priority": (Task.priority_id, Priority, "priority"),
+        "deadline": (Task.deadline_id, Deadline, "deadline"),
+        "task_type": (Task.task_type_id, TaskType, "task_type"),
+        "source_channel": (Task.channel_id, Channel, "channel"),
+        "channel": (Task.channel_id, Channel, "channel"),
+    }
+    alphabetical_models = {
+        "project": (Task.project_id, Project),
+        "team": (Task.team_id, Team),
+        "owner": (Task.owner_id, User),
+        "created_by": (Task.created_by, User),
+        "business_customer": (Task.business_customer_id, BusinessCustomer),
+    }
+    if sort_by == "status":
+        ranks = {item.id: item.sort_order or 0 for item in db.query(TaskStatus).all()}
+        field = Task.status_id
+    elif sort_by in {"department", "customer_department"}:
+        ranks = {item.id: item.sort_order or 0 for item in db.query(Department).all()}
+        field = Task.department_id
+    elif sort_by == "did_client_group":
+        ranks = {item.id: item.sort_order or 0 for item in db.query(DidClientGroup).all()}
+        field = Task.did_client_group_id
+    elif sort_by in alphabetical_models:
+        field, model = alphabetical_models[sort_by]
+        items = sorted(db.query(model).all(), key=lambda item: ((item.name or "").casefold(), item.id))
+        ranks = {item.id: index for index, item in enumerate(items)}
+    elif sort_by in field_models:
+        field, model, dict_type = field_models[sort_by]
+        orders = {
+            (item.name or "").strip().casefold(): item.sort_order or 0
+            for item in db.query(DictionaryItem).filter(
+                DictionaryItem.dict_type == dict_type,
+                DictionaryItem.is_active == True,
+            ).all()
+        }
+        ranks = {
+            item.id: orders[(item.name or "").strip().casefold()]
+            for item in db.query(model).all()
+            if (item.name or "").strip().casefold() in orders
+        }
+    else:
+        return None
+    if not ranks:
+        return None
+    return field, case(ranks, value=field, else_=None)
 
 HISTORY_REFERENCE_MODELS = {
     "did_client_group_id": DidClientGroup,
@@ -144,7 +200,11 @@ def _history_reference_values(db: Session, history: list[TaskHistory]) -> dict:
     return result
 
 
-def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
+def task_to_response(
+    task: Task,
+    db: Optional[Session] = None,
+    pip_decision_context: Optional[dict] = None,
+) -> TaskResponse:
     """Convert Task ORM object to TaskResponse schema"""
     cv = task.cv
 
@@ -307,6 +367,7 @@ def task_to_response(task: Task, db: Optional[Session] = None) -> TaskResponse:
         lock_owner_id=task.lock_owner_id,
         lock_owner_name=task.lock_owner.name if task.lock_owner else None,
         lock_until=task.lock_until,
+        latest_pip_decision=pip_decision_context,
     )
 
 
@@ -548,18 +609,28 @@ def get_tasks(
             Task.public_id.ilike(f"%{search}%")
         )
 
-    sort_column_name = SORT_FIELD_MAP.get(sort_by, sort_by)
-    sort_column = getattr(Task, sort_column_name, Task.id)
-    if sort_order == "desc":
-        query = query.order_by(desc(sort_column))
+    logical_sort = _logical_sort_expression(db, sort_by)
+    if logical_sort:
+        reference_field, sort_column = logical_sort
+        missing_or_unknown = case((sort_column.is_(None), 1), else_=0)
+        direction = desc(sort_column) if sort_order == "desc" else asc(sort_column)
+        query = query.order_by(missing_or_unknown, direction, asc(Task.id))
     else:
-        query = query.order_by(asc(sort_column))
+        sort_column_name = SORT_FIELD_MAP.get(sort_by, sort_by)
+        sort_column = getattr(Task, sort_column_name, Task.id)
+        missing = case((sort_column.is_(None), 1), else_=0)
+        direction = desc(sort_column) if sort_order == "desc" else asc(sort_column)
+        query = query.order_by(missing, direction, asc(Task.id))
 
     total = query.count()
     offset = (page - 1) * per_page
     tasks = query.offset(offset).limit(per_page).all()
 
-    items = [task_to_response(task, db) for task in tasks]
+    pip_decisions = load_latest_pip_decisions(db, (task.id for task in tasks))
+    items = [
+        task_to_response(task, db, pip_decisions.get(task.id))
+        for task in tasks
+    ]
 
     return TaskListResponse(
         items=items,
@@ -692,28 +763,47 @@ def get_task_reference(
     current_user: User = Depends(get_current_user)
 ):
     """Return reference data for task editing (statuses, priorities, etc.)"""
+    dictionary_orders = {
+        dict_type: {
+            (item.name or "").strip().casefold(): item.sort_order or 0
+            for item in db.query(DictionaryItem).filter(
+                DictionaryItem.dict_type == dict_type,
+                DictionaryItem.is_active == True,
+            ).all()
+        }
+        for dict_type in ("priority", "deadline", "task_type", "channel")
+    }
+
+    def ordered(items, dict_type=None, direct_order=None):
+        order_by_name = dictionary_orders.get(dict_type, {})
+        return sorted(items, key=lambda item: (
+            direct_order(item) if direct_order else order_by_name.get((item.name or "").strip().casefold(), 10**9),
+            (item.name or "").casefold(),
+            item.id,
+        ))
+
     statuses = db.query(TaskStatus).order_by(TaskStatus.sort_order).all()
-    priorities = db.query(Priority).order_by(Priority.name).all()
-    deadlines = db.query(Deadline).order_by(Deadline.name).all()
+    priorities = ordered(db.query(Priority).all(), "priority")
+    deadlines = ordered(db.query(Deadline).all(), "deadline")
     teams = db.query(Team).order_by(Team.name).all()
     projects = db.query(Project).order_by(Project.name).all()
-    task_types = db.query(TaskType).order_by(TaskType.name).all()
-    channels = db.query(Channel).order_by(Channel.name).all()
-    departments = db.query(Department).order_by(Department.name).all()
+    task_types = ordered(db.query(TaskType).all(), "task_type")
+    channels = ordered(db.query(Channel).all(), "channel")
+    departments = ordered(db.query(Department).all(), direct_order=lambda item: item.sort_order or 0)
     business_customers = db.query(BusinessCustomer).order_by(BusinessCustomer.name).all()
 
     users = db.query(User).filter(User.is_active == True).order_by(User.name).all()
 
     return {
-        "did_client_groups": [{"id": g.id, "name": g.name, "code": g.code} for g in db.query(DidClientGroup).filter_by(is_active=True).order_by(DidClientGroup.sort_order, DidClientGroup.name)],
-        "statuses": [{"id": s.id, "name": s.name} for s in statuses],
-        "priorities": [{"id": p.id, "name": p.name} for p in priorities],
-        "deadlines": [{"id": d.id, "name": d.name} for d in deadlines],
+        "did_client_groups": [{"id": g.id, "name": g.name, "code": g.code, "sort_order": g.sort_order or 0} for g in db.query(DidClientGroup).filter_by(is_active=True).order_by(DidClientGroup.sort_order, DidClientGroup.name)],
+        "statuses": [{"id": s.id, "name": s.name, "sort_order": s.sort_order or 0} for s in statuses],
+        "priorities": [{"id": p.id, "name": p.name, "sort_order": dictionary_orders["priority"].get((p.name or "").strip().casefold(), 10**9)} for p in priorities],
+        "deadlines": [{"id": d.id, "name": d.name, "sort_order": dictionary_orders["deadline"].get((d.name or "").strip().casefold(), 10**9)} for d in deadlines],
         "teams": [{"id": t.id, "name": t.name} for t in teams],
         "projects": [{"id": p.id, "name": p.name} for p in projects],
-        "task_types": [{"id": t.id, "name": t.name} for t in task_types],
-        "channels": [{"id": c.id, "name": c.name} for c in channels],
-        "departments": [{"id": d.id, "name": d.name} for d in departments],
+        "task_types": [{"id": t.id, "name": t.name, "sort_order": dictionary_orders["task_type"].get((t.name or "").strip().casefold(), 10**9)} for t in task_types],
+        "channels": [{"id": c.id, "name": c.name, "sort_order": dictionary_orders["channel"].get((c.name or "").strip().casefold(), 10**9)} for c in channels],
+        "departments": [{"id": d.id, "name": d.name, "sort_order": d.sort_order or 0} for d in departments],
         "business_customers": [{"id": b.id, "name": b.name, "department_id": b.department_id} for b in business_customers],
         "users": [{"id": u.id, "name": u.name, "team_id": u.team_id} for u in users],
         "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in db.query(Tag).order_by(Tag.name).all()]
@@ -852,6 +942,12 @@ def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = D
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 @_serialize_task_creation
 def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = create_task_in_transaction(task_data, db, current_user)
+    db.commit()
+    return result
+
+
+def create_task_in_transaction(task_data: TaskCreate, db: Session, current_user: User):
     """Create new task with auto-calculations and audit logging"""
     if not check_permission(current_user, "backlog_team", "write_own"):
         raise HTTPException(status_code=403, detail="Permission denied")
@@ -1024,7 +1120,7 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db), current_us
     if task.owner_id:
         notify_assignment(db, task, task.owner_id, current_user.id)
 
-    db.commit()
+    db.flush()
     db.refresh(task)
 
     return task_to_response(task, db)
@@ -1037,7 +1133,7 @@ def apply_pip_decision(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Перевести задачу из PI-решения в один из двух разрешённых статусов."""
+    """Зафиксировать PI-решение: принять, вернуть на оценку или отклонить задачу."""
     if not can_make_pip_decision(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -1075,12 +1171,50 @@ def apply_pip_decision(
     db.add(TaskHistory(
         task_id=task.id,
         changed_by=current_user.id,
+        field_name="pip_decision",
+        old_value=None,
+        new_value=json.dumps({
+            "decision": payload.decision,
+            "reason": payload.reason,
+        }, ensure_ascii=False),
+    ))
+    db.add(TaskHistory(
+        task_id=task.id,
+        changed_by=current_user.id,
         field_name="status_id",
         old_value=str(task.status_id) if task.status_id else None,
         new_value=str(target_status.id),
     ))
+    if payload.decision == "reject" and task.rejection_reason != payload.reason:
+        db.add(TaskHistory(
+            task_id=task.id,
+            changed_by=current_user.id,
+            field_name="rejection_reason",
+            old_value=task.rejection_reason,
+            new_value=payload.reason,
+        ))
+        task.rejection_reason = payload.reason
+    elif payload.decision != "reject" and task.rejection_reason:
+        db.add(TaskHistory(
+            task_id=task.id,
+            changed_by=current_user.id,
+            field_name="rejection_reason",
+            old_value=task.rejection_reason,
+            new_value=None,
+        ))
+        task.rejection_reason = None
     task.status_id = target_status.id
     task.version = (task.version or 0) + 1
+    try:
+        # Flush the optimistic-lock update before notification helpers issue
+        # their own queries/flushes, so a concurrent decision remains a 409.
+        db.flush()
+    except StaleDataError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_task_conflict_detail(db, task_id, payload.version),
+        )
     _commit_versioned_task(db, task.id, payload.version)
     db.refresh(task)
     return task_to_response(task, db)
@@ -1309,6 +1443,8 @@ def get_task_history(task_id: int, db: Session = Depends(get_db), current_user: 
 
     # Названия полей берутся из реестра field_labels (источник истины)
     FIELD_LABELS = {fl.key: fl.label for fl in db.query(FieldLabel).all()}
+    FIELD_LABELS.setdefault("pip_decision", "PI-решение")
+    FIELD_LABELS.setdefault("pip_decision_reason", "Причина PI-решения")
     reference_values = _history_reference_values(db, history)
 
     result = []
@@ -1462,6 +1598,13 @@ FORBIDDEN_BULK_FIELDS = {
     'financial_effect_justification', 'did_demo', 'involved_teams'
 }
 
+BULK_REFERENCE_MODELS = {
+    'team_id': Team, 'status_id': TaskStatus, 'priority_id': Priority,
+    'deadline_id': Deadline, 'owner_id': User, 'project_id': Project,
+    'task_type_id': TaskType, 'channel_id': Channel, 'department_id': Department,
+    'business_customer_id': BusinessCustomer, 'did_client_group_id': DidClientGroup,
+}
+
 REQUIRES_REASON_STATUSES = {'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА', 'ХОЛД', 'ЭСКАЛАЦИЯ НА ЛТ'}
 
 
@@ -1530,7 +1673,7 @@ def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db
         if tag_field in fields and not isinstance(fields.get(tag_field), list):
             errors.append(f"Поле '{tag_field}' должно быть списком")
 
-    for key, model in [("did_client_group_id", DidClientGroup)]:
+    for key, model in BULK_REFERENCE_MODELS.items():
         if fields.get(key) is not None and db.query(model).filter_by(id=fields[key]).first() is None:
             errors.append(f"Значение {key} не найдено в справочнике")
 
@@ -1681,7 +1824,7 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
             if field not in ALLOWED_BULK_FIELDS:
                 raise HTTPException(status_code=400, detail=f"Поле '{field}' не поддерживается для массового изменения")
 
-    for key, model in [('did_client_group_id', DidClientGroup)]:
+    for key, model in BULK_REFERENCE_MODELS.items():
         if fields_to_update.get(key) is not None:
             _require_reference(db, model, fields_to_update[key], key, key)
 

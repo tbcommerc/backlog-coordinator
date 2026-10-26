@@ -12,7 +12,7 @@
 - Автоматическое определение разделителя (`;` или `,`)
 - Декодирование UTF-8-SIG (BOM) и Windows-1251
 - Сопоставление заголовков CSV с полями БД по русским меткам из `field_labels`
-- Валидацию по 16 типам ошибок (см. [error-codes.md](error-codes.md#ошибки-импорта-задач-из-csv))
+- Валидацию по 16 типам ошибок (см. [error-codes.md](../../error-codes.md#ошибки-импорта-задач-из-csv))
 - Пропуск ошибочных строк без прерывания импорта
 - Множественные ссылки на Jira (нормализованная таблица `task_jira_links` + JSON `tasks.link_jira`)
 - Запись истории изменений (`task_history`) и аудита (`audit_log`)
@@ -247,6 +247,6 @@ python -m pytest tests/test_import.py -v
 
 ## 11. Связанные документы
 
-- [API_SPEC.md](API_SPEC.md#post-tasksimport) — контракт endpoint
-- [DATA_MODEL.md](DATA_MODEL.md) — модель данных (tasks, task_jira_links, field_labels)
-- [error-codes.md](error-codes.md#ошибки-импорта-задач-из-csv) — типы ошибок импорта
+- [API_SPEC.md](../../API_SPEC.md#post-tasksimport) — контракт endpoint
+- [DATA_MODEL.md](../../DATA_MODEL.md) — модель данных (tasks, task_jira_links, field_labels)
+- [error-codes.md](../../error-codes.md#ошибки-импорта-задач-из-csv) — типы ошибок импорта

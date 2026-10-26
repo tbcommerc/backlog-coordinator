@@ -91,8 +91,9 @@ def value_key(value):
     return str(value).strip()
 
 
-def apply_view(rows, prefs):
+def apply_view(rows, prefs, reference_orders=None):
     prefs = clean_prefs(prefs)
+    reference_orders = reference_orders or {}
     rows = [row for row in rows if all(not values or (not missing(row[key]) and value_key(row[key]) in values)
                                       for key, values in prefs["filters"].items())]
     field = prefs["sortField"]
@@ -103,7 +104,17 @@ def apply_view(rows, prefs):
         av, bv = a[field], b[field]
         if missing(av) or missing(bv):
             return int(missing(av)) - int(missing(bv)) or a["id"] - b["id"]
-        if field != "financial_effect":
+        def semantic_order(row):
+            if field == "did_client_group":
+                return row.get("group_order")
+            dict_type = {"task_type_name": "task_type", "deadline_name": "deadline"}.get(field)
+            if not dict_type:
+                return None
+            return reference_orders.get(dict_type, {}).get(str(row.get(field) or "").strip().casefold())
+        ao, bo = semantic_order(a), semantic_order(b)
+        if ao is not None or bo is not None:
+            av, bv = ao if ao is not None else 10**9, bo if bo is not None else 10**9
+        elif field != "financial_effect":
             av, bv = str(av).casefold().replace("ё", "е"), str(bv).casefold().replace("ё", "е")
         result = (av > bv) - (av < bv)
         return result * (-1 if prefs["sortDir"] == "desc" else 1) or a["id"] - b["id"]

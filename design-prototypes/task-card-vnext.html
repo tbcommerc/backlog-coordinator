@@ -1,0 +1,3423 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Прототип карточки задачи · vNext</title>
+  <style>
+    :root {
+      --font: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      --bg: #edf1f7;
+      --surface: #ffffff;
+      --surface-raised: #ffffff;
+      --surface-soft: #f7f8fb;
+      --surface-accent: #f3f0ff;
+      --text: #172033;
+      --text-secondary: #59657a;
+      --text-muted: #748096;
+      --border: #dfe4ec;
+      --border-strong: #cbd3df;
+      --accent: #6558d3;
+      --accent-hover: #5548c2;
+      --accent-soft: #ece9ff;
+      --accent-contrast: #ffffff;
+      --success: #16855b;
+      --success-soft: #e7f7f0;
+      --warning: #a95f0b;
+      --warning-soft: #fff4df;
+      --danger: #bf3e4f;
+      --danger-soft: #ffedf0;
+      --info: #2464c6;
+      --info-soft: #eaf2ff;
+      --shadow: 0 20px 55px rgba(31, 42, 68, 0.16);
+      --shadow-soft: 0 6px 18px rgba(31, 42, 68, 0.08);
+      --radius-xl: 22px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 9px;
+      --focus: 0 0 0 3px rgba(101, 88, 211, 0.28);
+      --header-h: 154px;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #0d1220;
+      --surface: #151b2b;
+      --surface-raised: #1a2133;
+      --surface-soft: #111726;
+      --surface-accent: #242044;
+      --text: #f2f4f9;
+      --text-secondary: #bbc3d2;
+      --text-muted: #929db1;
+      --border: #2b3448;
+      --border-strong: #3a455d;
+      --accent: #a99cff;
+      --accent-hover: #b8adff;
+      --accent-soft: #2b2752;
+      --accent-contrast: #17132f;
+      --success: #65d6aa;
+      --success-soft: #14362e;
+      --warning: #f1b85c;
+      --warning-soft: #3b2a14;
+      --danger: #ff8997;
+      --danger-soft: #3d1d25;
+      --info: #8bb7ff;
+      --info-soft: #172c4a;
+      --shadow: 0 22px 65px rgba(0, 0, 0, 0.44);
+      --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.22);
+      --focus: 0 0 0 3px rgba(169, 156, 255, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-width: 320px;
+      background: var(--bg);
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 100vh;
+      overflow: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 8% -8%, rgba(101, 88, 211, 0.16), transparent 32rem),
+        var(--bg);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      transition: background-color 180ms ease, color 180ms ease;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      color: inherit;
+      font: inherit;
+    }
+
+    button,
+    select,
+    input[type="file"] {
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    summary:focus-visible,
+    [tabindex]:focus-visible {
+      outline: none;
+      box-shadow: var(--focus);
+    }
+
+    .skip-link {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      z-index: 100;
+      transform: translateY(-150%);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: var(--accent-contrast);
+      background: var(--accent);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .skip-link:focus {
+      transform: translateY(0);
+    }
+
+    .prototype-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 14px 22px 10px;
+    }
+
+    .prototype-mark {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .prototype-logo {
+      display: grid;
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 11px;
+      color: #fff;
+      background: linear-gradient(145deg, #7668e8, #5143bd);
+      box-shadow: var(--shadow-soft);
+      font-weight: 800;
+    }
+
+    .prototype-title {
+      overflow: hidden;
+      color: var(--text);
+      font-weight: 760;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .prototype-subtitle {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .prototype-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .select-compact {
+      min-height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 34px 0 11px;
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .icon-button {
+      display: inline-grid;
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text-secondary);
+      background: var(--surface);
+      transition: 150ms ease;
+    }
+
+    .icon-button:hover {
+      border-color: var(--border-strong);
+      color: var(--text);
+      background: var(--surface-soft);
+      transform: translateY(-1px);
+    }
+
+    .icon-button svg {
+      width: 19px;
+      height: 19px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .theme-icon-moon {
+      display: none;
+    }
+
+    html[data-theme="dark"] .theme-icon-sun {
+      display: none;
+    }
+
+    html[data-theme="dark"] .theme-icon-moon {
+      display: block;
+    }
+
+    .stage {
+      padding: 0 18px 20px;
+    }
+
+    .task-dialog {
+      display: grid;
+      overflow: hidden;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      width: min(1440px, 100%);
+      height: calc(100vh - 76px);
+      min-height: 600px;
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .task-header,
+    .tabs-wrap,
+    .task-body,
+    .task-footer {
+      min-width: 0;
+    }
+
+    .task-header {
+      position: relative;
+      padding: 20px 24px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .header-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .identity-line {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .task-id {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 0 9px;
+      color: var(--text-secondary);
+      background: var(--surface-soft);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.02em;
+    }
+
+    .copy-id {
+      display: inline-grid;
+      width: 24px;
+      height: 24px;
+      margin-right: -5px;
+      place-items: center;
+      border: 0;
+      border-radius: 6px;
+      color: var(--text-muted);
+      background: transparent;
+    }
+
+    .copy-id:hover {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .copy-id svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+
+    .chip::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      content: "";
+    }
+
+    .chip-type {
+      border-color: var(--border);
+      color: var(--text-secondary);
+      background: var(--surface-soft);
+    }
+
+    .chip-type::before {
+      display: none;
+    }
+
+    .chip-status {
+      color: var(--success);
+      background: var(--success-soft);
+    }
+
+    .chip-priority {
+      color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .header-actions {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .header-title-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .header-title-wrap {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .eyebrow {
+      margin: 0 0 4px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 760;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .task-title {
+      margin: 0;
+      color: var(--text);
+      font-size: clamp(21px, 2vw, 28px);
+      font-weight: 760;
+      letter-spacing: -0.025em;
+      line-height: 1.22;
+    }
+
+    .task-title-input {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-md);
+      padding: 8px 11px;
+      color: var(--text);
+      background: var(--surface-raised);
+      font-size: clamp(19px, 2vw, 25px);
+      font-weight: 720;
+      line-height: 1.25;
+    }
+
+    .updated-brief {
+      flex: 0 0 auto;
+      color: var(--text-muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .tabs-wrap {
+      position: relative;
+      z-index: 3;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .tabs {
+      display: flex;
+      overflow-x: auto;
+      gap: 4px;
+      padding: 0 18px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+    }
+
+    .tab {
+      position: relative;
+      display: inline-flex;
+      flex: 0 0 auto;
+      min-height: 52px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 0;
+      padding: 0 11px;
+      color: var(--text-secondary);
+      background: transparent;
+      font-size: 13px;
+      font-weight: 680;
+      white-space: nowrap;
+    }
+
+    .tab::after {
+      position: absolute;
+      right: 10px;
+      bottom: -1px;
+      left: 10px;
+      height: 3px;
+      border-radius: 3px 3px 0 0;
+      background: var(--accent);
+      content: "";
+      opacity: 0;
+      transform: scaleX(0.5);
+      transition: 150ms ease;
+    }
+
+    .tab:hover {
+      color: var(--text);
+      background: var(--surface-soft);
+    }
+
+    .tab[aria-selected="true"] {
+      color: var(--accent);
+    }
+
+    .tab[aria-selected="true"]::after {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    .tab-count {
+      display: inline-grid;
+      min-width: 22px;
+      height: 22px;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0 6px;
+      color: var(--text-muted);
+      background: var(--surface-soft);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tab[aria-selected="true"] .tab-count {
+      border-color: transparent;
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .task-body {
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+      background: var(--surface-soft);
+      scrollbar-gutter: stable;
+    }
+
+    .tabpanel {
+      max-width: 1370px;
+      min-height: 100%;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .tabpanel[hidden] {
+      display: none;
+    }
+
+    .summary-strip {
+      display: grid;
+      overflow: hidden;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .summary-item {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: 42px minmax(0, 1fr);
+      align-items: center;
+      gap: 11px;
+      padding: 13px 16px;
+      border-right: 1px solid var(--border);
+    }
+
+    .summary-item:last-child {
+      border-right: 0;
+    }
+
+    .summary-icon {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border-radius: 12px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-weight: 800;
+    }
+
+    .summary-icon svg {
+      width: 19px;
+      height: 19px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .summary-label {
+      overflow: hidden;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 720;
+      letter-spacing: 0.04em;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .summary-value {
+      overflow: hidden;
+      margin-top: 2px;
+      color: var(--text);
+      font-weight: 720;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .summary-subvalue {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .progress-line {
+      overflow: hidden;
+      width: 100%;
+      height: 5px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: var(--border);
+    }
+
+    .progress-line span {
+      display: block;
+      width: 68%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), #8c7ff0);
+    }
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.58fr) minmax(340px, 0.82fr);
+      align-items: start;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .column {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .section {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: 0 2px 8px rgba(31, 42, 68, 0.035);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 17px 18px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 760;
+      letter-spacing: -0.01em;
+    }
+
+    .section-description {
+      margin: 3px 0 0;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .section-body {
+      padding: 18px;
+    }
+
+    .provenance {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 25px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 8px;
+      color: var(--text-muted);
+      background: var(--surface-soft);
+      font-size: 10px;
+      font-weight: 690;
+      white-space: nowrap;
+    }
+
+    .provenance::before {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--info);
+      content: "";
+    }
+
+    .provenance-ai::before {
+      background: var(--accent);
+    }
+
+    .provenance-calc::before {
+      background: var(--success);
+    }
+
+    .content-block + .content-block {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .field-label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .body-copy {
+      margin: 0;
+      color: var(--text);
+      line-height: 1.62;
+      white-space: pre-line;
+    }
+
+    .service-note {
+      border-left: 3px solid var(--warning);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 11px 13px;
+      color: var(--text-secondary);
+      background: var(--warning-soft);
+    }
+
+    .helper {
+      margin-top: 6px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .edit-control {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 9px 11px;
+      color: var(--text);
+      background: var(--surface-raised);
+    }
+
+    textarea.edit-control {
+      min-height: 106px;
+      resize: vertical;
+    }
+
+    .edit-control:hover {
+      border-color: var(--accent);
+    }
+
+    .edit-control[aria-invalid="true"] {
+      border-color: var(--danger);
+    }
+
+    .view-value {
+      color: var(--text);
+      font-weight: 620;
+    }
+
+    body:not(.is-editing) .edit-only,
+    body.is-editing .view-only {
+      display: none !important;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--border);
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 14px;
+      background: var(--surface);
+    }
+
+    .metric-name {
+      display: flex;
+      min-height: 18px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .metric-value {
+      overflow: hidden;
+      margin-top: 5px;
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 780;
+      letter-spacing: -0.025em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .metric-sub {
+      margin-top: 2px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .metric-positive {
+      color: var(--success);
+    }
+
+    .metric-edit {
+      margin-top: 7px;
+    }
+
+    .rationale-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .rationale {
+      border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 10px 12px;
+      color: var(--text-secondary);
+      background: var(--surface-soft);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .rationale strong {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--text);
+      font-size: 11px;
+    }
+
+    .effort-scroll,
+    .history-scroll {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      scrollbar-width: thin;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .effort-table {
+      min-width: 760px;
+    }
+
+    .history-table {
+      min-width: 920px;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .data-table th {
+      color: var(--text-muted);
+      background: var(--surface-soft);
+      font-size: 10px;
+      font-weight: 760;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .data-table tbody tr:last-child td,
+    .data-table tfoot tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .data-table tbody tr:hover td {
+      background: var(--surface-soft);
+    }
+
+    .data-table .number {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .data-table tfoot td {
+      color: var(--text);
+      background: var(--surface-accent);
+      font-weight: 760;
+    }
+
+    .table-input {
+      width: 76px;
+      min-height: 36px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      padding: 5px 7px;
+      text-align: right;
+      background: var(--surface-raised);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .accordion-group {
+      padding: 0;
+    }
+
+    details.attribute-group {
+      border-bottom: 1px solid var(--border);
+    }
+
+    details.attribute-group:last-child {
+      border-bottom: 0;
+    }
+
+    details.attribute-group > summary {
+      display: flex;
+      min-height: 47px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 17px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 740;
+      list-style: none;
+    }
+
+    details.attribute-group > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.attribute-group > summary::after {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-right: 1.8px solid var(--text-muted);
+      border-bottom: 1.8px solid var(--text-muted);
+      content: "";
+      transform: rotate(45deg) translateY(-2px);
+      transition: transform 140ms ease;
+    }
+
+    details.attribute-group[open] > summary::after {
+      transform: rotate(225deg) translate(-1px, -1px);
+    }
+
+    details.attribute-group[open] > summary {
+      color: var(--accent);
+      background: var(--surface-soft);
+    }
+
+    .attribute-list {
+      padding: 4px 17px 10px;
+    }
+
+    .attribute-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1.2fr);
+      align-items: center;
+      gap: 12px;
+      min-height: 46px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .attribute-row:last-child {
+      border-bottom: 0;
+    }
+
+    .attribute-name {
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .attribute-value {
+      min-width: 0;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .inline-value {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
+    }
+
+    .source-hint {
+      flex: 0 0 auto;
+      color: var(--text-muted);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .tag {
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 2px 7px;
+      color: var(--text-secondary);
+      background: var(--surface-soft);
+      font-size: 10px;
+      font-weight: 650;
+    }
+
+    .system-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 20px;
+    }
+
+    .system-item {
+      min-width: 0;
+    }
+
+    .system-name {
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 720;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .system-value {
+      margin-top: 3px;
+      overflow-wrap: anywhere;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 630;
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .panel-heading h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 760;
+      letter-spacing: -0.02em;
+    }
+
+    .panel-heading p {
+      max-width: 720px;
+      margin: 4px 0 0;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 720;
+      transition: 140ms ease;
+    }
+
+    .button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .button-primary {
+      color: var(--accent-contrast);
+      background: var(--accent);
+      box-shadow: 0 5px 14px rgba(101, 88, 211, 0.22);
+    }
+
+    .button-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    .button-secondary {
+      border-color: var(--border);
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .button-secondary:hover:not(:disabled) {
+      border-color: var(--border-strong);
+      background: var(--surface-soft);
+    }
+
+    .button-ghost {
+      color: var(--text-secondary);
+      background: transparent;
+    }
+
+    .button-ghost:hover:not(:disabled) {
+      color: var(--text);
+      background: var(--surface-soft);
+    }
+
+    .button-danger {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: transparent;
+    }
+
+    .button-small {
+      min-height: 34px;
+      border-radius: 9px;
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+      gap: 16px;
+    }
+
+    .meeting-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .meeting-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 17px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .meeting-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 760;
+    }
+
+    .meeting-meta {
+      margin-top: 3px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .meeting-body {
+      padding: 16px 17px 17px;
+    }
+
+    .status-comparison {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .status-box {
+      min-width: 0;
+      border-radius: var(--radius-md);
+      padding: 12px;
+      background: var(--surface-soft);
+    }
+
+    .status-box-current {
+      border: 1px solid rgba(101, 88, 211, 0.35);
+      background: var(--surface-accent);
+    }
+
+    .status-label {
+      margin-bottom: 6px;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 760;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .status-text {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .meeting-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .meeting-form textarea {
+      min-height: 74px;
+    }
+
+    .save-note {
+      min-height: 18px;
+      margin-top: 7px;
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .checkbox-line {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      gap: 9px;
+      margin-top: 10px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    .checkbox-line input {
+      width: 19px;
+      height: 19px;
+      accent-color: var(--accent);
+    }
+
+    .comments-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      align-items: start;
+      gap: 18px;
+    }
+
+    .comment-composer,
+    .comments-feed,
+    .context-card,
+    .files-block,
+    .history-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+    }
+
+    .comment-composer {
+      margin-bottom: 14px;
+      padding: 15px;
+    }
+
+    .composer-line {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 11px;
+    }
+
+    .avatar {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 12px;
+      color: #fff;
+      background: linear-gradient(145deg, #7568df, #4e43ad);
+      font-size: 11px;
+      font-weight: 780;
+      letter-spacing: 0.02em;
+    }
+
+    .avatar-green {
+      background: linear-gradient(145deg, #32a47d, #187055);
+    }
+
+    .avatar-blue {
+      background: linear-gradient(145deg, #4f8fda, #2d5fa7);
+    }
+
+    .composer-input {
+      width: 100%;
+      min-height: 82px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      color: var(--text);
+      background: var(--surface-soft);
+      resize: vertical;
+    }
+
+    .composer-input:focus {
+      border-color: var(--accent);
+      background: var(--surface);
+    }
+
+    .composer-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+      padding-left: 49px;
+    }
+
+    .draft-note {
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .comments-feed {
+      overflow: hidden;
+    }
+
+    .comment {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 11px;
+      padding: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .comment:last-child {
+      border-bottom: 0;
+    }
+
+    .comment-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .comment-author {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .comment-time {
+      color: var(--text-muted);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .comment-text {
+      margin: 6px 0 0;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.58;
+    }
+
+    .comment-actions {
+      display: flex;
+      gap: 4px;
+      margin: 5px 0 -5px -7px;
+    }
+
+    .context-card {
+      padding: 16px;
+    }
+
+    .context-card h3 {
+      margin: 0 0 12px;
+      font-size: 13px;
+    }
+
+    .context-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+    }
+
+    .context-list div {
+      display: grid;
+      gap: 2px;
+    }
+
+    .context-list dt {
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .context-list dd {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .files-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+      gap: 16px;
+    }
+
+    .files-block {
+      overflow: hidden;
+    }
+
+    .files-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .files-head h3 {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .resource-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .resource-item {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      min-height: 66px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .resource-item:last-child {
+      border-bottom: 0;
+    }
+
+    .resource-icon {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border-radius: 10px;
+      color: var(--info);
+      background: var(--info-soft);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .resource-title {
+      overflow: hidden;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 710;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .resource-meta {
+      margin-top: 2px;
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .inline-form {
+      display: none;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-soft);
+    }
+
+    .inline-form.is-open {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    }
+
+    .upload-zone {
+      margin: 14px;
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-md);
+      padding: 22px 16px;
+      color: var(--text-secondary);
+      background: var(--surface-soft);
+      text-align: center;
+    }
+
+    .upload-zone.is-dragover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .upload-zone strong {
+      display: block;
+      color: var(--text);
+    }
+
+    .upload-zone small {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-muted);
+    }
+
+    .history-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .history-filter {
+      min-height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 34px 0 11px;
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .history-card {
+      display: none;
+      margin-bottom: 10px;
+      padding: 13px 14px;
+    }
+
+    .history-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .history-field {
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .history-date {
+      color: var(--text-muted);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .history-change {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .history-value {
+      border-radius: 8px;
+      padding: 8px;
+      color: var(--text-secondary);
+      background: var(--surface-soft);
+      font-size: 11px;
+    }
+
+    .history-arrow {
+      align-self: center;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .history-author {
+      margin-top: 8px;
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .async-state {
+      display: none;
+      min-height: 260px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      background: var(--surface);
+      text-align: center;
+    }
+
+    .async-state.is-visible {
+      display: flex;
+    }
+
+    .state-content {
+      width: min(390px, 100%);
+    }
+
+    .state-icon {
+      display: grid;
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 12px;
+      place-items: center;
+      border-radius: 16px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .state-error .state-icon {
+      color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .state-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 760;
+    }
+
+    .state-text {
+      margin: 5px 0 13px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .skeleton-stack {
+      display: grid;
+      gap: 10px;
+      width: min(520px, 100%);
+    }
+
+    .skeleton {
+      height: 58px;
+      border-radius: 12px;
+      background: linear-gradient(90deg, var(--border) 20%, var(--surface-soft) 50%, var(--border) 80%);
+      background-size: 220% 100%;
+      animation: shimmer 1.35s infinite linear;
+    }
+
+    @keyframes shimmer {
+      to {
+        background-position: -220% 0;
+      }
+    }
+
+    .task-footer {
+      display: flex;
+      min-height: 68px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 11px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 0 -5px 16px rgba(31, 42, 68, 0.035);
+    }
+
+    .footer-status {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 9px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 4px var(--success-soft);
+    }
+
+    .status-dot.dirty {
+      background: var(--warning);
+      box-shadow: 0 0 0 4px var(--warning-soft);
+    }
+
+    .status-dot.error {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px var(--danger-soft);
+    }
+
+    .footer-actions {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast-region {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 80;
+      display: grid;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      min-width: min(340px, calc(100vw - 32px));
+      max-width: 420px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      color: var(--text);
+      background: var(--surface-raised);
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      font-weight: 640;
+      animation: toast-in 180ms ease both;
+    }
+
+    .toast-success {
+      border-left: 4px solid var(--success);
+    }
+
+    .toast-warning {
+      border-left: 4px solid var(--warning);
+    }
+
+    @keyframes toast-in {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+    }
+
+    .visually-hidden {
+      position: absolute !important;
+      overflow: hidden !important;
+      width: 1px !important;
+      height: 1px !important;
+      margin: -1px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      clip: rect(0 0 0 0) !important;
+      white-space: nowrap !important;
+    }
+
+    @media (max-width: 1050px) {
+      .task-dialog {
+        height: calc(100vh - 70px);
+      }
+
+      .main-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .side-column {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+      }
+
+      .comments-layout {
+        grid-template-columns: minmax(0, 1fr) 260px;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .summary-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .summary-item:nth-child(2) {
+        border-right: 0;
+      }
+
+      .summary-item:nth-child(-n+2) {
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .prototype-toolbar {
+        padding: 9px 10px 8px;
+      }
+
+      .prototype-subtitle,
+      .control-label > span {
+        display: none;
+      }
+
+      .select-compact {
+        width: 122px;
+      }
+
+      .stage {
+        padding: 0;
+      }
+
+      .task-dialog {
+        width: 100%;
+        height: calc(100dvh - 51px);
+        min-height: 0;
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+        border-radius: 18px 18px 0 0;
+      }
+
+      .task-header {
+        padding: 13px 14px 12px;
+      }
+
+      .header-line {
+        align-items: flex-start;
+      }
+
+      .identity-line {
+        padding-right: 4px;
+      }
+
+      .header-actions .icon-button:first-child {
+        display: none;
+      }
+
+      .header-title-row {
+        display: block;
+        margin-top: 11px;
+      }
+
+      .task-title {
+        font-size: 20px;
+      }
+
+      .updated-brief {
+        display: none;
+      }
+
+      .tabs {
+        padding: 0 8px;
+        scroll-snap-type: x proximity;
+      }
+
+      .tab {
+        min-height: 48px;
+        scroll-snap-align: start;
+      }
+
+      .tabpanel {
+        padding: 12px;
+      }
+
+      .summary-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .summary-item {
+        min-height: 74px;
+        padding: 10px 11px;
+      }
+
+      .summary-item:nth-child(2) {
+        border-right: 0;
+      }
+
+      .summary-item:nth-child(-n+2) {
+        border-bottom: 1px solid var(--border);
+      }
+
+      .main-layout {
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .column {
+        gap: 12px;
+      }
+
+      .side-column {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .section-header {
+        padding: 14px;
+      }
+
+      .section-body {
+        padding: 14px;
+      }
+
+      .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .rationale-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .panel-heading {
+        display: block;
+      }
+
+      .panel-heading .button {
+        width: 100%;
+        margin-top: 10px;
+      }
+
+      .report-grid,
+      .files-grid,
+      .comments-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .status-comparison {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .meeting-form {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .meeting-form .button {
+        width: 100%;
+      }
+
+      .context-card {
+        order: -1;
+      }
+
+      .inline-form.is-open {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .history-scroll {
+        display: none;
+      }
+
+      .history-mobile {
+        display: block;
+      }
+
+      .history-card {
+        display: block;
+      }
+
+      .task-footer {
+        min-height: 64px;
+        padding: 9px 12px;
+      }
+
+      .footer-status span:last-child {
+        overflow: hidden;
+        max-width: 150px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .prototype-title {
+        max-width: 128px;
+      }
+
+      .prototype-logo {
+        width: 32px;
+        height: 32px;
+      }
+
+      .select-compact {
+        display: none;
+      }
+
+      .task-dialog {
+        height: calc(100dvh - 49px);
+      }
+
+      .task-id {
+        min-height: 29px;
+      }
+
+      .chip {
+        min-height: 27px;
+        padding: 3px 8px;
+        font-size: 11px;
+      }
+
+      .chip-type {
+        display: none;
+      }
+
+      .header-actions .icon-button {
+        width: 38px;
+        height: 38px;
+      }
+
+      .summary-item {
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .summary-icon {
+        width: 33px;
+        height: 33px;
+        border-radius: 10px;
+      }
+
+      .summary-label {
+        font-size: 9px;
+      }
+
+      .summary-value {
+        font-size: 12px;
+      }
+
+      .metric {
+        padding: 11px;
+      }
+
+      .metric-value {
+        font-size: 17px;
+      }
+
+      .attribute-row {
+        grid-template-columns: minmax(90px, 0.75fr) minmax(0, 1.25fr);
+        gap: 9px;
+      }
+
+      .system-list {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .composer-actions {
+        align-items: flex-end;
+        flex-direction: column;
+        padding-left: 49px;
+      }
+
+      .composer-actions .button {
+        width: 100%;
+      }
+
+      .comment-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .resource-item {
+        grid-template-columns: 34px minmax(0, 1fr);
+      }
+
+      .resource-item > .button {
+        grid-column: 2;
+        justify-self: start;
+      }
+
+      .history-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .history-filter {
+        width: 100%;
+      }
+
+      .footer-actions {
+        width: 100%;
+      }
+
+      .footer-actions .button {
+        flex: 1;
+      }
+
+      .task-footer.is-edit-footer {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .task-footer.is-edit-footer .footer-status {
+        min-height: 20px;
+      }
+
+      .task-footer:not(.is-edit-footer) .footer-actions {
+        width: auto;
+        flex: 1;
+      }
+
+      .task-footer:not(.is-edit-footer) .footer-status span:last-child {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#task-content">К содержимому карточки</a>
+
+  <header class="prototype-toolbar" aria-label="Управление прототипом">
+    <div class="prototype-mark">
+      <div class="prototype-logo" aria-hidden="true">D</div>
+      <div>
+        <div class="prototype-title">Карточка задачи · vNext</div>
+        <div class="prototype-subtitle">Интерактивный прототип, локальные данные</div>
+      </div>
+    </div>
+    <div class="prototype-controls">
+      <label class="control-label" for="demo-state">
+        <span>Состояние вкладок</span>
+        <select class="select-compact" id="demo-state">
+          <option value="content">Данные</option>
+          <option value="loading">Загрузка</option>
+          <option value="empty">Пусто</option>
+          <option value="error">Ошибка</option>
+        </select>
+      </label>
+      <button class="icon-button" id="theme-toggle" type="button" aria-pressed="false" aria-label="Включить тёмную тему" title="Сменить тему">
+        <svg class="theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+        </svg>
+        <svg class="theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20.5 14.4A8 8 0 0 1 9.6 3.5 8.5 8.5 0 1 0 20.5 14.4Z"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="task-dialog" role="dialog" aria-modal="false" aria-labelledby="task-title">
+      <header class="task-header">
+        <div class="header-line">
+          <div class="identity-line" aria-label="Идентификация задачи">
+            <span class="task-id">
+              TASK-000-248
+              <button class="copy-id" id="copy-id" type="button" aria-label="Скопировать идентификатор TASK-000-248" title="Скопировать ID">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+                </svg>
+              </button>
+            </span>
+            <span class="chip chip-type">Развитие</span>
+            <span class="chip chip-status">В работе</span>
+            <span class="chip chip-priority">P1 · высокий</span>
+          </div>
+          <div class="header-actions">
+            <button class="icon-button" id="copy-link" type="button" aria-label="Скопировать ссылку на задачу" title="Скопировать ссылку">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.07.07l2-2A5 5 0 0 0 12 4l-1.15 1.15"></path>
+                <path d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1.15-1.15"></path>
+              </svg>
+            </button>
+            <button class="icon-button" id="close-demo" type="button" aria-label="Закрыть карточку" title="Закрыть">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 6 12 12M18 6 6 18"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="header-title-row">
+          <div class="header-title-wrap">
+            <p class="eyebrow">Задача бэклога</p>
+            <h1 class="task-title view-only" id="task-title" data-display-for="title">Единый сценарий согласования бизнес-требований</h1>
+            <label class="visually-hidden edit-only" for="field-title">Название задачи</label>
+            <input class="task-title-input edit-only" id="field-title" data-field="title" value="Единый сценарий согласования бизнес-требований">
+          </div>
+          <span class="updated-brief">Обновлено сегодня, 14:32</span>
+        </div>
+      </header>
+
+      <nav class="tabs-wrap" aria-label="Разделы карточки">
+        <div class="tabs" role="tablist" aria-label="Разделы карточки задачи">
+          <button class="tab" id="tab-main" role="tab" type="button" aria-selected="true" aria-controls="panel-main" data-tab="main">
+            Основное
+          </button>
+          <button class="tab" id="tab-report" role="tab" type="button" aria-selected="false" aria-controls="panel-report" data-tab="report" tabindex="-1">
+            Отчётные статусы <span class="tab-count" aria-label="4 статуса">4</span>
+          </button>
+          <button class="tab" id="tab-comments" role="tab" type="button" aria-selected="false" aria-controls="panel-comments" data-tab="comments" tabindex="-1">
+            Комментарии <span class="tab-count" id="comment-count" aria-label="3 комментария">3</span>
+          </button>
+          <button class="tab" id="tab-files" role="tab" type="button" aria-selected="false" aria-controls="panel-files" data-tab="files" tabindex="-1">
+            Ссылки и файлы <span class="tab-count" id="file-count" aria-label="4 материала">4</span>
+          </button>
+          <button class="tab" id="tab-history" role="tab" type="button" aria-selected="false" aria-controls="panel-history" data-tab="history" tabindex="-1">
+            История <span class="tab-count" aria-label="18 событий">18</span>
+          </button>
+        </div>
+      </nav>
+
+      <div class="task-body" id="task-content">
+        <section class="tabpanel" id="panel-main" role="tabpanel" aria-labelledby="tab-main" tabindex="0" data-panel="main">
+          <div class="summary-strip" aria-label="Краткая сводка">
+            <div class="summary-item">
+              <div class="summary-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"></circle><path d="M5.5 20a6.5 6.5 0 0 1 13 0"></path></svg>
+              </div>
+              <div>
+                <div class="summary-label">Ответственный</div>
+                <div class="summary-value">Анна Смирнова</div>
+                <div class="summary-subvalue">Бизнес-аналитик</div>
+              </div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </div>
+              <div>
+                <div class="summary-label">Команда</div>
+                <div class="summary-value">Digital Experience</div>
+                <div class="summary-subvalue">Поток «Клиентский путь»</div>
+              </div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 11h18"></path></svg>
+              </div>
+              <div>
+                <div class="summary-label">Срок</div>
+                <div class="summary-value">30 сентября 2026</div>
+                <div class="summary-subvalue">Hard · осталось 12 дней</div>
+              </div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"></path></svg>
+              </div>
+              <div>
+                <div class="summary-label">Прогресс</div>
+                <div class="summary-value">68%</div>
+                <div class="progress-line" aria-label="Выполнено 68 процентов"><span></span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="main-layout">
+            <div class="column">
+              <section class="section" aria-labelledby="description-title">
+                <div class="section-header">
+                  <div>
+                    <h2 class="section-title" id="description-title">Контекст задачи</h2>
+                    <p class="section-description">Цель, ожидаемый результат и внутренняя информация</p>
+                  </div>
+                  <span class="provenance">Пользователь</span>
+                </div>
+                <div class="section-body">
+                  <div class="content-block">
+                    <span class="field-label">Описание</span>
+                    <p class="body-copy view-only" data-display-for="description">Создать единый прозрачный сценарий согласования бизнес-требований между заказчиком, бизнес-аналитиком и продуктовой командой. Сократить ручные уточнения и обеспечить сохранность решений на каждом этапе.</p>
+                    <label class="visually-hidden edit-only" for="field-description">Описание задачи</label>
+                    <textarea class="edit-control edit-only" id="field-description" data-field="description">Создать единый прозрачный сценарий согласования бизнес-требований между заказчиком, бизнес-аналитиком и продуктовой командой. Сократить ручные уточнения и обеспечить сохранность решений на каждом этапе.</textarea>
+                  </div>
+                  <div class="content-block">
+                    <span class="field-label">Служебная заметка</span>
+                    <div class="service-note view-only" data-display-for="service-note">Перед демонстрацией проверить миграцию истории редакций и доступность для роли Customer.</div>
+                    <label class="visually-hidden edit-only" for="field-service-note">Служебная заметка</label>
+                    <textarea class="edit-control edit-only" id="field-service-note" data-field="service-note">Перед демонстрацией проверить миграцию истории редакций и доступность для роли Customer.</textarea>
+                    <div class="helper edit-only">Внутреннее поле. Сохраняется вместе с задачей и не публикуется как комментарий.</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" aria-labelledby="metrics-title">
+                <div class="section-header">
+                  <div>
+                    <h2 class="section-title" id="metrics-title">Ценность и прогноз</h2>
+                    <p class="section-description">План, факт и рассчитанные показатели задачи</p>
+                  </div>
+                  <span class="provenance provenance-calc">Расчёт системы</span>
+                </div>
+                <div class="section-body">
+                  <div class="metrics-grid">
+                    <div class="metric">
+                      <div class="metric-name">План, дни <span title="Значение из оценки">ⓘ</span></div>
+                      <div class="metric-value">42,0</div>
+                      <div class="metric-sub">336 ч по всем ролям</div>
+                    </div>
+                    <div class="metric">
+                      <div class="metric-name">Факт, дни <span title="Сохранённое серверное значение">ⓘ</span></div>
+                      <div class="metric-value">28,5</div>
+                      <div class="metric-sub metric-positive">В пределах прогноза</div>
+                    </div>
+                    <div class="metric">
+                      <div class="metric-name">Стоимость</div>
+                      <div class="metric-value">1,46 млн ₽</div>
+                      <div class="metric-sub">Факт: 0,98 млн ₽</div>
+                    </div>
+                    <div class="metric">
+                      <div class="metric-name">C/V по ЭО</div>
+                      <div class="metric-value">0,82 / 8,6</div>
+                      <div class="metric-sub">Экспертная оценка</div>
+                    </div>
+                    <div class="metric">
+                      <div class="metric-name">C/V по ФТЗ</div>
+                      <div class="metric-value">0,76 / 8,9</div>
+                      <div class="metric-sub">Финансово-техническая оценка</div>
+                    </div>
+                    <div class="metric">
+                      <div class="metric-name">Priority Score</div>
+                      <div class="metric-value">91,4</div>
+                      <div class="metric-sub">P1 · пересчитано 14:28</div>
+                    </div>
+                    <div class="metric">
+                      <div class="metric-name">Финансовый эффект</div>
+                      <div class="metric-value metric-positive">12,6 млн ₽</div>
+                      <div class="metric-sub">За 12 месяцев</div>
+                    </div>
+                    <div class="metric">
+                      <div class="metric-name">KR · план</div>
+                      <div class="metric-value view-only" data-display-for="kr-plan">72%</div>
+                      <div class="metric-edit edit-only">
+                        <label class="visually-hidden" for="field-kr-plan">Плановое значение KR, процентов</label>
+                        <input class="edit-control" id="field-kr-plan" data-field="kr-plan" type="number" min="0" max="100" value="72" aria-describedby="kr-plan-help">
+                      </div>
+                      <div class="metric-sub" id="kr-plan-help">Целевое значение метрики</div>
+                    </div>
+                    <div class="metric">
+                      <div class="metric-name">KR · факт</div>
+                      <div class="metric-value view-only" data-display-for="kr-fact">49%</div>
+                      <div class="metric-edit edit-only">
+                        <label class="visually-hidden" for="field-kr-fact">Фактическое значение KR, процентов</label>
+                        <input class="edit-control" id="field-kr-fact" data-field="kr-fact" type="number" min="0" max="100" value="49">
+                      </div>
+                      <div class="metric-sub">Обновлено владельцем метрики</div>
+                    </div>
+                    <div class="metric">
+                      <div class="metric-name">PI-решение</div>
+                      <div class="metric-value" style="font-size:16px">Включить</div>
+                      <div class="metric-sub">PI 2026.Q4 · подтверждено</div>
+                    </div>
+                  </div>
+                  <div class="rationale-grid">
+                    <div class="rationale">
+                      <strong>Обоснование Priority Score</strong>
+                      Высокая стратегическая ценность, подтверждённый финансовый эффект и критичный срок PI повышают итоговый балл; риск зависимости от Jira уже учтён.
+                    </div>
+                    <div class="rationale">
+                      <strong>Обоснование финансового эффекта</strong>
+                      Экономия времени согласования и снижение числа повторных доработок дают 12,6 млн ₽ за 12 месяцев при текущем объёме запросов.
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section" aria-labelledby="effort-title">
+                <div class="section-header">
+                  <div>
+                    <h2 class="section-title" id="effort-title">Трудозатраты по ролям</h2>
+                    <p class="section-description">Все плановые и фактические значения сохранены</p>
+                  </div>
+                  <span class="provenance provenance-calc">Ставки и факт</span>
+                </div>
+                <div class="section-body">
+                  <div class="effort-scroll" tabindex="0" aria-label="Таблица трудозатрат, прокручивается по горизонтали">
+                    <table class="data-table effort-table">
+                      <caption class="visually-hidden">Плановые и фактические трудозатраты по ролям</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Роль</th>
+                          <th scope="col" class="number">План, ч</th>
+                          <th scope="col" class="number">Факт, ч</th>
+                          <th scope="col" class="number">Осталось, ч</th>
+                          <th scope="col" class="number">Ставка, ₽/ч</th>
+                          <th scope="col" class="number">Стоимость, ₽</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Designee / Исполнитель</td>
+                          <td class="number"><span class="view-only">16</span><input class="table-input edit-only" aria-label="План, исполнитель, часов" value="16"></td>
+                          <td class="number"><span class="view-only">10</span><input class="table-input edit-only" aria-label="Факт, исполнитель, часов" value="10"></td>
+                          <td class="number">6</td><td class="number">5 100</td><td class="number">81 600</td>
+                        </tr>
+                        <tr>
+                          <td>Аналитика</td>
+                          <td class="number"><span class="view-only">64</span><input class="table-input edit-only" aria-label="План, аналитика, часов" value="64"></td>
+                          <td class="number"><span class="view-only">58</span><input class="table-input edit-only" aria-label="Факт, аналитика, часов" value="58"></td>
+                          <td class="number">6</td><td class="number">3 900</td><td class="number">249 600</td>
+                        </tr>
+                        <tr>
+                          <td>BE</td>
+                          <td class="number"><span class="view-only">72</span><input class="table-input edit-only" aria-label="План, BE, часов" value="72"></td>
+                          <td class="number"><span class="view-only">44</span><input class="table-input edit-only" aria-label="Факт, BE, часов" value="44"></td>
+                          <td class="number">28</td><td class="number">4 600</td><td class="number">331 200</td>
+                        </tr>
+                        <tr>
+                          <td>Python BE</td>
+                          <td class="number"><span class="view-only">48</span><input class="table-input edit-only" aria-label="План, Python BE, часов" value="48"></td>
+                          <td class="number"><span class="view-only">30</span><input class="table-input edit-only" aria-label="Факт, Python BE, часов" value="30"></td>
+                          <td class="number">18</td><td class="number">4 700</td><td class="number">225 600</td>
+                        </tr>
+                        <tr>
+                          <td>FE</td>
+                          <td class="number"><span class="view-only">56</span><input class="table-input edit-only" aria-label="План, FE, часов" value="56"></td>
+                          <td class="number"><span class="view-only">36</span><input class="table-input edit-only" aria-label="Факт, FE, часов" value="36"></td>
+                          <td class="number">20</td><td class="number">4 400</td><td class="number">246 400</td>
+                        </tr>
+                        <tr>
+                          <td>Test</td>
+                          <td class="number"><span class="view-only">40</span><input class="table-input edit-only" aria-label="План, Test, часов" value="40"></td>
+                          <td class="number"><span class="view-only">26</span><input class="table-input edit-only" aria-label="Факт, Test, часов" value="26"></td>
+                          <td class="number">14</td><td class="number">3 700</td><td class="number">148 000</td>
+                        </tr>
+                        <tr>
+                          <td>Test Auto</td>
+                          <td class="number"><span class="view-only">24</span><input class="table-input edit-only" aria-label="План, Test Auto, часов" value="24"></td>
+                          <td class="number"><span class="view-only">12</span><input class="table-input edit-only" aria-label="Факт, Test Auto, часов" value="12"></td>
+                          <td class="number">12</td><td class="number">4 100</td><td class="number">98 400</td>
+                        </tr>
+                        <tr>
+                          <td>Delivery</td>
+                          <td class="number"><span class="view-only">16</span><input class="table-input edit-only" aria-label="План, Delivery, часов" value="16"></td>
+                          <td class="number"><span class="view-only">12</span><input class="table-input edit-only" aria-label="Факт, Delivery, часов" value="12"></td>
+                          <td class="number">4</td><td class="number">4 900</td><td class="number">78 400</td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr><td>Итого</td><td class="number">336</td><td class="number">228</td><td class="number">108</td><td class="number">—</td><td class="number">1 459 200</td></tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  <p class="helper">Ставки доступны только для чтения. Они получены из справочника и не изменяются из карточки.</p>
+                </div>
+              </section>
+            </div>
+
+            <aside class="column side-column" aria-label="Паспорт и системная информация">
+              <section class="section" aria-labelledby="passport-title">
+                <div class="section-header">
+                  <div>
+                    <h2 class="section-title" id="passport-title">Паспорт задачи</h2>
+                    <p class="section-description">Все атрибуты сгруппированы по смыслу</p>
+                  </div>
+                </div>
+                <div class="accordion-group">
+                  <details class="attribute-group" open>
+                    <summary>Исполнение</summary>
+                    <div class="attribute-list">
+                      <div class="attribute-row">
+                        <span class="attribute-name">Статус</span>
+                        <span class="attribute-value view-only" data-display-for="status">В работе</span>
+                        <select class="edit-control edit-only" data-field="status" aria-label="Статус">
+                          <option>Новая</option><option selected>В работе</option><option>Приостановлена</option><option>Выполнена</option>
+                        </select>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Приоритет</span>
+                        <span class="attribute-value view-only" data-display-for="priority">P1 · высокий</span>
+                        <select class="edit-control edit-only" data-field="priority" aria-label="Приоритет">
+                          <option selected>P1 · высокий</option><option>P2 · средний</option><option>P3 · плановый</option>
+                        </select>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Тип</span>
+                        <span class="attribute-value view-only" data-display-for="type">Развитие</span>
+                        <select class="edit-control edit-only" data-field="type" aria-label="Тип задачи">
+                          <option selected>Развитие</option><option>Поддержка</option><option>Исследование</option>
+                        </select>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Ответственный</span>
+                        <span class="attribute-value view-only" data-display-for="responsible">Анна Смирнова</span>
+                        <select class="edit-control edit-only" data-field="responsible" aria-label="Ответственный">
+                          <option selected>Анна Смирнова</option><option>Дмитрий Орлов</option>
+                        </select>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Прогресс</span>
+                        <span class="attribute-value view-only" data-display-for="progress">68%</span>
+                        <input class="edit-control edit-only" data-field="progress" aria-label="Прогресс в процентах" type="number" min="0" max="100" value="68">
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Начало</span>
+                        <span class="attribute-value view-only" data-display-for="start-date">12 августа 2026</span>
+                        <input class="edit-control edit-only" data-field="start-date" aria-label="Дата начала" type="date" value="2026-08-12">
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Срок</span>
+                        <span class="attribute-value view-only" data-display-for="deadline">30 сентября 2026</span>
+                        <input class="edit-control edit-only" data-field="deadline" aria-label="Срок" type="date" value="2026-09-30">
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Тип срока</span>
+                        <span class="attribute-value view-only" data-display-for="deadline-type">Hard</span>
+                        <select class="edit-control edit-only" data-field="deadline-type" aria-label="Тип срока">
+                          <option selected>Hard</option><option>Soft</option>
+                        </select>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="attribute-group" open>
+                    <summary>Оценка и прогноз</summary>
+                    <div class="attribute-list">
+                      <div class="attribute-row">
+                        <span class="attribute-name">Общая оценка трудозатрат (ч/д)</span>
+                        <span class="attribute-value">336 ч / 42 д</span>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Вес оценки, %</span>
+                        <span class="attribute-value">12%</span>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Прогноз выполнения, %</span>
+                        <span class="attribute-value">68%</span>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Hard score</span>
+                        <span class="attribute-value">0,92</span>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Soft score</span>
+                        <span class="attribute-value">0,74</span>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Плановая дата</span>
+                        <span class="attribute-value view-only" data-display-for="plan-date">24 сентября 2026</span>
+                        <input class="edit-control edit-only" data-field="plan-date" aria-label="Плановая дата" type="date" value="2026-09-24">
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Прогноз</span>
+                        <span class="attribute-value view-only" data-display-for="forecast-date">29 сентября 2026</span>
+                        <input class="edit-control edit-only" data-field="forecast-date" aria-label="Прогнозная дата" type="date" value="2026-09-29">
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Факт завершения</span>
+                        <span class="attribute-value">Не завершена</span>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Сложность</span>
+                        <span class="attribute-value view-only" data-display-for="complexity">L · высокая</span>
+                        <select class="edit-control edit-only" data-field="complexity" aria-label="Сложность">
+                          <option>S · низкая</option><option>M · средняя</option><option selected>L · высокая</option><option>XL · очень высокая</option>
+                        </select>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">PI</span>
+                        <span class="attribute-value">2026.Q4</span>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">PI-решение</span>
+                        <span class="attribute-value inline-value"><span>Включить</span><span class="source-hint">Портфель</span></span>
+                      </div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Причина отклонения</span>
+                        <span class="attribute-value">—</span>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="attribute-group">
+                    <summary>Команда</summary>
+                    <div class="attribute-list">
+                      <div class="attribute-row"><span class="attribute-name">Команда</span><span class="attribute-value inline-value"><span>Digital Experience</span><span class="source-hint">Справочник</span></span></div>
+                      <div class="attribute-row"><span class="attribute-name">Поток</span><span class="attribute-value">Клиентский путь</span></div>
+                      <div class="attribute-row"><span class="attribute-name">Другие вовлечённые команды</span><span class="attribute-value tag-list"><span class="tag">Platform Core</span><span class="tag">Data Office</span></span></div>
+                      <div class="attribute-row"><span class="attribute-name">PO</span><span class="attribute-value inline-value"><span>Мария Волкова</span><span class="source-hint">Команда</span></span></div>
+                      <div class="attribute-row"><span class="attribute-name">PL</span><span class="attribute-value inline-value"><span>Сергей Лебедев</span><span class="source-hint">Команда</span></span></div>
+                      <div class="attribute-row"><span class="attribute-name">CL</span><span class="attribute-value inline-value"><span>Илья Зайцев</span><span class="source-hint">Команда</span></span></div>
+                      <div class="attribute-row"><span class="attribute-name">Исполнитель</span><span class="attribute-value view-only" data-display-for="executor">Алексей Морозов</span><select class="edit-control edit-only" data-field="executor" aria-label="Исполнитель"><option selected>Алексей Морозов</option><option>Елена Новикова</option></select></div>
+                    </div>
+                  </details>
+
+                  <details class="attribute-group">
+                    <summary>Заказчик</summary>
+                    <div class="attribute-list">
+                      <div class="attribute-row"><span class="attribute-name">Бизнес-заказчик</span><span class="attribute-value view-only" data-display-for="customer">Дирекция цифрового бизнеса</span><input class="edit-control edit-only" data-field="customer" aria-label="Бизнес-заказчик" value="Дирекция цифрового бизнеса"></div>
+                      <div class="attribute-row"><span class="attribute-name">Инициатор</span><span class="attribute-value view-only" data-display-for="initiator">Ольга Фёдорова</span><input class="edit-control edit-only" data-field="initiator" aria-label="Инициатор" value="Ольга Фёдорова"></div>
+                      <div class="attribute-row"><span class="attribute-name">Подразделение</span><span class="attribute-value view-only" data-display-for="department">Управление клиентского опыта</span><input class="edit-control edit-only" data-field="department" aria-label="Подразделение" value="Управление клиентского опыта"></div>
+                      <div class="attribute-row"><span class="attribute-name">Клиент ДИД</span><span class="attribute-value view-only" data-display-for="did-client">Дирекция цифрового бизнеса</span><input class="edit-control edit-only" data-field="did-client" aria-label="Клиент ДИД" value="Дирекция цифрового бизнеса"></div>
+                      <div class="attribute-row"><span class="attribute-name">Контакт</span><span class="attribute-value view-only" data-display-for="contact">olga.fedorova@example.ru</span><input class="edit-control edit-only" data-field="contact" aria-label="Контакт заказчика" value="olga.fedorova@example.ru"></div>
+                    </div>
+                  </details>
+
+                  <details class="attribute-group">
+                    <summary>Поступление и классификация</summary>
+                    <div class="attribute-list">
+                      <div class="attribute-row"><span class="attribute-name">Источник</span><span class="attribute-value inline-value"><span>AI Assistant</span><span class="source-hint">Система</span></span></div>
+                      <div class="attribute-row"><span class="attribute-name">Канал поступления</span><span class="attribute-value">Запрос заказчика</span></div>
+                      <div class="attribute-row"><span class="attribute-name">Дата получения</span><span class="attribute-value">04 августа 2026, 10:16</span></div>
+                      <div class="attribute-row"><span class="attribute-name">Проект</span><span class="attribute-value">Единый контур управления бэклогом</span></div>
+                      <div class="attribute-row"><span class="attribute-name">Тип задачи</span><span class="attribute-value">Развитие</span></div>
+                      <div class="attribute-row"><span class="attribute-name">Категория</span><span class="attribute-value view-only" data-display-for="category">Клиентские процессы</span><select class="edit-control edit-only" data-field="category" aria-label="Категория"><option selected>Клиентские процессы</option><option>Внутренние процессы</option></select></div>
+                      <div class="attribute-row"><span class="attribute-name">Продукт</span><span class="attribute-value view-only" data-display-for="product">Backlog Coordinator</span><input class="edit-control edit-only" data-field="product" aria-label="Продукт" value="Backlog Coordinator"></div>
+                      <div class="attribute-row"><span class="attribute-name">Стратегическое направление</span><span class="attribute-value">Цифровая эффективность</span></div>
+                      <div class="attribute-row"><span class="attribute-name">Эпик</span><span class="attribute-value">DMB-E17 · Сквозное согласование</span></div>
+                      <div class="attribute-row"><span class="attribute-name">Внешняя задача</span><span class="attribute-value inline-value"><span>DIG-1834</span><span class="source-hint">Jira</span></span></div>
+                      <div class="attribute-row">
+                        <span class="attribute-name">Метки</span>
+                        <span class="attribute-value tag-list"><span class="tag">customer</span><span class="tag">workflow</span><span class="tag">q4</span></span>
+                      </div>
+                      <div class="attribute-row"><span class="attribute-name">Метрический KR · план</span><span class="attribute-value">72</span></div>
+                      <div class="attribute-row"><span class="attribute-name">Метрический KR · факт</span><span class="attribute-value">49</span></div>
+                      <div class="attribute-row"><span class="attribute-name">Метрический KR · единица измерения</span><span class="attribute-value">%</span></div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section class="section" aria-labelledby="system-title">
+                <div class="section-header">
+                  <div>
+                    <h2 class="section-title" id="system-title">Системная информация</h2>
+                    <p class="section-description">Аудит, версия и источник данных</p>
+                  </div>
+                </div>
+                <div class="section-body">
+                  <div class="system-list">
+                    <div class="system-item"><div class="system-name">Автор</div><div class="system-value">Ольга Фёдорова</div></div>
+                    <div class="system-item"><div class="system-name">Создана</div><div class="system-value">04.08.2026, 10:16</div></div>
+                    <div class="system-item"><div class="system-name">Обновлена</div><div class="system-value">18.09.2026, 14:32</div></div>
+                    <div class="system-item"><div class="system-name">Версия</div><div class="system-value">14</div></div>
+                    <div class="system-item"><div class="system-name">Блокировка</div><div class="system-value">Свободна для редактирования</div></div>
+                    <div class="system-item"><div class="system-name">Синхронизация</div><div class="system-value">Jira · 14:28</div></div>
+                  </div>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="tabpanel" id="panel-report" role="tabpanel" aria-labelledby="tab-report" tabindex="0" data-panel="report" hidden>
+          <div class="panel-heading">
+            <div>
+              <h2>Отчётные статусы</h2>
+              <p>Каждая встреча хранит собственный статус и сохраняется независимо от основной формы задачи.</p>
+            </div>
+          </div>
+          <div class="async-content">
+            <div class="report-grid">
+              <article class="meeting-card">
+                <header class="meeting-header">
+                  <div>
+                    <h3 class="meeting-title">Еженедельная встреча команды</h3>
+                    <div class="meeting-meta">Среда, 23 сентября · 10:00</div>
+                  </div>
+                  <span class="chip chip-status">Актуален</span>
+                </header>
+                <div class="meeting-body">
+                  <div class="status-comparison">
+                    <div class="status-box">
+                      <div class="status-label">Предыдущий</div>
+                      <p class="status-text">Согласована целевая логика. Команда приступила к прототипу карточки.</p>
+                    </div>
+                    <div class="status-box status-box-current">
+                      <div class="status-label">Текущий</div>
+                      <p class="status-text">Готов UX/UI-прототип. На неделе проверяем адаптив, доступность и состояния ошибок.</p>
+                    </div>
+                  </div>
+                  <div class="meeting-form">
+                    <div>
+                      <label class="field-label" for="weekly-status">Новый статус</label>
+                      <textarea class="edit-control" id="weekly-status" placeholder="Коротко: результат, следующий шаг, риск"></textarea>
+                    </div>
+                    <button class="button button-primary save-report" type="button" data-target="weekly-status">Сохранить</button>
+                  </div>
+                  <div class="save-note" id="weekly-status-note">Черновик хранится локально</div>
+                </div>
+              </article>
+
+              <article class="meeting-card">
+                <header class="meeting-header">
+                  <div>
+                    <h3 class="meeting-title">Директорская оперативка</h3>
+                    <div class="meeting-meta">Понедельник, 21 сентября · 09:30</div>
+                  </div>
+                  <span class="chip chip-type">Черновик</span>
+                </header>
+                <div class="meeting-body">
+                  <div class="status-comparison">
+                    <div class="status-box">
+                      <div class="status-label">Предыдущий</div>
+                      <p class="status-text">Решение включено в PI 2026.Q4. Финансовый эффект подтверждается.</p>
+                    </div>
+                    <div class="status-box status-box-current">
+                      <div class="status-label">Текущий</div>
+                      <p class="status-text">Ожидается согласование итоговой оценки трудозатрат и состава релиза.</p>
+                    </div>
+                  </div>
+                  <div class="meeting-form">
+                    <div>
+                      <label class="field-label" for="director-status">Новый статус</label>
+                      <textarea class="edit-control" id="director-status" placeholder="Коротко: результат, следующий шаг, риск"></textarea>
+                    </div>
+                    <button class="button button-primary save-report" type="button" data-target="director-status">Сохранить</button>
+                  </div>
+                  <div class="save-note" id="director-status-note">Черновик хранится локально</div>
+                </div>
+              </article>
+
+              <article class="meeting-card">
+                <header class="meeting-header">
+                  <div>
+                    <h3 class="meeting-title">Оперативка ДИД</h3>
+                    <div class="meeting-meta">Пятница, 25 сентября · 16:00</div>
+                  </div>
+                  <span class="chip chip-status">Актуален</span>
+                </header>
+                <div class="meeting-body">
+                  <div class="status-comparison">
+                    <div class="status-box">
+                      <div class="status-label">Предыдущий</div>
+                      <p class="status-text">Подтверждён финансовый эффект и единица измерения — млн ₽ за 12 месяцев.</p>
+                    </div>
+                    <div class="status-box status-box-current">
+                      <div class="status-label">Текущий</div>
+                      <p class="status-text">Прототип готов к демонстрации; требуется решение по составу первого релиза.</p>
+                    </div>
+                  </div>
+                  <label class="checkbox-line" for="did-demo">
+                    <input id="did-demo" type="checkbox">
+                    <span>Демо для ДИД</span>
+                  </label>
+                  <div class="meeting-form">
+                    <div>
+                      <label class="field-label" for="did-status">Новый статус</label>
+                      <textarea class="edit-control" id="did-status" placeholder="Коротко: результат, следующий шаг, риск"></textarea>
+                    </div>
+                    <button class="button button-primary save-report" type="button" data-target="did-status">Сохранить</button>
+                  </div>
+                  <div class="save-note" id="did-status-note">Черновик хранится локально</div>
+                </div>
+              </article>
+
+              <article class="meeting-card">
+                <header class="meeting-header">
+                  <div>
+                    <h3 class="meeting-title">Встреча по ключевым проектам</h3>
+                    <div class="meeting-meta">Вторник, 22 сентября · 15:00</div>
+                  </div>
+                  <span class="chip chip-type">Черновик</span>
+                </header>
+                <div class="meeting-body">
+                  <div class="status-comparison">
+                    <div class="status-box">
+                      <div class="status-label">Предыдущий</div>
+                      <p class="status-text">Задача включена в PI 2026.Q4 и связана с проектом сквозного согласования.</p>
+                    </div>
+                    <div class="status-box status-box-current">
+                      <div class="status-label">Текущий</div>
+                      <p class="status-text">Согласуются зависимости с Platform Core и Data Office, срок остаётся Hard.</p>
+                    </div>
+                  </div>
+                  <div class="meeting-form">
+                    <div>
+                      <label class="field-label" for="key-projects-status">Новый статус</label>
+                      <textarea class="edit-control" id="key-projects-status" placeholder="Коротко: результат, следующий шаг, риск"></textarea>
+                    </div>
+                    <button class="button button-primary save-report" type="button" data-target="key-projects-status">Сохранить</button>
+                  </div>
+                  <div class="save-note" id="key-projects-status-note">Черновик хранится локально</div>
+                </div>
+              </article>
+            </div>
+          </div>
+          <div class="async-state state-loading" data-state="loading" aria-live="polite">
+            <div class="skeleton-stack" aria-label="Загрузка отчётных статусов">
+              <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+            </div>
+          </div>
+          <div class="async-state" data-state="empty">
+            <div class="state-content"><div class="state-icon" aria-hidden="true">0</div><h3 class="state-title">Статусов пока нет</h3><p class="state-text">Встречи появятся здесь после назначения расписания.</p></div>
+          </div>
+          <div class="async-state state-error" data-state="error">
+            <div class="state-content"><div class="state-icon" aria-hidden="true">!</div><h3 class="state-title">Не удалось загрузить статусы</h3><p class="state-text">Данные не потеряны. Проверьте подключение и повторите запрос.</p><button class="button button-secondary retry-button" type="button">Повторить</button></div>
+          </div>
+        </section>
+
+        <section class="tabpanel" id="panel-comments" role="tabpanel" aria-labelledby="tab-comments" tabindex="0" data-panel="comments" hidden>
+          <div class="panel-heading">
+            <div>
+              <h2>Комментарии команды</h2>
+              <p>Обсуждение отделено от служебной заметки. Черновик сохраняется локально в рамках прототипа.</p>
+            </div>
+          </div>
+          <div class="async-content">
+            <div class="comments-layout">
+              <div>
+                <div class="comment-composer">
+                  <div class="composer-line">
+                    <div class="avatar" aria-hidden="true">АС</div>
+                    <div>
+                      <label class="visually-hidden" for="comment-input">Новый комментарий</label>
+                      <textarea class="composer-input" id="comment-input" placeholder="Напишите комментарий… Используйте @ для упоминания"></textarea>
+                    </div>
+                  </div>
+                  <div class="composer-actions">
+                    <span class="draft-note" id="draft-note">Черновик не сохранён</span>
+                    <button class="button button-primary" id="send-comment" type="button">Отправить комментарий</button>
+                  </div>
+                </div>
+                <div class="comments-feed" id="comments-feed" aria-label="Лента комментариев">
+                  <article class="comment">
+                    <div class="avatar avatar-green" aria-hidden="true">МВ</div>
+                    <div>
+                      <div class="comment-head"><span class="comment-author">Мария Волкова</span><time class="comment-time" datetime="2026-09-18T12:42">Сегодня, 12:42</time></div>
+                      <p class="comment-text">Подтверждаю состав первого релиза. Поле PI-решения должно оставаться рядом с причиной отклонения.</p>
+                      <div class="comment-actions"><button class="button button-ghost button-small reply-button" type="button" data-author="Мария Волкова">Ответить</button></div>
+                    </div>
+                  </article>
+                  <article class="comment">
+                    <div class="avatar avatar-blue" aria-hidden="true">ИЛ</div>
+                    <div>
+                      <div class="comment-head"><span class="comment-author">Илья Лебедев</span><time class="comment-time" datetime="2026-09-17T17:08">Вчера, 17:08</time></div>
+                      <p class="comment-text">Финансовый эффект сверил: единица измерения — млн ₽, горизонт — 12 месяцев.</p>
+                      <div class="comment-actions"><button class="button button-ghost button-small reply-button" type="button" data-author="Илья Лебедев">Ответить</button></div>
+                    </div>
+                  </article>
+                  <article class="comment">
+                    <div class="avatar" aria-hidden="true">АС</div>
+                    <div>
+                      <div class="comment-head"><span class="comment-author">Анна Смирнова</span><time class="comment-time" datetime="2026-09-17T15:21">Вчера, 15:21</time></div>
+                      <p class="comment-text">Описание актуализировано. Следующий шаг — проверить прототип на 390 px и с клавиатуры.</p>
+                      <div class="comment-actions"><button class="button button-ghost button-small reply-button" type="button" data-author="Анна Смирнова">Ответить</button></div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+              <aside class="context-card" aria-label="Контекст обсуждения">
+                <h3>Контекст</h3>
+                <dl class="context-list">
+                  <div><dt>Участники</dt><dd>8 человек</dd></div>
+                  <div><dt>Наблюдатели</dt><dd>PO, PL, заказчик</dd></div>
+                  <div><dt>Упоминания</dt><dd>2 непрочитанных</dd></div>
+                  <div><dt>Права</dt><dd>Можно комментировать</dd></div>
+                </dl>
+              </aside>
+            </div>
+          </div>
+          <div class="async-state state-loading" data-state="loading" aria-live="polite"><div class="skeleton-stack" aria-label="Загрузка комментариев"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div></div>
+          <div class="async-state" data-state="empty"><div class="state-content"><div class="state-icon" aria-hidden="true">0</div><h3 class="state-title">Комментариев пока нет</h3><p class="state-text">Начните обсуждение задачи с командой.</p><button class="button button-primary empty-comment-action" type="button">Написать комментарий</button></div></div>
+          <div class="async-state state-error" data-state="error"><div class="state-content"><div class="state-icon" aria-hidden="true">!</div><h3 class="state-title">Не удалось загрузить комментарии</h3><p class="state-text">Это ошибка загрузки, а не пустая лента. Ваш черновик сохранён локально.</p><button class="button button-secondary retry-button" type="button">Повторить</button></div></div>
+        </section>
+
+        <section class="tabpanel" id="panel-files" role="tabpanel" aria-labelledby="tab-files" tabindex="0" data-panel="files" hidden>
+          <div class="panel-heading">
+            <div>
+              <h2>Ссылки и файлы</h2>
+              <p>Материалы задачи разделены по типу. Ограничение файла проверяется до загрузки.</p>
+            </div>
+          </div>
+          <div class="async-content">
+            <div class="files-grid">
+              <section class="files-block" aria-labelledby="links-title">
+                <div class="files-head">
+                  <h3 id="links-title">Ссылки · 2</h3>
+                  <button class="button button-secondary button-small" id="toggle-link-form" type="button" aria-expanded="false" aria-controls="link-form">Добавить</button>
+                </div>
+                <div class="inline-form" id="link-form">
+                  <label class="visually-hidden" for="link-title">Название ссылки</label>
+                  <input class="edit-control" id="link-title" placeholder="Название">
+                  <label class="visually-hidden" for="link-url">Адрес ссылки</label>
+                  <input class="edit-control" id="link-url" type="url" placeholder="https://">
+                  <button class="button button-primary button-small" id="save-link" type="button">Сохранить</button>
+                </div>
+                <ul class="resource-list" id="link-list">
+                  <li class="resource-item">
+                    <div class="resource-icon" aria-hidden="true">URL</div>
+                    <div><div class="resource-title">Протокол согласования требований</div><div class="resource-meta">confluence.example.ru · добавила Анна</div></div>
+                    <button class="button button-ghost button-small" type="button">Открыть</button>
+                  </li>
+                  <li class="resource-item">
+                    <div class="resource-icon" aria-hidden="true">Jira</div>
+                    <div><div class="resource-title">DIG-1834 · Реализация workflow</div><div class="resource-meta">jira.example.ru · синхронизировано</div></div>
+                    <button class="button button-ghost button-small" type="button">Открыть</button>
+                  </li>
+                </ul>
+              </section>
+
+              <section class="files-block" aria-labelledby="attachments-title">
+                <div class="files-head">
+                  <h3 id="attachments-title">Файлы · 2</h3>
+                  <button class="button button-secondary button-small" id="choose-file" type="button">Загрузить</button>
+                  <input class="visually-hidden" id="file-input" type="file" aria-label="Выбрать файлы для загрузки" aria-describedby="file-limit">
+                </div>
+                <div class="upload-zone" id="upload-zone" tabindex="0">
+                  <strong>Перетащите файл сюда</strong>
+                  <small id="file-limit">или выберите файл · максимум 50 МБ</small>
+                </div>
+                <ul class="resource-list" id="file-list">
+                  <li class="resource-item">
+                    <div class="resource-icon" aria-hidden="true">PDF</div>
+                    <div><div class="resource-title">Целевой-сценарий-v3.pdf</div><div class="resource-meta">4,8 МБ · 18 сентября, 11:04</div></div>
+                    <button class="button button-ghost button-small" type="button">Скачать</button>
+                  </li>
+                  <li class="resource-item">
+                    <div class="resource-icon" aria-hidden="true">XLS</div>
+                    <div><div class="resource-title">Оценка-трудозатрат.xlsx</div><div class="resource-meta">86 КБ · 17 сентября, 19:22</div></div>
+                    <button class="button button-ghost button-small" type="button">Скачать</button>
+                  </li>
+                </ul>
+              </section>
+            </div>
+          </div>
+          <div class="async-state state-loading" data-state="loading" aria-live="polite"><div class="skeleton-stack" aria-label="Загрузка материалов"><div class="skeleton"></div><div class="skeleton"></div></div></div>
+          <div class="async-state" data-state="empty"><div class="state-content"><div class="state-icon" aria-hidden="true">0</div><h3 class="state-title">Материалов пока нет</h3><p class="state-text">Добавьте ссылку или загрузите файл до 50 МБ.</p></div></div>
+          <div class="async-state state-error" data-state="error"><div class="state-content"><div class="state-icon" aria-hidden="true">!</div><h3 class="state-title">Не удалось загрузить материалы</h3><p class="state-text">Список временно недоступен. Новые файлы не отправлялись.</p><button class="button button-secondary retry-button" type="button">Повторить</button></div></div>
+        </section>
+
+        <section class="tabpanel" id="panel-history" role="tabpanel" aria-labelledby="tab-history" tabindex="0" data-panel="history" hidden>
+          <div class="panel-heading">
+            <div>
+              <h2>История изменений</h2>
+              <p>Пользовательские названия полей, авторы и точные значения. На мобильном — карточки событий вместо сжатой таблицы.</p>
+            </div>
+          </div>
+          <div class="async-content">
+            <div class="history-toolbar">
+              <span class="section-description">Показано 5 из 18 событий</span>
+              <label>
+                <span class="visually-hidden">Фильтр истории</span>
+                <select class="history-filter" id="history-filter">
+                  <option value="all">Все изменения</option>
+                  <option value="fields">Поля задачи</option>
+                  <option value="status">Статусы</option>
+                  <option value="system">Системные</option>
+                </select>
+              </label>
+            </div>
+            <div class="history-scroll" tabindex="0" aria-label="Таблица истории, прокручивается по горизонтали">
+              <table class="data-table history-table">
+                <caption class="visually-hidden">История изменений задачи</caption>
+                <thead><tr><th scope="col">Когда</th><th scope="col">Кто</th><th scope="col">Поле</th><th scope="col">Было</th><th scope="col">Стало</th><th scope="col">Источник</th></tr></thead>
+                <tbody>
+                  <tr data-kind="fields"><td>18.09, 14:32</td><td>Анна Смирнова</td><td>Прогнозная дата</td><td>27.09.2026</td><td>29.09.2026</td><td>Карточка</td></tr>
+                  <tr data-kind="status"><td>18.09, 14:28</td><td>Task Prioritiser</td><td>Priority Score</td><td>88,7</td><td>91,4</td><td>Расчёт</td></tr>
+                  <tr data-kind="fields"><td>18.09, 12:16</td><td>Мария Волкова</td><td>PI-решение</td><td>На рассмотрении</td><td>Включить</td><td>Портфель</td></tr>
+                  <tr data-kind="fields"><td>17.09, 19:22</td><td>Анна Смирнова</td><td>Файл</td><td>—</td><td>Оценка-трудозатрат.xlsx</td><td>Вложение</td></tr>
+                  <tr data-kind="system"><td>17.09, 18:40</td><td>Jira Sync</td><td>Внешняя задача</td><td>—</td><td>DIG-1834</td><td>Jira</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="history-mobile" aria-label="История изменений">
+              <article class="history-card" data-kind="fields"><div class="history-card-top"><span class="history-field">Прогнозная дата</span><time class="history-date">18.09, 14:32</time></div><div class="history-change"><span class="history-value">27.09.2026</span><span class="history-arrow">→</span><span class="history-value">29.09.2026</span></div><div class="history-author">Анна Смирнова · Карточка</div></article>
+              <article class="history-card" data-kind="status"><div class="history-card-top"><span class="history-field">Priority Score</span><time class="history-date">18.09, 14:28</time></div><div class="history-change"><span class="history-value">88,7</span><span class="history-arrow">→</span><span class="history-value">91,4</span></div><div class="history-author">Task Prioritiser · Расчёт</div></article>
+              <article class="history-card" data-kind="fields"><div class="history-card-top"><span class="history-field">PI-решение</span><time class="history-date">18.09, 12:16</time></div><div class="history-change"><span class="history-value">На рассмотрении</span><span class="history-arrow">→</span><span class="history-value">Включить</span></div><div class="history-author">Мария Волкова · Портфель</div></article>
+              <article class="history-card" data-kind="fields"><div class="history-card-top"><span class="history-field">Файл</span><time class="history-date">17.09, 19:22</time></div><div class="history-change"><span class="history-value">—</span><span class="history-arrow">→</span><span class="history-value">Оценка-трудозатрат.xlsx</span></div><div class="history-author">Анна Смирнова · Вложение</div></article>
+              <article class="history-card" data-kind="system"><div class="history-card-top"><span class="history-field">Внешняя задача</span><time class="history-date">17.09, 18:40</time></div><div class="history-change"><span class="history-value">—</span><span class="history-arrow">→</span><span class="history-value">DIG-1834</span></div><div class="history-author">Jira Sync · Jira</div></article>
+            </div>
+          </div>
+          <div class="async-state state-loading" data-state="loading" aria-live="polite"><div class="skeleton-stack" aria-label="Загрузка истории"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div></div>
+          <div class="async-state" data-state="empty"><div class="state-content"><div class="state-icon" aria-hidden="true">0</div><h3 class="state-title">Изменений пока нет</h3><p class="state-text">Первое событие появится после изменения задачи.</p></div></div>
+          <div class="async-state state-error" data-state="error"><div class="state-content"><div class="state-icon" aria-hidden="true">!</div><h3 class="state-title">Не удалось загрузить историю</h3><p class="state-text">История существует, но сейчас недоступна. Повторите запрос.</p><button class="button button-secondary retry-button" type="button">Повторить</button></div></div>
+        </section>
+      </div>
+
+      <footer class="task-footer" id="task-footer">
+        <div class="footer-status" aria-live="polite">
+          <span class="status-dot" id="save-dot" aria-hidden="true"></span>
+          <span id="footer-message">Все изменения сохранены · версия 14</span>
+        </div>
+        <div class="footer-actions" id="footer-actions">
+          <button class="button button-secondary edit-only" id="cancel-edit" type="button">Отменить</button>
+          <button class="button button-primary edit-only" id="save-edit" type="button">Сохранить изменения</button>
+          <button class="button button-primary view-only" id="start-edit" type="button">Редактировать</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var root = document.documentElement;
+      var body = document.body;
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+      var panels = Array.prototype.slice.call(document.querySelectorAll('[role="tabpanel"]'));
+      var taskBody = document.querySelector(".task-body");
+      var footer = document.getElementById("task-footer");
+      var footerMessage = document.getElementById("footer-message");
+      var saveDot = document.getElementById("save-dot");
+      var footerActions = document.getElementById("footer-actions");
+      var stateSelect = document.getElementById("demo-state");
+      var activeTab = "main";
+      var savedValues = {};
+
+      function toast(message, kind) {
+        var region = document.getElementById("toast-region");
+        var item = document.createElement("div");
+        item.className = "toast " + (kind === "warning" ? "toast-warning" : "toast-success");
+        item.setAttribute("role", kind === "warning" ? "alert" : "status");
+        item.textContent = message;
+        region.appendChild(item);
+        window.setTimeout(function () {
+          item.remove();
+        }, 3200);
+      }
+
+      function setTheme(theme) {
+        root.setAttribute("data-theme", theme);
+        var button = document.getElementById("theme-toggle");
+        var isDark = theme === "dark";
+        button.setAttribute("aria-pressed", String(isDark));
+        button.setAttribute("aria-label", isDark ? "Включить светлую тему" : "Включить тёмную тему");
+        try {
+          localStorage.setItem("task-card-prototype-theme", theme);
+        } catch (error) {
+          /* Local storage is optional in the standalone prototype. */
+        }
+      }
+
+      try {
+        var storedTheme = localStorage.getItem("task-card-prototype-theme");
+        if (storedTheme === "dark" || storedTheme === "light") {
+          setTheme(storedTheme);
+        }
+      } catch (error) {
+        setTheme("light");
+      }
+
+      document.getElementById("theme-toggle").addEventListener("click", function () {
+        setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+      });
+
+      function setTab(name, focusTab) {
+        activeTab = name;
+        tabs.forEach(function (tab) {
+          var selected = tab.dataset.tab === name;
+          tab.setAttribute("aria-selected", String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+          if (selected) {
+            tab.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+            if (focusTab) {
+              tab.focus();
+            }
+          }
+        });
+        panels.forEach(function (panel) {
+          panel.hidden = panel.dataset.panel !== name;
+        });
+        taskBody.scrollTop = 0;
+        renderFooter();
+        applyAsyncState(stateSelect.value);
+      }
+
+      tabs.forEach(function (tab, index) {
+        tab.addEventListener("click", function () {
+          setTab(tab.dataset.tab, false);
+        });
+        tab.addEventListener("keydown", function (event) {
+          var nextIndex = index;
+          if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+          if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabs.length) % tabs.length;
+          if (event.key === "Home") nextIndex = 0;
+          if (event.key === "End") nextIndex = tabs.length - 1;
+          if (nextIndex !== index) {
+            event.preventDefault();
+            setTab(tabs[nextIndex].dataset.tab, true);
+          }
+        });
+      });
+
+      function getFieldValue(control) {
+        var value = control.value;
+        if (control.type === "date" && value) {
+          var parts = value.split("-");
+          var monthNames = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+          value = Number(parts[2]) + " " + monthNames[Number(parts[1]) - 1] + " " + parts[0];
+        }
+        if (control.dataset.field === "progress" || control.dataset.field === "kr-plan" || control.dataset.field === "kr-fact") {
+          value += "%";
+        }
+        return value;
+      }
+
+      function captureValues() {
+        savedValues = {};
+        document.querySelectorAll("[data-field]").forEach(function (control) {
+          savedValues[control.dataset.field] = control.value;
+        });
+        document.querySelectorAll(".table-input").forEach(function (control, index) {
+          savedValues["table-" + index] = control.value;
+        });
+      }
+
+      function restoreValues() {
+        document.querySelectorAll("[data-field]").forEach(function (control) {
+          if (Object.prototype.hasOwnProperty.call(savedValues, control.dataset.field)) {
+            control.value = savedValues[control.dataset.field];
+          }
+        });
+        document.querySelectorAll(".table-input").forEach(function (control, index) {
+          if (Object.prototype.hasOwnProperty.call(savedValues, "table-" + index)) {
+            control.value = savedValues["table-" + index];
+          }
+        });
+      }
+
+      function commitDisplays() {
+        document.querySelectorAll("[data-field]").forEach(function (control) {
+          var display = document.querySelector('[data-display-for="' + control.dataset.field + '"]');
+          if (display) {
+            display.textContent = getFieldValue(control);
+          }
+        });
+        document.querySelectorAll(".table-input").forEach(function (control) {
+          var display = control.parentElement.querySelector(".view-only");
+          if (display) display.textContent = control.value;
+        });
+      }
+
+      function setDirty() {
+        if (!body.classList.contains("is-editing")) return;
+        footerMessage.textContent = "Есть несохранённые изменения";
+        saveDot.className = "status-dot dirty";
+      }
+
+      document.querySelectorAll("[data-field], .table-input").forEach(function (control) {
+        control.addEventListener("input", setDirty);
+        control.addEventListener("change", setDirty);
+      });
+
+      function enterEdit() {
+        if (activeTab !== "main") setTab("main", false);
+        captureValues();
+        body.classList.add("is-editing");
+        footer.classList.add("is-edit-footer");
+        footerMessage.textContent = "Режим редактирования · изменения ещё не внесены";
+        saveDot.className = "status-dot";
+        renderFooter();
+        window.setTimeout(function () {
+          document.getElementById("field-title").focus();
+        }, 0);
+      }
+
+      function exitEdit(save) {
+        if (save) {
+          commitDisplays();
+          captureValues();
+          toast("Изменения сохранены локально в прототипе", "success");
+        } else {
+          restoreValues();
+          toast("Несохранённые изменения отменены", "warning");
+        }
+        body.classList.remove("is-editing");
+        footer.classList.remove("is-edit-footer");
+        footerMessage.textContent = "Все изменения сохранены · версия 14";
+        saveDot.className = "status-dot";
+        renderFooter();
+        window.setTimeout(function () {
+          var editButton = document.getElementById("context-action");
+          if (editButton) editButton.focus();
+        }, 0);
+      }
+
+      document.getElementById("start-edit").addEventListener("click", enterEdit);
+      document.getElementById("cancel-edit").addEventListener("click", function () { exitEdit(false); });
+      document.getElementById("save-edit").addEventListener("click", function () { exitEdit(true); });
+
+      function renderFooter() {
+        if (body.classList.contains("is-editing")) {
+          footerActions.innerHTML = '<button class="button button-secondary edit-only" id="cancel-edit" type="button">Отменить</button><button class="button button-primary edit-only" id="save-edit" type="button">Сохранить изменения</button>';
+          document.getElementById("cancel-edit").addEventListener("click", function () { exitEdit(false); });
+          document.getElementById("save-edit").addEventListener("click", function () { exitEdit(true); });
+          return;
+        }
+
+        var config = {
+          main: { message: "Все изменения сохранены · версия 14", label: "Редактировать", action: "edit" },
+          report: { message: "Статусы встреч сохраняются независимо", label: "К первому статусу", action: "report" },
+          comments: { message: "Черновик комментария хранится локально", label: "К комментарию", action: "comment" },
+          files: { message: "Файлы до 50 МБ · 4 материала", label: "Загрузить файл", action: "file" },
+          history: { message: "Версия 14 · 18 событий", label: "Фильтр истории", action: "history" }
+        }[activeTab];
+
+        footerMessage.textContent = config.message;
+        saveDot.className = "status-dot";
+        footerActions.innerHTML = '<button class="button button-primary view-only" id="context-action" type="button">' + config.label + '</button>';
+        document.getElementById("context-action").addEventListener("click", function () {
+          if (config.action === "edit") enterEdit();
+          if (config.action === "report") document.getElementById("weekly-status").focus();
+          if (config.action === "comment") document.getElementById("comment-input").focus();
+          if (config.action === "file") document.getElementById("file-input").click();
+          if (config.action === "history") document.getElementById("history-filter").focus();
+        });
+      }
+
+      function applyAsyncState(state) {
+        panels.forEach(function (panel) {
+          if (panel.dataset.panel === "main") return;
+          var content = panel.querySelector(".async-content");
+          var stateBlocks = panel.querySelectorAll(".async-state");
+          if (content) content.style.display = state === "content" ? "" : "none";
+          stateBlocks.forEach(function (block) {
+            block.classList.toggle("is-visible", block.dataset.state === state);
+          });
+        });
+      }
+
+      stateSelect.addEventListener("change", function () {
+        applyAsyncState(stateSelect.value);
+        toast("Демо-состояние: " + stateSelect.options[stateSelect.selectedIndex].text, "success");
+      });
+
+      document.querySelectorAll(".retry-button").forEach(function (button) {
+        button.addEventListener("click", function () {
+          stateSelect.value = "loading";
+          applyAsyncState("loading");
+          window.setTimeout(function () {
+            stateSelect.value = "content";
+            applyAsyncState("content");
+            toast("Данные загружены", "success");
+          }, 700);
+        });
+      });
+
+      function copyText(text, successMessage) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            toast(successMessage, "success");
+          }).catch(function () {
+            toast("Копирование недоступно в этом браузере", "warning");
+          });
+        } else {
+          toast("Копирование недоступно в этом браузере", "warning");
+        }
+      }
+
+      document.getElementById("copy-id").addEventListener("click", function () {
+        copyText("TASK-000-248", "ID TASK-000-248 скопирован");
+      });
+      document.getElementById("copy-link").addEventListener("click", function () {
+        copyText(window.location.href.split("#")[0] + "#/backlog?task=248", "Ссылка на задачу скопирована");
+      });
+      document.getElementById("close-demo").addEventListener("click", function () {
+        toast("В автономном прототипе карточка остаётся открытой", "warning");
+      });
+
+      document.querySelectorAll(".save-report").forEach(function (button) {
+        button.addEventListener("click", function () {
+          var target = document.getElementById(button.dataset.target);
+          var note = document.getElementById(button.dataset.target + "-note");
+          if (!target.value.trim()) {
+            target.setAttribute("aria-invalid", "true");
+            note.textContent = "Введите новый статус";
+            note.style.color = "var(--danger)";
+            target.focus();
+            return;
+          }
+          target.removeAttribute("aria-invalid");
+          note.textContent = "Сохранено локально · только для демонстрации";
+          note.style.color = "var(--success)";
+          target.value = "";
+          toast("Отчётный статус сохранён", "success");
+        });
+      });
+
+      var commentInput = document.getElementById("comment-input");
+      commentInput.addEventListener("input", function () {
+        document.getElementById("draft-note").textContent = commentInput.value.trim() ? "Черновик сохранён локально" : "Черновик не сохранён";
+      });
+
+      document.getElementById("send-comment").addEventListener("click", function () {
+        var text = commentInput.value.trim();
+        if (!text) {
+          commentInput.setAttribute("aria-invalid", "true");
+          commentInput.focus();
+          toast("Напишите комментарий перед отправкой", "warning");
+          return;
+        }
+        commentInput.removeAttribute("aria-invalid");
+        var article = document.createElement("article");
+        article.className = "comment";
+        article.innerHTML = '<div class="avatar" aria-hidden="true">АС</div><div><div class="comment-head"><span class="comment-author">Анна Смирнова</span><time class="comment-time">Только что</time></div><p class="comment-text"></p><div class="comment-actions"><button class="button button-ghost button-small reply-button" type="button" data-author="Анна Смирнова">Ответить</button></div></div>';
+        article.querySelector(".comment-text").textContent = text;
+        document.getElementById("comments-feed").prepend(article);
+        article.querySelector(".reply-button").addEventListener("click", handleReply);
+        commentInput.value = "";
+        document.getElementById("draft-note").textContent = "Черновик не сохранён";
+        var count = document.getElementById("comment-count");
+        var next = Number(count.textContent) + 1;
+        count.textContent = String(next);
+        count.setAttribute("aria-label", next + " комментария");
+        toast("Комментарий добавлен локально", "success");
+      });
+
+      function handleReply(event) {
+        commentInput.value = "@" + event.currentTarget.dataset.author + ", ";
+        commentInput.focus();
+        document.getElementById("draft-note").textContent = "Черновик сохранён локально";
+      }
+
+      document.querySelectorAll(".reply-button").forEach(function (button) {
+        button.addEventListener("click", handleReply);
+      });
+
+      document.querySelectorAll(".empty-comment-action").forEach(function (button) {
+        button.addEventListener("click", function () {
+          stateSelect.value = "content";
+          applyAsyncState("content");
+          commentInput.focus();
+        });
+      });
+
+      var linkForm = document.getElementById("link-form");
+      var toggleLinkForm = document.getElementById("toggle-link-form");
+      toggleLinkForm.addEventListener("click", function () {
+        var open = !linkForm.classList.contains("is-open");
+        linkForm.classList.toggle("is-open", open);
+        toggleLinkForm.setAttribute("aria-expanded", String(open));
+        if (open) document.getElementById("link-title").focus();
+      });
+
+      document.getElementById("save-link").addEventListener("click", function () {
+        var title = document.getElementById("link-title");
+        var url = document.getElementById("link-url");
+        if (!title.value.trim() || !url.value.trim()) {
+          toast("Заполните название и адрес ссылки", "warning");
+          (!title.value.trim() ? title : url).focus();
+          return;
+        }
+        var item = document.createElement("li");
+        item.className = "resource-item";
+        item.innerHTML = '<div class="resource-icon" aria-hidden="true">URL</div><div><div class="resource-title"></div><div class="resource-meta"></div></div><button class="button button-ghost button-small" type="button">Открыть</button>';
+        item.querySelector(".resource-title").textContent = title.value.trim();
+        item.querySelector(".resource-meta").textContent = url.value.trim() + " · добавлено только что";
+        document.getElementById("link-list").prepend(item);
+        title.value = "";
+        url.value = "";
+        linkForm.classList.remove("is-open");
+        toggleLinkForm.setAttribute("aria-expanded", "false");
+        toast("Ссылка добавлена локально", "success");
+      });
+
+      var fileInput = document.getElementById("file-input");
+      var uploadZone = document.getElementById("upload-zone");
+      document.getElementById("choose-file").addEventListener("click", function () { fileInput.click(); });
+      uploadZone.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          fileInput.click();
+        }
+      });
+      ["dragenter", "dragover"].forEach(function (name) {
+        uploadZone.addEventListener(name, function (event) {
+          event.preventDefault();
+          uploadZone.classList.add("is-dragover");
+        });
+      });
+      ["dragleave", "drop"].forEach(function (name) {
+        uploadZone.addEventListener(name, function (event) {
+          event.preventDefault();
+          uploadZone.classList.remove("is-dragover");
+        });
+      });
+      uploadZone.addEventListener("drop", function (event) {
+        if (event.dataTransfer.files[0]) addFile(event.dataTransfer.files[0]);
+      });
+      fileInput.addEventListener("change", function () {
+        if (fileInput.files[0]) addFile(fileInput.files[0]);
+        fileInput.value = "";
+      });
+
+      function addFile(file) {
+        if (file.size > 50 * 1024 * 1024) {
+          toast("Файл больше 50 МБ и не был добавлен", "warning");
+          return;
+        }
+        var item = document.createElement("li");
+        item.className = "resource-item";
+        item.innerHTML = '<div class="resource-icon" aria-hidden="true">FILE</div><div><div class="resource-title"></div><div class="resource-meta"></div></div><button class="button button-ghost button-small" type="button">Скачать</button>';
+        item.querySelector(".resource-title").textContent = file.name;
+        item.querySelector(".resource-meta").textContent = Math.max(1, Math.round(file.size / 1024)) + " КБ · добавлено локально";
+        document.getElementById("file-list").prepend(item);
+        toast("Файл добавлен локально", "success");
+      }
+
+      document.getElementById("history-filter").addEventListener("change", function (event) {
+        var kind = event.target.value;
+        document.querySelectorAll("[data-kind]").forEach(function (row) {
+          row.style.display = kind === "all" || row.dataset.kind === kind ? "" : "none";
+        });
+      });
+
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && body.classList.contains("is-editing")) {
+          event.preventDefault();
+          exitEdit(false);
+        }
+      });
+
+      captureValues();
+      applyAsyncState("content");
+      renderFooter();
+    })();
+  </script>
+</body>
+</html>

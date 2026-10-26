@@ -1,0 +1,25 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+- banner:
+  - button "Закрыть меню" [expanded]:
+  - navigation "Хлебные крошки":
+    - generic: Главная
+  - button "Открыть поиск":
+  - 'button "Уведомления: не удалось обновить данные"':
+  - button "Переключить тему":
+  - button:
+    - generic: UТ
+- main

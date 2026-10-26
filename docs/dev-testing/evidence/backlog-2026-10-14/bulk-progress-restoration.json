@@ -1,0 +1,8 @@
+{
+  "task_id": 259,
+  "progress": 0,
+  "version": 12,
+  "response_validation": "PASS",
+  "restoration": "guarded SQL: progress101/version11 to progress0/version12; no protected fields",
+  "browser_recheck": "BLOCKED: current credentials rejected"
+}

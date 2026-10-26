@@ -1,0 +1,147 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - generic: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Контроль исполнения":
+      - /url: "#/work-reports"
+      - generic: Контроль исполнения
+    - link "Структура работ проекта":
+      - /url: "#/work-projects"
+      - generic: Структура работ проекта
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link "Настройки":
+      - /url: "#/settings"
+      - generic: Настройки
+    - link "Администрирование":
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Администрирование
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button "Q.tribe-lead":
+    - generic: QT
+    - generic: Q.tribe-lead
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - generic: Структура
+    - tab "Команды":
+      - generic: Команды
+    - tab "Проекты":
+      - generic: Проекты
+    - tab "Бизнес-заказчики":
+      - generic: Бизнес-заказчики
+    - generic: Доступы
+    - tab "Пользователи":
+      - generic: Пользователи
+    - tab "Роли":
+      - generic: Роли
+    - generic: Настройки
+    - tab "Справочники":
+      - generic: Справочники
+    - tab "Отображение":
+      - generic: Отображение
+    - generic: Инструменты
+    - tab "Таймлайн":
+      - generic: Таймлайн
+    - tab "Отчёты" [active] [selected]:
+      - generic: Отчёты
+  - button "Добавить новый отчёт":
+    - text: Добавить новый отчёт
+  - tabpanel "Отчёты":
+    - heading "Стандартные отчёты" [level=4]
+    - heading "Светофоры по квартальным целям" [level=4]
+    - button "Настроить отчёт":
+    - generic: Статус квартальных целей и AD-HOC-задач команд трайба
+    - generic: Стандартный
+    - generic: quarterly-goals
+    - heading "Статус для Директорской оперативки" [level=4]
+    - button "Настроить отчёт":
+    - generic: Сводка по задачам для директората
+    - generic: Стандартный
+    - generic: directorate
+    - heading "Статус для оперативки ДИД" [level=4]
+    - button "Настроить отчёт":
+    - generic: Группировка по командам, квартальная фильтрация, задачи с заполненным статусом ДИД
+    - generic: Стандартный
+    - generic: did-operational
+    - heading "Отчет для Рег. директоров" [level=4]
+    - button "Настроить отчёт":
+    - generic: Сводка по ключевым инициативам, высоким рискам и финансовым эффектам
+    - generic: Стандартный
+    - generic: reg-directors
+    - heading "PI-планирование трайба" [level=4]
+    - button "Настроить отчёт":
+    - generic: Контрольные точки процесса (Point in Process)
+    - generic: Стандартный
+    - generic: pip
+    - heading "Бэклог для отправки на бизнес-заказчиков ДИД" [level=4]
+    - button "Настроить отчёт":
+    - generic: Бэклог, подготовленный к отправке бизнес-заказчикам ДИД
+    - generic: Стандартный
+    - generic: did-backlog
+    - heading "Пользовательские отчёты" [level=4]
+    - generic: Нет пользовательских отчётов. Нажмите «Добавить новый отчёт».

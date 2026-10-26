@@ -1,0 +1,1114 @@
+{
+  "schema": "assistant-v2-fork-provenance.v1",
+  "generated_at": "2026-09-19T17:24:11.7566321Z",
+  "source": {
+    "repository": "local-workspace",
+    "commit": "ccb843aabb7515bb5b0e1be77e0680dd159dd817",
+    "tree_sha1": "58f5c3766d143b0f54ddbd4eea6ca7e1189b3dcb",
+    "path": "agent/",
+    "source_worktree_clean": true
+  },
+  "destination": {
+    "path": "agent-v2/",
+    "python_package": "agent_v2",
+    "entrypoint": "run_v2.py",
+    "port": 9300
+  },
+  "copy_policy": "Every tracked source path was copied from the recorded commit; package and entrypoint paths were then renamed mechanically.",
+  "copied_path_count": 152,
+  "copied_paths": [
+    {
+      "source_path": "agent/.env.example",
+      "destination_path": "agent-v2/.env.example",
+      "source_git_blob_sha1": "e5a7a2f96fde8a797c75136b201f10f6ecd3d019",
+      "destination_file_sha256": "44d1e6c57f64633927542d66f2594324f0efa1629be6fea352963abede21d77a",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/.gitignore",
+      "destination_path": "agent-v2/.gitignore",
+      "source_git_blob_sha1": "a9c58300974ebdc43d1e86aab0e443491e620698",
+      "destination_file_sha256": "e222ee063891fabcbaa836c2aa599b4686d119ac14d5c069b3ce6689a4723463",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/Dockerfile",
+      "destination_path": "agent-v2/Dockerfile",
+      "source_git_blob_sha1": "c46337c780c735c3bd608fc324187beae1885697",
+      "destination_file_sha256": "13c1a75b5fa758891654a0304c37ac2cbd1c0ab0238d21de4f99adf8b04de770",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/README.md",
+      "destination_path": "agent-v2/README.md",
+      "source_git_blob_sha1": "8f2d9ca2aab0150bc619b77e741d59b6da2a2d49",
+      "destination_file_sha256": "26b38e9eaadbd52b5b01fe340252358ee41c1ca50a8707f7b7a0856dfdca0da2",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/__init__.py",
+      "destination_path": "agent-v2/agent_v2/__init__.py",
+      "source_git_blob_sha1": "8ed93f5f7af75c0e88692792f417b29868725ac5",
+      "destination_file_sha256": "e4701307db30a97630e5c6046c9df8a31a483088d36cb90d769fdf4e67af2767",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/agentic_orchestrator.py",
+      "destination_path": "agent-v2/agent_v2/agentic_orchestrator.py",
+      "source_git_blob_sha1": "561d3b5ecd5ecf88616f72bf01bb5992a9b73bc7",
+      "destination_file_sha256": "2fc4f93a7390e8fcf094f0f663372dd1864a51573427a4fadd688af59b85f709",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/api/__init__.py",
+      "destination_path": "agent-v2/agent_v2/api/__init__.py",
+      "source_git_blob_sha1": "dff53e5af3f99340bcfd48c954f9ba7d6c2f12fa",
+      "destination_file_sha256": "77b5cc12c7bac30b4b391aab4269e168a308f0a3379494b345513b1d5b24ab5c",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/api/router.py",
+      "destination_path": "agent-v2/agent_v2/api/router.py",
+      "source_git_blob_sha1": "ded4f28814e9aff51073c1a35f8386bf37d1492d",
+      "destination_file_sha256": "8b4060060a03f51e90059f3afda292d13f46ffe61bd4de9b679311aab71a526c",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/api/schemas.py",
+      "destination_path": "agent-v2/agent_v2/api/schemas.py",
+      "source_git_blob_sha1": "b412a6948bc4e1e3a38b03279033ab16e2a2de82",
+      "destination_file_sha256": "a5345b8de6e07529b491c7d860c4a930ef9f59c1d995264a5dee570acdae60f5",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/audit.py",
+      "destination_path": "agent-v2/agent_v2/audit.py",
+      "source_git_blob_sha1": "da9b01e2b3cf008fb936d44beae65af5ec45b271",
+      "destination_file_sha256": "56483bd29c29eced01b7cdaf2b19ab5dea42a56d4666ad0efe78a207caba3e00",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/composer/__init__.py",
+      "destination_path": "agent-v2/agent_v2/composer/__init__.py",
+      "source_git_blob_sha1": "982a38d1f4bb85aa0cc09693917a17012a6181b1",
+      "destination_file_sha256": "94c13056c4a2277515c0eaa29b6b8ac858eb3805b12f7ebc05d3705013545333",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/composer/composer.py",
+      "destination_path": "agent-v2/agent_v2/composer/composer.py",
+      "source_git_blob_sha1": "5e54fdc2955dc5973f2070c8f05912c6079d8eaf",
+      "destination_file_sha256": "23b6be3b835ff1ae1aa15c5acd06bedd7c51e189eac5ae8f413bfd46b96d3f90",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/composer/reviewer.py",
+      "destination_path": "agent-v2/agent_v2/composer/reviewer.py",
+      "source_git_blob_sha1": "ffedac4cab847f737d2164bf8a52d93c9b2762ac",
+      "destination_file_sha256": "e0747152ce9233a34a7c7a355401ac19b5c0b77931157a15bbd43f12abd09f92",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/composer/revision.py",
+      "destination_path": "agent-v2/agent_v2/composer/revision.py",
+      "source_git_blob_sha1": "d7ff47aa34288a7a20180f7fb89728ca1b8de1c8",
+      "destination_file_sha256": "6c85afa6013f7552f5b2f457e8a04c34bc76695221cfe0c35453261c6120a455",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/composer/schema.py",
+      "destination_path": "agent-v2/agent_v2/composer/schema.py",
+      "source_git_blob_sha1": "252d8abd45a3faccd689cc85a4a4a878fb30a48d",
+      "destination_file_sha256": "ebf5271a7aa46b406eee209a5a5dac802a68f7e79768a751a2fe2fbc0f7f77bf",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/composer/scores.py",
+      "destination_path": "agent-v2/agent_v2/composer/scores.py",
+      "source_git_blob_sha1": "49b69f67dc9590e4db2c9da21b080185a3eb31e5",
+      "destination_file_sha256": "987c54264607d3caa89b21db2427d9cbcac12adcfbfd2e0d44c461a89660716a",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/config.py",
+      "destination_path": "agent-v2/agent_v2/config.py",
+      "source_git_blob_sha1": "5012320d710d6981a18b18f3ca971438512b230d",
+      "destination_file_sha256": "3e333000132317723ed4ad194c39561118ce2662b3fea5ad772009d77b9e8934",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/context.py",
+      "destination_path": "agent-v2/agent_v2/context.py",
+      "source_git_blob_sha1": "a0bcdcecd5504c04c1d88ce05e82bcc700da99e3",
+      "destination_file_sha256": "bf3ffa789018e6d7a52f9cea07caa54ab81b69385ff4416da6a082ad269215a9",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/__init__.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/__init__.py",
+      "source_git_blob_sha1": "ac526f19e8a51594bdb31c7e79ad8248176a4f6a",
+      "destination_file_sha256": "72443dff2aae2144b3025a5dd4cf48c474ad387e4dce4374da8eaa39766bffc7",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/agentic.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/agentic.py",
+      "source_git_blob_sha1": "975d9ed682eb59a4a1716657500ee0deb215ff9b",
+      "destination_file_sha256": "b0aa826370d681212fa314f8abe55ca969935bef4f37a737b2611f702365695c",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/confinement.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/confinement.py",
+      "source_git_blob_sha1": "9abf1c537047bfe644eabb351dd0fb2d44ae0233",
+      "destination_file_sha256": "0aa7531e336138e3a93458026b206a2a1c8dd257f2018b88cebc0d017d3bb4bc",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/escalation_handler.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/escalation_handler.py",
+      "source_git_blob_sha1": "406df4a32d2fa63e1c8ef3bfbd6238c9ff731ddd",
+      "destination_file_sha256": "b723ff97c57c428abfd28c6c3a737e05eec174848c017f598b1cbd7334b5c167",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/extractor.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/extractor.py",
+      "source_git_blob_sha1": "68da1384ff3bd4bb167b63b10c9891e5caee0d27",
+      "destination_file_sha256": "1225a22aeeff80465a0fcf45ea17fa83f92d8411b33c59644212af7f8f3056da",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/fatigue_detector.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/fatigue_detector.py",
+      "source_git_blob_sha1": "18fc8d0b3eb93791d0371f005237d6ea43ae3fce",
+      "destination_file_sha256": "f4f41b171bde36dde42f83977107a4401dde1d94c5df564f5c33adba4c3bbe1a",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/gaps.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/gaps.py",
+      "source_git_blob_sha1": "7f5ba5ed546f47e5d04d18aec1fde65821767617",
+      "destination_file_sha256": "726a8772ace32ff9f0980b9a42e267846f4900c403228141809d31d920dbd1e1",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/generator.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/generator.py",
+      "source_git_blob_sha1": "1c9344506ece67dbad2ce1fe234309ad15b2d70e",
+      "destination_file_sha256": "704f39e9a3ef5d6bfddf7f5c606d4f7b517481c692e1e44bfe93c390cf9e9543",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/machine.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/machine.py",
+      "source_git_blob_sha1": "ef7335c297929704b86b0f0efd93edf8177986f2",
+      "destination_file_sha256": "098474a8c8de6cf9e4afb087459964a6631ca8866eb4a672137812025fb9bfad",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/metrics.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/metrics.py",
+      "source_git_blob_sha1": "4e768bffbdbe1b69e1c83c504420da2da308effb",
+      "destination_file_sha256": "46613c446bc26a82e1dc6062277ed73d23cdc68482f9c66d287b0e06502a04b8",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/mode_selector.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/mode_selector.py",
+      "source_git_blob_sha1": "70c4b39ac538ebd155418f9de4976ece3e0b5bed",
+      "destination_file_sha256": "2788c3ded8009deca6278ad9711f60df7bd89f2dbd54d9ee69f122b07e4d434c",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/planner.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/planner.py",
+      "source_git_blob_sha1": "05d97e5e73127b810e6d6aa8363542af097765f5",
+      "destination_file_sha256": "ad2d5a5d7520644c6180c25be126ae8e33fe9002447fd6dc2f7352dce49dd962",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/policy.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/policy.py",
+      "source_git_blob_sha1": "590c14cae7c62e60c77d4369135beb7d3e195c90",
+      "destination_file_sha256": "27891e3c5544779874b921a068c68d55bf91d9d25ebbaa0a3082202e7a14c30a",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/qa_handler.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/qa_handler.py",
+      "source_git_blob_sha1": "c857a88e63223da7757a71b7158072a0f01c076b",
+      "destination_file_sha256": "687611556109789a11bddec0e5a0e202bae21b65e449a811db4150470eb5d647",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/quality.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/quality.py",
+      "source_git_blob_sha1": "28c7842e0b2e3e9e0b4cd1d0702cb7592d03c028",
+      "destination_file_sha256": "a30cf961d0dbac76b8bc4912635c1856d36f1efa931f00c28f37e607697529db",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/question_bank.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/question_bank.py",
+      "source_git_blob_sha1": "ae99e3dc1fa4fe4fb23a309295479dae5a03bb37",
+      "destination_file_sha256": "18009afa94bbc41fd8662c83ff3ff70f18b2feb7b21ec004575307e6a44d1cbd",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/relevance.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/relevance.py",
+      "source_git_blob_sha1": "254605eb48739a22e4759669b0cb8ddd1ec1a782",
+      "destination_file_sha256": "e219f8acc9b07c9b0410e5b96d4c5c3edee1f37c4c58dc2a2d9ec0bf7ddaedc1",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/repair_handler.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/repair_handler.py",
+      "source_git_blob_sha1": "d7c97341e2351eb54c5aecd0adbd641f1c77bb6d",
+      "destination_file_sha256": "d189af2da8b759a37d4ca3b80f2235b3fc0880c197efdebeb5a562243649fed0",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/semantic_analyzer.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/semantic_analyzer.py",
+      "source_git_blob_sha1": "7d37aaaeff555d9e9da2933ffd49141d0bf36cc1",
+      "destination_file_sha256": "5c3cced74170a6d1142adb955ddce3bb9789377da275b6cef6ba40cfab93b041",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/state.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/state.py",
+      "source_git_blob_sha1": "397c6eabd512f3fc1b069a064d8342355b85f136",
+      "destination_file_sha256": "520ab71aaafe923eac57e81278c0b75352481e4bf8c4782e3ad9849b0252e08d",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/summary_generator.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/summary_generator.py",
+      "source_git_blob_sha1": "55ea764509842debe381cacd713062e476b29c4a",
+      "destination_file_sha256": "166e33e1b3841057e00aec6fafb1e64421a188651fe1f8f8274071779f9ee483",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/dialogue/user_profile.py",
+      "destination_path": "agent-v2/agent_v2/dialogue/user_profile.py",
+      "source_git_blob_sha1": "3f820b0d500dee1e0ba8d3b098737895d003dbf5",
+      "destination_file_sha256": "69311dfe37212ef031c9e3d53332f5b539b52c371580681a43c59d030de9bc92",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/guardrails/__init__.py",
+      "destination_path": "agent-v2/agent_v2/guardrails/__init__.py",
+      "source_git_blob_sha1": "ed917a697574695639a823004fc4b311cc0003da",
+      "destination_file_sha256": "212d95cd2320a70ab1d3700ab1d670df97711c5f04a8cd1cf0ae645624300d7e",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/guardrails/input_harness.py",
+      "destination_path": "agent-v2/agent_v2/guardrails/input_harness.py",
+      "source_git_blob_sha1": "ca6728c95f4afa84c40ea9ddaacaf58332a4aabc",
+      "destination_file_sha256": "b1cd83271d6f6d29a26a8a82589d9c29898c830aa72fbe4cfba2cb10106bd441",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/guardrails/output_harness.py",
+      "destination_path": "agent-v2/agent_v2/guardrails/output_harness.py",
+      "source_git_blob_sha1": "b511a4673d19c2bc47461a207a23cf1bd1604fe3",
+      "destination_file_sha256": "0b31725ffe91f69d1d352365a81712fae3ad15c1e4500073251519e0e5685212",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/guardrails/policies.py",
+      "destination_path": "agent-v2/agent_v2/guardrails/policies.py",
+      "source_git_blob_sha1": "68a60f362ae44f85332e91c3473f4a3e0a53715b",
+      "destination_file_sha256": "5546c4b08a47affde41344fce715f99e1ffe4945e0ea24d8011f22a538fc147e",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/kb/__init__.py",
+      "destination_path": "agent-v2/agent_v2/kb/__init__.py",
+      "source_git_blob_sha1": "454ffac433ed3ff3ed8c6c40c4b436cc921d0044",
+      "destination_file_sha256": "791bf0739cc3dd13177e09320cdbaac98614b9a1fd1fd27ea0099b030ed70211",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/kb/adapters.py",
+      "destination_path": "agent-v2/agent_v2/kb/adapters.py",
+      "source_git_blob_sha1": "2c9517fd4eb2f3c6f4defb8f8a833bbf102f9374",
+      "destination_file_sha256": "7165208a67d54917668b3d8d1027623c46a7f916f208c285471f5fcb91e01534",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/kb/contracts.py",
+      "destination_path": "agent-v2/agent_v2/kb/contracts.py",
+      "source_git_blob_sha1": "787494874ccc193d2e54c8339a59f8bf5d47a7b4",
+      "destination_file_sha256": "4a055b69c307d7fc1ae2ee863ddf0b624f701a7334af95ba37686e77c04861f1",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/kb/loader.py",
+      "destination_path": "agent-v2/agent_v2/kb/loader.py",
+      "source_git_blob_sha1": "a8a58bae8d0e9579ab3897600bd6789f3fcab27b",
+      "destination_file_sha256": "8bf97c1c4485b9989071aae48fd4a66ea8776490d09dc8a1c4ae668ac9155a7b",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/kb/ontology.py",
+      "destination_path": "agent-v2/agent_v2/kb/ontology.py",
+      "source_git_blob_sha1": "f1500a5c6f13aa95dd7c78e1273555f59dd5e960",
+      "destination_file_sha256": "23370bb1f78031efbe682674fdd31985942ab0a5520697fc5cbe392098dd8943",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/kb/requirements_history.py",
+      "destination_path": "agent-v2/agent_v2/kb/requirements_history.py",
+      "source_git_blob_sha1": "fef3e880db358754d30742f54907441669ccb80b",
+      "destination_file_sha256": "8cea6d8d8061ac0703449cf6b000e77fe505328ff4914e05d89533c233f6e27d",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/kb/retrieval.py",
+      "destination_path": "agent-v2/agent_v2/kb/retrieval.py",
+      "source_git_blob_sha1": "53c1474c70cf71b86b8a2579177b0355b1fc9402",
+      "destination_file_sha256": "71ee0debdf3f0af029d4aa68e337ab8c8100588c32062f4a01a276b0a8f6cc1c",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/kb/search.py",
+      "destination_path": "agent-v2/agent_v2/kb/search.py",
+      "source_git_blob_sha1": "8dd1ddd1d869f5e5e8982a6391cc280bec89d493",
+      "destination_file_sha256": "d1a3cd0ea1f49be85c9d86a928c93f1edadd79dc79f56f1cb6ed1bf10c197d41",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/kb/sources.py",
+      "destination_path": "agent-v2/agent_v2/kb/sources.py",
+      "source_git_blob_sha1": "b0ffaa7973ccd39f3c0c73e8fa47b6af4fa2389e",
+      "destination_file_sha256": "8c960ad67863f21736c7935a330e167914f3df3030718a1e8cf5fbf83b3dd63f",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/llm/__init__.py",
+      "destination_path": "agent-v2/agent_v2/llm/__init__.py",
+      "source_git_blob_sha1": "304b391ccdfcd872f3a7ddcc48a3aedfcf50f21e",
+      "destination_file_sha256": "57f83078be0efda37be30a2e183a46184ee37b9c8a2d97f12076304d0cfdc420",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/llm/base.py",
+      "destination_path": "agent-v2/agent_v2/llm/base.py",
+      "source_git_blob_sha1": "e2dd0b085c0934267dbe4dfde54203954c94e3e8",
+      "destination_file_sha256": "0506909a468bdbaf16ac8d07bbfb332e68367e65d57ff8caa41e2a45462121d3",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/llm/factory.py",
+      "destination_path": "agent-v2/agent_v2/llm/factory.py",
+      "source_git_blob_sha1": "813a4bab6f7d954994c3f3c97a74107560aca921",
+      "destination_file_sha256": "6375b57bacddd5122e7683d177468912d86ada71a4ce197aaf9d80673a1e9917",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/llm/mock.py",
+      "destination_path": "agent-v2/agent_v2/llm/mock.py",
+      "source_git_blob_sha1": "39cc49d970002a04b02ddf810d0ed8dce8d36dce",
+      "destination_file_sha256": "50d1a022aee2b744055961adb26f03c3aff8284086627df99baae0e07aee426e",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/llm/openai_compat.py",
+      "destination_path": "agent-v2/agent_v2/llm/openai_compat.py",
+      "source_git_blob_sha1": "a9c5b8ebd3482605191c44badd299ae139c3eb22",
+      "destination_file_sha256": "5c32829f9d1ccb9ab2cc1b674116942aabdf89b16712287d45f37088e3493b8b",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/llm/rephrase.py",
+      "destination_path": "agent-v2/agent_v2/llm/rephrase.py",
+      "source_git_blob_sha1": "e637a63bad02707d44a07c2fe386302f0f9a7b84",
+      "destination_file_sha256": "8577fa33b145714dd7210586118d00b4efb50e41c82e662766ec5f3c58bafd8b",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/main.py",
+      "destination_path": "agent-v2/agent_v2/main.py",
+      "source_git_blob_sha1": "74a94817c6483ac759e93366526c3f06274bd32a",
+      "destination_file_sha256": "926b84c398155789b3cde4cefbaad0e9643eb9c0b6dbc391da7f83a9fabc79b3",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/mcp/__init__.py",
+      "destination_path": "agent-v2/agent_v2/mcp/__init__.py",
+      "source_git_blob_sha1": "c03e5165fb9230e933a5665ac56b1f2760e2c092",
+      "destination_file_sha256": "9c3edd6470319ffbd7bbd3bcb117e086283e45c78e424d14f9130c371d91d90d",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/mcp/client.py",
+      "destination_path": "agent-v2/agent_v2/mcp/client.py",
+      "source_git_blob_sha1": "d50c44cb358a1f7ead692d4c7f8f544c3c453f47",
+      "destination_file_sha256": "27b4e3d8c903cd53f5424af03afd47b9dac9d4320fbea52d842da48e627fecbc",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/mcp/registry.py",
+      "destination_path": "agent-v2/agent_v2/mcp/registry.py",
+      "source_git_blob_sha1": "aab29e7744049285317445cab48ef119f999a468",
+      "destination_file_sha256": "1c030cef472bd9145af0ecc012973d8c474833266dfcb014669933e5e96fb3f6",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/orchestrator.py",
+      "destination_path": "agent-v2/agent_v2/orchestrator.py",
+      "source_git_blob_sha1": "83c1a21611621e95c8348425a8eb1cfa27c17796",
+      "destination_file_sha256": "16661d437772c77a0629b0cc96b387ca2824e1345bf266280f25c96121c02d6d",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/prompts/system_prompt.md",
+      "destination_path": "agent-v2/agent_v2/prompts/system_prompt.md",
+      "source_git_blob_sha1": "b8f7158e79f36c3319324f641b832568e4860410",
+      "destination_file_sha256": "16e67452c6127c4a6bc3d196c2e738b0940cc9edfb205a91504c0fa7e9a9c370",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/session.py",
+      "destination_path": "agent-v2/agent_v2/session.py",
+      "source_git_blob_sha1": "a0d25b18b2cc4d478a3eda665723701c6b15acca",
+      "destination_file_sha256": "a8772786927048653f46c28d56f77cb27c900e03eda8cb4745f662f90197cff5",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/telemetry.py",
+      "destination_path": "agent-v2/agent_v2/telemetry.py",
+      "source_git_blob_sha1": "5a6fd4eab5edaad28848130d2a52ad8bf2ccea26",
+      "destination_file_sha256": "48139469cd17ad8e9cc4b0bfe583897bc7c1f58bfe2c11e72c87aeccb6db0d09",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/__init__.py",
+      "destination_path": "agent-v2/agent_v2/tests/__init__.py",
+      "source_git_blob_sha1": "46816ddf5e7038aefa80906a6c47fb6943223343",
+      "destination_file_sha256": "c6ab093d3d504764c7ff91982bcb621e9f8b6f6f5c8711acaf5e3b316a0b019c",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/conftest.py",
+      "destination_path": "agent-v2/agent_v2/tests/conftest.py",
+      "source_git_blob_sha1": "bb44900a3f867bd059cc2cbeb7a63abdf815decb",
+      "destination_file_sha256": "dfbdcd377d914abd68a0adc66f35adf1568b4a43122405085aedc5ae0d180c1a",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_agentic_ba.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_agentic_ba.py",
+      "source_git_blob_sha1": "ddca40e72dcb70fd7eb2088cd1ae8536b25c59ad",
+      "destination_file_sha256": "586b0acd9eaf54719cd7481661683ebc18c62db6140b93cc5bbf050fa8f1338f",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_agentic_orchestrator.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_agentic_orchestrator.py",
+      "source_git_blob_sha1": "dc70048e1d84d633359efaa1c8c577be6bf92c6c",
+      "destination_file_sha256": "ca05440a34ae9d9dde226a3ee5be32873f1b8efe3d74036cccd790643a30ced6",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_api.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_api.py",
+      "source_git_blob_sha1": "c712a8465c91f1f9426f8422824c2ff49c65670c",
+      "destination_file_sha256": "d8a4182f3db081dc85d46b4481bbc248e7956ec7c939cffcab48606bcbc6143f",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_artifact_quality_regressions.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_artifact_quality_regressions.py",
+      "source_git_blob_sha1": "20feb08df31a4f7dc21d5096a29279037b48ba30",
+      "destination_file_sha256": "cbb07f090a8617ffb137a0b5781bb835f5c2c88f463514c44de1290d7621f39b",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_audit_dialogue_regressions.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_audit_dialogue_regressions.py",
+      "source_git_blob_sha1": "a4325f44173b1e2f918aeca7e922419792a4a09b",
+      "destination_file_sha256": "2c6d25d0275e116479e7e9ef86c392322977d026e51484eedcec71ed336eda40",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_audit_kb_regressions.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_audit_kb_regressions.py",
+      "source_git_blob_sha1": "6f92ce04f3a0239986fd64950ea00ce514a903b0",
+      "destination_file_sha256": "ae652ec57a2200fed850e373aad100bc004b02f6f6e75a6fb8ac3cfe33240ef2",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_audit_privacy.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_audit_privacy.py",
+      "source_git_blob_sha1": "4c7bdf796e5feb090e31b609fdf818eeffaf05f4",
+      "destination_file_sha256": "1037d8aa579c50f60218b227dc5095c5af9ffee924c6df22a8aaa7937a34bbac",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_composer.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_composer.py",
+      "source_git_blob_sha1": "60518650f62497a84b90c634c9f8140666e271b7",
+      "destination_file_sha256": "22d031eaa5fe98703ca0695ba30e029c5384c4b30ffd5be270c4f5444a7953b6",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_dialogue_machine.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_dialogue_machine.py",
+      "source_git_blob_sha1": "24152a4e1c89f302aa6a90db4a1de5c93dadfc87",
+      "destination_file_sha256": "eb879e8152b37dd92bf4c70599a406be3bb9602f62798d6fa3cf77a72c6a29c6",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_draft_ux_workflow.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_draft_ux_workflow.py",
+      "source_git_blob_sha1": "37f9cf609a35f3277ab8d7896343df88948ab42e",
+      "destination_file_sha256": "d6789d22f5dc31006e7ff833d7c314d6789555d2628323fd2db8e6972f6b8b10",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_gap_registry.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_gap_registry.py",
+      "source_git_blob_sha1": "37902fe3f98712bb9cc611086bdffe208fce68d1",
+      "destination_file_sha256": "4f03e9e1f33226a79587a14bdbc102e7ee862b90effb12de8fc96f33c348f23c",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_input_harness.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_input_harness.py",
+      "source_git_blob_sha1": "08d4518c35a02fac24dc6a2162f5380c4d52847b",
+      "destination_file_sha256": "ea183efb75cc2e47c22277bc85838a6db0bb5253ce4e94fdc8536a142d4572d7",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_kb_adapters.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_kb_adapters.py",
+      "source_git_blob_sha1": "fe6e6343d64fbda349b7820fe2eaacf16ee539d2",
+      "destination_file_sha256": "78a8a0738b79a108a688248e241577d587aea1db4c2ee7b636789983ac25b830",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_kb_contracts.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_kb_contracts.py",
+      "source_git_blob_sha1": "fd634511545e3512c45c43b65e368bc5da46601d",
+      "destination_file_sha256": "63bd4514496f315af1f09689f6790690770af5ae71294c526e4af527ec36f26e",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_kb_search.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_kb_search.py",
+      "source_git_blob_sha1": "4c979c4cdf246d4ac9f4473dc21b8124b6824e5f",
+      "destination_file_sha256": "1dae9badaf8dc2d5ebff02a1730dfb007149f9fe4d9ba44fb90f760c8f98a680",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_ontology.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_ontology.py",
+      "source_git_blob_sha1": "8e900ec655a97777bc53a3955b8e01a0b72ab698",
+      "destination_file_sha256": "b7b42c5a8e458021a0e11698bf6d8595f5941a85401b7f015859de171ed7c013",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_openai_compat.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_openai_compat.py",
+      "source_git_blob_sha1": "5d7230ac44bbdb17fbf98563c831c75d6ff7fde7",
+      "destination_file_sha256": "e7328d919a60d1356a686361e68389f21685bf6850f6521be70e627b5e0a6fde",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_orchestrator.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_orchestrator.py",
+      "source_git_blob_sha1": "9463b2e89e0b61b8567c36937be3037187832922",
+      "destination_file_sha256": "9d64df450345fd719c7f420bbf9a2a69b99fa4f462635d8d7a2a62cb3a37618e",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_phase3.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_phase3.py",
+      "source_git_blob_sha1": "e66825a163ff89670b780eb9e42a60f6d0861510",
+      "destination_file_sha256": "acada4635e885e513ee4e84a1062bfb22984e6cc9890f909964c0c34add3b052",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_phase4.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_phase4.py",
+      "source_git_blob_sha1": "a0b4cb35f8c8e7d376f0c0c8ef82850b3ef18bf0",
+      "destination_file_sha256": "b7729d14eac56ef241fe4d4eebdb67111a433e868a81c049529d0d634d3eeae0",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_policy_planner.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_policy_planner.py",
+      "source_git_blob_sha1": "c76f08c2e177b6979ca3a6757a3dae5d4a05cabe",
+      "destination_file_sha256": "503e6c9e161a3d6659189fb1ee64bba542d6c987724d6408f3ddc8cb9406c065",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_quality.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_quality.py",
+      "source_git_blob_sha1": "400d50e4e5fad67086681ca2b275c2d37e9aa02c",
+      "destination_file_sha256": "11d4edb90ebdb081c234c096487c504aaf11a01501a5eb22a2d9d71a73664152",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_runtime_safety.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_runtime_safety.py",
+      "source_git_blob_sha1": "65445281200cbce2613ee7c37df1f554c9760f69",
+      "destination_file_sha256": "afe12374533a3c796244df677cac60c2bfdd6aa11e6e410145b7e4c222614e1e",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_session_retention.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_session_retention.py",
+      "source_git_blob_sha1": "ca7d38f1f30b09f8ead3a90902a0ecee1ad3c74a",
+      "destination_file_sha256": "28a51fe32be6b43a3e7349fe23919a5c97722d36fea57d541c98cda2c5149ef8",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tests/test_telemetry.py",
+      "destination_path": "agent-v2/agent_v2/tests/test_telemetry.py",
+      "source_git_blob_sha1": "ac0cfb2b759dc73fef90b2af824bb961289fb289",
+      "destination_file_sha256": "6a15c8fd4e90aa1cdf1eb74b4ff6d5764ac001491e044efbaf64e92b4f46e938",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tools/__init__.py",
+      "destination_path": "agent-v2/agent_v2/tools/__init__.py",
+      "source_git_blob_sha1": "613804758a06e690935d46ec0468ef55fd5785e6",
+      "destination_file_sha256": "7a52c55ce9bb316417e2e7679310a564842a557a0af3b4275615c88d8e28e91d",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tools/base.py",
+      "destination_path": "agent-v2/agent_v2/tools/base.py",
+      "source_git_blob_sha1": "7029b40cf19fcd812c65418bea21cbdf996494f9",
+      "destination_file_sha256": "cac982b7987d63d7642b4c624ba786bcc4bc90affc7e4712ad72ae62d525c4bb",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/tools/http_tool.py",
+      "destination_path": "agent-v2/agent_v2/tools/http_tool.py",
+      "source_git_blob_sha1": "0590a65904c8857aaa40f3565ce6752eb0613c7e",
+      "destination_file_sha256": "5baaadbc49edbab0eb3975536bd89def66d30fb124f11d6710952f6af09e4051",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/workflow/__init__.py",
+      "destination_path": "agent-v2/agent_v2/workflow/__init__.py",
+      "source_git_blob_sha1": "7fa856b9708e29491921dac08d7ccbb649686ed1",
+      "destination_file_sha256": "ae9e13a95758435162fb04c7f902b17317d63a1f32d5bf5cca983036bfe510a4",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/workflow/integrations.py",
+      "destination_path": "agent-v2/agent_v2/workflow/integrations.py",
+      "source_git_blob_sha1": "2ed5723a84ca9ae35ded89cc3671d466dbddb5e3",
+      "destination_file_sha256": "3df92dc74ca2034ea39b25c870514f71f681681b0104c9916a918a4cad06f575",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/agent/workflow/review.py",
+      "destination_path": "agent-v2/agent_v2/workflow/review.py",
+      "source_git_blob_sha1": "42b0a5cb3cc166b868918dadba692e330e126384",
+      "destination_file_sha256": "608900e2cc51c88554e1f1cc4134e83a3ff80aefb8383e812666d19bee2f7f36",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/API.md",
+      "destination_path": "agent-v2/docs/API.md",
+      "source_git_blob_sha1": "55328cfcfc35c38f258047f1f2fc89e98df851f7",
+      "destination_file_sha256": "8126d9bf0a448470a20668619f971d07697b85ddae2eee880e222410716d50ae",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/ARCHITECTURE.md",
+      "destination_path": "agent-v2/docs/ARCHITECTURE.md",
+      "source_git_blob_sha1": "06fe2e452be6c7f199469be2bb43ad3477a7077e",
+      "destination_file_sha256": "2242e2b830427277510e0994dee229e26edc87cfaff4611b7d43764801de0d4b",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/DEPLOYMENT.md",
+      "destination_path": "agent-v2/docs/DEPLOYMENT.md",
+      "source_git_blob_sha1": "a3612f6dc885b1d42a86d803c493f7ee350d9a8b",
+      "destination_file_sha256": "2eec8662585f762f25f1fe0fda58ec93f92ccb176e38b759b70d8443f90f8b33",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/DOMAIN_CLASSIFICATION.md",
+      "destination_path": "agent-v2/docs/DOMAIN_CLASSIFICATION.md",
+      "source_git_blob_sha1": "7acbe406d1bcc49e31af35b191255090b7b89215",
+      "destination_file_sha256": "57b426b90e8ac69a370bd08e881c258f5ad8a7266ffeccea33c968eea0af0798",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/FACT_STATE.md",
+      "destination_path": "agent-v2/docs/FACT_STATE.md",
+      "source_git_blob_sha1": "7100325eaf89d196980d92540654cc4ca419d657",
+      "destination_file_sha256": "fe392f654cb8691e1308e35e346ad1b9b41aec3f1a34001a175ea330cc166be4",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/FRONTEND_AI_ASSISTANT_REVIEW.md",
+      "destination_path": "agent-v2/docs/FRONTEND_AI_ASSISTANT_REVIEW.md",
+      "source_git_blob_sha1": "f57740184a4ea9ab9a3312403af2dac87e10858b",
+      "destination_file_sha256": "17b34b8c2a3bb1668200ccfd9c6394ac4977fe9a60b862bf6c2c69c705482f3c",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/KB_GUIDE.md",
+      "destination_path": "agent-v2/docs/KB_GUIDE.md",
+      "source_git_blob_sha1": "27181d7618fec3eae940e438ec1a232291046198",
+      "destination_file_sha256": "32799b7c19b2a1a909c5089db723902f1a49727a620482f00ed4141da5ea71c8",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/KB_SOURCE_ADAPTERS.md",
+      "destination_path": "agent-v2/docs/KB_SOURCE_ADAPTERS.md",
+      "source_git_blob_sha1": "f30e93a849b1ebb6e6918fb50dfab865f4708766",
+      "destination_file_sha256": "7da52b4835150ff7ae7860f2ddd5b5f138eabcc42b3e09a8e10514e4487875be",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/KNOWLEDGE_BASE_ARCHITECTURE.puml",
+      "destination_path": "agent-v2/docs/KNOWLEDGE_BASE_ARCHITECTURE.puml",
+      "source_git_blob_sha1": "e08788476c8d1e71337ad36d3db1922bc4603489",
+      "destination_file_sha256": "6acc5ecdc2a4fea73c257380031daa37e95939c7df22f6dc4c29bee349f8e960",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/PRODUCT_DIALOGUE_SPEC.md",
+      "destination_path": "agent-v2/docs/PRODUCT_DIALOGUE_SPEC.md",
+      "source_git_blob_sha1": "4dd9db1753c16d95969ca068bc945ec0a83799c2",
+      "destination_file_sha256": "7424730e8e6e87cc1a2e249cccf6b6a1cded5a8b3a190de27d3380ddc435cdee",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/QUALITY_MODEL.md",
+      "destination_path": "agent-v2/docs/QUALITY_MODEL.md",
+      "source_git_blob_sha1": "dae2538f571e32ffadc7b721dc91a8b6dee22a2a",
+      "destination_file_sha256": "8333c9477c8fb90e2055501681bd9197fcf42f839f06eb7a7acf8e0c140beeae",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/README.md",
+      "destination_path": "agent-v2/docs/README.md",
+      "source_git_blob_sha1": "05d60f141033c5f3dbe3a4255e7793d009a6392a",
+      "destination_file_sha256": "abcbb0a5a35e556a6c2c84461f9afc65319d833d63a72efae70072d0b595317f",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/e2e/e2e_findings_2026-08-21.md",
+      "destination_path": "agent-v2/docs/archive/e2e/e2e_findings_2026-08-21.md",
+      "source_git_blob_sha1": "04c478075a688e25618422eb57c9470168d3b872",
+      "destination_file_sha256": "08341d936e77ab1331da61edcc9250dd61c12df4ac3ff50127c49380e22e8808",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/e2e/e2e_report_2026-08-21_1404.md",
+      "destination_path": "agent-v2/docs/archive/e2e/e2e_report_2026-08-21_1404.md",
+      "source_git_blob_sha1": "c43ffdce9b5e36cdfc5f06d69e0c21a1db1408a3",
+      "destination_file_sha256": "03707c175f2f8944885f8a7f0711eac278c7f0a06e6872600b6c83932001ac95",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/e2e/e2e_report_2026-08-21_1700.md",
+      "destination_path": "agent-v2/docs/archive/e2e/e2e_report_2026-08-21_1700.md",
+      "source_git_blob_sha1": "1e0e985fce8a18c0203e87e25f68bc2e4755a6b4",
+      "destination_file_sha256": "52490934fffb1199ab393692b9676e5fca10c8fa64b7fef890dcc930560bd698",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/e2e/e2e_report_2026-08-21_1717.md",
+      "destination_path": "agent-v2/docs/archive/e2e/e2e_report_2026-08-21_1717.md",
+      "source_git_blob_sha1": "1bec27c5404b34db635cba05505e0a8870ab1c1b",
+      "destination_file_sha256": "9f2a4298cf1e8d14686794af1809ee0e26ecdecafea873bb2de30d00a8ae3ba1",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/e2e/e2e_report_2026-08-21_1720.md",
+      "destination_path": "agent-v2/docs/archive/e2e/e2e_report_2026-08-21_1720.md",
+      "source_git_blob_sha1": "71beb00c666e1f81025f90259156faf73e094ebb",
+      "destination_file_sha256": "7136d1b5de9dd7dda03dfc84bdf61b67c640631eca967e8500f347c54a2dbd4a",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/e2e/e2e_report_2026-08-21_1815.md",
+      "destination_path": "agent-v2/docs/archive/e2e/e2e_report_2026-08-21_1815.md",
+      "source_git_blob_sha1": "e914537ef1acfff34acee2aee75db0d01588cf3f",
+      "destination_file_sha256": "04f52a72f469a81efb31467f88ddd28a1a5af5ca6e1a5689329de9612f501b52",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/e2e/e2e_report_2026-08-21_1818.md",
+      "destination_path": "agent-v2/docs/archive/e2e/e2e_report_2026-08-21_1818.md",
+      "source_git_blob_sha1": "7eb97037e1d0713d1a029d499406a6bb7fadded4",
+      "destination_file_sha256": "5211523ff66885e1403ef84695c46b90f5d88c5206de9d948c6fac0e640d6721",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/e2e/e2e_test_results_2026-08-21.md",
+      "destination_path": "agent-v2/docs/archive/e2e/e2e_test_results_2026-08-21.md",
+      "source_git_blob_sha1": "54da876836b46d17d0b36fbefda8dc80a9e0cf73",
+      "destination_file_sha256": "db84ef896ee192e4417e0a57af2dd194fca6389d006063d95401cc1c81551128",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/legacy/ARCHITECTURE_STATE_MACHINE_LEGACY.md",
+      "destination_path": "agent-v2/docs/archive/legacy/ARCHITECTURE_STATE_MACHINE_LEGACY.md",
+      "source_git_blob_sha1": "0cfd4c2bf766a0e3cfd5c3a5035f3243f058590d",
+      "destination_file_sha256": "04000aab0acb287bb8a1f0dfb8e707dde9af6b3ef8dbffa72e3351fc0905c660",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/archive/legacy/ORCHESTRATOR_IMPROVEMENTS_PHASES_1_4.md",
+      "destination_path": "agent-v2/docs/archive/legacy/ORCHESTRATOR_IMPROVEMENTS_PHASES_1_4.md",
+      "source_git_blob_sha1": "df9df8d22dd45803109079b9ddd37a4489995960",
+      "destination_file_sha256": "4f2c4c45fc39c540fc140655f46cc2acc966d39fffbf6aa60519fe2ca8ab9277",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/diagrams/ai_assistant_architecture_full.png",
+      "destination_path": "agent-v2/docs/diagrams/ai_assistant_architecture_full.png",
+      "source_git_blob_sha1": "c80320a47df56a45b66387ef8f71bf48d9d237ef",
+      "destination_file_sha256": "b11d37cb987e296045c7ecffc5f3e3569b7d69a0babbd043f4f0298a7d6cbd1e",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/diagrams/ai_assistant_architecture_full.puml",
+      "destination_path": "agent-v2/docs/diagrams/ai_assistant_architecture_full.puml",
+      "source_git_blob_sha1": "1756f7e52e6905fb9eee2ae1e6260c3b148fe4f6",
+      "destination_file_sha256": "14d69cc11d01be11137f273ac5e7951db3b8e72652d79175ae5b4cc673a41029",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/diagrams/ai_assistant_architecture_full.svg",
+      "destination_path": "agent-v2/docs/diagrams/ai_assistant_architecture_full.svg",
+      "source_git_blob_sha1": "678b42f14c448ad86f3a53c656e00f58f26baee4",
+      "destination_file_sha256": "65991a4b6cf5405e77ef6b0e4a94d32a452d94509f35cbb1e89bf02b84e9d0d5",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/diagrams/component_architecture.puml",
+      "destination_path": "agent-v2/docs/diagrams/component_architecture.puml",
+      "source_git_blob_sha1": "b9f048231f2df664cff17ef0a02e335889a6134b",
+      "destination_file_sha256": "2c4c2feb56c1694962efdeb8269108de654f2c89a2238eae9f9f30703a0ec83b",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/diagrams/high_level_architecture.puml",
+      "destination_path": "agent-v2/docs/diagrams/high_level_architecture.puml",
+      "source_git_blob_sha1": "bee4c004aa4a1970fdc6dcd00e45ba0a3a7257ec",
+      "destination_file_sha256": "ff145eb99186c5d7a6b33f687bd2d9df861ce9e740604be7d820cc1759aa42d8",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/diagrams/high_level_architecture_business.puml",
+      "destination_path": "agent-v2/docs/diagrams/high_level_architecture_business.puml",
+      "source_git_blob_sha1": "430173f6fd77a19a23213ad625f38723ec15f4d7",
+      "destination_file_sha256": "ef492ed6876d2aa45b2d8538320ec1bd3b41a08e98b2965c97ba567090ae8c57",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/diagrams/high_level_architecture_explained.puml",
+      "destination_path": "agent-v2/docs/diagrams/high_level_architecture_explained.puml",
+      "source_git_blob_sha1": "33128b303bb8db8d3422f1596265ca37ba786575",
+      "destination_file_sha256": "a22a460844a244fc741e8b88c323e3377852c928ea4b49813397526ab7e8e8f4",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/diagrams/message_flow.puml",
+      "destination_path": "agent-v2/docs/diagrams/message_flow.puml",
+      "source_git_blob_sha1": "720769c262ef38a8d8f246f7ba8e0dc0d30d3707",
+      "destination_file_sha256": "47e6c657e164285a408388d9bb149804993ee19c0d6385a75b112c2ae64c2f64",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/diagrams/state_machine.puml",
+      "destination_path": "agent-v2/docs/diagrams/state_machine.puml",
+      "source_git_blob_sha1": "7d18d582417407aec4bed2ae4f3e5d098f57e868",
+      "destination_file_sha256": "e13a161adc7b84221f26a440517088604704274e6018fa1ade075154e55ef169",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/e2e_report_2026-08-25_2331.md",
+      "destination_path": "agent-v2/docs/e2e_report_2026-08-25_2331.md",
+      "source_git_blob_sha1": "579951cdaf5410cea64156f60b2339f969dd60ba",
+      "destination_file_sha256": "a6666f06204df3d0665eada59199d01c06285ca53e66691905cf315b3d0734e6",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/e2e_report_2026-08-25_2345.md",
+      "destination_path": "agent-v2/docs/e2e_report_2026-08-25_2345.md",
+      "source_git_blob_sha1": "eb473dd2afe541a32f18a77a9de8bc7a167cb5e5",
+      "destination_file_sha256": "4c207305c1f951137840bbc87f0b4cb9ca5d29199bda402dc6c0f9760a4c00d9",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/e2e_report_2026-08-26_0003.md",
+      "destination_path": "agent-v2/docs/e2e_report_2026-08-26_0003.md",
+      "source_git_blob_sha1": "b516fa942c424a4ff5dec9a85ef37f63bd4f3fa8",
+      "destination_file_sha256": "319b428e7ceb9f56b2af7a056aa2a1f13e702e976bad08ed0653a73b7d062271",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/e2e_report_2026-08-26_1419.md",
+      "destination_path": "agent-v2/docs/e2e_report_2026-08-26_1419.md",
+      "source_git_blob_sha1": "375b39f544f1f331ffe8e83339490d6a8c79f49d",
+      "destination_file_sha256": "d0ba1ad9ecd427eef9858469049544fa12b4f367842373e473ef07e2d4d8009b",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/docs/e2e_report_2026-08-26_1432.md",
+      "destination_path": "agent-v2/docs/e2e_report_2026-08-26_1432.md",
+      "source_git_blob_sha1": "42c7b8f3373234db624b94206b4a2f01cc46f69f",
+      "destination_file_sha256": "5b10d2dde086b0f76ac91cc5b505cc6c4982a7fab09d18283c6ac14860aa6f8f",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/architecture.md",
+      "destination_path": "agent-v2/kb_seed/architecture.md",
+      "source_git_blob_sha1": "b7babc7fbe90197c4048d3748d730f2a35709115",
+      "destination_file_sha256": "a379c5eaed56e0c08c8dba7d0fb299e614e2c537bbfc50eaf456f00d2205525d",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/business_context.md",
+      "destination_path": "agent-v2/kb_seed/business_context.md",
+      "source_git_blob_sha1": "f3719946a43df59bf42d5c6aedacd7ef2ceb91a1",
+      "destination_file_sha256": "7fe686f9594bc32612f47a6488cf0568679b32906632ffb202ee7505cfcf49e9",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/manifest.json",
+      "destination_path": "agent-v2/kb_seed/manifest.json",
+      "source_git_blob_sha1": "1bccaef8537626a8e3c383d6bd5d5f839a0f9718",
+      "destination_file_sha256": "5ac185e850b119127e54bda1fd9e5548d549397f42348fe9883d666763e903b9",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/modules.md",
+      "destination_path": "agent-v2/kb_seed/modules.md",
+      "source_git_blob_sha1": "599f5b4c1ae38d8443b9d9174c0fc132fd2201e9",
+      "destination_file_sha256": "eee70c60ffb06a1ab749716d9eb39e06d99ea0a43f06fe762383d3ef22b54812",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/processes.md",
+      "destination_path": "agent-v2/kb_seed/processes.md",
+      "source_git_blob_sha1": "e0a8c5b667c4dbe8af23f27cbe355faa239342ab",
+      "destination_file_sha256": "7bbc64e9bc02c2ad4bb347dace998a9399fecdf04e139b29fd61b758ac470d91",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/products.md",
+      "destination_path": "agent-v2/kb_seed/products.md",
+      "source_git_blob_sha1": "171d58c00c95a9501038f750fbd3d6d2f224cce3",
+      "destination_file_sha256": "0e488a6b92b51158b496be34b3e2caa972d59dd7e56e275921dfbd3c2eb9eca5",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/regulations.md",
+      "destination_path": "agent-v2/kb_seed/regulations.md",
+      "source_git_blob_sha1": "7091f7c139f10f0c512339ce35861b00d7c3dbc2",
+      "destination_file_sha256": "24f08ca2ee728c96f49a762c1b72438fa18ac24f8cfbb0acb1c841621971a7db",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/requirements_history.json",
+      "destination_path": "agent-v2/kb_seed/requirements_history.json",
+      "source_git_blob_sha1": "e7c15fc2309f3e03b32932a7524aeae638262e05",
+      "destination_file_sha256": "274eb4f126b0d2277a06c5764c1547ac17fa1aac6d4df6b00647a1fa7f5d8efa",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/roles.md",
+      "destination_path": "agent-v2/kb_seed/roles.md",
+      "source_git_blob_sha1": "fcf9174b7fe2bdcf636ff83e2b899b7c4ccee71e",
+      "destination_file_sha256": "2a1e8566fc09540eab683747945e300517126245d13da21c4ab3bbe5f0bebe32",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/kb_seed/settlement_statuses.md",
+      "destination_path": "agent-v2/kb_seed/settlement_statuses.md",
+      "source_git_blob_sha1": "e6fb3f2f7cb66d67236c210d4a8b7e93387a1a9b",
+      "destination_file_sha256": "3e048062a3179d2e63929fc7d94f914d06c8f3a63d233ef9bedf29ad24f697c8",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/requirements-dev.lock",
+      "destination_path": "agent-v2/requirements-dev.lock",
+      "source_git_blob_sha1": "ff7e6c69696a6bdf2bc20f72cc9294ba36eee0b7",
+      "destination_file_sha256": "b66fa2364e7c5c66d24c10d6f4a411bf12fb855ae4dc5740e6e293a97346e82b",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/requirements-dev.txt",
+      "destination_path": "agent-v2/requirements-dev.txt",
+      "source_git_blob_sha1": "152b054fa456029d30ab0008b6076428df60783c",
+      "destination_file_sha256": "446698dabb39bf58615845cdf1edf3c68dee2d81dac6a7797d9fa153a3fa0f7c",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/requirements.lock",
+      "destination_path": "agent-v2/requirements.lock",
+      "source_git_blob_sha1": "cbbadad67265d54c06f5d90f270a9448d8449679",
+      "destination_file_sha256": "30ee69a234e28c117e5d438ccd960939aa36d1ca4b142c4ceb9c59969cefe9f4",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/requirements.txt",
+      "destination_path": "agent-v2/requirements.txt",
+      "source_git_blob_sha1": "fb64ac5c7fb848e179f300fd0a092a11c9eb2dee",
+      "destination_file_sha256": "a6aa2a3116588a12f07c8fba0754e6f414f8a4c95a440d96407e57e45751e45d",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/run.py",
+      "destination_path": "agent-v2/run_v2.py",
+      "source_git_blob_sha1": "cc44ccf5217416d2d90fbd2329e2eed474ff7968",
+      "destination_file_sha256": "0aa35769a61a6de053674fc133d25bc6d4e8c97c9db88a2a5bff52b3f5f105b0",
+      "state": "present"
+    },
+    {
+      "source_path": "agent/tests/e2e_scenarios.py",
+      "destination_path": "agent-v2/tests/e2e_scenarios.py",
+      "source_git_blob_sha1": "846273d6c7075b6df66eb8304a2351293dc17328",
+      "destination_file_sha256": "e38d47e03ddb89f022eb8a8082ecdd12642628a30ced49a0867de2df19799bb7",
+      "state": "present"
+    }
+  ],
+  "intentional_deltas": [
+    "Python package imports renamed from agent to agent_v2 inside the fork.",
+    "Runtime identity, paths, API prefix, port, secret and AGENT_V2_* configuration are isolated.",
+    "V2 product modes, artifacts, provenance, readiness, revisions, prompt layering, handoff and preview-only patches were added.",
+    "Copied V1 API tests were replaced with V2 contract tests; other copied regressions remain active.",
+    "README and active V2 profiles replace copied V1 operating instructions."
+  ],
+  "security_fixes": [
+    "Every session read or mutation requires an explicit owner id behind the trusted DMB gateway.",
+    "Pilot access is explicit for configured BA/PO users and has no administrator bypass.",
+    "DMB overwrites client actor context and authorizes linked-object search and snapshot creation.",
+    "Protected identity, role, team, owner and credential paths are excluded from ProposedPatch.",
+    "The fork contains no operation that applies ProposedPatch to DMB.",
+    "Mutating operations accept replay keys; draft fingerprints and linked snapshots are checked for staleness.",
+    "Feature flag and kill switch fail closed without affecting V1."
+  ],
+  "differential_tests": {
+    "baseline_v1_before_fork": "330 passed",
+    "v1_final": "330 passed",
+    "v2_current": "338 passed",
+    "dmb_boundary": "9 passed",
+    "frontend_unit": "224 passed",
+    "required_final_commands": [
+      "python -m pytest agent/agent/tests -q -p no:cacheprovider",
+      "python -m pytest agent-v2/agent_v2/tests -q -p no:cacheprovider",
+      "python -m pytest dmb-backlog/backend/tests/test_agent_v2_boundary.py -q -p no:cacheprovider",
+      "npm --prefix dmb-backlog run test:unit"
+    ]
+  }
+}

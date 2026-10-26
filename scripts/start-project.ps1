@@ -1,21 +1,41 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipDependencyInstall
+    [switch]$WithoutAgents,
+    [switch]$SkipDependencyInstall,
+    [switch]$IncludePrioritiser,
+    [switch]$IncludeAssistantV2,
+    [switch]$IncludeAgentV2,
+    [switch]$IncludeBacklogAssistant
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+# Agent V2 is included in the standard launch unless all agents are disabled.
+$IncludeAgentV2 = [switch](-not $WithoutAgents)
+
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+if (Test-Path (Join-Path $projectRoot 'backlog-assistant/.env')) { $IncludeBacklogAssistant = [switch]$true }
+if ($WithoutAgents) {
+    $IncludePrioritiser = [switch]$false
+    $IncludeAssistantV2 = [switch]$false
+    $IncludeBacklogAssistant = [switch]$false
+}
 $composeFile = Join-Path $projectRoot "compose.yaml"
 $runtimeDir = Join-Path $projectRoot ".runtime"
 $venvDir = Join-Path $projectRoot ".venv"
 $pythonExe = Join-Path $venvDir "Scripts\python.exe"
 $prioritiserVenvDir = Join-Path $projectRoot ".venv-prioritiser"
 $prioritiserPythonExe = Join-Path $prioritiserVenvDir "Scripts\python.exe"
+$assistantV2VenvDir = Join-Path $projectRoot ".venv-assistant-v2"
+$assistantV2PythonExe = Join-Path $assistantV2VenvDir "Scripts\python.exe"
+$agentV2VenvDir = Join-Path $projectRoot ".venv-agent-v2"
+$agentV2PythonExe = Join-Path $agentV2VenvDir "Scripts\python.exe"
 $dmbEnv = Join-Path $projectRoot "dmb-backlog\.env"
 $agentEnv = Join-Path $projectRoot "agent\.env"
 $prioritiserEnv = Join-Path $projectRoot "prioritiser-agent\.env"
+$assistantV2Env = Join-Path $projectRoot "assistant-v2\.env"
+$agentV2Env = Join-Path $projectRoot "agent-v2\.env"
 $prioritiserModelCache = Join-Path $runtimeDir "hf-cache"
 
 New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
@@ -25,10 +45,12 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue) -and (Test-Path (Joi
     $env:Path = "$perUserDockerBin;$env:Path"
 }
 
+if ($IncludeBacklogAssistant) { & (Join-Path $PSScriptRoot 'start-backlog-assistant.ps1') -CheckOnly }
+
 function Set-EnvValue {
     param([string]$Path, [string]$Name, [string]$Value)
     $line = "$Name=$Value"
-    $content = if (Test-Path $Path) { @(Get-Content -LiteralPath $Path) } else { @() }
+    $content = if (Test-Path $Path) { @(Get-Content -LiteralPath $Path -Encoding UTF8) } else { @() }
     $pattern = "^$([regex]::Escape($Name))="
     $found = $false
     $updated = foreach ($entry in $content) {
@@ -47,7 +69,7 @@ function Get-EnvValue {
     param([string]$Path, [string]$Name)
     if (-not (Test-Path $Path)) { return "" }
     $pattern = "^$([regex]::Escape($Name))=(.*)$"
-    foreach ($entry in Get-Content -LiteralPath $Path) {
+    foreach ($entry in Get-Content -LiteralPath $Path -Encoding UTF8) {
         if ($entry -match $pattern) { return $Matches[1].Trim() }
     }
     return ""
@@ -113,8 +135,14 @@ if (-not (Test-Path $dmbEnv)) {
 if (-not (Test-Path $agentEnv)) {
     Copy-Item -LiteralPath (Join-Path $projectRoot "agent\.env.example") -Destination $agentEnv
 }
-if (-not (Test-Path $prioritiserEnv)) {
+if ($IncludePrioritiser -and -not (Test-Path $prioritiserEnv)) {
     Copy-Item -LiteralPath (Join-Path $projectRoot "prioritiser-agent\.env.example") -Destination $prioritiserEnv
+}
+if ($IncludeAssistantV2 -and -not (Test-Path $assistantV2Env)) {
+    Copy-Item -LiteralPath (Join-Path $projectRoot "assistant-v2\.env.example") -Destination $assistantV2Env
+}
+if ($IncludeAgentV2 -and -not (Test-Path $agentV2Env)) {
+    Copy-Item -LiteralPath (Join-Path $projectRoot "agent-v2\.env.example") -Destination $agentV2Env
 }
 
 $sharedSecret = Get-EnvValue -Path $agentEnv -Name "AGENT_SECRET"
@@ -122,12 +150,35 @@ if (-not $sharedSecret) { $sharedSecret = Get-EnvValue -Path $dmbEnv -Name "AGEN
 if (-not $sharedSecret) { $sharedSecret = "dmb-agent-local-secret-2026" }
 $prioritiserSecret = Get-EnvValue -Path $dmbEnv -Name "PRIORITISER_SECRET"
 if (-not $prioritiserSecret) { $prioritiserSecret = "dmb-prioritiser-local-secret-2026" }
-$methodologistSecret = Get-EnvValue -Path $prioritiserEnv -Name "PRIORITISER_METHODOLOGIST_SECRET"
-if (-not $methodologistSecret) { $methodologistSecret = "dmb-prioritiser-methodologist-local-secret-2026" }
+$assistantV2EnvelopeSecret = Get-EnvValue -Path $assistantV2Env -Name "ASSISTANT_V2_ENVELOPE_SECRET"
+if (-not $assistantV2EnvelopeSecret -or $assistantV2EnvelopeSecret -eq "change-this-assistant-v2-envelope-secret") {
+    $assistantV2EnvelopeSecret = Get-EnvValue -Path $dmbEnv -Name "ASSISTANT_V2_ENVELOPE_SECRET"
+}
+if (-not $assistantV2EnvelopeSecret -or $assistantV2EnvelopeSecret -eq "change-this-assistant-v2-envelope-secret") {
+    $assistantV2EnvelopeSecret = "dmb-assistant-v2-envelope-local-2026"
+}
+$assistantV2ServiceSecret = Get-EnvValue -Path $assistantV2Env -Name "ASSISTANT_V2_SERVICE_SECRET"
+if (-not $assistantV2ServiceSecret -or $assistantV2ServiceSecret -eq "change-this-assistant-v2-service-secret") {
+    $assistantV2ServiceSecret = Get-EnvValue -Path $dmbEnv -Name "ASSISTANT_V2_SERVICE_SECRET"
+}
+if (-not $assistantV2ServiceSecret -or $assistantV2ServiceSecret -eq "change-this-assistant-v2-service-secret") {
+    $assistantV2ServiceSecret = "dmb-assistant-v2-service-local-2026"
+}
+$agentV2Secret = Get-EnvValue -Path $agentV2Env -Name "AGENT_V2_SECRET"
+if (-not $agentV2Secret) { $agentV2Secret = Get-EnvValue -Path $dmbEnv -Name "AGENT_V2_SECRET" }
+if (-not $agentV2Secret) { $agentV2Secret = "dmb-agent-v2-local-secret-2026" }
 
 Set-EnvValue $dmbEnv "DEBUG" "true"
 Set-EnvValue $dmbEnv "DATABASE_URL" "postgresql+psycopg://dmb:dmb_local_dev@127.0.0.1:5432/dmb_backlog"
 Set-EnvValue $dmbEnv "REDIS_URL" "redis://127.0.0.1:6379/0"
+# Persist an independent limiter key; do not rotate it on every local start.
+if (-not (Get-EnvValue -Path $dmbEnv -Name "AUTH_RATE_HMAC_KEY").Trim('"', "'")) {
+    $authRateKeyBytes = New-Object byte[] 32
+    $authRateKeyGenerator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $authRateKeyGenerator.GetBytes($authRateKeyBytes) }
+    finally { $authRateKeyGenerator.Dispose() }
+    Set-EnvValue $dmbEnv "AUTH_RATE_HMAC_KEY" ([Convert]::ToBase64String($authRateKeyBytes))
+}
 Set-EnvValue $dmbEnv "RUN_STARTUP_SEED" "false"
 Set-EnvValue $dmbEnv "RUN_STARTUP_MAINTENANCE" "false"
 Set-EnvValue $dmbEnv "RUN_NOTIFICATION_SCHEDULER" "true"
@@ -136,29 +187,76 @@ Set-EnvValue $dmbEnv "AGENT_SECRET" $sharedSecret
 Set-EnvValue $dmbEnv "PRIORITISER_BASE_URL" "http://127.0.0.1:9100"
 Set-EnvValue $dmbEnv "PRIORITISER_SECRET" $prioritiserSecret
 Set-EnvValue $dmbEnv "PRIORITISER_TIMEOUT_SECONDS" "180"
+Set-EnvValue $dmbEnv "PRIORITISER_ENABLED" ($(if ($IncludePrioritiser) { "true" } else { "false" }))
+Set-EnvValue $dmbEnv "ASSISTANT_V2_ENABLED" ($(if ($IncludeAssistantV2) { "true" } else { "false" }))
+Set-EnvValue $dmbEnv "AGENT_V2_ENABLED" ($(if ($IncludeAgentV2) { "true" } else { "false" }))
 Set-EnvValue $agentEnv "DEBUG" "true"
 Set-EnvValue $agentEnv "AGENT_PORT" "9000"
 Set-EnvValue $agentEnv "SESSION_DATABASE_URL" "postgresql+psycopg://dmb:dmb_local_dev@127.0.0.1:5432/agent_sessions"
 Set-EnvValue $agentEnv "AGENT_SECRET" $sharedSecret
-Set-EnvValue $prioritiserEnv "PRIORITISER_DB_URL" "sqlite:///var/prioritiser.db"
-Set-EnvValue $prioritiserEnv "PRIORITISER_SERVICE_SECRET" $prioritiserSecret
-Set-EnvValue $prioritiserEnv "PRIORITISER_METHODOLOGIST_SECRET" $methodologistSecret
-Set-EnvValue $prioritiserEnv "PRIORITISER_RAG_MODEL_CACHE_DIR" $prioritiserModelCache
 $sharedLlmProvider = Get-EnvValue -Path $agentEnv -Name "LLM_PROVIDER"
-if (-not $sharedLlmProvider) {
+if (-not $WithoutAgents -and -not $sharedLlmProvider) {
     throw "LLM_PROVIDER is not configured in agent/.env. Configure a real provider before starting the project."
 }
-if ($sharedLlmProvider.Trim().ToLowerInvariant() -eq "mock") {
+if (-not $WithoutAgents -and $sharedLlmProvider.Trim().ToLowerInvariant() -eq "mock") {
     throw "LLM_PROVIDER=mock is test-only and is not allowed by the full project launcher."
 }
 $sharedOpenAiBaseUrl = Get-EnvValue -Path $agentEnv -Name "OPENAI_BASE_URL"
 if (-not $sharedOpenAiBaseUrl) { $sharedOpenAiBaseUrl = "https://api.openai.com/v1" }
 $sharedOpenAiModel = Get-EnvValue -Path $agentEnv -Name "OPENAI_MODEL"
 if (-not $sharedOpenAiModel) { $sharedOpenAiModel = "gpt-4o-mini" }
-Set-EnvValue $prioritiserEnv "PRIORITISER_LLM_PROVIDER" $sharedLlmProvider
-Set-EnvValue $prioritiserEnv "PRIORITISER_OPENAI_API_KEY" (Get-EnvValue -Path $agentEnv -Name "OPENAI_API_KEY")
-Set-EnvValue $prioritiserEnv "PRIORITISER_OPENAI_BASE_URL" $sharedOpenAiBaseUrl
-Set-EnvValue $prioritiserEnv "PRIORITISER_OPENAI_MODEL" $sharedOpenAiModel
+if ($IncludePrioritiser) {
+    $methodologistSecret = Get-EnvValue -Path $prioritiserEnv -Name "PRIORITISER_METHODOLOGIST_SECRET"
+    if (-not $methodologistSecret) { $methodologistSecret = "dmb-prioritiser-methodologist-local-secret-2026" }
+    Set-EnvValue $prioritiserEnv "PRIORITISER_DB_URL" "sqlite:///var/prioritiser.db"
+    Set-EnvValue $prioritiserEnv "PRIORITISER_SERVICE_SECRET" $prioritiserSecret
+    Set-EnvValue $prioritiserEnv "PRIORITISER_METHODOLOGIST_SECRET" $methodologistSecret
+    Set-EnvValue $prioritiserEnv "PRIORITISER_RAG_MODEL_CACHE_DIR" $prioritiserModelCache
+    Set-EnvValue $prioritiserEnv "PRIORITISER_LLM_PROVIDER" $sharedLlmProvider
+    Set-EnvValue $prioritiserEnv "PRIORITISER_OPENAI_API_KEY" (Get-EnvValue -Path $agentEnv -Name "OPENAI_API_KEY")
+    Set-EnvValue $prioritiserEnv "PRIORITISER_OPENAI_BASE_URL" $sharedOpenAiBaseUrl
+    Set-EnvValue $prioritiserEnv "PRIORITISER_OPENAI_MODEL" $sharedOpenAiModel
+}
+if ($IncludeAssistantV2) {
+    Set-EnvValue $dmbEnv "ASSISTANT_V2_BASE_URL" "http://127.0.0.1:9200"
+    Set-EnvValue $dmbEnv "ASSISTANT_V2_ENVELOPE_SECRET" $assistantV2EnvelopeSecret
+    Set-EnvValue $dmbEnv "ASSISTANT_V2_SERVICE_SECRET" $assistantV2ServiceSecret
+    Set-EnvValue $assistantV2Env "ASSISTANT_V2_ENABLED" "true"
+    Set-EnvValue $assistantV2Env "ASSISTANT_V2_DATABASE_URL" "postgresql+psycopg://assistant_v2:assistant_v2_local_dev@127.0.0.1:5432/assistant_v2"
+    Set-EnvValue $assistantV2Env "ASSISTANT_V2_ENVELOPE_SECRET" $assistantV2EnvelopeSecret
+    Set-EnvValue $assistantV2Env "ASSISTANT_V2_SERVICE_SECRET" $assistantV2ServiceSecret
+    Set-EnvValue $assistantV2Env "ASSISTANT_V2_DMB_ADAPTER_BASE_URL" "http://127.0.0.1:8000/internal/assistant-v2/v1"
+    Set-EnvValue $assistantV2Env "ASSISTANT_V2_ALLOW_REAL_DATA" "false"
+    Set-EnvValue $assistantV2Env "ASSISTANT_V2_PROVIDER_ENABLED" "false"
+}
+if ($IncludeAgentV2) {
+    Set-EnvValue $dmbEnv "AGENT_V2_BASE_URL" "http://127.0.0.1:9300"
+    Set-EnvValue $dmbEnv "AGENT_V2_SECRET" $agentV2Secret
+    Set-EnvValue $agentV2Env "AGENT_V2_ENABLED" "true"
+    Set-EnvValue $agentV2Env "AGENT_V2_PORT" "9300"
+    Set-EnvValue $agentV2Env "AGENT_V2_SECRET" $agentV2Secret
+    Set-EnvValue $agentV2Env "AGENT_V2_SESSION_DATABASE_URL" "postgresql+psycopg://agent_v2:agent_v2_local_dev@127.0.0.1:5432/agent_v2_sessions"
+    $agentV2InheritV1Llm = (Get-EnvValue -Path $agentV2Env -Name "AGENT_V2_INHERIT_V1_LLM").Trim().ToLowerInvariant()
+    if ($agentV2InheritV1Llm -notin @("", "true", "false")) {
+        throw "AGENT_V2_INHERIT_V1_LLM must be true or false (empty defaults to true)."
+    }
+    if ($agentV2InheritV1Llm -ne "false") {
+        Set-EnvValue $agentV2Env "AGENT_V2_LLM_PROVIDER" $sharedLlmProvider
+        Set-EnvValue $agentV2Env "AGENT_V2_OPENAI_API_KEY" (Get-EnvValue -Path $agentEnv -Name "OPENAI_API_KEY")
+        Set-EnvValue $agentV2Env "AGENT_V2_OPENAI_BASE_URL" $sharedOpenAiBaseUrl
+        Set-EnvValue $agentV2Env "AGENT_V2_OPENAI_MODEL" $sharedOpenAiModel
+    } else {
+        $agentV2LlmProvider = Get-EnvValue -Path $agentV2Env -Name "AGENT_V2_LLM_PROVIDER"
+        if ($agentV2LlmProvider.Trim().ToLowerInvariant() -ne "openai_compat") {
+            throw "AGENT_V2_LLM_PROVIDER must be openai_compat when AGENT_V2_INHERIT_V1_LLM=false."
+        }
+        foreach ($agentV2RequiredLlmSetting in @("AGENT_V2_OPENAI_API_KEY", "AGENT_V2_OPENAI_BASE_URL", "AGENT_V2_OPENAI_MODEL")) {
+            if (-not (Get-EnvValue -Path $agentV2Env -Name $agentV2RequiredLlmSetting)) {
+                throw "$agentV2RequiredLlmSetting must be configured when AGENT_V2_INHERIT_V1_LLM=false."
+            }
+        }
+    }
+}
 
 Write-Host "Starting PostgreSQL and Redis..."
 docker compose -f $composeFile up -d
@@ -175,13 +273,56 @@ if ($postgresStatus -notmatch 'healthy' -or $redisStatus -notmatch 'healthy') {
     throw "PostgreSQL or Redis did not become healthy. Run: docker compose logs"
 }
 
+if ($IncludeAssistantV2) {
+    Write-Host "Ensuring the isolated Assistant V2 database and role exist..."
+    $assistantRoleExists = docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='assistant_v2'" | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "Assistant V2 role check failed." }
+    if ($assistantRoleExists.Trim() -ne "1") {
+        docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -v ON_ERROR_STOP=1 -c "CREATE ROLE assistant_v2 LOGIN PASSWORD 'assistant_v2_local_dev'"
+        if ($LASTEXITCODE -ne 0) { throw "Assistant V2 role creation failed." }
+    }
+    docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -v ON_ERROR_STOP=1 -c "ALTER ROLE assistant_v2 WITH LOGIN PASSWORD 'assistant_v2_local_dev'"
+    if ($LASTEXITCODE -ne 0) { throw "Assistant V2 role configuration failed." }
+    $assistantDatabaseExists = docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='assistant_v2'" | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "Assistant V2 database check failed." }
+    if ($assistantDatabaseExists.Trim() -ne "1") {
+        docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE assistant_v2 OWNER assistant_v2"
+        if ($LASTEXITCODE -ne 0) { throw "Assistant V2 database creation failed." }
+    }
+}
+if ($IncludeAgentV2) {
+    Write-Host "Ensuring the isolated fork-based Assistant V2 database and role exist..."
+    $agentV2RoleExists = docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='agent_v2'" | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "Agent V2 role check failed." }
+    if ($agentV2RoleExists.Trim() -ne "1") {
+        docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -v ON_ERROR_STOP=1 -c "CREATE ROLE agent_v2 LOGIN PASSWORD 'agent_v2_local_dev'"
+        if ($LASTEXITCODE -ne 0) { throw "Agent V2 role creation failed." }
+    }
+    docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -v ON_ERROR_STOP=1 -c "ALTER ROLE agent_v2 WITH LOGIN PASSWORD 'agent_v2_local_dev'"
+    if ($LASTEXITCODE -ne 0) { throw "Agent V2 role configuration failed." }
+    $agentV2DatabaseExists = docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='agent_v2_sessions'" | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "Agent V2 database check failed." }
+    if ($agentV2DatabaseExists.Trim() -ne "1") {
+        docker compose -f $composeFile exec -T postgres psql -U dmb -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE agent_v2_sessions OWNER agent_v2"
+        if ($LASTEXITCODE -ne 0) { throw "Agent V2 database creation failed." }
+    }
+}
+
 if (-not (Test-Path $pythonExe)) {
     Write-Host "Creating Python environment .venv..."
     python -m venv $venvDir
 }
-if (-not (Test-Path $prioritiserPythonExe)) {
+if ($IncludePrioritiser -and -not (Test-Path $prioritiserPythonExe)) {
     Write-Host "Creating isolated prioritiser environment .venv-prioritiser..."
     python -m venv $prioritiserVenvDir
+}
+if ($IncludeAssistantV2 -and -not (Test-Path $assistantV2PythonExe)) {
+    Write-Host "Creating isolated Assistant V2 environment .venv-assistant-v2..."
+    python -m venv $assistantV2VenvDir
+}
+if ($IncludeAgentV2 -and -not (Test-Path $agentV2PythonExe)) {
+    Write-Host "Creating isolated fork-based Assistant V2 environment .venv-agent-v2..."
+    python -m venv $agentV2VenvDir
 }
 
 $requirements = @(
@@ -199,16 +340,45 @@ if (-not $SkipDependencyInstall -and $installedHash -ne $requirementsHash) {
     Set-Content -LiteralPath $stampPath -Value $requirementsHash -Encoding ascii
 }
 
-$prioritiserRequirements = Join-Path $projectRoot "prioritiser-agent\requirements.txt"
-$prioritiserRequirementsHash = (Get-FileHash -LiteralPath $prioritiserRequirements -Algorithm SHA256).Hash
-$prioritiserStampPath = Join-Path $prioritiserVenvDir ".requirements.sha256"
-$installedPrioritiserHash = if (Test-Path $prioritiserStampPath) { (Get-Content -Raw $prioritiserStampPath).Trim() } else { "" }
-if (-not $SkipDependencyInstall -and $installedPrioritiserHash -ne $prioritiserRequirementsHash) {
-    Write-Host "Installing prioritiser dependencies in its isolated environment..."
-    & $prioritiserPythonExe -m pip install --upgrade pip
-    & $prioritiserPythonExe -m pip install -r $prioritiserRequirements
-    if ($LASTEXITCODE -ne 0) { throw "Prioritiser dependency installation failed." }
-    Set-Content -LiteralPath $prioritiserStampPath -Value $prioritiserRequirementsHash -Encoding ascii
+if ($IncludePrioritiser) {
+    $prioritiserRequirements = Join-Path $projectRoot "prioritiser-agent\requirements.txt"
+    $prioritiserRequirementsHash = (Get-FileHash -LiteralPath $prioritiserRequirements -Algorithm SHA256).Hash
+    $prioritiserStampPath = Join-Path $prioritiserVenvDir ".requirements.sha256"
+    $installedPrioritiserHash = if (Test-Path $prioritiserStampPath) { (Get-Content -Raw $prioritiserStampPath).Trim() } else { "" }
+    if (-not $SkipDependencyInstall -and $installedPrioritiserHash -ne $prioritiserRequirementsHash) {
+        Write-Host "Installing prioritiser dependencies in its isolated environment..."
+        & $prioritiserPythonExe -m pip install --upgrade pip
+        & $prioritiserPythonExe -m pip install -r $prioritiserRequirements
+        if ($LASTEXITCODE -ne 0) { throw "Prioritiser dependency installation failed." }
+        Set-Content -LiteralPath $prioritiserStampPath -Value $prioritiserRequirementsHash -Encoding ascii
+    }
+}
+
+if ($IncludeAssistantV2) {
+    $assistantV2Requirements = Join-Path $projectRoot "assistant-v2\requirements.txt"
+    $assistantV2RequirementsHash = (Get-FileHash -LiteralPath $assistantV2Requirements -Algorithm SHA256).Hash
+    $assistantV2StampPath = Join-Path $assistantV2VenvDir ".requirements.sha256"
+    $installedAssistantV2Hash = if (Test-Path $assistantV2StampPath) { (Get-Content -Raw $assistantV2StampPath).Trim() } else { "" }
+    if (-not $SkipDependencyInstall -and $installedAssistantV2Hash -ne $assistantV2RequirementsHash) {
+        Write-Host "Installing Assistant V2 dependencies in its isolated environment..."
+        & $assistantV2PythonExe -m pip install --upgrade pip
+        & $assistantV2PythonExe -m pip install -r $assistantV2Requirements
+        if ($LASTEXITCODE -ne 0) { throw "Assistant V2 dependency installation failed." }
+        Set-Content -LiteralPath $assistantV2StampPath -Value $assistantV2RequirementsHash -Encoding ascii
+    }
+}
+if ($IncludeAgentV2) {
+    $agentV2Requirements = Join-Path $projectRoot "agent-v2\requirements.txt"
+    $agentV2RequirementsHash = (Get-FileHash -LiteralPath $agentV2Requirements -Algorithm SHA256).Hash
+    $agentV2StampPath = Join-Path $agentV2VenvDir ".requirements.sha256"
+    $installedAgentV2Hash = if (Test-Path $agentV2StampPath) { (Get-Content -Raw $agentV2StampPath).Trim() } else { "" }
+    if (-not $SkipDependencyInstall -and $installedAgentV2Hash -ne $agentV2RequirementsHash) {
+        Write-Host "Installing fork-based Assistant V2 dependencies in its isolated environment..."
+        & $agentV2PythonExe -m pip install --upgrade pip
+        & $agentV2PythonExe -m pip install -r $agentV2Requirements
+        if ($LASTEXITCODE -ne 0) { throw "Agent V2 dependency installation failed." }
+        Set-Content -LiteralPath $agentV2StampPath -Value $agentV2RequirementsHash -Encoding ascii
+    }
 }
 
 Write-Host "Applying PostgreSQL migrations..."
@@ -220,6 +390,17 @@ try {
     Pop-Location
 }
 
+if ($IncludeAssistantV2) {
+    Write-Host "Applying Assistant V2 PostgreSQL migrations..."
+    Push-Location (Join-Path $projectRoot "assistant-v2")
+    try {
+        & $assistantV2PythonExe -m alembic -c alembic.ini upgrade head
+        if ($LASTEXITCODE -ne 0) { throw "Assistant V2 Alembic migration failed." }
+    } finally {
+        Pop-Location
+    }
+}
+
 & (Join-Path $PSScriptRoot "stop-project.ps1") -KeepInfrastructure -Quiet
 
 $agentOut = Join-Path $runtimeDir "agent.out.log"
@@ -228,7 +409,12 @@ $prioritiserOut = Join-Path $runtimeDir "prioritiser.out.log"
 $prioritiserErr = Join-Path $runtimeDir "prioritiser.err.log"
 $backendOut = Join-Path $runtimeDir "backend.out.log"
 $backendErr = Join-Path $runtimeDir "backend.err.log"
+$assistantV2Out = Join-Path $runtimeDir "assistant-v2.out.log"
+$assistantV2Err = Join-Path $runtimeDir "assistant-v2.err.log"
+$agentV2Out = Join-Path $runtimeDir "agent-v2.out.log"
+$agentV2Err = Join-Path $runtimeDir "agent-v2.err.log"
 
+if (-not $WithoutAgents) {
 Write-Host "Starting AI agent..."
 $agentProcess = Start-Process -FilePath $pythonExe `
     -ArgumentList @("-m", "uvicorn", "agent.main:app", "--host", "127.0.0.1", "--port", "9000") `
@@ -237,17 +423,50 @@ $agentProcess = Start-Process -FilePath $pythonExe `
     -WindowStyle Hidden -PassThru
 Set-Content -LiteralPath (Join-Path $runtimeDir "agent.pid") -Value $agentProcess.Id -Encoding ascii
 Wait-HttpHealth "http://127.0.0.1:9000/api/agent/ready" "AI agent"
+}
 
-Write-Host "Starting task prioritiser..."
-$prioritiserProcess = Start-Process -FilePath $prioritiserPythonExe `
-    -ArgumentList @("-m", "uvicorn", "app.api.main:app", "--host", "127.0.0.1", "--port", "9100") `
-    -WorkingDirectory (Join-Path $projectRoot "prioritiser-agent") `
-    -RedirectStandardOutput $prioritiserOut -RedirectStandardError $prioritiserErr `
-    -WindowStyle Hidden -PassThru
-Set-Content -LiteralPath (Join-Path $runtimeDir "prioritiser.pid") -Value $prioritiserProcess.Id -Encoding ascii
-Wait-HttpHealth "http://127.0.0.1:9100/ready" "Task prioritiser" -TimeoutSeconds 900
+if ($IncludePrioritiser) {
+    Write-Host "Starting task prioritiser..."
+    $prioritiserProcess = Start-Process -FilePath $prioritiserPythonExe `
+        -ArgumentList @("-m", "uvicorn", "app.api.main:app", "--host", "127.0.0.1", "--port", "9100") `
+        -WorkingDirectory (Join-Path $projectRoot "prioritiser-agent") `
+        -RedirectStandardOutput $prioritiserOut -RedirectStandardError $prioritiserErr `
+        -WindowStyle Hidden -PassThru
+    Set-Content -LiteralPath (Join-Path $runtimeDir "prioritiser.pid") -Value $prioritiserProcess.Id -Encoding ascii
+    Wait-HttpHealth "http://127.0.0.1:9100/ready" "Task prioritiser" -TimeoutSeconds 900
+} else {
+    Write-Host "Skipping task prioritiser (use -IncludePrioritiser to enable it)."
+}
+
+if ($IncludeAssistantV2) {
+    Write-Host "Starting AI Assistant V2..."
+    $assistantV2Process = Start-Process -FilePath $assistantV2PythonExe `
+        -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "9200") `
+        -WorkingDirectory (Join-Path $projectRoot "assistant-v2") `
+        -RedirectStandardOutput $assistantV2Out -RedirectStandardError $assistantV2Err `
+        -WindowStyle Hidden -PassThru
+    Set-Content -LiteralPath (Join-Path $runtimeDir "assistant-v2.pid") -Value $assistantV2Process.Id -Encoding ascii
+    Wait-HttpHealth "http://127.0.0.1:9200/ready" "AI Assistant V2"
+} else {
+    Write-Host "Skipping AI Assistant V2 (use -IncludeAssistantV2 to enable it)."
+}
+if ($IncludeAgentV2) {
+    Write-Host "Starting fork-based AI Assistant V2..."
+    $agentV2Process = Start-Process -FilePath $agentV2PythonExe `
+        -ArgumentList @("-m", "uvicorn", "agent_v2.main:app", "--host", "127.0.0.1", "--port", "9300") `
+        -WorkingDirectory (Join-Path $projectRoot "agent-v2") `
+        -RedirectStandardOutput $agentV2Out -RedirectStandardError $agentV2Err `
+        -WindowStyle Hidden -PassThru
+    Set-Content -LiteralPath (Join-Path $runtimeDir "agent-v2.pid") -Value $agentV2Process.Id -Encoding ascii
+    Wait-HttpHealth "http://127.0.0.1:9300/api/agent-v2/ready" "Fork-based AI Assistant V2"
+} else {
+    Write-Host "Skipping fork-based AI Assistant V2 (use -IncludeAgentV2 to enable it)."
+}
 
 Write-Host "Starting DMB Backlog..."
+if ($IncludeBacklogAssistant) {
+    & (Join-Path $PSScriptRoot 'start-backlog-assistant.ps1')
+}
 $backendProcess = Start-Process -FilePath $pythonExe `
     -ArgumentList @("-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8000") `
     -WorkingDirectory (Join-Path $projectRoot "dmb-backlog\backend") `
@@ -260,6 +479,21 @@ Write-Host ""
 Write-Host "Project is fully running."
 Write-Host "Application: http://127.0.0.1:8000"
 Write-Host "Backend API: http://127.0.0.1:8000/docs"
-Write-Host "AI agent API: http://127.0.0.1:9000/docs"
-Write-Host "Prioritiser API: http://127.0.0.1:9100/docs"
+if (-not $WithoutAgents) { Write-Host "AI agent API: http://127.0.0.1:9000/docs" }
+else { Write-Host "All AI agents: disabled for this run" }
+if ($IncludePrioritiser) {
+    Write-Host "Prioritiser API: http://127.0.0.1:9100/docs"
+} else {
+    Write-Host "Prioritiser API: disabled for this run"
+}
+if ($IncludeAssistantV2) {
+    Write-Host "Assistant V2 API: http://127.0.0.1:9200/docs"
+} else {
+    Write-Host "Assistant V2 API: disabled for this run"
+}
+if ($IncludeAgentV2) {
+    Write-Host "Fork-based Assistant V2 API: http://127.0.0.1:9300/docs"
+} else {
+    Write-Host "Fork-based Assistant V2 API: disabled for this run"
+}
 Write-Host "Logs: $runtimeDir"

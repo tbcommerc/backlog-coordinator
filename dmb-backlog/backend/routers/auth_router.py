@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from database import get_db
-from models import User
+from models import User, AuthSession, AuthChallenge, SecurityEvent
 from schemas import LoginRequest, TokenResponse, UserResponse
 from auth import verify_password, create_access_token, get_current_user, get_request_review_access, is_customer_portal_only, get_task_action_scope, can_make_pip_decision
 from rate_limit import get_rate_limiter, rate_limit_key
@@ -21,9 +21,8 @@ def _require_trusted_origin(request: Request) -> None:
     origin = request.headers.get("origin")
     if not origin and settings.DEBUG:
         return
-    same_origin = str(request.base_url).rstrip("/")
-    allowed = {value.rstrip("/") for value in settings.CORS_ORIGINS} | {same_origin}
-    if not origin or origin.rstrip("/") not in allowed:
+    allowed = set(settings.AUTH_ORIGINS)
+    if not origin or origin not in allowed:
         raise HTTPException(status_code=403, detail="Untrusted request origin")
     if not settings.DEBUG and not origin.lower().startswith("https://"):
         raise HTTPException(status_code=403, detail="HTTPS origin required")
@@ -33,7 +32,6 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
     response.set_cookie(
         key=REFRESH_COOKIE_NAME,
         value=token,
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         httponly=True,
         secure=not settings.DEBUG,
         samesite="strict",
@@ -45,51 +43,51 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
 async def login(request: Request, response: Response, login_data: LoginRequest, db: Session = Depends(get_db)):
     """Authenticate user and return tokens"""
     _require_trusted_origin(request)
-    client_ip = request.client.host if request.client else "unknown"
-    limiter = get_rate_limiter()
-    decisions = [
-        await limiter.check(rate_limit_key("login-ip", client_ip), 5, 60),
-        await limiter.check(rate_limit_key("login-account", login_data.email), 5, 60),
-    ]
-    blocked = next((decision for decision in decisions if not decision.allowed), None)
-    if blocked:
-        raise HTTPException(
-            status_code=429,
-            detail="Rate limit exceeded",
-            headers={"Retry-After": str(blocked.retry_after)},
-        )
-    user = db.query(User).filter(User.email == login_data.email).first()
-    
-    if not user or not verify_password(login_data.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-    
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is deactivated"
-        )
-    
-    # Update last login and create the server-side refresh session atomically.
-    user.last_login = datetime.utcnow()
-    cleanup_expired_sessions(db)
-    refresh_token, _session = issue_refresh_session(db, user)
+    from services.auth_limits import limit
+    from services.credentials import normalize_login
+    from services.auth_sessions import lock_user, new_session, event
+    from starlette.concurrency import run_in_threadpool
+    await limit("login-ip", request.client.host if request.client else "", settings.AUTH_LOGIN_IP_LIMIT, 60)
+    try:
+        normalized = normalize_login(login_data.login)
+    except HTTPException:
+        normalized = None
+    await limit("login-account", normalized or "invalid-format", settings.AUTH_FAILURE_LIMIT, settings.AUTH_FAILURE_WINDOW, "peek")
+    user = db.query(User).filter(User.login_normalized == normalized).first() if normalized else None
+    original_hash = user.password_hash if user else None
+    original_version = user.auth_version if user else None
+    valid = await run_in_threadpool(verify_password, login_data.password, original_hash)
+    from services.credentials import needs_rehash, hash_password
+    replacement_hash = await run_in_threadpool(hash_password, login_data.password) if valid and needs_rehash(original_hash) else None
+    if user:
+        user = lock_user(db, user.id)
+    if not user or not valid or not user.is_active or user.credential_state != "ready" or user.password_hash != original_hash or user.auth_version != original_version:
+        await limit("login-account", normalized or "invalid-format", settings.AUTH_FAILURE_LIMIT, settings.AUTH_FAILURE_WINDOW)
+        event(db, "login", subject=user.id if user else None, outcome="failure", reason="invalid_credentials")
+        db.commit()
+        raise HTTPException(401, "INVALID_CREDENTIALS")
+    if replacement_hash:
+        user.password_hash = replacement_hash
+    from services.auth_sessions import now
+    user.last_login = now()
+    session = new_session(db, user, request)
+    refresh_token, _ = issue_refresh_session(db, user, session)
+    event(db, "login", user.id, user.id, session.id)
     db.commit()
     _set_refresh_cookie(response, refresh_token)
-    
-    # Create tokens
-    token_data = {"sub": str(user.id), "email": user.email}
-    access_token = create_access_token(token_data)
-    
+    access_token = create_access_token({"sub": str(user.id), "sid": session.id, "auth_version": user.auth_version})
+
     return TokenResponse(
+        session_expires_at=session.absolute_expires_at,
+        last_activity_at=session.last_activity_at,
+        idle_timeout_seconds=60 * (settings.AUTH_ADMIN_IDLE_MINUTES if user.role and user.role.admin_access == 'full' else settings.AUTH_IDLE_MINUTES),
         access_token=access_token,
-        expires_in=3600,
+        expires_in=max(0, __import__("auth").decode_token(access_token)["exp"] - int(__import__("time").time())),
         user={
             "id": user.id,
             "name": user.name,
             "email": user.email,
+            "login": user.login_normalized,
             "role": user.role.name if user.role else None,
             "role_id": user.role_id,
             "team_id": user.team_id,
@@ -120,30 +118,33 @@ async def login(request: Request, response: Response, login_data: LoginRequest, 
 async def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
     """Refresh access token using refresh token"""
     _require_trusted_origin(request)
-    client_ip = request.client.host if request.client else "unknown"
-    decision = await get_rate_limiter().check(rate_limit_key("refresh-ip", client_ip), 10, 60)
-    if not decision.allowed:
-        raise HTTPException(
-            status_code=429,
-            detail="Rate limit exceeded",
-            headers={"Retry-After": str(decision.retry_after)},
-        )
+    from services.auth_limits import limit
+    await limit("refresh-ip", request.client.host if request.client else "", settings.AUTH_REFRESH_IP_LIMIT, 60)
     current_refresh = request.cookies.get(REFRESH_COOKIE_NAME)
     if not current_refresh:
         raise HTTPException(status_code=401, detail="Refresh cookie not found")
+    from auth import decode_token
+    refresh_payload = decode_token(current_refresh)
+    if refresh_payload:
+        await limit("refresh-session", refresh_payload['sid'], 60, 60)
     user, refresh_token = rotate_refresh_session(db, current_refresh)
     _set_refresh_cookie(response, refresh_token)
     
-    token_data = {"sub": str(user.id), "email": user.email}
+    session = db.get(AuthSession, user._auth_sid)
+    token_data = {"sub": str(user.id), "sid": user._auth_sid, "auth_version": user.auth_version}
     access_token = create_access_token(token_data)
     
     return TokenResponse(
+        session_expires_at=session.absolute_expires_at,
+        last_activity_at=session.last_activity_at,
+        idle_timeout_seconds=60 * (settings.AUTH_ADMIN_IDLE_MINUTES if user.role and user.role.admin_access == 'full' else settings.AUTH_IDLE_MINUTES),
         access_token=access_token,
-        expires_in=3600,
+        expires_in=max(0, __import__("auth").decode_token(access_token)["exp"] - int(__import__("time").time())),
         user={
             "id": user.id,
             "name": user.name,
             "email": user.email,
+            "login": user.login_normalized,
             "role": user.role.name if user.role else None,
             "role_id": user.role_id,
             "team_id": user.team_id,
@@ -175,7 +176,9 @@ def get_me(current_user: User = Depends(get_current_user)):
     """Get current user profile"""
     return UserResponse(
         id=current_user.id,
-        login=current_user.login,
+        login=current_user.login_normalized,
+        credential_state=current_user.credential_state,
+        password_changed_at=current_user.password_changed_at,
         email=current_user.email,
         name=current_user.name,
         position=current_user.position,
@@ -214,5 +217,131 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
     if refresh_token:
         revoke_refresh_session(db, refresh_token)
-    response.delete_cookie(REFRESH_COOKIE_NAME, path="/api/v1/auth")
-    return {"message": "Logged out successfully"}
+    authorization = request.headers.get("authorization", "")
+    if authorization.startswith("Bearer "):
+        revoke_refresh_session(db, authorization[7:])
+    response.delete_cookie(REFRESH_COOKIE_NAME, path="/api/v1/auth", secure=not settings.DEBUG, httponly=True, samesite="strict")
+    response.status_code = 204
+    return None
+
+# Password and self-service endpoints never accept identity/role/team fields.
+from account_schemas import PasswordChange, PasswordSetup, Reauthenticate, Confirmation
+from services import auth_sessions as sessions, auth_challenges as challenges, credentials
+from services.auth_limits import sensitive_limit
+
+
+def _current_locked(db, current_user):
+    user = sessions.lock_user(db, current_user.id)
+    sessions.check_session(db, user, current_user._auth_sid, current_user._auth_version)
+    return user
+
+
+@router.get('/password-policy')
+def password_policy():
+    return {'min_length': settings.AUTH_PASSWORD_MIN, 'max_length': settings.AUTH_PASSWORD_MAX,
+        'normalization': 'NFC', 'support_contact': settings.AUTH_SUPPORT_CONTACT}
+
+
+@router.post('/password/change', status_code=204, dependencies=[Depends(sensitive_limit)])
+def password_change(data: PasswordChange, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    original = current_user.password_hash
+    if not credentials.verify_password(data.current_password, original):
+        sessions.event(db, 'password_change', current_user.id, current_user.id, outcome='failure', reason='invalid_password')
+        db.commit()
+        raise HTTPException(401, 'CURRENT_PASSWORD_INVALID')
+    value = credentials.validate_password(data.new_password, current_user.login_normalized)
+    if credentials.verify_password(value, original):
+        raise HTTPException(422, 'PASSWORD_UNCHANGED')
+    encoded = credentials.hash_password(value)
+    user = _current_locked(db, current_user)
+    if user.password_hash != original:
+        raise HTTPException(401, 'SESSION_INVALID')
+    sessions.invalidate(db, user, 'password_change')
+    user.password_hash, user.password_changed_at = encoded, sessions.now()
+    user.password_normalization_version = 1
+    sessions.event(db, 'password_change', user.id, user.id)
+    db.commit()
+
+
+@router.post('/password/setup', status_code=204, dependencies=[Depends(sensitive_limit)])
+def password_setup(data: PasswordSetup, db: Session = Depends(get_db)):
+    row = db.query(AuthChallenge).filter(AuthChallenge.token_hash == challenges.digest(data.token)).first()
+    if not row or row.purpose not in {'invitation', 'recovery'}:
+        raise HTTPException(400, 'SETUP_TOKEN_INVALID')
+    user = db.query(User).filter(User.id == row.user_id).first()
+    if not user:
+        raise HTTPException(400, 'SETUP_TOKEN_INVALID')
+    expected = 'invited' if row.purpose == 'invitation' else 'reset_required'
+    if (not user.is_active or user.credential_state != expected or row.auth_version != user.auth_version or
+        row.used_at or row.revoked_at or sessions.utc(row.expires_at) <= sessions.now()):
+        raise HTTPException(400, 'SETUP_TOKEN_INVALID')
+    encoded = credentials.hash_password(credentials.validate_password(data.new_password, user.login_normalized or ''))
+    user = sessions.lock_user(db, user.id)
+    row = db.query(AuthChallenge).filter(AuthChallenge.id == row.id).populate_existing().with_for_update().first()
+    expected = 'invited' if row.purpose == 'invitation' else 'reset_required'
+    if (not user.is_active or user.credential_state != expected or row.auth_version != user.auth_version or
+        row.used_at or row.revoked_at or sessions.utc(row.expires_at) <= sessions.now()):
+        raise HTTPException(400, 'SETUP_TOKEN_INVALID')
+    row.used_at = sessions.now()
+    sessions.invalidate(db, user, 'password_setup')
+    user.password_hash, user.password_changed_at = encoded, sessions.now()
+    user.password_normalization_version, user.credential_state = 1, 'ready'
+    sessions.event(db, 'password_setup', user.id, user.id)
+    db.commit()
+
+
+@router.post('/reauthenticate', dependencies=[Depends(sensitive_limit)])
+def reauthenticate(data: Reauthenticate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    original = current_user.password_hash
+    if not credentials.verify_password(data.password, original):
+        sessions.event(db, 'reauthenticate', current_user.id, current_user.id, outcome='failure', reason='invalid_password')
+        db.commit()
+        raise HTTPException(401, 'CURRENT_PASSWORD_INVALID')
+    user = _current_locked(db, current_user)
+    if user.password_hash != original:
+        raise HTTPException(401, 'SESSION_INVALID')
+    if data.purpose != 'revoke_others' and (not user.role or user.role.admin_access != 'full'):
+        raise HTTPException(403, 'FULL_ADMIN_REQUIRED')
+    result = challenges.issue(db, user, 'reauth:'+data.purpose, settings.AUTH_REAUTH_MINUTES,
+        session=current_user._auth_sid, target=data.target_user_id)
+    db.commit()
+    return result
+
+
+@router.get('/sessions')
+def own_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    rows = db.query(AuthSession).filter(AuthSession.user_id == current_user.id, AuthSession.revoked_at.is_(None),
+        AuthSession.absolute_expires_at > sessions.now()).order_by(AuthSession.created_at.desc()).all()
+    return [{'id': r.id, 'created_at': r.created_at, 'last_activity_at': r.last_activity_at,
+        'absolute_expires_at': r.absolute_expires_at, 'ip_address': r.ip_address,
+        'client_label': r.client_label, 'is_current': r.id == current_user._auth_sid} for r in rows]
+
+
+@router.delete('/sessions/{session_id}', status_code=204)
+def revoke_own_session(session_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user = _current_locked(db, current_user)
+    row = db.query(AuthSession).filter(AuthSession.id == session_id, AuthSession.user_id == user.id).first()
+    if not row:
+        raise HTTPException(404, 'SESSION_NOT_FOUND')
+    row.revoked_at, row.revoke_reason = sessions.now(), 'user_revoke'
+    sessions.event(db, 'session_revoke', user.id, user.id, row.id)
+    db.commit()
+
+
+@router.post('/sessions/revoke-others', dependencies=[Depends(sensitive_limit)])
+def revoke_others(data: Confirmation, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user = _current_locked(db, current_user)
+    challenges.consume(db, data.reauth_token, user, 'reauth:revoke_others', current_user._auth_sid)
+    count = sessions.revoke(db, user.id, 'revoke_others', current_user._auth_sid)
+    sessions.event(db, 'revoke_others', user.id, user.id)
+    db.commit()
+    return {'revoked': count}
+
+
+from fastapi import Query
+@router.get('/security-events')
+def security_events(page: int = Query(1, ge=1), per_page: int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    rows = db.query(SecurityEvent).filter(SecurityEvent.subject_id == current_user.id).order_by(SecurityEvent.id.desc()).offset((page-1)*per_page).limit(per_page).all()
+    return {'page': page, 'items': [{'id': r.id, 'created_at': r.created_at, 'action': r.action,
+        'outcome': r.outcome, 'ip_address': r.ip_address} for r in rows]}

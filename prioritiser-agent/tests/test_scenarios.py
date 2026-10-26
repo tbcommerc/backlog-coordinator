@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from threading import Barrier
 
 import pytest
 
@@ -20,10 +21,32 @@ from app.snapshot import ValueSnapshot, reset_snapshot_cache, write_snapshot
 @pytest.fixture(autouse=True)
 def _isolated_snapshot(tmp_path, monkeypatch):
     """Свой слепок на тест: общий делал бы тесты зависимыми от даты сборки."""
+    import numpy as np
+
+    import app.core.analogy as analogy_module
     import app.snapshot as snapshot_module
+
+    class DeterministicEncoder:
+        def encode(self, texts, **_kwargs):
+            return np.ones((len(texts), 4), dtype="float32")
 
     path = tmp_path / "snapshot.json"
     monkeypatch.setattr(snapshot_module, "SNAPSHOT_PATH", path)
+    monkeypatch.setattr(analogy_module, "INDEX_DIR", tmp_path / "index")
+    monkeypatch.setattr(
+        analogy_module.AnalogyIndex,
+        "_encoder",
+        lambda _self: DeterministicEncoder(),
+    )
+    monkeypatch.setattr(
+        analogy_module.AnalogyIndex,
+        "_load_or_build",
+        lambda self: setattr(
+            self,
+            "_matrix",
+            np.ones((len(self.entries), 4), dtype="float32"),
+        ),
+    )
     write_snapshot(
         entries=[
             {"task_key": "TASK-300-001", "title": "AI помощник для подготовки питча по сделкам IB",
@@ -131,6 +154,23 @@ class TestValueScenario:
         # бы придумывать неопределённость, которой не существует.
         assert result.value.range is None
 
+    def test_human_value_does_not_build_unused_analogy_index(
+        self, session, monkeypatch
+    ):
+        def unexpected_index(_snapshot):
+            raise AssertionError("индекс аналогий не нужен для ручного Value")
+
+        monkeypatch.setattr("app.service.scenarios._analogy_index", unexpected_index)
+
+        result = handle_request(
+            attrs(task_id="MANUAL-NO-INDEX", value_internal_mln=77.0),
+            "value",
+            session,
+        )
+
+        assert result.value.value_mln == 77.0
+        assert result.audit.phase_duration_ms["analogy_index"] >= 0
+
     def test_research_task_gets_zero_with_a_reason(self, session):
         result = handle_request(attrs(task_type="ИССЛЕДОВАНИЕ"), "value", session)
         assert result.value.method == "zero"
@@ -148,6 +188,47 @@ class TestValueScenario:
         result = handle_request(attrs(), "value", session)
         assert result.value.method != "analogy"
         assert any("слепок" in w.lower() for w in result.warnings)
+
+
+class TestScenarioPerformancePlumbing:
+    def test_independent_factor_assessments_run_in_parallel(self, session, monkeypatch):
+        from app.strategy.analysts import (
+            DeclaredDependencyAnalyst,
+            StubStrategyAnalyst,
+        )
+        both_started = Barrier(2)
+
+        class SlowStrategy(StubStrategyAnalyst):
+            def assess(self, *args, **kwargs):
+                both_started.wait(timeout=1)
+                return super().assess(*args, **kwargs)
+
+        class SlowDependency(DeclaredDependencyAnalyst):
+            def assess(self, *args, **kwargs):
+                both_started.wait(timeout=1)
+                return super().assess(*args, **kwargs)
+
+        monkeypatch.setattr(
+            "app.strategy.analysts.get_strategy_analyst",
+            lambda **_kwargs: SlowStrategy(),
+        )
+        monkeypatch.setattr(
+            "app.strategy.analysts.get_dependency_analyst",
+            lambda *_args, **_kwargs: SlowDependency(),
+        )
+
+        result = handle_request(
+            priority_attrs(
+                task_id="PARALLEL-F5-F6",
+                value_internal_mln=77.0,
+                involved_teams="Core",
+            ),
+            "priority",
+            session,
+        )
+
+        assert isinstance(result, AgentResponse)
+        assert "factor_assessments" in result.audit.phase_duration_ms
 
 
 class TestCoordinatorTemplate:

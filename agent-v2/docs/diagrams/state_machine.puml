@@ -1,0 +1,46 @@
+@startuml
+title Dialogue State Machine
+
+[*] --> WELCOME : new_session()
+
+WELCOME --> IDENTIFY_INTENT : первое сообщение
+IDENTIFY_INTENT --> NEED_STATEMENT : intent определен
+IDENTIFY_INTENT --> CLARIFY_ANSWER : intent=clarification
+IDENTIFY_INTENT --> INCIDENT_TRIAGE : intent=incident
+
+NEED_STATEMENT --> BUSINESS_CONTEXT : need_statement заполнен
+BUSINESS_CONTEXT --> AS_IS_TO_BE : role, process, product заполнены
+AS_IS_TO_BE --> ROLES_SCENARIOS : as_is, to_be заполнены
+ROLES_SCENARIOS --> BUSINESS_RULES : users заполнен
+BUSINESS_RULES --> DATA_INTEGRATIONS : acceptance_criteria заполнен
+DATA_INTEGRATIONS --> VALUE_PRIORITY : data_integrations заполнен
+VALUE_PRIORITY --> SUMMARIZE : value заполнен
+
+SUMMARIZE --> CONFIRM : пользователь подтвердил
+SUMMARIZE --> BUSINESS_CONTEXT : пользователь хочет правки
+
+CONFIRM --> DRAFT_READY : yes
+CONFIRM --> SUMMARIZE : no (edit)
+
+DRAFT_READY --> SENT_FOR_REVIEW : send-for-review()
+SENT_FOR_REVIEW --> [*]
+
+' Escalation path
+BUSINESS_CONTEXT --> ESCALATED : 3x out-of-domain
+AS_IS_TO_BE --> ESCALATED : user frustrated
+ROLES_SCENARIOS --> ESCALATED : clarification failures
+
+ESCALATED --> [*]
+
+' Cancellation
+BUSINESS_CONTEXT --> CANCELLED : user cancel
+CANCELLED --> [*]
+
+note right of IDENTIFY_INTENT
+  На каждой фазе проверяется:
+  - Заполнены ли обязательные слоты
+  - Есть ли слоты с низкой уверенностью
+  - Не нужно ли показать промежуточное резюме
+end note
+
+@enduml

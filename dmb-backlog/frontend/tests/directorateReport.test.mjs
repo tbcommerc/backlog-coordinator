@@ -59,11 +59,24 @@ assert.match(source, /class="directorate-project-count">Задач: <strong>\$\{
 assert.match(source, /class="directorate-task-layout"/);
 assert.match(source, /class="directorate-task-info" aria-label="Информация о задаче"/);
 assert.match(source, /class="directorate-task-status"/);
+assert.match(source, /data-lucide="user"><\/i>Ответственный/);
+assert.doesNotMatch(source, /data-lucide="user-round"/);
+assert.doesNotMatch(source, /Выбранная команда/);
+assert.match(source, /class="directorate-filter-summary"/);
+assert.match(source, /class="directorate-control-panel"/);
+assert.match(source, /class="directorate-team-dot"/);
+assert.match(source, /Переключайтесь между статусами без перезагрузки страницы/);
+assert.match(source, /'data-directorate-reset': '', disabled: !active/);
 assert.match(css, /\.directorate-task-layout\s*\{[^}]*grid-template-columns:\s*minmax\(260px, \.52fr\) minmax\(0, 1fr\)/s);
 assert.match(css, /\.directorate-task-status\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column/s);
 assert.match(css, /\.directorate-status-stack\s*\{[^}]*flex:\s*1/s);
 assert.match(css, /\.directorate-task-meta dd\s*\{[^}]*font-size:\s*12px/s);
 assert.match(css, /\.directorate-page-header\s*\{[^}]*background:\s*var\(--bg-primary\)/s);
+assert.match(css, /\.directorate-team-picker\s*\{[^}]*grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)/s);
+assert.match(css, /\.directorate-team\s*\{[^}]*min-height:\s*39px/s);
+assert.match(css, /\.directorate-control-panel\s*\{[^}]*border-radius:\s*18px/s);
+assert.match(css, /\.directorate-filter-bar\s*\{[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\)/s);
+assert.match(css, /\.directorate-filters\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(180px, 230px\)\) auto/s);
 assert.doesNotMatch(css, /linear-gradient\(135deg, #302b63/);
 
 console.log('directorateReport tests passed');

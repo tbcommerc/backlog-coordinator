@@ -1,0 +1,70 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - generic: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды" [active]:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Бэклог команды
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button "U.тест":
+    - generic: UТ
+    - generic: U.тест
+- main:
+  - heading "Бэклог команды" [level=1]
+  - paragraph: Задачи и планирование вашей команды
+  - status:
+    - heading "Команда не назначена" [level=3]
+    - paragraph: Вы не привязаны к команде. Обратитесь к администратору.

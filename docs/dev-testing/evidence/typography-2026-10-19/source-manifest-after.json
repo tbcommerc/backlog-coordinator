@@ -1,0 +1,517 @@
+{
+  "verifiedOn": "2026-10-20",
+  "files": [
+    {
+      "path": "dmb-backlog/frontend/css/account-security.css",
+      "sha256": "f22f81127355746d6a9301814c101c77fa56cf381e0c3239024e88808487f906"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/agent-v2-details.css",
+      "sha256": "e9e97feca7b866d3c9cf6c42e89177e9b35d43e04f340290f9412b9588272ec0"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/agent-v2.css",
+      "sha256": "7bc5f64597a43117ef54956e5309a384f74546a1315899843a5b78ae2bcd7904"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/analytics-lt.css",
+      "sha256": "aa6622fa59e8f0382dcd69e93d0d3c1b19977fb224aa4e472ea33788b9e64b5b"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/backlog-assistant.css",
+      "sha256": "58595e58edd37458bda0fc1906205294dc1cd1bd2cb67d1b20391553e162535c"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/base.css",
+      "sha256": "61718e85a4b0f10e37b02df5a40ba6266ca4e8fcd154b324483a63d6a27a8a01"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/components.css",
+      "sha256": "c97406c472e907d606d20c968d2b67070f09b359ffc4766dd9500ca592cb229a"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/did-backlog.css",
+      "sha256": "99c198102f44777e7286a44ffc32c41652c9207bdeb7103f8cb080407d73f8a4"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/directorate-report.css",
+      "sha256": "57a8b861c0f40856f07d5c2abe045c6d3ce3b075379e5dbbe8afb28c29431ec4"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/feedback.css",
+      "sha256": "825c7e4872ac94fa5b8d7979661b67adc5a3d6f5f5d72c21ddecca17eaba45e9"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/fonts.css",
+      "sha256": "622bfe150547fd9c926b052c85c67555812f8584efca22bf95150caa3ee181b6"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/meeting-capture.css",
+      "sha256": "108eb66bc3dbd4bb4a07196758be9cc5532dd5abbfe163fd6b730fc0a1bfc216"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/modal-system.css",
+      "sha256": "13324356e164c02bb17ddd2170867817eb3e5e7567eb685edabfc15377f71a0e"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/pages.css",
+      "sha256": "7f3bb01b54469956be266083df200b37c8055beaabbbe110098199c1738d3897"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/responsive.css",
+      "sha256": "b0b4dd48038ce07e7e40e8956c7d903e9d2307b4d4e6bd4d398dc8d0076a75a0"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/tokens.css",
+      "sha256": "5cd4a496dc6fc97cedeca5a24def3afb01a34294ec2bdbf52fd2995f555b157b"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/adapters.css",
+      "sha256": "c7a5bfebf237cf5e5babd752bbffe251325a35d75e115720661fff16d8c289db"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/core.css",
+      "sha256": "c4907fb1edfc8caf2a7252acaa02531389aa433d470dcad89a6f99e6243c792d"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/data-display.css",
+      "sha256": "7f8a8deef96de4c402841694fc04f12ca803fec653d0256c3315ce48f2358bd5"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/foundations.css",
+      "sha256": "d7bbb968d36c6a2ded6a13ff2557baa89a2f346684f1525527898b6d6f513d5b"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/interactions.css",
+      "sha256": "5bd98e3b3791599e1cd5cb14b7dbf6d30da19fbd05af38c4e3df2529faf7a5b5"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/kit.css",
+      "sha256": "fe21ed05821c1414883c91b85734d7786449f409e5b7092cc2ddfcc502d06cf4"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/login.css",
+      "sha256": "cce6984fba57c7c37988fe1b4b5c0ee1b0714b425c32fc34b83172109e0c42a9"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/popover.css",
+      "sha256": "ea4312a24431063c11c1679b6aa6f86dd31dbba8e73bce666af17f0ddda73d85"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/sizing.css",
+      "sha256": "770ae2cbd818650b66ff7ceed5bb02ecce3d2a5fb8d48e386a626fad48e4a3ee"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/tables.css",
+      "sha256": "bba00e7f1ecead85157ea4f3a1b692c7cd95b6f363ebe196d9512206f7c0788b"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/ui/typography.css",
+      "sha256": "fa63ebea03f461cff1eae6675fc87e0589126d188fe370674c105c35a40e1bdf"
+    },
+    {
+      "path": "dmb-backlog/frontend/css/work-tasks.css",
+      "sha256": "04cb159b388ae475e311b79d1a3c40137b20d20ad6435884a1f733dd2f082cb5"
+    },
+    {
+      "path": "dmb-backlog/frontend/fonts/InterVariable.woff2",
+      "sha256": "693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3"
+    },
+    {
+      "path": "dmb-backlog/frontend/fonts/JetBrainsMono-Variable.ttf",
+      "sha256": "662a196d58f1183bf2d77428b6d5283fe3f45161ab021bea4036bc98e5cac016"
+    },
+    {
+      "path": "dmb-backlog/frontend/fonts/Unbounded-Variable.ttf",
+      "sha256": "323b511be380c8d474ef030686b71aedde501f8d9cd46da558b7c40454372c3f"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/adminLabels.js",
+      "sha256": "1921562ed6202a5f0353eba7f0a8e6116c9706352861c382ea4c310b84ad29b0"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/agent-v2/api.js",
+      "sha256": "e728b4158e5e539d9f270311e7abeaf3ea4db27ef8fab2f8528ca29a96986b93"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/agent-v2/documentReview.js",
+      "sha256": "0418e6dd78fa65516f94b36f7e8486331fdaed838f99eceb69d80f5e8c510e74"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/agent-v2/generation.js",
+      "sha256": "8710181629b7fb26b2e9dcf06c60cf90e7105a074e4af432ce79ab0375fe9e1e"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/agent-v2/journey.js",
+      "sha256": "b9906d8f38f0f8ac4816790e60f381a5ba1e30e70d47361d6a4454ab5cad4024"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/agent-v2/routes.js",
+      "sha256": "79c7f4c961c9afd4e2dafddc3c958271c2a127a3f2e81210972b481e74e76d9a"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/agent-v2/workspace.js",
+      "sha256": "4368e4756ee3b0ab300c3deafc3b9f0c7938455dc3ef386fda4513e3ad7ef914"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/api.js",
+      "sha256": "19e71879e4a9536fc48ecc9ef5692d4357c7b28b4bfc09ae8537eec56a07b2d0"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/app.js",
+      "sha256": "b111ee66f391fea8cc7ff0cf2a5b983530af691eb645462b8267ac8d5bc3941c"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/auth.js",
+      "sha256": "5e3522285f39340c5da6b49bb9c0fe2bd4cc333c63ba550b21bdf248589e036a"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/backlog-assistant/answer.js",
+      "sha256": "5dda39a750ec8982720b00b3c2a81a67d1a74e3b68b13a85b8c0a24a03956426"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/backlog-assistant/api.js",
+      "sha256": "b6043d728c0086d2d12c809cbad62a0275e938705e96f8574d9ca454267a3da7"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/backlog-assistant/context-help.js",
+      "sha256": "41c1af7bb66e8cd3120bdc655bbcdafdd3ea1b6fabb9c008aa338cbeaa34a12e"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/backlog-assistant/page.js",
+      "sha256": "adb0612ab405172ec6034530fc6fe5225dc8d962518dc561859114006bfcc551"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/backlog-assistant/panel.js",
+      "sha256": "4d08bec53c742478654e7f6a7f78f5dcfe9c055deb5d49460dc9f0c738a6a3a7"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/backlog-assistant/presentation.js",
+      "sha256": "e9430dc969adf61f145704e3eba10fb10f05e76d7eeaa388799c0172af8626ab"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/backlog-assistant/state.js",
+      "sha256": "48de68c41b2ffb5cca798d6101e15e38fb32bcf261125631b57e18d9f488ef8d"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/accountSecurity.js",
+      "sha256": "7ed45f96c87cd9a9a8abdf14bda0309269662e0ce71cc59841948684cf938d2f"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/admin.js",
+      "sha256": "adf1e3b78ded288d2864a90e339e411fd688e5f313de573ff9886b67787b3401"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/adminDictionaries.js",
+      "sha256": "9c9ffc476349212124ce53fd401b23577354756cb675cb11674169dd0c7352c4"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/adminReports.js",
+      "sha256": "20da5decffcae348d0fe2d186e3150dea30841d19b02703fa2d9d3c228499192"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/agentChat.js",
+      "sha256": "5e85478239d7dbf20b4089ae2c4f992d657d5a60609f66ef3b7775f0c63c5d4d"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/analytics.js",
+      "sha256": "44987bf39d9be07f123c8c3e5042297919432ccc0ee1b117bdfc8442ef7bd258"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/auditLog.js",
+      "sha256": "244e550a9739ae00408bcb0cf71e0cbbe504430de40bc13aa04b694838ae92f7"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/customerChat.js",
+      "sha256": "bb1f861d67444126b7b55a8305ca35ce878ea9649a9b77ea266241512b5b6484"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/customerPortal.js",
+      "sha256": "441f8350226cbf24ec1ac2917e66e8ef58996db83417a3411a2619877cd3c106"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/customerReferences.js",
+      "sha256": "6cf6d8a1d956ec41a0b7ad9d28e8f9214fa8ea6b4c7e572f96bfca86f1fd953d"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/customerReport.js",
+      "sha256": "2fc9c758610f2ae546b613235f3e30b181f3e7fd13d6b75ddde988115d543eb0"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/dashboard.js",
+      "sha256": "6537580fa4248ab0c71ed184283133d33406eb0bc9951de6eb20c3495c0ca92f"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/didBacklog.js",
+      "sha256": "ebfcd13dc1a70543155fb71cc68f509759b1cda08b1718781d94d408924d2184"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/directorateReport.js",
+      "sha256": "b5670931ec8d1b4261551c87368d5a384839200669cfb0d0166853184c2e8c30"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/expressEstimate.js",
+      "sha256": "61218e6654d6c2bebcf7607acb33bc6e57bbc602f8b7bf4945261de786854526"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/filterToolbar.js",
+      "sha256": "7a708853efe6faaa3db46465efefd9d08e1fd554a71f81f6373920965825c9b4"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/kanbanBoard.js",
+      "sha256": "a263f498eb03e8f67a2cad745019f95c9ddef1e76fe0cc6ea31fdbbab54baf6e"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/login.js",
+      "sha256": "939fbae0818ab02668ddf1ba0e8fce7be0e5f4f63e9af41405f357001936fe0a"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/meetingCapture.js",
+      "sha256": "7d35cde0afd09d4b74abf250e969ba525e38782291b10851af50b0011cfaaa7b"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/modal.js",
+      "sha256": "3cdd450836e3eb16294681c22c9d6bba638ffab6029103095db048290cf042a1"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/navbar.js",
+      "sha256": "4cf8f51df58c93cd4cab0c8765c042fc0cc331eb118c3f3b8032d36c45165bdd"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/notifications.js",
+      "sha256": "f4d9dc3e6058c33d5c5349535e5592e8d97eec3cc4ea883827c16126476deada"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/outboxDeadLetters.js",
+      "sha256": "ed75188d5b93a4bd98a04631ecd7b72e5d161532472bcf88114f062953e94fea"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/quarterlyGoalsUpdate.js",
+      "sha256": "08c38a6c1948b0610780b8c5450a9aa1e1a2dd4442caa4ed3c13459bbbabfc1a"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/quickEdit.js",
+      "sha256": "cd4e3ecc2f4259e0b969054d15d5720de64b5b86cf779563d25ef03dd85e50a3"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/quickFilters.js",
+      "sha256": "43d88a4103173789b085bf1c04d2ac9906c803cfbb4514a9b249dfee3012345a"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/reportingStatuses.js",
+      "sha256": "a27d995ba6e33025b5a8f3184e65e1fa5445773dc90f8f0c42c79fb01b4a43ed"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/reports.js",
+      "sha256": "9e2642eba5b3b8471212d902fe26c0255c67b0f9d4209affba5c32e550a4c718"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/requestPresentation.js",
+      "sha256": "463f47eddddb64d4e630564712a268518a296ea220fa9d56b800dc969e05b3fb"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/requirementReviews.js",
+      "sha256": "d19a3fe54c1752c0d7c88754f7c4ece8a116747459e56f4d9991040664ad7dbf"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/reviewPage.js",
+      "sha256": "73c1f1b5c5742cf0118ed98b62cb654a9a36c275b3fd73db91db0f7ef3b49a35"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/settings.js",
+      "sha256": "2da87bf39c6d80dc6897f23c4bfb124ccbbee6604f3403ae37943e38e5ea0654"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/sidebar.js",
+      "sha256": "1c94a8bdeb657e19afe98382d347ed56a3113bb7f91f5eea5eaa0ef1f2c8a29a"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/tableSelection.js",
+      "sha256": "111c680ec8c34c47b20b52b8eef47e9ebd9a78427e37f876487d08df21d8f8b9"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/tableUtils.js",
+      "sha256": "e7b4fd0360e34c7812f409aca5fa70d38f578215e9757304528e7c4d1c14b3a4"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/taskAttachments.js",
+      "sha256": "678e82b231c0709eaf312c71f1ac94f27472f3b90915a495bb2bb425d55ae557"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/taskColumns.js",
+      "sha256": "d64195a7bf5c3ba0c9132b78d568c21f7aac8d2cd93856b61ff45f34e9bc843b"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/taskComments.js",
+      "sha256": "468d1e908c6849c32e5abf06cfe54ca2477e23d30226af527fcf9babd1750d8e"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/taskTable.js",
+      "sha256": "0e410d5ef8075f80ad73bebee6eb130959651e21105933e0f861a30bb735cae6"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/teamBacklog.js",
+      "sha256": "d4ad7c832a6e27babba3eb35ab4cb0636741bed525bd2151c406bfa663a0c795"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/viewState.js",
+      "sha256": "8174c49f251d89d4a0b4b0b958371bd850eb75825d003550446a1534aba1cc12"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/workProjects.js",
+      "sha256": "46525626db07e08df2de6cdbb8f3d3ab93fddf4140afcc0149d7e48a08c07185"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/workRelations.js",
+      "sha256": "ffceaf5141f160184798a1256bf41fd3d0907682ba0a3048770ce14dfe877644"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/workReports.js",
+      "sha256": "e1e43268eacb64d2b2ec1dd94c16964ac4884d59a9c214c033d9f28e245c19f5"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/workResolution.js",
+      "sha256": "9a6ed90b2ea65bf4c51e2707d615a05483d3a842403671ce34d98aa54f8952ef"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/workTaskDrawer.js",
+      "sha256": "1b5b62d53183e8695be4a186a7f592175f070aa7a1cbf1a047999cadc5580c29"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/workTasks.js",
+      "sha256": "79795b35cd68758bea9686d3f4ccc0d470251fd5a1ea1576735779f2fcbf0d4f"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/components/workUi.js",
+      "sha256": "4835ae9840dd64753501400eadacc41fc71e54e225c7988d052e604da3b243aa"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/eventStream.js",
+      "sha256": "a66135a06e878c01999a809258a1bc40597a5cd269e100aafa2f6fcbf78a0875"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/htmlUtils.js",
+      "sha256": "8ca9595a84434934b830f40f9a205357eb528136890a35649c842c52a0fb2e84"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/localSpellcheck.js",
+      "sha256": "e7162fad54914961f9bf283bb3f918af3ff8ae6453ad31527d8178b8c52cfa1c"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/modalAccessibility.js",
+      "sha256": "ccf85cdfc2537f83b880164e861e36f04c28a0d72c699f8ac89d52122ec0acca"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/notificationStore.js",
+      "sha256": "5697ad98ced36c363273b3ec618268107e907b8a05005f50f9f1e8ab19a9d5a3"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/notificationUtils.js",
+      "sha256": "7c305b0455e97f09758baf3cf0339bbcb2e65a99a2d538be0b18fbf8cfd0dad4"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/router.js",
+      "sha256": "fda681e38032c778ec9b3afb73e8fc53b1294fc160f60d3a872213bc6c48ff5f"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/store.js",
+      "sha256": "c63ace11a06cb1e0ead49fc6859aeb1dcf909838b44db6a5e2e1f23d415d6841"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/taskCardMarkdown.js",
+      "sha256": "61e5616eb5dbd1305dbea06c18f286beaf50e93774046dd5f1e31a94e47bd347"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/taskCardPermissions.js",
+      "sha256": "89a0849179e365e1111653002296db4e141e620098d996a2a8c3b4d34fc1396e"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/taskCardRates.js",
+      "sha256": "11ee14127ba9cce3ee646f00842207acc536539d0be76820a05d343f994d77d8"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/taskCardRequestGate.js",
+      "sha256": "11cecafeb4260c0412e7b0db4ac417ccd46b8bff1f8316cd4c06c0c5e43d9254"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/taskCommentDraft.js",
+      "sha256": "cf1a8f5063ddb09b12f20e6a22696d647aa5e78a208d17a49961c9b28c9b9bb4"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/taskCsv.js",
+      "sha256": "57ad4f240ac15f622f30818b0f2d5aa3ea7063c5d7ca7648a6071aee84ecbab4"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/taskDisplay.js",
+      "sha256": "6baa43ce29da358580e2969e9ba398f98fb8649faf67e44c307c09429f516068"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/taskMetrics.js",
+      "sha256": "67abde0dd6b956079b7712e3a5c9cae8199bb2e3ea5a87a594957f0b09282806"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/taskPublicId.js",
+      "sha256": "68b3fdb57e1f057e17abdf1908e4763595c62809a5f234c97b7e31fa329001da"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/theme.js",
+      "sha256": "3a8342322c7aa5b0ecc2cb988d4e4e3068a82e5b75be7c1e2c7adc208cad6760"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/actionMenu.js",
+      "sha256": "b3d72ea72c44f637f0e09ccf9a93d56d39ef7dff9e29540d091cfd6d4f6683cb"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/charts.js",
+      "sha256": "456e61cab19d1b02d5579ecbd77431cd8648f69e84125f45aa2cbfc0fbfa165d"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/controls.js",
+      "sha256": "e63c537824729c7dcbc3ff204d4aa8070f40bb8f51c15fda7f9275fe5c116b5d"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/dataDisplay.js",
+      "sha256": "8e8517a9cec3a7701524fb9ab37543726d9644a5de6434eef272956077e41b93"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/index.js",
+      "sha256": "5519c2a82bcd4e9484db2250c71aec0962b372442ab8a45a6cf2b1f9bb54c9c1"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/popover.js",
+      "sha256": "8f13e19053020b03772d069d9b4ae6d71e7af515c1d5fe6983ededc84f79d8f1"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/primitives.js",
+      "sha256": "4a85bd84d9c7fba7b7189589e39181f84f604405f01e6bc5250e55686fb8812d"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/selectionList.js",
+      "sha256": "c169f610d0b83a97c6f3eabdb02b8df18d4a4638221279dcfe3db7483b3af481"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/switch.js",
+      "sha256": "507aaac32c3bdfc67b2e19a38e9477719be0073d2e618db359431e31f5bcee31"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/ui/tooltip.js",
+      "sha256": "32b36f59e19e012d9fd35036f9341b3061e4a3cf6d6729c8ec9e7364af4b5044"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/uiFeedback.js",
+      "sha256": "ff37c1c5082d2b19ed6d9cd1bd01b741f29c020127e797db359e572264f85897"
+    },
+    {
+      "path": "dmb-backlog/frontend/js/urlUtils.js",
+      "sha256": "b2d0640f3f83ffe55fb7b10217568ab26fc274ff22e7d59d5d4c216e5991855b"
+    },
+    {
+      "path": "dmb-backlog/frontend/ui-catalog/catalog.css",
+      "sha256": "3a3ee8d3e08cb4b63cfbbc318a61c3c870a978be28f02edf6ea9f84481827998"
+    },
+    {
+      "path": "dmb-backlog/frontend/ui-catalog/catalog.js",
+      "sha256": "5423717ce66119dee447fb69ef3a539d959aec1a9a073a6fdf0ab34e66e9e2aa"
+    }
+  ]
+}

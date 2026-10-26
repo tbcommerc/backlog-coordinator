@@ -1,0 +1,38 @@
+[
+  {
+    "method": "PUT",
+    "path": "/api/v1/notifications/read",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/notifications/unread",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/notifications/read-all",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/notifications/preferences",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/notifications/2147483647",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/notifications/2147483647/restore",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  }
+]

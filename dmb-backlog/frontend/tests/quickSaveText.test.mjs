@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {quickSaveConfirmation} from '../js/taskDisplay.js';
+test('quick save uses correct Russian number forms including teens',()=>{for(const n of [1,21,101])assert.equal(quickSaveConfirmation(n),'Будет сохранено '+n+' изменение. Продолжить?');for(const n of [2,3,4,22,24])assert.equal(quickSaveConfirmation(n),'Будут сохранены '+n+' изменения. Продолжить?');for(const n of [0,5,11,12,14,20,25,111,114])assert.equal(quickSaveConfirmation(n),'Будут сохранены '+n+' изменений. Продолжить?');});

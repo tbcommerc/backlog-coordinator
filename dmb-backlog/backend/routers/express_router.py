@@ -13,15 +13,140 @@ from schemas import (
     StoryCreate, StoryUpdate, StoryResponse, StoryListResponse,
     SortRequest,
     TaskVersionRequest, TaskVersionsRequest,
-    QuickEstimateTaskResponse, QuickEstimateResponse,
+    QuickEstimateTaskResponse, QuickEstimateResponse, QuickEstimateReadiness,
     TaskResponse, SuccessResponse
 )
 from auth import get_current_user, check_permission, authorize_task
 from services.task_metrics import calculate_cost_value_ratio
+from services.pip_decisions import load_latest_pip_decisions
 
 router = APIRouter()
 
 EFFORT_FIELDS = ['effort_designee', 'effort_analytics', 'effort_be', 'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery']
+
+EXPRESS_IMPORT_ELIGIBLE_STATUS_NAMES = (
+    "НОВАЯ ЗАДАЧА",
+    "НАЗНАЧЕНА КОМАНДА",
+    "СБОР ТРЕБОВАНИЙ",
+    "ПРОВЕРКА ТРЕБОВАНИЙ",
+    "УТОЧНЕНИЕ ТРЕБОВАНИЙ",
+)
+_EXPRESS_IMPORT_ELIGIBLE_STATUS_KEYS = frozenset(
+    name.casefold() for name in EXPRESS_IMPORT_ELIGIBLE_STATUS_NAMES
+)
+
+
+def _is_express_import_status_eligible(status_name: Optional[str]) -> bool:
+    """Return whether a task may enter express estimation through the normal flow."""
+    return bool(
+        status_name
+        and status_name.strip().casefold() in _EXPRESS_IMPORT_ELIGIBLE_STATUS_KEYS
+    )
+
+
+def _effort_total(item) -> float:
+    return sum(float(getattr(item, field, None) or 0) for field in EFFORT_FIELDS)
+
+
+def _effort_has_negative_value(item) -> bool:
+    return any(float(getattr(item, field, None) or 0) < 0 for field in EFFORT_FIELDS)
+
+
+def _build_quick_estimate_readiness(
+    tasks: list[Task],
+    epic_map: dict[int, list[Epic]],
+) -> QuickEstimateReadiness:
+    """Describe whether every terminal estimate item has a positive effort value."""
+    blocking_tasks = []
+
+    for task in tasks:
+        task_blockers = []
+        epics = epic_map.get(task.id, [])
+        if not epics:
+            task_blockers.append({
+                "code": "missing_decomposition",
+                "entity_type": "task",
+                "entity_id": task.id,
+                "entity_title": task.title,
+                "message": "Добавьте хотя бы один эпик.",
+            })
+
+        for epic in epics:
+            stories = getattr(epic, "_stories", [])
+            terminal_items = [("story", story) for story in stories] if stories else [("epic", epic)]
+            for entity_type, item in terminal_items:
+                entity_label = "истории" if entity_type == "story" else "эпика"
+                if _effort_has_negative_value(item):
+                    task_blockers.append({
+                        "code": "invalid_effort",
+                        "entity_type": entity_type,
+                        "entity_id": item.id,
+                        "entity_title": item.title,
+                        "message": f"Исправьте отрицательные трудозатраты {entity_label} «{item.title}».",
+                    })
+                elif _effort_total(item) <= 0:
+                    task_blockers.append({
+                        "code": "missing_effort",
+                        "entity_type": entity_type,
+                        "entity_id": item.id,
+                        "entity_title": item.title,
+                        "message": f"Укажите трудозатраты {entity_label} «{item.title}».",
+                    })
+
+        if task_blockers:
+            blocking_tasks.append({
+                "task_id": task.id,
+                "public_id": task.public_id,
+                "title": task.title,
+                "blockers": task_blockers,
+            })
+
+    return QuickEstimateReadiness(
+        ready=bool(tasks) and not blocking_tasks,
+        total_tasks=len(tasks),
+        ready_tasks=len(tasks) - len(blocking_tasks),
+        total_blockers=sum(len(item["blockers"]) for item in blocking_tasks),
+        blocking_tasks=blocking_tasks,
+    )
+
+
+def _assert_quick_estimate_ready(readiness: QuickEstimateReadiness) -> None:
+    if readiness.ready:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "quick_estimate_incomplete",
+            "message": "Экспресс-оценка не готова к завершению.",
+            **readiness.model_dump(),
+        },
+    )
+
+
+def _load_quick_estimate_structure(
+    db: Session,
+    tasks: list[Task],
+) -> dict[int, list[Epic]]:
+    if not tasks:
+        return {}
+
+    task_ids = [task.id for task in tasks]
+    epics = db.query(Epic).filter(Epic.task_id.in_(task_ids)).order_by(Epic.sort_order, Epic.id).all()
+    epic_map: dict[int, list[Epic]] = {}
+    for epic in epics:
+        epic_map.setdefault(epic.task_id, []).append(epic)
+
+    epic_ids = [epic.id for epic in epics]
+    stories = []
+    if epic_ids:
+        stories = db.query(Story).filter(Story.epic_id.in_(epic_ids)).order_by(Story.sort_order, Story.id).all()
+    story_map: dict[int, list[Story]] = {}
+    for story in stories:
+        story_map.setdefault(story.epic_id, []).append(story)
+    for epic in epics:
+        epic._stories = story_map.get(epic.id, [])
+
+    return epic_map
 
 
 def _assert_task_version(task: Task, submitted_version: int) -> None:
@@ -107,7 +232,11 @@ def story_to_response(story: Story) -> StoryResponse:
     )
 
 
-def task_to_quick_estimate_response(task: Task, epics: list[Epic]) -> QuickEstimateTaskResponse:
+def task_to_quick_estimate_response(
+    task: Task,
+    epics: list[Epic],
+    pip_decision_context: Optional[dict] = None,
+) -> QuickEstimateTaskResponse:
     from schemas import TaskResponse
     # Build base TaskResponse
     cv = calculate_cost_value_ratio(task.effort_rub, task.financial_effect)
@@ -164,6 +293,7 @@ def task_to_quick_estimate_response(task: Task, epics: list[Epic]) -> QuickEstim
         deadline_name=task.deadline.name if task.deadline else None,
         owner_name=task.owner.name if task.owner else None,
         business_customer_name=task.business_customer_rel.name if task.business_customer_rel else None,
+        latest_pip_decision=pip_decision_context,
         epics=[epic_to_response(e) for e in epics],
     )
 
@@ -192,37 +322,25 @@ def get_quick_estimate(
         Task.status_id == status_obj.id
     ).order_by(Task.id.desc()).all()
 
-    if not tasks:
-        return QuickEstimateResponse(tasks=[], total=0)
-
-    task_ids = [t.id for t in tasks]
-
-    # Get all epics for these tasks
-    epics = db.query(Epic).filter(Epic.task_id.in_(task_ids)).order_by(Epic.sort_order, Epic.id).all()
-    epic_map: dict[int, list[Epic]] = {}
-    for e in epics:
-        epic_map.setdefault(e.task_id, []).append(e)
-
-    # Get all stories for these epics
-    epic_ids = [e.id for e in epics]
-    stories = []
-    if epic_ids:
-        stories = db.query(Story).filter(Story.epic_id.in_(epic_ids)).order_by(Story.sort_order, Story.id).all()
-    story_map: dict[int, list[Story]] = {}
-    for s in stories:
-        story_map.setdefault(s.epic_id, []).append(s)
-
-    # Attach stories to epics
-    for e in epics:
-        e._stories = story_map.get(e.id, [])
+    epic_map = _load_quick_estimate_structure(db, tasks)
+    readiness = _build_quick_estimate_readiness(tasks, epic_map)
+    pip_decisions = load_latest_pip_decisions(db, (task.id for task in tasks))
 
     # Build response
     result_tasks = []
     for t in tasks:
         task_epics = epic_map.get(t.id, [])
-        result_tasks.append(task_to_quick_estimate_response(t, task_epics))
+        result_tasks.append(task_to_quick_estimate_response(
+            t,
+            task_epics,
+            pip_decisions.get(t.id),
+        ))
 
-    return QuickEstimateResponse(tasks=result_tasks, total=len(result_tasks))
+    return QuickEstimateResponse(
+        tasks=result_tasks,
+        total=len(result_tasks),
+        readiness=readiness,
+    )
 
 
 # ==================== EPICS ====================
@@ -460,6 +578,10 @@ def complete_quick_estimate(
             detail={"message": "Часть задач изменена другими пользователями.", "conflicts": conflicts},
         )
 
+    epic_map = _load_quick_estimate_structure(db, tasks)
+    readiness = _build_quick_estimate_readiness(tasks, epic_map)
+    _assert_quick_estimate_ready(readiness)
+
     try:
         for task in tasks:
             db.add(TaskHistory(
@@ -639,18 +761,24 @@ def get_backlog_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get team tasks NOT in ЭКСПРЕСС-ОЦЕНКА status — for importing into express estimation."""
+    """Get team tasks from preparation stages that may enter express estimation."""
     team_id = current_user.team_id
     if not team_id:
         raise HTTPException(status_code=400, detail="User has no team assigned")
 
-    qe_status = db.query(TaskStatus).filter(TaskStatus.name == "ЭКСПРЕСС-ОЦЕНКА").first()
-    qe_status_id = qe_status.id if qe_status else -1
+    eligible_status_ids = [
+        status_id
+        for (status_id,) in db.query(TaskStatus.id).filter(
+            TaskStatus.name.in_(EXPRESS_IMPORT_ELIGIBLE_STATUS_NAMES)
+        ).all()
+    ]
+    if not eligible_status_ids:
+        return {"items": [], "total": 0}
 
     query = db.query(Task).filter(
         Task.is_deleted == False,
         Task.team_id == team_id,
-        Task.status_id != qe_status_id
+        Task.status_id.in_(eligible_status_ids),
     )
 
     if q:
@@ -669,12 +797,31 @@ def import_task_to_estimate(
     current_user: User = Depends(get_current_user)
 ):
     """Move a task from backlog into express estimation by changing its status."""
-    task = db.query(Task).filter(Task.id == task_id, Task.is_deleted == False).first()
+    team_id = current_user.team_id
+    if not team_id:
+        raise HTTPException(status_code=400, detail="User has no team assigned")
+
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.is_deleted == False,
+        Task.team_id == team_id,
+    ).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
     authorize_task("edit", task, current_user)
     _assert_task_version(task, payload.version)
+
+    current_status_name = task.status.name if task.status else ""
+    if not _is_express_import_status_eligible(current_status_name):
+        display_status = current_status_name or "не указан"
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Задачу в статусе «{display_status}» нельзя передать на экспресс-оценку. "
+                "Допустимы только этапы подготовки требований."
+            ),
+        )
 
     qe_status = db.query(TaskStatus).filter(TaskStatus.name == "ЭКСПРЕСС-ОЦЕНКА").first()
     if not qe_status:

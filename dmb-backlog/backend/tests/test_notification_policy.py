@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import notifications
-from models import EventOutbox, Notification, Role, Task, Team, User, UserNotificationPreference
+from models import Deadline, EventOutbox, Notification, ReportingMeeting, Role, Task, TaskStatus, TaskType, Team, User, UserNotificationPreference
 
 
 def _role(db, name="Участник команды", *, global_read=False):
@@ -215,6 +215,7 @@ def test_feed_and_summary_hide_legacy_categories(db):
         Notification(user_id=recipient.id, type="task.comment.added", category="comment", title="Готово на 100%", message="Готово на 100%"),
         Notification(user_id=recipient.id, type="task.assigned", category="assignment", title="Закрыто", message="Закрыто", is_resolved=True),
         Notification(user_id=recipient.id, type="risk", category="risk", title="Legacy", message="Legacy"),
+        Notification(user_id=recipient.id, type="task.pip_decision.accept", category="decision", title="PI legacy", message="PI legacy"),
     ])
     db.flush()
 
@@ -235,10 +236,59 @@ def test_feed_and_summary_hide_legacy_categories(db):
     reporting = db.query(Notification).filter(Notification.category == "reporting").one()
     assert notifications.dismiss_notification(db, reporting.id, recipient.id) == "mandatory_action"
     assert reporting.is_dismissed is False
+    read_result = notifications.mark_read(db, [reporting.id], recipient.id)
+    db.refresh(reporting)
+    assert read_result == {"changed_ids": [], "blocked_ids": [reporting.id]}
+    assert reporting.is_read is False
+    assert reporting.read_at is None
     changed_ids = notifications.mark_all_read(db, recipient.id)
-    assert len(changed_ids) == 3
+    assert len(changed_ids) == 2
+    db.refresh(reporting)
+    assert reporting.is_read is False
     notifications.mark_unread(db, changed_ids, recipient.id)
     assert notifications.get_unread_count(db, recipient.id) == 3
+    db.rollback()
+
+
+def test_held_meeting_notification_cannot_be_restored(db):
+    role = _role(db)
+    recipient = _user(db, "held-meeting@example.test", "Участник встречи", role)
+    meeting = ReportingMeeting(
+        kind="directorate",
+        occurrence_key="held-restore-guard",
+        scheduled_date=date.today(),
+        state="held",
+    )
+    db.add(meeting)
+    db.flush()
+    notification = Notification(
+        user_id=recipient.id,
+        type="meeting.status_update.required",
+        category="reporting",
+        title="Статусы состоявшейся встречи",
+        message="Статусы состоявшейся встречи",
+        group_key=f"reporting_fill_{meeting.id}",
+        is_resolved=True,
+        is_read=True,
+        is_dismissed=True,
+    )
+    db.add(notification)
+    db.flush()
+
+    event_count = db.query(EventOutbox).filter(
+        EventOutbox.audience_user_id == recipient.id,
+        EventOutbox.event_type == "notification.state.changed",
+    ).count()
+    assert notifications.restore_notification(db, notification.id, recipient.id) == "terminal"
+    db.refresh(notification)
+    assert notification.is_dismissed is True
+    assert notifications.mark_unread(db, [notification.id], recipient.id) == []
+    db.refresh(notification)
+    assert notification.is_read is True
+    assert db.query(EventOutbox).filter(
+        EventOutbox.audience_user_id == recipient.id,
+        EventOutbox.event_type == "notification.state.changed",
+    ).count() == event_count
     db.rollback()
 
 
@@ -251,6 +301,11 @@ def test_scheduler_only_delegates_to_reporting_reminders(monkeypatch):
         "check_reporting_meeting_notifications",
         lambda db: calls.append(db),
     )
+    monkeypatch.setattr(
+        notifications,
+        "check_quarterly_goal_notifications",
+        lambda db: calls.append(("quarterly", db)),
+    )
 
     class DB:
         def __init__(self):
@@ -261,8 +316,47 @@ def test_scheduler_only_delegates_to_reporting_reminders(monkeypatch):
 
     db = DB()
     notifications.check_scheduled_notifications(db)
-    assert calls == [db]
+    assert calls == [db, ("quarterly", db)]
     assert db.commits == 1
+
+
+def test_quarterly_progress_reminder_opens_update_workspace_and_resolves(db):
+    today = date(2026, 9, 9)
+    role = _role(db, "Участник команды")
+    team = Team(name="Команда квартальной цели")
+    db.add(team)
+    db.flush()
+    recipient = _user(db, "quarterly@example.test", "Участник", role, team)
+    team.po_id = recipient.id
+    deadline = Deadline(code="TEST_3Q_2026", name="3Q 2026")
+    task_type = TaskType(code="quarterly_goal", name="КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ")
+    status = TaskStatus(code="in_progress", name="В работе")
+    db.add_all([deadline, task_type, status])
+    db.flush()
+    task = Task(
+        title="Цель без подтверждённого факта",
+        team_id=team.id,
+        deadline_id=deadline.id,
+        task_type_id=task_type.id,
+        status_id=status.id,
+        progress=25,
+    )
+    db.add(task)
+    db.commit()
+
+    notifications.check_quarterly_goal_notifications(db, today=today)
+    db.commit()
+    reminder = db.query(Notification).filter(Notification.user_id == recipient.id).one()
+    assert reminder.type == "quarterly.progress_update.required"
+    assert reminder.action_url == "#/quarterly-goals-update?source=notification"
+    assert notifications.notification_target(reminder)["kind"] == "quarterly_goals_update"
+
+    task.progress_updated_at = datetime.now(timezone.utc)
+    db.commit()
+    notifications.check_quarterly_goal_notifications(db, today=today)
+    db.commit()
+    db.refresh(reminder)
+    assert reminder.is_resolved is True
 
 
 def test_legacy_generators_and_manual_resolve_are_absent():
@@ -289,9 +383,9 @@ def test_attention_summary_only_counts_reporting():
     requires_action = block[block.index("requires_action ="):block.index("today_start")]
     assert 'Notification.category == "reporting"' in requires_action
     assert "Notification.is_read == False" not in requires_action
-    assert "action_rank = case(" in source
-    assert "importance_rank = case(" in source
     assert "unread_rank = case(" in source
+    assert "action_rank = case(" not in source
+    assert "importance_rank = case(" not in source
 
 
 def test_feed_rechecks_current_task_scope_and_escapes_literal_search():
@@ -315,6 +409,7 @@ def test_action_url_is_allowlisted_and_exposed_as_typed_target():
         "tab": "com",
         "comment_id": None,
         "meeting_id": None,
+        "request_id": None,
     }
     assert notifications.normalize_notification_action_url(
         "reporting", None, "#/reporting-statuses?meeting_id=44"
@@ -325,6 +420,9 @@ def test_action_url_is_allowlisted_and_exposed_as_typed_target():
     assert notifications.normalize_notification_action_url(
         "reporting", 12, None
     ) == "#/reporting-statuses?source=notification"
+    assert notifications.normalize_notification_action_url(
+        "reporting", None, "#/quarterly-goals-update"
+    ) == "#/quarterly-goals-update?source=notification"
     legacy_reporting = Notification(
         task_id=12,
         category="reporting",
@@ -337,6 +435,7 @@ def test_action_url_is_allowlisted_and_exposed_as_typed_target():
         "tab": None,
         "comment_id": None,
         "meeting_id": None,
+        "request_id": None,
     }
     assert notifications.normalize_notification_action_url(
         "assignment", 12, "#/admin"
@@ -346,6 +445,14 @@ def test_action_url_is_allowlisted_and_exposed_as_typed_target():
 def test_snapshot_uses_one_revision_for_summary_and_surface_slices(db):
     role = _role(db, "Snapshot role", global_read=True)
     recipient = _user(db, "snapshot@example.test", "Snapshot User", role)
+    meeting = ReportingMeeting(
+        kind="directorate",
+        occurrence_key="notification-deadline-snapshot",
+        scheduled_date=date.today() + timedelta(days=3),
+        state="planned",
+    )
+    db.add(meeting)
+    db.flush()
     db.add_all([
         Notification(
             user_id=recipient.id,
@@ -353,7 +460,7 @@ def test_snapshot_uses_one_revision_for_summary_and_surface_slices(db):
             category="reporting",
             title="Заполните статусы",
             message="Заполните статусы",
-            action_url="#/reporting-statuses?meeting_id=42",
+            action_url=f"#/reporting-statuses?meeting_id={meeting.id}",
         ),
         Notification(
             user_id=recipient.id,
@@ -379,16 +486,18 @@ def test_snapshot_uses_one_revision_for_summary_and_surface_slices(db):
     assert snapshot["recent_total"] == 2
     assert snapshot["action_total"] == 1
     assert [item.category for item in snapshot["action_items"]] == ["reporting"]
-    from routers.notifications_router import _notification_response
+    from routers.notifications_router import _notification_responses
 
-    response = _notification_response(snapshot["action_items"][0])
+    response = _notification_responses(db, snapshot["action_items"])[0]
     assert response.target.kind == "reporting_statuses"
-    assert response.target.meeting_id == 42
-    assert response.action_url == "#/reporting-statuses?source=notification&meeting_id=42"
+    assert response.target.meeting_id == meeting.id
+    assert response.action_url == f"#/reporting-statuses?source=notification&meeting_id={meeting.id}"
+    assert response.deadline == meeting.scheduled_date
+    assert response.days_remaining == 3
     db.rollback()
 
 
-def test_notifications_rank_action_then_importance_then_unread_and_recency(db):
+def test_notifications_rank_unread_first_then_by_recency(db):
     role = _role(db, "Ranking role", global_read=True)
     recipient = _user(db, "ranking@example.test", "Ranking User", role)
     now = datetime.utcnow()
@@ -401,7 +510,7 @@ def test_notifications_rank_action_then_importance_then_unread_and_recency(db):
             message="Unread medium",
             importance="medium",
             is_read=False,
-            created_at=now,
+            created_at=now - timedelta(minutes=5),
         ),
         Notification(
             user_id=recipient.id,
@@ -421,7 +530,7 @@ def test_notifications_rank_action_then_importance_then_unread_and_recency(db):
             message="Action high",
             importance="high",
             is_read=True,
-            created_at=now,
+            created_at=now - timedelta(minutes=3),
         ),
         Notification(
             user_id=recipient.id,
@@ -431,7 +540,7 @@ def test_notifications_rank_action_then_importance_then_unread_and_recency(db):
             message="Read medium",
             importance="medium",
             is_read=True,
-            created_at=now,
+            created_at=now - timedelta(minutes=1),
         ),
         Notification(
             user_id=recipient.id,
@@ -441,7 +550,7 @@ def test_notifications_rank_action_then_importance_then_unread_and_recency(db):
             message="Unread low",
             importance="low",
             is_read=False,
-            created_at=now,
+            created_at=now - timedelta(minutes=2),
         ),
         Notification(
             user_id=recipient.id,
@@ -451,7 +560,7 @@ def test_notifications_rank_action_then_importance_then_unread_and_recency(db):
             message="Read low",
             importance="low",
             is_read=True,
-            created_at=now,
+            created_at=now - timedelta(minutes=4),
         ),
     ])
     db.flush()
@@ -462,7 +571,7 @@ def test_notifications_rank_action_then_importance_then_unread_and_recency(db):
 
     assert total == 6
     assert [item.title for item in items] == [
-        "Action high", "Read high", "Unread medium", "Read medium", "Unread low",
+        "Unread low", "Unread medium", "Read high", "Read medium", "Action high",
     ]
     db.rollback()
 

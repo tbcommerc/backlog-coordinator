@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { renderNotifications } from '../js/components/notifications.js';
 
 const source = fs.readFileSync(new URL('../js/components/notifications.js', import.meta.url), 'utf8');
+const markup = renderNotifications();
 
 assert.match(source, /closest\('\.notification-card'\)/, 'actions must target the current notification card');
 assert.doesNotMatch(source, /closest\('\.notification-item'\)/, 'legacy card selector must not return');
@@ -9,39 +11,48 @@ assert.doesNotMatch(source, /\/notifications\/\$\{id\}\/resolve/, 'manual resolv
 assert.doesNotMatch(source, /data-dismiss|\/notifications\/\$\{id\}\/restore|app\.api\.delete/, 'manual dismiss action must stay out of the notification center');
 assert.match(source, /requires_action/, 'requires-action filter must be connected to the API');
 assert.match(source, /unread_only/, 'unread filter must be connected to the API');
-assert.match(source, /data-filter-category=/, 'category filter must use direct quick-filter chips');
-assert.match(source, /data-filter-importance=/, 'importance filter must use direct quick-filter chips');
+assert.match(markup, /data-filter-category=/, 'category filter must use direct quick-filter chips');
+assert.match(markup, /data-filter-importance=/, 'importance filter must use direct quick-filter chips');
 assert.doesNotMatch(source, /id="notification-category"|id="notification-importance"/, 'category and importance selects must not return');
-assert.match(source, /aria-pressed=/, 'state filters must expose their selected state');
+assert.match(markup, /aria-pressed=/, 'state filters must expose their selected state');
 assert.match(source, /class="notification-filter-group notification-state-filter" role="group"/, 'state filter must use the same labeled group pattern as category and importance');
-assert.match(source, /class="filter-chip notification-filter-chip active"[^>]*data-view="all"/, 'state filter must reuse the shared filter-chip pattern');
+assert.match(markup, /class="quick-filter-btn ui-filter-chip notification-filter-chip active"[^>]*data-view="all"[^>]*aria-pressed="true"/, 'state filter must reuse filterChip with selected state');
 assert.doesNotMatch(source, /notification-view-switch|class="toggle-btn/, 'notification filters must not mix segmented and chip patterns');
-assert.match(source, /class="btn btn-secondary btn-sm" id="notification-reset"/, 'filter reset must use the same secondary action style as backlog and reports');
-assert.match(source, /id="notification-reset" disabled/, 'filter reset must keep its place while no filters are active');
+assert.match(markup, /class="btn btn-secondary btn-sm ui-btn" id="notification-reset"/, 'filter reset must use the same secondary action style as backlog and reports');
+assert.match(markup, /id="notification-reset" disabled/, 'filter reset must keep its place while no filters are active');
 assert.doesNotMatch(source, /notification-search|id="notification-search"|set\('search'|get\('search'/, 'notification search must stay out of the center and route state');
 assert.doesNotMatch(source, /data-stat-view/, 'summary must not duplicate the primary state filter');
+assert.match(markup, /ui-page-header notification-hero/, 'notification title must use the common page header');
 assert.match(source, /<time datetime=/, 'notification time must be machine-readable');
 assert.match(source, /notification-time-group/, 'notifications must be grouped by time');
 assert.match(source, /notification-unread-dot/, 'unread state must have its own visual marker');
 assert.match(source, /notification-new-label">Новое/, 'unread state must have an explicit text label');
+assert.match(source, /notificationDeadlineMeta\(n\)/, 'reporting reminders must derive deadline presentation from structured API fields');
+assert.match(source, /Срок \$\{escapeHtml\(deadline\.dateLabel\)\}/, 'notification cards must show the exact meeting deadline');
+assert.match(source, /escapeHtml\(deadline\.daysLabel\)/, 'notification cards must show the remaining-day indicator');
 assert.match(source, /\['critical','high'\]\.includes\(n\.importance\)/, 'only elevated priorities must receive a visible badge');
 assert.match(source, /<h3>\$\{escapeHtml\(n\.title\)\}<\/h3>\$\{unreadBadge\}\$\{priorityBadge\}/, 'state and elevated priority badges must be placed next to the notification title');
 assert.doesNotMatch(source, /notification-card-meta[^\n]*notification-priority/, 'priority badge must not remain in secondary metadata');
-assert.match(source, /class="notification-icon-btn notification-read-btn" data-mark-read aria-label="Отметить прочитанным" title="Отметить прочитанным"/, 'unread notification must expose a direct and understandable read action');
-assert.match(source, /class="notification-icon-btn notification-unread-btn" data-mark-unread aria-label="Отметить непрочитанным" title="Отметить непрочитанным"/, 'read notification must expose the reverse action with a matching envelope icon');
+// Accessible names, square geometry, read/unread transitions and rollback are
+// verified against real DOM in uiKitRegistries.spec.mjs.
+assert.match(source, /n\.is_resolved \|\| readLocked \? '' : isUnread/, 'pending reporting notifications must not expose a manual read action');
+assert.match(source, /card\.dataset\.readLocked !== 'true'/, 'opening a pending reporting notification must not mark it as read');
 assert.match(source, /markUnread\?\'\/notifications\/unread\':\'\/notifications\/read\'/, 'read-state buttons must call the matching API operation');
 assert.match(source, /setCardReadState\(card, !markUnread\)/, 'read-state changes must be rendered optimistically without waiting for a full feed reload');
 assert.match(source, /setCardReadState\(card, markUnread\)/, 'failed read-state changes must roll the card back');
 assert.doesNotMatch(source, /app\.api\.put\(markUnread\?[^\n]+\n\s*await reload\(true\)/, 'a read-state click must not block on a full feed reload');
+assert.match(source, /Promise\.allSettled\(\[badge\(app\),summary\(app\)\]\);\s*reload\(true\);/, 'successful read-state changes must refresh the server-sorted feed in the background');
 assert.match(source, /window\.lucide\?\.createIcons\(\);await Promise\.allSettled/, 'new feed icons must render before background summary refreshes finish');
 assert.doesNotMatch(source, /notification-more|more-horizontal/, 'ambiguous secondary actions menu must stay out of notification cards');
 assert.doesNotMatch(source, /Больше не требует внимания/, 'manual resolve wording must not return');
-assert.match(source, /\['assignment','Назначения','user-plus'\],\['reporting','Встречи','clipboard-check'\],\['mention','Упоминания','at-sign'\],\['comment','Комментарии','message-circle'\],\['request','Запросы','clipboard-check'\]/, 'category chips must contain exactly the approved scenarios and icons');
+assert.deepEqual([...markup.matchAll(/data-filter-category="([^"]+)"/g)].map(match => match[1]), ['assignment','reporting','meeting_capture','mention','comment','request'], 'rendered category chips expose all current scenarios in order');
 assert.match(source, /category=category===btn\.dataset\.filterCategory\?'':btn\.dataset\.filterCategory/, 'clicking an active category chip must clear it');
 assert.match(source, /importance=importance===btn\.dataset\.filterImportance\?'':btn\.dataset\.filterImportance/, 'clicking an active importance chip must clear it');
 assert.doesNotMatch(source, /\['(?:risk|deadline|stale|attrs|status_change|system)'/, 'legacy categories must stay out of the center');
 assert.match(source, /openNotificationTarget/, 'exact notification deep links must use the shared target resolver');
 assert.match(source, /dmb:notification-changed/, 'the open feed must react to live invalidation');
+assert.match(source, /action==='removed'&&Array\.isArray\(ids\)/, 'terminal meeting reminders must be removed immediately after a live event');
+assert.match(source, /removeVisibleNotifications\(ids\)/, 'live removal must remove held-meeting reminder cards before reloading the feed');
 assert.match(source, /\/notifications\/unread/, 'read state must be reversible');
 assert.match(source, /notifications:return-scroll/, 'return navigation must restore the feed position');
 assert.match(source, /#\/settings\?section=notifications/, 'settings action must open notification preferences directly');

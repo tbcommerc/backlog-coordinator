@@ -1,0 +1,116 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - navigation:
+    - link:
+      - /url: "#/dashboard"
+    - link:
+      - /url: "#/backlog"
+    - link:
+      - /url: "#/team-backlog"
+    - link:
+      - /url: "#/express-estimate"
+    - link:
+      - /url: "#/kanban"
+    - link:
+      - /url: "#/reports"
+    - link:
+      - /url: "#/analytics/tribe"
+    - link:
+      - /url: "#/analytics/po-pl"
+    - link:
+      - /url: "#/analytics/it"
+    - link:
+      - /url: "#/customer"
+    - link:
+      - /url: "#/customer/create"
+    - link:
+      - /url: "#/agent-v2"
+    - link:
+      - /url: "#/meeting-capture"
+    - link:
+      - /url: "#/review"
+    - link:
+      - /url: "#/notifications"
+      - generic: "10"
+    - link:
+      - /url: "#/settings"
+    - link:
+      - /url: "#/reporting-meetings"
+    - link:
+      - /url: "#/admin"
+    - link:
+      - /url: "#/audit-log"
+    - link:
+      - /url: "#/outbox-dead-letters"
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Мои уведомления
+  - button "Открыть поиск":
+  - 'button "Уведомления: 10 непрочитанных"':
+    - generic: "10"
+  - button "Переключить тему":
+  - button:
+    - generic: ТБ
+- main:
+  - heading "Мои уведомления" [level=1]
+  - paragraph: Назначения, отчётные статусы и обсуждения команды
+  - generic "Сводка уведомлений":
+    - strong: "9"
+    - text: требуют действия
+    - strong: "10"
+    - text: непрочитанных
+    - strong: "0"
+    - text: сегодня
+  - link "Настроить":
+    - /url: "#/settings?section=notifications"
+    - text: Настроить
+  - button "Прочитать все":
+    - generic: Прочитать все
+  - generic "Фильтры уведомлений":
+    - group "Состояние":
+      - generic: Состояние
+      - button "Все":
+        - generic: Все
+      - button "Требуют действия":
+        - generic: Требуют действия
+      - button "Непрочитанные" [active] [pressed]:
+        - generic: Непрочитанные
+      - button "Закрытые":
+        - generic: Закрытые
+    - button "Сбросить":
+      - generic: Сбросить
+    - group "Категория":
+      - generic: Категория
+      - button "Назначения":
+        - generic: Назначения
+      - button "Встречи":
+        - generic: Встречи
+      - button "Упоминания" [pressed]:
+        - generic: Упоминания
+      - button "Комментарии":
+        - generic: Комментарии
+      - button "Запросы":
+        - generic: Запросы
+    - group "Приоритет":
+      - generic: Приоритет
+      - button "Высокий":
+        - generic: Высокий
+      - button "Обычный":
+        - generic: Обычный
+      - button "Информационный":
+        - generic: Информационный
+  - region "Уведомления":
+    - heading "Уведомления" [level=2]
+    - status: 1 уведомление
+    - list:
+      - heading "Ранее" [level=3]
+      - 'heading "А. Коптелов упомянул вас в задаче #1" [level=3]'
+      - generic: Новое
+      - generic: Высокий
+      - generic: Упоминание
+      - time: 27 июл.
+      - paragraph: «@Т. Бабяк, нужна ваша оценка по интеграции с MOEX API»
+      - 'button "К обсуждению: А. Коптелов упомянул вас в задаче #1"':
+        - generic: К обсуждению
+      - button "Отметить прочитанным":

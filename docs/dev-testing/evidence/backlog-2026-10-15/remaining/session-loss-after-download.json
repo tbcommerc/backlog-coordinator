@@ -1,0 +1,9 @@
+{
+  "date": "2026-10-15",
+  "tab": "2",
+  "before": "Authenticated; exact 50MiB upload and download succeeded",
+  "after": "Login form with empty fields",
+  "logoutPerformed": false,
+  "cause": "unknown",
+  "firstTabTouched": false
+}

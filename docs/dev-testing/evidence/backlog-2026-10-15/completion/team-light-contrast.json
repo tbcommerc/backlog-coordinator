@@ -1,0 +1,1302 @@
+[
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 24,
+    "ratio": 13.981703505432392,
+    "required": 3,
+    "text": "Бэклог команды Проектный офис",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 14,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "Управление задачами вашей команды",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      79,
+      70,
+      229
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 12,
+    "ratio": 6.287528596095884,
+    "required": 4.5,
+    "text": "Добавить задачу",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 12,
+    "ratio": 14.628718079350334,
+    "required": 4.5,
+    "text": "Представление…",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 11,
+    "ratio": 4.758842787868666,
+    "required": 4.5,
+    "text": "Статус:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 12,
+    "ratio": 14.628718079350334,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 11,
+    "ratio": 4.758842787868666,
+    "required": 4.5,
+    "text": "Приоритет:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 12,
+    "ratio": 14.628718079350334,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 11,
+    "ratio": 4.758842787868666,
+    "required": 4.5,
+    "text": "Срок:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 12,
+    "ratio": 14.628718079350334,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 11,
+    "ratio": 4.758842787868666,
+    "required": 4.5,
+    "text": "Исполнитель:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 12,
+    "ratio": 14.628718079350334,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 11,
+    "ratio": 4.758842787868666,
+    "required": 4.5,
+    "text": "Тип задачи:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 12,
+    "ratio": 14.628718079350334,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      255,
+      255,
+      255
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 12,
+    "ratio": 14.628718079350334,
+    "required": 4.5,
+    "text": "Все фильтры",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "Просрочено",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(239, 68, 68)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "13",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "Важные задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(245, 158, 11)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "5",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "В работе",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 11,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "94",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "Холд",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(245, 158, 11)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "0",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "Отклонённые",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(245, 158, 11)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "1",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "Текущие задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(16, 185, 129)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "6",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "Прошлый квартал",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 11,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "5",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "Проблемный C/V",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(239, 68, 68)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "89",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "ID задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "Название задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "Статус задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "Приоритет",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "Срок выполнения",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "Исполнитель",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "Прогресс",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-326",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-065",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-325",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-064",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-324",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-063",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-323",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-062",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-322",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-061",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-321",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-060",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-320",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-059",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-319",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-058",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-318",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-057",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-317",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-056",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-316",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-055",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "TASK-000-315",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(30, 41, 59)",
+    "font": 14,
+    "ratio": 13.981703505432392,
+    "required": 4.5,
+    "text": "UX-AUDIT-PAGE-20261015-054",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      241,
+      245,
+      249
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.343923406321176,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(146, 64, 14)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      248,
+      250,
+      252
+    ],
+    "color": "rgb(100, 116, 139)",
+    "font": 12,
+    "ratio": 4.548363604249587,
+    "required": 4.5,
+    "text": "0%",
+    "unknown": false,
+    "weight": 400
+  }
+]

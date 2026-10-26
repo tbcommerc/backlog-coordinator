@@ -1,0 +1,83 @@
+[
+  {
+    "scenario": "all_success",
+    "result": {
+      "total": 2,
+      "created": 2,
+      "skipped": 0,
+      "errors": [],
+      "task_ids": [
+        2,
+        3
+      ]
+    },
+    "rolled_back": false
+  },
+  {
+    "scenario": "row_processing_failure_then_success",
+    "result": {
+      "total": 2,
+      "created": 1,
+      "skipped": 1,
+      "errors": [
+        {
+          "row": 2,
+          "field": "",
+          "field_label": "",
+          "value": "",
+          "type": "unknown_error",
+          "message": "Неизвестная ошибка при обработке строки: synthetic process failure row 2",
+          "fatal": true
+        }
+      ],
+      "task_ids": [
+        3
+      ]
+    },
+    "rolled_back": false
+  },
+  {
+    "scenario": "row_persistence_failure_then_success",
+    "result": {
+      "total": 2,
+      "created": 1,
+      "skipped": 1,
+      "errors": [
+        {
+          "row": 2,
+          "field": "",
+          "field_label": "",
+          "value": "",
+          "type": "unknown_error",
+          "message": "Неизвестная ошибка при обработке строки: synthetic persist failure row 2",
+          "fatal": true
+        }
+      ],
+      "task_ids": [
+        3
+      ]
+    },
+    "rolled_back": false
+  },
+  {
+    "scenario": "final_commit_failure",
+    "result": {
+      "total": 2,
+      "created": 0,
+      "skipped": 0,
+      "errors": [
+        {
+          "row": null,
+          "field": "",
+          "field_label": "",
+          "value": "",
+          "type": "unknown_error",
+          "message": "Неизвестная ошибка при сохранении импорта: synthetic commit failure",
+          "fatal": true
+        }
+      ],
+      "task_ids": []
+    },
+    "rolled_back": true
+  }
+]

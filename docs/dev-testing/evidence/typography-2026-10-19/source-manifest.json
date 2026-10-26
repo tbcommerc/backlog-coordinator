@@ -1,0 +1,961 @@
+{
+  "generated": "2026-10-19T19:43:29.544Z",
+  "start": "2026-10-19T15:22:00.000Z",
+  "files": [
+    {
+      "file": "dmb-backlog/frontend/css/account-security.css",
+      "sha256": "f22f81127355746d6a9301814c101c77fa56cf381e0c3239024e88808487f906",
+      "modified": "2026-10-12T20:42:40.066Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/agent-v2-details.css",
+      "sha256": "52f707f3e89da5f48a04ec758c1a400d23e7d152ee9ea2bab21b10c24173d9a3",
+      "modified": "2026-10-09T17:18:18.175Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/agent-v2.css",
+      "sha256": "d84bd9e2e841ff356d998f5ea87a258aa4cbd25227de440ceb7ddef9f803e005",
+      "modified": "2026-10-09T16:55:23.917Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/analytics-lt.css",
+      "sha256": "bbcd3a7ccd1d31f5fdaa0d6cd970b99f2f76134aa6a7ff87d36d9ffc8ba4b707",
+      "modified": "2026-10-19T09:06:18.492Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/backlog-assistant.css",
+      "sha256": "9a25c419ce0cc83062fe1a9aae36243ec0c7d2e4684744402eb43cafc5329911",
+      "modified": "2026-10-17T16:18:43.004Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/base.css",
+      "sha256": "2c9a9293757cc1dc1d9dca469cf1250e48dd3a7105431d7bb25e41b44b84764c",
+      "modified": "2026-09-07T07:57:56.549Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/components.css",
+      "sha256": "b6c33228049a2f023c8671b2b2f8bfb54cdb7567ccfcce6e333fe51661c836a2",
+      "modified": "2026-10-19T07:52:40.863Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/did-backlog.css",
+      "sha256": "702d67553e3777f6d7b7a3607b7e19dde4ddefd68ca07579f6f384c8f58b18f9",
+      "modified": "2026-10-09T16:09:46.636Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/directorate-report.css",
+      "sha256": "0c50e18b4ca7c5ed2af7e399c3cfb89ddb871f1d8c01a24e10b493c59575bac7",
+      "modified": "2026-10-09T19:51:01.380Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/feedback.css",
+      "sha256": "e11c979e72f0958b9f6263c6d371ab563a6dcd358481c9471a190e7634896e16",
+      "modified": "2026-10-17T22:00:02.970Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/fonts.css",
+      "sha256": "4a637703446c5e3a79e0703d2cfd22231f43f6d43b81e104fd42e354da8ba20a",
+      "modified": "2026-08-21T20:31:07.139Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/meeting-capture.css",
+      "sha256": "108eb66bc3dbd4bb4a07196758be9cc5532dd5abbfe163fd6b730fc0a1bfc216",
+      "modified": "2026-10-17T18:08:45.924Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/modal-system.css",
+      "sha256": "13324356e164c02bb17ddd2170867817eb3e5e7567eb685edabfc15377f71a0e",
+      "modified": "2026-10-17T15:19:08.652Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/pages.css",
+      "sha256": "be8932ae1fd141fc294e68a048063cd34cd53aa1d9a4cc2c920f70d29c219306",
+      "modified": "2026-10-19T09:06:18.497Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/responsive.css",
+      "sha256": "f2cca3dba614938d13df3db2ba2c60292f334219ee0cd72845e8a25b1297b796",
+      "modified": "2026-10-17T19:42:49.324Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/tokens.css",
+      "sha256": "b40d692e7ebd135f26f5ffb5ef371c0889207fba5f2ead0ccf5b838dd7881ed9",
+      "modified": "2026-10-17T19:40:49.986Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/adapters.css",
+      "sha256": "3c085ec1b02d91a8852d6a6ca3e35a356fb8476d0b57d177b0bc89b8492dbd6d",
+      "modified": "2026-10-17T20:44:28.514Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/core.css",
+      "sha256": "5167ba2afc580055aa19bf04fc80d50a2610d95ce248eb145491dd44021ec624",
+      "modified": "2026-10-19T09:06:23.241Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/data-display.css",
+      "sha256": "7f8a8deef96de4c402841694fc04f12ca803fec653d0256c3315ce48f2358bd5",
+      "modified": "2026-10-09T15:37:02.556Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/foundations.css",
+      "sha256": "d7bbb968d36c6a2ded6a13ff2557baa89a2f346684f1525527898b6d6f513d5b",
+      "modified": "2026-10-17T20:28:36.734Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/interactions.css",
+      "sha256": "5bd98e3b3791599e1cd5cb14b7dbf6d30da19fbd05af38c4e3df2529faf7a5b5",
+      "modified": "2026-10-17T20:44:28.511Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/kit.css",
+      "sha256": "684d6e99b5be38a3e9e62221fc549ec0cc99d187ac7136572fb9ac7a05cf953e",
+      "modified": "2026-10-19T09:12:34.007Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/login.css",
+      "sha256": "cce6984fba57c7c37988fe1b4b5c0ee1b0714b425c32fc34b83172109e0c42a9",
+      "modified": "2026-10-09T15:52:31.702Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/popover.css",
+      "sha256": "ea4312a24431063c11c1679b6aa6f86dd31dbba8e73bce666af17f0ddda73d85",
+      "modified": "2026-10-09T20:10:48.470Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/sizing.css",
+      "sha256": "770ae2cbd818650b66ff7ceed5bb02ecce3d2a5fb8d48e386a626fad48e4a3ee",
+      "modified": "2026-10-17T20:28:13.633Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/ui/tables.css",
+      "sha256": "bba00e7f1ecead85157ea4f3a1b692c7cd95b6f363ebe196d9512206f7c0788b",
+      "modified": "2026-10-17T20:34:13.049Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/css/work-tasks.css",
+      "sha256": "04cb159b388ae475e311b79d1a3c40137b20d20ad6435884a1f733dd2f082cb5",
+      "modified": "2026-10-19T07:36:57.643Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/adminLabels.js",
+      "sha256": "1921562ed6202a5f0353eba7f0a8e6116c9706352861c382ea4c310b84ad29b0",
+      "modified": "2026-10-17T13:07:24.243Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/agent-v2/api.js",
+      "sha256": "e728b4158e5e539d9f270311e7abeaf3ea4db27ef8fab2f8528ca29a96986b93",
+      "modified": "2026-10-09T09:00:23.833Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/agent-v2/documentReview.js",
+      "sha256": "0418e6dd78fa65516f94b36f7e8486331fdaed838f99eceb69d80f5e8c510e74",
+      "modified": "2026-10-09T17:16:02.914Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/agent-v2/generation.js",
+      "sha256": "8710181629b7fb26b2e9dcf06c60cf90e7105a074e4af432ce79ab0375fe9e1e",
+      "modified": "2026-10-09T17:04:18.799Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/agent-v2/journey.js",
+      "sha256": "b9906d8f38f0f8ac4816790e60f381a5ba1e30e70d47361d6a4454ab5cad4024",
+      "modified": "2026-10-09T16:11:01.099Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/agent-v2/routes.js",
+      "sha256": "79c7f4c961c9afd4e2dafddc3c958271c2a127a3f2e81210972b481e74e76d9a",
+      "modified": "2026-10-09T17:17:06.401Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/agent-v2/workspace.js",
+      "sha256": "4368e4756ee3b0ab300c3deafc3b9f0c7938455dc3ef386fda4513e3ad7ef914",
+      "modified": "2026-10-09T17:17:06.397Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/api.js",
+      "sha256": "19e71879e4a9536fc48ecc9ef5692d4357c7b28b4bfc09ae8537eec56a07b2d0",
+      "modified": "2026-10-16T11:37:54.932Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/app.js",
+      "sha256": "b111ee66f391fea8cc7ff0cf2a5b983530af691eb645462b8267ac8d5bc3941c",
+      "modified": "2026-10-17T20:37:06.221Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/assistant-v2/accessibility.js",
+      "sha256": "10a4d37f43a7a801f75b6844e2b045e370dd6341e57195cd7df8af0dd31ab084",
+      "modified": "2026-09-18T20:11:35.067Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/assistant-v2/api.js",
+      "sha256": "64b5c88fc07eb3e0e18a0905f02a5d3988c4b3a1bfa690e09d8d785d39d5961b",
+      "modified": "2026-09-18T20:11:33.296Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/assistant-v2/caseWorkspace.js",
+      "sha256": "4a9ac64feae3b578c00668e1b31cfb156d21ccfca24bd1671f7c71f3d1421f7d",
+      "modified": "2026-09-19T14:13:00.143Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/assistant-v2/diffReview.js",
+      "sha256": "8b8caced2960672cb221a9a371e4999e635fda9296821b9af1af1742dd963080",
+      "modified": "2026-09-19T14:01:23.633Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/assistant-v2/presentation.js",
+      "sha256": "6400c3836a55b34378f5577e11c463a7274a384edebbdcea17d8c2b8d7b04abc",
+      "modified": "2026-09-19T14:09:08.430Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/assistant-v2/requirementWorkspace.js",
+      "sha256": "75949856bf58f3b78ca3f2040fbd0a8ca9ad56542dda69a4044cd12033e4a039",
+      "modified": "2026-09-19T14:09:14.185Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/assistant-v2/routes.js",
+      "sha256": "2eac3e342b5a1c7ee6495f7be888c8a22d11c551c171eb2bdd823f4e596e6a7c",
+      "modified": "2026-09-19T14:03:51.850Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/auth.js",
+      "sha256": "5e3522285f39340c5da6b49bb9c0fe2bd4cc333c63ba550b21bdf248589e036a",
+      "modified": "2026-10-12T20:49:34.314Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/backlog-assistant/answer.js",
+      "sha256": "5dda39a750ec8982720b00b3c2a81a67d1a74e3b68b13a85b8c0a24a03956426",
+      "modified": "2026-10-17T16:14:27.774Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/backlog-assistant/api.js",
+      "sha256": "b6043d728c0086d2d12c809cbad62a0275e938705e96f8574d9ca454267a3da7",
+      "modified": "2026-10-14T19:44:10.294Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/backlog-assistant/context-help.js",
+      "sha256": "41c1af7bb66e8cd3120bdc655bbcdafdd3ea1b6fabb9c008aa338cbeaa34a12e",
+      "modified": "2026-10-14T20:18:09.091Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/backlog-assistant/page.js",
+      "sha256": "adb0612ab405172ec6034530fc6fe5225dc8d962518dc561859114006bfcc551",
+      "modified": "2026-10-17T16:20:00.294Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/backlog-assistant/panel.js",
+      "sha256": "4d08bec53c742478654e7f6a7f78f5dcfe9c055deb5d49460dc9f0c738a6a3a7",
+      "modified": "2026-10-17T16:14:27.771Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/backlog-assistant/presentation.js",
+      "sha256": "e9430dc969adf61f145704e3eba10fb10f05e76d7eeaa388799c0172af8626ab",
+      "modified": "2026-10-17T16:18:43.005Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/backlog-assistant/state.js",
+      "sha256": "48de68c41b2ffb5cca798d6101e15e38fb32bcf261125631b57e18d9f488ef8d",
+      "modified": "2026-10-14T20:45:23.352Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/accountSecurity.js",
+      "sha256": "7ed45f96c87cd9a9a8abdf14bda0309269662e0ce71cc59841948684cf938d2f",
+      "modified": "2026-10-17T13:40:46.556Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/admin.js",
+      "sha256": "8623811a7fe4d3b0cf3c35cdf34715669dcad90c1fd6c04591970d31150c8fec",
+      "modified": "2026-10-17T15:24:22.361Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/adminDictionaries.js",
+      "sha256": "15323cf07382d274713eaad5e24124607b510ebc06e338a719570662caefc615",
+      "modified": "2026-10-17T15:10:27.909Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/adminReports.js",
+      "sha256": "0e5c8a07385349a08c76815c34a7610f230daacfbf4bb380b79771c1c3777b1a",
+      "modified": "2026-10-17T15:24:22.364Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/agentChat.js",
+      "sha256": "5e85478239d7dbf20b4089ae2c4f992d657d5a60609f66ef3b7775f0c63c5d4d",
+      "modified": "2026-10-17T20:38:17.982Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/analytics.js",
+      "sha256": "f6b217c7d80e38f2cfb6a3897dd94cff975504f0e8b3c664ac4d45705073d0f9",
+      "modified": "2026-10-19T09:10:09.449Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/auditLog.js",
+      "sha256": "244e550a9739ae00408bcb0cf71e0cbbe504430de40bc13aa04b694838ae92f7",
+      "modified": "2026-10-17T15:18:31.619Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/customerChat.js",
+      "sha256": "bb1f861d67444126b7b55a8305ca35ce878ea9649a9b77ea266241512b5b6484",
+      "modified": "2026-10-09T16:09:46.634Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/customerPortal.js",
+      "sha256": "441f8350226cbf24ec1ac2917e66e8ef58996db83417a3411a2619877cd3c106",
+      "modified": "2026-10-17T16:10:48.519Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/customerReferences.js",
+      "sha256": "6cf6d8a1d956ec41a0b7ad9d28e8f9214fa8ea6b4c7e572f96bfca86f1fd953d",
+      "modified": "2026-10-17T13:44:47.080Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/customerReport.js",
+      "sha256": "2fc9c758610f2ae546b613235f3e30b181f3e7fd13d6b75ddde988115d543eb0",
+      "modified": "2026-10-17T15:18:31.623Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/dashboard.js",
+      "sha256": "6537580fa4248ab0c71ed184283133d33406eb0bc9951de6eb20c3495c0ca92f",
+      "modified": "2026-10-17T20:02:42.570Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/didBacklog.js",
+      "sha256": "ebfcd13dc1a70543155fb71cc68f509759b1cda08b1718781d94d408924d2184",
+      "modified": "2026-10-17T15:18:31.626Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/directorateReport.js",
+      "sha256": "b5670931ec8d1b4261551c87368d5a384839200669cfb0d0166853184c2e8c30",
+      "modified": "2026-10-14T20:19:35.103Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/expressEstimate.js",
+      "sha256": "1cd5a238fae1ecf33992a5c649fd779b331f40f61c12890e7c30b5984c4ea05a",
+      "modified": "2026-10-17T15:22:26.992Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/filterToolbar.js",
+      "sha256": "7a708853efe6faaa3db46465efefd9d08e1fd554a71f81f6373920965825c9b4",
+      "modified": "2026-10-17T11:59:51.459Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/kanbanBoard.js",
+      "sha256": "a263f498eb03e8f67a2cad745019f95c9ddef1e76fe0cc6ea31fdbbab54baf6e",
+      "modified": "2026-10-14T20:19:35.112Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/login.js",
+      "sha256": "939fbae0818ab02668ddf1ba0e8fce7be0e5f4f63e9af41405f357001936fe0a",
+      "modified": "2026-10-12T20:41:19.453Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/meetingCapture.js",
+      "sha256": "7d35cde0afd09d4b74abf250e969ba525e38782291b10851af50b0011cfaaa7b",
+      "modified": "2026-10-17T20:02:48.092Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/modal.js",
+      "sha256": "a6a24f3b3097b45f90b592e00c3aae23b7312be4156f9c51cd906c6f63221a89",
+      "modified": "2026-10-17T20:37:13.202Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/navbar.js",
+      "sha256": "4cf8f51df58c93cd4cab0c8765c042fc0cc331eb118c3f3b8032d36c45165bdd",
+      "modified": "2026-08-22T09:37:50.073Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/notifications.js",
+      "sha256": "f4d9dc3e6058c33d5c5349535e5592e8d97eec3cc4ea883827c16126476deada",
+      "modified": "2026-10-17T20:03:05.307Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/outboxDeadLetters.js",
+      "sha256": "ed75188d5b93a4bd98a04631ecd7b72e5d161532472bcf88114f062953e94fea",
+      "modified": "2026-10-17T15:18:31.658Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/quarterlyGoalsUpdate.js",
+      "sha256": "08c38a6c1948b0610780b8c5450a9aa1e1a2dd4442caa4ed3c13459bbbabfc1a",
+      "modified": "2026-10-14T20:22:35.715Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/quickEdit.js",
+      "sha256": "cd4e3ecc2f4259e0b969054d15d5720de64b5b86cf779563d25ef03dd85e50a3",
+      "modified": "2026-10-17T12:24:24.736Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/quickFilters.js",
+      "sha256": "43d88a4103173789b085bf1c04d2ac9906c803cfbb4514a9b249dfee3012345a",
+      "modified": "2026-10-12T19:38:47.351Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/reportingStatuses.js",
+      "sha256": "a27d995ba6e33025b5a8f3184e65e1fa5445773dc90f8f0c42c79fb01b4a43ed",
+      "modified": "2026-10-14T20:11:47.900Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/reports.js",
+      "sha256": "7b8020b83f0c3611bd9b57bbcceab9195fca8b8b9b892a2059878c2aaf4863e5",
+      "modified": "2026-10-19T09:10:09.447Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/requestPresentation.js",
+      "sha256": "463f47eddddb64d4e630564712a268518a296ea220fa9d56b800dc969e05b3fb",
+      "modified": "2026-10-17T15:37:02.512Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/requirementReviews.js",
+      "sha256": "d19a3fe54c1752c0d7c88754f7c4ece8a116747459e56f4d9991040664ad7dbf",
+      "modified": "2026-10-09T16:11:01.137Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/reviewPage.js",
+      "sha256": "2717879ca5f79369bb00dcd0c0caef8cbfa18d1ee883a9fbab62deb7a09e6bf3",
+      "modified": "2026-10-19T07:32:15.292Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/settings.js",
+      "sha256": "2da87bf39c6d80dc6897f23c4bfb124ccbbee6604f3403ae37943e38e5ea0654",
+      "modified": "2026-10-14T20:17:55.451Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/sidebar.js",
+      "sha256": "1c94a8bdeb657e19afe98382d347ed56a3113bb7f91f5eea5eaa0ef1f2c8a29a",
+      "modified": "2026-10-17T19:46:23.924Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/tableSelection.js",
+      "sha256": "111c680ec8c34c47b20b52b8eef47e9ebd9a78427e37f876487d08df21d8f8b9",
+      "modified": "2026-08-26T16:26:17.338Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/tableUtils.js",
+      "sha256": "e7b4fd0360e34c7812f409aca5fa70d38f578215e9757304528e7c4d1c14b3a4",
+      "modified": "2026-10-12T20:22:20.772Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/taskAttachments.js",
+      "sha256": "678e82b231c0709eaf312c71f1ac94f27472f3b90915a495bb2bb425d55ae557",
+      "modified": "2026-10-09T15:33:15.310Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/taskColumns.js",
+      "sha256": "d64195a7bf5c3ba0c9132b78d568c21f7aac8d2cd93856b61ff45f34e9bc843b",
+      "modified": "2026-09-04T08:40:49.326Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/taskComments.js",
+      "sha256": "468d1e908c6849c32e5abf06cfe54ca2477e23d30226af527fcf9babd1750d8e",
+      "modified": "2026-10-09T20:08:53.344Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/taskTable.js",
+      "sha256": "83f3fa5940935b92b4e69aadab5eeec095899aa36b80184f37580e4d9ac158cc",
+      "modified": "2026-10-17T15:28:55.720Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/teamBacklog.js",
+      "sha256": "d2a3fa947dda62f955e80f29700eb469f0069b0be11bc06ee2bbbe0e88e17217",
+      "modified": "2026-10-17T15:28:55.725Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/viewState.js",
+      "sha256": "8174c49f251d89d4a0b4b0b958371bd850eb75825d003550446a1534aba1cc12",
+      "modified": "2026-10-17T21:50:51.056Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/workProjects.js",
+      "sha256": "46525626db07e08df2de6cdbb8f3d3ab93fddf4140afcc0149d7e48a08c07185",
+      "modified": "2026-10-17T20:37:14.589Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/workRelations.js",
+      "sha256": "ffceaf5141f160184798a1256bf41fd3d0907682ba0a3048770ce14dfe877644",
+      "modified": "2026-10-17T08:48:41.947Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/workReports.js",
+      "sha256": "e1e43268eacb64d2b2ec1dd94c16964ac4884d59a9c214c033d9f28e245c19f5",
+      "modified": "2026-10-17T20:28:28.960Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/workResolution.js",
+      "sha256": "eacdb79663c631ecd8eba34a86db12140335966f2bfea1d0ac8d274c98ab71d1",
+      "modified": "2026-10-19T07:49:33.701Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/workTaskDrawer.js",
+      "sha256": "1b5b62d53183e8695be4a186a7f592175f070aa7a1cbf1a047999cadc5580c29",
+      "modified": "2026-10-17T20:36:08.046Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/workTasks.js",
+      "sha256": "79795b35cd68758bea9686d3f4ccc0d470251fd5a1ea1576735779f2fcbf0d4f",
+      "modified": "2026-10-17T20:37:11.629Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/components/workUi.js",
+      "sha256": "4835ae9840dd64753501400eadacc41fc71e54e225c7988d052e604da3b243aa",
+      "modified": "2026-10-17T08:49:35.626Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/eventStream.js",
+      "sha256": "a66135a06e878c01999a809258a1bc40597a5cd269e100aafa2f6fcbf78a0875",
+      "modified": "2026-10-16T11:07:45.915Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/htmlUtils.js",
+      "sha256": "8ca9595a84434934b830f40f9a205357eb528136890a35649c842c52a0fb2e84",
+      "modified": "2026-09-01T13:32:19.203Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/lib/chart.min.js",
+      "sha256": "0e2326c6868072bec1592760c6729043caeea2960a2b46cee6a2192aac6abff0",
+      "modified": "2026-08-21T20:31:07.199Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/lib/echarts.min.js",
+      "sha256": "e84270bd0cd5bdf60fefc26d00c2a391cb2e81f4d26a7a9ee16185a54773a3cf",
+      "modified": "2026-08-21T20:31:07.208Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/lib/lucide.min.js",
+      "sha256": "b9c0e0f892c6958b192b8fdecb652310d934533464b4300be9d52c7f57a014a5",
+      "modified": "2026-08-21T20:31:07.211Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/lib/xlsx.full.min.js",
+      "sha256": "e6c54d23060cbe6efc3794447e0c36573e4e488fdbb9b101f7dac053403cdfad",
+      "modified": "2026-08-21T20:31:07.218Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/localSpellcheck.js",
+      "sha256": "e7162fad54914961f9bf283bb3f918af3ff8ae6453ad31527d8178b8c52cfa1c",
+      "modified": "2026-09-07T19:59:48.236Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/modalAccessibility.js",
+      "sha256": "ccf85cdfc2537f83b880164e861e36f04c28a0d72c699f8ac89d52122ec0acca",
+      "modified": "2026-10-09T20:25:45.233Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/notificationStore.js",
+      "sha256": "5697ad98ced36c363273b3ec618268107e907b8a05005f50f9f1e8ab19a9d5a3",
+      "modified": "2026-10-17T20:03:05.305Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/notificationUtils.js",
+      "sha256": "7c305b0455e97f09758baf3cf0339bbcb2e65a99a2d538be0b18fbf8cfd0dad4",
+      "modified": "2026-10-17T19:59:51.633Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/router.js",
+      "sha256": "fda681e38032c778ec9b3afb73e8fc53b1294fc160f60d3a872213bc6c48ff5f",
+      "modified": "2026-10-17T20:37:09.801Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/store.js",
+      "sha256": "c63ace11a06cb1e0ead49fc6859aeb1dcf909838b44db6a5e2e1f23d415d6841",
+      "modified": "2026-08-21T20:31:07.221Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/taskCardMarkdown.js",
+      "sha256": "61e5616eb5dbd1305dbea06c18f286beaf50e93774046dd5f1e31a94e47bd347",
+      "modified": "2026-09-10T20:19:46.167Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/taskCardPermissions.js",
+      "sha256": "89a0849179e365e1111653002296db4e141e620098d996a2a8c3b4d34fc1396e",
+      "modified": "2026-09-10T10:54:47.186Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/taskCardRates.js",
+      "sha256": "11ee14127ba9cce3ee646f00842207acc536539d0be76820a05d343f994d77d8",
+      "modified": "2026-09-10T10:41:09.447Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/taskCardRequestGate.js",
+      "sha256": "11cecafeb4260c0412e7b0db4ac417ccd46b8bff1f8316cd4c06c0c5e43d9254",
+      "modified": "2026-09-10T11:00:02.558Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/taskCommentDraft.js",
+      "sha256": "cf1a8f5063ddb09b12f20e6a22696d647aa5e78a208d17a49961c9b28c9b9bb4",
+      "modified": "2026-09-10T11:05:40.842Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/taskCsv.js",
+      "sha256": "57ad4f240ac15f622f30818b0f2d5aa3ea7063c5d7ca7648a6071aee84ecbab4",
+      "modified": "2026-10-17T11:08:31.298Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/taskDisplay.js",
+      "sha256": "6baa43ce29da358580e2969e9ba398f98fb8649faf67e44c307c09429f516068",
+      "modified": "2026-10-17T15:51:33.956Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/taskMetrics.js",
+      "sha256": "67abde0dd6b956079b7712e3a5c9cae8199bb2e3ea5a87a594957f0b09282806",
+      "modified": "2026-08-31T21:47:49.892Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/taskPublicId.js",
+      "sha256": "68b3fdb57e1f057e17abdf1908e4763595c62809a5f234c97b7e31fa329001da",
+      "modified": "2026-08-26T15:04:26.493Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/theme.js",
+      "sha256": "3a8342322c7aa5b0ecc2cb988d4e4e3068a82e5b75be7c1e2c7adc208cad6760",
+      "modified": "2026-10-09T14:58:13.856Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/actionMenu.js",
+      "sha256": "b3d72ea72c44f637f0e09ccf9a93d56d39ef7dff9e29540d091cfd6d4f6683cb",
+      "modified": "2026-10-09T17:02:06.974Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/charts.js",
+      "sha256": "456e61cab19d1b02d5579ecbd77431cd8648f69e84125f45aa2cbfc0fbfa165d",
+      "modified": "2026-10-19T09:13:07.715Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/controls.js",
+      "sha256": "e63c537824729c7dcbc3ff204d4aa8070f40bb8f51c15fda7f9275fe5c116b5d",
+      "modified": "2026-10-09T14:41:17.296Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/dataDisplay.js",
+      "sha256": "8e8517a9cec3a7701524fb9ab37543726d9644a5de6434eef272956077e41b93",
+      "modified": "2026-10-09T15:52:29.940Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/index.js",
+      "sha256": "5519c2a82bcd4e9484db2250c71aec0962b372442ab8a45a6cf2b1f9bb54c9c1",
+      "modified": "2026-10-19T09:12:34.009Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/popover.js",
+      "sha256": "8f13e19053020b03772d069d9b4ae6d71e7af515c1d5fe6983ededc84f79d8f1",
+      "modified": "2026-10-09T17:45:21.121Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/primitives.js",
+      "sha256": "4a85bd84d9c7fba7b7189589e39181f84f604405f01e6bc5250e55686fb8812d",
+      "modified": "2026-10-17T20:26:21.666Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/selectionList.js",
+      "sha256": "c169f610d0b83a97c6f3eabdb02b8df18d4a4638221279dcfe3db7483b3af481",
+      "modified": "2026-10-09T16:56:06.516Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/switch.js",
+      "sha256": "507aaac32c3bdfc67b2e19a38e9477719be0073d2e618db359431e31f5bcee31",
+      "modified": "2026-10-09T16:11:01.142Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/ui/tooltip.js",
+      "sha256": "32b36f59e19e012d9fd35036f9341b3061e4a3cf6d6729c8ec9e7364af4b5044",
+      "modified": "2026-10-09T17:23:28.203Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/uiFeedback.js",
+      "sha256": "492e7d7d386a613f86fe7b44f40bdf0f94b2ea5856816e2bce98e37716142c2e",
+      "modified": "2026-10-19T07:42:01.798Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/js/urlUtils.js",
+      "sha256": "b2d0640f3f83ffe55fb7b10217568ab26fc274ff22e7d59d5d4c216e5991855b",
+      "modified": "2026-08-21T20:31:07.222Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/fonts/InterVariable.woff2",
+      "sha256": "693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3",
+      "modified": "2026-08-21T20:31:07.148Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/fonts/Unbounded-Variable.ttf",
+      "sha256": "323b511be380c8d474ef030686b71aedde501f8d9cd46da558b7c40454372c3f",
+      "modified": "2026-08-21T20:31:07.159Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/index.html",
+      "sha256": "433e33574b58179a711199d7ae462fd6326c8180b973364615bbecc81cd34e48",
+      "modified": "2026-10-19T09:12:34.009Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/ui-catalog/migration-matrix.json",
+      "sha256": "bce54f11fa8143e85343d52930b4fd239e8c4b4cc915b6fba718288d3fd6284a",
+      "modified": "2026-10-19T09:15:09.165Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/accountSecurity.html",
+      "sha256": "b95887ffbc5920b9daa32e4273a19ad4221a453133b1dd3fb9f1c1e274c3c073",
+      "modified": "2026-10-19T09:02:31.287Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/backlogAssistant.html",
+      "sha256": "ba54759f1f1ab3be97877b11894346dcde21c1c4db7b5ccd0f89864b15f65c2d",
+      "modified": "2026-10-17T16:16:26.441Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/localSpellcheck.html",
+      "sha256": "2ab43332472a9bff7b0596183730956d40d10c937512cc10b3d179d1f29d5aea",
+      "modified": "2026-10-19T09:02:31.288Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/meetingCapture.html",
+      "sha256": "4ea993e528a775effb0388a69d53549484bb59e98058f87691eeeb57261886d2",
+      "modified": "2026-10-09T16:39:58.077Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/modalCatalog.html",
+      "sha256": "f06555fc62ae52b5f0b814123009d5d277e9d36e688dea3ba0e5b8a22988cc29",
+      "modified": "2026-10-09T13:34:52.005Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/notificationAudit.html",
+      "sha256": "bd92c0477bad78fdb726a66f03d86f4c41d7ebcb9ba900da6ce6dd3a1e6988d0",
+      "modified": "2026-10-14T18:31:51.117Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/notificationCatalog.html",
+      "sha256": "e0d770f7b3e01243b4a0d11bf4d16ae94a1a108457c8d08d971563bce9f0d1c9",
+      "modified": "2026-10-09T16:09:43.446Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/requirementWorkspace.html",
+      "sha256": "40fc8fd3ab1c441a45b1012e044910874ef34c8c0e91115cfc93362dd54401d1",
+      "modified": "2026-10-09T16:49:27.472Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/taskCardIncrement.html",
+      "sha256": "2e3caeb0d817d4715171cf71ced06f86866b277af51f0ef21fe581e399514a27",
+      "modified": "2026-10-09T13:34:52.007Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/teamWeeklyReport.html",
+      "sha256": "f69ce62cc0f2a6ca7452f227d559b4f8533738603443d34dd9ef953b4923718d",
+      "modified": "2026-10-09T13:34:52.007Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/uiKitAdminReports.html",
+      "sha256": "819fddbf60a8e04d37dd3508f4f05ec72aee37b78f0ad9f9de494a68205ea3a7",
+      "modified": "2026-10-09T20:13:50.506Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/uiKitComposites.html",
+      "sha256": "7771140f1cc85cd7c31c4538ca7195882243b31dc995d02e0910614b4d0d9891",
+      "modified": "2026-10-09T20:09:00.746Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/uiKitConsistency.html",
+      "sha256": "df85e016ec4d545e1617c6c850c9820aae697e09e88c15fd618b34f285cfbef8",
+      "modified": "2026-10-17T21:57:16.697Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/uiKitExpress.html",
+      "sha256": "a6e0f436fc5c1f5442e8dbe000cb96c313b4b5558f4465eeadebac1797880747",
+      "modified": "2026-10-09T20:36:08.857Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/uiKitLogin.html",
+      "sha256": "db5fda4dff96684d43b4a0f0f108cd7dcadea054d2d5a1f1ab88c85182f85c81",
+      "modified": "2026-10-09T15:46:12.639Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/uiKitRegistries.html",
+      "sha256": "45a1a679e4f208267c17c011fffcd925a3bb3e21b8819b00b8fc3e215a094eed",
+      "modified": "2026-10-09T14:15:15.446Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/uiKitReportingWorkspaces.html",
+      "sha256": "5857228b5e3004fce8d8320add14ac3b1e927be1a53a1dd7694a89102dcfeaf5",
+      "modified": "2026-10-09T19:44:53.071Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/uiKitSettings.html",
+      "sha256": "6206adea12c7880cf2287b75380fb34cbd0851bd831b19bdf0f17acc7a2e851d",
+      "modified": "2026-10-09T14:58:25.690Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/uiKitSizing.html",
+      "sha256": "ead100bfca8ad14f243701a2be3291c225e5f6044d33fc85861b749e34ef594b",
+      "modified": "2026-10-09T13:39:51.729Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/workResolution.html",
+      "sha256": "db5fa44a4dbafaffa6c10905d497979c819bfd986d83e2013359b226e74f4b91",
+      "modified": "2026-10-19T07:50:15.441Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/workTasks.html",
+      "sha256": "a9552a37711ecfe5586538c246f5204054784ea2263c3a4a3749870b7bd4f2a1",
+      "modified": "2026-10-19T09:02:31.285Z",
+      "modifiedDuringAudit": false
+    },
+    {
+      "file": "dmb-backlog/frontend/e2e/fixtures/workWorkspaceRouter.html",
+      "sha256": "e613b0bbb536ae3ecf75e336e65a04b8c697233864dcca9a22c7cbc03cbeca6d",
+      "modified": "2026-10-19T09:02:31.286Z",
+      "modifiedDuringAudit": false
+    }
+  ],
+  "modifiedDuringAudit": []
+}

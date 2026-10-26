@@ -1,0 +1,11 @@
+<!doctype html><html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/components.css"><link rel="stylesheet" href="/css/backlog-assistant.css"><link rel="stylesheet" href="/css/ui/kit.css"></head>
+<body><button id="open" class="btn">Открыть панель</button><main id="app"></main><script type="module">
+import { renderPage, mount } from '/js/backlog-assistant/page.js';
+import { openPanel } from '/js/backlog-assistant/panel.js';
+import { API } from '/js/api.js';
+window.app = { api: new API(), store: { get: () => ({id: 7}) } };
+document.querySelector('#app').innerHTML = renderPage();
+await mount(document.querySelector('[data-ba-root]'), app);
+document.querySelector('#open').onclick = () => openPanel(app);
+</script></body></html>

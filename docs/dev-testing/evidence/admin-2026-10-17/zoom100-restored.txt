@@ -1,0 +1,698 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - text: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - img
+      - text: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - img
+      - text: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - img
+      - text: Бэклог команды
+    - link "Контроль исполнения":
+      - /url: "#/work-reports"
+      - img
+      - text: Контроль исполнения
+    - link "Структура работ проекта":
+      - /url: "#/work-projects"
+      - img
+      - text: Структура работ проекта
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - img
+      - text: Рабочие задачи
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - img
+      - text: Экспресс-оценка
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - img
+      - text: Канбан-доска
+    - text: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - img
+      - text: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - img
+      - text: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - img
+      - text: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - img
+      - text: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - img
+      - text: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - img
+      - text: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - img
+      - text: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - img
+      - text: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - img
+      - text: Поручения из встреч
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - img
+      - text: Ревью запросов
+    - text: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - img
+      - text: Мои уведомления 0
+    - link "Настройки":
+      - /url: "#/settings"
+      - img
+      - text: Настройки
+    - link "Управление отчётными встречами":
+      - /url: "#/reporting-meetings"
+      - img
+      - text: Отчётные встречи
+    - link "Администрирование":
+      - /url: "#/admin"
+      - img
+      - text: Администрирование
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+      - img
+      - text: Аудит действий
+    - link "Ошибки доставки событий":
+      - /url: "#/outbox-dead-letters"
+      - img
+      - text: Ошибки доставки
+  - button "Свернуть или развернуть боковую панель":
+    - img
+- banner:
+  - navigation "Хлебные крошки": Администрирование
+  - img
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"'
+  - button "Переключить тему":
+    - img
+  - button "Q.admin":
+    - text: Q.admin
+    - img
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - text: Структура
+    - tab "Команды"
+    - tab "Проекты"
+    - tab "Бизнес-заказчики"
+    - text: Доступы
+    - tab "Пользователи"
+    - tab "Роли"
+    - text: Настройки
+    - tab "Справочники"
+    - tab "Отображение"
+    - text: Инструменты
+    - tab "Таймлайн"
+    - tab "Отчёты"
+    - text: Контроль
+    - tab "Журнал действий" [selected]
+  - textbox "Поиск по журналу"
+  - combobox:
+    - option "Все действия" [selected]
+    - option "BULK_UPDATE"
+    - option "delete"
+    - option "update"
+    - option "create"
+    - option "import"
+  - combobox:
+    - option "Все сущности" [selected]
+    - option "priority"
+    - option "stories"
+    - option "departments"
+    - option "timeline"
+    - option "tasks"
+    - option "tasks_bulk"
+    - option "user_notification_preferences"
+    - option "reporting-meetings"
+    - option "task_comments"
+    - option "reporting_meetings"
+    - option "quick-estimate"
+    - option "reports"
+    - option "admin"
+    - option "users"
+    - option "agent"
+    - option "agent_sessions"
+    - option "dictionary_items"
+    - option "auth"
+    - option "notifications"
+    - option "meeting_captures"
+    - option "requirement_requests"
+    - option "task"
+    - option "task_attachments"
+    - option "task_reporting_statuses"
+  - combobox:
+    - option "Все пользователи" [selected]
+    - option "Тимофей Бабяк"
+    - option "Ю. Шилов"
+    - option "UX тест — без команды"
+    - option "QA admin"
+  - textbox "Дата с"
+  - textbox "Дата по"
+  - status: "Записей: 5457"
+  - button "Сбросить"
+  - tabpanel "Журнал действий":
+    - table:
+      - rowgroup:
+        - row "Дата Пользователь Результат Действие Сущность Изменённые поля Trace / Request ID IP":
+          - columnheader "Дата"
+          - columnheader "Пользователь"
+          - columnheader "Результат"
+          - columnheader "Действие"
+          - columnheader "Сущность"
+          - columnheader "Изменённые поля"
+          - columnheader "Trace / Request ID"
+          - columnheader "IP"
+      - rowgroup:
+        - 'row "17.10.2026, 15:27:25 Система Успешно update users #23 last_login 39d7ed38a01c46eba590a5c2ddcc0286 127.0.0.1"':
+          - cell "17.10.2026, 15:27:25"
+          - cell "Система"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "users #23"'
+          - cell "last_login"
+          - cell "39d7ed38a01c46eba590a5c2ddcc0286":
+            - code: 39d7ed38a01c46eba590a5c2ddcc0286
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:55:42 Система Успешно update users #1 last_login 8f5bfa8709b943bfa0c10044a78f387e 127.0.0.1"':
+          - cell "17.10.2026, 14:55:42"
+          - cell "Система"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "users #1"'
+          - cell "last_login"
+          - cell "8f5bfa8709b943bfa0c10044a78f387e":
+            - code: 8f5bfa8709b943bfa0c10044a78f387e
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:25:59 Система Успешно update users #23 last_login 5801658fdc304e029bed59a830374949 127.0.0.1"':
+          - cell "17.10.2026, 14:25:59"
+          - cell "Система"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "users #23"'
+          - cell "last_login"
+          - cell "5801658fdc304e029bed59a830374949":
+            - code: 5801658fdc304e029bed59a830374949
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:25:22 Система Успешно update users #38 last_login 24469aa1c9204923adeb56514c9826ec 127.0.0.1"':
+          - cell "17.10.2026, 14:25:22"
+          - cell "Система"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "users #38"'
+          - cell "last_login"
+          - cell "24469aa1c9204923adeb56514c9826ec":
+            - code: 24469aa1c9204923adeb56514c9826ec
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:24:47 Система Успешно update users #24 last_login 830d8926c9404125a4e6e82696927f0f 127.0.0.1"':
+          - cell "17.10.2026, 14:24:47"
+          - cell "Система"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "users #24"'
+          - cell "last_login"
+          - cell "830d8926c9404125a4e6e82696927f0f":
+            - code: 830d8926c9404125a4e6e82696927f0f
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:32 QA admin Успешно update dictionary_items #53 lock_owner_id, lock_until 6b250dcafee94ea08fb543e465bab39c 127.0.0.1"':
+          - cell "17.10.2026, 14:19:32"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #53"'
+          - cell "lock_owner_id, lock_until"
+          - cell "6b250dcafee94ea08fb543e465bab39c":
+            - code: 6b250dcafee94ea08fb543e465bab39c
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:32 QA admin Успешно update dictionary_items #55 lock_owner_id, lock_until 6b250dcafee94ea08fb543e465bab39c 127.0.0.1"':
+          - cell "17.10.2026, 14:19:32"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #55"'
+          - cell "lock_owner_id, lock_until"
+          - cell "6b250dcafee94ea08fb543e465bab39c":
+            - code: 6b250dcafee94ea08fb543e465bab39c
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:32 QA admin Успешно update dictionary_items #54 lock_owner_id, lock_until 6b250dcafee94ea08fb543e465bab39c 127.0.0.1"':
+          - cell "17.10.2026, 14:19:32"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #54"'
+          - cell "lock_owner_id, lock_until"
+          - cell "6b250dcafee94ea08fb543e465bab39c":
+            - code: 6b250dcafee94ea08fb543e465bab39c
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:32 QA admin Успешно update dictionary_items #51 lock_owner_id, lock_until 6b250dcafee94ea08fb543e465bab39c 127.0.0.1"':
+          - cell "17.10.2026, 14:19:32"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #51"'
+          - cell "lock_owner_id, lock_until"
+          - cell "6b250dcafee94ea08fb543e465bab39c":
+            - code: 6b250dcafee94ea08fb543e465bab39c
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:32 QA admin Успешно update dictionary_items #56 lock_owner_id, lock_until 6b250dcafee94ea08fb543e465bab39c 127.0.0.1"':
+          - cell "17.10.2026, 14:19:32"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #56"'
+          - cell "lock_owner_id, lock_until"
+          - cell "6b250dcafee94ea08fb543e465bab39c":
+            - code: 6b250dcafee94ea08fb543e465bab39c
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:32 QA admin Успешно update dictionary_items #58 lock_owner_id, lock_until 6b250dcafee94ea08fb543e465bab39c 127.0.0.1"':
+          - cell "17.10.2026, 14:19:32"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #58"'
+          - cell "lock_owner_id, lock_until"
+          - cell "6b250dcafee94ea08fb543e465bab39c":
+            - code: 6b250dcafee94ea08fb543e465bab39c
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:32 QA admin Успешно update dictionary_items #52 lock_owner_id, lock_until 6b250dcafee94ea08fb543e465bab39c 127.0.0.1"':
+          - cell "17.10.2026, 14:19:32"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #52"'
+          - cell "lock_owner_id, lock_until"
+          - cell "6b250dcafee94ea08fb543e465bab39c":
+            - code: 6b250dcafee94ea08fb543e465bab39c
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:32 QA admin Успешно update dictionary_items #57 lock_owner_id, lock_until 6b250dcafee94ea08fb543e465bab39c 127.0.0.1"':
+          - cell "17.10.2026, 14:19:32"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #57"'
+          - cell "lock_owner_id, lock_until"
+          - cell "6b250dcafee94ea08fb543e465bab39c":
+            - code: 6b250dcafee94ea08fb543e465bab39c
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:22 QA admin Успешно update dictionary_items #53 lock_owner_id, lock_until, version 21b022f096774c7189a550e51afdbb3b 127.0.0.1"':
+          - cell "17.10.2026, 14:19:22"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #53"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "21b022f096774c7189a550e51afdbb3b":
+            - code: 21b022f096774c7189a550e51afdbb3b
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:22 QA admin Успешно update dictionary_items #57 lock_owner_id, lock_until, version 21b022f096774c7189a550e51afdbb3b 127.0.0.1"':
+          - cell "17.10.2026, 14:19:22"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #57"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "21b022f096774c7189a550e51afdbb3b":
+            - code: 21b022f096774c7189a550e51afdbb3b
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:22 QA admin Успешно update dictionary_items #56 lock_owner_id, lock_until, version 21b022f096774c7189a550e51afdbb3b 127.0.0.1"':
+          - cell "17.10.2026, 14:19:22"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #56"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "21b022f096774c7189a550e51afdbb3b":
+            - code: 21b022f096774c7189a550e51afdbb3b
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:22 QA admin Успешно update dictionary_items #52 lock_owner_id, lock_until, version 21b022f096774c7189a550e51afdbb3b 127.0.0.1"':
+          - cell "17.10.2026, 14:19:22"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #52"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "21b022f096774c7189a550e51afdbb3b":
+            - code: 21b022f096774c7189a550e51afdbb3b
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:22 QA admin Успешно update dictionary_items #58 lock_owner_id, lock_until, version 21b022f096774c7189a550e51afdbb3b 127.0.0.1"':
+          - cell "17.10.2026, 14:19:22"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #58"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "21b022f096774c7189a550e51afdbb3b":
+            - code: 21b022f096774c7189a550e51afdbb3b
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:22 QA admin Успешно update dictionary_items #51 lock_owner_id, lock_until, version 21b022f096774c7189a550e51afdbb3b 127.0.0.1"':
+          - cell "17.10.2026, 14:19:22"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #51"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "21b022f096774c7189a550e51afdbb3b":
+            - code: 21b022f096774c7189a550e51afdbb3b
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:22 QA admin Успешно update dictionary_items #55 lock_owner_id, lock_until, version 21b022f096774c7189a550e51afdbb3b 127.0.0.1"':
+          - cell "17.10.2026, 14:19:22"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #55"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "21b022f096774c7189a550e51afdbb3b":
+            - code: 21b022f096774c7189a550e51afdbb3b
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:22 QA admin Успешно update dictionary_items #54 lock_owner_id, lock_until, version 21b022f096774c7189a550e51afdbb3b 127.0.0.1"':
+          - cell "17.10.2026, 14:19:22"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #54"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "21b022f096774c7189a550e51afdbb3b":
+            - code: 21b022f096774c7189a550e51afdbb3b
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:15 QA admin Успешно update dictionary_items #58 lock_owner_id, lock_until 84f48eac6cf44eb58c3e6fcf25665041 127.0.0.1"':
+          - cell "17.10.2026, 14:19:15"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #58"'
+          - cell "lock_owner_id, lock_until"
+          - cell "84f48eac6cf44eb58c3e6fcf25665041":
+            - code: 84f48eac6cf44eb58c3e6fcf25665041
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:15 QA admin Успешно update dictionary_items #57 lock_owner_id, lock_until 84f48eac6cf44eb58c3e6fcf25665041 127.0.0.1"':
+          - cell "17.10.2026, 14:19:15"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #57"'
+          - cell "lock_owner_id, lock_until"
+          - cell "84f48eac6cf44eb58c3e6fcf25665041":
+            - code: 84f48eac6cf44eb58c3e6fcf25665041
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:15 QA admin Успешно update dictionary_items #56 lock_owner_id, lock_until 84f48eac6cf44eb58c3e6fcf25665041 127.0.0.1"':
+          - cell "17.10.2026, 14:19:15"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #56"'
+          - cell "lock_owner_id, lock_until"
+          - cell "84f48eac6cf44eb58c3e6fcf25665041":
+            - code: 84f48eac6cf44eb58c3e6fcf25665041
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:15 QA admin Успешно update dictionary_items #55 lock_owner_id, lock_until 84f48eac6cf44eb58c3e6fcf25665041 127.0.0.1"':
+          - cell "17.10.2026, 14:19:15"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #55"'
+          - cell "lock_owner_id, lock_until"
+          - cell "84f48eac6cf44eb58c3e6fcf25665041":
+            - code: 84f48eac6cf44eb58c3e6fcf25665041
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:15 QA admin Успешно update dictionary_items #53 lock_owner_id, lock_until 84f48eac6cf44eb58c3e6fcf25665041 127.0.0.1"':
+          - cell "17.10.2026, 14:19:15"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #53"'
+          - cell "lock_owner_id, lock_until"
+          - cell "84f48eac6cf44eb58c3e6fcf25665041":
+            - code: 84f48eac6cf44eb58c3e6fcf25665041
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:15 QA admin Успешно update dictionary_items #52 lock_owner_id, lock_until 84f48eac6cf44eb58c3e6fcf25665041 127.0.0.1"':
+          - cell "17.10.2026, 14:19:15"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #52"'
+          - cell "lock_owner_id, lock_until"
+          - cell "84f48eac6cf44eb58c3e6fcf25665041":
+            - code: 84f48eac6cf44eb58c3e6fcf25665041
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:15 QA admin Успешно update dictionary_items #51 lock_owner_id, lock_until 84f48eac6cf44eb58c3e6fcf25665041 127.0.0.1"':
+          - cell "17.10.2026, 14:19:15"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #51"'
+          - cell "lock_owner_id, lock_until"
+          - cell "84f48eac6cf44eb58c3e6fcf25665041":
+            - code: 84f48eac6cf44eb58c3e6fcf25665041
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:15 QA admin Успешно update dictionary_items #54 lock_owner_id, lock_until 84f48eac6cf44eb58c3e6fcf25665041 127.0.0.1"':
+          - cell "17.10.2026, 14:19:15"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #54"'
+          - cell "lock_owner_id, lock_until"
+          - cell "84f48eac6cf44eb58c3e6fcf25665041":
+            - code: 84f48eac6cf44eb58c3e6fcf25665041
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:14 QA admin Успешно update dictionary_items #53 lock_owner_id, lock_until, version c5686b0755ae451bac2fb14839ed7b5a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:14"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #53"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5686b0755ae451bac2fb14839ed7b5a":
+            - code: c5686b0755ae451bac2fb14839ed7b5a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:14 QA admin Успешно update dictionary_items #57 lock_owner_id, lock_until, version c5686b0755ae451bac2fb14839ed7b5a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:14"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #57"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5686b0755ae451bac2fb14839ed7b5a":
+            - code: c5686b0755ae451bac2fb14839ed7b5a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:14 QA admin Успешно update dictionary_items #52 lock_owner_id, lock_until, version c5686b0755ae451bac2fb14839ed7b5a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:14"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #52"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5686b0755ae451bac2fb14839ed7b5a":
+            - code: c5686b0755ae451bac2fb14839ed7b5a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:14 QA admin Успешно update dictionary_items #56 lock_owner_id, lock_until, version c5686b0755ae451bac2fb14839ed7b5a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:14"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #56"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5686b0755ae451bac2fb14839ed7b5a":
+            - code: c5686b0755ae451bac2fb14839ed7b5a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:14 QA admin Успешно update dictionary_items #58 lock_owner_id, lock_until, version c5686b0755ae451bac2fb14839ed7b5a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:14"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #58"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5686b0755ae451bac2fb14839ed7b5a":
+            - code: c5686b0755ae451bac2fb14839ed7b5a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:14 QA admin Успешно update dictionary_items #51 lock_owner_id, lock_until, version c5686b0755ae451bac2fb14839ed7b5a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:14"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #51"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5686b0755ae451bac2fb14839ed7b5a":
+            - code: c5686b0755ae451bac2fb14839ed7b5a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:14 QA admin Успешно update dictionary_items #55 lock_owner_id, lock_until, version c5686b0755ae451bac2fb14839ed7b5a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:14"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #55"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5686b0755ae451bac2fb14839ed7b5a":
+            - code: c5686b0755ae451bac2fb14839ed7b5a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:14 QA admin Успешно update dictionary_items #54 lock_owner_id, lock_until, version c5686b0755ae451bac2fb14839ed7b5a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:14"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #54"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5686b0755ae451bac2fb14839ed7b5a":
+            - code: c5686b0755ae451bac2fb14839ed7b5a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:11 QA admin Успешно update dictionary_items #50 lock_owner_id, lock_until 0a95ce0572ef43a983857d8bd68946bf 127.0.0.1"':
+          - cell "17.10.2026, 14:19:11"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #50"'
+          - cell "lock_owner_id, lock_until"
+          - cell "0a95ce0572ef43a983857d8bd68946bf":
+            - code: 0a95ce0572ef43a983857d8bd68946bf
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:11 QA admin Успешно update dictionary_items #49 lock_owner_id, lock_until 0a95ce0572ef43a983857d8bd68946bf 127.0.0.1"':
+          - cell "17.10.2026, 14:19:11"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #49"'
+          - cell "lock_owner_id, lock_until"
+          - cell "0a95ce0572ef43a983857d8bd68946bf":
+            - code: 0a95ce0572ef43a983857d8bd68946bf
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:11 QA admin Успешно update dictionary_items #48 lock_owner_id, lock_until 0a95ce0572ef43a983857d8bd68946bf 127.0.0.1"':
+          - cell "17.10.2026, 14:19:11"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #48"'
+          - cell "lock_owner_id, lock_until"
+          - cell "0a95ce0572ef43a983857d8bd68946bf":
+            - code: 0a95ce0572ef43a983857d8bd68946bf
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:09 QA admin Успешно update dictionary_items #48 lock_owner_id, lock_until, version c5f47c132adc49fb96a1387c6a548c32 127.0.0.1"':
+          - cell "17.10.2026, 14:19:09"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #48"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5f47c132adc49fb96a1387c6a548c32":
+            - code: c5f47c132adc49fb96a1387c6a548c32
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:09 QA admin Успешно update dictionary_items #50 lock_owner_id, lock_until, version c5f47c132adc49fb96a1387c6a548c32 127.0.0.1"':
+          - cell "17.10.2026, 14:19:09"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #50"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5f47c132adc49fb96a1387c6a548c32":
+            - code: c5f47c132adc49fb96a1387c6a548c32
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:09 QA admin Успешно update dictionary_items #49 lock_owner_id, lock_until, version c5f47c132adc49fb96a1387c6a548c32 127.0.0.1"':
+          - cell "17.10.2026, 14:19:09"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #49"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "c5f47c132adc49fb96a1387c6a548c32":
+            - code: c5f47c132adc49fb96a1387c6a548c32
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:06 QA admin Успешно update dictionary_items #46 lock_owner_id, lock_until 1b5e4f3c5b2849ae8758315adcd7d11a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:06"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #46"'
+          - cell "lock_owner_id, lock_until"
+          - cell "1b5e4f3c5b2849ae8758315adcd7d11a":
+            - code: 1b5e4f3c5b2849ae8758315adcd7d11a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:06 QA admin Успешно update dictionary_items #47 lock_owner_id, lock_until 1b5e4f3c5b2849ae8758315adcd7d11a 127.0.0.1"':
+          - cell "17.10.2026, 14:19:06"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #47"'
+          - cell "lock_owner_id, lock_until"
+          - cell "1b5e4f3c5b2849ae8758315adcd7d11a":
+            - code: 1b5e4f3c5b2849ae8758315adcd7d11a
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:05 QA admin Успешно update dictionary_items #46 lock_owner_id, lock_until, version 8878d25c06fd440f828b2200e329c8c3 127.0.0.1"':
+          - cell "17.10.2026, 14:19:05"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #46"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "8878d25c06fd440f828b2200e329c8c3":
+            - code: 8878d25c06fd440f828b2200e329c8c3
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:05 QA admin Успешно update dictionary_items #47 lock_owner_id, lock_until, version 8878d25c06fd440f828b2200e329c8c3 127.0.0.1"':
+          - cell "17.10.2026, 14:19:05"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "dictionary_items #47"'
+          - cell "lock_owner_id, lock_until, version"
+          - cell "8878d25c06fd440f828b2200e329c8c3":
+            - code: 8878d25c06fd440f828b2200e329c8c3
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:04 QA admin Успешно update departments #6 lock_owner_id, lock_until de9815074222417d9605e4aab78249d0 127.0.0.1"':
+          - cell "17.10.2026, 14:19:04"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "departments #6"'
+          - cell "lock_owner_id, lock_until"
+          - cell "de9815074222417d9605e4aab78249d0":
+            - code: de9815074222417d9605e4aab78249d0
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:04 QA admin Успешно update departments #9 lock_owner_id, lock_until de9815074222417d9605e4aab78249d0 127.0.0.1"':
+          - cell "17.10.2026, 14:19:04"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "departments #9"'
+          - cell "lock_owner_id, lock_until"
+          - cell "de9815074222417d9605e4aab78249d0":
+            - code: de9815074222417d9605e4aab78249d0
+          - cell "127.0.0.1"
+        - 'row "17.10.2026, 14:19:04 QA admin Успешно update departments #7 lock_owner_id, lock_until de9815074222417d9605e4aab78249d0 127.0.0.1"':
+          - cell "17.10.2026, 14:19:04"
+          - cell "QA admin"
+          - cell "Успешно"
+          - cell "update"
+          - 'cell "departments #7"'
+          - cell "lock_owner_id, lock_until"
+          - cell "de9815074222417d9605e4aab78249d0":
+            - code: de9815074222417d9605e4aab78249d0
+          - cell "127.0.0.1"
+    - navigation "Страницы списка":
+      - text: 1–50 из 5457
+      - button "Назад" [disabled]
+      - text: 1 / 110
+      - button "Далее"

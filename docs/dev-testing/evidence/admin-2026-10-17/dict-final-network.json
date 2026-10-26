@@ -1,0 +1,1303 @@
+[
+  {
+    "path": "/api/v1/admin/priority/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:56:58.987091Z",
+      "is_mine": true,
+      "version": 7
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/priority/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 1,
+          "name": "ВЫСОКИЙ",
+          "code": "high",
+          "color": "#f43f5e",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 35
+        },
+        {
+          "id": 2,
+          "name": "СРЕДНИЙ",
+          "code": "medium",
+          "color": "#f59e0b",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 130
+        },
+        {
+          "id": 3,
+          "name": "НИЗКИЙ",
+          "code": "low",
+          "color": "#94a3b8",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 77
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/priority/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/status/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:56:59.741570Z",
+      "is_mine": true,
+      "version": 7
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/status/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 4,
+          "name": "НОВАЯ ЗАДАЧА",
+          "code": "new",
+          "color": "#3b82f6",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 25
+        },
+        {
+          "id": 5,
+          "name": "НАЗНАЧЕНА КОМАНДА",
+          "code": "team_assigned",
+          "color": "#6366f1",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 7
+        },
+        {
+          "id": 6,
+          "name": "СБОР ТРЕБОВАНИЙ",
+          "code": "requirements",
+          "color": "#8b5cf6",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 19
+        },
+        {
+          "id": 7,
+          "name": "ПРОВЕРКА ТРЕБОВАНИЙ",
+          "code": "check_requirements",
+          "color": "#7c3aed",
+          "sort_order": 4,
+          "is_active": true,
+          "usage_count": 11
+        },
+        {
+          "id": 8,
+          "name": "УТОЧНЕНИЕ ТРЕБОВАНИЙ",
+          "code": "clarify_requirements",
+          "color": "#a78bfa",
+          "sort_order": 5,
+          "is_active": true,
+          "usage_count": 42
+        },
+        {
+          "id": 9,
+          "name": "ЭКСПРЕСС-ОЦЕНКА",
+          "code": "quick_estimate",
+          "color": "#6d28d9",
+          "sort_order": 6,
+          "is_active": true,
+          "usage_count": 1
+        },
+        {
+          "id": 10,
+          "name": "ПРИНЯТИЕ РЕШЕНИЯ",
+          "code": "decision",
+          "color": "#f59e0b",
+          "sort_order": 7,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 11,
+          "name": "ПРИНЯТА В РАБОТУ",
+          "code": "in_progress",
+          "color": "#10b981",
+          "sort_order": 8,
+          "is_active": true,
+          "usage_count": 5
+        },
+        {
+          "id": 12,
+          "name": "ОТКЛОНЕНА",
+          "code": "rejected",
+          "color": "#ef4444",
+          "sort_order": 9,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 13,
+          "name": "НЕ АКТУАЛЬНА",
+          "code": "irrelevant",
+          "color": "#94a3b8",
+          "sort_order": 10,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 14,
+          "name": "ВЫПОЛНЕНА",
+          "code": "done",
+          "color": "#22c55e",
+          "sort_order": 11,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 15,
+          "name": "ЭСКАЛАЦИЯ НА ЛТ",
+          "code": "escalation",
+          "color": "#f97316",
+          "sort_order": 12,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 16,
+          "name": "ХОЛД",
+          "code": "hold",
+          "color": "#e11d48",
+          "sort_order": 13,
+          "is_active": true,
+          "usage_count": 0
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/status/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/task_type/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:00.433766Z",
+      "is_mine": true,
+      "version": 3
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/task_type/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 17,
+          "name": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+          "code": "quarterly_goal",
+          "color": "#6366f1",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 18,
+          "name": "AD-HOC",
+          "code": "adhoc",
+          "color": "#f59e0b",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 19,
+          "name": "ТЕХДОЛГ",
+          "code": "tech_debt",
+          "color": "#f43f5e",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 20,
+          "name": "ИССЛЕДОВАНИЕ",
+          "code": "research",
+          "color": "#10b981",
+          "sort_order": 4,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 21,
+          "name": "МЕТРИЧЕСКИЕ KR",
+          "code": "metric_kr",
+          "color": "#8b5cf6",
+          "sort_order": 5,
+          "is_active": true,
+          "usage_count": 0
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/task_type/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/channel/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:00.946720Z",
+      "is_mine": true,
+      "version": 4
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/channel/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 23,
+          "name": "Почта",
+          "code": "email",
+          "color": "#6366f1",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 24,
+          "name": "СберЧат",
+          "code": "sberchat",
+          "color": "#10b981",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 25,
+          "name": "Встреча/Звонок",
+          "code": "meeting_call",
+          "color": "#f59e0b",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 26,
+          "name": "Бизнес-план",
+          "code": "bizplan",
+          "color": "#f43f5e",
+          "sort_order": 4,
+          "is_active": true,
+          "usage_count": 0
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/channel/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/deadline/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:01.461445Z",
+      "is_mine": true,
+      "version": 4
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/deadline/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 27,
+          "name": "1Q 2026",
+          "code": "Q1_2026",
+          "color": "#6366f1",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 28,
+          "name": "2Q 2026",
+          "code": "Q2_2026",
+          "color": "#10b981",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 29,
+          "name": "3Q 2026",
+          "code": "Q3_2026",
+          "color": "#f59e0b",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 30,
+          "name": "4Q 2026",
+          "code": "Q4_2026",
+          "color": "#f43f5e",
+          "sort_order": 4,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 31,
+          "name": "2026",
+          "code": "Y2026",
+          "color": "#8b5cf6",
+          "sort_order": 5,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 32,
+          "name": "1Q 2027",
+          "code": "Q1_2027",
+          "color": "#0ea5e9",
+          "sort_order": 6,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 33,
+          "name": "2Q 2027",
+          "code": "Q2_2027",
+          "color": "#14b8a6",
+          "sort_order": 7,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 34,
+          "name": "БЕЗ СРОКА",
+          "code": "no_deadline",
+          "color": "#94a3b8",
+          "sort_order": 8,
+          "is_active": true,
+          "usage_count": 0
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/deadline/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/department/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:02.056161Z",
+      "is_mine": true,
+      "version": 3
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/department/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 2,
+          "name": "IB",
+          "code": "IB",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 45
+        },
+        {
+          "id": 9,
+          "name": "L2P",
+          "code": "L2P",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 3,
+          "name": "M&A",
+          "code": "MA",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 2
+        },
+        {
+          "id": 11,
+          "name": "РЕГ. ДИРЕКТОРЫ",
+          "code": "REG_DIRECTORS",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 26
+        },
+        {
+          "id": 7,
+          "name": "РИСКИ",
+          "code": "RISKS",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 29
+        },
+        {
+          "id": 4,
+          "name": "УРК",
+          "code": "URK",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 54
+        },
+        {
+          "id": 1,
+          "name": "УСИ",
+          "code": "USI",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 12
+        },
+        {
+          "id": 6,
+          "name": "ФИНАНСЫ",
+          "code": "FINANCE",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 42
+        },
+        {
+          "id": 10,
+          "name": "ЦИ",
+          "code": "CI",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 18
+        },
+        {
+          "id": 8,
+          "name": "ЦР",
+          "code": "CR",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 8
+        },
+        {
+          "id": 5,
+          "name": "ЦУП",
+          "code": "CUP",
+          "color": null,
+          "sort_order": 0,
+          "is_active": true,
+          "usage_count": 19
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/department/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/team_type/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:02.683591Z",
+      "is_mine": true,
+      "version": 3
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/team_type/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 46,
+          "name": "С разработкой",
+          "code": "with_dev",
+          "color": "#6366f1",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 47,
+          "name": "Без разработки",
+          "code": "without_dev",
+          "color": "#94a3b8",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 0
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/team_type/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/project_status/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:03.232582Z",
+      "is_mine": true,
+      "version": 3
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/project_status/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 48,
+          "name": "Активен",
+          "code": "active",
+          "color": "#10b981",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 49,
+          "name": "Завершен",
+          "code": "completed",
+          "color": "#6366f1",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 50,
+          "name": "Архивный",
+          "code": "archived",
+          "color": "#94a3b8",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 0
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/project_status/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/competency_cost/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:08.059744Z",
+      "is_mine": true,
+      "version": 6
+    }
+  },
+  {
+    "path": "/api/v1/admin/competency_cost/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/competency_cost/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:16.269282Z",
+      "is_mine": true,
+      "version": 7
+    }
+  },
+  {
+    "path": "/api/v1/admin/competency_cost/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/customer-references/did-client-groups",
+    "method": "GET",
+    "status": 200,
+    "data": []
+  },
+  {
+    "path": "/api/v1/admin/tag/lock",
+    "method": "POST",
+    "status": 404,
+    "data": {
+      "detail": "Dictionary not found"
+    }
+  },
+  {
+    "path": "/api/v1/admin/priority/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:42.853574Z",
+      "is_mine": true,
+      "version": 8
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/priority/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 1,
+          "name": "ВЫСОКИЙ",
+          "code": "high",
+          "color": "#f43f5e",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 35
+        },
+        {
+          "id": 2,
+          "name": "СРЕДНИЙ",
+          "code": "medium",
+          "color": "#f59e0b",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 130
+        },
+        {
+          "id": 3,
+          "name": "НИЗКИЙ",
+          "code": "low",
+          "color": "#94a3b8",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 77
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/priority/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/customer-references/did-client-groups",
+    "method": "GET",
+    "status": 200,
+    "data": []
+  },
+  {
+    "path": "/api/v1/admin/customer-references/did-client-groups",
+    "method": "GET",
+    "status": 200,
+    "data": []
+  },
+  {
+    "path": "/api/v1/admin/status/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:44.818982Z",
+      "is_mine": true,
+      "version": 8
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/status/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 4,
+          "name": "НОВАЯ ЗАДАЧА",
+          "code": "new",
+          "color": "#3b82f6",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 25
+        },
+        {
+          "id": 5,
+          "name": "НАЗНАЧЕНА КОМАНДА",
+          "code": "team_assigned",
+          "color": "#6366f1",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 7
+        },
+        {
+          "id": 6,
+          "name": "СБОР ТРЕБОВАНИЙ",
+          "code": "requirements",
+          "color": "#8b5cf6",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 19
+        },
+        {
+          "id": 7,
+          "name": "ПРОВЕРКА ТРЕБОВАНИЙ",
+          "code": "check_requirements",
+          "color": "#7c3aed",
+          "sort_order": 4,
+          "is_active": true,
+          "usage_count": 11
+        },
+        {
+          "id": 8,
+          "name": "УТОЧНЕНИЕ ТРЕБОВАНИЙ",
+          "code": "clarify_requirements",
+          "color": "#a78bfa",
+          "sort_order": 5,
+          "is_active": true,
+          "usage_count": 42
+        },
+        {
+          "id": 9,
+          "name": "ЭКСПРЕСС-ОЦЕНКА",
+          "code": "quick_estimate",
+          "color": "#6d28d9",
+          "sort_order": 6,
+          "is_active": true,
+          "usage_count": 1
+        },
+        {
+          "id": 10,
+          "name": "ПРИНЯТИЕ РЕШЕНИЯ",
+          "code": "decision",
+          "color": "#f59e0b",
+          "sort_order": 7,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 11,
+          "name": "ПРИНЯТА В РАБОТУ",
+          "code": "in_progress",
+          "color": "#10b981",
+          "sort_order": 8,
+          "is_active": true,
+          "usage_count": 5
+        },
+        {
+          "id": 12,
+          "name": "ОТКЛОНЕНА",
+          "code": "rejected",
+          "color": "#ef4444",
+          "sort_order": 9,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 13,
+          "name": "НЕ АКТУАЛЬНА",
+          "code": "irrelevant",
+          "color": "#94a3b8",
+          "sort_order": 10,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 14,
+          "name": "ВЫПОЛНЕНА",
+          "code": "done",
+          "color": "#22c55e",
+          "sort_order": 11,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 15,
+          "name": "ЭСКАЛАЦИЯ НА ЛТ",
+          "code": "escalation",
+          "color": "#f97316",
+          "sort_order": 12,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 16,
+          "name": "ХОЛД",
+          "code": "hold",
+          "color": "#e11d48",
+          "sort_order": 13,
+          "is_active": true,
+          "usage_count": 0
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/status/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/priority/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:57:54.550638Z",
+      "is_mine": true,
+      "version": 9
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/priority/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 1,
+          "name": "ВЫСОКИЙ",
+          "code": "high",
+          "color": "#f43f5e",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 35
+        },
+        {
+          "id": 2,
+          "name": "СРЕДНИЙ",
+          "code": "medium",
+          "color": "#f59e0b",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 130
+        },
+        {
+          "id": 3,
+          "name": "НИЗКИЙ",
+          "code": "low",
+          "color": "#94a3b8",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 77
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/priority/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/priority/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:58:18.122858Z",
+      "is_mine": true,
+      "version": 10
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/priority/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 1,
+          "name": "ВЫСОКИЙ",
+          "code": "high",
+          "color": "#f43f5e",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 35
+        },
+        {
+          "id": 2,
+          "name": "СРЕДНИЙ",
+          "code": "medium",
+          "color": "#f59e0b",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 130
+        },
+        {
+          "id": 3,
+          "name": "НИЗКИЙ",
+          "code": "low",
+          "color": "#94a3b8",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 77
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/priority/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/status/lock",
+    "method": "POST",
+    "status": 200,
+    "data": {
+      "locked": true,
+      "lock_owner_id": 23,
+      "lock_owner_name": "QA admin",
+      "lock_until": "2026-10-17T12:58:18.467105Z",
+      "is_mine": true,
+      "version": 9
+    }
+  },
+  {
+    "path": "/api/v1/admin/dictionaries/status/workspace",
+    "method": "GET",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 4,
+          "name": "НОВАЯ ЗАДАЧА",
+          "code": "new",
+          "color": "#3b82f6",
+          "sort_order": 1,
+          "is_active": true,
+          "usage_count": 25
+        },
+        {
+          "id": 5,
+          "name": "НАЗНАЧЕНА КОМАНДА",
+          "code": "team_assigned",
+          "color": "#6366f1",
+          "sort_order": 2,
+          "is_active": true,
+          "usage_count": 7
+        },
+        {
+          "id": 6,
+          "name": "СБОР ТРЕБОВАНИЙ",
+          "code": "requirements",
+          "color": "#8b5cf6",
+          "sort_order": 3,
+          "is_active": true,
+          "usage_count": 19
+        },
+        {
+          "id": 7,
+          "name": "ПРОВЕРКА ТРЕБОВАНИЙ",
+          "code": "check_requirements",
+          "color": "#7c3aed",
+          "sort_order": 4,
+          "is_active": true,
+          "usage_count": 11
+        },
+        {
+          "id": 8,
+          "name": "УТОЧНЕНИЕ ТРЕБОВАНИЙ",
+          "code": "clarify_requirements",
+          "color": "#a78bfa",
+          "sort_order": 5,
+          "is_active": true,
+          "usage_count": 42
+        },
+        {
+          "id": 9,
+          "name": "ЭКСПРЕСС-ОЦЕНКА",
+          "code": "quick_estimate",
+          "color": "#6d28d9",
+          "sort_order": 6,
+          "is_active": true,
+          "usage_count": 1
+        },
+        {
+          "id": 10,
+          "name": "ПРИНЯТИЕ РЕШЕНИЯ",
+          "code": "decision",
+          "color": "#f59e0b",
+          "sort_order": 7,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 11,
+          "name": "ПРИНЯТА В РАБОТУ",
+          "code": "in_progress",
+          "color": "#10b981",
+          "sort_order": 8,
+          "is_active": true,
+          "usage_count": 5
+        },
+        {
+          "id": 12,
+          "name": "ОТКЛОНЕНА",
+          "code": "rejected",
+          "color": "#ef4444",
+          "sort_order": 9,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 13,
+          "name": "НЕ АКТУАЛЬНА",
+          "code": "irrelevant",
+          "color": "#94a3b8",
+          "sort_order": 10,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 14,
+          "name": "ВЫПОЛНЕНА",
+          "code": "done",
+          "color": "#22c55e",
+          "sort_order": 11,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 15,
+          "name": "ЭСКАЛАЦИЯ НА ЛТ",
+          "code": "escalation",
+          "color": "#f97316",
+          "sort_order": 12,
+          "is_active": true,
+          "usage_count": 0
+        },
+        {
+          "id": 16,
+          "name": "ХОЛД",
+          "code": "hold",
+          "color": "#e11d48",
+          "sort_order": 13,
+          "is_active": true,
+          "usage_count": 0
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/v1/admin/status/lock",
+    "method": "DELETE",
+    "status": 200,
+    "data": {
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_owner_name": null,
+      "lock_until": null,
+      "is_mine": false,
+      "version": 0
+    }
+  },
+  {
+    "path": "/api/v1/admin/customer-references/did-client-groups",
+    "method": "GET",
+    "status": 200,
+    "data": []
+  },
+  {
+    "path": "/api/v1/admin/customer-references/did-client-groups",
+    "method": "GET",
+    "status": 200,
+    "data": []
+  }
+]

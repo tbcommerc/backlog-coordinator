@@ -165,7 +165,7 @@ def _call_agent(method: str, path: str, payload: dict | None = None) -> dict:
         # Creating a session has no idempotency key; retrying after a lost
         # response could create an orphan. All other mutations here are set-like
         # or carry their own stable request/session identifiers.
-        attempts = 1 if method == "POST" and path == "/api/agent/new-session" else settings.INTERSERVICE_MAX_ATTEMPTS
+        attempts = 1 if method == "POST" and path in {"/api/agent/new-session", "/api/agent/meetings/extract"} else settings.INTERSERVICE_MAX_ATTEMPTS
         body = request_with_resilience(
             "agent", req,
             timeout=settings.AGENT_TIMEOUT_SECONDS,
@@ -179,6 +179,16 @@ def _call_agent(method: str, path: str, payload: dict | None = None) -> dict:
         outcome = f"http_{e.code}"
         body = e.read().decode("utf-8", errors="replace")[:300]
         logger.error("agent %s %s -> %s: %s", method, path, e.code, body)
+        if path == "/api/agent/meetings/extract" and e.code == 503:
+            try:
+                detail = json.loads(body).get("detail")
+            except json.JSONDecodeError:
+                detail = None
+            if isinstance(detail, dict) and detail.get("code") == "meeting_ai_auth":
+                raise HTTPException(status_code=503, detail={
+                    "code": "meeting_ai_auth",
+                    "message": "Анализ недоступен: провайдер AI отклонил авторизацию. Администратору нужно проверить ключ и доступ к модели.",
+                }) from None
         if e.code == 409:
             try:
                 detail = json.loads(body).get("detail") or "Диалог уже изменён другим запросом"
@@ -315,7 +325,7 @@ def _request_stage_started_at(req: RequirementRequest) -> str | None:
 
 
 def _deadline_is_overdue(value: str | None, status: str) -> bool:
-    if not value or status in {"in_progress", "approved", "rejected"}:
+    if not value or status in {"in_progress", "approved", "rejected", "completed", "not_relevant", "task_rejected", "task_deleted"}:
         return False
     raw = str(value).strip()
     try:
@@ -797,7 +807,7 @@ def agent_requests_review(
 
     query = db.query(RequirementRequest).filter(
         RequirementRequest.is_deleted.is_(False),
-        RequirementRequest.status.in_(["submitted", "in_review", "in_progress", "returned", "approved", "rejected"]),
+        RequirementRequest.status.in_(["submitted", "in_review", "in_progress", "returned", "approved", "rejected", "completed", "not_relevant", "task_rejected", "task_deleted"]),
     )
     if review_access != "all":
         query = query.filter(RequirementRequest.team_id == current_user.team_id)
@@ -927,6 +937,9 @@ def agent_request_status(
             raise HTTPException(status_code=403, detail="Перенаправлять запросы между командами может только глобальный ревьюер")
         if not db.query(Team).filter(Team.id == requested_team_id).first():
             raise HTTPException(status_code=422, detail="Выбранная команда не найдена")
+    if body.status == "in_progress" and req.task_id is None:
+        raise HTTPException(409, detail={"code": "explicit_resolution_required",
+            "message": "Выберите результат размещения в новой форме ревью", "url": f"#/review/{req.id}"})
     if body.status == "in_progress" and not body.assignee_id:
         raise HTTPException(status_code=422, detail="При передаче в проработку укажите ответственного")
     if body.status == "in_progress" and body.assignee_id:

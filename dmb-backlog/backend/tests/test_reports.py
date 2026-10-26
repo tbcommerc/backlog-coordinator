@@ -1,7 +1,7 @@
 """Тесты движка фильтров/сортировки/группировки отчётов (execute_report)."""
 
 import json
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 
 def _seed(db):
@@ -215,6 +215,49 @@ def test_directorate_report_uses_ready_status_without_quarter_filter(client, aut
     assert marker_response.json()["directorate_attention"] is False
 
 
+def test_team_weekly_report_prioritizes_attention_and_exposes_next_step(client, auth_headers, db):
+    from models import ReportingMeeting, Task, TaskReportingStatus, Team
+    from reporting_meetings import current_meeting, ensure_reporting_schedule
+
+    team = Team(name="Команда недельного пульса")
+    db.add(team)
+    db.flush()
+    task = Task(title="Подготовить пилот", team_id=team.id, progress=60)
+    db.add(task)
+    ensure_reporting_schedule(db)
+    meeting = current_meeting(db, "team_weekly")
+    db.flush()
+    db.add(TaskReportingStatus(
+        meeting_id=meeting.id,
+        task_id=task.id,
+        status_text="Прототип проверен на фокус-группе",
+        weekly_payload={
+            "signal": "decision",
+            "next_step": "Запустить пилот",
+            "next_step_due": date.today().isoformat(),
+            "decision_request": "Согласовать 20 участников",
+        },
+        progress_snapshot=60,
+        is_ready=True,
+    ))
+    db.commit()
+
+    response = client.get(
+        f"/api/v1/reports/team-weekly-report?team_id={team.id}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    item = next(row for row in data["items"] if row["title"] == task.title)
+    assert item["signal"] == "decision"
+    assert item["result"] == "Прототип проверен на фокус-группе"
+    assert item["next_step"] == "Запустить пилот"
+    assert item["decision_request"] == "Согласовать 20 участников"
+    assert item["is_ready"] is True
+    assert data["summary"]["attention"] >= 1
+
+
 def test_joined_field_filters(client, auth_headers, db):
     _seed(db)
     h = auth_headers
@@ -315,23 +358,58 @@ def test_pip_report_uses_managed_status_and_exposes_planning_fields(client, auth
     assert item["priority_score"] == 87
 
 
-def test_quarterly_goals_report_uses_current_quarter_and_relative_traffic_light(client, auth_headers, db):
-    from models import Deadline, Report
-    from routers.reports_router import _current_quarter_progress, _progress_indicator
+def test_quarterly_goals_report_includes_goals_and_adhoc_and_applies_scope(client, auth_headers, db):
+    from models import Deadline, Report, StartShift, Task, TaskStatus, TaskType, Team, User
+    from routers.reports_router import (
+        _current_quarter_progress,
+        _moscow_today,
+        _progress_freshness,
+        _progress_indicator,
+        _progress_is_stale,
+        _quarter_progress,
+    )
 
     tasks = _seed(db)
-    deadline_name, planned = _current_quarter_progress(date.today())
+    deadline_name, planned = _current_quarter_progress(_moscow_today())
     current_deadline = db.query(Deadline).filter(Deadline.name == deadline_name).first()
     if current_deadline is None:
         current_deadline = Deadline(code=f"TEST_{deadline_name.replace(' ', '_')}", name=deadline_name)
         db.add(current_deadline)
         db.flush()
 
+    goal_type = TaskType(code="quarterly_goal", name="КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ")
+    adhoc_type = TaskType(code="adhoc", name="AD-HOC")
+    tech_debt_type = TaskType(code="tech_debt", name="ТЕХДОЛГ")
+    hold_status = TaskStatus(code="hold", name="ХОЛД")
+    excluded_team = Team(name="Delivery", domain="Delivery")
+    shifts = [
+        StartShift(code="M1", name="С первого месяца квартала", month_number=1, sort_order=1),
+        StartShift(code="M2", name="Со второго месяца квартала", month_number=2, sort_order=2),
+        StartShift(code="M3", name="С третьего месяца квартала", month_number=3, sort_order=3),
+    ]
+    db.add_all([goal_type, adhoc_type, tech_debt_type, hold_status, excluded_team, *shifts])
+    db.flush()
+
+    current_user = db.query(User).filter(User.email == "test@dmb.ru").one()
+    tasks[0].team.po_id = current_user.id
+
     tasks[0].deadline_id = current_deadline.id
+    tasks[0].task_type_id = goal_type.id
     tasks[0].progress = round(planned)
-    tasks[1].deadline_id = None
+    tasks[1].deadline_id = current_deadline.id
+    tasks[1].task_type_id = adhoc_type.id
+    tasks[1].team_id = tasks[2].team_id
     tasks[2].deadline_id = None
-    tasks[3].deadline_id = None
+    tasks[2].task_type_id = adhoc_type.id
+    tasks[3].deadline_id = current_deadline.id
+    tasks[3].task_type_id = goal_type.id
+
+    excluded_tasks = [
+        Task(title="Техдолг", deadline_id=current_deadline.id, task_type_id=tech_debt_type.id, status_id=tasks[0].status_id, team_id=tasks[0].team_id),
+        Task(title="Обеспечивающая команда", deadline_id=current_deadline.id, task_type_id=goal_type.id, status_id=tasks[0].status_id, team_id=excluded_team.id),
+        Task(title="Холд", deadline_id=current_deadline.id, task_type_id=goal_type.id, status_id=hold_status.id, team_id=tasks[0].team_id),
+    ]
+    db.add_all(excluded_tasks)
 
     report = Report(
         key="quarterly-goals",
@@ -349,17 +427,75 @@ def test_quarterly_goals_report_uses_current_quarter_and_relative_traffic_light(
     db.refresh(report)
 
     data = _exec(client, auth_headers, report.id)
-    assert data["total"] == 1
+    assert data["total"] == 2
     assert data["grouped"] is False
-    item = data["items"][0]
+    included_ids = {item["id"] for item in data["items"]}
+    assert included_ids == {tasks[0].id, tasks[1].id}
+    item = next(item for item in data["items"] if item["id"] == tasks[0].id)
     assert item["id"] == tasks[0].id
     assert item["planned_progress"] == planned
     assert item["progress_indicator"] == "green"
+    assert item["progress_freshness"] == "unconfirmed"
+    assert item["progress_freshness_label"] == "Не подтверждён"
+    assert item["traffic_reason"] == "Данные требуют обновления"
 
-    assert _progress_indicator(79, 100)[0] == "yellow"
-    assert _progress_indicator(50, 100)[0] == "yellow"
-    assert _progress_indicator(49, 100)[0] == "red"
-    assert _progress_indicator(120, 100)[0] == "green"
+    assert _current_quarter_progress(date(2026, 7, 1))[1] == 0
+    assert _progress_indicator(80, 100) == ("green", 20)
+    assert _progress_indicator(79, 100) == ("yellow", 21)
+    assert _progress_indicator(41, 100) == ("yellow", 59)
+    assert _progress_indicator(40, 100) == ("red", 60)
+    assert _progress_indicator(120, 100) == ("green", 0)
+    assert _progress_indicator(None, 100) == ("red", None)
+    assert _progress_indicator(0, None) == ("green", 0)
+
+    preparation_response = client.get(
+        "/api/v1/reports/quarterly-goals/preparation",
+        headers=auth_headers,
+    )
+    assert preparation_response.status_code == 200, preparation_response.text
+    preparation = preparation_response.json()
+    assert preparation["summary"]["total_tasks"] == 2
+    assert [shift["code"] for shift in preparation["start_shifts"]] == ["M1", "M2", "M3"]
+    editable = next(item for item in preparation["items"] if item["task_id"] == tasks[0].id)
+    assert editable["can_edit"] is True
+    cross_team = next(item for item in preparation["items"] if item["task_id"] == tasks[1].id)
+    assert cross_team["can_edit"] is True
+
+    cross_team_response = client.put(
+        f"/api/v1/reports/quarterly-goals/tasks/{tasks[1].id}",
+        headers=auth_headers,
+        json={"progress": 40, "start_shift_id": shifts[0].id, "version": cross_team["version"]},
+    )
+    assert cross_team_response.status_code == 200, cross_team_response.text
+
+    update_response = client.put(
+        f"/api/v1/reports/quarterly-goals/tasks/{tasks[0].id}",
+        headers=auth_headers,
+        json={"progress": 35, "start_shift_id": shifts[2].id, "version": editable["version"]},
+    )
+    assert update_response.status_code == 200, update_response.text
+    updated = update_response.json()
+    assert updated["progress"] == 35
+    assert updated["start_shift_id"] == shifts[2].id
+    assert updated["planned_progress"] == _quarter_progress(_moscow_today(), 3)
+    assert updated["progress_updated_at"] is not None
+
+    recalculated = _exec(client, auth_headers, report.id)
+    updated_report_item = next(item for item in recalculated["items"] if item["id"] == tasks[0].id)
+    assert updated_report_item["progress"] == 35
+    assert updated_report_item["start_shift_month"] == 3
+    assert updated_report_item["planned_progress"] == _quarter_progress(_moscow_today(), 3)
+    assert updated_report_item["progress_freshness"] == "current"
+    assert updated_report_item["progress_freshness_label"] == "Актуален"
+    assert updated_report_item["traffic_reason"] != "Данные требуют обновления"
+
+    tasks[0].progress = None
+    assert _progress_is_stale(tasks[0]) is True
+    assert _progress_freshness(tasks[0]) == ("missing", "Факт не заполнен")
+    tasks[0].progress = 35
+    tasks[0].progress_updated_at = datetime.now(timezone.utc) - timedelta(days=15)
+    assert _progress_is_stale(tasks[0]) is True
+    assert _progress_freshness(tasks[0]) == ("stale", "Устарел")
 
 
 def test_standard_report_registry_reuses_legacy_progress_report(db):
@@ -383,5 +519,5 @@ def test_standard_report_registry_reuses_legacy_progress_report(db):
     assert len(migrated) == 1
     assert migrated[0].id == legacy_id
     assert migrated[0].name == "Светофоры по квартальным целям"
-    assert migrated[0].description == "Статус достижения квартальных целей команд трайба"
+    assert migrated[0].description == "Статус квартальных целей и AD-HOC-задач команд трайба"
     assert db.query(Report).filter(Report.key == "progress").count() == 0

@@ -1,9 +1,13 @@
+import { createPopover, bindPopover } from '../ui/popover.js';
+import { selectionList, filterSelectionList } from '../ui/selectionList.js';
 import { confirmAction } from '../uiFeedback.js';
 import { calculateTaskCv } from '../taskMetrics.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
 import { TASK_COLUMNS } from './taskColumns.js';
+import { pageHeader, button } from '../ui/primitives.js';
+import { setReferenceSortOrders } from './tableUtils.js?v=52';
 
-console.log('[DMB] filterToolbar.js v20260804.2 loaded');
+console.log('[DMB] filterToolbar.js v20260918.1 loaded');
 const columnFilters = { backlog: {}, team: {} };
 const sortValues = { backlog: 'id-desc', team: 'id-desc' };
 const searchValues = { backlog: '', team: '' };
@@ -46,7 +50,7 @@ function normalizedRole(user = currentUser()) {
   return String(user.role_name || user.role || '').trim().toLocaleLowerCase('ru-RU');
 }
 
-function hasWritePermission(scope) {
+export function hasWritePermission(scope) {
   const user = currentUser();
   const role = normalizedRole(user);
   const roleCanEdit = GLOBAL_EDITOR_ROLES.has(role) || TEAM_EDITOR_ROLES.has(role);
@@ -65,6 +69,31 @@ export function canEditTaskForScope(scope, task) {
   return TEAM_EDITOR_ROLES.has(role) && user.team_id != null && Number(task?.team_id) === Number(user.team_id);
 }
 
+export function taskCountLabel(count) {
+  const mod100 = Math.abs(count) % 100;
+  const mod10 = Math.abs(count) % 10;
+  const noun = mod100 >= 11 && mod100 <= 14 ? 'задач' : mod10 === 1 ? 'задача' : mod10 >= 2 && mod10 <= 4 ? 'задачи' : 'задач';
+  return `Найдено: ${count} ${noun}`;
+}
+
+export function updateToolbarTasks(scope, tasks, visibleTasks = tasks) {
+  allTasksCache[scope] = tasks;
+  const reason = visibleTasks.some(task => canEditTaskForScope(scope, task)) ? ''
+    : visibleTasks.length ? 'Нет прав на изменение задач в этой выборке.' : 'В текущей выборке нет задач для изменения.';
+  const hint = document.getElementById(`${scope}-edit-hint`);
+  if (hint) { hint.textContent = reason; hint.hidden = !reason; }
+  for (const id of [`${scope}-inline-edit`, `${scope}-bulk-open`]) {
+    const button = document.getElementById(id);
+    if (!button || button.getAttribute('aria-haspopup') === 'menu') continue;
+    button.dataset.editUnavailable = reason;
+    const cards = document.querySelector(`#${scope}-view-toggle-group [data-view="cards"].active`);
+    button.disabled = !!reason || !!cards;
+    button.setAttribute('aria-disabled', String(button.disabled));
+    if (reason) button.setAttribute('aria-describedby', `${scope}-edit-hint`);
+    else button.removeAttribute('aria-describedby');
+  }
+}
+
 const columnDirectoryMap = {
   status_name: { url: '/admin/statuses', labelField: 'name' },
   priority_name: { url: '/admin/priorities', labelField: 'name' },
@@ -76,6 +105,7 @@ const columnDirectoryMap = {
   project_name: { url: '/admin/projects', labelField: 'name' },
   owner_name: { url: '/admin/users', labelField: 'name' },
   business_customer: { url: '/admin/business-customers', labelField: 'name' },
+  did_client_group: { url: '/tasks/reference', labelField: 'name', responseField: 'did_client_groups' },
 };
 
 async function loadDirectories() {
@@ -84,9 +114,16 @@ async function loadDirectories() {
     if (directoryCache[colKey]) return;
     const resp = await fetch(`/api/v1${info.url}`);
     if (!resp.ok) throw new Error(`Failed to load ${info.url}`);
-    const data = await resp.json();
-    const items = data.map(item => ({ value: String(item[info.labelField]), label: String(item[info.labelField]) }));
+    const payload = await resp.json();
+    const data = info.responseField ? (payload[info.responseField] || []) : payload;
+    const items = data.map((item, index) => ({
+      value: String(item[info.labelField]),
+      label: String(item[info.labelField]),
+      sort_order: item.sort_order ?? index,
+    }));
     directoryCache[colKey] = items;
+    const tableKey = filterColumnsByKey[colKey]?.columnKey || colKey;
+    setReferenceSortOrders({ [tableKey]: items });
   }));
   results.forEach((r, i) => {
     if (r.status === 'rejected') console.warn(`[DMB] Failed to load directory for ${entries[i][0]}:`, r.reason);
@@ -239,24 +276,31 @@ function writeSavedViews(scope, data) {
   localStorage.setItem(SAVED_VIEWS_PREFIX + scope, JSON.stringify(data));
 }
 
+export function savedViewStateKey(value) {
+  return JSON.stringify(value, (_key, nested) => {
+    if (!nested || Array.isArray(nested) || typeof nested !== 'object') return nested;
+    return Object.keys(nested).sort().reduce((result, key) => { result[key] = nested[key]; return result; }, {});
+  });
+}
+
 function renderSavedViewsControl(scope) {
   return `<div class="relative saved-view-control" id="${scope}-saved-view-control" style="display:flex;align-items:center;gap:4px;">
     <div class="saved-view-picker" style="position:relative;display:flex;align-items:center;">
-      <button type="button" id="${scope}-saved-view-trigger" class="btn btn-secondary btn-sm saved-view-trigger" title="Пользовательские представления" aria-expanded="false">
+      <button type="button" id="${scope}-saved-view-trigger" class="btn btn-secondary btn-sm saved-view-trigger ui-responsive-icon" aria-label="Пользовательские представления" title="Пользовательские представления" aria-expanded="false">
         <svg class="saved-view-trigger-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10h10V2Z"></path><path d="M22 12H12v10h10V12Z"></path><path d="M12 12H2v10h10V12Z"></path><path d="M22 2H12v10h10V2Z"></path></svg>
-        <span id="${scope}-saved-view-label" class="saved-view-trigger-label">Представление…</span>
+        <span id="${scope}-saved-view-label" class="saved-view-trigger-label ui-responsive-icon-label">Представление…</span>
         <span id="${scope}-saved-view-dirty" class="saved-view-dirty" style="display:none;" title="Текущее отображение отличается от сохранённого">●</span>
-        <svg class="saved-view-chevron" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg>
+        <svg class="saved-view-chevron ui-responsive-icon-extra" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg>
       </button>
       <div id="${scope}-saved-view-dropdown" class="saved-view-dropdown" style="display:none;"></div>
     </div>
     <button class="btn btn-secondary btn-sm square-icon saved-view-save-btn" id="${scope}-saved-view-save" title="Сохранить текущее представление" aria-label="Сохранить представление"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path><path d="M12 7v6"></path><path d="M9 10h6"></path></svg></button>
-    <div id="${scope}-saved-view-editor" style="display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:130;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:10px;padding:12px;width:280px;box-shadow:0 8px 24px rgba(0,0,0,.22);">
-      <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:5px;">Название представления</label>
-      <input id="${scope}-saved-view-name" maxlength="80" placeholder="Например, Мои активные" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);">
-      <div style="font-size:11px;color:var(--text-muted);line-height:1.4;margin-top:8px;">Сохранятся фильтры, сортировка, видимость и порядок столбцов.</div>
-      <label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;color:var(--text-secondary);"><input type="checkbox" id="${scope}-saved-view-default"> Открывать по умолчанию</label>
-      <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:12px;"><button class="btn btn-secondary btn-sm" id="${scope}-saved-view-cancel">Отмена</button><button class="btn btn-primary btn-sm" id="${scope}-saved-view-confirm">Сохранить</button></div>
+    <div id="${scope}-saved-view-editor" class="ui-popover-editor" hidden>
+      <label class="ui-popover-field" for="${scope}-saved-view-name">Название представления</label>
+      <input class="input ui-control" id="${scope}-saved-view-name" maxlength="80" placeholder="Например, Мои активные" style="width:100%;box-sizing:border-box">
+      <div class="ui-popover-hint">Сохранятся фильтры, сортировка, видимость и порядок столбцов.</div>
+      <label class="ui-selection-option"><input type="checkbox" id="${scope}-saved-view-default"> Открывать по умолчанию</label>
+      <div class="ui-popover-actions"><button class="btn btn-secondary btn-sm" id="${scope}-saved-view-cancel">Отмена</button><button class="btn btn-primary btn-sm" id="${scope}-saved-view-confirm">Сохранить</button></div>
     </div>
   </div>`;
 }
@@ -293,70 +337,70 @@ function initSavedViews(scope, getPageState, applyPageState, options = {}) {
   const nameInput = $(`${scope}-saved-view-name`);
   const defaultInput = $(`${scope}-saved-view-default`);
   let activeViewId = '';
+  let appliedViewStateKey = '';
   const showRevertAction = options.showRevertAction !== false;
-
-  const stableStringify = value => JSON.stringify(value, (_key, nested) => {
-    if (!nested || Array.isArray(nested) || typeof nested !== 'object') return nested;
-    return Object.keys(nested).sort().reduce((result, key) => { result[key] = nested[key]; return result; }, {});
-  });
 
   const currentState = () => ({ toolbar: getToolbarViewState(scope), page: getPageState?.() || {} });
 
   const updateDirtyIndicator = () => {
     const view = readSavedViews(scope).items.find(item => item.id === activeViewId);
-    const dirty = !!view && stableStringify(view.state || {}) !== stableStringify(currentState());
+    const baselineStateKey = appliedViewStateKey || savedViewStateKey(view?.state || {});
+    const dirty = !!view && baselineStateKey !== savedViewStateKey(currentState());
     if (dirtyIndicator) dirtyIndicator.style.display = dirty ? '' : 'none';
     trigger.classList.toggle('is-dirty', dirty);
     dropdown.querySelector('.saved-view-revert')?.toggleAttribute('disabled', !dirty);
   };
 
   const refreshOptions = selectedId => {
+    const focused = dropdown.contains(document.activeElement) ? document.activeElement : null;
+    const focusRow = focused?.closest('.saved-view-item')?.dataset.viewId;
+    const focusClass = focused && [...focused.classList].find(name => /^saved-view-(default|rename|delete|apply|update|revert)$/.test(name));
     const data = readSavedViews(scope);
-    activeViewId = selectedId || '';
+    const nextViewId = selectedId || '';
+    if (nextViewId !== activeViewId) appliedViewStateKey = '';
+    activeViewId = nextViewId;
     const active = data.items.find(view => view.id === activeViewId);
     if (label) label.textContent = active?.name || 'Представление…';
     dropdown.innerHTML = data.items.length
-      ? `<div class="saved-view-list">${data.items.map(view => `<div class="saved-view-item ${view.id === activeViewId ? 'active' : ''}" data-view-id="${escapeAttr(view.id)}"><button type="button" class="saved-view-apply" data-view-id="${escapeAttr(view.id)}"><span>${escapeAttr(view.name)}</span></button><button type="button" class="saved-view-default ${view.id === data.defaultId ? 'is-default' : ''}" data-default-view-id="${escapeAttr(view.id)}" title="${view.id === data.defaultId ? 'Снять вид по умолчанию' : 'Установить как вид по умолчанию'}" aria-label="${view.id === data.defaultId ? 'Снять вид по умолчанию' : 'Установить как вид по умолчанию'}: ${escapeAttr(view.name)}" aria-pressed="${view.id === data.defaultId ? 'true' : 'false'}">${view.id === data.defaultId ? '★' : '☆'}</button><button type="button" class="saved-view-rename" data-rename-view-id="${escapeAttr(view.id)}" title="Переименовать представление" aria-label="Переименовать представление ${escapeAttr(view.name)}"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg></button><button type="button" class="saved-view-delete" data-delete-view-id="${escapeAttr(view.id)}" title="Удалить представление" aria-label="Удалить представление ${escapeAttr(view.name)}"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg></button></div>`).join('')}</div><div class="saved-view-actions">${showRevertAction ? `<button type="button" class="saved-view-revert" ${activeViewId ? '' : 'disabled'}>Вернуть сохранённое</button>` : ''}<button type="button" class="saved-view-update" ${activeViewId ? '' : 'disabled'}>Обновить текущими настройками</button></div>`
+      ? `<div class="saved-view-list">${data.items.map(view => `<div class="saved-view-item ${view.id === activeViewId ? 'active' : ''}" data-view-id="${escapeAttr(view.id)}"><button type="button" class="ui-surface-action saved-view-apply" data-view-id="${escapeAttr(view.id)}"><span>${escapeAttr(view.name)}</span></button><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn saved-view-default ${view.id === data.defaultId ? 'is-default' : ''}" data-default-view-id="${escapeAttr(view.id)}" title="${view.id === data.defaultId ? 'Снять вид по умолчанию' : 'Установить как вид по умолчанию'}" aria-label="${view.id === data.defaultId ? 'Снять вид по умолчанию' : 'Установить как вид по умолчанию'}: ${escapeAttr(view.name)}" aria-pressed="${view.id === data.defaultId ? 'true' : 'false'}">${view.id === data.defaultId ? '★' : '☆'}</button><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn saved-view-rename" data-rename-view-id="${escapeAttr(view.id)}" title="Переименовать представление" aria-label="Переименовать представление ${escapeAttr(view.name)}"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg></button><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn saved-view-delete" data-delete-view-id="${escapeAttr(view.id)}" title="Удалить представление" aria-label="Удалить представление ${escapeAttr(view.name)}"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg></button></div>`).join('')}</div><div class="saved-view-actions">${showRevertAction ? `<button type="button" class="btn btn-secondary btn-sm ui-btn saved-view-revert" ${activeViewId ? '' : 'disabled'}>Вернуть сохранённое</button>` : ''}<button type="button" class="btn btn-secondary btn-sm ui-btn saved-view-update" ${activeViewId ? '' : 'disabled'}>Обновить текущими настройками</button></div>`
       : '<div class="saved-view-empty">Сохранённых представлений пока нет</div>';
+    if (focused) {
+      const row = focusRow && dropdown.querySelector(`[data-view-id="${CSS.escape(focusRow)}"]`);
+      const next = focusClass ? (row || dropdown).querySelector(`.${focusClass}`) : row?.querySelector('.saved-view-rename');
+      (next || dropdown.querySelector('button') || dropdown).focus({ preventScroll: true });
+    }
     setTimeout(updateDirtyIndicator, 0);
   };
 
-  const applyView = id => {
+  const applyView = async (id, guard = true) => {
     const view = readSavedViews(scope).items.find(item => item.id === id);
-    if (!view) return;
+    if (!view) return false;
+    if (guard && options.beforeApply && !(await options.beforeApply())) return false;
     applyToolbarViewState(scope, view.state?.toolbar || {});
     applyPageState?.(view.state?.page || {});
     syncColumnControls(scope);
     filterChangeCallbacks[scope]?.();
+    // A saved view may predate newly introduced columns or state fields. Page
+    // adapters normalize such a view while applying it; that normalized result
+    // is the baseline until the user actually changes a setting.
+    appliedViewStateKey = savedViewStateKey(currentState());
+    return true;
   };
 
   const clearInlineEditors = () => {
     dropdown.querySelectorAll('.saved-view-rename-editor, .saved-view-delete-confirm').forEach(element => element.remove());
   };
 
-  trigger.addEventListener('click', () => {
-    const open = dropdown.style.display !== 'none';
-    if (editor) editor.style.display = 'none';
-    if (open) clearInlineEditors();
-    dropdown.style.display = open ? 'none' : 'block';
-    trigger.setAttribute('aria-expanded', open ? 'false' : 'true');
-  });
-  document.addEventListener('click', event => {
-    if (!event.target.closest(`#${scope}-saved-view-control`)) {
-      dropdown.style.display = 'none';
-      if (editor) editor.style.display = 'none';
-      clearInlineEditors();
-      trigger.setAttribute('aria-expanded', 'false');
-    }
-  });
+  const viewsPopover = bindPopover({ trigger, panel: dropdown, label: 'Сохранённые представления', align: 'end', onClose: clearInlineEditors });
+  const editorPopover = createPopover({ trigger: saveBtn, panel: editor, label: 'Сохранить представление', align: 'end' });
   dropdown.addEventListener('click', async event => {
     const applyButton = event.target.closest('[data-view-id].saved-view-apply');
     if (applyButton) {
-      activeViewId = applyButton.dataset.viewId;
-      applyView(activeViewId);
+      const requestedViewId = applyButton.dataset.viewId;
+      if (!(await applyView(requestedViewId))) return;
+      activeViewId = requestedViewId;
       refreshOptions(activeViewId);
-      dropdown.style.display = 'none';
-      trigger.setAttribute('aria-expanded', 'false');
+      viewsPopover.close();
       return;
     }
     const defaultButton = event.target.closest('[data-default-view-id]');
@@ -375,7 +419,7 @@ function initSavedViews(scope, getPageState, applyPageState, options = {}) {
       const view = readSavedViews(scope).items.find(item => item.id === renameId);
       const row = renameButton.closest('.saved-view-item');
       dropdown.querySelectorAll('.saved-view-rename-editor, .saved-view-delete-confirm').forEach(element => element.remove());
-      row?.insertAdjacentHTML('beforeend', `<div class="saved-view-rename-editor"><input maxlength="80" value="${escapeAttr(view?.name || '')}" aria-label="Новое название представления"><div><button type="button" class="saved-view-rename-cancel">Отмена</button><button type="button" class="saved-view-rename-confirm" data-confirm-rename-id="${escapeAttr(renameId)}">Сохранить</button></div></div>`);
+      row?.insertAdjacentHTML('beforeend', `<div class="saved-view-rename-editor" data-ui-local-escape><input class="input ui-control" maxlength="80" value="${escapeAttr(view?.name || '')}" aria-label="Новое название представления"><div><button type="button" class="btn btn-secondary btn-sm ui-btn saved-view-rename-cancel">Отмена</button><button type="button" class="btn btn-primary btn-sm ui-btn saved-view-rename-confirm" data-confirm-rename-id="${escapeAttr(renameId)}">Сохранить</button></div></div>`);
       const input = row?.querySelector('.saved-view-rename-editor input');
       input?.focus(); input?.select();
       return;
@@ -407,7 +451,7 @@ function initSavedViews(scope, getPageState, applyPageState, options = {}) {
       const view = data.items.find(item => item.id === deleteId);
       const row = deleteButton.closest('.saved-view-item');
       dropdown.querySelectorAll('.saved-view-rename-editor, .saved-view-delete-confirm').forEach(element => element.remove());
-      row?.insertAdjacentHTML('beforeend', `<div class="saved-view-delete-confirm"><span>Удалить «${escapeAttr(view?.name || '')}»?</span><div><button type="button" class="saved-view-delete-cancel">Отмена</button><button type="button" class="saved-view-delete-approve" data-confirm-delete-id="${escapeAttr(deleteId)}">Удалить</button></div></div>`);
+      row?.insertAdjacentHTML('beforeend', `<div class="saved-view-delete-confirm"><span>Удалить «${escapeAttr(view?.name || '')}»?</span><div><button type="button" class="btn btn-secondary btn-sm ui-btn saved-view-delete-cancel">Отмена</button><button type="button" class="btn btn-danger btn-sm ui-btn saved-view-delete-approve" data-confirm-delete-id="${escapeAttr(deleteId)}">Удалить</button></div></div>`);
       return;
     }
     if (event.target.closest('.saved-view-delete-cancel')) {
@@ -439,34 +483,33 @@ function initSavedViews(scope, getPageState, applyPageState, options = {}) {
         : view);
       writeSavedViews(scope, data);
       refreshOptions(activeViewId);
+      appliedViewStateKey = savedViewStateKey(currentState());
       window.toast?.('Представление обновлено', 'success');
       updateDirtyIndicator();
       return;
     }
     if (event.target.closest('.saved-view-revert')) {
       if (!activeViewId) return;
-      applyView(activeViewId);
+      if (!(await applyView(activeViewId))) return;
       refreshOptions(activeViewId);
-      dropdown.style.display = 'none';
-      trigger.setAttribute('aria-expanded', 'false');
+      viewsPopover.close();
       window.toast?.('Сохранённое представление восстановлено', 'success');
     }
   });
   dropdown.addEventListener('keydown', event => {
     if (!event.target.matches('.saved-view-rename-editor input')) return;
     if (event.key === 'Enter') { event.preventDefault(); event.target.closest('.saved-view-rename-editor')?.querySelector('[data-confirm-rename-id]')?.click(); }
-    if (event.key === 'Escape') { event.preventDefault(); event.target.closest('.saved-view-rename-editor')?.remove(); }
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); const row = event.target.closest('.saved-view-item'); event.target.closest('.saved-view-rename-editor')?.remove(); row?.querySelector('.saved-view-rename')?.focus(); }
   });
   saveBtn?.addEventListener('click', () => {
     if (!editor || !nameInput) return;
-    dropdown.style.display = 'none';
-    trigger.setAttribute('aria-expanded', 'false');
+    viewsPopover.close({ restoreFocus: false });
     nameInput.value = '';
     if (defaultInput) defaultInput.checked = false;
-    editor.style.display = 'block';
+    editorPopover.open();
     nameInput.focus();
   });
-  $(`${scope}-saved-view-cancel`)?.addEventListener('click', () => { editor.style.display = 'none'; });
+  $(`${scope}-saved-view-cancel`)?.addEventListener('click', () => { editorPopover.close(); });
   $(`${scope}-saved-view-confirm`)?.addEventListener('click', () => {
     const name = nameInput?.value.trim();
     if (!name) { window.toast?.('Введите название представления', 'warning'); return; }
@@ -480,14 +523,15 @@ function initSavedViews(scope, getPageState, applyPageState, options = {}) {
     data.items = [...data.items, item];
     if (defaultInput?.checked) data.defaultId = id;
     writeSavedViews(scope, data);
-    editor.style.display = 'none';
+    editorPopover.close();
     refreshOptions(id);
+    appliedViewStateKey = savedViewStateKey(currentState());
     window.toast?.('Представление сохранено', 'success');
   });
   const defaultId = readSavedViews(scope).defaultId;
   if (defaultId) {
     refreshOptions(defaultId);
-    applyView(defaultId);
+    applyView(defaultId, false);
   } else {
     refreshOptions('');
   }
@@ -529,7 +573,7 @@ export function getToolbarSearchValue(scope) {
 function updateColumnOrderNumbers(list) {
   const items = list?.querySelectorAll('.col-drag-item');
   if (!items) return;
-  list.style.gridTemplateRows = `repeat(${Math.ceil(items.length / 2)}, auto)`;
+  list.style.setProperty('--ui-column-rows', Math.ceil(items.length / 2));
   items.forEach((item, index) => {
     const number = item.querySelector('.col-order-number');
     if (number) number.textContent = `${index + 1}.`;
@@ -640,6 +684,19 @@ function matchesStoredFilter(task, key, values) {
   return matchesColumnFilter(task, filterColumnsByKey[key], values);
 }
 
+export function sortFilterOptions(values, configured = []) {
+  const configuredOrder = new Map(configured.map((option, index) => [
+    String(option.value),
+    Number.isFinite(Number(option.sort_order)) ? Number(option.sort_order) : index,
+  ]));
+  return [...values].sort((a, b) => {
+    const ao = configuredOrder.get(String(a));
+    const bo = configuredOrder.get(String(b));
+    if (ao != null || bo != null) return (ao ?? Number.MAX_SAFE_INTEGER) - (bo ?? Number.MAX_SAFE_INTEGER) || String(a).localeCompare(String(b), 'ru');
+    return String(a).localeCompare(String(b), 'ru');
+  });
+}
+
 function getUniqueValues(scope, key, allTasks) {
   const column = filterColumnsByKey[key];
   if (!column || !['select', 'boolean'].includes(column.type)) return [];
@@ -668,7 +725,7 @@ function getUniqueValues(scope, key, allTasks) {
   });
   const configured = directoryCache[key] || [];
   configured.forEach(option => unique.add(String(option.value)));
-  const options = [...unique].sort((a, b) => a.localeCompare(b, 'ru')).map(value => ({ value, label: value }));
+  const options = sortFilterOptions(unique, configured).map(value => ({ value, label: value }));
   if (hasEmpty) options.unshift({ value: EMPTY_FILTER_VALUE, label: 'Не заполнено' });
   return options;
 }
@@ -682,10 +739,10 @@ export function renderToolbar(scope, opts = {}) {
 
   const viewToggleHtml = `
     <div class="view-toggle" id="${scope}-view-toggle-group" aria-label="Режим отображения">
-      <button class="toggle-btn active" data-view="table" title="Табличное представление" aria-label="Табличное представление">
+      <button class="square-icon btn btn-secondary btn-sm ui-btn toggle-btn active" data-view="table" title="Табличное представление" aria-label="Табличное представление">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
       </button>
-      <button class="toggle-btn" data-view="cards" title="Карточное представление" aria-label="Карточное представление">
+      <button class="square-icon btn btn-secondary btn-sm ui-btn toggle-btn" data-view="cards" title="Карточное представление" aria-label="Карточное представление">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
       </button>
     </div>`;
@@ -695,26 +752,22 @@ export function renderToolbar(scope, opts = {}) {
       <button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-column-settings" title="Настройка отображения столбцов" aria-label="Настройка отображения столбцов">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </button>
-      <div class="column-settings-dropdown" id="${scope}-column-settings-dropdown" style="display:none;position:absolute;right:0;top:100%;z-index:100;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:10px;padding:0;min-width:380px;max-height:420px;box-shadow:0 8px 24px rgba(0,0,0,0.25);margin-top:6px;">
-        <div style="padding:10px 10px 6px 10px;background:var(--bg-primary);position:sticky;top:0;z-index:1;border-radius:10px 10px 0 0;">
-          <div class="text-sm font-semibold mb-2" style="color:var(--text-primary);padding:4px 6px;">Колонки</div>
-          <div style="display:flex;gap:6px;">
-            <button class="btn btn-ghost btn-sm" id="${scope}-col-select-all" style="flex:1;font-size:11px;padding:4px 8px;">Выбрать все</button>
-            <button class="btn btn-ghost btn-sm" id="${scope}-col-default" style="flex:1;font-size:11px;padding:4px 8px;">Стандартный вид</button>
-            <button class="btn btn-ghost btn-sm" id="${scope}-col-clear-all" style="flex:1;font-size:11px;padding:4px 8px;">Очистить все</button>
-          </div>
+      <div class="column-settings-dropdown ui-popover-columns" id="${scope}-column-settings-dropdown" hidden>
+        <div class="ui-popover-header"><strong class="ui-popover-title">Колонки</strong><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn" data-close-columns aria-label="Закрыть настройки колонок">×</button></div>
+        <div class="ui-popover-actions">
+          <button class="btn btn-ghost btn-sm" id="${scope}-col-select-all">Выбрать все</button>
+          <button class="btn btn-ghost btn-sm" id="${scope}-col-default">Стандартный вид</button>
+          <button class="btn btn-ghost btn-sm" id="${scope}-col-clear-all">Очистить все</button>
         </div>
-        <div class="column-settings-list" id="${scope}-column-settings-list" style="display:grid;grid-auto-flow:column;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:6px 10px 10px 10px;overflow-y:auto;max-height:340px;">
+        <p class="ui-popover-hint">ID всегда виден первым. Остальные колонки: перетащите строку или используйте Alt + ↑ / ↓ на флажке.</p>
+        <div class="column-settings-list" id="${scope}-column-settings-list">
           ${colOrder.map(key => {
             const val = colOpts[key];
             if (val === undefined) return '';
-            return `<div class="col-drag-item" data-col="${key}" style="display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:4px;cursor:grab;font-size:12px;color:var(--text-primary);user-select:none;border:1px solid transparent;width:100%;box-sizing:border-box;">
-              <span style="cursor:grab;color:var(--text-muted);display:flex;align-items:center;opacity:0.5;" class="col-drag-handle">
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg>
-              </span>
+            return `<div class="col-drag-item" data-col="${escapeAttr(key)}">
+              <span class="col-drag-handle" aria-hidden="true">⠿</span>
               <span class="col-order-number" aria-hidden="true"></span>
-              <input type="checkbox" data-col="${key}" ${val ? 'checked' : ''} style="margin:0;flex-shrink:0;">
-              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${getLabel(key)}</span>
+              <label class="ui-selection-option"><input type="checkbox" data-col="${escapeAttr(key)}" ${key === 'id' ? 'checked disabled' : val ? 'checked' : ''}><span>${escapeAttr(getLabel(key))}</span></label>
             </div>`;
           }).join('')}
         </div>
@@ -724,7 +777,7 @@ export function renderToolbar(scope, opts = {}) {
   const title = opts.title || '';
   const subtitle = opts.subtitle || '';
   const canWrite = hasWritePermission(scope);
-  const addTaskHtml = (canWrite && opts.addTask) ? `<button class="btn btn-primary btn-sm toolbar-add-task" id="${scope}-add-task-btn" title="Добавить задачу" aria-label="Добавить задачу"><i data-lucide="plus" style="width:15px;height:15px;flex-shrink:0;"></i><span class="toolbar-add-task-label">Добавить задачу</span></button>` : '';
+  const addTaskHtml = (canWrite && opts.addTask) ? `<button class="btn btn-primary btn-sm ui-responsive-icon toolbar-add-task" id="${scope}-add-task-btn" title="Добавить задачу" aria-label="Добавить задачу"><i data-lucide="plus"></i><span class="ui-responsive-icon-label toolbar-add-task-label">Добавить задачу</span></button>` : '';
   const savedViewsHtml = opts.savedViews ? renderSavedViewsControl(scope) : '';
 
   const bulkOpsTitle = escapeAttr(opts.bulkOpsTitle || 'Массовые операции');
@@ -735,7 +788,7 @@ export function renderToolbar(scope, opts = {}) {
 
   const importBtn = (canWrite && opts.onImport) ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-import-excel" title="Импорт из Excel"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button>` : '';
   const exportBtn = opts.excel !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-export-excel" title="Экспорт в CSV"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>` : '';
-  const refreshBtn = opts.refresh !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-refresh" title="Обновить"><i data-lucide="refresh-ccw" style="width:15px;height:15px;"></i></button>` : '';
+  const refreshBtn = opts.refresh !== false ? `<button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-refresh" title="Обновить"><i data-lucide="refresh-ccw"></i></button>` : '';
   const hasNonTransferActions = !!(addTaskHtml || savedViewsHtml || opts.columnSettings || opts.viewToggle !== false || quickEditBtn || bulkOpsBtn || refreshBtn);
   const transferActionsHtml = (importBtn || exportBtn) ? `
       <span class="toolbar-import-export-group" role="group" aria-label="Импорт и экспорт">
@@ -752,28 +805,18 @@ export function renderToolbar(scope, opts = {}) {
       ${savedViewsHtml}
       ${opts.columnSettings ? columnSettingsHtml : ''}
       ${opts.viewToggle !== false ? viewToggleHtml : ''}
-      ${quickEditBtn}
-      ${bulkOpsBtn}
-      ${transferActionsHtml}
-      ${refreshBtn}
+      ${scope === 'backlog' ? button({label:'Ещё',icon:'more-horizontal',attrs:{id:'backlog-more-tools','aria-haspopup':'dialog'}}) + `<div id="backlog-more-tools-panel" hidden>${quickEditBtn}${bulkOpsBtn}${transferActionsHtml}${refreshBtn}</div>` : quickEditBtn + bulkOpsBtn + transferActionsHtml + refreshBtn}
     </div>` : '';
 
   return `
     <div class="sticky-toolbar" data-version="3">
-      <div style="display:flex;flex-direction:column;gap:var(--space-2);">
-          <div class="toolbar-title-row">
-          ${title ? `
-          <div class="toolbar-title-wrap">
-            <h2 class="toolbar-title">${title}</h2>
-            ${subtitle ? `<p class="toolbar-subtitle">${subtitle}</p>` : ''}
-          </div>` : ''}
-          ${actionsHtml}
-        </div>
+      <div class="ui-toolbar-stack">
+        ${pageHeader({ title, description: subtitle, actions: actionsHtml })}
         <div class="filter-panel" data-filter-scope="${scope}">
           <div class="filter-toolbar-row">
             <div class="relative filter-search-wrap">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-muted);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input id="f-${scope}-search" aria-label="Поиск по ID, названию и описанию" placeholder="Поиск по ID и названию…">
+              <input class="input ui-control" id="f-${scope}-search" value="${escapeAttr(searchValues[scope] || '')}" aria-label="Поиск по ID, названию и описанию" placeholder="Поиск по ID и названию…">
             </div>
             <div id="f-${scope}-main-filters" class="pinned-filters-row" aria-label="Закреплённые фильтры"></div>
             <div class="filter-toolbar-controls">
@@ -792,21 +835,21 @@ export function renderToolbar(scope, opts = {}) {
             <div class="filter-catalog-header">
               <div>
                 <strong>Все фильтры</strong>
-                <span>Закрепите до ${MAX_PINNED_FILTERS} важных фильтров</span>
+                <span>${scope === 'backlog' ? 'Поиск и полный набор условий' : `Закрепите до ${MAX_PINNED_FILTERS} важных фильтров`}</span>
               </div>
               <div class="filter-catalog-header-actions">
-                <button type="button" class="filter-pins-reset" data-reset-pinned-filters="${scope}">По умолчанию</button>
-                <button type="button" class="filter-catalog-close" data-filter-catalog-close="${scope}" aria-label="Закрыть все фильтры"><i data-lucide="x"></i></button>
+                ${scope === 'backlog' ? '' : `<button type="button" class="btn btn-secondary btn-sm ui-btn filter-pins-reset" data-reset-pinned-filters="${scope}">По умолчанию</button>`}
+                <button type="button" class="btn btn-ghost btn-sm square-icon ui-btn filter-catalog-close" data-filter-catalog-close="${scope}" aria-label="Закрыть все фильтры"><i data-lucide="x"></i></button>
               </div>
             </div>
             <label class="filter-catalog-search-wrap">
               <i data-lucide="search" aria-hidden="true"></i>
-              <input type="search" id="f-${scope}-catalog-search" class="filter-catalog-search" placeholder="Найти фильтр…" aria-label="Найти фильтр">
+              <input type="search" id="f-${scope}-catalog-search" class="input ui-control filter-catalog-search" placeholder="Найти фильтр…" aria-label="Найти фильтр">
             </label>
             <div id="f-${scope}-ext-row" class="filter-catalog-groups"></div>
           </div>
         </div>
-        <button type="button" id="f-${scope}-catalog-backdrop" class="filter-catalog-backdrop hidden" data-filter-catalog-close="${scope}" aria-label="Закрыть все фильтры"></button>
+        <p id="${scope}-edit-hint" class="ui-popover-hint" hidden></p>
         <div id="f-${scope}-active-filters" class="active-filters-row"></div>
         ${opts.quickFilters || ''}
       </div>
@@ -832,6 +875,7 @@ export function initToolbarControls(scope, opts = {}) {
     showSavedViewRevert = true,
     getSavedViewState,
     applySavedViewState,
+    beforeApplySavedView,
   } = opts;
 
   columnSettingsRefs[scope] = columnSettings;
@@ -839,17 +883,30 @@ export function initToolbarControls(scope, opts = {}) {
   defaultColumnSettingsRefs[scope] = defaultColumnSettings || null;
 
   const getLabel = (k) => columnLabels[k] || k;
+  if (scope === 'backlog') {
+    const trigger = document.getElementById('backlog-more-tools');
+    const panel = document.getElementById('backlog-more-tools-panel');
+    if (trigger && panel) bindPopover({trigger,panel,label:'Действия бэклога',align:'end'});
+  }
   initSavedViews(scope, getSavedViewState, applySavedViewState, {
     showRevertAction: showSavedViewRevert,
+    beforeApply: beforeApplySavedView,
   });
 
   const viewGroup = document.getElementById(`${scope}-view-toggle-group`);
+  let switchingView = false;
   if (viewGroup) {
     viewGroup.querySelectorAll('.toggle-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
+        if (switchingView) return;
+        switchingView = true;
+        let accepted;
+        try { accepted = await onViewChange?.(btn.dataset.view); }
+        finally { switchingView = false; }
+        if (accepted === false) return;
         viewGroup.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        if (onViewChange) onViewChange(btn.dataset.view);
+        syncTableOnlyActions(btn.dataset.view === 'table');
       });
     });
   }
@@ -858,15 +915,13 @@ export function initToolbarControls(scope, opts = {}) {
   const colDropdown = document.getElementById(`${scope}-column-settings-dropdown`);
   const colList = document.getElementById(`${scope}-column-settings-list`);
   if (colBtn && colDropdown) {
-    colBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      colDropdown.style.display = colDropdown.style.display === 'none' ? 'block' : 'none';
-    });
+    const columnsPopover = bindPopover({ trigger: colBtn, panel: colDropdown, label: 'Настройка колонок', align: 'end' });
+    colDropdown.querySelector('[data-close-columns]')?.addEventListener('click', () => columnsPopover.close());
 
     function onColCheckChange(e) {
       const cb = e.target;
       const col = cb.dataset.col;
-      if (columnSettings && col) columnSettings[col] = cb.checked;
+      if (columnSettings && col) columnSettings[col] = col === 'id' || cb.checked;
       renderFilterButtons(scope, allTasksCache[scope]);
       if (onColumnChange) onColumnChange();
     }
@@ -879,15 +934,9 @@ export function initToolbarControls(scope, opts = {}) {
 
     if (colList && columnSettings) {
       colList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.checked = !!columnSettings[cb.dataset.col];
+        cb.checked = cb.dataset.col === 'id' || !!columnSettings[cb.dataset.col];
       });
     }
-
-    document.addEventListener('click', (e) => {
-      if (!colBtn.contains(e.target) && !colDropdown.contains(e.target)) {
-        colDropdown.style.display = 'none';
-      }
-    });
 
     const selectAllBtn = document.getElementById(`${scope}-col-select-all`);
     const clearAllBtn = document.getElementById(`${scope}-col-clear-all`);
@@ -905,9 +954,9 @@ export function initToolbarControls(scope, opts = {}) {
     if (clearAllBtn) {
       clearAllBtn.addEventListener('click', () => {
         colDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-          cb.checked = false;
+          cb.checked = cb.dataset.col === 'id';
           const col = cb.dataset.col;
-          if (columnSettings) columnSettings[col] = false;
+          if (columnSettings) columnSettings[col] = col === 'id';
         });
         renderFilterButtons(scope, allTasksCache[scope]);
         if (onColumnChange) onColumnChange();
@@ -932,6 +981,19 @@ export function initToolbarControls(scope, opts = {}) {
 
     if (colList && columnOrder) {
       updateColumnOrderNumbers(colList);
+      colList.addEventListener('keydown', event => {
+        if (!event.altKey || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+        const row = event.target.closest('.col-drag-item');
+        if (!row) return;
+        event.preventDefault(); event.stopPropagation();
+        const sibling = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+        if (!sibling || row.dataset.col === 'id' || sibling.dataset.col === 'id') return;
+        colList.insertBefore(row, event.key === 'ArrowUp' ? sibling : sibling.nextSibling);
+        columnOrder.splice(0, columnOrder.length, ...[...colList.children].map(item => item.dataset.col));
+        updateColumnOrderNumbers(colList);
+        event.target.focus();
+        onColumnOrderChange?.();
+      });
       let dragSrc = null;
       let dropTarget = null;
       let dropPosition = null;
@@ -978,7 +1040,7 @@ export function initToolbarControls(scope, opts = {}) {
         }
         e.preventDefault();
         const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.col-drag-item');
-        if (!target || target === dragSrc || !colList.contains(target)) return;
+        if (!target || target.dataset.col === 'id' || target === dragSrc || !colList.contains(target)) return;
         const rect = target.getBoundingClientRect();
         const sourceRect = dragSrc.getBoundingClientRect();
         const differentVisualColumn = Math.abs(sourceRect.left - rect.left) > Math.min(sourceRect.width, rect.width) / 2;
@@ -996,6 +1058,7 @@ export function initToolbarControls(scope, opts = {}) {
       colList.addEventListener('pointerdown', (e) => {
         if (e.button !== 0 || e.target.closest('input, button')) return;
         const item = e.target.closest('.col-drag-item');
+        if (item?.dataset.col === 'id') return;
         if (!item) return;
         dragSrc = item;
         dragStartX = e.clientX;
@@ -1041,41 +1104,23 @@ export function initToolbarControls(scope, opts = {}) {
 
   function syncTableOnlyActions(isTable) {
     tableOnlyActions.forEach(button => {
-      button.disabled = !isTable;
-      button.setAttribute('aria-disabled', String(!isTable));
+      button.disabled = !isTable || !!button.dataset.editUnavailable;
+      button.setAttribute('aria-disabled', String(button.disabled));
     });
   }
 
   syncTableOnlyActions(isTableView);
 
-  if (viewGroup) {
-    viewGroup.querySelectorAll('.toggle-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const isTable = btn.dataset.view === 'table';
-        syncTableOnlyActions(isTable);
-      });
-    });
-  }
-}
-
-function syncFilterCatalogViewportHeight(panel) {
-  if (!panel || panel.classList.contains('hidden')) return;
-  const viewportBottomGap = 8;
-  const availableHeight = Math.max(
-    0,
-    Math.floor(window.innerHeight - panel.getBoundingClientRect().top - viewportBottomGap),
-  );
-  panel.style.setProperty('--filter-catalog-available-height', `${availableHeight}px`);
 }
 
 export function initToolbar(scope, allTasks, onFilterChange) {
   filterChangeCallbacks[scope] = onFilterChange;
   allTasksCache[scope] = allTasks;
 
-  loadDirectories().then(() => { renderFilterButtons(scope, allTasks); });
+  loadDirectories().then(() => { renderFilterButtons(scope, allTasksCache[scope]); });
 
   function renderAll() {
-    renderFilterButtons(scope, allTasks);
+    renderFilterButtons(scope, allTasksCache[scope]);
     onFilterChange();
     updateStickyOffsets();
   }
@@ -1087,12 +1132,16 @@ export function initToolbar(scope, allTasks, onFilterChange) {
   }
 
   const searchInput = $(`f-${scope}-search`);
+  // The toolbar is visible while the initial task request is still loading.
+  // Preserve text entered before its input listener could be attached.
+  const earlySearchChanged = searchInput && searchInput.value !== (searchValues[scope] || '');
+  if (searchInput) searchValues[scope] = searchInput.value;
 
   let searchTimer;
   searchInput?.addEventListener('input', () => {
+    searchValues[scope] = searchInput.value;
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
-      searchValues[scope] = searchInput.value;
       applySearchSort();
     }, 250);
   });
@@ -1106,36 +1155,20 @@ export function initToolbar(scope, allTasks, onFilterChange) {
     renderAll();
   });
 
+  const catalogPanel = $(`f-${scope}-ext-filters`);
+  const catalogTrigger = $(`btn-ext-${scope}`);
+  const catalogPopover = catalogPanel && catalogTrigger ? createPopover({
+    trigger: catalogTrigger, panel: catalogPanel, label: 'Все фильтры', align: 'end',
+    onClose: () => { catalogPanel.classList.add('hidden');  },
+  }) : null;
   function setCatalogOpen(open) {
-    const ext = $(`f-${scope}-ext-filters`);
-    const chev = $(`chev-ext-${scope}`);
-    const trigger = $(`btn-ext-${scope}`);
-    const backdrop = $(`f-${scope}-catalog-backdrop`);
-    if (!ext) return;
-    ext.classList.toggle('hidden', !open);
-    backdrop?.classList.toggle('hidden', !open);
-    trigger?.setAttribute('aria-expanded', String(open));
-    document.body.classList.toggle('filter-catalog-open', open);
-    if (chev) {
-      chev.innerHTML = open
-        ? '<polyline points="18 15 12 9 6 15"></polyline>'
-        : '<polyline points="6 9 12 15 18 9"></polyline>';
-    }
-    updateStickyOffsets();
+    if (!catalogPopover) return;
     if (open) {
-      requestAnimationFrame(() => {
-        syncFilterCatalogViewportHeight(ext);
-        $(`f-${scope}-catalog-search`)?.focus();
-      });
-    } else {
-      ext.style.removeProperty('--filter-catalog-available-height');
-    }
+      catalogPanel.classList.remove('hidden'); catalogPopover.open();
+      $(`f-${scope}-catalog-search`)?.focus();
+    } else catalogPopover.close();
   }
-
-  $(`btn-ext-${scope}`)?.addEventListener('click', () => {
-    const ext = $(`f-${scope}-ext-filters`);
-    setCatalogOpen(!!ext?.classList.contains('hidden'));
-  });
+  catalogTrigger?.addEventListener('click', () => setCatalogOpen(!catalogPopover?.isOpen));
 
   document.querySelectorAll(`[data-filter-catalog-close="${scope}"]`).forEach(button => {
     button.addEventListener('click', () => setCatalogOpen(false));
@@ -1152,30 +1185,17 @@ export function initToolbar(scope, allTasks, onFilterChange) {
     applyFilterCatalogSearch(scope, event.target.value);
   });
 
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !$(`f-${scope}-ext-filters`)?.classList.contains('hidden')) {
-      setCatalogOpen(false);
-      $(`btn-ext-${scope}`)?.focus();
-    }
-  });
-
-  document.addEventListener('click', (e) => {
-    const dd = e.target.closest('.filter-dropdown');
-    if (!dd && !e.target.closest('.filter-cell')) {
-      document.querySelectorAll('.filter-dropdown').forEach(d => d.remove());
-    }
-  });
-
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      renderFilterButtons(scope, allTasks);
-      syncFilterCatalogViewportHeight($(`f-${scope}-ext-filters`));
+      renderFilterButtons(scope, allTasksCache[scope]);
+      catalogPopover?.position();
     }, 150);
   });
 
-  renderFilterButtons(scope, allTasks);
+  renderFilterButtons(scope, allTasksCache[scope]);
+  if (earlySearchChanged) applySearchSort();
 }
 
 export function getFilteredList(scope, allTasks) {
@@ -1308,19 +1328,20 @@ function renderFilterButtons(scope, allTasks) {
     const valueText = getFilterValueText(col, cf[col.key]);
     const isPinned = pinnedKeys.includes(col.key);
     const filterCell = `<div class="filter-cell" data-filter-scope="${scope}" data-filter-key="${col.key}">
-      <button type="button" class="filter-btn ${hasValue ? 'has-value' : ''}" data-scope="${scope}" data-key="${col.key}" aria-haspopup="dialog">
+      <button type="button" class="btn btn-secondary btn-sm ui-btn filter-btn ${hasValue ? 'has-value' : ''}" data-scope="${scope}" data-key="${col.key}" aria-haspopup="dialog">
         <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
         <span class="filter-label">${escapeAttr(label)}:</span>
         <span class="filter-value">${escapeAttr(valueText)}</span>
         <svg class="filter-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
-      ${hasValue ? `<button type="button" class="filter-clear" data-filter-clear="${col.key}" title="Очистить фильтр" aria-label="Очистить фильтр ${escapeAttr(label)}"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : ''}
+      ${hasValue ? `<button type="button" class="btn btn-ghost btn-sm square-icon ui-btn filter-clear" data-filter-clear="${col.key}" title="Очистить фильтр" aria-label="Очистить фильтр ${escapeAttr(label)}"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>` : ''}
     </div>`;
     if (placement === 'pinned') return filterCell;
+    if (scope === 'backlog') return `<div class="filter-catalog-item" data-filter-search="${escapeAttr(`${label} ${col.group}`.toLocaleLowerCase('ru-RU'))}">${filterCell}</div>`;
     const pinTitle = isPinned ? 'Открепить фильтр' : 'Закрепить фильтр на панели';
     return `<div class="filter-catalog-item" data-filter-search="${escapeAttr(`${label} ${col.group}`.toLocaleLowerCase('ru-RU'))}">
       ${filterCell}
-      <button type="button" class="filter-pin ${isPinned ? 'is-pinned' : ''}" data-pin-filter="${col.key}" aria-pressed="${isPinned}" title="${pinTitle}" aria-label="${pinTitle}: ${escapeAttr(label)}">
+      <button type="button" class="btn btn-ghost btn-sm square-icon ui-btn filter-pin ${isPinned ? 'is-pinned' : ''}" data-pin-filter="${col.key}" aria-pressed="${isPinned}" title="${pinTitle}" aria-label="${pinTitle}: ${escapeAttr(label)}">
         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"></path><path d="M5 4h14l-3 6v4l2 2H6l2-2v-4Z"></path></svg>
       </button>
     </div>`;
@@ -1401,7 +1422,7 @@ function updateActiveFiltersRow(scope) {
     <span class="active-filter-chip" data-key="${ch.key}">
       <span class="chip-label">${escapeAttr(ch.label)}:</span>
       <span class="chip-value">${escapeAttr(ch.value)}</span>
-      <button class="chip-clear" data-clear="${ch.key}" title="Очистить фильтр">
+      <button class="btn btn-ghost btn-sm square-icon ui-btn chip-clear" data-clear="${ch.key}" title="Очистить фильтр">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </span>
@@ -1418,11 +1439,14 @@ function updateActiveFiltersRow(scope) {
   });
 }
 
+let activeFilterPopover = null;
+let activeFilterTrigger = null;
 function toggleDropdown(event, scope, key, allTasks) {
-  const wrapper = event.currentTarget.parentElement;
-  const existing = wrapper.querySelector('.filter-dropdown');
-  document.querySelectorAll('.filter-dropdown').forEach(d => d.remove());
-  if (existing) return;
+  const trigger = event.currentTarget;
+  const inCatalog = Boolean(trigger.closest('.filter-catalog-item'));
+  if (activeFilterPopover?.isOpen && activeFilterTrigger === trigger) { activeFilterPopover.close(); return; }
+  activeFilterPopover?.close({ restoreFocus: false });
+  activeFilterTrigger = trigger;
 
   const column = filterColumnsByKey[key];
   if (!column) return;
@@ -1437,7 +1461,7 @@ function toggleDropdown(event, scope, key, allTasks) {
   dd.setAttribute('aria-label', `Фильтр: ${label}`);
   dd.onclick = (e) => e.stopPropagation();
 
-  const emptyToggle = `<label class="fd-empty-option">
+  const emptyToggle = `<label class="ui-selection-option fd-empty-option">
     <input type="checkbox" class="fd-empty" ${includeEmpty ? 'checked' : ''}>
     <span>Не заполнено</span>
   </label>`;
@@ -1445,51 +1469,44 @@ function toggleDropdown(event, scope, key, allTasks) {
   let controls = '';
   if (['select', 'boolean'].includes(column.type)) {
     controls = `
-      <input type="search" class="fd-search" placeholder="Поиск значения…" aria-label="Поиск значения">
-      <div class="fd-options">
-        ${options.length ? options.map(option => {
-          const checked = currentSelected.has(option.value) ? 'checked' : '';
-          return `<label>
-            <input type="checkbox" ${checked} data-val="${escapeAttr(option.value)}">
-            <span>${escapeAttr(option.label)}</span>
-          </label>`;
-        }).join('') : '<div class="fd-empty-state">Нет доступных значений</div>'}
-      </div>`;
+      <input type="search" class="input ui-control fd-search" placeholder="Поиск значения…" aria-label="Поиск значения">
+      ${selectionList({ items: options, selected: currentSelected, itemAttribute: 'data-val', className: 'fd-options' })}`;
   } else if (column.type === 'text') {
     controls = `
       <label class="fd-field-label" for="fd-text-${scope}-${key}">Содержит текст</label>
-      <input type="search" class="fd-text" id="fd-text-${scope}-${key}" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.text))}" placeholder="Введите фрагмент…">
+      <input type="search" class="input ui-control fd-text" id="fd-text-${scope}-${key}" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.text))}" placeholder="Введите фрагмент…">
       ${emptyToggle}`;
   } else if (column.type === 'number') {
     controls = `
       <div class="fd-range-fields">
-        <label><span>От</span><input type="number" class="fd-min" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.min))}" ${column.min != null ? `min="${column.min}"` : ''} ${column.max != null ? `max="${column.max}"` : ''} step="${column.step || 'any'}"></label>
-        <label><span>До</span><input type="number" class="fd-max" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.max))}" ${column.min != null ? `min="${column.min}"` : ''} ${column.max != null ? `max="${column.max}"` : ''} step="${column.step || 'any'}"></label>
+        <label><span>От</span><input type="number" class="input ui-control fd-min" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.min))}" ${column.min != null ? `min="${column.min}"` : ''} ${column.max != null ? `max="${column.max}"` : ''} step="${column.step || 'any'}"></label>
+        <label><span>До</span><input type="number" class="input ui-control fd-max" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.max))}" ${column.min != null ? `min="${column.min}"` : ''} ${column.max != null ? `max="${column.max}"` : ''} step="${column.step || 'any'}"></label>
       </div>
       ${emptyToggle}`;
   } else if (column.type === 'date') {
     controls = `
       <div class="fd-range-fields">
-        <label><span>С даты</span><input type="date" class="fd-from" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.from))}"></label>
-        <label><span>По дату</span><input type="date" class="fd-to" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.to))}"></label>
+        <label><span>С даты</span><input type="date" class="input ui-control fd-from" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.from))}"></label>
+        <label><span>По дату</span><input type="date" class="input ui-control fd-to" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.to))}"></label>
       </div>
       ${emptyToggle}`;
   }
 
-  dd.innerHTML = `<div class="fd-title">${escapeAttr(label)}</div>${controls}
-    <div class="fd-actions">
-      <button type="button" class="fd-clear">Очистить</button>
-      <button type="button" class="fd-apply">Применить</button>
+  dd.innerHTML = `<div class="ui-popover-header ui-popover-title fd-title">${escapeAttr(label)}</div>${controls}
+    <p class="fd-error" id="fd-error-${scope}-${key}" role="alert" hidden></p>
+    <div class="ui-popover-actions fd-actions">
+      <button type="button" class="btn btn-secondary btn-sm ui-btn fd-clear">Очистить</button>
+      <button type="button" class="btn btn-primary btn-sm ui-btn fd-apply">Применить</button>
     </div>`;
 
-  wrapper.appendChild(dd);
+  const popover = createPopover({ trigger, panel: dd, label: `Фильтр: ${label}`, removeOnClose: true,
+    resolveTrigger: () => trigger.isConnected ? trigger : document.querySelector(`${inCatalog ? ".filter-catalog-item " : ""}[data-filter-scope="${scope}"][data-filter-key="${key}"] button`) || trigger,
+  });
+  activeFilterPopover = popover;
+  popover.open();
 
   dd.querySelector('.fd-search')?.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase();
-    dd.querySelectorAll('.fd-options label').forEach(label => {
-      const text = label.querySelector('span').textContent.toLowerCase();
-      label.style.display = text.includes(q) ? 'flex' : 'none';
-    });
+    filterSelectionList(dd.querySelector('.fd-options'), e.target.value);
   });
 
   function notifyChange() {
@@ -1497,12 +1514,27 @@ function toggleDropdown(event, scope, key, allTasks) {
     if (cb) cb();
   }
 
+  function showRangeError(selector, message) {
+    const field = dd.querySelector(selector);
+    const error = dd.querySelector('.fd-error');
+    error.textContent = message;
+    error.hidden = false;
+    field.setAttribute('aria-invalid', 'true');
+    field.setAttribute('aria-describedby', error.id);
+    field.focus();
+  }
+  dd.addEventListener('input', () => {
+    dd.querySelectorAll('[aria-invalid]').forEach(field => { field.removeAttribute('aria-invalid'); field.removeAttribute('aria-describedby'); });
+    dd.querySelector('.fd-error').hidden = true;
+  });
+
   dd.querySelector('.fd-clear')?.addEventListener('click', (e) => {
     e.stopPropagation();
     delete columnFilters[scope][key];
-    dd.remove();
+    popover.close({ restoreFocus: false });
     renderFilterButtons(scope, allTasks);
     notifyChange();
+    popover.restoreFocus();
   });
 
   dd.querySelector('.fd-apply')?.addEventListener('click', (e) => {
@@ -1518,7 +1550,7 @@ function toggleDropdown(event, scope, key, allTasks) {
       const min = dd.querySelector('.fd-min')?.value;
       const max = dd.querySelector('.fd-max')?.value;
       if (min !== '' && max !== '' && Number(min) > Number(max)) {
-        window.toast?.('Значение «От» не может быть больше значения «До»', 'warning');
+        showRangeError('.fd-min', 'Значение «От» не может быть больше значения «До»');
         return;
       }
       if (min !== '') vals.add(FILTER_TOKEN_PREFIX.min + min);
@@ -1528,7 +1560,7 @@ function toggleDropdown(event, scope, key, allTasks) {
       const from = dd.querySelector('.fd-from')?.value;
       const to = dd.querySelector('.fd-to')?.value;
       if (from && to && from > to) {
-        window.toast?.('Начальная дата не может быть позже конечной', 'warning');
+        showRangeError('.fd-from', 'Начальная дата не может быть позже конечной');
         return;
       }
       if (from) vals.add(FILTER_TOKEN_PREFIX.from + from);
@@ -1540,12 +1572,13 @@ function toggleDropdown(event, scope, key, allTasks) {
     } else {
       delete columnFilters[scope][key];
     }
-    dd.remove();
+    popover.close({ restoreFocus: false });
     renderFilterButtons(scope, allTasks);
     notifyChange();
+    popover.restoreFocus();
   });
 
-  requestAnimationFrame(() => dd.querySelector('input')?.focus());
+
 }
 
 let toolbarOffsetObserver = null;
@@ -1570,8 +1603,6 @@ export function updateStickyOffsets() {
   requestAnimationFrame(() => {
     const toolbar = document.querySelector('.sticky-toolbar');
     if (!toolbar) return;
-    document.querySelectorAll('.filter-catalog-panel:not(.hidden)')
-      .forEach(syncFilterCatalogViewportHeight);
     if (toolbar !== observedToolbar && typeof ResizeObserver !== 'undefined') {
       toolbarOffsetObserver?.disconnect();
       observedToolbar = toolbar;
@@ -1738,6 +1769,15 @@ export function initStickyTableHeader(tableId) {
         if (sourceColgroup) clonedTable.appendChild(sourceColgroup.cloneNode(true));
         
         const clonedThead = thead.cloneNode(true);
+        clonedThead.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+        clonedThead.querySelectorAll('input[type="checkbox"]').forEach((checkbox, index) => {
+          checkbox.addEventListener('change', () => {
+            const original = thead.querySelectorAll('input[type="checkbox"]')[index];
+            if (!original) return;
+            original.checked = checkbox.checked;
+            original.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        });
         clonedTable.appendChild(clonedThead);
         stickyHeaderWrapper.appendChild(clonedTable);
         document.body.appendChild(stickyHeaderWrapper);
@@ -1781,6 +1821,9 @@ export function initStickyTableHeader(tableId) {
       if (innerTable) {
         innerTable.style.transform = `translateX(-${scrollLeft}px)`;
         innerTable.style.width = tableRect.width + 'px';
+        innerTable.querySelectorAll('.table-pinned-id, .table-pinned-selection').forEach(cell => {
+          cell.style.transform = `translateX(${scrollLeft}px)`;
+        });
       }
     } else {
       if (stickyHeaderWrapper) {

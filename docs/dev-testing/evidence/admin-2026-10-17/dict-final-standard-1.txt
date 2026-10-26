@@ -1,0 +1,340 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - text: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - img
+      - text: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - img
+      - text: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - img
+      - text: Бэклог команды
+    - link "Контроль исполнения":
+      - /url: "#/work-reports"
+      - img
+      - text: Контроль исполнения
+    - link "Структура работ проекта":
+      - /url: "#/work-projects"
+      - img
+      - text: Структура работ проекта
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - img
+      - text: Рабочие задачи
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - img
+      - text: Экспресс-оценка
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - img
+      - text: Канбан-доска
+    - text: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - img
+      - text: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - img
+      - text: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - img
+      - text: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - img
+      - text: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - img
+      - text: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - img
+      - text: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - img
+      - text: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - img
+      - text: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - img
+      - text: Поручения из встреч
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - img
+      - text: Ревью запросов
+    - text: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - img
+      - text: Мои уведомления 0
+    - link "Настройки":
+      - /url: "#/settings"
+      - img
+      - text: Настройки
+    - link "Управление отчётными встречами":
+      - /url: "#/reporting-meetings"
+      - img
+      - text: Отчётные встречи
+    - link "Администрирование":
+      - /url: "#/admin"
+      - img
+      - text: Администрирование
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+      - img
+      - text: Аудит действий
+    - link "Ошибки доставки событий":
+      - /url: "#/outbox-dead-letters"
+      - img
+      - text: Ошибки доставки
+  - button "Свернуть или развернуть боковую панель":
+    - img
+- banner:
+  - navigation "Хлебные крошки": Администрирование
+  - img
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"'
+  - button "Переключить тему":
+    - img
+  - button "Q.admin":
+    - text: Q.admin
+    - img
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - text: Структура
+    - tab "Команды"
+    - tab "Проекты"
+    - tab "Бизнес-заказчики"
+    - text: Доступы
+    - tab "Пользователи"
+    - tab "Роли"
+    - text: Настройки
+    - tab "Справочники" [selected]
+    - tab "Отображение"
+    - text: Инструменты
+    - tab "Таймлайн"
+    - tab "Отчёты"
+    - text: Контроль
+    - tab "Журнал действий"
+  - strong: Справочники системы
+  - text: 11 групп значений
+  - tabpanel "Справочники":
+    - button "Клиенты ДИД":
+      - img
+      - text: Клиенты ДИД — значений
+      - img
+      - text: Нет значений
+    - button "Приоритеты":
+      - img
+      - text: Приоритеты 3 значений
+      - img
+      - text: ВЫСОКИЙ СРЕДНИЙ НИЗКИЙ
+    - button "Статусы задачи":
+      - img
+      - text: Статусы задачи 13 значений
+      - img
+      - text: НОВАЯ ЗАДАЧА НАЗНАЧЕНА КОМАНДА СБОР ТРЕБОВАНИЙ
+    - button "Типы задач":
+      - img
+      - text: Типы задач 5 значений
+      - img
+      - text: КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ AD-HOC ТЕХДОЛГ
+    - button "Каналы":
+      - img
+      - text: Каналы 4 значений
+      - img
+      - text: Почта СберЧат Встреча/Звонок
+    - button "Сроки":
+      - img
+      - text: Сроки 8 значений
+      - img
+      - text: 1Q 2026 2Q 2026 3Q 2026
+    - button "Подразделения":
+      - img
+      - text: Подразделения 11 значений
+      - img
+      - text: IB L2P M&A
+    - button "Типы команд":
+      - img
+      - text: Типы команд 2 значений
+      - img
+      - text: С разработкой Без разработки
+    - button "Статусы проектов":
+      - img
+      - text: Статусы проектов 3 значений
+      - img
+      - text: Активен Завершен Архивный
+    - button "Стоимость компетенций":
+      - img
+      - text: Стоимость компетенций 8 значений
+      - img
+      - text: "Delivery: 15000 Designee: 15000 Tester: 10000"
+    - button "Теги":
+      - img
+      - text: Теги 0 значений
+      - img
+      - text: Нет значений
+  - dialog "Редактирование справочника":
+    - heading "Редактирование справочника" [level=3]
+    - button "Закрыть"
+    - heading "Статусы задачи" [level=4]
+    - paragraph: Изменения вступят в силу после сохранения. Перетащите строку или используйте стрелки вверх/вниз на кнопке изменения порядка.
+    - status:
+      - strong: "13"
+      - text: активных
+      - strong: "0"
+      - text: в архиве
+      - strong: "0"
+      - text: изменений
+    - searchbox "Поиск значений"
+    - button "Добавить значение"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: НОВАЯ ЗАДАЧА
+    - text: Код
+    - textbox "Код": new
+    - text: "25"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: НАЗНАЧЕНА КОМАНДА
+    - text: Код
+    - textbox "Код": team_assigned
+    - text: "7"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: СБОР ТРЕБОВАНИЙ
+    - text: Код
+    - textbox "Код": requirements
+    - text: "19"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: ПРОВЕРКА ТРЕБОВАНИЙ
+    - text: Код
+    - textbox "Код": check_requirements
+    - text: "11"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: УТОЧНЕНИЕ ТРЕБОВАНИЙ
+    - text: Код
+    - textbox "Код": clarify_requirements
+    - text: "42"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: ЭКСПРЕСС-ОЦЕНКА
+    - text: Код
+    - textbox "Код": quick_estimate
+    - text: "1"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: ПРИНЯТИЕ РЕШЕНИЯ
+    - text: Код
+    - textbox "Код": decision
+    - text: "0"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: ПРИНЯТА В РАБОТУ
+    - text: Код
+    - textbox "Код": in_progress
+    - text: "5"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: ОТКЛОНЕНА
+    - text: Код
+    - textbox "Код": rejected
+    - text: "0"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: НЕ АКТУАЛЬНА
+    - text: Код
+    - textbox "Код": irrelevant
+    - text: "0"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: ВЫПОЛНЕНА
+    - text: Код
+    - textbox "Код": done
+    - text: "0"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: ЭСКАЛАЦИЯ НА ЛТ
+    - text: Код
+    - textbox "Код": escalation
+    - text: "0"
+    - button "Архивировать"
+    - button "Изменить порядок"
+    - button "Выбрать цвет"
+    - text: Название
+    - textbox "Название":
+      - /placeholder: Значение
+      - text: ХОЛД
+    - text: Код
+    - textbox "Код": hold
+    - text: "0"
+    - button "Архивировать"
+    - button "Отмена"
+    - button "Нет изменений" [disabled]

@@ -1,0 +1,338 @@
+[
+  {
+    "file": "01_valid_utf8_bom_semicolon.csv",
+    "group": "positive",
+    "expected": "1 created",
+    "note": ""
+  },
+  {
+    "file": "02_valid_utf8_comma.csv",
+    "group": "positive",
+    "expected": "1 created",
+    "note": ""
+  },
+  {
+    "file": "03_valid_cp1251_semicolon.csv",
+    "group": "encoding",
+    "expected": "Backend: 1 created; UI preview should preserve Cyrillic",
+    "note": "Frontend currently reads CSV as UTF-8 only."
+  },
+  {
+    "file": "04_valid_technical_headers_case_space.csv",
+    "group": "mapping",
+    "expected": "1 created",
+    "note": ""
+  },
+  {
+    "file": "05_valid_russian_labels.csv",
+    "group": "mapping",
+    "expected": "1 created",
+    "note": ""
+  },
+  {
+    "file": "06_unknown_column_ignored.csv",
+    "group": "mapping",
+    "expected": "1 created; unknown column ignored",
+    "note": ""
+  },
+  {
+    "file": "07_header_only.csv",
+    "group": "structure",
+    "expected": "200 with total=0, created=0, skipped=0",
+    "note": ""
+  },
+  {
+    "file": "08_blank_lines_only.csv",
+    "group": "structure",
+    "expected": "UI should explain empty data; server currently returns total=0 if submitted",
+    "note": ""
+  },
+  {
+    "file": "09_empty_zero_bytes.csv",
+    "group": "file",
+    "expected": "HTTP 400: Файл пуст",
+    "note": ""
+  },
+  {
+    "file": "10_missing_title_header.csv",
+    "group": "headers",
+    "expected": "UI blocks: missing title",
+    "note": ""
+  },
+  {
+    "file": "11_missing_team_header.csv",
+    "group": "headers",
+    "expected": "UI blocks: missing team",
+    "note": ""
+  },
+  {
+    "file": "12_unknown_headers_only.csv",
+    "group": "headers",
+    "expected": "UI blocks both required headers; direct API skips row with 2 required_missing errors",
+    "note": ""
+  },
+  {
+    "file": "13_empty_required_cells.csv",
+    "group": "required",
+    "expected": "3 skipped; required_missing",
+    "note": ""
+  },
+  {
+    "file": "14_whitespace_required_cells.csv",
+    "group": "required",
+    "expected": "1 skipped; required_missing",
+    "note": ""
+  },
+  {
+    "file": "15_duplicate_title_header.csv",
+    "group": "headers",
+    "expected": "Observe duplicate-header behavior: DictReader keeps last title",
+    "note": ""
+  },
+  {
+    "file": "16_duplicate_team_header.csv",
+    "group": "headers",
+    "expected": "Observe duplicate-header behavior: last team value wins",
+    "note": ""
+  },
+  {
+    "file": "17_empty_header_cell.csv",
+    "group": "headers",
+    "expected": "1 created; unnamed column ignored",
+    "note": ""
+  },
+  {
+    "file": "18_missing_trailing_cell.csv",
+    "group": "rows",
+    "expected": "1 created; missing optional cell treated blank",
+    "note": ""
+  },
+  {
+    "file": "19_extra_trailing_cell.csv",
+    "group": "rows",
+    "expected": "1 created; extra cell ignored (key None)",
+    "note": ""
+  },
+  {
+    "file": "20_mixed_delimiters_header_semicolon.csv",
+    "group": "delimiter",
+    "expected": "1 skipped; row parsed into first column only",
+    "note": ""
+  },
+  {
+    "file": "21_tab_delimited.csv",
+    "group": "delimiter",
+    "expected": "UI blocks/server skips: unsupported delimiter",
+    "note": ""
+  },
+  {
+    "file": "22_pipe_delimited.csv",
+    "group": "delimiter",
+    "expected": "UI blocks/server skips: unsupported delimiter",
+    "note": ""
+  },
+  {
+    "file": "23_blank_first_line_semicolon.csv",
+    "group": "delimiter",
+    "expected": "Should accept per docs; server currently detects comma from blank first line",
+    "note": ""
+  },
+  {
+    "file": "24_mac_cr_line_endings.csv",
+    "group": "line-endings",
+    "expected": "Observe server/UI handling of CR-only rows",
+    "note": ""
+  },
+  {
+    "file": "25_quoted_delimiters_and_quotes.csv",
+    "group": "csv-quoting",
+    "expected": "1 created with exact description",
+    "note": ""
+  },
+  {
+    "file": "26_quoted_multiline.csv",
+    "group": "csv-quoting",
+    "expected": "Backend should create; UI preview parser currently splits physical lines",
+    "note": ""
+  },
+  {
+    "file": "27_malformed_unclosed_quote.csv",
+    "group": "csv-quoting",
+    "expected": "Observe malformed CSV handling and user-facing error",
+    "note": ""
+  },
+  {
+    "file": "28_utf16le_bom.csv",
+    "group": "encoding",
+    "expected": "Should reject unsupported UTF-16 clearly; current cp1251 fallback may misdecode",
+    "note": ""
+  },
+  {
+    "file": "29_undecodable_byte_98.csv",
+    "group": "encoding",
+    "expected": "HTTP 400 decode error",
+    "note": ""
+  },
+  {
+    "file": "30_nul_bytes.csv",
+    "group": "encoding",
+    "expected": "Observe NUL handling; no crash/stack trace",
+    "note": ""
+  },
+  {
+    "file": "31_dates_boundaries.csv",
+    "group": "date",
+    "expected": "Allowed formats create; invalid formats skip; empty uses default date",
+    "note": ""
+  },
+  {
+    "file": "32_progress_boundaries.csv",
+    "group": "number",
+    "expected": "Exercise integer parsing and 0..100 bounds",
+    "note": ""
+  },
+  {
+    "file": "33_numeric_formats.csv",
+    "group": "number",
+    "expected": "Exercise every numeric field with invalid, scientific, non-finite, negative and overflow values",
+    "note": ""
+  },
+  {
+    "file": "34_boolean_spellings.csv",
+    "group": "boolean",
+    "expected": "Observe permissive boolean mapping: unknown tokens currently become false without warning",
+    "note": ""
+  },
+  {
+    "file": "35_reference_not_found.csv",
+    "group": "reference",
+    "expected": "Exercise every lookup; note customer/DID/owner are non-fatal in current code",
+    "note": ""
+  },
+  {
+    "file": "36_lists_and_urls.csv",
+    "group": "list-url",
+    "expected": "Exercise duplicate list entries, empty tokens and unvalidated URLs",
+    "note": ""
+  },
+  {
+    "file": "37_length_and_injection.csv",
+    "group": "length-security",
+    "expected": "Exercise DB length limits, HTML escaping and spreadsheet-formula injection surfaces",
+    "note": ""
+  },
+  {
+    "file": "38_repeated_same_task.csv",
+    "group": "duplicate",
+    "expected": "2 tasks created; no deduplication",
+    "note": ""
+  },
+  {
+    "file": "39_partial_success.csv",
+    "group": "transaction",
+    "expected": "1 created, 1 skipped; errors isolated by row",
+    "note": ""
+  },
+  {
+    "file": "40_valid_minimal.xlsx",
+    "group": "excel",
+    "expected": "UI converts first sheet to CSV; 1 created",
+    "note": ""
+  },
+  {
+    "file": "41_valid_all_fields.xlsx",
+    "group": "excel",
+    "expected": "UI conversion preserves dates/numbers/boolean; 1 created",
+    "note": ""
+  },
+  {
+    "file": "42_multisheet_instructions_first.xlsx",
+    "group": "excel",
+    "expected": "UI only reads first sheet and should block with missing required columns",
+    "note": ""
+  },
+  {
+    "file": "43_header_offset.xlsx",
+    "group": "excel",
+    "expected": "UI treats row 1 as header and should block",
+    "note": ""
+  },
+  {
+    "file": "44_valid_spreadsheetml_2003.xls",
+    "group": "excel",
+    "expected": "SheetJS should read SpreadsheetML .xls and create 1 task",
+    "note": ""
+  },
+  {
+    "file": "45_corrupt_excel.xlsx",
+    "group": "excel-error",
+    "expected": "UI toast with readable Excel error; import stays disabled",
+    "note": ""
+  },
+  {
+    "file": "46_text_renamed_as_xlsx.xlsx",
+    "group": "excel-error",
+    "expected": "Observe signature/content mismatch handling",
+    "note": ""
+  },
+  {
+    "file": "47_corrupt_legacy_excel.xls",
+    "group": "excel-error",
+    "expected": "UI toast with readable Excel error; no crash",
+    "note": ""
+  },
+  {
+    "file": "48_wrong_extension.txt",
+    "group": "file",
+    "expected": "UI chooser filters; direct API HTTP 400 only CSV supported",
+    "note": ""
+  },
+  {
+    "file": "49_uppercase_extension.CSV",
+    "group": "file",
+    "expected": "Accepted; 1 created",
+    "note": ""
+  },
+  {
+    "file": "50_xlsx_bytes_named_csv.csv",
+    "group": "file",
+    "expected": "CSV extension passes router; decode/parse must fail safely",
+    "note": ""
+  },
+  {
+    "file": "51_exactly_10000_rows.csv",
+    "group": "limits",
+    "expected": "Accepted parser limit; 10000 skipped required_missing",
+    "note": ""
+  },
+  {
+    "file": "52_over_10000_rows.csv",
+    "group": "limits",
+    "expected": "HTTP 400: more than 10000 rows",
+    "note": ""
+  },
+  {
+    "file": "53_exactly_10mb.csv",
+    "group": "limits",
+    "expected": "Router accepts size boundary; parser outcome captured separately",
+    "note": "Designed with short fields; row-count limit may trigger first."
+  },
+  {
+    "file": "54_over_10mb.csv",
+    "group": "limits",
+    "expected": "HTTP 413: maximum 10 MB",
+    "note": ""
+  },
+  {
+    "file": "55_many_preview_errors.csv",
+    "group": "ux",
+    "expected": "UI shows first 20 row warnings plus remaining count; server skips all",
+    "note": ""
+  },
+  {
+    "file": "56_long_server_messages.csv",
+    "group": "ux",
+    "expected": "Long value/message scrolls or wraps without breaking modal",
+    "note": ""
+  }
+]

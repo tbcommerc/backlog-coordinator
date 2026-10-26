@@ -1,0 +1,682 @@
+{
+  "date": "2026-10-17",
+  "origin": "http://127.0.0.1:8000",
+  "findings": [
+    {
+      "id": "F01",
+      "status": "PASS",
+      "detail": "QA Team A: 4 ответственных; Pre-Trade: тип 1"
+    },
+    {
+      "id": "F02",
+      "status": "PASS"
+    },
+    {
+      "id": "F03",
+      "status": "PASS",
+      "geometry": {
+        "top": 140,
+        "focused": true
+      }
+    },
+    {
+      "id": "F04",
+      "status": "PASS",
+      "detail": "Свёрнутые фильтры, видимый Tab-фокус при настоящем 200%",
+      "focus": {
+        "text": "Подробнее",
+        "rect": {
+          "x": 99,
+          "y": 243.5,
+          "width": 155.578125,
+          "height": 28,
+          "top": 243.5,
+          "right": 254.578125,
+          "bottom": 271.5,
+          "left": 99
+        },
+        "visible": true
+      }
+    },
+    {
+      "id": "F05",
+      "status": "PASS"
+    },
+    {
+      "id": "F06",
+      "status": "PASS"
+    },
+    {
+      "id": "F07",
+      "status": "PASS",
+      "detail": "Реальный пустой workspace, POST lock без записи строк"
+    },
+    {
+      "id": "F08",
+      "status": "PASS"
+    },
+    {
+      "id": "F09",
+      "status": "PASS"
+    },
+    {
+      "id": "F10",
+      "status": "PASS",
+      "detail": "Доступные имена в дереве браузера"
+    },
+    {
+      "id": "F11",
+      "status": "PASS"
+    },
+    {
+      "id": "F12",
+      "status": "PASS"
+    },
+    {
+      "id": "F13",
+      "status": "PASS"
+    },
+    {
+      "id": "F14",
+      "status": "PASS"
+    },
+    {
+      "id": "F15",
+      "status": "PASS"
+    },
+    {
+      "id": "F16",
+      "status": "PASS"
+    },
+    {
+      "id": "F17",
+      "status": "PASS"
+    }
+  ],
+  "matrix": [
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "teams",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "projects",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "businessCustomers",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "users",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "roles",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "dictionaries",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "display",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "home",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "reports",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "tab": "audit",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "teams",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "projects",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "businessCustomers",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "users",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "roles",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "dictionaries",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "display",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "home",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "reports",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "tab": "audit",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "teams",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "projects",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "businessCustomers",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "users",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "roles",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "dictionaries",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "display",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "home",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "reports",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "tab": "audit",
+      "viewport": 1366,
+      "documentWidth": 1366
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "teams",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "projects",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "businessCustomers",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "users",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "roles",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "dictionaries",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "display",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "home",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "reports",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "tab": "audit",
+      "viewport": 390,
+      "documentWidth": 390
+    },
+    {
+      "theme": "light",
+      "width": 1600,
+      "height": 1000,
+      "tab": "users",
+      "viewport": 1600,
+      "documentWidth": 1600
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "height": 1024,
+      "tab": "users",
+      "viewport": 768,
+      "documentWidth": 768
+    },
+    {
+      "theme": "light",
+      "width": 1024,
+      "height": 768,
+      "tab": "users",
+      "viewport": 1024,
+      "documentWidth": 1024
+    },
+    {
+      "theme": "light",
+      "width": 844,
+      "height": 390,
+      "tab": "users",
+      "viewport": 844,
+      "documentWidth": 844
+    },
+    {
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "tab": "users",
+      "viewport": 1920,
+      "documentWidth": 1920
+    }
+  ],
+  "roles": [
+    {
+      "profile": "tribe-lead",
+      "audit": "forbidden",
+      "menu": "hidden",
+      "admin": "partial"
+    },
+    {
+      "profile": "no-access",
+      "audit": "forbidden",
+      "menu": "hidden",
+      "admin": "forbidden"
+    }
+  ],
+  "dictionaries": [
+    {
+      "key": "priorities",
+      "rows": 3,
+      "costInputs": 0,
+      "saveDisabled": true
+    },
+    {
+      "key": "statuses",
+      "rows": 13,
+      "costInputs": 0,
+      "saveDisabled": true
+    },
+    {
+      "key": "taskTypes",
+      "rows": 5,
+      "costInputs": 0,
+      "saveDisabled": true
+    },
+    {
+      "key": "channels",
+      "rows": 4,
+      "costInputs": 0,
+      "saveDisabled": true
+    },
+    {
+      "key": "deadlines",
+      "rows": 8,
+      "costInputs": 0,
+      "saveDisabled": true
+    },
+    {
+      "key": "departments",
+      "rows": 11,
+      "costInputs": 0,
+      "saveDisabled": true
+    },
+    {
+      "key": "teamTypes",
+      "rows": 2,
+      "costInputs": 0,
+      "saveDisabled": true
+    },
+    {
+      "key": "projectStatuses",
+      "rows": 3,
+      "costInputs": 0,
+      "saveDisabled": true
+    },
+    {
+      "key": "competencyCosts",
+      "rows": 0,
+      "costInputs": 16,
+      "saveDisabled": false
+    },
+    {
+      "key": "tags",
+      "rows": 0,
+      "costInputs": 0,
+      "saveDisabled": true
+    }
+  ],
+  "zoom": {
+    "before": {
+      "width": 1418,
+      "height": 902,
+      "dpr": 1,
+      "scale": 1
+    },
+    "after": {
+      "width": 709,
+      "height": 451,
+      "dpr": 2,
+      "scale": 1
+    },
+    "focus": {
+      "text": "Подробнее",
+      "rect": {
+        "x": 99,
+        "y": 243.5,
+        "width": 155.578125,
+        "height": 28,
+        "top": 243.5,
+        "right": 254.578125,
+        "bottom": 271.5,
+        "left": 99
+      },
+      "visible": true
+    },
+    "matrix": [
+      {
+        "tab": "teams",
+        "width": 709,
+        "scroll": 709
+      },
+      {
+        "tab": "projects",
+        "width": 709,
+        "scroll": 709
+      },
+      {
+        "tab": "businessCustomers",
+        "width": 709,
+        "scroll": 709
+      },
+      {
+        "tab": "users",
+        "width": 709,
+        "scroll": 709
+      },
+      {
+        "tab": "roles",
+        "width": 709,
+        "scroll": 709
+      },
+      {
+        "tab": "dictionaries",
+        "width": 709,
+        "scroll": 709
+      },
+      {
+        "tab": "display",
+        "width": 709,
+        "scroll": 709
+      },
+      {
+        "tab": "home",
+        "width": 709,
+        "scroll": 709
+      },
+      {
+        "tab": "reports",
+        "width": 709,
+        "scroll": 709
+      },
+      {
+        "tab": "audit",
+        "width": 709,
+        "scroll": 709
+      }
+    ]
+  },
+  "protectedWriteAttempts": [],
+  "interceptedLockOperations": [
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/priority/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/priority/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/priority/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/priority/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/status/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/status/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/task_type/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/task_type/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/channel/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/channel/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/deadline/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/deadline/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/department/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/department/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/team_type/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/team_type/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/project_status/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/project_status/lock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/competency_cost/lock"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/competency_cost/lock"
+    }
+  ],
+  "pageErrors": [],
+  "notes": [
+    "Записи блокировок заполненных справочников перехвачены; GET workspace реальный.",
+    "Пустой tag lock использовал реальный backend, возвращающий locked=false без записи строк.",
+    "Успешные сохранения защищённых значений не выполнялись.",
+    "Полноценный скринридер, реальные touch-устройства и многопользовательская PostgreSQL-конкурентность вне прогона.",
+    "После финального уплотнения низкого экрана первая строка пользователей начинается на y=306 при 844×390."
+  ],
+  "lowHeightUsers": {
+    "viewport": {
+      "width": 844,
+      "height": 390
+    },
+    "firstRow": {
+      "x": 85,
+      "y": 306,
+      "width": 805.0625,
+      "height": 79.765625
+    }
+  },
+  "tests": {
+    "playwright": 62,
+    "node": 11,
+    "python": 4
+  }
+}

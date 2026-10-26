@@ -1,0 +1,299 @@
+[
+  {
+    "aria": "Название ",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "text"
+  },
+  {
+    "aria": "Описание задачи",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "TEXTAREA",
+    "type": null
+  },
+  {
+    "aria": "Внутренний комментарий задачи",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "TEXTAREA",
+    "type": null
+  },
+  {
+    "aria": "Статус задачи",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": "Приоритет",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": "Срок выполнения",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": "Прогресс, процентов",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "range"
+  },
+  {
+    "aria": "Общая оценка трудозатрат",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "Вес оценки",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "Прогноз выполнения",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "Исполнитель",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": "Поиск: Исполнитель",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": "Поиск…",
+    "tag": "INPUT",
+    "type": "search"
+  },
+  {
+    "aria": "Ответственная команда",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": "Поиск: Ответственная команда",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": "Поиск…",
+    "tag": "INPUT",
+    "type": "search"
+  },
+  {
+    "aria": "Бизнес-заказчик",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": "Поиск: Бизнес-заказчик",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": "Поиск…",
+    "tag": "INPUT",
+    "type": "search"
+  },
+  {
+    "aria": null,
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": null,
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": "Канал поступления",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": "Дата получения",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "date"
+  },
+  {
+    "aria": "Проект",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": "Поиск: Проект",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": "Поиск…",
+    "tag": "INPUT",
+    "type": "search"
+  },
+  {
+    "aria": "Тип задачи",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "SELECT",
+    "type": null
+  },
+  {
+    "aria": null,
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "Обоснование фин. эффекта",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "TEXTAREA",
+    "type": null
+  },
+  {
+    "aria": "eo.designee",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "eo.analytics",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "eo.be",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "eo.python",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "eo.fe",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "eo.test",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "eo.testAuto",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  },
+  {
+    "aria": "eo.delivery",
+    "id": "",
+    "labelledby": null,
+    "labels": [],
+    "placeholder": null,
+    "tag": "INPUT",
+    "type": "number"
+  }
+]

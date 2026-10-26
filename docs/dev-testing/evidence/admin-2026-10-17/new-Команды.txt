@@ -1,0 +1,414 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - generic: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Контроль исполнения":
+      - /url: "#/work-reports"
+      - generic: Контроль исполнения
+    - link "Структура работ проекта":
+      - /url: "#/work-projects"
+      - generic: Структура работ проекта
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link "Настройки":
+      - /url: "#/settings"
+      - generic: Настройки
+    - link "Управление отчётными встречами":
+      - /url: "#/reporting-meetings"
+      - generic: Отчётные встречи
+    - link "Администрирование":
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+    - link "Ошибки доставки событий":
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Администрирование
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button "Q.admin":
+    - generic: QA
+    - generic: Q.admin
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - generic: Структура
+    - tab "Команды" [selected]:
+      - generic: Команды
+    - tab "Проекты":
+      - generic: Проекты
+    - tab "Бизнес-заказчики":
+      - generic: Бизнес-заказчики
+    - generic: Доступы
+    - tab "Пользователи":
+      - generic: Пользователи
+    - tab "Роли":
+      - generic: Роли
+    - generic: Настройки
+    - tab "Справочники":
+      - generic: Справочники
+    - tab "Отображение":
+      - generic: Отображение
+    - generic: Инструменты
+    - tab "Таймлайн":
+      - generic: Таймлайн
+    - tab "Отчёты":
+      - generic: Отчёты
+    - generic: Контроль
+    - tab "Журнал действий":
+      - generic: Журнал действий
+  - searchbox "Поиск"
+  - status: "Найдено: 12"
+  - button "Новая команда":
+    - text: Новая команда
+  - tabpanel "Команды":
+    - generic: Pre
+    - generic: Pre-Trade
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "PL: М. Первак"
+    - generic: "PO: Д. Фомин"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: Pre-Trade системы и аналитика
+    - generic: Pst
+    - generic: Post-Trade (Products & Service)
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "PL: Д. Маркус"
+    - generic: "PO: Д. Козлов"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: Post-Trade обработка и расчёты
+    - generic: IB
+    - generic: IB
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "PL: А. Мазунин"
+    - generic: "PO: Ю. Шилов"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: Единая платформа сделок Investment Banking
+    - generic: Cr
+    - generic: Core
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "PL: В. Баклушин"
+    - generic: "PO: Р. Хачатрян"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: Ядро платформы
+    - generic: Dev
+    - generic: Delivery
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "CL: Л. Куликов"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: Delivery и внедрение
+    - generic: Fin
+    - generic: Post-Trade (Finance)
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "PL: Д. Маркус"
+    - generic: "PO: Д. Андреев"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: Финансовый блок
+    - generic: Met
+    - generic: Methodology
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "CL: И. Яковлев"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: Методология и процессы
+    - generic: ЛТ
+    - generic: ИТ ЛТ
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "CL: Тимофей Бабяк"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: ИТ Лидеры Трайбов
+    - generic: AI
+    - generic: AI
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "CL: И. Мишутин"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: Искусственный интеллект и ML
+    - generic: POf
+    - generic: Проектный офис
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "CL: В. Стодольский"
+    - generic: "IT PL: Тимофей Бабяк"
+    - generic: Проектный офис
+    - generic: QAA
+    - generic: QA Team A
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "PL: QA pl-a"
+    - generic: "PO: QA po-a"
+    - generic: "CL: QA cl-a"
+    - generic: "IT PL: QA it-pl-a"
+    - generic: Isolated QA team
+    - generic: QAB
+    - generic: QA Team B
+    - button "Редактировать команду":
+    - button "Удалить команду":
+    - generic: "PO: QA po-b"
+    - generic: "IT PL: QA it-pl-b"
+    - generic: Isolated QA team
+  - dialog "Добавление команды":
+    - heading "Добавление команды" [level=3]
+    - button "Закрыть" [active]:
+    - generic: Название команды *
+    - textbox "Название команды":
+      - /placeholder: Название
+    - generic: Аббревиатура (на аватаре)
+    - textbox "Аббревиатура (на аватаре)":
+      - /placeholder: "Напр: PT"
+    - paragraph: 1–4 буквы, отображаются на аватаре команды
+    - generic: Тип команды
+    - combobox "Тип команды":
+      - option "—" [selected]
+    - generic: Цвет
+    - generic: Product Leader (PL)
+    - combobox "Product Leader (PL)":
+      - option "—" [selected]
+      - option "QA admin"
+      - option "Тимофей Бабяк"
+      - option "QA cl-a"
+      - option "QA pl-a"
+      - option "QA po-a"
+      - option "QA po-b"
+      - option "А. Мазунин"
+      - option "В. Баклушин"
+      - option "В. Стодольский"
+      - option "Д. Андреев"
+      - option "Д. Козлов"
+      - option "Д. Маркус"
+      - option "Д. Фомин"
+      - option "И. Мишутин"
+      - option "И. Яковлев"
+      - option "Л. Куликов"
+      - option "М. Первак"
+      - option "Ю. Шилов"
+      - option "QA ba-a"
+      - option "QA ba-a-peer"
+      - option "QA ba-b"
+      - option "QA ba-no-team"
+      - option "QA inactive"
+      - option "QA invited"
+      - option "QA reset-required"
+      - option "UX тест — без команды"
+      - option "Р. Хачатрян"
+      - option "QA it-pl-a"
+      - option "QA it-pl-b"
+      - option "А. Нуждин"
+      - option "В. Гусев"
+      - option "В. Лемце"
+      - option "Д. Орлова"
+      - option "QA customer-a"
+      - option "QA customer-b"
+      - option "QA customer-unlinked"
+      - option "UX тест — бизнес-заказчик"
+      - option "QA tribe-lead"
+      - option "А. Коптелов"
+      - option "QA no-access"
+    - generic: Product Owner (PO)
+    - combobox "Product Owner (PO)":
+      - option "—" [selected]
+      - option "QA admin"
+      - option "Тимофей Бабяк"
+      - option "QA cl-a"
+      - option "QA pl-a"
+      - option "QA po-a"
+      - option "QA po-b"
+      - option "А. Мазунин"
+      - option "В. Баклушин"
+      - option "В. Стодольский"
+      - option "Д. Андреев"
+      - option "Д. Козлов"
+      - option "Д. Маркус"
+      - option "Д. Фомин"
+      - option "И. Мишутин"
+      - option "И. Яковлев"
+      - option "Л. Куликов"
+      - option "М. Первак"
+      - option "Ю. Шилов"
+      - option "QA ba-a"
+      - option "QA ba-a-peer"
+      - option "QA ba-b"
+      - option "QA ba-no-team"
+      - option "QA inactive"
+      - option "QA invited"
+      - option "QA reset-required"
+      - option "UX тест — без команды"
+      - option "Р. Хачатрян"
+      - option "QA it-pl-a"
+      - option "QA it-pl-b"
+      - option "А. Нуждин"
+      - option "В. Гусев"
+      - option "В. Лемце"
+      - option "Д. Орлова"
+      - option "QA customer-a"
+      - option "QA customer-b"
+      - option "QA customer-unlinked"
+      - option "UX тест — бизнес-заказчик"
+      - option "QA tribe-lead"
+      - option "А. Коптелов"
+      - option "QA no-access"
+    - generic: Cluster Lead (CL)
+    - combobox "Cluster Lead (CL)":
+      - option "—" [selected]
+      - option "QA admin"
+      - option "Тимофей Бабяк"
+      - option "QA cl-a"
+      - option "QA pl-a"
+      - option "QA po-a"
+      - option "QA po-b"
+      - option "А. Мазунин"
+      - option "В. Баклушин"
+      - option "В. Стодольский"
+      - option "Д. Андреев"
+      - option "Д. Козлов"
+      - option "Д. Маркус"
+      - option "Д. Фомин"
+      - option "И. Мишутин"
+      - option "И. Яковлев"
+      - option "Л. Куликов"
+      - option "М. Первак"
+      - option "Ю. Шилов"
+      - option "QA ba-a"
+      - option "QA ba-a-peer"
+      - option "QA ba-b"
+      - option "QA ba-no-team"
+      - option "QA inactive"
+      - option "QA invited"
+      - option "QA reset-required"
+      - option "UX тест — без команды"
+      - option "Р. Хачатрян"
+      - option "QA it-pl-a"
+      - option "QA it-pl-b"
+      - option "А. Нуждин"
+      - option "В. Гусев"
+      - option "В. Лемце"
+      - option "Д. Орлова"
+      - option "QA customer-a"
+      - option "QA customer-b"
+      - option "QA customer-unlinked"
+      - option "UX тест — бизнес-заказчик"
+      - option "QA tribe-lead"
+      - option "А. Коптелов"
+      - option "QA no-access"
+    - generic: IT Product Lead (IT PL)
+    - combobox "IT Product Lead (IT PL)":
+      - option "—" [selected]
+      - option "QA admin"
+      - option "Тимофей Бабяк"
+      - option "QA cl-a"
+      - option "QA pl-a"
+      - option "QA po-a"
+      - option "QA po-b"
+      - option "А. Мазунин"
+      - option "В. Баклушин"
+      - option "В. Стодольский"
+      - option "Д. Андреев"
+      - option "Д. Козлов"
+      - option "Д. Маркус"
+      - option "Д. Фомин"
+      - option "И. Мишутин"
+      - option "И. Яковлев"
+      - option "Л. Куликов"
+      - option "М. Первак"
+      - option "Ю. Шилов"
+      - option "QA ba-a"
+      - option "QA ba-a-peer"
+      - option "QA ba-b"
+      - option "QA ba-no-team"
+      - option "QA inactive"
+      - option "QA invited"
+      - option "QA reset-required"
+      - option "UX тест — без команды"
+      - option "Р. Хачатрян"
+      - option "QA it-pl-a"
+      - option "QA it-pl-b"
+      - option "А. Нуждин"
+      - option "В. Гусев"
+      - option "В. Лемце"
+      - option "Д. Орлова"
+      - option "QA customer-a"
+      - option "QA customer-b"
+      - option "QA customer-unlinked"
+      - option "UX тест — бизнес-заказчик"
+      - option "QA tribe-lead"
+      - option "А. Коптелов"
+      - option "QA no-access"
+    - generic: Описание
+    - textbox "Описание":
+      - /placeholder: Описание команды
+    - generic: Домен
+    - textbox "Домен"
+    - button "Отмена":
+      - generic: Отмена
+    - button "Создать":
+      - generic: Создать

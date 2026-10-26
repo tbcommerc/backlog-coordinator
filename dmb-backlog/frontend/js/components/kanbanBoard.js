@@ -1,5 +1,9 @@
+import { bindActionMenu } from '../ui/actionMenu.js';
+import { canEditTask } from '../taskCardPermissions.js';
+import { button, pageHeader, badge } from '../ui/primitives.js';
+import { renderViewState } from './viewState.js';
 console.log('[DMB] kanbanBoard.js v20260626.7 loaded');
-import { renderTaskCard } from './modal.js?v=92';
+import { renderTaskCard } from './modal.js?v=118';
 import { formatTaskPublicId } from '../taskPublicId.js';
 
 let kanbanCurrentTasks = [];
@@ -31,157 +35,35 @@ const KANBAN_STATUSES = [
 const savingTasks = new Set();
 let dataGeneration = 0; // Монотонный счётчик: увеличивается при перезагрузке данных
 
+const STATUS_TONES = ['info', 'accent', 'info', 'accent', 'accent', 'accent', 'warning', 'success', 'warning', 'warning', 'danger', 'neutral', 'success'];
+const emptyColumn = () => `<div class="empty-state">${renderViewState({ kind: 'empty', title: 'Нет задач' })}</div>`;
+
 export function renderKanban(app) {
-    return `
-    <div class="page-header animate-fade-in">
-        <h1>Канбан-доска</h1>
-        <p>Визуальное управление потоком задач</p>
-    </div>
-
-    <div class="action-bar action-bar--end">
-    <button class="btn btn-primary btn-sm" id="kanban-add-task-btn" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-      <i data-lucide="plus" style="width:14px;height:14px;"></i>
-      Добавить задачу
-    </button>
-    </div>
-
-    <div class="kanban-board" id="kanban-board">
-        <div class="kanban-column" data-status="НОВАЯ ЗАДАЧА">
-            <div class="kanban-column-header" style="border-top: 3px solid #6366f1;">
-                <div class="kanban-column-title">
-                    <span style="color:#6366f1;">●</span> НОВАЯ ЗАДАЧА
-                    <span class="kanban-column-count" id="count-НОВАЯ ЗАДАЧА">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="НОВАЯ ЗАДАЧА" id="col-НОВАЯ ЗАДАЧА"></div>
-        </div>
-
-        <div class="kanban-column" data-status="НАЗНАЧЕНА КОМАНДА">
-            <div class="kanban-column-header" style="border-top: 3px solid #8b5cf6;">
-                <div class="kanban-column-title">
-                    <span style="color:#8b5cf6;">●</span> НАЗНАЧЕНА КОМАНДА
-                    <span class="kanban-column-count" id="count-НАЗНАЧЕНА КОМАНДА">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="НАЗНАЧЕНА КОМАНДА" id="col-НАЗНАЧЕНА КОМАНДА"></div>
-        </div>
-
-        <div class="kanban-column" data-status="СБОР ТРЕБОВАНИЙ">
-            <div class="kanban-column-header" style="border-top: 3px solid #6366f1;">
-                <div class="kanban-column-title">
-                    <span style="color:#6366f1;">●</span> СБОР ТРЕБОВАНИЙ
-                    <span class="kanban-column-count" id="count-СБОР ТРЕБОВАНИЙ">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="СБОР ТРЕБОВАНИЙ" id="col-СБОР ТРЕБОВАНИЙ"></div>
-        </div>
-
-        <div class="kanban-column" data-status="ПРОВЕРКА ТРЕБОВАНИЙ">
-            <div class="kanban-column-header" style="border-top: 3px solid #a78bfa;">
-                <div class="kanban-column-title">
-                    <span style="color:#a78bfa;">●</span> ПРОВЕРКА ТРЕБОВАНИЙ
-                    <span class="kanban-column-count" id="count-ПРОВЕРКА ТРЕБОВАНИЙ">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="ПРОВЕРКА ТРЕБОВАНИЙ" id="col-ПРОВЕРКА ТРЕБОВАНИЙ"></div>
-        </div>
-
-        <div class="kanban-column" data-status="УТОЧНЕНИЕ ТРЕБОВАНИЙ">
-            <div class="kanban-column-header" style="border-top: 3px solid #c4b5fd;">
-                <div class="kanban-column-title">
-                    <span style="color:#c4b5fd;">●</span> УТОЧНЕНИЕ ТРЕБОВАНИЙ
-                    <span class="kanban-column-count" id="count-УТОЧНЕНИЕ ТРЕБОВАНИЙ">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="УТОЧНЕНИЕ ТРЕБОВАНИЙ" id="col-УТОЧНЕНИЕ ТРЕБОВАНИЙ"></div>
-        </div>
-
-        <div class="kanban-column" data-status="ЭКСПРЕСС-ОЦЕНКА">
-            <div class="kanban-column-header" style="border-top: 3px solid #8b5cf6;">
-                <div class="kanban-column-title">
-                    <span style="color:#8b5cf6;">●</span> ЭКСПРЕСС-ОЦЕНКА
-                    <span class="kanban-column-count" id="count-ЭКСПРЕСС-ОЦЕНКА">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="ЭКСПРЕСС-ОЦЕНКА" id="col-ЭКСПРЕСС-ОЦЕНКА"></div>
-        </div>
-
-        <div class="kanban-column" data-status="ПРИНЯТИЕ РЕШЕНИЯ">
-            <div class="kanban-column-header" style="border-top: 3px solid #f59e0b;">
-                <div class="kanban-column-title">
-                    <span style="color:#f59e0b;">●</span> ПРИНЯТИЕ РЕШЕНИЯ
-                    <span class="kanban-column-count" id="count-ПРИНЯТИЕ РЕШЕНИЯ">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="ПРИНЯТИЕ РЕШЕНИЯ" id="col-ПРИНЯТИЕ РЕШЕНИЯ"></div>
-        </div>
-
-        <div class="kanban-column" data-status="ПРИНЯТА В РАБОТУ">
-            <div class="kanban-column-header" style="border-top: 3px solid #10b981;">
-                <div class="kanban-column-title">
-                    <span style="color:#10b981;">●</span> ПРИНЯТА В РАБОТУ
-                    <span class="kanban-column-count" id="count-ПРИНЯТА В РАБОТУ">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="ПРИНЯТА В РАБОТУ" id="col-ПРИНЯТА В РАБОТУ"></div>
-        </div>
-
-        <div class="kanban-column" data-status="ЭСКАЛАЦИЯ НА ЛТ">
-            <div class="kanban-column-header" style="border-top: 3px solid #f97316;">
-                <div class="kanban-column-title">
-                    <span style="color:#f97316;">●</span> ЭСКАЛАЦИЯ НА ЛТ
-                    <span class="kanban-column-count" id="count-ЭСКАЛАЦИЯ НА ЛТ">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="ЭСКАЛАЦИЯ НА ЛТ" id="col-ЭСКАЛАЦИЯ НА ЛТ"></div>
-        </div>
-
-        <div class="kanban-column" data-status="ХОЛД">
-            <div class="kanban-column-header" style="border-top: 3px solid #f43f5e;">
-                <div class="kanban-column-title">
-                    <span style="color:#f43f5e;">●</span> ХОЛД
-                    <span class="kanban-column-count" id="count-ХОЛД">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="ХОЛД" id="col-ХОЛД"></div>
-        </div>
-
-        <div class="kanban-column" data-status="ОТКЛОНЕНА">
-            <div class="kanban-column-header" style="border-top: 3px solid #ef4444;">
-                <div class="kanban-column-title">
-                    <span style="color:#ef4444;">●</span> ОТКЛОНЕНА
-                    <span class="kanban-column-count" id="count-ОТКЛОНЕНА">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="ОТКЛОНЕНА" id="col-ОТКЛОНЕНА"></div>
-        </div>
-
-        <div class="kanban-column" data-status="НЕ АКТУАЛЬНА">
-            <div class="kanban-column-header" style="border-top: 3px solid #64748b;">
-                <div class="kanban-column-title">
-                    <span style="color:#64748b;">●</span> НЕ АКТУАЛЬНА
-                    <span class="kanban-column-count" id="count-НЕ АКТУАЛЬНА">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="НЕ АКТУАЛЬНА" id="col-НЕ АКТУАЛЬНА"></div>
-        </div>
-
-        <div class="kanban-column" data-status="ВЫПОЛНЕНА">
-            <div class="kanban-column-header" style="border-top: 3px solid #22c55e;">
-                <div class="kanban-column-title">
-                    <span style="color:#22c55e;">●</span> ВЫПОЛНЕНА
-                    <span class="kanban-column-count" id="count-ВЫПОЛНЕНА">0</span>
-                </div>
-            </div>
-            <div class="kanban-column-body" data-status="ВЫПОЛНЕНА" id="col-ВЫПОЛНЕНА"></div>
-        </div>
-    </div>
-    `;
+    return `${pageHeader({ title: 'Канбан-доска', description: 'Визуальное управление потоком задач',
+        actions: button({ label: 'Добавить задачу', icon: 'plus', variant: 'primary', attrs: { id: 'kanban-add-task-btn', disabled: true } }) })}
+    <div id="kanban-state">${renderViewState({ kind: 'loading', title: 'Загружаем задачи…' })}</div>
+    <div class="kanban-board" id="kanban-board" aria-label="Задачи по статусам" hidden>
+        ${KANBAN_STATUSES.map((status, index) => `<section class="kanban-column" data-status="${status}" data-ui-tone="${STATUS_TONES[index]}" aria-labelledby="heading-${index}">
+            <div class="kanban-column-header"><h2 class="kanban-column-title" id="heading-${index}">${status}
+                <span id="count-${status}" class="kanban-column-count">${badge({ label: '0' })}</span>
+            </h2></div>
+            <div class="kanban-column-body" data-status="${status}" id="col-${status}"></div>
+        </section>`).join('')}
+    </div>`;
 }
 
 export async function initKanban(app) {
     // Очищаем savingTasks — могли остаться зависшие задачи от предыдущего визита
     savingTasks.clear();
+    const state = document.getElementById('kanban-state');
+    const board = document.getElementById('kanban-board');
+    if (!state || !board) return;
+    state.innerHTML = renderViewState({ kind: 'loading', title: 'Загружаем задачи…' });
+    state.hidden = false;
+    board.hidden = true;
+    window.lucide?.createIcons();
+    const addButton = document.getElementById('kanban-add-task-btn');
+    if (addButton) addButton.disabled = true;
 
     try {
         const user = app.store.get('currentUser');
@@ -217,17 +99,27 @@ export async function initKanban(app) {
         } catch (e) {
             console.warn('Failed to load statuses from /admin/statuses:', e);
         }
+        if (!board.isConnected) return;
         renderKanbanCards(app, items);
+        state.hidden = true;
+        board.hidden = false;
 
-        const { openTaskModal, openCreateTaskModal, setOnTaskSaved } = await import('./modal.js?v=92');
+        const { openCreateTaskModal, setOnTaskSaved } = await import('./modal.js?v=118');
         setOnTaskSaved(() => initKanban(app));
 
-        document.getElementById('kanban-add-task-btn')?.addEventListener('click', async () => {
-            openCreateTaskModal(app);
-        });
+        if (addButton?.isConnected) {
+            addButton.onclick = () => openCreateTaskModal(app);
+            addButton.disabled = false;
+        }
 
     } catch (e) {
         console.error('Kanban error:', e);
+        if (!state.isConnected) return;
+        state.hidden = false;
+        board.hidden = true;
+        state.innerHTML = renderViewState({ kind: e.status === 403 ? 'forbidden' : 'error', title: e.status === 403 ? 'Недостаточно прав' : 'Не удалось загрузить канбан', actionLabel: 'Повторить', actionId: 'kanban-retry' });
+        state.querySelector('#kanban-retry')?.addEventListener('click', () => initKanban(app));
+        window.lucide?.createIcons();
     }
 }
 
@@ -271,9 +163,9 @@ function updateColumnCounts() {
         const body = document.getElementById(`col-${s}`);
         if (countEl && body) {
             const count = body.querySelectorAll('.task-card').length;
-            countEl.textContent = count;
+            countEl.innerHTML = badge({ label: String(count) });
             if (count === 0 && !body.querySelector('.empty-state')) {
-                body.insertAdjacentHTML('beforeend', '<div class="empty-state" style="padding:var(--space-8);"><p class="text-muted">Нет задач</p></div>');
+                body.insertAdjacentHTML('beforeend', emptyColumn());
             }
         }
     });
@@ -296,35 +188,24 @@ function updateLocalTask(taskId, response, newStatusName, gen) {
             ...kanbanCurrentTasks[idx],
             status_id: response.status_id,
             status_name: response.status_name || newStatusName,
+            version: response.version ?? kanbanCurrentTasks[idx].version,
             updated_at: response.updated_at
         };
     }
 }
 
-function setupColumnDropHandlers(app) {
-    document.querySelectorAll('.kanban-column-body:not([data-drop-bound])').forEach(col => {
-        col.dataset.dropBound = '1';
-        col.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            col.classList.add('drag-over');
-        });
-        col.addEventListener('dragleave', () => {
-            col.classList.remove('drag-over');
-        });
-        col.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            col.classList.remove('drag-over');
-            const taskId = e.dataTransfer.getData('text/plain');
-            const newStatus = col.dataset.status;
-            if (!taskId || !newStatus) return;
-
+async function moveKanbanTask(app, taskId, newStatus) {
+    const col = document.getElementById(`col-${newStatus}`);
+    if (!col) return;
+    const taskToMove = kanbanCurrentTasks.find(task => String(task.id) === String(taskId));
+    if (!canEditTask(app.store.get('currentUser'), taskToMove)) return;
             // Set-блокировка: если задача уже сохраняется — игнорируем
             if (savingTasks.has(taskId)) return;
             savingTasks.add(taskId);
 
             // Находим карточку и добавляем loading-класс
             let card = document.querySelector(`.task-card[data-id="${taskId}"]`);
-            if (card) card.classList.add('task-card--saving');
+            if (card) { card.classList.add('task-card--saving'); card.setAttribute('aria-busy','true'); card.draggable=false; card.querySelector('[data-kanban-status]')?.setAttribute('disabled',''); }
 
             // Оптимистичное обновление: перемещаем карточку сразу
             const oldCol = card?.closest('.kanban-column-body');
@@ -363,10 +244,7 @@ function setupColumnDropHandlers(app) {
                     console.error('Reload failed after drop:', reloadErr);
                     // Если перезагрузка не удалась — хотя бы обновим локальный массив и карточку
                     updateLocalTask(taskId, response, newStatus, dataGeneration);
-                    if (card) {
-                        const newHtml = renderTaskCard(response);
-                        card.outerHTML = newHtml;
-                    }
+                    renderKanbanCards(app, kanbanCurrentTasks);
                 }
             } catch (err) {
                 console.error('Drop save error:', err);
@@ -374,11 +252,38 @@ function setupColumnDropHandlers(app) {
                 // При ошибке откатываем — перезагружаем с сервера
                 try {
                     await reloadTasksFromServer(app);
-                } catch { /* ignore */ }
+                } catch {
+                    if (card?.isConnected && oldCol?.isConnected) {
+                        oldCol.querySelector('.empty-state')?.remove();
+                        oldCol.append(card);
+                        updateColumnCounts();
+                    }
+                }
             } finally {
                 savingTasks.delete(taskId);
-                if (card) card.classList.remove('task-card--saving');
+                if (card) { card.classList.remove('task-card--saving'); card.removeAttribute('aria-busy'); card.draggable=true; card.querySelector('[data-kanban-status]')?.removeAttribute('disabled'); }
             }
+}
+
+function setupColumnDropHandlers(app) {
+    document.querySelectorAll('.kanban-column-body:not([data-drop-bound])').forEach(col => {
+        col.dataset.dropBound = '1';
+        col.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            col.classList.add('drag-over');
+        });
+        col.addEventListener('dragleave', () => {
+            col.classList.remove('drag-over');
+        });
+        col.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            col.classList.remove('drag-over');
+            const taskId = e.dataTransfer.getData('text/plain');
+            const newStatus = col.dataset.status;
+            if (!taskId || !newStatus) return;
+
+            await moveKanbanTask(app, taskId, newStatus);
+
         });
     });
 }
@@ -390,24 +295,37 @@ function renderKanbanCards(app, tasks) {
         if (!col) return;
 
         const statusTasks = tasks.filter(t => t.status_name === s);
-        if (count) count.textContent = statusTasks.length;
+        if (count) count.innerHTML = badge({ label: String(statusTasks.length) });
 
         if (statusTasks.length === 0) {
-            col.innerHTML = `<div class="empty-state" style="padding:var(--space-8);"><p class="text-muted">Нет задач</p></div>`;
+            col.innerHTML = emptyColumn();
             return;
         }
 
         col.innerHTML = statusTasks.map(task => renderTaskCard(task)).join('');
 
         col.querySelectorAll('.task-card').forEach(card => {
-            card.draggable = true;
+            const editable = canEditTask(app.store.get('currentUser'), tasks.find(task => String(task.id) === card.dataset.id));
+            card.draggable = editable;
+            card.insertAdjacentHTML('beforeend', button({label:'Изменить статус задачи', icon:'arrow-right-left', variant:'ghost', size:'small', iconOnly:true, attrs:{'data-kanban-status':card.dataset.id,disabled:!editable}}));
+            const trigger = card.querySelector('[data-kanban-status]');
+            const panel = document.createElement('div'); panel.hidden = true;
+            panel.innerHTML = KANBAN_STATUSES.map(status => button({label:status, variant:'ghost', attrs:{'data-next-status':status, disabled:status === s}})).join('');
+            card.append(panel);
+            bindActionMenu({trigger, panel, label:'Переместить задачу', resolveTrigger:()=>document.querySelector(`[data-kanban-status="${card.dataset.id}"]`)});
+            panel.addEventListener('click',async event=>{
+                const option=event.target.closest('[data-next-status]');
+                if(!option || option.disabled) return;
+                await moveKanbanTask(app, card.dataset.id, option.dataset.nextStatus);
+                document.querySelector(`[data-kanban-status="${card.dataset.id}"]`)?.focus();
+            });
             let dragged = false;
             card.addEventListener('click', (e) => {
                 if (dragged) { dragged = false; return; }
                 if (e.target.closest('.btn-icon, .btn')) return;
                 const t = tasks.find(x => String(x.id) === String(card.dataset.id));
                 if (t) {
-                    import('./modal.js?v=92').then(mod => mod.openTaskModal(t));
+                    import('./modal.js?v=118').then(mod => mod.openTaskModal(t));
                 }
             });
             card.addEventListener('dragstart', (e) => {
@@ -424,4 +342,5 @@ function renderKanbanCards(app, tasks) {
 
     // Вешаем drop-обработчики на колонки (только один раз)
     setupColumnDropHandlers(app);
+    window.lucide?.createIcons();
 }

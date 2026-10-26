@@ -1,0 +1,8 @@
+[
+  {
+    "level": "error",
+    "message": "Failed to open task APIError: Task not found\n    at API.handleResponse (http://127.0.0.1:8000/static/js/api.js?v=2:165:19)\n    at async http://127.0.0.1:8000/static/js/router.js?v=185:79:30",
+    "timestamp": "2026-10-13T07:49:29.876Z",
+    "url": "http://127.0.0.1:8000/static/js/app.js?v=228"
+  }
+]

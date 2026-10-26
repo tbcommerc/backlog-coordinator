@@ -1,0 +1,66 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- banner:
+  - navigation "Хлебные крошки": Администрирование
+  - button "Открыть поиск":
+    - img
+  - 'button "Уведомления: нет непрочитанных"'
+  - button "Переключить тему":
+    - img
+  - button
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - combobox "Раздел администрирования":
+      - option "Команды" [selected]
+      - option "Проекты"
+      - option "Бизнес-заказчики"
+      - option "Пользователи"
+      - option "Роли"
+      - option "Таймлайн"
+      - option "Справочники"
+      - option "Отображение"
+      - option "Отчёты"
+      - option "Журнал действий"
+  - searchbox "Поиск"
+  - status: "Найдено: 12"
+  - button "Новая команда"
+  - tabpanel "Команды":
+    - text: Pre Pre-Trade
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "PL: М. Первак PO: Д. Фомин IT PL: Тимофей Бабяк Pre-Trade системы и аналитика Pst Post-Trade (Products & Service)"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "PL: Д. Маркус PO: Д. Козлов IT PL: Тимофей Бабяк Post-Trade обработка и расчёты IB IB"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "PL: А. Мазунин PO: Ю. Шилов IT PL: Тимофей Бабяк Единая платформа сделок Investment Banking Cr Core"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "PL: В. Баклушин PO: Р. Хачатрян IT PL: Тимофей Бабяк Ядро платформы Dev Delivery"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "CL: Л. Куликов IT PL: Тимофей Бабяк Delivery и внедрение Fin Post-Trade (Finance)"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "PL: Д. Маркус PO: Д. Андреев IT PL: Тимофей Бабяк Финансовый блок Met Methodology"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "CL: И. Яковлев IT PL: Тимофей Бабяк Методология и процессы ЛТ ИТ ЛТ"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "CL: Тимофей Бабяк IT PL: Тимофей Бабяк ИТ Лидеры Трайбов AI AI"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "CL: И. Мишутин IT PL: Тимофей Бабяк Искусственный интеллект и ML POf Проектный офис"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "CL: В. Стодольский IT PL: Тимофей Бабяк Проектный офис QAA QA Team A"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "PL: QA pl-a PO: QA po-a CL: QA cl-a IT PL: QA it-pl-a Isolated QA team QAB QA Team B"
+    - button "Редактировать команду"
+    - button "Удалить команду"
+    - text: "PO: QA po-b IT PL: QA it-pl-b Isolated QA team"

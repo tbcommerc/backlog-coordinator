@@ -1,0 +1,42 @@
+ll "НИЗКИЙ":
+          - generic: НИЗКИЙ
+        - cell "Core":
+          - generic: Core
+        - cell "1Q 2026":
+          - generic: 1Q 2026
+        - cell "15 дн"
+        - cell "0,15"
+        - cell "1.48":
+          - generic: "1.48"
+        - cell "0% 0%":
+          - progressbar "Прогресс"
+          - generic: 0%
+      - row "Выбрать задачу 110 TASK-000-110 Копировать TASK-000-110 Обновление библиотек безопасности ПРИНЯТА В РАБОТУ ВЫСОКИЙ Core 2Q 2026 15 дн 0,28 0.89 60% 60%":
+        - cell "Выбрать задачу 110":
+          - checkbox "Выбрать задачу 110"
+        - cell "TASK-000-110 Копировать TASK-000-110":
+          - generic "TASK-000-110"
+          - button "Копировать TASK-000-110": ⧉
+        - cell "Обновление библиотек безопасности":
+          - strong: Обновление библиотек безопасности
+        - cell "ПРИНЯТА В РАБОТУ":
+          - generic: ПРИНЯТА В РАБОТУ
+        - cell "ВЫСОКИЙ":
+          - generic: ВЫСОКИЙ
+        - cell "Core":
+          - generic: Core
+        - cell "2Q 2026":
+          - generic: 2Q 2026
+        - cell "15 дн"
+        - cell "0,28"
+        - cell "0.89":
+          - generic: "0.89"
+        - cell "60% 60%":
+          - progressbar "Прогресс"
+          - generic: 60%
+  - status: "Найдено: 260 задач"
+  - button "1"
+  - button "2"
+  - button "3"
+- dialog "Сохранённые представления" [active]:
+  - generic: Сохранённых представлений пока нет

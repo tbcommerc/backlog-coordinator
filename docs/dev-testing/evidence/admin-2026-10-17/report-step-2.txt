@@ -1,0 +1,261 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - generic: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Контроль исполнения":
+      - /url: "#/work-reports"
+      - generic: Контроль исполнения
+    - link "Структура работ проекта":
+      - /url: "#/work-projects"
+      - generic: Структура работ проекта
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link "Настройки":
+      - /url: "#/settings"
+      - generic: Настройки
+    - link "Управление отчётными встречами":
+      - /url: "#/reporting-meetings"
+      - generic: Отчётные встречи
+    - link "Администрирование":
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+    - link "Ошибки доставки событий":
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Администрирование
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button "Q.admin":
+    - generic: QA
+    - generic: Q.admin
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - generic: Структура
+    - tab "Команды":
+      - generic: Команды
+    - tab "Проекты":
+      - generic: Проекты
+    - tab "Бизнес-заказчики":
+      - generic: Бизнес-заказчики
+    - generic: Доступы
+    - tab "Пользователи":
+      - generic: Пользователи
+    - tab "Роли":
+      - generic: Роли
+    - generic: Настройки
+    - tab "Справочники":
+      - generic: Справочники
+    - tab "Отображение":
+      - generic: Отображение
+    - generic: Инструменты
+    - tab "Таймлайн":
+      - generic: Таймлайн
+    - tab "Отчёты" [selected]:
+      - generic: Отчёты
+    - generic: Контроль
+    - tab "Журнал действий":
+      - generic: Журнал действий
+  - button "Добавить новый отчёт":
+    - text: Добавить новый отчёт
+  - tabpanel "Отчёты":
+    - heading "Стандартные отчёты" [level=4]
+    - heading "Светофоры по квартальным целям" [level=4]
+    - button "Настроить отчёт":
+    - generic: Статус квартальных целей и AD-HOC-задач команд трайба
+    - generic: Стандартный
+    - generic: quarterly-goals
+    - heading "Статус для Директорской оперативки" [level=4]
+    - button "Настроить отчёт":
+    - generic: Сводка по задачам для директората
+    - generic: Стандартный
+    - generic: directorate
+    - heading "Статус для оперативки ДИД" [level=4]
+    - button "Настроить отчёт":
+    - generic: Группировка по командам, квартальная фильтрация, задачи с заполненным статусом ДИД
+    - generic: Стандартный
+    - generic: did-operational
+    - heading "Отчет для Рег. директоров" [level=4]
+    - button "Настроить отчёт":
+    - generic: Сводка по ключевым инициативам, высоким рискам и финансовым эффектам
+    - generic: Стандартный
+    - generic: reg-directors
+    - heading "PI-планирование трайба" [level=4]
+    - button "Настроить отчёт":
+    - generic: Контрольные точки процесса (Point in Process)
+    - generic: Стандартный
+    - generic: pip
+    - heading "Бэклог для отправки на бизнес-заказчиков ДИД" [level=4]
+    - button "Настроить отчёт":
+    - generic: Бэклог, подготовленный к отправке бизнес-заказчикам ДИД
+    - generic: Стандартный
+    - generic: did-backlog
+    - heading "Пользовательские отчёты" [level=4]
+    - generic: Нет пользовательских отчётов. Нажмите «Добавить новый отчёт».
+  - dialog "Редактирование отчёта":
+    - heading "Редактирование отчёта" [level=3]
+    - button "Закрыть":
+    - generic: Системный отчёт · quarterly-goals
+    - tablist "Шаги настройки отчёта":
+      - tab "1. Основное"
+      - tab "2. Поля" [active] [selected]
+      - tab "3. Фильтры"
+      - tab "4. Сортировка"
+    - tabpanel "2. Поля":
+      - searchbox "Поиск полей"
+      - button "Выбрать всё":
+        - generic: Выбрать всё
+      - button "Очистить":
+        - generic: Очистить
+      - checkbox "ID задачи" [checked]
+      - generic: ID задачи
+      - checkbox "Название задачи" [checked]
+      - generic: Название задачи
+      - checkbox "Описание задачи"
+      - generic: Описание задачи
+      - checkbox "Ответственная команда" [checked]
+      - generic: Ответственная команда
+      - checkbox "Приоритет"
+      - generic: Приоритет
+      - checkbox "Статус задачи"
+      - generic: Статус задачи
+      - checkbox "Проект"
+      - generic: Проект
+      - checkbox "Бизнес-заказчик"
+      - generic: Бизнес-заказчик
+      - checkbox "Бизнес-заказчик"
+      - generic: Бизнес-заказчик
+      - checkbox "Подразделение Бизнес-заказчика"
+      - generic: Подразделение Бизнес-заказчика
+      - checkbox "Канал поступления"
+      - generic: Канал поступления
+      - checkbox "Тип задачи" [checked]
+      - generic: Тип задачи
+      - checkbox "Срок выполнения"
+      - generic: Срок выполнения
+      - checkbox "Исполнитель"
+      - generic: Исполнитель
+      - checkbox "Прогресс" [checked]
+      - generic: Прогресс
+      - checkbox "Оценка трудозатрат (ЭО) (ч/д)"
+      - generic: Оценка трудозатрат (ЭО) (ч/д)
+      - checkbox "Стоимость по ЭО (руб)"
+      - generic: Стоимость по ЭО (руб)
+      - checkbox "Финансовый эффект (value в млн руб.)"
+      - generic: Финансовый эффект (value в млн руб.)
+      - checkbox "C/V"
+      - generic: C/V
+      - checkbox "Priority Score"
+      - generic: Priority Score
+      - checkbox "Статус для встречи по ключевым проектам"
+      - generic: Статус для встречи по ключевым проектам
+      - checkbox "Статус для Директорской оперативки"
+      - generic: Статус для Директорской оперативки
+      - checkbox "Статус для оперативки ДИД"
+      - generic: Статус для оперативки ДИД
+      - checkbox "Другие вовлеченные команды"
+      - generic: Другие вовлеченные команды
+      - checkbox "Демо для оперативного статуса ДИД"
+      - generic: Демо для оперативного статуса ДИД
+      - checkbox "Дата получения"
+      - generic: Дата получения
+      - checkbox "Дата создания задачи"
+      - generic: Дата создания задачи
+      - checkbox "Дата последнего изменения"
+      - generic: Дата последнего изменения
+      - heading "Выбранные поля и порядок" [level=4]
+      - generic: ⋮⋮
+      - generic: ID задачи
+      - button "Переместить вверх": ↑
+      - button "Переместить вниз": ↓
+      - generic: ⋮⋮
+      - generic: Название задачи
+      - button "Переместить вверх": ↑
+      - button "Переместить вниз": ↓
+      - generic: ⋮⋮
+      - generic: Тип задачи
+      - button "Переместить вверх": ↑
+      - button "Переместить вниз": ↓
+      - generic: ⋮⋮
+      - generic: Ответственная команда
+      - button "Переместить вверх": ↑
+      - button "Переместить вниз": ↓
+      - generic: ⋮⋮
+      - generic: Прогресс
+      - button "Переместить вверх": ↑
+      - button "Переместить вниз": ↓
+    - complementary:
+      - heading "Структура отчёта" [level=4]
+      - generic: Светофоры по квартальным целям · 5 полей · 0 фильтров · Без группировки
+    - button "Назад":
+      - generic: Назад
+    - button "Далее"
+    - button "Отмена":
+      - generic: Отмена
+    - button "Сохранить":
+      - generic: Сохранить

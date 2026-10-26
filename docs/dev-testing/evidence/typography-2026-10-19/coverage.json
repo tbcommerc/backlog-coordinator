@@ -1,0 +1,3911 @@
+{
+  "generated": "2026-10-19T19:43:28.960Z",
+  "note": "Snapshot presence means the associated scenario produced typography data. It does not prove every surface/state reached or every assertion passed.",
+  "summary": {
+    "chrome": {
+      "expected": 448,
+      "withSnapshot": 448
+    },
+    "edge": {
+      "expected": 448,
+      "withSnapshot": 448
+    },
+    "firefox": {
+      "expected": 448,
+      "withSnapshot": 447
+    },
+    "webkit": {
+      "expected": 448,
+      "withSnapshot": 447
+    }
+  },
+  "surfaces": [
+    {
+      "id": "dashboard",
+      "title": "Главная и таймлайн",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitDataDisplay.spec.mjs",
+        "notificationSurfaces.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 58,
+          "withSnapshot": 58
+        },
+        "edge": {
+          "expected": 58,
+          "withSnapshot": 58
+        },
+        "firefox": {
+          "expected": 58,
+          "withSnapshot": 58
+        },
+        "webkit": {
+          "expected": 58,
+          "withSnapshot": 58
+        }
+      }
+    },
+    {
+      "id": "backlog",
+      "title": "Бэклог DMB",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitBacklog.spec.mjs",
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 36,
+          "withSnapshot": 36
+        },
+        "edge": {
+          "expected": 36,
+          "withSnapshot": 36
+        },
+        "firefox": {
+          "expected": 36,
+          "withSnapshot": 36
+        },
+        "webkit": {
+          "expected": 36,
+          "withSnapshot": 36
+        }
+      }
+    },
+    {
+      "id": "team-backlog",
+      "title": "Бэклог команды",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitBacklog.spec.mjs",
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 36,
+          "withSnapshot": 36
+        },
+        "edge": {
+          "expected": 36,
+          "withSnapshot": 36
+        },
+        "firefox": {
+          "expected": 36,
+          "withSnapshot": 36
+        },
+        "webkit": {
+          "expected": 36,
+          "withSnapshot": 36
+        }
+      }
+    },
+    {
+      "id": "kanban",
+      "title": "Канбан",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitKanban.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 37,
+          "withSnapshot": 37
+        },
+        "edge": {
+          "expected": 37,
+          "withSnapshot": 37
+        },
+        "firefox": {
+          "expected": 37,
+          "withSnapshot": 37
+        },
+        "webkit": {
+          "expected": 37,
+          "withSnapshot": 37
+        }
+      }
+    },
+    {
+      "id": "express",
+      "title": "Экспресс-оценка",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitExpress.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 36,
+          "withSnapshot": 36
+        },
+        "edge": {
+          "expected": 36,
+          "withSnapshot": 36
+        },
+        "firefox": {
+          "expected": 36,
+          "withSnapshot": 36
+        },
+        "webkit": {
+          "expected": 36,
+          "withSnapshot": 36
+        }
+      }
+    },
+    {
+      "id": "reports",
+      "title": "Список отчётов",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitReportsHeader.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 10,
+          "withSnapshot": 10
+        },
+        "edge": {
+          "expected": 10,
+          "withSnapshot": 10
+        },
+        "firefox": {
+          "expected": 10,
+          "withSnapshot": 10
+        },
+        "webkit": {
+          "expected": 10,
+          "withSnapshot": 10
+        }
+      }
+    },
+    {
+      "id": "report-detail",
+      "title": "Детальный отчёт",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "reporting-statuses",
+      "title": "Подготовка статусов",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitReportingWorkspaces.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 58,
+          "withSnapshot": 58
+        },
+        "edge": {
+          "expected": 58,
+          "withSnapshot": 58
+        },
+        "firefox": {
+          "expected": 58,
+          "withSnapshot": 58
+        },
+        "webkit": {
+          "expected": 58,
+          "withSnapshot": 58
+        }
+      }
+    },
+    {
+      "id": "quarterly-update",
+      "title": "Обновление квартальных целей",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitReportingWorkspaces.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 54,
+          "withSnapshot": 54
+        },
+        "edge": {
+          "expected": 54,
+          "withSnapshot": 54
+        },
+        "firefox": {
+          "expected": 54,
+          "withSnapshot": 54
+        },
+        "webkit": {
+          "expected": 54,
+          "withSnapshot": 54
+        }
+      }
+    },
+    {
+      "id": "meetings",
+      "title": "Управление встречами",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 28,
+          "withSnapshot": 28
+        },
+        "edge": {
+          "expected": 28,
+          "withSnapshot": 28
+        },
+        "firefox": {
+          "expected": 28,
+          "withSnapshot": 28
+        },
+        "webkit": {
+          "expected": 28,
+          "withSnapshot": 28
+        }
+      }
+    },
+    {
+      "id": "meeting-capture",
+      "title": "Поручения из встречи",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "meetingCapture.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "edge": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "firefox": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "webkit": {
+          "expected": 11,
+          "withSnapshot": 11
+        }
+      }
+    },
+    {
+      "id": "analytics-tribe",
+      "title": "Аналитика ЛТ",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitCharts.spec.mjs",
+        "uiKitAdminReports.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 55,
+          "withSnapshot": 55
+        },
+        "edge": {
+          "expected": 55,
+          "withSnapshot": 55
+        },
+        "firefox": {
+          "expected": 55,
+          "withSnapshot": 55
+        },
+        "webkit": {
+          "expected": 55,
+          "withSnapshot": 55
+        }
+      }
+    },
+    {
+      "id": "analytics-po-pl",
+      "title": "Аналитика PO/PL",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitCharts.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 31,
+          "withSnapshot": 31
+        },
+        "edge": {
+          "expected": 31,
+          "withSnapshot": 31
+        },
+        "firefox": {
+          "expected": 31,
+          "withSnapshot": 31
+        },
+        "webkit": {
+          "expected": 31,
+          "withSnapshot": 31
+        }
+      }
+    },
+    {
+      "id": "analytics-it",
+      "title": "Аналитика IT",
+      "states": [
+        "ready"
+      ],
+      "suites": [
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "notifications",
+      "title": "Уведомления",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitRegistries.spec.mjs",
+        "notificationSurfaces.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 74,
+          "withSnapshot": 74
+        },
+        "edge": {
+          "expected": 74,
+          "withSnapshot": 74
+        },
+        "firefox": {
+          "expected": 74,
+          "withSnapshot": 73
+        },
+        "webkit": {
+          "expected": 74,
+          "withSnapshot": 73
+        }
+      }
+    },
+    {
+      "id": "settings",
+      "title": "Персональные настройки",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitSettings.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 51,
+          "withSnapshot": 51
+        },
+        "edge": {
+          "expected": 51,
+          "withSnapshot": 51
+        },
+        "firefox": {
+          "expected": 51,
+          "withSnapshot": 51
+        },
+        "webkit": {
+          "expected": 51,
+          "withSnapshot": 51
+        }
+      }
+    },
+    {
+      "id": "admin",
+      "title": "Административные реестры",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "audit",
+      "title": "Аудит",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitRegistries.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 51,
+          "withSnapshot": 51
+        },
+        "edge": {
+          "expected": 51,
+          "withSnapshot": 51
+        },
+        "firefox": {
+          "expected": 51,
+          "withSnapshot": 50
+        },
+        "webkit": {
+          "expected": 51,
+          "withSnapshot": 50
+        }
+      }
+    },
+    {
+      "id": "outbox",
+      "title": "Ошибки доставки",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitRegistries.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 51,
+          "withSnapshot": 51
+        },
+        "edge": {
+          "expected": 51,
+          "withSnapshot": 51
+        },
+        "firefox": {
+          "expected": 51,
+          "withSnapshot": 50
+        },
+        "webkit": {
+          "expected": 51,
+          "withSnapshot": 50
+        }
+      }
+    },
+    {
+      "id": "customer",
+      "title": "Запросы заказчика",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "customerPortalResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 8,
+          "withSnapshot": 8
+        },
+        "edge": {
+          "expected": 8,
+          "withSnapshot": 8
+        },
+        "firefox": {
+          "expected": 8,
+          "withSnapshot": 8
+        },
+        "webkit": {
+          "expected": 8,
+          "withSnapshot": 8
+        }
+      }
+    },
+    {
+      "id": "request",
+      "title": "Карточка запроса",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "customerPortalResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 8,
+          "withSnapshot": 8
+        },
+        "edge": {
+          "expected": 8,
+          "withSnapshot": 8
+        },
+        "firefox": {
+          "expected": 8,
+          "withSnapshot": 8
+        },
+        "webkit": {
+          "expected": 8,
+          "withSnapshot": 8
+        }
+      }
+    },
+    {
+      "id": "customer-task",
+      "title": "Задача заказчика",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "customerPortalResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 8,
+          "withSnapshot": 8
+        },
+        "edge": {
+          "expected": 8,
+          "withSnapshot": 8
+        },
+        "firefox": {
+          "expected": 8,
+          "withSnapshot": 8
+        },
+        "webkit": {
+          "expected": 8,
+          "withSnapshot": 8
+        }
+      }
+    },
+    {
+      "id": "review",
+      "title": "Очередь ревью",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "reviewResponsive.spec.mjs",
+        "requirementWorkspace.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 46,
+          "withSnapshot": 46
+        },
+        "edge": {
+          "expected": 46,
+          "withSnapshot": 46
+        },
+        "firefox": {
+          "expected": 46,
+          "withSnapshot": 46
+        },
+        "webkit": {
+          "expected": 46,
+          "withSnapshot": 46
+        }
+      }
+    },
+    {
+      "id": "review-detail",
+      "title": "Карточка ревью",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "edge": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "firefox": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "webkit": {
+          "expected": 7,
+          "withSnapshot": 7
+        }
+      }
+    },
+    {
+      "id": "ai-v1",
+      "title": "AI V1",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "agentChatResponsive.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 10,
+          "withSnapshot": 10
+        },
+        "edge": {
+          "expected": 10,
+          "withSnapshot": 10
+        },
+        "firefox": {
+          "expected": 10,
+          "withSnapshot": 10
+        },
+        "webkit": {
+          "expected": 10,
+          "withSnapshot": 10
+        }
+      }
+    },
+    {
+      "id": "login",
+      "title": "Вход",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "uiKitLogin.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 5,
+          "withSnapshot": 5
+        },
+        "edge": {
+          "expected": 5,
+          "withSnapshot": 5
+        },
+        "firefox": {
+          "expected": 5,
+          "withSnapshot": 5
+        },
+        "webkit": {
+          "expected": 5,
+          "withSnapshot": 5
+        }
+      }
+    },
+    {
+      "id": "ai-v2",
+      "title": "AI V2",
+      "states": [
+        "unavailable",
+        "loading",
+        "error",
+        "empty",
+        "ready",
+        "editing",
+        "dirty",
+        "saving",
+        "degraded",
+        "readonly"
+      ],
+      "suites": [
+        "requirementWorkspace.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 39,
+          "withSnapshot": 39
+        },
+        "edge": {
+          "expected": 39,
+          "withSnapshot": 39
+        },
+        "firefox": {
+          "expected": 39,
+          "withSnapshot": 39
+        },
+        "webkit": {
+          "expected": 39,
+          "withSnapshot": 39
+        }
+      }
+    },
+    {
+      "id": "admin-teams",
+      "title": "Админ: teams",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "admin-projects",
+      "title": "Админ: projects",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "admin-businessCustomers",
+      "title": "Админ: businessCustomers",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "admin-users",
+      "title": "Админ: users",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "admin-roles",
+      "title": "Админ: roles",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "admin-home",
+      "title": "Админ: home",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "admin-dictionaries",
+      "title": "Админ: dictionaries",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "admin-display",
+      "title": "Админ: display",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "admin-reports",
+      "title": "Админ: reports",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "admin-audit",
+      "title": "Админ: audit",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "edge": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "firefox": {
+          "expected": 77,
+          "withSnapshot": 77
+        },
+        "webkit": {
+          "expected": 77,
+          "withSnapshot": 77
+        }
+      }
+    },
+    {
+      "id": "report-team-weekly",
+      "title": "Отчёт: team-weekly",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "suites": [
+        "teamWeeklyReport.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 2,
+          "withSnapshot": 2
+        },
+        "edge": {
+          "expected": 2,
+          "withSnapshot": 2
+        },
+        "firefox": {
+          "expected": 2,
+          "withSnapshot": 2
+        },
+        "webkit": {
+          "expected": 2,
+          "withSnapshot": 2
+        }
+      }
+    },
+    {
+      "id": "report-directorate",
+      "title": "Отчёт: directorate",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 50,
+          "withSnapshot": 50
+        },
+        "edge": {
+          "expected": 50,
+          "withSnapshot": 50
+        },
+        "firefox": {
+          "expected": 50,
+          "withSnapshot": 50
+        },
+        "webkit": {
+          "expected": 50,
+          "withSnapshot": 50
+        }
+      }
+    },
+    {
+      "id": "report-did-operational",
+      "title": "Отчёт: did-operational",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "suites": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "report-reg-directors",
+      "title": "Отчёт: reg-directors",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "suites": [
+        "uiKitReportCompletion.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "edge": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "firefox": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "webkit": {
+          "expected": 9,
+          "withSnapshot": 9
+        }
+      }
+    },
+    {
+      "id": "report-pip",
+      "title": "Отчёт: pip",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "suites": [
+        "uiKitReportCompletion.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "edge": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "firefox": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "webkit": {
+          "expected": 9,
+          "withSnapshot": 9
+        }
+      }
+    },
+    {
+      "id": "report-did-backlog",
+      "title": "Отчёт: did-backlog",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 24,
+          "withSnapshot": 24
+        },
+        "edge": {
+          "expected": 24,
+          "withSnapshot": 24
+        },
+        "firefox": {
+          "expected": 24,
+          "withSnapshot": 24
+        },
+        "webkit": {
+          "expected": 24,
+          "withSnapshot": 24
+        }
+      }
+    },
+    {
+      "id": "report-quarterly-goals",
+      "title": "Отчёт: quarterly-goals",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "suites": [
+        "uiKitComposites.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 34,
+          "withSnapshot": 34
+        },
+        "edge": {
+          "expected": 34,
+          "withSnapshot": 34
+        },
+        "firefox": {
+          "expected": 34,
+          "withSnapshot": 34
+        },
+        "webkit": {
+          "expected": 34,
+          "withSnapshot": 34
+        }
+      }
+    },
+    {
+      "id": "report-pd-estimates",
+      "title": "Отчёт: pd-estimates",
+      "states": [
+        "ready"
+      ],
+      "suites": [
+        "uiKitReportCompletion.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "edge": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "firefox": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "webkit": {
+          "expected": 9,
+          "withSnapshot": 9
+        }
+      }
+    },
+    {
+      "id": "task-main",
+      "title": "Карточка задачи: main",
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "suites": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "edge": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "firefox": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "webkit": {
+          "expected": 23,
+          "withSnapshot": 23
+        }
+      }
+    },
+    {
+      "id": "task-rep",
+      "title": "Карточка задачи: rep",
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "suites": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "edge": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "firefox": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "webkit": {
+          "expected": 19,
+          "withSnapshot": 19
+        }
+      }
+    },
+    {
+      "id": "task-com",
+      "title": "Карточка задачи: com",
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "suites": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "edge": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "firefox": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "webkit": {
+          "expected": 19,
+          "withSnapshot": 19
+        }
+      }
+    },
+    {
+      "id": "task-sys",
+      "title": "Карточка задачи: sys",
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "suites": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "edge": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "firefox": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "webkit": {
+          "expected": 19,
+          "withSnapshot": 19
+        }
+      }
+    },
+    {
+      "id": "task-log",
+      "title": "Карточка задачи: log",
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "suites": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "edge": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "firefox": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "webkit": {
+          "expected": 19,
+          "withSnapshot": 19
+        }
+      }
+    },
+    {
+      "id": "columns",
+      "title": "Настройка колонок",
+      "states": [
+        "closed",
+        "open",
+        "checked",
+        "reordered"
+      ],
+      "suites": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "saved-views",
+      "title": "Сохранённые представления",
+      "states": [
+        "closed",
+        "empty",
+        "open",
+        "selected",
+        "dirty",
+        "rename",
+        "delete-confirm"
+      ],
+      "suites": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "saved-editor",
+      "title": "Сохранение представления",
+      "states": [
+        "closed",
+        "open",
+        "invalid",
+        "saved"
+      ],
+      "suites": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "report-filter",
+      "title": "Фильтр отчёта",
+      "states": [
+        "closed",
+        "empty",
+        "open",
+        "selected",
+        "mixed",
+        "cleared"
+      ],
+      "suites": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "toolbar-filter",
+      "title": "Типизированные фильтры",
+      "states": [
+        "closed",
+        "open",
+        "search",
+        "no-match",
+        "selected",
+        "invalid",
+        "applied"
+      ],
+      "suites": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "filter-catalog",
+      "title": "Каталог фильтров",
+      "states": [
+        "closed",
+        "open",
+        "search",
+        "pinned"
+      ],
+      "suites": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "session-menu",
+      "title": "Действия сессии AI V1",
+      "states": [
+        "closed",
+        "open",
+        "disabled",
+        "selected"
+      ],
+      "suites": [
+        "agentChatResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 6,
+          "withSnapshot": 6
+        },
+        "edge": {
+          "expected": 6,
+          "withSnapshot": 6
+        },
+        "firefox": {
+          "expected": 6,
+          "withSnapshot": 6
+        },
+        "webkit": {
+          "expected": 6,
+          "withSnapshot": 6
+        }
+      }
+    },
+    {
+      "id": "task-tooltip",
+      "title": "Подсказки расчёта",
+      "states": [
+        "closed",
+        "hover",
+        "focus",
+        "escape"
+      ],
+      "suites": [
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "edge": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "firefox": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "webkit": {
+          "expected": 9,
+          "withSnapshot": 9
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-renderTaskDetailModal",
+      "title": "renderTaskDetailModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "edge": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "firefox": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "webkit": {
+          "expected": 16,
+          "withSnapshot": 16
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-openCreateTaskModal",
+      "title": "openCreateTaskModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "edge": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "firefox": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "webkit": {
+          "expected": 16,
+          "withSnapshot": 16
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-showCreateDuplicateWarning",
+      "title": "showCreateDuplicateWarning",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-showConflictModal",
+      "title": "showConflictModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-showConfirmModal",
+      "title": "showConfirmModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-showEditExitModal",
+      "title": "showEditExitModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-showErrorModal",
+      "title": "showErrorModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-showBulkResultModal",
+      "title": "showBulkResultModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-showBulkOpsModal",
+      "title": "showBulkOpsModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-showPrioritiserRequirementsModal",
+      "title": "showPrioritiserRequirementsModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-admin-showConfirmModal",
+      "title": "showConfirmModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-admin-renderTimelineEventModal",
+      "title": "renderTimelineEventModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitAdminTools.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 22,
+          "withSnapshot": 22
+        },
+        "edge": {
+          "expected": 22,
+          "withSnapshot": 22
+        },
+        "firefox": {
+          "expected": 22,
+          "withSnapshot": 22
+        },
+        "webkit": {
+          "expected": 22,
+          "withSnapshot": 22
+        }
+      }
+    },
+    {
+      "id": "dialog-admin-renderModal",
+      "title": "renderModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 58,
+          "withSnapshot": 58
+        },
+        "edge": {
+          "expected": 58,
+          "withSnapshot": 58
+        },
+        "firefox": {
+          "expected": 58,
+          "withSnapshot": 58
+        },
+        "webkit": {
+          "expected": 58,
+          "withSnapshot": 58
+        }
+      }
+    },
+    {
+      "id": "dialog-admin-openDictModal",
+      "title": "openDictModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitAdminEditors.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "edge": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "firefox": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "webkit": {
+          "expected": 19,
+          "withSnapshot": 19
+        }
+      }
+    },
+    {
+      "id": "dialog-admin-openCompetencyInlineEditor",
+      "title": "openCompetencyInlineEditor",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitAdminEditors.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "edge": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "firefox": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "webkit": {
+          "expected": 19,
+          "withSnapshot": 19
+        }
+      }
+    },
+    {
+      "id": "dialog-agentChat-showTeamSelectModal",
+      "title": "showTeamSelectModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-agentChat-showSectionEditModal",
+      "title": "showSectionEditModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-customerReferences-openCustomerReferences",
+      "title": "openCustomerReferences",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-expressEstimate-showImportModal",
+      "title": "showImportModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-expressEstimate-showConfirm",
+      "title": "showConfirm",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-expressEstimate-showIncompleteEstimateModal",
+      "title": "showIncompleteEstimateModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-expressEstimate-showCompleteEstimateModal",
+      "title": "showCompleteEstimateModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-expressEstimate-showEstimateHandoffModal",
+      "title": "showEstimateHandoffModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-quickEdit-showQuickEditExitModal",
+      "title": "showQuickEditExitModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitQuickEdit.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "edge": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "firefox": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "webkit": {
+          "expected": 11,
+          "withSnapshot": 11
+        }
+      }
+    },
+    {
+      "id": "dialog-reports-showReportingMeetingForm",
+      "title": "showReportingMeetingForm",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-reports-showMeetingDataDialog",
+      "title": "showMeetingDataDialog",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-reports-showReportingMeetingPlanner",
+      "title": "showReportingMeetingPlanner",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-reports-showReportingMeetingHistory",
+      "title": "showReportingMeetingHistory",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-reports-showReportingMeetingPreparation",
+      "title": "showReportingMeetingPreparation",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-reports-showPipDecisionModal",
+      "title": "showPipDecisionModal",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "edge": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "firefox": {
+          "expected": 30,
+          "withSnapshot": 30
+        },
+        "webkit": {
+          "expected": 30,
+          "withSnapshot": 30
+        }
+      }
+    },
+    {
+      "id": "dialog-analytics-showDetail",
+      "title": "Встроенная детализация аналитики",
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 33,
+          "withSnapshot": 33
+        },
+        "edge": {
+          "expected": 33,
+          "withSnapshot": 33
+        },
+        "firefox": {
+          "expected": 33,
+          "withSnapshot": 33
+        },
+        "webkit": {
+          "expected": 33,
+          "withSnapshot": 33
+        }
+      }
+    },
+    {
+      "id": "shell-notifications",
+      "title": "Панель уведомлений в шапке",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "read-locked",
+        "keyboard",
+        "viewport"
+      ],
+      "suites": [
+        "notificationSurfaces.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "edge": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "firefox": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "webkit": {
+          "expected": 23,
+          "withSnapshot": 23
+        }
+      }
+    },
+    {
+      "id": "shell-user-menu",
+      "title": "Меню пользователя",
+      "states": [
+        "closed",
+        "open",
+        "keyboard",
+        "viewport"
+      ],
+      "suites": [
+        "notificationSurfaces.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "edge": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "firefox": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "webkit": {
+          "expected": 23,
+          "withSnapshot": 23
+        }
+      }
+    },
+    {
+      "id": "shell-search",
+      "title": "Глобальный поиск и мобильная панель",
+      "states": [
+        "empty-query",
+        "loading",
+        "empty",
+        "ready",
+        "error",
+        "keyboard",
+        "mobile"
+      ],
+      "suites": [
+        "notificationSurfaces.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "edge": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "firefox": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "webkit": {
+          "expected": 23,
+          "withSnapshot": 23
+        }
+      }
+    },
+    {
+      "id": "shell-sidebar",
+      "title": "Боковая навигация и мобильное раскрытие",
+      "states": [
+        "expanded",
+        "collapsed",
+        "mobile",
+        "readonly"
+      ],
+      "suites": [
+        "notificationSurfaces.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "edge": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "firefox": {
+          "expected": 23,
+          "withSnapshot": 23
+        },
+        "webkit": {
+          "expected": 23,
+          "withSnapshot": 23
+        }
+      }
+    },
+    {
+      "id": "report-editor",
+      "title": "Конструктор отчёта: шаги 1–4 и предпросмотр",
+      "states": [
+        "create",
+        "edit",
+        "readonly",
+        "filter-empty",
+        "filter-remove",
+        "invalid",
+        "saving",
+        "save-error"
+      ],
+      "suites": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 50,
+          "withSnapshot": 50
+        },
+        "edge": {
+          "expected": 50,
+          "withSnapshot": 50
+        },
+        "firefox": {
+          "expected": 50,
+          "withSnapshot": 50
+        },
+        "webkit": {
+          "expected": 50,
+          "withSnapshot": 50
+        }
+      }
+    },
+    {
+      "id": "quick-edit-exit",
+      "title": "Выход из массового редактирования",
+      "states": [
+        "dirty",
+        "cancel",
+        "discard",
+        "save-error"
+      ],
+      "suites": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitQuickEdit.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "edge": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "firefox": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "webkit": {
+          "expected": 11,
+          "withSnapshot": 11
+        }
+      }
+    },
+    {
+      "id": "task-attachments",
+      "title": "Вложения задачи: выбор и загрузка файлов",
+      "states": [
+        "loading",
+        "empty",
+        "ready",
+        "uploading",
+        "error",
+        "readonly"
+      ],
+      "suites": [
+        "taskCardIncrement.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "edge": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "firefox": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "webkit": {
+          "expected": 7,
+          "withSnapshot": 7
+        }
+      }
+    },
+    {
+      "id": "task-comments",
+      "title": "Обсуждение: редактор, ответы и упоминания",
+      "states": [
+        "loading",
+        "empty",
+        "ready",
+        "editing",
+        "reply",
+        "mention-list",
+        "saving",
+        "error",
+        "readonly"
+      ],
+      "suites": [
+        "taskCardIncrement.spec.mjs",
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "edge": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "firefox": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "webkit": {
+          "expected": 16,
+          "withSnapshot": 16
+        }
+      }
+    },
+    {
+      "id": "requirement-revisions",
+      "title": "Редакции БТ и решения человеческого ревью",
+      "states": [
+        "loading",
+        "empty",
+        "ready",
+        "error",
+        "conflict",
+        "readonly"
+      ],
+      "suites": [
+        "requirementWorkspace.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 35,
+          "withSnapshot": 35
+        },
+        "edge": {
+          "expected": 35,
+          "withSnapshot": 35
+        },
+        "firefox": {
+          "expected": 35,
+          "withSnapshot": 35
+        },
+        "webkit": {
+          "expected": 35,
+          "withSnapshot": 35
+        }
+      }
+    },
+    {
+      "id": "dialog-modal-renderModal",
+      "title": "renderModal",
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "suites": [
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "edge": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "firefox": {
+          "expected": 9,
+          "withSnapshot": 9
+        },
+        "webkit": {
+          "expected": 9,
+          "withSnapshot": 9
+        }
+      }
+    },
+    {
+      "id": "dialog-reviewPage-assignModal",
+      "title": "assignModal",
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "suites": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "edge": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "firefox": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "webkit": {
+          "expected": 7,
+          "withSnapshot": 7
+        }
+      }
+    },
+    {
+      "id": "dialog-reviewPage-reasonModal",
+      "title": "reasonModal",
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "suites": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "edge": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "firefox": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "webkit": {
+          "expected": 7,
+          "withSnapshot": 7
+        }
+      }
+    },
+    {
+      "id": "dialog-reviewPage-releaseModal",
+      "title": "releaseModal",
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "suites": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "edge": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "firefox": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "webkit": {
+          "expected": 7,
+          "withSnapshot": 7
+        }
+      }
+    },
+    {
+      "id": "dialog-reviewPage-rerouteModal",
+      "title": "rerouteModal",
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "suites": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "edge": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "firefox": {
+          "expected": 7,
+          "withSnapshot": 7
+        },
+        "webkit": {
+          "expected": 7,
+          "withSnapshot": 7
+        }
+      }
+    },
+    {
+      "id": "kanban-status-menu",
+      "title": "Канбан: меню статуса",
+      "states": [
+        "closed",
+        "open",
+        "disabled",
+        "saving",
+        "error"
+      ],
+      "suites": [
+        "uiKitKanban.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "edge": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "firefox": {
+          "expected": 11,
+          "withSnapshot": 11
+        },
+        "webkit": {
+          "expected": 11,
+          "withSnapshot": 11
+        }
+      }
+    },
+    {
+      "id": "backlog-assistant",
+      "title": "Помощник по бэклогу",
+      "states": [
+        "loading",
+        "error",
+        "ready"
+      ],
+      "suites": [
+        "backlogAssistant.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 20,
+          "withSnapshot": 20
+        },
+        "edge": {
+          "expected": 20,
+          "withSnapshot": 20
+        },
+        "firefox": {
+          "expected": 20,
+          "withSnapshot": 20
+        },
+        "webkit": {
+          "expected": 20,
+          "withSnapshot": 20
+        }
+      }
+    },
+    {
+      "id": "backlog-assistant-panel",
+      "title": "Панель помощника по бэклогу",
+      "states": [
+        "loading",
+        "error",
+        "ready"
+      ],
+      "suites": [
+        "backlogAssistant.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "edge": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "firefox": {
+          "expected": 16,
+          "withSnapshot": 16
+        },
+        "webkit": {
+          "expected": 16,
+          "withSnapshot": 16
+        }
+      }
+    },
+    {
+      "id": "workTasks",
+      "title": "Задачи",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "workPagesUx.spec.mjs",
+        "workTasks.spec.mjs",
+        "workStage5.spec.mjs",
+        "workDensity.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "edge": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "firefox": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "webkit": {
+          "expected": 19,
+          "withSnapshot": 19
+        }
+      }
+    },
+    {
+      "id": "workProjects",
+      "title": "Структура работ проекта",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "workPagesUx.spec.mjs",
+        "workTasks.spec.mjs",
+        "workStage5.spec.mjs",
+        "workDensity.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "edge": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "firefox": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "webkit": {
+          "expected": 19,
+          "withSnapshot": 19
+        }
+      }
+    },
+    {
+      "id": "workReports",
+      "title": "Снимок задач встречи",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "workPagesUx.spec.mjs",
+        "workTasks.spec.mjs",
+        "workStage5.spec.mjs",
+        "workDensity.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "edge": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "firefox": {
+          "expected": 19,
+          "withSnapshot": 19
+        },
+        "webkit": {
+          "expected": 19,
+          "withSnapshot": 19
+        }
+      }
+    },
+    {
+      "id": "workTaskDrawer",
+      "title": "Карточка рабочей задачи",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "suites": [
+        "workTaskDrawer.spec.mjs",
+        "workTasks.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 20,
+          "withSnapshot": 20
+        },
+        "edge": {
+          "expected": 20,
+          "withSnapshot": 20
+        },
+        "firefox": {
+          "expected": 20,
+          "withSnapshot": 20
+        },
+        "webkit": {
+          "expected": 20,
+          "withSnapshot": 20
+        }
+      }
+    },
+    {
+      "id": "account-security",
+      "title": "Безопасность аккаунта и установка пароля",
+      "states": [
+        "ready",
+        "validation-error",
+        "server-error",
+        "mobile",
+        "secret-open",
+        "secret-closed"
+      ],
+      "suites": [
+        "accountSecurity.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 5,
+          "withSnapshot": 5
+        },
+        "edge": {
+          "expected": 5,
+          "withSnapshot": 5
+        },
+        "firefox": {
+          "expected": 5,
+          "withSnapshot": 5
+        },
+        "webkit": {
+          "expected": 5,
+          "withSnapshot": 5
+        }
+      }
+    },
+    {
+      "id": "request-resolution",
+      "title": "Размещение и разбиение запроса",
+      "states": [
+        "open",
+        "validation",
+        "busy",
+        "error",
+        "retry",
+        "cancel",
+        "dirty",
+        "keyboard"
+      ],
+      "suites": [
+        "uiKitComplexFormsReview.spec.mjs",
+        "workStage5.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 17,
+          "withSnapshot": 17
+        },
+        "edge": {
+          "expected": 17,
+          "withSnapshot": 17
+        },
+        "firefox": {
+          "expected": 17,
+          "withSnapshot": 17
+        },
+        "webkit": {
+          "expected": 17,
+          "withSnapshot": 17
+        }
+      }
+    },
+    {
+      "id": "request-fulfillment",
+      "title": "Подтверждение результата запроса",
+      "states": [
+        "loading",
+        "ready",
+        "error",
+        "retry",
+        "readonly",
+        "busy",
+        "validation"
+      ],
+      "suites": [
+        "uiKitComplexFormsReview.spec.mjs",
+        "workStage5.spec.mjs"
+      ],
+      "relatedScenarios": {
+        "chrome": {
+          "expected": 17,
+          "withSnapshot": 17
+        },
+        "edge": {
+          "expected": 17,
+          "withSnapshot": 17
+        },
+        "firefox": {
+          "expected": 17,
+          "withSnapshot": 17
+        },
+        "webkit": {
+          "expected": 17,
+          "withSnapshot": 17
+        }
+      }
+    }
+  ],
+  "withoutSnapshot": [
+    {
+      "file": "uiKitRegistries.spec.mjs",
+      "title": "аудит: поля, валидация дат, фильтры, страницы и копирование",
+      "project": "firefox",
+      "hasTypographySnapshot": false
+    },
+    {
+      "file": "uiKitRegistries.spec.mjs",
+      "title": "аудит: поля, валидация дат, фильтры, страницы и копирование",
+      "project": "webkit",
+      "hasTypographySnapshot": false
+    }
+  ]
+}

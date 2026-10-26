@@ -1,0 +1,11 @@
+title;team_id;effort_days;effort_rub;effort_designee;actual_effort_days;financial_effect;cv;metric_kr_plan;metric_kr_fact
+QA-IMP-20260920-NUM-0;Проектный офис;abc;abc;abc;abc;abc;abc;abc;abc
+QA-IMP-20260920-NUM-1;Проектный офис;1,5;1,5;1,5;1,5;1,5;1,5;1,5;1,5
+QA-IMP-20260920-NUM-2;Проектный офис;1.5;1.5;1.5;1.5;1.5;1.5;1.5;1.5
+QA-IMP-20260920-NUM-3;Проектный офис;1e3;1e3;1e3;1e3;1e3;1e3;1e3;1e3
+QA-IMP-20260920-NUM-4;Проектный офис;NaN;NaN;NaN;NaN;NaN;NaN;NaN;NaN
+QA-IMP-20260920-NUM-5;Проектный офис;Infinity;Infinity;Infinity;Infinity;Infinity;Infinity;Infinity;Infinity
+QA-IMP-20260920-NUM-6;Проектный офис;-1;-1;-1;-1;-1;-1;-1;-1
+QA-IMP-20260920-NUM-7;Проектный офис;999999999999999999999999;999999999999999999999999;999999999999999999999999;999999999999999999999999;999999999999999999999999;999999999999999999999999;999999999999999999999999;999999999999999999999999
+QA-IMP-20260920-NUM-8;Проектный офис;;;;;;;;
+QA-IMP-20260920-NUM-9;Проектный офис; 2 ; 2 ; 2 ; 2 ; 2 ; 2 ; 2 ; 2 

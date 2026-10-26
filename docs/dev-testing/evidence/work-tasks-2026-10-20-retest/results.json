@@ -1,0 +1,150 @@
+{
+  "date": "2026-10-20",
+  "origin": "http://127.0.0.1:8000",
+  "live": true,
+  "mocks": false,
+  "qaTasks": [
+    {
+      "id": 49,
+      "status": "done",
+      "title": "DEV-QA-FIX-20261020 приёмка",
+      "version": 7,
+      "result_revision": 1
+    },
+    {
+      "id": 50,
+      "status": "cancelled",
+      "title": "DEV-QA-FIX-20261020 зависимость",
+      "version": 2,
+      "result_revision": 1
+    },
+    {
+      "id": 51,
+      "status": "done",
+      "title": "DEV-QA-FIX-20261020 инструкция",
+      "version": 14,
+      "result_revision": 3
+    },
+    {
+      "id": 52,
+      "status": "done",
+      "title": "DEV-QA-FIX-20261020 пример отчёта",
+      "version": 6,
+      "result_revision": 1
+    },
+    {
+      "id": 53,
+      "status": "done",
+      "title": "DEV-QA-FIX-20261020 межкомандное",
+      "version": 5,
+      "result_revision": 2
+    },
+    {
+      "id": 54,
+      "status": "cancelled",
+      "title": "DEV-QA-FIX-20261020 сохранённый черновик",
+      "version": 4,
+      "result_revision": 1
+    },
+    {
+      "id": 55,
+      "status": "cancelled",
+      "context": {
+        "kind": "major",
+        "id": 94
+      },
+      "note": "UI placement verified after initial journal capture"
+    }
+  ],
+  "request": {
+    "id": 16,
+    "createdVia": "customer UI and real agent",
+    "splitVia": "PO UI",
+    "workIds": [
+      51,
+      52
+    ],
+    "executionVia": "authenticated live API",
+    "prematureConfirmation": "rejected: Рабочие задачи должны пройти приёмку",
+    "afterReopenAndRecompletion": "needs_verification",
+    "afterExplicitReconfirmation": "fulfilled"
+  },
+  "findings": {
+    "R01": "PASS customer creates and sends request",
+    "R02": "PASS acceptance -> rework -> resolved; cross-team assignment resolved",
+    "R03": "PASS return reason visible",
+    "R04": "PASS actor and before/after",
+    "R05": "PASS UI add and deactivate dependency",
+    "R06": "PASS WRK search and dependency picker; target ACL denies inaccessible work",
+    "R07": "PASS active default, due sort, overdue label",
+    "R08": "PASS status and assignment stay open",
+    "R09": "PASS first row 321 px at 390",
+    "R10": "PASS actionable summary"
+  },
+  "visualChecks": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "firstRow": 255.5
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "firstRow": 255.5
+    },
+    {
+      "width": 1280,
+      "theme": "light",
+      "overflow": false,
+      "firstRow": 255.5
+    },
+    {
+      "width": 1280,
+      "theme": "dark",
+      "overflow": false,
+      "firstRow": 255.5
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "firstRow": 321
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "firstRow": 321
+    }
+  ],
+  "sortedByDue": true,
+  "closedInActive": 0,
+  "access": {
+    "noAccessCard": 404,
+    "noAccessTargetCount": 0,
+    "customerCard": 403,
+    "otherTeamWrite": 403
+  },
+  "conflict": "409 draft restored and saved",
+  "regressions": {
+    "playwright": 55,
+    "backendWork": 31,
+    "nullableContext": 2,
+    "notificationUtils": 1
+  },
+  "followup_2026_10_21": {
+    "playwright": {
+      "main_pass": 54,
+      "main_fail": 1,
+      "targeted_retest_pass": 1,
+      "cause": "status selector in collapsed filters; test now expands panel"
+    },
+    "backendWorkPass": 31,
+    "live": "passed_current_ui_subset",
+    "blocker": "resolved: Docker Engine 29.9.1; standard startup health-check passed",
+    "priorLiveDate": "2026-10-20",
+    "currentLiveTask": "WRK-56 done; create, ready, start, complete, history, closed search, summary and two themes verified via live UI"
+  }
+}

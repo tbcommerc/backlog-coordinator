@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-09",
+  "lostDraft": {
+    "before": "UX-ПРАВКА: клиент не видит подтверждение заявки.",
+    "after": "Клиент не знает, принята ли онлайн-заявка.",
+    "trigger": "Save business_goal while problem_statement has unsaved edits",
+    "revision": 2
+  },
+  "cancel": {
+    "typed": "UX-ОТМЕНА: этот текст не должен остаться.",
+    "reopenedValue": "UX-ОТМЕНА: этот текст не должен остаться."
+  },
+  "mobile390": {
+    "documentY": 935,
+    "copilotY": 2788,
+    "navigatorY": 4819,
+    "viewportHeight": 844
+  },
+  "generation": {
+    "proposalCount": 0,
+    "message": "ИИ не подготовил корректное предложение. Документ сохранён без изменений; доступно ручное редактирование."
+  },
+  "unitTests": {
+    "passed": 16,
+    "failed": 0
+  }
+}

@@ -2,7 +2,7 @@
 title: Безопасность Backlog coordinator
 scope: as-is
 status: verified
-last_verified: 2026-09-09
+last_verified: 2026-10-12
 evidence:
   - backend/auth.py
   - backend/routers/auth_router.py
@@ -19,25 +19,86 @@ evidence:
   - frontend/js/htmlUtils.js
   - backend/tests/test_security_contracts.py
   - backend/tests/test_auth_cookie_policy.py
+  - backend/routers/agent_v2_router.py
+  - backend/routers/requirement_reviews_router.py
+  - backend/services/requirement_reviews.py
+  - backend/tests/test_requirement_reviews_domain.py
+  - backend/tests/test_agent_v2_document_boundary.py
   - frontend/tests/htmlUtils.test.mjs
 ---
 
 # Безопасность Backlog coordinator
 
+Fork-based Assistant V2 применяет отдельный shared secret и pilot allowlist
+для BA/PO. Существующий `admin_access=full` допускает пользователя как BA без
+allowlist; feature flag и kill switch сохраняют приоритет. DMB gateway вычисляет
+роль по серверному RBAC и перезаписывает клиентские actor/context-поля. Связанные
+объекты проходят обычную проверку read access. Preview patch не имеет операции
+применения к DMB и исключает защищённые сущности/поля.
+
 Документ фиксирует реализованные механизмы. Он не подтверждает внешнюю инфраструктуру, регламенты организации или production-процессы, которых нет в репозитории.
+
+## Документы и согласование Agent V2 — проверено по коду 09.10.2026
+
+- Generic gateway проверяет закрытый список HTTP method/path до формирования
+  URL привилегированного upstream. После URL-decoding не допускаются произвольные
+  сегменты, встроенные query/fragment и обход в служебные команды перехода ревью.
+  В query и JSON actor ID заменяется серверным; shared secret не передаётся SPA.
+- Клиент не создаёт авторитетный linked snapshot. Gateway получает Task/Request
+  после текущей объектной авторизации, а V2 отдельно проверяет владельца сессии.
+  Доступ повторно проверяется для восстановленных сессий, document actions,
+  списков и возвращаемых JSON snapshot, в том числе из кеша идемпотентности.
+  Существующий связанный документ нельзя перепривязать к другому объекту.
+- Пакет `RequirementReview` создаётся только из состояния, полученного backend
+  у V2. Произвольный draft, `creator_id` или reviewer из browser payload не
+  используются. Fingerprint связывает полный снимок с показанной редакцией;
+  пакет AI-проверки и источники сохраняются отдельно. Ошибка или недоступность
+  AI-проверки не трактуется как успешная проверка: degraded-передача требует
+  явного подтверждения и сохраняет эту пометку.
+- Доступ к `/api/requirement-reviews` требует аутентификации и допуска к общей
+  внутренней поверхности (customer-only роли исключены mount dependency).
+  Чтение связанных пакетов следует текущему read scope Task/Request. Для
+  самостоятельного документа это автор либо допустимая область ревью BA/PO.
+  Право читать пакет не даёт права его согласовать.
+- Claim и решение требуют текущей BA/PO роли и review scope соответствующей
+  команды либо глобального scope. Решение принимает закреплённый ревьюер;
+  автору запрещено согласовывать собственное БТ, в том числе full admin.
+  Изменение существующих ролей или создание отдельного права самоутверждения
+  в этом инкременте не выполняется.
+- API решения требует актуальную `review.version`; повтор ключа с иным payload
+  отклоняется. Неизменяемые поля защищены ORM listener; изменение документа
+  оформляется новым пакетом. Unique active marker ограничивает число активных
+  пакетов одним на artifact, а явная замена выполняется атомарно.
+- Публикация и решение заново читают значимые исходные поля с `FOR UPDATE`,
+  удерживая обычный объект до commit; порядок блокировок — source, затем review.
+  Для Request сравнивается и структурный draft, для Task — ссылки на БТ.
+  Изменённый контекст блокирует новое согласование; возврат/отзыв остаются
+  возможны при наличии соответствующих прав.
+- Новый lifecycle не изменяет Request, Task, пользователей, роли, команды,
+  их атрибуты/назначения или справочники. Поля автора/команды в новой рабочей
+  записи только ссылаются на существующие данные. Legacy intake endpoint
+  повторно проверяет источник и не принимает linked-документ вместо нового
+  согласования редакции БТ.
+
+Доказательства: [domain tests](../backend/tests/test_requirement_reviews_domain.py)
+и [gateway boundary tests](../backend/tests/test_agent_v2_document_boundary.py).
+Это изолированные проверки без backend conftest, живой БД и защищённых fixture
+записей. Они не являются подтверждением live PostgreSQL-гонок, внешней защиты
+инфраструктуры или допуска в ПРОМ. Миграция новой таблицы в рабочей БД в рамках
+проверки не выполнялась.
 
 ## Аутентификация
 
-- Пароли хэшируются и проверяются через passlib/bcrypt.
+- Новые пароли хэшируются Argon2id; legacy bcrypt требует проверенной активации.
 - Access JWT подписывается `SECRET_KEY` алгоритмом `ALGORITHM` (`HS256` по умолчанию).
 - Срок access-токена задаёт `ACCESS_TOKEN_EXPIRE_MINUTES`.
 - Access-токен хранится только в памяти SPA и передаётся как `Authorization: Bearer`.
 - Refresh-токен хранится в cookie `dmb_refresh`, недоступной JavaScript (`HttpOnly`).
 - Cookie имеет `SameSite=Strict`, path `/api/v1/auth` и `Secure` при `DEBUG=false`.
 - Refresh-сессии хранятся в таблице `refresh_sessions`; токены ротируются, а семейство может быть отозвано при повторном использовании старого токена.
-- Logout отзывает текущую refresh-сессию и удаляет cookie.
+- Logout отзывает серверную AuthSession целиком и удаляет cookie.
 
-Login, refresh и logout вызывают `_require_trusted_origin`. При `DEBUG=false` запрос должен иметь HTTPS Origin из `CORS_ORIGINS`; отсутствие или несовпадение Origin отклоняется.
+Login, refresh и logout вызывают `_require_trusted_origin`. При `DEBUG=false` запрос должен иметь HTTPS Origin из `AUTH_ORIGINS`; отсутствие или несовпадение Origin отклоняется.
 
 ## Защита конфигурации
 
@@ -57,12 +118,12 @@ Login, refresh и logout вызывают `_require_trusted_origin`. При `DEB
 
 | Операция | Ключи | Лимит |
 |---|---|---|
-| Login | IP и хэш нормализованного email | 5 запросов за 60 секунд |
-| Refresh | IP | 10 запросов за 60 секунд |
+| Login | IP и HMAC канонического логина | 120/IP/мин; 5 ошибок/логин/5 мин |
+| Refresh | IP и sid | 600/IP/мин и 60/sid/мин |
 
-Ключи хэшируются SHA-256, поэтому email и IP не записываются в ключ rate limiter открытым текстом. После превышения применяется увеличивающийся период блокировки до 15 минут.
+Auth-ключи используют отдельный HMAC-секрет; логин и IP не записываются открытым текстом. После превышения применяется увеличивающийся период блокировки до 15 минут.
 
-При наличии `REDIS_URL` используется Redis. Без него включается ограниченный process-local memory fallback, предназначенный для разработки.
+Auth-операции требуют Redis и AUTH_RATE_HMAC_KEY: при отсутствии или отказе — 503 без memory fallback. Общий rate_limit.py сохраняется для остальных подсистем.
 
 ## Авторизация
 
@@ -169,3 +230,38 @@ Production Nginx задаёт `frame-ancestors 'none'`, `object-src 'none'`,
 - `frontend/tests/moduleContracts.test.mjs`.
 
 Исторический документ со смешанными реализованными и рекомендуемыми мерами сохранён в `archive/legacy/SECURITY_MIXED_2026-06-29.md` и не является источником текущего состояния.
+
+## Legacy Assistant V2 boundary — проверено 19.09.2026
+
+`ASSISTANT_V2_ALLOW_REAL_DATA=false` является отдельным fail-closed stop-gate:
+он блокирует создание и чтение `approved_real` cases, authorized DMB snapshots,
+ProposedDiff, rebase и apply intent. Synthetic UI явно предупреждает не вводить
+реальные данные.
+
+Pilot доступ не создаёт новых ролей: после обычной DMB-аутентификации
+автоматически допускается `admin=full`, а для остальных используется env allowlist
+ID/email. Глобальный feature flag остаётся приоритетным stop-gate и блокирует V2
+также для админа. Signed actor envelope ограничен issuer/audience/TTL,
+содержит jti и проверяется на replay; adapter дополнительно требует отдельный
+service secret, заново загружает активного DMB user и применяет object policy.
+Diff allowlist исключает users, roles, teams, dictionaries, owners и lifecycle
+поля. Остаточные production-риски и stop gates перечислены в
+[`../../assistant-v2/docs/THREAT_MODEL.md`](../../assistant-v2/docs/THREAT_MODEL.md).
+
+
+Контракт, проверки и границы приёмки: [ACCOUNT_SECURITY.md](ACCOUNT_SECURITY.md). Проверено 12.10.2026; cutover рабочей БД не выполнялся.
+
+
+
+## Рабочие задачи — проверено 16.10.2026
+
+WorkTask применяет общий SQL scope для списка, прямого чтения, уведомлений и SSE. Принадлежность к поручению не открывает Task. Customer получает только проекцию явно связанного результата; файлы требуют права чтения WorkTask.
+
+Фактический scope, API, миграция и ограничения: [Рабочие задачи](WORK_TASKS.md).
+
+
+### Этап 5 рабочих задач — проверено 16.10.2026
+
+Реализованы атомарное разбиение запросов, отдельный отчёт с доступными агрегатами
+и неизменяемые снимки встреч. PostgreSQL обновлён до `a1b2c3d4e517`; интеграционный
+прогон выполнен без записи защищённых данных. [Контракты, поведение и проверки](WORK_TASKS.md#этап-5-разбиение-и-отчётность).

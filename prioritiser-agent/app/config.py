@@ -60,7 +60,11 @@ class Settings(BaseSettings):
     value_analogy_top_k: int = 3
 
     llm_timeout_seconds: float = 30.0
+    llm_retry_attempts: int = 3
+    llm_retry_base_seconds: float = 0.5
+    llm_retry_max_seconds: float = 5.0
     llm_cache_enabled: bool = True
+    assessment_max_workers: int = 8
 
     # Плотный слой поиска включён по умолчанию: без него RAG вырождается в
     # лексический поиск и не находит формулировки, отличные от запроса дословно.

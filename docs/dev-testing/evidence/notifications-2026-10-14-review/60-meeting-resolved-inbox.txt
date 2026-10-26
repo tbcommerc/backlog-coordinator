@@ -1,0 +1,128 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Мои уведомления
+  - button "Открыть поиск":
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button:
+    - generic: ДФ
+- main:
+  - heading "Мои уведомления" [level=1]
+  - paragraph: Назначения, отчётные статусы и обсуждения команды
+  - generic "Сводка уведомлений":
+    - strong: "0"
+    - text: требуют действия
+    - strong: "0"
+    - text: непрочитанных
+    - strong: "1"
+    - text: сегодня
+  - link "Настроить":
+    - /url: "#/settings?section=notifications"
+    - text: Настроить
+  - generic "Фильтры уведомлений":
+    - group "Состояние":
+      - generic: Состояние
+      - button "Все" [pressed]:
+        - generic: Все
+      - button "Требуют действия":
+        - generic: Требуют действия
+      - button "Непрочитанные":
+        - generic: Непрочитанные
+      - button "Закрытые":
+        - generic: Закрытые
+    - button "Сбросить" [disabled]:
+      - generic: Сбросить
+    - group "Категория":
+      - generic: Категория
+      - button "Назначения":
+        - generic: Назначения
+      - button "Встречи":
+        - generic: Встречи
+      - button "Упоминания":
+        - generic: Упоминания
+      - button "Комментарии":
+        - generic: Комментарии
+      - button "Запросы":
+        - generic: Запросы
+    - group "Приоритет":
+      - generic: Приоритет
+      - button "Высокий":
+        - generic: Высокий
+      - button "Обычный":
+        - generic: Обычный
+      - button "Информационный":
+        - generic: Информационный
+  - region "Уведомления":
+    - heading "Уведомления" [level=2]
+    - status: 1 уведомление
+    - list:
+      - heading "Сегодня" [level=3]
+      - heading "Заполните статусы к встрече «Встреча по ключевым проектам»" [level=3]
+      - generic: Высокий
+      - generic: Отчётная встреча
+      - generic: Закрыто
+      - generic: Срок 15 окт.
+      - strong: Остался 1 день
+      - time: 8 мин. назад
+      - paragraph: "Не заполнено задач: 1. TASK-000-001"
+      - 'button "Открыть контекст: Заполните статусы к встрече «Встреча по ключевым проектам»"':
+        - generic: Открыть контекст

@@ -87,3 +87,10 @@ assert.match(revisionDiff, /Было/);
 assert.match(revisionDiff, /Стало/);
 
 console.log('requestPresentation tests passed');
+
+for (const [status, label] of Object.entries({completed: 'Выполнен', not_relevant: 'Не актуален', task_rejected: 'Задача отклонена', task_deleted: 'Задача удалена'})) {
+  assert.equal(getRequestStage({status, task_status: 'ВЫПОЛНЕНА'}).label, label);
+  assert.ok(renderRequestJourney({status}).includes(label));
+}
+assert.equal(getRequestStage({status: 'rejected', task_status: 'ВЫПОЛНЕНА'}).label, 'Отклонён');
+assert.equal(getRequestStage({status: 'in_progress', task_id: 1, task_progress: 100}).group, 'work');

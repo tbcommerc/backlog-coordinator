@@ -2,12 +2,14 @@
 title: Архитектура Backlog coordinator
 scope: as-is
 status: verified
-last_verified: 2026-09-09
+last_verified: 2026-10-09
 evidence:
   - backend/main.py
   - backend/config.py
   - backend/database.py
   - backend/models.py
+  - backend/services/requirement_reviews.py
+  - backend/services/agent_v2_documents.py
   - backend/routers/
   - backend/rate_limit.py
   - backend/event_outbox.py
@@ -20,9 +22,37 @@ evidence:
 
 # Архитектура Backlog coordinator
 
+## Фоновый анализ встреч — проверено 17.10.2026
+
+Backend lifespan запускает `services/meeting_analysis.py`: один daemon-поток
+на процесс. Очередь — строки MeetingCapture в PostgreSQL (`queued`), захват
+через `FOR UPDATE SKIP LOCKED` + CAS. Перед вызовом агента транзакция и сессия
+БД закрыты; результат публикуется только для того же run_id/version/running.
+Браузерный POST возвращает 202, UI читает приватный пассивный status и забирает
+снимок после завершения. Исходный текст не хранится в браузерном storage.
+Очередь переживает перезапуск. Running старше 600 секунд становится failed,
+без автоматического LLM-повтора; пользователь может явно начать новый запуск.
+Отдельного сервиса/Redis-очереди нет. [Полный контракт](../../docs/meeting-capture-agent.md).
+
+## Поручения из встреч — 09.10.2026
+
+Отдельная SPA-страница вызывает `/api/v1/meeting-capture`. Backend владеет
+приватными черновиками, ACL, поиском крупных задач и атомарным подтверждением.
+Стандартный Agent выполняет только извлечение через настроенный LLM:
+`POST /api/agent/meetings/extract`. Новый сервис и переменные окружения не нужны.
+[Схема, модель и границы автономности](../../docs/meeting-capture-agent.md).
+
 Документ описывает только подтверждённую реализацию. Модель данных, поля API и пользовательские сценарии вынесены в профильные документы и должны сверяться с кодом отдельно.
 
-Межсервисные вызовы backend → BA Agent/Prioritiser имеют ограниченные повторы
+Fork-based Assistant V2 подключается как условный adapter/gateway и отсутствует
+в registry приложения при выключенном `AGENT_V2_ENABLED` или включённом
+`AGENT_V2_KILL_SWITCH`. Он использует собственный secret и session DB.
+Рабочий документ и AI-операции находятся в `agent-v2/`, а неизменяемые пакеты
+человеческого согласования — в новой DMB-таблице `requirement_reviews`.
+Существующий intake `requirement_requests` сохраняет отдельный lifecycle.
+Детальная схема: [`../../agent-v2/docs/ARCHITECTURE.md`](../../agent-v2/docs/ARCHITECTURE.md).
+
+Межсервисные вызовы backend → V1 BA Agent/Prioritiser имеют ограниченные повторы
 с экспоненциальной задержкой и circuit breaker. Повторяются транспортные ошибки
 и 502/503/504; ошибки 4xx возвращаются без повтора. Вложения проверяются по
 сигнатуре и ClamAV INSTREAM до фиксации метаданных в БД.
@@ -43,10 +73,43 @@ FastAPI backend :8000
     ├── transactional outbox → Redis Stream → authorized SSE
     ├── Prometheus metrics + OpenTelemetry traces
     ├── HTTP + X-Agent-Secret → AI Agent :9000
+    ├── opt-in /api/v2/agent → document workspace Agent V2 :9300
+    ├── opt-in /api/requirement-reviews → DMB immutable review snapshots
     └── HTTP/JSON → Task Prioritiser :9100
 ```
 
 Подтверждённые внешние границы — HTTP-взаимодействие с AI Agent и Task Prioritiser. Ссылки Jira хранятся как данные; полноценная Jira-интеграция в проверенной реализации не подтверждена.
+
+### Документ и человеческое согласование V2 — проверено 09.10.2026
+
+1. SPA открывает документ из собственного рабочего пространства либо карточки
+   доступного Request/Task. DMB получает разрешённый снимок источника; V2 хранит
+   его копию и рабочие редакции со стабильным `artifact_id`.
+2. Написание, AI-проверка, предложения и выбор правок выполняются отдельными
+   операциями V2. DMB gateway восстанавливает серверную идентичность и повторно
+   проверяет текущий доступ к связанному объекту. Произвольный proxy URL запрещён.
+3. Отправка на человеческое согласование запрашивает фактический draft у V2.
+   `services/agent_v2_documents.py` проверяет fingerprint и актуальную проверку;
+   `services/requirement_reviews.py` записывает полный snapshot и отдельный
+   review report в DMB. Снимок не зависит от последующих правок агентной сессии.
+4. Общий экран ревью различает запрос и редакцию БТ. Человеческое решение меняет
+   только `RequirementReview`; оно не создаёт Task и не переводит Request в
+   проработку. Возврат добавляет замечания к рабочей сессии автора, не переписывая
+   более новый документ и автора исходного запроса.
+
+Согласование имеет собственную `version`, историю и ключи идемпотентности.
+Одновременно активен один пакет на `artifact_id`. Явная замена использует
+транзакционный savepoint: отзыв прежнего пакета и вставка нового либо завершаются
+вместе, либо откатываются вместе. Создание рабочей редакции не является отзывом.
+При публикации/решении обычная Task/Request перечитывается с `populate_existing`
+и `FOR UPDATE`; затем блокируются review-записи. Это единый порядок блокировок,
+который удерживает исходные материалы до commit. Изменение значимого контекста
+препятствует согласованию; изменение несвязанных атрибутов задачи — нет.
+
+Схема: [DATA_MODEL.md](DATA_MODEL.md), HTTP-контракт: [API_SPEC.md](API_SPEC.md),
+DDL: [SCHEMA_CHANGES.md](SCHEMA_CHANGES.md). Подтверждение инкремента — чтение кода,
+изолированные тесты и offline DDL; рабочая БД, live PostgreSQL-гонки и live UI
+не использовались для этой проверки.
 
 ## Runtime-контейнеры
 
@@ -241,3 +304,13 @@ list-запросы остаются у полной фильтруемой ле
 - `SECURITY.md` — отдельная проверяемая модель безопасности.
 - `DEPLOYMENT.md` — локальные и целевые сценарии поставки.
 - `archive/legacy/ARCHITECTURE_MIXED_2026-06-29.md` — исторический документ со смешанными AS-IS и TO-BE утверждениями; не использовать как источник текущего состояния.
+
+## Изолированный legacy Assistant V2 — проверено 19.09.2026
+
+При `ASSISTANT_V2_ENABLED=true` backend условно регистрирует browser gateway
+`/api/v2/assistant` и internal adapter `/internal/assistant-v2/v1`. При false
+модули V2 не импортируются и routes отсутствуют. Gateway выпускает actor envelope;
+adapter повторно применяет текущие DMB object policies. Отдельный процесс
+`assistant-v2` не импортирует DMB и не имеет его DB credentials. Основной
+readiness отображает V2 как non-blocking dependency. Полная граница и stop gates:
+[`../../docs/assistant-v2-implementation.md`](../../docs/assistant-v2-implementation.md).

@@ -31,7 +31,7 @@ _INTERNAL_TABLES = {
     "audit_log",
     "event_outbox",
     "idempotency_records",
-    "refresh_sessions",
+    "refresh_sessions", "auth_sessions", "auth_challenges", "security_events", "login_reservations",
     "task_history",
     "task_reporting_status_revisions",
     "reporting_meeting_history",

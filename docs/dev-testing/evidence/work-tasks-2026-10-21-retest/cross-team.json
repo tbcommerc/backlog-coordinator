@@ -1,0 +1,57 @@
+{
+  "id": 59,
+  "ui": "decline with reason and accept after re-offer at 320px",
+  "transitions": [
+    {
+      "status": "in_progress",
+      "http": 200,
+      "expected": 200
+    },
+    {
+      "status": "done",
+      "http": 422,
+      "expected": 422
+    },
+    {
+      "status": "in_acceptance",
+      "http": 200,
+      "expected": 200
+    },
+    {
+      "status": "done",
+      "http": 403,
+      "expected": 403
+    },
+    {
+      "status": "done",
+      "http": 200,
+      "expected": 200
+    },
+    {
+      "status": "ready",
+      "http": 200,
+      "expected": 200
+    },
+    {
+      "status": "in_progress",
+      "http": 200,
+      "expected": 200
+    },
+    {
+      "status": "in_acceptance",
+      "http": 200,
+      "expected": 200
+    },
+    {
+      "status": "done",
+      "http": 200,
+      "expected": 200
+    }
+  ],
+  "pending": {
+    "BA-A": 0,
+    "BA-B": 0,
+    "PO-A": 0
+  },
+  "final": "done"
+}

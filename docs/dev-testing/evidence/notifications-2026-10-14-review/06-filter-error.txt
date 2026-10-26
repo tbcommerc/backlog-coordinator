@@ -1,0 +1,72 @@
+- complementary "Управление изолированным стендом":
+  - strong: Тестовые данные; без БД
+  - 'button "Ошибка чтения: вкл"'
+  - 'button "Ошибка записи: выкл"'
+  - 'button "Прочитать #2 в другой вкладке (имитация)"'
+  - button "Очистить тестовую выборку"
+  - button "Переключить тему стенда"
+  - status: "Переход: /reporting-statuses?source=notification"
+- main:
+  - heading "Мои уведомления" [level=1]
+  - paragraph: Назначения, отчётные статусы и обсуждения команды
+  - generic "Сводка уведомлений":
+    - strong: "1"
+    - text: требуют действия
+    - strong: "1"
+    - text: непрочитанных
+    - strong: "3"
+    - text: сегодня
+  - link "Настроить":
+    - /url: "#/settings?section=notifications"
+    - text: Настроить
+  - button "Прочитать все":
+    - generic: Прочитать все
+  - generic "Фильтры уведомлений":
+    - group "Состояние":
+      - generic: Состояние
+      - button "Все" [pressed]:
+        - generic: Все
+      - button "Требуют действия":
+        - generic: Требуют действия
+      - button "Непрочитанные":
+        - generic: Непрочитанные
+      - button "Закрытые":
+        - generic: Закрытые
+    - button "Сбросить":
+      - generic: Сбросить
+    - group "Категория":
+      - generic: Категория
+      - button "Назначения":
+        - generic: Назначения
+      - button "Встречи":
+        - generic: Встречи
+      - button "Упоминания" [active] [pressed]:
+        - generic: Упоминания
+      - button "Комментарии":
+        - generic: Комментарии
+      - button "Запросы":
+        - generic: Запросы
+    - group "Приоритет":
+      - generic: Приоритет
+      - button "Высокий":
+        - generic: Высокий
+      - button "Обычный":
+        - generic: Обычный
+      - button "Информационный":
+        - generic: Информационный
+  - region "Уведомления":
+    - heading "Уведомления" [level=2]
+    - status: 43 уведомления
+    - list:
+      - alert:
+        - heading "Не удалось загрузить данные" [level=3]
+        - paragraph: Сервер недоступен. Проверьте подключение и попробуйте ещё раз.
+        - button "Повторить":
+          - generic: Повторить
+    - button "Загрузить ещё":
+      - generic: Загрузить ещё
+- status:
+  - generic: ✓
+  - generic: Все уведомления отмечены прочитанными
+  - button "Отменить"
+  - button "Закрыть": ×

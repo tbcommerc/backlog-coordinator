@@ -1,0 +1,115 @@
+{
+  "browser": "153.0.8010.12",
+  "at100": {
+    "width": 1418,
+    "height": 902,
+    "dpr": 1,
+    "outerWidth": 1440,
+    "outerHeight": 1000,
+    "visualScale": 1
+  },
+  "at200": {
+    "width": 709,
+    "height": 451,
+    "dpr": 2,
+    "outerWidth": 1440,
+    "outerHeight": 1000,
+    "visualScale": 1
+  },
+  "focus": {
+    "focused": "Подробнее",
+    "rect": {
+      "x": 99,
+      "y": 218,
+      "width": 155.578125,
+      "height": 28,
+      "top": 218,
+      "right": 254.578125,
+      "bottom": 246,
+      "left": 99
+    },
+    "cover": "admin-user-search"
+  },
+  "sections": [
+    {
+      "name": "Команды",
+      "url": "http://127.0.0.1:8000/?admin_tab=teams#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    },
+    {
+      "name": "Проекты",
+      "url": "http://127.0.0.1:8000/?admin_tab=projects#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    },
+    {
+      "name": "Бизнес-заказчики",
+      "url": "http://127.0.0.1:8000/?admin_tab=businessCustomers#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    },
+    {
+      "name": "Пользователи",
+      "url": "http://127.0.0.1:8000/?admin_tab=users#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    },
+    {
+      "name": "Роли",
+      "url": "http://127.0.0.1:8000/?admin_tab=roles#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    },
+    {
+      "name": "Справочники",
+      "url": "http://127.0.0.1:8000/?admin_tab=dictionaries#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    },
+    {
+      "name": "Отображение",
+      "url": "http://127.0.0.1:8000/?admin_tab=display#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    },
+    {
+      "name": "Таймлайн",
+      "url": "http://127.0.0.1:8000/?admin_tab=home#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    },
+    {
+      "name": "Отчёты",
+      "url": "http://127.0.0.1:8000/?admin_tab=reports#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    },
+    {
+      "name": "Журнал действий",
+      "url": "http://127.0.0.1:8000/?admin_tab=audit#/admin",
+      "w": 709,
+      "h": 451,
+      "dpr": 2,
+      "scroll": 709
+    }
+  ]
+}

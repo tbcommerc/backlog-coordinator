@@ -1,0 +1,25 @@
+{
+  "url": "http://127.0.0.1:8000/#/reporting-statuses?source=notification&meeting_id=24",
+  "tabs": [
+    {
+      "id": "reporting-meeting-tab-36",
+      "name": "\n      Еженедельная встреча команды12 октября 2026\n      \n    ",
+      "selected": "true"
+    },
+    {
+      "id": "reporting-meeting-tab-2",
+      "name": "\n      Директорская оперативка7 сентября 2026\n      Просрочена\n    ",
+      "selected": "false"
+    },
+    {
+      "id": "reporting-meeting-tab-16",
+      "name": "\n      Оперативка ДИД15 сентября 2026\n      Просрочена\n    ",
+      "selected": "false"
+    },
+    {
+      "id": "reporting-meeting-tab-15",
+      "name": "\n      Ключевые проекты21 сентября 2026\n      Просрочена\n    ",
+      "selected": "false"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+/* Primitive foundations: no dependency on components.css or page styles.
+   Low specificity lets the semantic variants and sizing contract own values. */
+:where(.ui-btn, .ui-control, .ui-tab, .ui-badge, .ui-field, .ui-switch, .ui-checkbox) { box-sizing: border-box; }
+:where(.ui-btn, .ui-tab) { font-family: inherit; cursor: pointer; }
+:where(.ui-btn) { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; user-select: none; }
+:where(.ui-btn:disabled) { opacity: .5; }
+:where(.ui-control) { display: block; width: 100%; border: 1px solid var(--border-hover); padding: 8px 10px; font-family: inherit; }
+:where(.ui-badge) { display: inline-flex; align-items: center; white-space: nowrap; }
+:where(.ui-page-header) { display: flex; justify-content: space-between; align-items: center; }
+:where(.ui-page-header .toolbar-title, .ui-page-header .toolbar-subtitle) { margin: 0; }
+:where(.ui-button-spinner) { display: inline-block; border-radius: var(--radius-full); animation: ui-spin .7s linear infinite; }
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  :where(.ui-btn, .ui-control, .ui-tab, .ui-switch-track, .ui-switch-track::after) { transition-duration: 0s; }
+  :where(.ui-button-spinner) { animation: none; }
+}

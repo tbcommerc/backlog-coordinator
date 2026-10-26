@@ -49,6 +49,22 @@ def test_gaps_zero_and_missing_title():
     assert set(clean) == {key for key, _, _ in COLUMNS} | {"id", "gaps", "group_order"}
 
 
+def test_reference_fields_follow_business_order_not_alphabet():
+    rows = [
+        row(1, task_type=NS(name="ТЕХДОЛГ"), deadline=NS(name="4Q 2026")),
+        row(2, task_type=NS(name="AD-HOC"), deadline=NS(name="1Q 2026")),
+        row(3, task_type=NS(name="КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ"), deadline=NS(name="2Q 2026")),
+    ]
+    orders = {
+        "task_type": {"квартальная/годовая цель": 1, "ad-hoc": 2, "техдолг": 3},
+        "deadline": {"1q 2026": 1, "2q 2026": 2, "4q 2026": 4},
+    }
+    by_type = apply_view(rows, {"sortField": "task_type_name", "sortDir": "asc"}, orders)
+    by_deadline = apply_view(rows, {"sortField": "deadline_name", "sortDir": "asc"}, orders)
+    assert [item["id"] for item in by_type] == [3, 2, 1]
+    assert [item["id"] for item in by_deadline] == [2, 3, 1]
+
+
 def test_filters_numeric_and_empty_last_both_directions():
     rows = [row(1, None), row(2, 10), row(3, 1000), row(4, 0)]
     assert value_key(1000.0) == "1000"

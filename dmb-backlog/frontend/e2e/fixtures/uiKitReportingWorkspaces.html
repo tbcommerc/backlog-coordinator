@@ -1,0 +1,49 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/components.css"><link rel="stylesheet" href="/css/pages.css"><link rel="stylesheet" href="/css/responsive.css"><link rel="stylesheet" href="/css/modal-system.css"><link rel="stylesheet" href="/css/ui/kit.css">
+<script src="/js/lib/lucide.min.js"></script></head><body><main id="page-content" class="main-content"></main><div id="feedback-dialog-container"></div>
+<script type="module">
+import { renderReportingStatuses, initReportingStatuses } from '/js/components/reportingStatuses.js';
+import { renderQuarterlyGoalsUpdate, initQuarterlyGoalsUpdate } from '/js/components/quarterlyGoalsUpdate.js';
+import { initModalAccessibility } from '/js/modalAccessibility.js';
+const params=new URLSearchParams(location.search);
+document.documentElement.dataset.theme=params.get('theme')||'light';
+document.documentElement.dataset.compact=params.get('compact')||'false';
+const readonly=params.has('readonly');
+const item={task_id:1,public_id:'TASK-000-001',title:'Длинное название задачи: проверяем сохранение отчётного статуса и прогресса квартала',team_id:7,team_name:'Команда продукта',project_name:'Развитие сервиса',can_edit:!readonly,version:1,text:'Исходный статус',is_ready:false,filled:false,progress:25,start_shift_id:1,planned_progress:50,progress_deviation_percent:-25,progress_indicator:'yellow',is_stale:true,previous_status:{text:'Предыдущий статус',meeting_date:'2026-10-01'}};
+const meetings=[{id:61,kind:'directorate',title:'Директорская оперативка',state:'planned',scheduled_date:'2026-10-15'},{id:62,kind:'did',title:'Оперативка ДИД',state:'planned',scheduled_date:'2026-10-16'}];
+if(params.has('weekly')) { meetings.unshift({id:60,kind:'team_weekly',title:'Встреча команды',state:'planned',scheduled_date:'2026-10-14'}); item.weekly={signal:'on_track',next_step:'',next_step_due:null,decision_request:''}; }
+window.__writes=[];window.__failSave=false;window.toast=()=>{};
+window.__pendingWrites=[];
+window.__releaseSave=(errorStatus=0)=>window.__pendingWrites.shift()(errorStatus);
+const loadGate=new Promise(resolve=>{window.__releaseLoad=resolve;});
+const app={store:{get:()=>({name:'Тестовый актор',role_name:'PO/PL/CL',team_id:7,team_name:'Команда продукта',permissions:{admin:'none'}})},api:{
+  async get(path){
+    if(params.has('loading'))await loadGate;
+    if(params.has('error'))throw new Error('Проверочная ошибка загрузки');
+    if(path.startsWith('/reporting-meetings?'))return {items:params.has('empty')?[]:meetings};
+    const items=params.has('empty')?[]:[structuredClone(item)];
+    if(path.startsWith('/reporting-meetings/'))return {scope:{read_only:readonly,team_name:'Команда продукта'},items,summary:{total_tasks:items.length,filled_tasks:0,missing_tasks:items.length}};
+    return {quarter:'IV квартал 2026',base_planned_progress:50,start_shifts:[1,2,3].map(n=>({id:n,month_number:n,name:`Месяц ${n}`})),items,summary:{total_tasks:items.length,missing_fact:0,stale_fact:items.length}};
+  },
+  async put(path,body){
+    window.__writes.push({path,body});
+    if(params.has('deferred')) {
+      const status=await new Promise(resolve=>window.__pendingWrites.push(resolve));
+      if(status)throw Object.assign(new Error('Проверочная ошибка сохранения'),{status});
+    }
+    if(readonly)throw new Error('Readonly fixture must not write');
+    if(window.__failSave){window.__failSave=false;throw new Error('Проверочная ошибка сохранения');}
+    if(path.endsWith('/statuses/batch')) {
+      const items=body.items.map(change=>structuredClone(Object.assign(item,change,{version:item.version+1})));
+      return {items,saved_count:items.length};
+    }
+    Object.assign(item,body,{version:item.version+1});return structuredClone(item);
+  }
+}};
+window.app=app;
+const root=document.getElementById('page-content');
+initModalAccessibility();
+if(params.get('surface')==='quarterly'){root.innerHTML=renderQuarterlyGoalsUpdate();await initQuarterlyGoalsUpdate(app);}
+else {root.innerHTML=renderReportingStatuses(app);await initReportingStatuses(app);}
+window.lucide.createIcons();document.documentElement.dataset.ready='true';
+</script></body></html>

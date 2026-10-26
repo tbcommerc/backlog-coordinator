@@ -1,27 +1,35 @@
-﻿/**
+import { showSetup } from './components/accountSecurity.js';
+import { avatar } from './ui/dataDisplay.js';
+import { createPopover } from './ui/popover.js';
+import { bindActionMenu } from './ui/actionMenu.js';
+/**
  * DMB Backlog - Main Application
  * Entry point, initializes router and store
  */
-console.log('[DMB] app.js v20260907 notif-v3 loaded');
+console.log('[DMB] app.js v20260910 pip-flow-v5.1 loaded');
 
-import { Router } from './router.js?v=152';
+import { Router, createTaskOpenHandler } from './router.js?v=213';
+import { applyThemePreference } from './theme.js';
+import { renderLogin, initLogin } from './components/login.js?v=3';
 import { Store } from './store.js';
-import { API } from './api.js?v=2';
+import { API } from './api.js?v=4';
 import { Auth } from './auth.js';
-import { renderSidebar, initSidebar } from './components/sidebar.js?v=54';
+import { renderSidebar, initSidebar } from './components/sidebar.js?v=68';
 import { safeExternalUrl } from './urlUtils.js';
 import { confirmAction, formatErrorMessage, showFieldError, showToast } from './uiFeedback.js';
-import { initModalAccessibility } from './modalAccessibility.js?v=1';
+import { initModalAccessibility } from './modalAccessibility.js';
 import { initLocalSpellcheck } from './localSpellcheck.js?v=2';
 import { formatTaskPublicId } from './taskPublicId.js';
-import { pauseEventStream, resumeEventStream, startEventStream } from './eventStream.js';
-import { createNotificationStore } from './notificationStore.js?v=2';
+import { pauseEventStream, resumeEventStream, startEventStream } from './eventStream.js?v=3';
+import { createNotificationStore } from './notificationStore.js?v=5';
 import {
-  NOTIFICATION_CATEGORY_LABELS,
+  notificationCategoryMeta,
   notificationAccessibleLabel,
+  notificationDeadlineMeta,
+  notificationReadLocked,
   openNotificationTarget,
   recordNotificationUxEvent,
-} from './notificationUtils.js?v=3';
+} from './notificationUtils.js?v=12';
 
 const AVATAR_COLORS = [
   '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e',
@@ -49,16 +57,6 @@ window.getAvatarColor = function(name) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-};
-
-const NOTIF_CAT_ICONS = {
-  assignment: 'user-plus', mention: 'at-sign', comment: 'message-circle',
-  reporting: 'clipboard-check',
-};
-
-const NOTIF_CAT_COLORS = {
-  assignment: '#10b981', mention: '#a855f7', comment: '#3b82f6',
-  reporting: '#f59e0b',
 };
 
 let lastKnownUnreadCount = null;
@@ -109,13 +107,15 @@ export async function checkNotifications(app = window.app) {
 }
 
 let notificationPollTimer = null;
-let lastLiveNotificationId = 0;
+let lastLiveNotificationId = null;
 const liveRouteRefreshTimers = new Map();
 
 const LIVE_REFRESH_ROUTES = {
-  task: new Set(['/dashboard', '/backlog', '/team-backlog', '/kanban', '/reports', '/reports/detail', '/reporting-statuses', '/reporting-meetings', '/analytics/tribe', '/analytics/po-pl', '/analytics/it']),
+  // Data-entry screens update their own state after a successful save. A live
+  // invalidation must not destroy an in-progress form and fetch it again.
+  task: new Set(['/dashboard', '/backlog', '/team-backlog', '/kanban', '/reports', '/reports/detail', '/reporting-meetings', '/analytics/tribe', '/analytics/po-pl', '/analytics/it']),
   requirement: new Set(['/customer', '/review']),
-  report: new Set(['/reports', '/reports/detail', '/reporting-statuses', '/reporting-meetings', '/admin']),
+  report: new Set(['/reports', '/reports/detail', '/reporting-meetings', '/admin']),
 };
 
 function scheduleLiveRouteRefresh(app, kind, detail = {}) {
@@ -149,15 +149,15 @@ async function pollLiveNotifications(app, { announce = true } = {}) {
     const data = await app.api.get('/notifications?unread_only=true&per_page=10');
     const items = data.items || [];
     const newestId = items.reduce((max, item) => Math.max(max, item.id), 0);
-    if (!lastLiveNotificationId) {
+    if (lastLiveNotificationId === null) {
       lastLiveNotificationId = newestId;
     } else if (announce) {
       items
-        .filter(item => item.id > lastLiveNotificationId && ['critical', 'high'].includes(item.importance))
+        .filter(item => item.id > lastLiveNotificationId && (item.category === 'meeting_capture' || ['critical', 'high'].includes(item.importance)))
         .sort((a, b) => a.id - b.id)
         .slice(-3)
-        .forEach(item => showToast(item.title, item.importance === 'critical' ? 'error' : 'warning', {
-          actionLabel: 'Открыть',
+        .forEach(item => showToast(item.title, item.category === 'meeting_capture' ? 'success' : item.importance === 'critical' ? 'error' : 'warning', {
+          actionLabel: item.category === 'meeting_capture' ? 'Проверить разбор' : 'Открыть',
           duration: item.importance === 'critical' ? 12000 : 8000,
           onAction: () => {
             recordNotificationUxEvent(app, 'notification_primary_action_clicked', {
@@ -169,12 +169,12 @@ async function pollLiveNotifications(app, { announce = true } = {}) {
       lastLiveNotificationId = Math.max(lastLiveNotificationId, newestId);
     }
     await checkNotifications(app);
-    if (!document.getElementById('notif-dropdown')?.classList.contains('hidden')) {
+    if (!document.getElementById('notif-dropdown')?.hidden) {
       await loadNotifDropdown(app);
     }
   } catch {
     try { await checkNotifications(app); } catch (_) { /* stale shell state is preserved */ }
-    if (!document.getElementById('notif-dropdown')?.classList.contains('hidden')) await loadNotifDropdown(app);
+    if (!document.getElementById('notif-dropdown')?.hidden) await loadNotifDropdown(app);
   }
 }
 
@@ -187,7 +187,8 @@ function startNotificationPolling(app) {
 async function loadNotifDropdown(app) {
   const body = document.getElementById('notif-dropdown-body');
   if (!body) return;
-  body.innerHTML = '<div class="notif-dropdown-state" role="status">Загружаем уведомления…</div>';
+  if (body.contains(document.activeElement)) body.closest('.ui-popover')?.focus({ preventScroll: true });
+  body.innerHTML = '<div class="notif-dropdown-state content-loading-state" role="status">Загружаем уведомления…</div>';
   try {
     const snapshot = await app.notificationStore.refresh({ source: 'bell' });
     const items = snapshot?.recent_items || [];
@@ -196,22 +197,25 @@ async function loadNotifDropdown(app) {
       return;
     }
     body.innerHTML = items.map(n => {
-      const icon = NOTIF_CAT_ICONS[n.category] || 'bell';
-      const color = NOTIF_CAT_COLORS[n.category] || '#64748b';
+      const { icon, color, label: category } = notificationCategoryMeta(n.category);
       const time = formatShortTime(n.created_at);
-      const category = NOTIFICATION_CATEGORY_LABELS[n.category] || 'Уведомление';
+      const deadline = notificationDeadlineMeta(n);
+      const deadlineRow = deadline
+        ? `<span class="notif-dropdown-deadline notification-deadline-badge is-${deadline.tone}"><i data-lucide="calendar-clock" aria-hidden="true"></i><span>${escapeHtml(deadline.compactLabel)}</span></span>`
+        : '';
       return `
-        <button type="button" class="notif-dropdown-item${!n.is_read && !n.is_resolved ? ' is-unread' : ''}" data-notif-id="${n.id}" data-task-id="${n.task_id || ''}" data-category="${escapeHtml(n.category || '')}" data-resolved="${n.is_resolved ? 'true' : 'false'}" data-action-url="${encodeURIComponent(n.target?.url || n.action_url || '')}" aria-label="${escapeHtml(notificationAccessibleLabel(n))}">
-          <span class="notif-dropdown-icon" style="background:${color}18;color:${color};">
+        <button type="button" class="ui-surface-action notif-dropdown-item${!n.is_read && !n.is_resolved ? ' is-unread' : ''}" data-notif-id="${n.id}" data-task-id="${n.task_id || ''}" data-category="${escapeHtml(n.category || '')}" data-resolved="${n.is_resolved ? 'true' : 'false'}" data-read-locked="${notificationReadLocked(n) ? 'true' : 'false'}" data-action-url="${encodeURIComponent(n.target?.url || n.action_url || '')}" aria-label="${escapeHtml(notificationAccessibleLabel(n))}">
+          <span class="notif-dropdown-icon" style="--notification-color:${color}">
             <i data-lucide="${icon}" style="width:14px;height:14px;"></i>
           </span>
           <span class="notif-dropdown-copy">
             <span class="notif-dropdown-title">${escapeHtml(n.title)}</span>
             <span class="notif-dropdown-meta">${escapeHtml(category)} · ${escapeHtml(time)}</span>
+            ${deadlineRow}
           </span>
         </button>`;
     }).join('');
-    body.innerHTML += `<a href="#/notifications" style="display:block;padding:10px;text-align:center;font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;">Все уведомления →</a>`;
+    body.innerHTML += `<a href="#/notifications" class="ui-link notif-dropdown-all">Все уведомления →</a>`;
     if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
   } catch (error) {
     body.innerHTML = `<div class="notif-dropdown-state notif-dropdown-error" role="alert"><span>${escapeHtml(formatErrorMessage(error) || 'Не удалось загрузить уведомления')}</span><button type="button" class="btn btn-secondary btn-sm" data-retry-notifications>Повторить</button></div>`;
@@ -234,6 +238,8 @@ function formatShortTime(dateStr) {
 }
 
 let searchTasksCache = null;
+let searchPopover = null;
+let searchGeneration = 0;
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -333,16 +339,20 @@ function scoreTask(task, query) {
 }
 
 async function handleSearch(query, app) {
+  const generation = ++searchGeneration;
   const container = document.getElementById('search-results');
   if (!query || query.length < SEARCH_MIN_LENGTH) {
-    container?.classList.add('hidden');
+    searchPopover?.close({ restoreFocus: false });
     return;
   }
+  container.innerHTML = '<div class="ui-popover-empty" role="status">Ищем задачи…</div>';
+  searchPopover?.open();
   try {
     if (!searchTasksCache) {
       const res = await app.api.get(`/tasks/?per_page=${SEARCH_PAGE_SIZE}`);
       searchTasksCache = res.items || res.tasks || [];
     }
+    if (generation !== searchGeneration || document.activeElement !== document.getElementById('global-search')) return;
     const tasks = searchTasksCache;
 
     const scored = tasks
@@ -362,7 +372,7 @@ async function handleSearch(query, app) {
         : '';
 
       return `
-        <div class="search-result-item" data-id="${task.id}" tabindex="-1">
+        <button type="button" class="ui-surface-action search-result-item" id="search-result-${task.id}" role="option" aria-selected="false" data-id="${task.id}" tabindex="-1">
           <div class="search-result-main">
             <span class="search-result-id">${formatTaskPublicId(task)}</span>
             <span class="search-result-title">${titleHtml}</span>
@@ -371,43 +381,44 @@ async function handleSearch(query, app) {
             <span class="search-result-status">${escapeHtml(task.status || '')}</span>
             <span class="search-result-extra">${extraHtml}</span>
           </div>
-        </div>`;
+        </button>`;
     }).join('');
 
     if (scored.length === 0) {
       container.innerHTML = `<div class="search-result-empty">Ничего не найдено</div>`;
     }
 
-    container.classList.remove('hidden');
-
-    let selectedIdx = -1;
-    const items = container.querySelectorAll('.search-result-item');
+    searchPopover?.open();
+    searchPopover?.position();
 
     container.querySelectorAll('.search-result-item').forEach(el => {
       el.addEventListener('click', () => {
         const event = new CustomEvent('open-task', { detail: { taskId: parseInt(el.dataset.id) } });
         document.dispatchEvent(event);
-        container.classList.add('hidden');
+        searchPopover?.close({ restoreFocus: false });
         document.getElementById('global-search').value = '';
         searchTasksCache = null;
       });
     });
   } catch (e) {
+    if (generation !== searchGeneration || !container.isConnected) return;
+    container.innerHTML = `<div class="ui-popover-empty" role="alert">${escapeHtml(formatErrorMessage(e))}</div>`;
+    searchPopover?.open();
     console.error(e);
   }
 }
 
 async function handleLogout() {
-  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=84');
-  const { clearAgentChatTransientStorage } = await import('./components/agentChat.js?v=86');
+  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=92');
+  const { clearAgentChatTransientStorage } = await import('./components/agentChat.js?v=94');
   const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
   if (!ok) return;
   clearQuickEditState();
   clearAgentChatTransientStorage();
   const app = window.app;
   if (app) {
-    await app.auth.logout();
-    app.renderLoginPage();
+    try { await app.auth.logout(); app.renderLoginPage(); }
+    catch { window.toast?.('Серверное завершение сессии не подтверждено. Повторите выход.', 'error'); }
   } else {
     localStorage.removeItem('dmb_tokens');
     localStorage.removeItem('dmb_user');
@@ -417,8 +428,6 @@ async function handleLogout() {
 
 export function renderAppShell(content) {
   const user = window.app?.store?.get('currentUser');
-  const initials = window.getUserInitials(user?.name);
-  const avatarColor = window.getAvatarColor(user?.name);
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const userName = user?.name || 'User';
   const nameParts = userName.split(' ');
@@ -429,7 +438,7 @@ export function renderAppShell(content) {
     <div class="main-wrapper">
       <header class="navbar">
         <div class="navbar-heading">
-          <button class="btn-hamburger" id="sidebar-toggle-mobile" type="button" title="Меню" aria-label="Открыть меню" aria-controls="app-sidebar" aria-expanded="false">
+          <button class="square-icon btn btn-secondary btn-sm ui-btn btn-hamburger" id="sidebar-toggle-mobile" type="button" title="Меню" aria-label="Открыть меню" aria-controls="app-sidebar" aria-expanded="false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           </button>
           <nav id="breadcrumb-nav" class="navbar-breadcrumb" aria-label="Хлебные крошки">
@@ -438,42 +447,46 @@ export function renderAppShell(content) {
         </div>
         <div class="search-wrap navbar-search">
           <i data-lucide="search" class="navbar-search-icon"></i>
-          <input type="text" id="global-search" placeholder="Поиск…" class="search-input navbar-search-input">
-          <div id="search-results" class="search-dropdown hidden"></div>
+          <input type="text" id="global-search" role="combobox" aria-label="Поиск задач" aria-autocomplete="list" aria-controls="search-results" aria-expanded="false" placeholder="Поиск…" class="input ui-control search-input navbar-search-input">
+          <div id="search-results" class="ui-search-popover" hidden></div>
         </div>
         <div class="navbar-right">
-          <button id="mobile-search-toggle" class="navbar-icon-button mobile-search-toggle" type="button" title="Поиск" aria-label="Открыть поиск" aria-expanded="false">
+          <button id="backlog-context-help" class="btn btn-ghost btn-sm square-icon ui-btn navbar-icon-button" type="button" title="Спросить о текущей странице" aria-label="Спросить помощника о текущей странице" hidden>
+            <i data-lucide="messages-square" aria-hidden="true"></i>
+          </button>
+          <button id="mobile-search-toggle" class="btn btn-ghost btn-sm square-icon ui-btn navbar-icon-button mobile-search-toggle" type="button" title="Поиск" aria-label="Открыть поиск" aria-expanded="false">
             <i data-lucide="search"></i>
           </button>
           <div style="position:relative;" id="notif-bell-wrap">
-            <button id="notif-bell-btn" type="button" aria-label="Уведомления" aria-expanded="false" aria-controls="notif-dropdown" style="position: relative; padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer;">
-              <i data-lucide="bell" aria-hidden="true" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"></i>
+            <button class="btn btn-ghost btn-sm square-icon ui-btn" id="notif-bell-btn" type="button" aria-label="Уведомления" aria-expanded="false" aria-controls="notif-dropdown" style="position: relative">
+              <i data-lucide="bell" aria-hidden="true" style=" display: block; color: var(--text-primary);"></i>
               <span id="notif-badge" class="notif-badge hidden">0</span>
             </button>
-            <div id="notif-dropdown" class="dropdown-menu hidden" role="region" aria-labelledby="notif-dropdown-title" style="position:absolute;top:100%;right:0;width:380px;max-height:420px;overflow-y:auto;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);z-index:1000;">
-              <div id="notif-dropdown-title" style="padding:12px;border-bottom:1px solid var(--border-color);font-weight:600;font-size:14px;">Уведомления</div>
-              <div id="notif-dropdown-body" style="min-height:60px;">
-                <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Загрузка...</div>
+            <div id="notif-dropdown" class="ui-notification-popover" aria-labelledby="notif-dropdown-title" hidden>
+              <div id="notif-dropdown-title" class="ui-popover-header ui-popover-title">Уведомления</div>
+              <div id="notif-dropdown-body">
+                <div class="content-loading-state ui-popover-empty">Загрузка…</div>
               </div>
             </div>
           </div>
           <div class="navbar-separator" aria-hidden="true"></div>
-          <button id="theme-toggle" style="padding: 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer; color: var(--text-muted);" title="Переключить тему">
-            <i data-lucide="${isDark ? 'sun' : 'moon'}" style="width: 20px; height: 20px; display: block; color: var(--text-primary);"></i>
+          <button class="btn btn-ghost btn-sm square-icon ui-btn" id="theme-toggle" title="Переключить тему">
+            <i data-lucide="${isDark ? 'sun' : 'moon'}" style=" display: block; color: var(--text-primary);"></i>
           </button>
           <div class="navbar-separator" aria-hidden="true"></div>
           <div class="user-menu-wrap">
-            <button id="user-avatar-btn" class="user-menu-trigger" aria-haspopup="menu" aria-expanded="false">
-              <div style="width: 28px; height: 28px; border-radius: 50%; background: ${avatarColor}; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0;">${initials}</div>
+            <button id="user-avatar-btn" class="ui-surface-action user-menu-trigger" aria-haspopup="menu" aria-expanded="false">
+              ${avatar({name:user?.name,size:28})}
               <span class="user-menu-name">${shortName}</span>
               <i data-lucide="chevron-down" class="user-menu-chevron"></i>
             </button>
-            <div id="user-dropdown" class="dropdown-menu user-menu-dropdown hidden" role="menu">
+            <div id="user-dropdown" class="user-menu-dropdown" role="menu" hidden>
               <div class="user-menu-summary">
                 <span class="user-menu-full-name">${userName}</span>
               </div>
-              <button onclick="app.router.navigate('/settings')" class="dropdown-item"><i data-lucide="settings" style="width: 16px; height: 16px;"></i> Настройки</button>
-              <button id="logout-btn" class="dropdown-item danger" role="menuitem"><i data-lucide="log-out" style="width: 16px; height: 16px;"></i> Выйти</button>
+              <button onclick="app.router.navigate('/account/security')" class="ui-surface-action dropdown-item" role="menuitem">Безопасность</button>
+              <button onclick="app.router.navigate('/settings')" class="ui-surface-action dropdown-item"><i data-lucide="settings" style="width: 16px; height: 16px;"></i> Настройки</button>
+              <button id="logout-btn" class="ui-surface-action dropdown-item danger" role="menuitem"><i data-lucide="log-out" style="width: 16px; height: 16px;"></i> Выйти</button>
             </div>
           </div>
         </div>
@@ -486,6 +499,17 @@ export function renderAppShell(content) {
 }
 
 export async function initApp(app) {
+  // Deep links may arrive while optional shell modules are still loading.
+  if (app.openTaskHandler) document.removeEventListener('open-task', app.openTaskHandler);
+  app.openTaskHandler = createTaskOpenHandler(app, {
+    onError: (err) => {
+      console.error('Failed to open task', err);
+      showToast('Не удалось открыть задачу: она удалена или недоступна', 'error');
+    },
+  });
+  document.addEventListener('open-task', app.openTaskHandler);
+
+
   app.notificationStore = createNotificationStore(app);
   app.notificationStore.subscribe(({ snapshot, error }) => renderNotificationShell(snapshot, error));
   app.refreshNotifications = () => checkNotifications(app);
@@ -503,36 +527,19 @@ export async function initApp(app) {
   document.addEventListener('dmb:requirement-changed', event => scheduleLiveRouteRefresh(app, 'requirement', event.detail || {}));
   document.addEventListener('dmb:report-changed', event => scheduleLiveRouteRefresh(app, 'report', event.detail || {}));
   initSidebar();
+  const { initContextHelp } = await import('./backlog-assistant/context-help.js');
+  initContextHelp(document.getElementById('backlog-context-help'), app);
 
   // Bell dropdown
   const bellBtn = document.getElementById('notif-bell-btn');
   const bellDropdown = document.getElementById('notif-dropdown');
-  const bellWrap = document.getElementById('notif-bell-wrap');
   if (bellBtn && bellDropdown) {
-    const closeBellDropdown = ({ restoreFocus = false } = {}) => {
-      bellDropdown.classList.add('hidden');
-      bellBtn.setAttribute('aria-expanded', 'false');
-      if (restoreFocus) bellBtn.focus();
-    };
-    bellBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = bellDropdown.classList.toggle('hidden') === false;
-      bellBtn.setAttribute('aria-expanded', String(isOpen));
-      if (isOpen) loadNotifDropdown(app);
-    });
+    const bellPopover = createPopover({ trigger: bellBtn, panel: bellDropdown, label: 'Уведомления', align: 'end' });
+    const closeBellDropdown = (options = { restoreFocus: false }) => bellPopover.close(options);
+    const openBell = () => { bellPopover.open(); loadNotifDropdown(app); };
+    bellBtn.addEventListener('click', () => bellPopover.isOpen ? bellPopover.close() : openBell());
     bellBtn.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && !bellDropdown.classList.contains('hidden')) {
-        event.preventDefault();
-        closeBellDropdown({ restoreFocus: true });
-      }
-    });
-    document.addEventListener('click', (e) => {
-      if (bellWrap && !bellWrap.contains(e.target)) {
-        closeBellDropdown();
-      }
-    });
-    bellDropdown.addEventListener('keydown', event => {
-      if (event.key === 'Escape') { event.preventDefault(); closeBellDropdown({ restoreFocus: true }); }
+      if (event.key === 'ArrowDown') { event.preventDefault(); openBell(); }
     });
     bellDropdown.addEventListener('click', async (e) => {
       if (e.target.closest('a[href="#/notifications"]')) {
@@ -546,7 +553,7 @@ export async function initApp(app) {
       const item = e.target.closest('.notif-dropdown-item');
       if (item) {
         const notificationId = parseInt(item.dataset.notifId, 10);
-        if (notificationId) {
+        if (notificationId && item.dataset.readLocked !== 'true') {
           try { await app.api.put('/notifications/read', { ids: [notificationId] }); }
           catch (error) { window.toast?.(window.formatErrorMessage?.(error)||'Не удалось обновить отметку о прочтении','warning'); }
         }
@@ -570,16 +577,22 @@ export async function initApp(app) {
   let searchTimer;
   let searchSelectedIdx = -1;
   if (searchInput) {
+    searchPopover?.close({ restoreFocus: false });
+    searchPopover = createPopover({ trigger: searchInput, panel: document.getElementById('search-results'), role: 'listbox', label: 'Найденные задачи', focus: false,
+      onClose: () => { searchGeneration++; searchSelectedIdx = -1; searchInput.removeAttribute('aria-activedescendant'); } });
     searchInput.addEventListener('input', () => {
       clearTimeout(searchTimer);
       searchSelectedIdx = -1;
+      searchGeneration++;
+      searchInput.removeAttribute('aria-activedescendant');
+      searchPopover.close({ restoreFocus: false });
       searchTimer = setTimeout(() => handleSearch(searchInput.value, app), SEARCH_DEBOUNCE_MS);
     });
 
     searchInput.addEventListener('keydown', (e) => {
       const container = document.getElementById('search-results');
       const items = container?.querySelectorAll('.search-result-item');
-      if (!items || items.length === 0) return;
+      if (!searchPopover.isOpen || !items || items.length === 0) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         searchSelectedIdx = Math.min(searchSelectedIdx + 1, items.length - 1);
@@ -594,9 +607,11 @@ export async function initApp(app) {
         e.preventDefault();
         items[searchSelectedIdx]?.click();
       } else if (e.key === 'Escape') {
-        container?.classList.add('hidden');
-        searchInput.blur();
+        searchPopover.close();
       }
+      items.forEach((item, index) => item.setAttribute('aria-selected', String(index === searchSelectedIdx)));
+      if (searchSelectedIdx >= 0) searchInput.setAttribute('aria-activedescendant', items[searchSelectedIdx].id);
+      else searchInput.removeAttribute('aria-activedescendant');
     });
   }
 
@@ -613,8 +628,8 @@ export async function initApp(app) {
   document.addEventListener('click', (e) => {
     const container = document.getElementById('search-results');
     const wrap = document.querySelector('.search-wrap');
-    if (container && wrap && !wrap.contains(e.target)) {
-      container.classList.add('hidden');
+    if (container && wrap && !wrap.contains(e.target) && !container.contains(e.target)) {
+      searchPopover?.close({ restoreFocus: false });
       if (!e.target.closest('#mobile-search-toggle')) {
         wrap.classList.remove('mobile-open');
         mobileSearchToggle?.setAttribute('aria-expanded', 'false');
@@ -625,42 +640,15 @@ export async function initApp(app) {
 
   const avatarBtn = document.getElementById('user-avatar-btn');
   const dropdown = document.getElementById('user-dropdown');
-  if (avatarBtn && dropdown) {
-    avatarBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = dropdown.classList.toggle('hidden') === false;
-      avatarBtn.setAttribute('aria-expanded', String(isOpen));
-    });
-  }
-
-  document.addEventListener('click', (e) => {
-    const dd = document.getElementById('user-dropdown');
-    if (dd && !dd.contains(e.target) && !e.target.closest('#user-avatar-btn')) {
-      dd.classList.add('hidden');
-      avatarBtn?.setAttribute('aria-expanded', 'false');
-    }
-  });
-
-  document.addEventListener('open-task', async (e) => {
-    const taskId = e.detail?.taskId;
-    if (!taskId) return;
-    try {
-      const task = await app.api.get(`/tasks/${taskId}`);
-        const { openTaskModal } = await import('./components/modal.js?v=92');
-      openTaskModal(task);
-    } catch (err) {
-      console.error('Failed to open task', err);
-      showToast('Не удалось открыть задачу: она удалена или недоступна', 'error');
-    }
-  });
+  if (avatarBtn && dropdown) bindActionMenu({ trigger: avatarBtn, panel: dropdown, label: 'Меню пользователя', align: 'end' });
 
   const themeToggle = document.getElementById('theme-toggle');
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       const next = isDark ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('dmb_theme', next);
+      applyThemePreference(next);
       const icon = themeToggle.querySelector('[data-lucide]');
       if (icon) icon.setAttribute('data-lucide', isDark ? 'moon' : 'sun');
       if (window.lucide) window.lucide.createIcons();
@@ -704,6 +692,12 @@ export async function initApp(app) {
 
   hamburger?.addEventListener('click', () => toggleMobileSidebar());
   backdrop?.addEventListener('click', () => toggleMobileSidebar(false, { restoreFocus: true }));
+  // Native hash links do not call router.navigate; dismiss the mobile drawer too.
+  sidebar?.addEventListener('click', event => {
+    if (mobileLayout.matches && event.target.closest('a[href^="#/"]')) {
+      toggleMobileSidebar(false);
+    }
+  });
 
   /* An opened mobile drawer must never leak into compact/desktop layouts. */
   const resetSidebarAfterBreakpoint = (event) => {
@@ -740,6 +734,10 @@ class App {
     this.store = new Store();
     this.api = new API();
     this.auth = new Auth(this.api, this.store);
+    this.features = {
+      assistant_v2: { enabled: false, pilot_allowed: false },
+      agent_v2: { enabled: false, pilot_allowed: false, operator_role: '' },
+    };
     this.router = new Router(this);
 
     this.init();
@@ -747,24 +745,31 @@ class App {
 
   async init() {
     this.applyTheme();
+    if (location.hash.startsWith('#/activate')) { showSetup(this); return; }
 
-    const isAuthenticated = this.auth.isAuthenticated() || await this.auth.restoreSession();
+    let isAuthenticated;
+    try { isAuthenticated = this.auth.isAuthenticated() || await this.auth.restoreSession(); }
+    catch { this.renderLoginPage(); window.toast?.('Сервис входа недоступен. Повторите позже.', 'error'); return; }
 
     if (isAuthenticated) {
       await this.loadUser();
+      await this.loadFeatures();
       await this.loadFieldLabels();
       await this.loadReferenceData();
       this.renderAppLayout();
       this.router.onBeforeNavigate = async (toPath, fromHash) => {
-        const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=92');
+        if (this.assistantV2NavigationGuard && !(await this.assistantV2NavigationGuard(toPath, fromHash))) return false;
+        const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=118');
         const taskCardOk = await confirmAndCloseTaskFormsForNavigation();
         if (!taskCardOk) return false;
-        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=84');
+        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=92');
         const ok = await confirmDiscardChanges('Продолжить', 'Есть несохранённые изменения в режиме массового редактирования. Перейти и потерять их?');
         if (ok) clearQuickEditState();
         if (!ok) return false;
-        const { confirmReportingStatusNavigation } = await import('./components/reportingStatuses.js?v=11');
-        return confirmReportingStatusNavigation();
+        const { confirmReportingStatusNavigation } = await import('./components/reportingStatuses.js?v=21');
+        if (!(await confirmReportingStatusNavigation())) return false;
+        const { confirmQuarterlyGoalsNavigation } = await import('./components/quarterlyGoalsUpdate.js?v=11');
+        return confirmQuarterlyGoalsNavigation();
       };
       this.router.init();
     } else {
@@ -776,26 +781,9 @@ class App {
     const accent = localStorage.getItem('dmb_accent') || 'indigo';
     const compact = localStorage.getItem('dmb_compact') === 'true';
     const theme = localStorage.getItem('dmb_theme') || 'light';
-    const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
-    const resolvedTheme = theme === 'system'
-      ? (systemThemeMedia.matches ? 'dark' : 'light')
-      : theme;
-
-    if (this.systemThemeMedia && this.systemThemeHandler) {
-      this.systemThemeMedia.removeEventListener('change', this.systemThemeHandler);
-    }
-    this.systemThemeMedia = systemThemeMedia;
-    this.systemThemeHandler = null;
-    if (theme === 'system') {
-      this.systemThemeHandler = event => {
-        document.documentElement.setAttribute('data-theme', event.matches ? 'dark' : 'light');
-      };
-      systemThemeMedia.addEventListener('change', this.systemThemeHandler);
-    }
-
     document.documentElement.setAttribute('data-accent', accent);
     document.documentElement.setAttribute('data-compact', compact);
-    document.documentElement.setAttribute('data-theme', resolvedTheme);
+    applyThemePreference(theme);
   }
 
   async loadUser() {
@@ -810,6 +798,18 @@ class App {
     } catch (e) {
       await this.auth.logout();
       this.renderLoginPage();
+    }
+  }
+
+  async loadFeatures() {
+    try {
+      this.features = await this.api.get('/features');
+    } catch (error) {
+      console.warn('Feature bootstrap unavailable', error);
+      this.features = {
+        assistant_v2: { enabled: false, pilot_allowed: false },
+        agent_v2: { enabled: false, pilot_allowed: false, operator_role: '' },
+      };
     }
   }
 
@@ -856,111 +856,33 @@ class App {
   }
 
   renderLoginPage() {
+    document.dispatchEvent(new CustomEvent('dmb:session-ended'));
     const app = document.getElementById('app');
-    app.innerHTML = `
-      <div id="login-screen" style="position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; background: radial-gradient(circle at 20% 20%, rgba(99,102,241,0.25), transparent 40%), radial-gradient(circle at 80% 80%, rgba(16,185,129,0.18), transparent 40%), linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
-        <div style="width: 100%; max-width: 448px;">
-          <div style="background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 30px 60px -10px rgba(15,23,42,0.4), 0 0 0 1px rgba(255,255,255,0.06);">
-            <div style="padding: 32px;">
-              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
-                <div style="width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; background: linear-gradient(135deg,#6366f1 0%,#818cf8 100%); flex-shrink: 0;">
-                  <i data-lucide="layers" style="width: 20px; height: 20px;"></i>
-                </div>
-                <div>
-                  <div style="font-weight: 700; color: #0f172a; font-size: 18px;">Backlog Coordinator</div>
-                </div>
-              </div>
-              <h2 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0;">Добро пожаловать</h2>
-              <p style="font-size: 14px; color: #64748b; margin-top: 4px; margin-bottom: 0;">Введите учётные данные для продолжения</p>
-
-              <form id="login-form" style="margin-top: 24px;">
-                <div style="margin-bottom: 16px;">
-                  <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Email</label>
-                  <div style="position: relative;">
-                    <i data-lucide="mail" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8; pointer-events: none;"></i>
-                    <input id="login-email" type="email" autocomplete="username" placeholder="name@example.com" style="width: 100%; padding: 12px 16px 12px 36px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; color: #0f172a; box-sizing: border-box;">
-                  </div>
-                </div>
-                <div style="margin-bottom: 16px;">
-                  <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Пароль</label>
-                  <div style="position: relative;">
-                    <i data-lucide="lock" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8; pointer-events: none;"></i>
-                    <input id="login-password" type="password" style="width: 100%; padding: 12px 40px 12px 36px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; color: #0f172a; box-sizing: border-box;">
-                    <button id="login-pw-toggle" type="button" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); padding: 6px; border: none; background: transparent; cursor: pointer; border-radius: 4px; color: #94a3b8;">
-                      <i id="login-eye" data-lucide="eye" style="width: 16px; height: 16px; display: block;"></i>
-                    </button>
-                  </div>
-                  <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: #64748b;">
-                    <i data-lucide="lightbulb" style="width: 14px; height: 14px; color: #f59e0b; flex-shrink: 0;"></i>
-                    <span>Подсказка: пароль <code style="background: #f1f5f9; color: #334155; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px;">dmb2026</code></span>
-                  </div>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 4px; margin-bottom: 16px;">
-                  <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #475569; cursor: pointer;">
-                    <input type="checkbox" checked style="accent-color: #6366f1; width: 16px; height: 16px;">
-                    <span>Запомнить меня</span>
-                  </label>
-                  <a style="font-size: 14px; font-weight: 600; color: #6366f1; cursor: pointer;">Забыли пароль?</a>
-                </div>
-                <div id="login-error" style="display: none; align-items: center; gap: 8px; font-size: 12px; padding: 8px 12px; border-radius: 8px; background: #fff1f2; border: 1px solid #fecaca; color: #be123c; margin-bottom: 16px;">
-                  <i data-lucide="alert-circle" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
-                  <span>Неверный пароль. Попробуйте ещё раз.</span>
-                </div>
-                <button id="login-btn" type="submit" style="width: 100%; padding: 12px; background: #6366f1; color: white; font-weight: 600; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 1px 3px rgba(99,102,241,0.3); transition: filter 0.2s;">
-                  <i data-lucide="log-in" style="width: 16px; height: 16px;"></i>
-                  <span id="login-btn-text">Войти в систему</span>
-                </button>
-              </form>
-            </div>
-            <div style="padding: 16px 32px; border-top: 1px solid #e2e8f0; text-align: center; background: #f8fafc;">
-              <p style="font-size: 12px; color: #64748b; margin: 0;">© 2026 Backlog Coordinator · <a style="color: #6366f1; font-weight: 600; cursor: pointer;">Поддержка</a></p>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+    app.innerHTML = renderLogin();
 
     if (window.lucide) window.lucide.createIcons();
     this.bindLoginForm();
+    document.getElementById('login-activate')?.addEventListener('click', () => { location.hash='/activate'; showSetup(this); });
+    this.api.get('/auth/password-policy').then(policy => {
+      const support=document.getElementById('login-support');
+      if(support) support.textContent='Забыли пароль? '+policy.support_contact;
+    }).catch(() => {});
   }
 
   bindLoginForm() {
-    const pwToggle = document.getElementById('login-pw-toggle');
-    if (pwToggle) {
-      pwToggle.addEventListener('click', () => {
-        const pw = document.getElementById('login-password');
-        const eye = document.getElementById('login-eye');
-        if (pw.type === 'password') {
-          pw.type = 'text';
-          eye.setAttribute('data-lucide', 'eye-off');
-        } else {
-          pw.type = 'password';
-          eye.setAttribute('data-lucide', 'eye');
-        }
-        if (window.lucide) window.lucide.createIcons();
-      });
-    }
-    const form = document.getElementById('login-form');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const email = document.getElementById('login-email').value;
-      const password = document.getElementById('login-password').value;
-
-      try {
-        const response = await this.auth.login(email, password);
-        this.store.set('currentUser', response.user);
-        this.renderAppLayout();
-        this.router.init();
-        this.router.navigate('/dashboard');
-      } catch (error) {
-        const el = document.getElementById('login-error');
-        if (el) el.style.display = 'flex';
-      }
+    initLogin(async (email, password) => {
+      const response = await this.auth.login(email, password);
+      this.store.set('currentUser', response.user);
+      await this.loadFeatures();
+      this.renderAppLayout();
+      this.router.init();
+      this.router.navigate('/dashboard');
     });
   }
+
 }
 
+window.addEventListener('account-session-expiring', () => showToast('Сессия скоро завершится. Сохраните рабочий черновик перед повторным входом.', 'warning'));
 window.toast = showToast;
 window.confirmAction = confirmAction;
 window.showFieldError = showFieldError;

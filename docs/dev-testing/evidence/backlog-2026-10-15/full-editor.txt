@@ -1,0 +1,418 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - generic: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "10"
+    - link "Настройки":
+      - /url: "#/settings"
+      - generic: Настройки
+    - link "Управление отчётными встречами":
+      - /url: "#/reporting-meetings"
+      - generic: Отчётные встречи
+    - link "Администрирование":
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+    - link "Ошибки доставки событий":
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Бэклог команды
+  - combobox "Поиск задач"
+  - button "Спросить помощника о текущей странице":
+  - 'button "Уведомления: 10 непрочитанных"':
+    - generic: "10"
+  - button "Переключить тему":
+  - button "Т.Бабяк":
+    - generic: ТБ
+    - generic: Т.Бабяк
+- main:
+  - heading "Бэклог команды Проектный офис" [level=1]
+  - paragraph: Управление задачами вашей команды
+  - button "Добавить задачу":
+    - generic: Добавить задачу
+  - button "Пользовательские представления":
+    - generic: Представление…
+  - button "Сохранить представление":
+  - button "Настройка отображения столбцов":
+  - generic "Режим отображения":
+    - button "Табличное представление":
+    - button "Карточное представление":
+  - button "Быстрое редактирование":
+  - button "Операции":
+  - group "Импорт и экспорт":
+    - button "Импорт из Excel":
+    - button "Экспорт в CSV":
+  - button "Обновить":
+  - textbox "Поиск по ID, названию и описанию":
+    - /placeholder: Поиск по ID и названию…
+    - text: TASK-000-259
+  - generic "Закреплённые фильтры":
+    - 'button "Статус: Все"':
+      - generic: "Статус:"
+      - generic: Все
+    - 'button "Приоритет: Все"':
+      - generic: "Приоритет:"
+      - generic: Все
+    - 'button "Срок: Все"':
+      - generic: "Срок:"
+      - generic: Все
+    - 'button "Исполнитель: Все"':
+      - generic: "Исполнитель:"
+      - generic: Все
+    - 'button "Тип задачи: Все"':
+      - generic: "Тип задачи:"
+      - generic: Все
+  - button "Все фильтры":
+    - generic: Все фильтры
+  - button "Сброс":
+    - text: Сброс
+  - 'button "Просрочено: 13"':
+    - generic: Просрочено
+    - strong: "13"
+  - 'button "Важные задачи: 5"':
+    - generic: Важные задачи
+    - strong: "5"
+  - 'button "В работе: 29"':
+    - generic: В работе
+    - strong: "29"
+  - 'button "Холд: 0"':
+    - generic: Холд
+    - strong: "0"
+  - 'button "Отклонённые: 1"':
+    - generic: Отклонённые
+    - strong: "1"
+  - 'button "Текущие задачи: 6"':
+    - generic: Текущие задачи
+    - strong: "6"
+  - 'button "Прошлый квартал: 5"':
+    - generic: Прошлый квартал
+    - strong: "5"
+  - 'button "Проблемный C/V: 24"':
+    - generic: Проблемный C/V
+    - strong: "24"
+  - table:
+    - rowgroup:
+      - 'row "Выбрать все отфильтрованные задачи Сортировать: ID задачи Ширина колонки: ID задачи Сортировать: Название задачи Ширина колонки: Название задачи Сортировать: Статус задачи Ширина колонки: Статус задачи Сортировать: Приоритет Ширина колонки: Приоритет Сортировать: Срок выполнения Ширина колонки: Срок выполнения Сортировать: Исполнитель Ширина колонки: Исполнитель Сортировать: Прогресс Ширина колонки: Прогресс"':
+        - columnheader "Выбрать все отфильтрованные задачи":
+          - checkbox "Выбрать все отфильтрованные задачи"
+        - 'columnheader "Сортировать: ID задачи Ширина колонки: ID задачи"':
+          - 'button "Сортировать: ID задачи"':
+            - generic: ID задачи
+            - generic: ↓
+          - 'separator "Ширина колонки: ID задачи"'
+        - 'columnheader "Сортировать: Название задачи Ширина колонки: Название задачи"':
+          - 'button "Сортировать: Название задачи"':
+            - generic: Название задачи
+            - generic: ↕
+          - 'separator "Ширина колонки: Название задачи"'
+        - 'columnheader "Сортировать: Статус задачи Ширина колонки: Статус задачи"':
+          - 'button "Сортировать: Статус задачи"':
+            - generic: Статус задачи
+            - generic: ↕
+          - 'separator "Ширина колонки: Статус задачи"'
+        - 'columnheader "Сортировать: Приоритет Ширина колонки: Приоритет"':
+          - 'button "Сортировать: Приоритет"':
+            - generic: Приоритет
+            - generic: ↕
+          - 'separator "Ширина колонки: Приоритет"'
+        - 'columnheader "Сортировать: Срок выполнения Ширина колонки: Срок выполнения"':
+          - 'button "Сортировать: Срок выполнения"':
+            - generic: Срок выполнения
+            - generic: ↕
+          - 'separator "Ширина колонки: Срок выполнения"'
+        - 'columnheader "Сортировать: Исполнитель Ширина колонки: Исполнитель"':
+          - 'button "Сортировать: Исполнитель"':
+            - generic: Исполнитель
+            - generic: ↕
+          - 'separator "Ширина колонки: Исполнитель"'
+        - 'columnheader "Сортировать: Прогресс Ширина колонки: Прогресс"':
+          - 'button "Сортировать: Прогресс"':
+            - generic: Прогресс
+            - generic: ↕
+          - 'separator "Ширина колонки: Прогресс"'
+    - rowgroup:
+      - row "Выбрать задачу 259 TASK-000-259 Копировать TASK-000-259 UX-AUDIT-20261013 формула НОВАЯ ЗАДАЧА СРЕДНИЙ — — 0%":
+        - cell "Выбрать задачу 259":
+          - checkbox "Выбрать задачу 259"
+        - cell "TASK-000-259 Копировать TASK-000-259":
+          - generic "TASK-000-259":
+            - mark: TASK-000-259
+          - button "Копировать TASK-000-259": ⧉
+        - cell "UX-AUDIT-20261013 формула":
+          - strong: UX-AUDIT-20261013 формула
+        - cell "НОВАЯ ЗАДАЧА":
+          - generic: НОВАЯ ЗАДАЧА
+        - cell "СРЕДНИЙ":
+          - generic: СРЕДНИЙ
+        - cell "—":
+          - generic: —
+        - cell "—"
+        - cell "0%":
+          - generic: 0%
+  - status: "Найдено: 1 задача"
+- dialog "UX-AUDIT-20261013 формула":
+  - button "TASK-000-259":
+    - text: TASK-000-259
+  - generic: —
+  - generic: НОВАЯ ЗАДАЧА
+  - text: Редактирование
+  - button "Копировать ссылку на задачу":
+  - button "Закрыть карточку задачи":
+  - heading "UX-AUDIT-20261013 формула" [level=1]
+  - button "Прокрутить вкладки влево" [disabled]: ‹
+  - tablist "Разделы карточки задачи":
+    - tab "Основное" [selected]:
+      - generic: Основное
+    - tab "Отчётные статусы":
+      - generic: Отчётные статусы
+    - tab "Комментарии · 1":
+      - generic: Комментарии · 1
+    - tab "Ссылки и файлы":
+      - generic: Ссылки и файлы
+    - tab "Лог изменений · 19":
+      - generic: Лог изменений · 19
+  - button "Прокрутить вкладки вправо" [disabled]: ›
+  - tabpanel "Основное":
+    - generic: Название
+    - textbox "Название" [active]: UX-AUDIT-20261013 формула
+    - generic: 25 / 255
+    - generic: Описание
+    - textbox "Описание задачи": "2"
+    - generic: 1 / 10000
+    - generic: Внутренний комментарий задачи
+    - textbox "Внутренний комментарий задачи"
+    - generic: 0 / 5000
+    - heading "Паспорт задачи" [level=3]:
+      - text: Паспорт задачи
+    - generic: Исполнение
+    - generic: Статус задачи
+    - combobox "Статус задачи":
+      - option "Не выбрано"
+      - option "НОВАЯ ЗАДАЧА" [selected]
+      - option "НАЗНАЧЕНА КОМАНДА"
+      - option "СБОР ТРЕБОВАНИЙ"
+      - option "ПРОВЕРКА ТРЕБОВАНИЙ"
+      - option "УТОЧНЕНИЕ ТРЕБОВАНИЙ"
+      - option "ЭКСПРЕСС-ОЦЕНКА"
+      - option "ПРИНЯТИЕ РЕШЕНИЯ"
+      - option "ПРИНЯТА В РАБОТУ"
+      - option "ОТКЛОНЕНА"
+      - option "НЕ АКТУАЛЬНА"
+      - option "ВЫПОЛНЕНА"
+      - option "ЭСКАЛАЦИЯ НА ЛТ"
+      - option "ХОЛД"
+    - generic: Приоритет
+    - combobox "Приоритет":
+      - option "Не выбрано" [selected]
+      - option "ВЫСОКИЙ"
+      - option "СРЕДНИЙ"
+      - option "НИЗКИЙ"
+    - generic: Срок выполнения
+    - combobox "Срок выполнения":
+      - option "Не выбрано" [selected]
+      - option "1Q 2026"
+      - option "2Q 2026"
+      - option "3Q 2026"
+      - option "4Q 2026"
+      - option "1Q 2027"
+      - option "2Q 2027"
+      - option "БЕЗ СРОКА"
+      - option "Y2026"
+    - generic: Прогресс
+    - status: 0%
+    - slider "Прогресс, процентов": "0"
+    - generic: Оценки
+    - generic: Hard —
+    - generic: Soft —
+    - generic: Оценка и прогноз
+    - generic: Общая оценка трудозатрат, ч/д
+    - spinbutton "Общая оценка трудозатрат"
+    - generic: Вес оценки, %
+    - spinbutton "Вес оценки"
+    - generic: Прогноз выполнения, %
+    - spinbutton "Прогноз выполнения"
+    - generic: Команда
+    - generic: Исполнитель
+    - generic: "?"
+    - button "Исполнитель":
+      - generic: Не выбрано
+      - generic: ⌄
+    - generic: Ответственная команда
+    - button "Ответственная команда":
+      - generic: Проектный офис
+      - generic: ⌄
+    - generic: Другие вовлечённые команды · 0
+    - button "AI":
+      - text: AI
+    - button "Core":
+      - text: Core
+    - button "Delivery":
+      - text: Delivery
+    - button "IB":
+      - text: IB
+    - button "Methodology":
+      - text: Methodology
+    - button "Post-Trade (Finance)":
+      - text: Post-Trade (Finance)
+    - button "Post-Trade (Products & Service)":
+      - text: Post-Trade (Products & Service)
+    - button "Pre-Trade":
+      - text: Pre-Trade
+    - button "ИТ ЛТ":
+      - text: ИТ ЛТ
+    - button "Проектный офис":
+      - text: Проектный офис
+    - generic: Заказчик
+    - generic: Бизнес-заказчик
+    - generic: "?"
+    - button "Бизнес-заказчик":
+      - generic: Не выбрано
+      - generic: ⌄
+    - generic: Подразделение
+    - combobox:
+      - option "Не выбрано" [selected]
+      - option "IB"
+      - option "L2P"
+      - option "M&A"
+      - option "РЕГ. ДИРЕКТОРЫ"
+      - option "РИСКИ"
+      - option "УРК"
+      - option "УСИ"
+      - option "ФИНАНСЫ"
+      - option "ЦИ"
+      - option "ЦР"
+      - option "ЦУП"
+    - generic: Клиент ДИД
+    - combobox:
+      - option "Не выбрано" [selected]
+    - generic: Канал поступления
+    - combobox "Канал поступления":
+      - option "Не выбрано" [selected]
+      - option "Почта"
+      - option "СберЧат"
+      - option "Встреча/Звонок"
+      - option "Бизнес-план"
+    - generic: Дата получения
+    - textbox "Дата получения": 2026-10-14
+    - generic: Классификация
+    - generic: Проект
+    - button "Проект":
+      - generic: Не выбрано
+      - generic: ⌄
+    - generic: Тип задачи
+    - combobox "Тип задачи":
+      - option "Не выбрано" [selected]
+      - option "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ"
+      - option "AD-HOC"
+      - option "ТЕХДОЛГ"
+      - option "ИССЛЕДОВАНИЕ"
+      - option "МЕТРИЧЕСКИЕ KR"
+    - generic: Метрический KR
+    - generic: "План: — · Факт: —"
+    - generic: Метки
+    - heading "Ключевые показатели" [level=3]:
+      - text: Ключевые показатели
+    - generic: План (ЭО)
+    - text: Оценка трудозатрат
+    - generic "Только чтение":
+    - generic: — ч/д
+    - text: Стоимость по ЭО
+    - generic "Только чтение":
+    - generic: —
+    - text: C/V по ЭО
+    - generic "Только чтение":
+    - generic: —
+    - generic: Факт (ФТЗ)
+    - text: Фактические трудозатраты
+    - generic "Только чтение":
+    - generic: — ч/д
+    - text: Стоимость по ФТЗ
+    - generic "Только чтение":
+    - generic: —
+    - text: C/V по ФТЗ
+    - generic "Только чтение":
+    - generic: —
+    - generic: Priority Score
+    - generic "Автоматически":
+    - button "AI-расчет":
+      - generic: AI-расчет
+    - generic: —
+    - generic: / 100
+    - generic "› Обоснование агента"
+    - generic: Финансовый эффект
+    - button "AI-расчет":
+      - generic: AI-расчет
+    - spinbutton
+    - generic: млн ₽
+    - generic: Обоснование расчёта
+    - textbox "Обоснование фин. эффекта"
+    - 'generic "Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ) › Развернуть"':
+      - text: "Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)"
+      - generic: › Развернуть
+  - strong: Редактирование карточки
+  - status: Изменений пока нет
+  - button "Выйти из редактирования":
+    - generic: Выйти из редактирования
+  - button "Сохранить" [disabled]:
+    - generic: Сохранить
+- generic: Режим редактирования включён

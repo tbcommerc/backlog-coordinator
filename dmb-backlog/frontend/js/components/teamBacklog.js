@@ -1,17 +1,24 @@
-console.log('[DMB] teamBacklog.js v20260907.1 loaded');
-import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, getToolbarSearchValue, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope } from './filterToolbar.js?v=98';
-import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=92';
+import { badge as uiBadge } from '../ui/primitives.js';
+import { taskStatusTone, taskPriorityTone } from '../taskDisplay.js';
+import { tag as uiTag } from '../ui/dataDisplay.js';
+import { formatCreatedDate, supplementalTaskValue } from '../taskDisplay.js';
+import { taskCsv, downloadCsv } from '../taskCsv.js';
+console.log('[DMB] teamBacklog.js v20260910.2 loaded');
+import { hasWritePermission, renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftFilteredList, getToolbarSearchValue, resetToolbarFilters, updateStickyOffsets, initStickyTableHeader, setToolbarSortValue, isDeadlinePast, canEditTaskForScope, updateToolbarTasks, taskCountLabel } from './filterToolbar.js?v=108';
+import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=118';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=83';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons } from './quickFilters.js?v=80';
-import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState } from './tableUtils.js?v=51';
+import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=92';
+import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons, updateQuickFilterCounts } from './quickFilters.js?v=89';
+import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState, visibleTaskColumns, scrollTableToStart } from './tableUtils.js?v=52';
 import { safeExternalUrl } from '../urlUtils.js';
-import { bindViewStateAction, fitTableViewState, renderViewState } from './viewState.js?v=2';
+import { bindViewStateAction, fitTableViewState, renderViewState } from './viewState.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
 import { highlightSearchText } from '../htmlUtils.js';
 import { getSelectedItems, reconcileSelection, setAllSelection } from './tableSelection.js';
 import { calculateTaskCv, cvZone } from '../taskMetrics.js';
-import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=11';
+import { pageHeader } from '../ui/primitives.js';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=21';
+import { canUseQuarterlyGoalsUpdate, quarterlyGoalsUpdateHref } from './quarterlyGoalsUpdate.js?v=11';
 
 function renderExternalTeamLink(value, label) {
   const url = safeExternalUrl(value);
@@ -50,10 +57,7 @@ export function renderTeamBacklog(app) {
     const user = app.store.get('currentUser');
     if (!user?.team_id) {
       return `
-        <div style="margin-bottom:var(--space-6);">
-          <h1 style="margin:0 0 var(--space-2);">Бэклог команды</h1>
-          <p class="text-secondary" style="margin:0;">Задачи и планирование вашей команды</p>
-        </div>
+        ${pageHeader({ title: 'Бэклог команды', description: 'Задачи и планирование вашей команды' })}
         <div id="team-tasks-container">
           ${renderViewState({
             kind: 'empty',
@@ -80,7 +84,7 @@ export function renderTeamBacklog(app) {
       bulkOpsTitle: 'Операции',
       bulkOpsMenu: true,
       savedViews: true,
-      quickFilters: renderQuickFilters(),
+      quickFilters: renderQuickFilters('team'),
     })}
 
     <div id="team-backlog-content">
@@ -96,8 +100,8 @@ export function renderTeamBacklog(app) {
       </div>
     </div>
 
-    <div class="flex justify-between items-center" style="margin-top: var(--space-6);">
-        <span class="text-secondary" id="team-tasks-count" role="status" aria-live="polite">Загрузка…</span>
+    <div class="ui-page-footer">
+        <span class="text-secondary" id="team-tasks-count" role="status" aria-live="polite"></span>
         <div class="flex gap-2" id="team-pagination"></div>
     </div>
     `;
@@ -170,7 +174,10 @@ export async function initTeamBacklog(app) {
     columnOrder: teamColumnOrder,
     columnLabels: COLUMN_LABELS,
     defaultColumnSettings: buildColumnSettings({}, TEAM_DEFAULT_OVERRIDES),
-    onViewChange: (view) => { teamCurrentView = view; renderTeamCurrentView(); },
+    onViewChange: async (view) => {
+      if (view !== teamCurrentView && isQuickEdit('team') && !(await requestExitQuickEdit('team'))) return false;
+      teamCurrentView = view; renderTeamCurrentView(); return true;
+    },
     onColumnChange: () => { saveTeamColumnState(); renderTeamCurrentView(); },
     onColumnOrderChange: () => { saveTeamColumnState(); renderTeamCurrentView(); },
     onExport: () => { const list = getTeamFilteredList(); teamExportExcel(list); },
@@ -180,6 +187,7 @@ export async function initTeamBacklog(app) {
     onQuickEdit: () => { if (teamCurrentView === 'table') { if (isQuickEdit('team')) { requestExitQuickEdit('team'); } else { enterQuickEdit('team'); } } },
     onBulkOps: () => { if (teamCurrentView === 'table') openTeamOperationsMenu(app); },
     showSavedViewRevert: false,
+    beforeApplySavedView: () => !isQuickEdit('team') || requestExitQuickEdit('team'),
     getSavedViewState: () => ({
       view: teamCurrentView,
       columns: { ...teamColumnSettings },
@@ -234,7 +242,7 @@ export async function initTeamBacklog(app) {
       getWidths: () => teamColumnWidths,
       getMinWidths: () => teamColumnMinWidths,
       getLayout: () => {
-        const cols = teamColumnOrder.filter(k => teamColumnSettings[k]);
+        const cols = visibleTaskColumns(teamColumnOrder, teamColumnSettings);
         return { cols, offset: (!isQuickEdit('team') && colHasCheckbox(cols)) ? 1 : 0 };
       },
       getFixed: () => teamColumnFixed,
@@ -292,7 +300,7 @@ async function loadTeamTasks(app) {
     if (!teamTasksCache || existingContainer?.querySelector('.view-state-error')) {
         renderTeamTableState({ kind: 'loading', title: 'Загружаем задачи команды…' });
         const countEl = document.getElementById('team-tasks-count');
-        if (countEl) countEl.textContent = 'Загрузка…';
+        if (countEl) countEl.textContent = '';
     }
     try {
         const user = app.store.get('currentUser');
@@ -301,8 +309,6 @@ async function loadTeamTasks(app) {
         const data = await loadAllTeamTaskPages(app, teamId);
         teamTasksCache = data;
         renderTeamCurrentView();
-        const countEl = document.getElementById('team-tasks-count');
-        if (countEl) countEl.textContent = `Найдено: ${data.items.length} задач`;
     
     } catch (e) {
         const container = document.getElementById('team-tasks-container');
@@ -350,10 +356,12 @@ function getTeamFilteredList() {
 }
 
 function renderTeamCurrentView() {
+    updateQuickFilterCounts('team', teamTasksCache?.items || []);
     const list = getTeamFilteredList();
+    updateToolbarTasks('team', teamTasksCache?.items || [], list);
     reconcileSelection(teamSelectedTaskIds, list, task => canEditTaskForScope('team', task));
     const countEl = document.getElementById('team-tasks-count');
-    if (countEl) countEl.textContent = `Найдено: ${list.length} задач`;
+    if (countEl) countEl.textContent = taskCountLabel(list.length);
     const totalPages = Math.max(1, Math.ceil(list.length / TEAM_PAGE_SIZE));
     if (teamPaginationPage > totalPages) teamPaginationPage = totalPages;
     const pageList = list.slice((teamPaginationPage - 1) * TEAM_PAGE_SIZE, teamPaginationPage * TEAM_PAGE_SIZE);
@@ -362,6 +370,7 @@ function renderTeamCurrentView() {
     } else {
         renderTeamTableView(pageList);
     }
+    window.lucide?.createIcons();
     renderTeamPagination(totalPages);
 }
 
@@ -385,6 +394,7 @@ function renderTeamPagination(totalPages) {
         btn.addEventListener('click', () => {
             teamPaginationPage = parseInt(btn.dataset.page);
             renderTeamCurrentView();
+      scrollTableToStart('team-tasks-container');
         });
     });
 }
@@ -393,7 +403,7 @@ function renderTeamTableView(list) {
     const container = document.getElementById('team-tasks-container');
     if (!container) return;
 
-    const visibleCols = teamColumnOrder.filter(k => teamColumnSettings[k]);
+    const visibleCols = visibleTaskColumns(teamColumnOrder, teamColumnSettings);
     const showCheckbox = !isQuickEdit('team') && colHasCheckbox(visibleCols) && list.some(task => canEditTaskForScope('team', task));
     const hasWidths = visibleCols.every(c => teamColumnWidths[c]);
 
@@ -411,7 +421,7 @@ function renderTeamTableView(list) {
 
     container.innerHTML = `
         <div class="table-container" style="overflow-x:auto;">
-            <table class="table" id="team-tasks-table" style="${tableStyle}">
+            <table class="ui-table ui-table-data table" id="team-tasks-table" style="${tableStyle}">
                 <colgroup>${checkboxCol}${colgroupHtml}</colgroup>
                 <thead>
                     <tr>
@@ -421,14 +431,14 @@ function renderTeamTableView(list) {
                 </thead>
                 <tbody id="team-tasks-tbody">
                     ${list.length === 0
-                        ? '<tr><td class="table-view-state-cell" colspan="' + (visibleCols.length + (showCheckbox ? 1 : 0)) + '">' + renderViewState({ kind: 'empty', title: 'Задачи команды не найдены', message: 'Измените фильтры или создайте новую задачу.' }) + '</td></tr>'
+                        ? '<tr><td class="table-view-state-cell" colspan="' + (visibleCols.length + (showCheckbox ? 1 : 0)) + '">' + renderViewState({ kind: 'empty', title: 'Задачи команды не найдены', message: hasWritePermission('team') ? 'Измените фильтры или создайте новую задачу.' : 'Измените фильтры. Создание задач для вашей роли недоступно.' }) + '</td></tr>'
                         : list.map(task => renderTeamTableRow(task, visibleCols, showCheckbox)).join('')}
                 </tbody>
             </table>
         </div>
     `;
 
-    if (!isQuickEdit('team')) {
+    {
         const table = document.getElementById('team-tasks-table');
         const offset = showCheckbox ? 1 : 0;
         if (!hasWidths) {
@@ -447,7 +457,7 @@ function renderTeamTableView(list) {
         if (!isQuickEdit('team')) {
             document.querySelectorAll('#team-tasks-tbody tr').forEach(tr => {
                 tr.addEventListener('click', (e) => {
-                    if (e.target.closest('.task-checkbox, input')) return;
+                    if (e.target.closest('.task-checkbox, input, a, button')) return;
                     const t = list.find(x => x.id == tr.dataset.taskId);
                     if (t) openTaskModal(t);
                 });
@@ -504,10 +514,12 @@ function renderTeamCell(col, task) {
     return renderQuickEditCell('team', col, task);
   }
 
+  const supplemental = supplementalTaskValue(col, task);
+  if (supplemental !== undefined) return `<span class="cell-truncate">${escapeHtml(supplemental)}</span>`;
     const highlight = value => highlightSearchText(value, getToolbarSearchValue('team'));
     switch (col) {
-        case 'id': return `<span class="font-mono text-muted">${highlight(formatTaskPublicId(task))}</span>`;
-        case 'title': return `<strong class="cell-truncate">${highlight(task.title)}</strong>`;
+        case 'id': return `<span class="task-id-cell"><span class="font-mono" title="${escapeHtml(formatTaskPublicId(task))}">${highlight(formatTaskPublicId(task))}</span><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn" data-copy-task-id="${escapeHtml(formatTaskPublicId(task))}" aria-label="Копировать ${escapeHtml(formatTaskPublicId(task))}" title="Копировать ID">⧉</button></span>`;
+        case 'title': return `<a class="cell-truncate" href="#/team-backlog?task=${task.id}" aria-label="Открыть задачу: ${escapeHtml(task.title)}" style="color:inherit;font-weight:600">${highlight(task.title)}</a>`;
         case 'description': return `<span class="cell-truncate">${highlight(task.description || '—')}</span>`;
         case 'date_received': return `<span>${escapeHtml(task.date_received || '—')}</span>`;
         case 'status': return `<span>${renderStatus(task.status_name || task.status)}</span>`;
@@ -562,7 +574,7 @@ function renderTeamCell(col, task) {
         case 'link_jira': return `<span>${renderLinkJiraList(task.link_jira)}</span>`;
         case 'rejection_reason': return `<span class="cell-truncate">${escapeHtml(task.rejection_reason || '—')}</span>`;
         case 'comment': return `<span class="cell-truncate">${escapeHtml(task.comment || '—')}</span>`;
-        case 'created_at': return `<span>${escapeHtml(task.created_at || '—')}</span>`;
+        case 'created_at': return `<span>${escapeHtml(formatCreatedDate(task.created_at))}</span>`;
         case 'updated_at': return `<span>${escapeHtml(task.updated_at || '—')}</span>`;
         case 'tags': return renderTeamTags(task.tags);
         default: return '';
@@ -587,7 +599,7 @@ function renderTeamTableRow(task, cols, showCheckbox) {
     const checkboxHtml = showCheckbox ? `<td class="table-selection-cell">${canEditTaskForScope('team', task) ? `<input type="checkbox" class="task-checkbox" value="${task.id}" aria-label="Выбрать задачу ${task.id}" ${teamSelectedTaskIds.has(Number(task.id)) ? 'checked' : ''}>` : '<span title="Нет прав на изменение этой задачи" style="color:var(--text-muted);">—</span>'}</td>` : '';
     const errorCells = saveError && cells.length > 0
         ? cells.map((cell, index) => index === 0
-            ? cell.replace('>', ` title="${escapeHtml(saveError)}">⚠ `).replace('</td>', `<div style="margin-top:4px;color:var(--danger);font-size:11px;white-space:normal;">${escapeHtml(saveError)}</div></td>`)
+            ? cell.replace('>', ` title="${escapeHtml(saveError)}">⚠ `).replace('</td>', `<div style="margin-top:4px;color:var(--danger);font-size:var(--type-meta-size);line-height:var(--type-meta-line);white-space:normal;">${escapeHtml(saveError)}</div></td>`)
             : cell)
         : cells;
     return `<tr data-task-id="${task.id}" style="${rowStyle}" ${saveError ? `aria-label="Ошибка сохранения: ${escapeHtml(saveError)}"` : ''}>
@@ -602,12 +614,13 @@ function renderTeamCards(list) {
     container.innerHTML = `
         <div class="task-card-grid">
             ${list.length === 0
-                ? renderViewState({ kind: 'empty', title: 'Задачи команды не найдены', message: 'Измените фильтры или создайте новую задачу.' })
+                ? renderViewState({ kind: 'empty', title: 'Задачи команды не найдены', message: hasWritePermission('team') ? 'Измените фильтры или создайте новую задачу.' : 'Измените фильтры. Создание задач для вашей роли недоступно.' })
                 : list.map(task => renderTaskCard(task, getToolbarSearchValue('team'))).join('')}
         </div>
     `;
     container.querySelectorAll('.task-card').forEach(card => {
-        card.addEventListener('click', () => {
+        card.addEventListener('click', (event) => {
+            if (event.target.closest('a, button') && !event.target.closest('[data-open-task]')) return;
             const t = list.find(x => x.id == card.dataset.id);
             if (t) openTaskModal(t);
         });
@@ -708,11 +721,11 @@ function updateBulkBar() {
 }
 
 function renderTeamTableStateMarkup(state) {
-    const visibleCols = teamColumnOrder.filter(key => teamColumnSettings[key]);
+    const visibleCols = visibleTaskColumns(teamColumnOrder, teamColumnSettings);
     const colspan = Math.max(1, visibleCols.length);
     return `
         <div class="table-container" style="overflow-x:auto;">
-            <table class="table" id="team-tasks-table" aria-busy="${state.kind === 'loading'}">
+            <table class="ui-table ui-table-data table" id="team-tasks-table" aria-busy="${state.kind === 'loading'}">
                 <thead>
                     <tr>${visibleCols.map(col => headerCellHtml(getTeamColumnLabel(col), col, teamSort.key, teamSort.dir)).join('')}</tr>
                 </thead>
@@ -767,10 +780,14 @@ function openTeamOperationsMenu(app) {
     }
 
     const selectedCount = getTeamSelectedTasks().length;
-    const bulkHint = selectedCount > 0
+    const canBulkEdit = getTeamFilteredList().some(task => canEditTaskForScope('team', task));
+    const bulkHint = !canBulkEdit
+        ? (getTeamFilteredList().length ? 'Нет прав на изменение задач в этой выборке.' : 'В текущей выборке нет задач для изменения.')
+        : selectedCount > 0
         ? `Изменить выбранные задачи: ${selectedCount}`
         : 'Выбрать задачи и поля для изменения';
     const canOpenReporting = canUseReportingStatusWorkspace(app);
+    const canOpenQuarterlyGoals = canUseQuarterlyGoalsUpdate(app);
     const isAdmin = app.store.get('currentUser')?.permissions?.admin === 'full';
     const menu = document.createElement('div');
     menu.id = 'team-operations-menu';
@@ -789,16 +806,20 @@ function openTeamOperationsMenu(app) {
         'gap:6px',
     ].join(';');
     menu.innerHTML = `
-      <button type="button" role="menuitem" data-team-operation="bulk" style="display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;width:100%;padding:10px;border:0;border-radius:9px;background:transparent;color:var(--text-primary);text-align:left;cursor:pointer;font:inherit;">
+      <button class="btn btn-secondary btn-sm ui-btn" type="button" role="menuitem" data-team-operation="bulk" ${canBulkEdit ? '' : 'disabled aria-disabled="true"'} style="display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;width:100%;text-align:left">
         <span aria-hidden="true" style="width:34px;height:34px;border-radius:9px;background:var(--accent-light);color:var(--accent);display:grid;place-items:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m16 3 5 5"/><path d="M14 10 21 3"/><path d="M8 12h3"/><path d="M8 16h8"/></svg></span>
-        <span style="min-width:0;"><strong style="display:block;font-size:13px;line-height:1.35;">Конструктор массовых изменений</strong><small style="display:block;margin-top:2px;color:var(--text-secondary);font-size:11px;line-height:1.35;">${bulkHint}</small></span>
+        <span style="min-width:0;"><strong style="display:block;font-size:13px;line-height:1.35;">Конструктор массовых изменений</strong><small style="display:block;margin-top:2px;color:var(--text-secondary);font-size:var(--type-meta-size);line-height:var(--type-meta-line);">${bulkHint}</small></span>
       </button>
       ${canOpenReporting ? `
-      <button type="button" role="menuitem" data-team-operation="reporting" style="display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;width:100%;padding:10px;border:0;border-radius:9px;background:transparent;color:var(--text-primary);text-align:left;cursor:pointer;font:inherit;">
+      <button class="btn btn-secondary btn-sm ui-btn" type="button" role="menuitem" data-team-operation="reporting" style="display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;width:100%;text-align:left">
         <span aria-hidden="true" style="width:34px;height:34px;border-radius:9px;background:var(--success-light);color:var(--success);display:grid;place-items:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span>
-        <span style="min-width:0;"><strong style="display:block;font-size:13px;line-height:1.35;">Статусы к отчётным встречам</strong><small style="display:block;margin-top:2px;color:var(--text-secondary);font-size:11px;line-height:1.35;">${isAdmin ? 'Заполнить статусы всех команд' : 'Заполнить статусы задач своей команды'}</small></span>
+        <span style="min-width:0;"><strong style="display:block;font-size:13px;line-height:1.35;">Статусы к отчётным встречам</strong><small style="display:block;margin-top:2px;color:var(--text-secondary);font-size:var(--type-meta-size);line-height:var(--type-meta-line);">${isAdmin ? 'Заполнить статусы всех команд' : 'Заполнить статусы задач своей команды'}</small></span>
       </button>` : ''}`;
+    if (canOpenQuarterlyGoals) {
+        menu.insertAdjacentHTML('beforeend', `<button class="btn btn-secondary btn-sm ui-btn" type="button" role="menuitem" data-team-operation="quarterly-goals" style="display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;width:100%;text-align:left"><span aria-hidden="true" style="width:34px;height:34px;border-radius:9px;background:var(--warning-light);color:var(--warning);display:grid;place-items:center;"><i data-lucide="gauge"></i></span><span><strong style="display:block;font-size:13px;">Обновить прогресс и статусы</strong><small style="display:block;margin-top:2px;color:var(--text-secondary);font-size:var(--type-meta-size);line-height:var(--type-meta-line);">Указать факт выполнения и отложенный старт</small></span></button>`);
+    }
     document.body.appendChild(menu);
+    window.lucide?.createIcons();
     trigger.setAttribute('aria-expanded', 'true');
 
     const positionMenu = () => {
@@ -833,7 +854,7 @@ function openTeamOperationsMenu(app) {
             return;
         }
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            const items = [...menu.querySelectorAll('[role="menuitem"]')];
+            const items = [...menu.querySelectorAll('[role="menuitem"]:not(:disabled)')];
             const current = items.indexOf(document.activeElement);
             if (current >= 0) {
                 event.preventDefault();
@@ -862,13 +883,17 @@ function openTeamOperationsMenu(app) {
         closeTeamOperationsMenu();
         window.location.hash = reportingStatusHref({ source: 'team-backlog' });
     });
+    menu.querySelector('[data-team-operation="quarterly-goals"]')?.addEventListener('click', () => {
+        closeTeamOperationsMenu();
+        window.location.hash = quarterlyGoalsUpdateHref({ source: 'team-backlog' });
+    });
     document.addEventListener('click', onDocumentClick, true);
     document.addEventListener('keydown', onKeydown);
     window.addEventListener('resize', onViewportChange);
     window.addEventListener('scroll', onViewportChange, true);
     window.addEventListener('hashchange', onViewportChange);
     positionMenu();
-    menu.querySelector('[role="menuitem"]')?.focus();
+    menu.querySelector('[role="menuitem"]:not(:disabled)')?.focus();
 }
 
 function metricFormat(val) {
@@ -888,8 +913,7 @@ function renderTeamTags(tags) {
   }
   return list.filter(t => t.name).map(t => {
     const color = /^#[0-9a-f]{6}$/i.test(t.color || '') ? t.color : '';
-    const style = color ? `background:${color}22;color:${color};border:1px solid ${color}55;` : '';
-    return `<span class="badge" style="font-size:10px;${style}">${escapeHtml(t.name)}</span>`;
+    return uiTag({ label: t.name, color });
   }).join(' ');
 }
 
@@ -915,33 +939,17 @@ function renderCV(task) {
 function renderTeamDeadline(task) {
     const dl = task.deadline_name || task.deadline || '—';
     const overdue = dl !== '—' && task.deadline_id != null && !TERMINAL_STATUSES.includes(task.status_name) && isDeadlinePast(dl);
-    return overdue ? `<span style="color:#ef4444;font-weight:600;">${escapeHtml(dl)}</span>` : `<span>${escapeHtml(dl)}</span>`;
+    return overdue ? `<span style="color:var(--danger-text);font-weight:600;">${escapeHtml(dl)}</span>` : `<span>${escapeHtml(dl)}</span>`;
 }
 
 function renderPriority(priority) {
-    const map = { 'ВЫСОКИЙ': 'high', 'СРЕДНИЙ': 'medium', 'НИЗКИЙ': 'low' };
-    const cls = map[priority] || 'medium';
-    return `<span class="badge badge-${cls}">${escapeHtml(priority || 'СРЕДНИЙ')}</span>`;
+  if (!priority?.trim()) return '<span class="text-muted">—</span>';
+  return uiBadge({ label: priority, tone: taskPriorityTone(priority) });
 }
 
 function renderStatus(status) {
-    const statusClass = status ? status.replace(/\s+/g, '_') : 'backlog';
-    const colors = {
-        'НОВАЯ_ЗАДАЧА': 'badge-status-backlog',
-        'НАЗНАЧЕНА_КОМАНДА': 'badge-status-backlog',
-        'СБОР_ТРЕБОВАНИЙ': 'badge-status-backlog',
-        'ПРОВЕРКА_ТРЕБОВАНИЙ': 'badge-status-backlog',
-        'УТОЧНЕНИЕ_ТРЕБОВАНИЙ': 'badge-status-backlog',
-        'ЭКСПРЕСС-ОЦЕНКА': 'badge-status-backlog',
-        'ПРИНЯТИЕ_РЕШЕНИЯ': 'badge-status-review',
-        'ПРИНЯТА_В_РАБОТУ': 'badge-status-in_progress',
-        'ЭСКАЛАЦИЯ_НА_ЛТ': 'badge-status-on_hold',
-        'ХОЛД': 'badge-status-on_hold',
-        'ОТКЛОНЕНА': 'badge-danger',
-        'НЕ_АКТУАЛЬНА': 'badge-low',
-        'ВЫПОЛНЕНА': 'badge-status-done'
-    };
-    return `<span class="badge ${colors[statusClass] || 'badge-status-backlog'}">${escapeHtml(status || 'СБОР ТРЕБОВАНИЙ')}</span>`;
+  if (!status?.trim()) return '<span class="text-muted">—</span>';
+  return uiBadge({ label: status, tone: taskStatusTone(status) });
 }
 
 function renderProgress(progress) {
@@ -959,39 +967,9 @@ function renderProgress(progress) {
 }
 
 function teamExportExcel(list) {
-    if (!list || !list.length) return;
-    const visibleCols = Object.keys(teamColumnSettings).filter(k => teamColumnSettings[k]);
-    const fields = visibleCols;
-    const labels = visibleCols.map(k => COLUMN_LABELS[k] || k);
-    let csv = '\uFEFF';
-    csv += labels.join(';') + '\n';
-    list.forEach(t => {
-        const row = fields.map(f => {
-            let val = t[f] ?? '';
-            if (f === 'cv') {
-                const cv = calculateTaskCv(t);
-                val = cv == null ? 'Нет данных' : cv.toFixed(2);
-            } else if (f === 'involved_teams') {
-                val = (t.involved_team_names || t.involved_teams || []).join(', ');
-            } else if (f === 'link_jira') {
-                val = excelValue(t.link_jira);
-            } else if (f === 'created_by') {
-                val = t.created_by_name || '';
-            } else if (f === 'owner') {
-                val = t.owner_name || t.owner || '';
-            } else if (typeof val === 'object') {
-                val = excelValue(val);
-            }
-            if (typeof val === 'string' && (val.includes(';') || val.includes('"') || val.includes('\n'))) val = '"' + val.replace(/"/g, '""') + '"';
-            return val;
-        });
-        csv += row.join(';') + '\n';
-    });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `team_backlog_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
+  if (!list?.length) return;
+  const columns = visibleTaskColumns(teamColumnOrder, teamColumnSettings);
+  downloadCsv(taskCsv(list, columns, COLUMN_LABELS), `team_backlog_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
 function renderInvolvedTeams(teams) {

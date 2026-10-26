@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { renderAuditLog } from '../js/components/auditLog.js';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const audit = read('js/components/auditLog.js');
@@ -12,7 +13,7 @@ assert.match(audit, /По заданным условиям ничего не н
 assert.match(audit, /data-view-state-action/, 'the error state must expose retry');
 assert.match(audit, /data-remove-filter/, 'applied filters must be individually removable');
 assert.match(audit, /data-toggle-audit-filters/, 'mobile users must be able to collapse the filter form');
-assert.match(audit, /id="audit-per-page"/, 'table footer must expose page-size selection');
+assert.match(renderAuditLog(), /id="audit-per-page"/, 'table footer must expose page-size selection');
 assert.match(audit, /data-copy-request/, 'request ids must be copyable');
 assert.match(audit, /Дата начала не может быть позже даты окончания/, 'invalid date ranges must be rejected before loading');
 assert.match(audit, /class="audit-page-table-wrap table-container"/, 'audit table must use the shared scroll container');

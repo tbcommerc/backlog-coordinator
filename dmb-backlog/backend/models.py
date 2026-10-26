@@ -2,13 +2,147 @@
 DMB Backlog - SQLAlchemy Models (normalized)
 """
 from sqlalchemy import (
-    Column, Integer, String, Text, Boolean, DateTime, Date,
-    ForeignKey, Enum, DECIMAL, JSON, Float, UniqueConstraint, Index, event, inspect
+    Column, Integer, BigInteger, String, Text, Boolean, DateTime, Date,
+    ForeignKey, Enum, DECIMAL, JSON, Float, UniqueConstraint, CheckConstraint, Index, event, inspect, text
 )
 from sqlalchemy.orm import relationship, attributes
 from sqlalchemy.sql import func
 from database import Base
 import enum
+
+
+class WorkTask(Base):
+    __tablename__ = "work_tasks"
+    __table_args__ = (
+        CheckConstraint("major_task_id IS NULL OR direct_project_id IS NULL", name="ck_work_context"),
+        CheckConstraint("work_direction IN ('product','organizational')", name="ck_work_direction"),
+        CheckConstraint("status IN ('new','ready','in_progress','in_acceptance','done','cancelled')", name="ck_work_status"),
+        CheckConstraint("assignment_state IN ('proposed','accepted','declined')", name="ck_work_assignment"),
+        CheckConstraint("version > 0", name="ck_work_version"),
+        CheckConstraint("priority IN ('low','normal','high','urgent')", name="ck_work_priority"),
+    )
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False, default="")
+    priority = Column(String(10), nullable=False, default="normal", server_default="normal", index=True)
+    checklist = Column(JSON, nullable=False, default=list, server_default=text("'[]'"))
+    work_direction = Column(String(20), nullable=False)
+    major_task_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"), index=True)
+    direct_project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"), index=True)
+    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    requester_team_id = Column(Integer, ForeignKey("teams.id"))
+    execution_team_id = Column(Integer, ForeignKey("teams.id"), nullable=False, index=True)
+    assignee_id = Column(Integer, ForeignKey("users.id"), index=True)
+    acceptor_id = Column(Integer, ForeignKey("users.id"), index=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    due_date = Column(Date, index=True)
+    status = Column(String(20), nullable=False, default="new", index=True)
+    assignment_state = Column(String(16), nullable=False, default="accepted")
+    acceptance_required = Column(Boolean, nullable=False, default=False)
+    blocked_reason = Column(Text)
+    result_text = Column(Text, nullable=False, default="")
+    result_revision = Column(Integer, nullable=False, default=1, server_default=text("1"))
+    return_reason = Column(Text)
+    completed_at = Column(DateTime(timezone=True))
+    version = Column(Integer, nullable=False, default=1)
+    is_deleted = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    @property
+    def public_id(self):
+        return f"WRK-{self.id}"
+
+
+class WorkTaskTemplate(Base):
+    """Personal work content, not reference data or a team setting."""
+    __tablename__ = "work_task_templates"
+    __table_args__ = (CheckConstraint("version > 0", name="ck_work_template_version"),)
+    id = Column(Integer, primary_key=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    content = Column(JSON, nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+    is_deleted = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class WorkHistory(Base):
+    __tablename__ = "work_history"
+    id = Column(Integer, primary_key=True)
+    work_task_id = Column(Integer, ForeignKey("work_tasks.id"), nullable=False, index=True)
+    actor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    action = Column(String(40), nullable=False)
+    version = Column(Integer, nullable=False)
+    before = Column(JSON, nullable=False, default=dict)
+    after = Column(JSON, nullable=False, default=dict)
+    reason = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class WorkComment(Base):
+    __tablename__ = "work_comments"
+    id = Column(Integer, primary_key=True)
+    work_task_id = Column(Integer, ForeignKey("work_tasks.id"), nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class WorkAttachment(Base):
+    __tablename__ = "work_attachments"
+    id = Column(Integer, primary_key=True)
+    work_task_id = Column(Integer, ForeignKey("work_tasks.id"), nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    storage_key = Column(String(64), nullable=False, unique=True)
+    size = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class MeetingCapture(Base):
+    __tablename__ = "meeting_captures"
+    id = Column(String(36), primary_key=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    meeting_date = Column(Date, nullable=True)
+    transcript = Column(Text, nullable=False, default="")
+    items = Column(JSON, nullable=False, default=list)
+    version = Column(Integer, nullable=False, default=1)
+    status = Column(String(16), nullable=False, default="draft")
+    analysis_status = Column(String(16), nullable=False, default="idle", server_default="idle", index=True)
+    analysis_run_id = Column(String(36), nullable=True)
+    analysis_requested_at = Column(DateTime(timezone=True), nullable=True)
+    analysis_started_at = Column(DateTime(timezone=True), nullable=True)
+    analysis_finished_at = Column(DateTime(timezone=True), nullable=True)
+    analysis_error_code = Column(String(32), nullable=True)
+    analysis_status = Column(String(16), nullable=False, default="idle", server_default="idle", index=True)
+    analysis_run_id = Column(String(36), nullable=True)
+    analysis_requested_at = Column(DateTime(timezone=True), nullable=True)
+    analysis_started_at = Column(DateTime(timezone=True), nullable=True)
+    analysis_finished_at = Column(DateTime(timezone=True), nullable=True)
+    analysis_error_code = Column(String(32), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class MeetingAction(Base):
+    __tablename__ = "meeting_actions"
+    __table_args__ = (UniqueConstraint("capture_id", "item_id", name="uq_meeting_action_item"),)
+    id = Column(Integer, primary_key=True)
+    capture_id = Column(String(36), ForeignKey("meeting_captures.id"), nullable=False, index=True)
+    item_id = Column(String(64), nullable=False)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True, index=True)
+    kind = Column(String(16), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    owner_text = Column(String(255), nullable=False)
+    due_date = Column(Date, nullable=True)
+    due_text = Column(String(255), nullable=False)
+    quote = Column(Text, nullable=False)
+    origin = Column(String(16), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 TASK_PUBLIC_ID_MAX = 999_999
@@ -157,6 +291,16 @@ class TaskStatus(Base):
     color = Column(String(20), nullable=True)
 
 
+class StartShift(Base):
+    __tablename__ = "start_shifts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(20), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    month_number = Column(Integer, nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0)
+
+
 # ==================== CORE TABLES ====================
 
 class Team(Base):
@@ -221,9 +365,15 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    login = Column(String(50), nullable=True)
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
+    login = Column(String(254), nullable=True)
+    login_normalized = Column(String(254), unique=True, nullable=True)
+    credential_state = Column(String(20), nullable=False, default="invited", server_default="invited")
+    auth_version = Column(BigInteger, nullable=False, default=1, server_default="1")
+    password_changed_at = Column(DateTime(timezone=True))
+    password_normalization_version = Column(Integer, nullable=False, default=1, server_default="1")
+    __table_args__ = (CheckConstraint("credential_state IN ('invited','ready','reset_required')", name="ck_user_credentials"), CheckConstraint("credential_state = 'invited' OR password_hash IS NOT NULL", name="ck_user_password_present"))
+    email = Column(String(255), unique=True, nullable=True, index=True)
+    password_hash = Column(String(255), nullable=True)
     name = Column(String(100), nullable=False)
     position = Column(String(100), nullable=True)
     team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
@@ -253,12 +403,68 @@ class User(Base):
         return self.business_customer.name if self.business_customer else None
 
 
+class LoginReservation(Base):
+    __tablename__ = "login_reservations"
+    login_normalized = Column(String(254), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    retired_at = Column(DateTime(timezone=True))
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+    __table_args__ = (Index("ix_auth_sessions_user_expiry", "user_id", "revoked_at", "absolute_expires_at"),)
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    auth_version = Column(BigInteger, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    last_activity_at = Column(DateTime(timezone=True), nullable=False)
+    absolute_expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), index=True)
+    revoke_reason = Column(String(64))
+    ip_address = Column(String(64))
+    client_label = Column(String(256))
+
+
+class AuthChallenge(Base):
+    __tablename__ = "auth_challenges"
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    issuer_id = Column(Integer, ForeignKey("users.id"))
+    purpose = Column(String(48), nullable=False)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    auth_version = Column(BigInteger, nullable=False)
+    session_id = Column(String(36), ForeignKey("auth_sessions.id"))
+    target_user_id = Column(Integer)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True))
+    revoked_at = Column(DateTime(timezone=True))
+    __table_args__ = (Index("uq_active_password_setup", "user_id", unique=True,
+        postgresql_where=text("purpose IN ('invitation','recovery') AND used_at IS NULL AND revoked_at IS NULL")),)
+
+
+class SecurityEvent(Base):
+    __tablename__ = "security_events"
+    __table_args__ = (Index("ix_security_events_subject_time", "subject_id", "created_at"),)
+    id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    actor_id = Column(Integer, ForeignKey("users.id"))
+    subject_id = Column(Integer, ForeignKey("users.id"), index=True)
+    session_id = Column(String(36))
+    action = Column(String(64), nullable=False)
+    outcome = Column(String(16), nullable=False, default="success")
+    reason = Column(String(256))
+    request_id = Column(String(64))
+    ip_address = Column(String(64))
+
+
 class RefreshSession(Base):
     __tablename__ = "refresh_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     jti = Column(String(36), unique=True, nullable=False, index=True)
+    auth_session_id = Column(String(36), ForeignKey("auth_sessions.id"), index=True)
     family_id = Column(String(36), nullable=False, index=True)
     token_hash = Column(String(64), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
@@ -308,6 +514,7 @@ class Task(Base):
     status_id = Column(Integer, ForeignKey("statuses.id"), nullable=True)
     previous_status_id = Column(Integer, ForeignKey("statuses.id"), nullable=True, comment='Статус до перевода в ЭКСПРЕСС-ОЦЕНКА')
     deadline_id = Column(Integer, ForeignKey("deadlines.id"), nullable=True)
+    start_shift_id = Column(Integer, ForeignKey("start_shifts.id"), nullable=True)
     effort_days = Column(Integer, nullable=True)
     effort_rub = Column(DECIMAL(18, 2), nullable=True, comment='Стоимость по ЭО (руб)')
     effort_designee = Column(Float, nullable=True, comment='Designee (дни)')
@@ -339,6 +546,7 @@ class Task(Base):
     soft_score = Column(String(1), nullable=True, comment='Оценка за взаимодействие (Soft): A, B, C, D, E')
     cv = Column(Float, nullable=True)
     progress = Column(Integer, default=0)
+    progress_updated_at = Column(DateTime(timezone=True), nullable=True)
     link_mockups = Column(String(500), nullable=True)
     link_jira = Column(JSON, nullable=True, comment='Ссылки на Jira (массив ссылок)')
     link_requirements = Column(JSON, nullable=True, comment='Ссылки на бизнес-требования (массив ссылок)')
@@ -384,6 +592,7 @@ class Task(Base):
     priority = relationship("Priority")
     status = relationship("TaskStatus", foreign_keys=[status_id])
     deadline = relationship("Deadline", foreign_keys=[deadline_id])
+    start_shift = relationship("StartShift")
     owner = relationship("User", foreign_keys=[owner_id])
     lock_owner = relationship("User", foreign_keys=[lock_owner_id])
     creator = relationship("User", foreign_keys=[created_by])
@@ -548,6 +757,9 @@ class TaskReportingStatus(Base):
     did_demo = Column(Boolean, nullable=False, default=False)
     is_ready = Column(Boolean, nullable=False, default=False)
     directorate_attention = Column(Boolean, nullable=False, default=False)
+    weekly_payload = Column(JSON, nullable=True, comment="Structured fields for the team weekly report")
+    progress_snapshot = Column(Integer, nullable=True)
+    task_status_snapshot = Column(String(100), nullable=True)
     source = Column(String(30), nullable=False, default="native")
     carried_from_status_id = Column(Integer, ForeignKey("task_reporting_statuses.id"), nullable=True)
     version = Column(Integer, nullable=False, default=0)
@@ -573,6 +785,8 @@ class TaskReportingStatusRevision(Base):
     new_text = Column(Text, nullable=True)
     old_did_demo = Column(Boolean, nullable=True)
     new_did_demo = Column(Boolean, nullable=True)
+    old_weekly_payload = Column(JSON, nullable=True)
+    new_weekly_payload = Column(JSON, nullable=True)
     changed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     changed_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -665,6 +879,9 @@ class IdempotencyRecord(Base):
 
 class Notification(Base):
     __tablename__ = "notifications"
+    __table_args__ = (CheckConstraint("task_id IS NULL OR work_task_id IS NULL", name="ck_notification_work_target"),)
+    work_task_id = Column(Integer, ForeignKey("work_tasks.id"), nullable=True, index=True)
+
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -827,6 +1044,61 @@ class RequirementRequest(Base):
     reviewer = relationship("User", foreign_keys=[reviewer_id])
     assignee = relationship("User", foreign_keys=[assignee_id])
     task = relationship("Task", foreign_keys=[task_id])
+
+
+class RequirementReview(Base):
+    """Immutable V2 document submission with an independent human decision."""
+    __tablename__ = "requirement_reviews"
+    __table_args__ = (
+        UniqueConstraint("active_artifact_id", name="uq_requirement_review_active_artifact"),
+        UniqueConstraint("creator_id", "idempotency_key", name="uq_requirement_review_submission_key"),
+        Index("ix_requirement_reviews_target", "target_type", "target_id"),
+        CheckConstraint("status IN ('submitted', 'returned', 'approved', 'withdrawn')", name="ck_requirement_review_status"),
+        CheckConstraint("artifact_revision > 0 AND version > 0", name="ck_requirement_review_versions"),
+        CheckConstraint("(status = 'submitted' AND active_artifact_id IS NOT NULL AND active_artifact_id = artifact_id) OR (status <> 'submitted' AND active_artifact_id IS NULL)", name="ck_requirement_review_active"),
+        CheckConstraint("(target_type IS NULL AND target_id IS NULL) OR (target_type IS NOT NULL AND target_type IN ('task', 'request') AND target_id IS NOT NULL)", name="ck_requirement_review_target"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    artifact_id = Column(String(128), nullable=False, index=True)
+    active_artifact_id = Column(String(128), nullable=True)
+    artifact_revision = Column(Integer, nullable=False)
+    artifact_fingerprint = Column(String(71), nullable=False)
+    artifact_snapshot = Column(JSON, nullable=False)
+    review_report = Column(JSON, nullable=False, default=dict)
+    title = Column(String(255), nullable=False)
+    session_id = Column(String(128), nullable=False)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True, index=True)
+    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    source_request_author_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    target_type = Column(String(20), nullable=True)
+    target_id = Column(Integer, nullable=True)
+    source_metadata = Column(JSON, nullable=False, default=dict)
+    status = Column(String(20), nullable=False, default="submitted", index=True)
+    comment = Column(Text, nullable=False, default="")
+    events = Column(JSON, nullable=False, default=list)
+    idempotency_key = Column(String(128), nullable=False)
+    submission_hash = Column(String(71), nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    __mapper_args__ = {"version_id_col": version, "version_id_generator": False}
+
+    creator = relationship("User", foreign_keys=[creator_id])
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
+
+
+@event.listens_for(RequirementReview, "before_update")
+def _requirement_review_snapshot_immutable(mapper, connection, target):
+    immutable = (
+        "artifact_id", "artifact_revision", "artifact_fingerprint", "artifact_snapshot", "review_report",
+        "title", "session_id", "creator_id", "team_id", "source_request_author_id",
+        "target_type", "target_id", "source_metadata", "idempotency_key", "submission_hash",
+    )
+    state = inspect(target)
+    if any(state.attrs[name].history.has_changes() for name in immutable):
+        raise ValueError("Requirement review snapshot is immutable; submit a new review")
 
 
 class TaskComment(Base):
@@ -1189,3 +1461,81 @@ def _report_deleted_outbox_event(mapper, connection, target):
             "changed_fields": ["deleted"],
         },
     )
+
+
+class WorkResolution(Base):
+    __tablename__ = "work_resolutions"
+    id = Column(Integer, primary_key=True)
+    request_id = Column(Integer, ForeignKey("requirement_requests.id"), nullable=False, unique=True)
+    review_decision = Column(String(30), nullable=False)
+    decided_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    decided_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    coverage = Column(String(16), nullable=False, default="partial")
+    fulfillment = Column(String(24), nullable=False, default="not_started")
+    result_text = Column(Text, nullable=False, default="")
+    confirmed_work_revisions = Column(JSON, nullable=True)
+
+
+class RequestWorkLink(Base):
+    __tablename__ = "request_work_links"
+    __table_args__ = (
+        CheckConstraint("(major_task_id IS NOT NULL AND work_task_id IS NULL) OR (major_task_id IS NULL AND work_task_id IS NOT NULL) OR NOT is_active", name="ck_request_work_target"),
+        CheckConstraint("coverage IN ('full','partial')", name="ck_request_work_coverage"),
+        UniqueConstraint("request_id", "major_task_id", name="uq_request_major_link"),
+        UniqueConstraint("request_id", "work_task_id", name="uq_request_work_link"),
+    )
+    id = Column(Integer, primary_key=True)
+    request_id = Column(Integer, ForeignKey("requirement_requests.id"), nullable=False, index=True)
+    major_task_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"), index=True)
+    work_task_id = Column(Integer, ForeignKey("work_tasks.id"), index=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default=text("true"))
+    request_revision = Column(Integer, nullable=False)
+    requirement_snapshot = Column(JSON, nullable=False)
+    scope_text = Column(Text, nullable=False)
+    coverage = Column(String(16), nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+
+class WorkDependency(Base):
+    __tablename__ = "work_dependencies"
+    __table_args__ = (
+        CheckConstraint("(source_major_id IS NOT NULL AND source_work_id IS NULL) OR (source_major_id IS NULL AND source_work_id IS NOT NULL) OR NOT is_active", name="ck_dependency_source"),
+        CheckConstraint("(target_major_id IS NOT NULL AND target_work_id IS NULL) OR (target_major_id IS NULL AND target_work_id IS NOT NULL) OR NOT is_active", name="ck_dependency_target"),
+    )
+    id = Column(Integer, primary_key=True)
+    source_major_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"))
+    source_work_id = Column(Integer, ForeignKey("work_tasks.id"))
+    target_major_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"))
+    target_work_id = Column(Integer, ForeignKey("work_tasks.id"))
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+    is_active = Column(Boolean, nullable=False, default=True)
+    reason = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class MajorExternalLink(Base):
+    __tablename__ = "major_external_links"
+    __table_args__ = (UniqueConstraint("major_task_id", "url", name="uq_major_external_url"),)
+    id = Column(Integer, primary_key=True)
+    major_task_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"), index=True)
+    url = Column(String(2000), nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class WorkMeetingSnapshot(Base):
+    __tablename__ = 'work_meeting_snapshots'
+    meeting_id = Column(Integer, ForeignKey('reporting_meetings.id'), primary_key=True)
+    schema_version = Column(Integer, nullable=False, default=1)
+    payload = Column(JSON, nullable=False)
+    captured_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+# Register once for all application ORM task writers.
+from sqlalchemy.orm import Session as _ResultSession
+from services.customer_result import synchronize as _synchronize_customer_result
+event.listen(_ResultSession, "before_flush", _synchronize_customer_result)

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 
 const source = readFileSync(new URL('../js/components/reviewPage.js', import.meta.url), 'utf8');
 const presentation = readFileSync(new URL('../js/components/requestPresentation.js', import.meta.url), 'utf8');
@@ -63,7 +64,7 @@ assert.doesNotMatch(source, /const LABELS =/);
 
 // Review dialogs participate in the global modal accessibility mechanism.
 assert.match(source, /role="dialog" aria-modal="true" aria-labelledby=/);
-assert.match(source, /class="modal-close" data-close aria-label="Закрыть диалог"/);
+assert.match(source, /class="btn btn-ghost btn-lg square-icon ui-btn modal-close" data-close aria-label="Закрыть диалог"/);
 assert.match(source, /class="btn btn-secondary btn-sm modal-cancel-btn"/);
 
 // Summary filters and card focus have visible states.
@@ -113,21 +114,53 @@ assert.match(source, /refreshCurrentRoute\(\)/);
 assert.doesNotMatch(source, /window\.location\.reload/);
 
 // Review fields expose names, descriptions and pre-submit validation.
-assert.match(source, /for="assignee-select"/);
-assert.match(source, /aria-describedby="assignee-hint"/);
 assert.match(source, /data-review-required/);
-assert.match(source, /Создать задачу и передать/);
+// Assignment now delegates to work resolution after re-reading the version.
+// Execute the real handler with an isolated loader; never open a browser or API.
+const assignSource = source.match(/async function assignModal\(app, id, renderedVersion\) \{[\s\S]*?\n\}/)?.[0];
+assert.ok(assignSource, 'Review must expose the assignment handler');
+assert.match(assignSource, /import\('\.\/workResolution\.js(?:\?v=\d+)?'\)/);
+const calls = [], messages = [], dialogs = [];
+const freshRequest = { id: 42, version: 7 };
+let response = freshRequest;
+let refreshed = 0;
+const app = { api: { get: async path => { calls.push(['get', path]); if (response instanceof Error) throw response; return response; } }, router: { refreshCurrentRoute: async () => { refreshed++; } } };
+const assignModal = runInNewContext(`(${assignSource.replace(/import\('\.\/workResolution\.js(?:\?v=\d+)?'\)/, 'loadResolution()')})`, {
+  loadResolution: async () => { calls.push(['load']); return { openWorkResolution: async (actualApp, request) => { assert.equal(actualApp, app); assert.equal(request, freshRequest); calls.push(['open']); } }; },
+  window: { toast: (...args) => messages.push(args) },
+  reviewAssignPending: false,
+  document: { querySelector: () => null, getElementById: () => null },
+  setBusy: () => {},
+  modal: config => dialogs.push(config),
+});
+await assignModal(app, 42, 7);
+assert.deepEqual(calls, [['get', '/agent/requests/42'], ['load'], ['open']]);
+assert.deepEqual(messages, []);
+calls.length = 0;
+await assignModal(app, 42, 6);
+assert.deepEqual(calls, [['get', '/agent/requests/42']], 'A stale version must never open resolution');
+assert.equal(dialogs.at(-1).title, 'Запрос изменился');
+assert.match(dialogs.at(-1).body, /проверьте изменения перед решением/);
+assert.equal(dialogs.at(-1).confirm, 'Обновить данные');
+await dialogs.at(-1).action();
+assert.equal(refreshed, 1);
+calls.length = 0;
+response = new Error('Unavailable');
+await assignModal(app, 42, 7);
+assert.deepEqual(calls, [['get', '/agent/requests/42']], 'A failed refresh must never open resolution');
+assert.deepEqual(messages.pop(), ['Unavailable', 'error']);
 assert.match(source, /Комментарий не сохранён/);
 assert.match(source, /REVIEW_DRAFT_KEY_PREFIX/);
 assert.match(source, /if \(isSubmitting\) return/);
 assert.match(source, /app\.api\.get\('\/agent\/requests\/review\?limit=250'\)/);
 assert.match(source, /data-review-required autofocus/);
-assert.match(source, /title: 'Запрос изменился'/);
-assert.match(source, /Number\(request\.version \?\? 0\) !== Number\(renderedVersion \?\? 0\)/);
 assert.match(source, /Не рассчитана/);
 assert.match(source, /numericScore\(draft\.quality_score\)/);
 assert.match(source, /renderLatestRevisionDiff\(request/);
-assert.match(source, /finding_resolutions: findingResolutions/);
+const resolution = readFileSync(new URL('../js/components/workResolution.js', import.meta.url), 'utf8');
+assert.match(resolution, /f\('scope','Какую потребность покрывает работа',\{kind:'textarea',required:true\}\)/);
+assert.match(resolution, /version:request\.version,decision:value\('decision'\),scope_text:value\('scope'\),coverage:value\('coverage'\)/);
+assert.match(resolution, /label:'Подтвердить размещение'/);
 assert.match(source, /id="btn-release"/);
 assert.match(source, /id="btn-reroute"/);
 assert.match(source, /reviewLoadState === 'stale'/);

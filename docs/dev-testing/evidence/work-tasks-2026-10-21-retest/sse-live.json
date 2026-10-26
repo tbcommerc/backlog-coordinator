@@ -1,0 +1,8 @@
+{
+  "work": 63,
+  "first_version": 1,
+  "reconnected_version": 2,
+  "distinct_event_ids": true,
+  "no_access_private_cursor": true,
+  "leaked": false
+}

@@ -1,0 +1,278 @@
+[
+  {
+    "name": "ID задачи",
+    "count": 0,
+    "renderedValues": []
+  },
+  {
+    "name": "Название задачи",
+    "count": 0,
+    "renderedValues": []
+  },
+  {
+    "name": "Описание задачи",
+    "count": 1,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Статус",
+    "count": 9,
+    "renderedValues": [
+      "СБОР ТРЕБОВАНИЙ"
+    ]
+  },
+  {
+    "name": "Приоритет",
+    "count": 12,
+    "renderedValues": [
+      "СРЕДНИЙ"
+    ]
+  },
+  {
+    "name": "Проект",
+    "count": 3,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Тип задачи",
+    "count": 6,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Канал поступления",
+    "count": 5,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Клиент ДИД",
+    "count": 253,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Бизнес-заказчик",
+    "count": 4,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Подразделение Бизнес-заказчика",
+    "count": 4,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Другие вовлеченные команды",
+    "count": 3,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Исполнитель",
+    "count": 2,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Автор задачи",
+    "count": 44,
+    "renderedValues": [
+      ""
+    ]
+  },
+  {
+    "name": "Дата получения",
+    "count": 1,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Срок",
+    "count": 10,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Дата создания задачи",
+    "count": 0,
+    "renderedValues": []
+  },
+  {
+    "name": "Дата последнего изменения",
+    "count": 0,
+    "renderedValues": []
+  },
+  {
+    "name": "Прогресс",
+    "count": 0,
+    "renderedValues": []
+  },
+  {
+    "name": "Оценка трудозатрат (ЭО) (ч/д)",
+    "count": 4,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Стоимость по ЭО (руб)",
+    "count": 3,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Фактические трудозатраты (ч/д)",
+    "count": 102,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Финансовый эффект (value в млн руб.)",
+    "count": 12,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Обоснование по расчету финансового эффекта",
+    "count": 3,
+    "renderedValues": [
+      ""
+    ]
+  },
+  {
+    "name": "C/V",
+    "count": 12,
+    "renderedValues": [
+      "Нет данных"
+    ]
+  },
+  {
+    "name": "Значение для метрического KR (план)",
+    "count": 212,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Значение для метрического KR (факт)",
+    "count": 227,
+    "renderedValues": [
+      "—",
+      "— шт.",
+      "— тыс. руб",
+      "— ч.-дн",
+      "— ед.",
+      "— млн ₽",
+      "— %"
+    ]
+  },
+  {
+    "name": "Единица измерения (метрический KR)",
+    "count": 212,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Статус для встречи по ключевым проектам",
+    "count": 4,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Дата изменения статуса для встречи по ключевым проектам",
+    "count": 4,
+    "renderedValues": [
+      ""
+    ]
+  },
+  {
+    "name": "Статус для Директорской оперативки",
+    "count": 245,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Дата изменения статуса для Директорской оперативки",
+    "count": 244,
+    "renderedValues": [
+      ""
+    ]
+  },
+  {
+    "name": "Статус для ДИД",
+    "count": 247,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Дата статуса (ДИД)",
+    "count": 247,
+    "renderedValues": [
+      ""
+    ]
+  },
+  {
+    "name": "Ссылка на Jira",
+    "count": 38,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Метки (теги)",
+    "count": 253,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Причина отклонения",
+    "count": 253,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Комментарий",
+    "count": 45,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Ссылка на макеты",
+    "count": 54,
+    "renderedValues": [
+      "—"
+    ]
+  },
+  {
+    "name": "Статус для ДИД",
+    "count": 247,
+    "renderedValues": [
+      "—"
+    ]
+  }
+]

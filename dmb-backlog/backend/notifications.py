@@ -4,13 +4,15 @@ Event-driven notifications + scheduled scanning
 """
 import json
 import logging
-from datetime import datetime
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlencode, urlsplit
-from sqlalchemy.orm import Session
+from uuid import UUID
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import case, func as sql_func, or_
 
 from models import (
-    EventOutbox, Notification, UserNotificationPreference, User,
+    EventOutbox, Notification, ReportingMeeting, UserNotificationPreference, User,
     Task, format_task_public_id,
 )
 from event_outbox import enqueue_user_event
@@ -21,8 +23,9 @@ logger = logging.getLogger("dmb_backlog.notifications")
 
 # ==================== CONSTANTS ====================
 
-ACTIVE_NOTIFICATION_CATEGORIES = ("assignment", "reporting", "mention", "comment", "request")
+ACTIVE_NOTIFICATION_CATEGORIES = ("assignment", "reporting", "mention", "comment", "request", "work", "meeting_capture")
 MANDATORY_NOTIFICATION_CATEGORIES = {"assignment", "reporting", "mention", "request"}
+READ_LOCKED_NOTIFICATION_CATEGORY = "reporting"
 
 EVENT_TYPES = {
     "assignment": "task.assigned",
@@ -75,13 +78,19 @@ def normalize_notification_action_url(category: str, task_id: int | None, value:
 
     params = parse_qs(parsed.query, keep_blank_values=False)
     keys = set(params)
-    if category == "reporting" and parsed.path.rstrip("/") != "/reporting-statuses":
+    if category == "meeting_capture" and parsed.path == "/meeting-capture" and keys == {"capture"} and len(params["capture"]) == 1:
+        try:
+            return f"#/meeting-capture?capture={UUID(params['capture'][0])}"
+        except ValueError:
+            return _fallback_action_url(category, task_id)
+    reporting_paths = {"/reporting-statuses", "/quarterly-goals-update"}
+    if category == "reporting" and parsed.path.rstrip("/") not in reporting_paths:
         return _fallback_action_url(category, task_id)
     if parsed.path.rstrip("/") == "/backlog" and keys <= {"task", "tab", "comment"}:
         route_task_id = _positive_int((params.get("task") or [None])[0])
         tab = (params.get("tab") or [None])[0]
         comment_id = _positive_int((params.get("comment") or [None])[0])
-        if route_task_id and (not task_id or route_task_id == task_id) and tab in {None, "com", "rep"}:
+        if route_task_id and (not task_id or route_task_id == task_id) and tab in {None, "com", "rep", "log"}:
             query = {"task": route_task_id}
             if tab:
                 query["tab"] = tab
@@ -95,6 +104,10 @@ def normalize_notification_action_url(category: str, task_id: int | None, value:
         if source in {None, "notification"} and (raw_meeting_id is None or meeting_id):
             suffix = f"&meeting_id={meeting_id}" if meeting_id else ""
             return f"#/reporting-statuses?source=notification{suffix}"
+    elif parsed.path.rstrip("/") == "/quarterly-goals-update" and category == "reporting" and keys <= {"source"}:
+        source = (params.get("source") or [None])[0]
+        if source in {None, "notification"}:
+            return "#/quarterly-goals-update?source=notification"
     elif category == "request" and not keys:
         parts = parsed.path.strip("/").split("/")
         if len(parts) == 3 and parts[:2] == ["customer", "request"] and _positive_int(parts[2]):
@@ -106,6 +119,8 @@ def normalize_notification_action_url(category: str, task_id: int | None, value:
 
 def notification_target(notification: Notification) -> dict:
     """Return a typed target while keeping action_url for backwards compatibility."""
+    if getattr(notification, "work_task_id", None):
+        return {"kind": "work", "url": f"/work-tasks/{notification.work_task_id}", "work_task_id": notification.work_task_id}
     action_url = normalize_notification_action_url(
         notification.category,
         notification.task_id,
@@ -120,14 +135,20 @@ def notification_target(notification: Notification) -> dict:
     meeting_id = _positive_int((params.get("meeting_id") or [None])[0])
     request_parts = parsed.path.strip("/").split("/")
     request_id = _positive_int(request_parts[2]) if len(request_parts) == 3 and request_parts[:2] == ["customer", "request"] else None
-    if parsed.path == "/reporting-statuses":
+    if parsed.path == "/meeting-capture":
+        kind = "meeting_capture"
+    elif parsed.path == "/reporting-statuses":
         kind = "reporting_statuses"
+    elif parsed.path == "/quarterly-goals-update":
+        kind = "quarterly_goals_update"
     elif parsed.path.startswith("/customer/request/"):
         kind = "request"
     elif parsed.path == "/backlog" and tab == "com":
         kind = "task_discussion"
     elif parsed.path == "/backlog" and tab == "rep":
         kind = "task_reporting"
+    elif parsed.path == "/backlog" and tab == "log":
+        kind = "task_history"
     elif parsed.path == "/backlog":
         kind = "task"
     else:
@@ -136,7 +157,7 @@ def notification_target(notification: Notification) -> dict:
         "kind": kind,
         "url": target,
         "task_id": task_id,
-        "tab": tab if tab in {"com", "rep"} else None,
+        "tab": tab if tab in {"com", "rep", "log"} else None,
         "comment_id": comment_id,
         "meeting_id": meeting_id,
         "request_id": request_id,
@@ -320,6 +341,7 @@ def notify_assignment(
         Notification.type.in_((EVENT_TYPES["assignment"], "assignment")),
         Notification.is_resolved == False,
     )
+
     if new_owner_id is not None:
         previous_assignments = previous_assignments.filter(Notification.user_id != new_owner_id)
     resolved_at = datetime.utcnow()
@@ -403,19 +425,85 @@ def notify_comment(
 # ==================== SCHEDULED CHECK ====================
 
 def check_scheduled_notifications(db: Session):
-    """Run only the approved reminder for missing reporting-meeting statuses."""
+    """Run approved reminders for reporting meetings and quarterly progress."""
     from reporting_meetings import check_reporting_meeting_notifications
 
     check_reporting_meeting_notifications(db)
+    check_quarterly_goal_notifications(db)
 
     db.commit()
+
+
+def check_quarterly_goal_notifications(db: Session, today: date | None = None):
+    """Напомнить командам о неподтверждённом или устаревшем факте квартала."""
+    from reporting_meetings import active_reporting_users_by_team
+    from routers.reports_router import (
+        _apply_quarterly_goals_scope,
+        _current_quarter_progress,
+        _moscow_today,
+        _progress_is_stale,
+    )
+
+    today = today or _moscow_today()
+    query = db.query(Task).options(joinedload(Task.team)).filter(Task.is_deleted == False)
+    query, _ = _apply_quarterly_goals_scope(query, db, today)
+    stale_tasks = []
+    teams = {}
+    for task in query.all():
+        if not _progress_is_stale(task):
+            continue
+        if task.team:
+            teams[task.team.id] = task.team
+            stale_tasks.append(task)
+
+    recipients_by_team = active_reporting_users_by_team(db, list(teams.values()))
+    by_user = defaultdict(list)
+    for task in stale_tasks:
+        for user in recipients_by_team.get(task.team_id, []):
+            by_user[user.id].append(task)
+
+    quarter = _current_quarter_progress(today)[0].replace(" ", "_")
+    group_key = f"quarterly_progress_{quarter}"
+    existing = db.query(Notification).filter(
+        Notification.group_key == group_key,
+        Notification.is_resolved == False,
+    ).all()
+    existing_by_user = {item.user_id: item for item in existing}
+    now = datetime.now(timezone.utc)
+
+    for notification in existing:
+        if notification.user_id not in by_user:
+            notification.is_resolved = True
+            notification.resolved_at = now
+            notification.is_read = True
+            notification.read_at = now
+
+    for user_id, tasks in by_user.items():
+        if user_id in existing_by_user:
+            continue
+        preview = ", ".join((task.public_id or str(task.id)) for task in tasks[:10])
+        suffix = "" if len(tasks) <= 10 else f" и ещё {len(tasks) - 10}"
+        _send_to_users(
+            db,
+            [user_id],
+            None,
+            "reporting",
+            "Обновите прогресс и статусы",
+            body=f"Требуют подтверждения: {len(tasks)}. {preview}{suffix}",
+            importance="high",
+            action_url="#/quarterly-goals-update?source=notification",
+            group_key=group_key,
+            event_type="quarterly.progress_update.required",
+        )
+
+    db.flush()
 
 
 # ==================== QUERY HELPERS ====================
 
 def _visible_notifications_query(db: Session, user_id: int, current_user: User | None = None):
     """Return notifications whose task context is still readable by the recipient."""
-    from auth import task_read_scope_clause
+    from auth import task_read_scope_clause, is_customer_portal_only
 
     user = current_user or db.query(User).filter(User.id == user_id).first()
     query = db.query(Notification).outerjoin(Task, Notification.task_id == Task.id).filter(
@@ -425,6 +513,13 @@ def _visible_notifications_query(db: Session, user_id: int, current_user: User |
     )
     if not user:
         return query.filter(Notification.id == -1)
+    from models import WorkTask
+    from services.work_tasks import read_scope
+    work_ids = db.query(WorkTask.id).filter(WorkTask.is_deleted.is_(False), read_scope(user))
+    query = query.filter(or_(Notification.work_task_id.is_(None), Notification.work_task_id.in_(work_ids)))
+    if is_customer_portal_only(user):
+        # Only decisions addressed to this authenticated customer belong in this inbox.
+        return query.filter(Notification.category == "request", Notification.task_id.is_(None))
     return query.filter(or_(
         Notification.task_id.is_(None),
         task_read_scope_clause(user, Task),
@@ -439,6 +534,7 @@ def get_unread_count(db: Session, user_id: int, current_user: User | None = None
 
 
 def get_notification_summary(db: Session, user_id: int, current_user: User | None = None) -> dict:
+    from services.work_tasks import WORK_ACTION_TYPES
     base = _visible_notifications_query(db, user_id, current_user)
     unread = base.filter(
         Notification.is_read == False,
@@ -446,7 +542,7 @@ def get_notification_summary(db: Session, user_id: int, current_user: User | Non
     ).count()
     requires_action = base.filter(
         Notification.is_resolved == False,
-        Notification.category == "reporting",
+        or_(Notification.category == "reporting", Notification.type.in_(WORK_ACTION_TYPES)),
     ).count()
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     today = base.filter(Notification.created_at >= today_start).count()
@@ -518,9 +614,10 @@ def get_notifications(
     if resolved is not None:
         q = q.filter(Notification.is_resolved == resolved)
     if requires_action:
+        from services.work_tasks import WORK_ACTION_TYPES
         q = q.filter(
             Notification.is_resolved == False,
-            Notification.category == "reporting",
+            or_(Notification.category == "reporting", Notification.type.in_(WORK_ACTION_TYPES)),
         )
     if search:
         escaped = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -531,22 +628,8 @@ def get_notifications(
         ))
 
     total = q.count()
-    action_rank = case(
-        (Notification.is_resolved == True, 2),
-        (Notification.category == "reporting", 0),
-        else_=1,
-    )
-    importance_rank = case(
-        (Notification.importance == "critical", 0),
-        (Notification.importance == "high", 1),
-        (Notification.importance == "medium", 2),
-        (Notification.importance == "low", 3),
-        else_=4,
-    )
     unread_rank = case((Notification.is_read == False, 0), else_=1)
     items = q.order_by(
-        action_rank,
-        importance_rank,
         unread_rank,
         Notification.created_at.desc(),
         Notification.id.desc(),
@@ -559,39 +642,59 @@ def get_notifications(
 
 def mark_read(db: Session, notification_ids: list[int], user_id: int):
     now = datetime.utcnow()
-    db.query(Notification).filter(
+    query = db.query(Notification).filter(
         Notification.id.in_(notification_ids),
         Notification.user_id == user_id,
-    ).update(
+    )
+    blocked_ids = [row[0] for row in query.filter(
+        Notification.category == READ_LOCKED_NOTIFICATION_CATEGORY,
+        Notification.is_resolved == False,
+    ).with_entities(Notification.id).all()]
+    changed_query = query.filter(or_(
+        Notification.category != READ_LOCKED_NOTIFICATION_CATEGORY,
+        Notification.is_resolved == True,
+    ))
+    changed_ids = [row[0] for row in changed_query.filter(
+        Notification.is_read == False,
+    ).with_entities(Notification.id).all()]
+    changed_query.update(
         {Notification.is_read: True, Notification.read_at: now},
         synchronize_session=False,
     )
-    enqueue_user_event(
-        db,
-        user_id=user_id,
-        event_type="notification.state.changed",
-        payload={"action": "read", "notification_ids": notification_ids[:100]},
-    )
+    if changed_ids:
+        enqueue_user_event(
+            db,
+            user_id=user_id,
+            event_type="notification.state.changed",
+            payload={"action": "read", "notification_ids": changed_ids[:100]},
+        )
     db.flush()
+    return {"changed_ids": changed_ids, "blocked_ids": blocked_ids}
 
 
 def mark_unread(db: Session, notification_ids: list[int], user_id: int):
-    db.query(Notification).filter(
+    query = db.query(Notification).filter(
         Notification.id.in_(notification_ids),
         Notification.user_id == user_id,
         Notification.is_dismissed == False,
         Notification.is_resolved == False,
-    ).update(
+    )
+    changed_ids = [row[0] for row in query.filter(
+        Notification.is_read == True,
+    ).with_entities(Notification.id).all()]
+    query.update(
         {Notification.is_read: False, Notification.read_at: None},
         synchronize_session=False,
     )
-    enqueue_user_event(
-        db,
-        user_id=user_id,
-        event_type="notification.state.changed",
-        payload={"action": "unread", "notification_ids": notification_ids[:100]},
-    )
+    if changed_ids:
+        enqueue_user_event(
+            db,
+            user_id=user_id,
+            event_type="notification.state.changed",
+            payload={"action": "unread", "notification_ids": changed_ids[:100]},
+        )
     db.flush()
+    return changed_ids
 
 
 def mark_all_read(db: Session, user_id: int):
@@ -602,6 +705,7 @@ def mark_all_read(db: Session, user_id: int):
         Notification.is_read == False,
         Notification.is_dismissed == False,
         Notification.is_resolved == False,
+        Notification.category != READ_LOCKED_NOTIFICATION_CATEGORY,
     )
     changed_ids = [row[0] for row in query.with_entities(Notification.id).all()]
     query.update(
@@ -639,13 +743,21 @@ def dismiss_notification(db: Session, notification_id: int, user_id: int):
 
 
 def restore_notification(db: Session, notification_id: int, user_id: int):
-    db.query(Notification).filter(
+    notification = db.query(Notification).filter(
         Notification.id == notification_id,
         Notification.user_id == user_id,
-    ).update(
-        {Notification.is_dismissed: False},
-        synchronize_session=False,
-    )
+    ).first()
+    if not notification:
+        return "not_found"
+    group_key = str(notification.group_key or "")
+    if group_key.startswith("reporting_fill_"):
+        meeting_id = _positive_int(group_key.removeprefix("reporting_fill_"))
+        if meeting_id and db.query(ReportingMeeting.id).filter(
+            ReportingMeeting.id == meeting_id,
+            ReportingMeeting.state == "held",
+        ).first():
+            return "terminal"
+    notification.is_dismissed = False
     enqueue_user_event(
         db,
         user_id=user_id,
@@ -653,3 +765,4 @@ def restore_notification(db: Session, notification_id: int, user_id: int):
         payload={"action": "restore", "notification_ids": [notification_id]},
     )
     db.flush()
+    return "restored"

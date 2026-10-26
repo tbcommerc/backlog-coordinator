@@ -17,7 +17,10 @@ Decomposer. Решение владельца от 2026-08-11: считать и
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from contextlib import nullcontext
+from typing import Any, Callable, ContextManager, Protocol
+
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.llm.base import (
@@ -129,10 +132,17 @@ class AgentStrategyAnalyst:
 
     name = "agent"
 
-    def __init__(self, adapter, use_rag: bool = True) -> None:
+    def __init__(
+        self,
+        adapter,
+        use_rag: bool = True,
+        session_factory: Callable[[], ContextManager[Session]] | None = None,
+    ) -> None:
         self._adapter = adapter
         self._use_rag = use_rag
+        self._session_factory = session_factory
         self.model = getattr(adapter, "model", adapter.name)
+        self.last_cache_hit = False
 
     def assess(self, task_text: str, team: str | None, rubric: dict[str, Any]) -> StrategyAssessment:
         criteria = (rubric.get("strategy_fit") or {}).get("criteria") or []
@@ -157,7 +167,18 @@ class AgentStrategyAnalyst:
             "additionalProperties": False,
         }
 
-        raw = self._adapter.complete(RUBRIC_SYSTEM_PROMPT, prompt, schema)
+        from app.llm.factory import complete_with_cache
+
+        session_context = self._session_factory() if self._session_factory else nullcontext(None)
+        with session_context as session:
+            raw, self.last_cache_hit = complete_with_cache(
+                self._adapter,
+                purpose="assess_strategy",
+                system_prompt=RUBRIC_SYSTEM_PROMPT,
+                user_prompt=prompt,
+                schema=schema,
+                session=session,
+            )
         payload = parse_json_object(raw)
         return score_strategy(
             payload.get("answers") or {},
@@ -248,10 +269,17 @@ class AgentDependencyAnalyst:
 
     name = "agent"
 
-    def __init__(self, adapter, use_rag: bool = True) -> None:
+    def __init__(
+        self,
+        adapter,
+        use_rag: bool = True,
+        session_factory: Callable[[], ContextManager[Session]] | None = None,
+    ) -> None:
         self._adapter = adapter
         self._use_rag = use_rag
+        self._session_factory = session_factory
         self.model = getattr(adapter, "model", adapter.name)
+        self.last_cache_hit = False
 
     def assess(
         self,
@@ -289,7 +317,18 @@ class AgentDependencyAnalyst:
             "additionalProperties": False,
         }
 
-        raw = self._adapter.complete(RUBRIC_SYSTEM_PROMPT, prompt, schema)
+        from app.llm.factory import complete_with_cache
+
+        session_context = self._session_factory() if self._session_factory else nullcontext(None)
+        with session_context as session:
+            raw, self.last_cache_hit = complete_with_cache(
+                self._adapter,
+                purpose="assess_dependencies",
+                system_prompt=RUBRIC_SYSTEM_PROMPT,
+                user_prompt=prompt,
+                schema=schema,
+                session=session,
+            )
         payload = parse_json_object(raw)
 
         teams = [t for t in (payload.get("teams") or []) if t.get("team") != team]
@@ -304,7 +343,11 @@ class AgentDependencyAnalyst:
 # --- фабрики -----------------------------------------------------------------
 
 
-def get_strategy_analyst(provider: str | None = None, adapter=None) -> StrategyAnalyst:
+def get_strategy_analyst(
+    provider: str | None = None,
+    adapter=None,
+    session_factory: Callable[[], ContextManager[Session]] | None = None,
+) -> StrategyAnalyst:
     settings = get_settings()
     name = (provider if provider is not None else settings.strategy_provider).strip().lower()
     if not name:
@@ -313,7 +356,11 @@ def get_strategy_analyst(provider: str | None = None, adapter=None) -> StrategyA
     if name == "agent":
         from app.llm.factory import get_adapter
 
-        return AgentStrategyAnalyst(adapter or get_adapter(), use_rag=settings.strategy_use_rag)
+        return AgentStrategyAnalyst(
+            adapter or get_adapter(),
+            use_rag=settings.strategy_use_rag,
+            session_factory=session_factory,
+        )
     if name == "rest":
         url = settings.strategy_decomposer_url
         if not url:
@@ -324,7 +371,11 @@ def get_strategy_analyst(provider: str | None = None, adapter=None) -> StrategyA
     raise ValueError(f"неизвестный strategy provider: {name}")
 
 
-def get_dependency_analyst(provider: str | None = None, adapter=None) -> DependencyAnalyst:
+def get_dependency_analyst(
+    provider: str | None = None,
+    adapter=None,
+    session_factory: Callable[[], ContextManager[Session]] | None = None,
+) -> DependencyAnalyst:
     settings = get_settings()
     name = (provider if provider is not None else settings.dependency_provider).strip().lower()
     if not name:
@@ -333,7 +384,11 @@ def get_dependency_analyst(provider: str | None = None, adapter=None) -> Depende
     if name == "agent":
         from app.llm.factory import get_adapter
 
-        return AgentDependencyAnalyst(adapter or get_adapter(), use_rag=settings.strategy_use_rag)
+        return AgentDependencyAnalyst(
+            adapter or get_adapter(),
+            use_rag=settings.strategy_use_rag,
+            session_factory=session_factory,
+        )
     if name == "declared":
         return DeclaredDependencyAnalyst()
     raise ValueError(f"неизвестный dependency provider: {name}")

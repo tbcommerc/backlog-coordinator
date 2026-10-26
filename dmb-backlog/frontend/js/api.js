@@ -58,9 +58,27 @@ export class API {
         this.baseURL = '/api/v1';
         this.accessToken = null;
         this._refreshPromise = null;
+        this.refreshChannel = typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('dmb-refresh-status') : null;
     }
 
-    setAccessToken(token) { this.accessToken = token || null; }
+    setAccessToken(token) {
+        this.accessToken = token || null;
+        if (!token && this.sessionWarningTimer) clearTimeout(this.sessionWarningTimer);
+    }
+    rememberSession(data) {
+        if (!data?.session_expires_at) return;
+        this.sessionExpiresAt = Date.parse(data.session_expires_at);
+        this.lastBusinessActivity = Date.parse(data.last_activity_at);
+        this.idleTimeout = data.idle_timeout_seconds * 1000;
+        this.scheduleSessionWarning();
+    }
+    scheduleSessionWarning() {
+        if (typeof window === 'undefined' || !this.sessionExpiresAt) return;
+        clearTimeout(this.sessionWarningTimer);
+        const remaining = Math.min(this.sessionExpiresAt, this.lastBusinessActivity + this.idleTimeout) - Date.now();
+        this.sessionWarningTimer = setTimeout(() => window.dispatchEvent(new CustomEvent('account-session-expiring')),
+            Math.max(0, remaining - 60000));
+    }
     hasAccessToken() { return !!this.accessToken; }
     
     /**
@@ -92,6 +110,7 @@ export class API {
             credentials: 'same-origin',
             signal: requestOptions.signal
         };
+        if (requestOptions.idempotencyKey) options.headers['Idempotency-Key'] = requestOptions.idempotencyKey;
         
         if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
             if (data instanceof FormData) {
@@ -104,10 +123,12 @@ export class API {
         
         const response = await fetch(url, options);
         
-        if (response.status === 401) {
+        if (response.status === 401 && !path.startsWith('/auth/') && !path.startsWith('/admin/users') && !path.startsWith('/admin/roles')) {
             const refreshed = await this.refreshToken();
             if (refreshed) {
                 options.headers = this.getHeaders();
+                if (data instanceof FormData) delete options.headers['Content-Type'];
+                if (requestOptions.idempotencyKey) options.headers['Idempotency-Key'] = requestOptions.idempotencyKey;
                 const retryResponse = await fetch(url, options);
                 return this.handleResponse(retryResponse);
             } else {
@@ -119,6 +140,10 @@ export class API {
             }
         }
         
+        if (response.ok && !requestOptions.passive && !path.startsWith('/auth') && !path.startsWith('/notifications') && !path.startsWith('/events') && !/\/(status|heartbeat|viewers|lock)(\?|$)/.test(path)) {
+            this.lastBusinessActivity = Date.now();
+            this.scheduleSessionWarning();
+        }
         return this.handleResponse(response);
     }
     
@@ -149,6 +174,9 @@ export class API {
             );
         }
         
+        // No Content responses may still carry an application/json header.
+        if (response.status === 204) return null;
+
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
             return response.json();
@@ -159,7 +187,7 @@ export class API {
     async refreshToken() {
         if (this._refreshPromise) return this._refreshPromise;
 
-        const refreshPromise = this._performRefresh();
+        const refreshPromise = typeof navigator !== 'undefined' && navigator.locks ? navigator.locks.request('dmb-refresh', () => this._performRefresh()) : this._performRefresh();
         this._refreshPromise = refreshPromise;
         try {
             return await refreshPromise;
@@ -168,7 +196,7 @@ export class API {
         }
     }
 
-    async _performRefresh() {
+    async _performRefresh(retried = false) {
         try {
             const response = await fetch(`${this.baseURL}/auth/refresh`, {
                 method: 'POST',
@@ -176,14 +204,18 @@ export class API {
                 credentials: 'same-origin'
             });
             
+            if (response.status === 429 || response.status >= 500) throw new APIError('Сервис входа временно недоступен', response.status);
+            if (response.status === 409 && !retried) return this._performRefresh(true);
             if (response.ok) {
                 const data = await response.json();
                 this.setAccessToken(data.access_token);
+                this.rememberSession(data);
+                this.refreshChannel?.postMessage({type: 'rotated'});
                 return data;
             }
             return false;
         } catch (e) {
-            return false;
+            throw e instanceof APIError ? e : new APIError('Сервис входа недоступен', 503);
         }
     }
     
@@ -191,7 +223,7 @@ export class API {
      * @param {string} path
      * @returns {Promise<*>}
      */
-    async get(path) { return this.request('GET', path); }
+    async get(path, requestOptions = {}) { return this.request('GET', path, null, requestOptions); }
     /**
      * @param {string} path
      * @param {*} data

@@ -1,0 +1,4 @@
+**
+!deploy/
+!deploy/runtime-entrypoint.sh
+!deploy/runtime.Dockerfile

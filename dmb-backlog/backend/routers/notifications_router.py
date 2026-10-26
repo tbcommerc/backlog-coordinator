@@ -3,12 +3,13 @@ DMB Backlog - Notifications Router
 API for reading, managing, and configuring notifications
 """
 import json
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from database import get_db
-from models import User, UserNotificationPreference
+from models import ReportingMeeting, User, UserNotificationPreference
 from schemas import (
     NotificationResponse, NotificationListResponse,
     NotificationSnapshotResponse, NotificationUxEventRequest,
@@ -27,14 +28,37 @@ from metrics import inc_counter, observe_histogram
 router = APIRouter()
 
 
-def _notification_response(notification) -> NotificationResponse:
+def _notification_response(notification, *, deadline: date | None = None) -> NotificationResponse:
     response = NotificationResponse.model_validate(notification)
     target = notification_target(notification)
     return NotificationResponse.model_validate({
         **response.model_dump(),
         "action_url": f"#{target['url']}",
         "target": target,
+        "deadline": deadline,
+        "days_remaining": (deadline - date.today()).days if deadline else None,
     })
+
+
+def _notification_responses(db: Session, notifications) -> list[NotificationResponse]:
+    items = list(notifications)
+    targets = {item.id: notification_target(item) for item in items}
+    meeting_ids = {
+        target["meeting_id"]
+        for target in targets.values()
+        if target.get("kind") == "reporting_statuses" and target.get("meeting_id")
+    }
+    deadlines = {
+        meeting.id: meeting.scheduled_date
+        for meeting in db.query(ReportingMeeting).filter(ReportingMeeting.id.in_(meeting_ids)).all()
+    } if meeting_ids else {}
+    return [
+        _notification_response(
+            item,
+            deadline=deadlines.get(targets[item.id].get("meeting_id")),
+        )
+        for item in items
+    ]
 
 
 @router.get("/notifications", response_model=NotificationListResponse)
@@ -63,7 +87,7 @@ def list_notifications(
         current_user=current_user,
     )
     return NotificationListResponse(
-        items=[_notification_response(n) for n in items],
+        items=_notification_responses(db, items),
         total=total,
         page=page,
         per_page=per_page,
@@ -79,9 +103,9 @@ def notification_snapshot(
     return NotificationSnapshotResponse(
         revision=snapshot["revision"],
         summary=snapshot["summary"],
-        recent_items=[_notification_response(item) for item in snapshot["recent_items"]],
+        recent_items=_notification_responses(db, snapshot["recent_items"]),
         recent_total=snapshot["recent_total"],
-        action_items=[_notification_response(item) for item in snapshot["action_items"]],
+        action_items=_notification_responses(db, snapshot["action_items"]),
         action_total=snapshot["action_total"],
     )
 
@@ -129,9 +153,9 @@ def read_notifications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    mark_read(db, data.ids, current_user.id)
+    result = mark_read(db, data.ids, current_user.id)
     db.commit()
-    return {"message": "ok"}
+    return {"message": "ok", **result}
 
 
 @router.put("/notifications/unread")
@@ -140,9 +164,9 @@ def unread_notifications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    mark_unread(db, data.ids, current_user.id)
+    changed_ids = mark_unread(db, data.ids, current_user.id)
     db.commit()
-    return {"message": "ok"}
+    return {"message": "ok", "changed_ids": changed_ids}
 
 
 @router.put("/notifications/read-all")
@@ -179,7 +203,14 @@ def restore_user_notification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    restore_notification(db, notification_id, current_user.id)
+    result = restore_notification(db, notification_id, current_user.id)
+    if result == "not_found":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Уведомление не найдено")
+    if result == "terminal":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Напоминание о состоявшейся встрече нельзя восстановить",
+        )
     db.commit()
     return {"message": "ok"}
 

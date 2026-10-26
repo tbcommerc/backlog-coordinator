@@ -101,6 +101,11 @@ def _task_payload(task: Task, db: Session) -> dict:
 
 
 def _call_prioritiser(path: str, payload: dict) -> dict:
+    if not settings.PRIORITISER_ENABLED:
+        raise HTTPException(
+            status_code=503,
+            detail="Сервис приоритизации отключён в текущем запуске",
+        )
     url = f"{settings.PRIORITISER_BASE_URL.rstrip('/')}{path}"
     request = urllib.request.Request(
         url,

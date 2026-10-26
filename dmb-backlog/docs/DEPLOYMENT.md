@@ -1,6 +1,6 @@
 # Запуск и развёртывание — подтверждённое состояние
 
-> Статус: обновлено 2026-09-01. Локальный запуск описан ниже; воспроизводимая
+> Статус: обновлено 2026-09-19. Локальный запуск описан ниже; воспроизводимая
 > стендовая топология находится в `../../compose.production.yaml`, полный
 > операторский порядок — в `../../docs/PRODUCTION_RUNBOOK.md`.
 
@@ -22,6 +22,11 @@ Swagger UI `/docs` и frontend как статические файлы. Осн�
 
 `Settings` читает корневой `.env`. Актуальный шаблон — `.env.example`.
 Ключевые переменные:
+
+Fork-based Assistant V2 включается отдельными `AGENT_V2_*`: feature flag,
+kill switch, base URL, secret, pilot user IDs/emails и списки имён ролей BA/PO.
+Штатный локальный launcher запускает его только с `-IncludeAgentV2` на порту
+9300 и с отдельной БД `agent_v2_sessions`; без флага DMB gateway не регистрируется.
 
 - `DEBUG`
 - `DATABASE_URL`
@@ -95,3 +100,13 @@ Jaeger и read-only smoke/load/failover/backup scripts. Compose предназн
 
 Изменение структуры БД регулирует [SCHEMA_CHANGES.md](SCHEMA_CHANGES.md), а
 проверки перед выпуском — [TESTING.md](TESTING.md).
+
+Assistant V2 не входит в стандартный или production Compose baseline. Локально
+он запускается только корневым `scripts/start-project.ps1 -IncludeAssistantV2`,
+который создаёт отдельную DB/роль, применяет отдельный Alembic и поднимает порт
+9200. Real-data/provider/production gates остаются закрытыми; operator runbook:
+[`../../assistant-v2/docs/OPERATIONS.md`](../../assistant-v2/docs/OPERATIONS.md).
+
+## Feature flag канбана — проверено 21.10.2026
+
+`WORK_TASK_BOARD_ENABLED` по умолчанию `false`; локальный пилот включён через `.env`. После изменения требуется штатный перезапуск backend. При `true` доступен новый вид рабочих задач и старый внутренний `#/kanban` перенаправляется на него. При `false` остаются список/сводка и прежний канбан, API новой доски возвращает 404. Откат флага не удаляет задачи или историю и не требует downgrade БД. Полная нагрузочная приёмка перед внешним выпуском остаётся отдельной проверкой: [WORK_BOARD.md](WORK_BOARD.md).

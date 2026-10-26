@@ -1,0 +1,94 @@
+{
+  "documents": [
+    {
+      "id": "business_context",
+      "title": "Бизнес-контекст подразделения и платформы",
+      "domain": "business",
+      "status": "approved",
+      "priority": 100,
+      "products": [],
+      "modules": [],
+      "processes": ["all"]
+    },
+    {
+      "id": "products",
+      "title": "Инвестиционные продукты",
+      "domain": "products",
+      "status": "approved",
+      "priority": 100,
+      "products": ["all"],
+      "modules": [],
+      "processes": []
+    },
+    {
+      "id": "modules",
+      "title": "Модули платформы сопровождения сделок",
+      "domain": "architecture",
+      "status": "approved",
+      "priority": 90,
+      "products": [],
+      "modules": ["all"],
+      "processes": []
+    },
+    {
+      "id": "processes",
+      "title": "Бизнес-процессы сопровождения сделок",
+      "domain": "business",
+      "status": "approved",
+      "priority": 90,
+      "products": [],
+      "modules": [],
+      "processes": ["all"]
+    },
+    {
+      "id": "roles",
+      "title": "Роли пользователей платформы",
+      "domain": "business",
+      "status": "approved",
+      "priority": 80,
+      "products": [],
+      "modules": [],
+      "processes": []
+    },
+    {
+      "id": "regulations",
+      "title": "Регуляторные и внутренние правила",
+      "domain": "regulatory",
+      "status": "approved",
+      "priority": 95,
+      "products": [],
+      "modules": [],
+      "processes": []
+    },
+    {
+      "id": "architecture",
+      "title": "Системная архитектура и интеграции",
+      "domain": "architecture",
+      "status": "approved",
+      "priority": 85,
+      "products": [],
+      "modules": ["all"],
+      "processes": []
+    },
+    {
+      "id": "settlement_statuses",
+      "title": "Статусы расчётов по сделкам",
+      "domain": "business",
+      "status": "approved",
+      "priority": 80,
+      "products": [],
+      "modules": ["расчёты"],
+      "processes": ["расчёты по сделкам"]
+    },
+    {
+      "id": "requirements_history",
+      "title": "История требований и решений",
+      "domain": "history",
+      "status": "approved",
+      "priority": 70,
+      "products": [],
+      "modules": [],
+      "processes": []
+    }
+  ]
+}

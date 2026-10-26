@@ -29,6 +29,7 @@ function dispatchEventMessage(app, message) {
   if (String(message.event).startsWith('notification.')) {
     document.dispatchEvent(new CustomEvent('dmb:notification-changed', { detail }));
   }
+  if (String(message.event).startsWith('work.')) document.dispatchEvent(new CustomEvent('dmb:work-changed', { detail }));
   if (String(message.event).startsWith('task.')) {
     document.dispatchEvent(new CustomEvent('dmb:task-changed', { detail }));
     if (message.event === 'task.collection.changed') {
@@ -66,6 +67,7 @@ async function connect(app) {
     if (!response.ok || !response.body) throw new Error(`SSE HTTP ${response.status}`);
 
     reconnectDelay = 1000;
+    document.dispatchEvent(new CustomEvent('dmb:event-stream-status', { detail: { connected: true } }));
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';

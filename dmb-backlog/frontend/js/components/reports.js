@@ -1,13 +1,19 @@
+import { chartPalette, chartJsTheme, applyChartJsTheme, loadChartFont } from '../ui/charts.js';
+import { createPopover } from '../ui/popover.js';
+import { selectionList } from '../ui/selectionList.js';
+import { button as uiButton, control as uiControl, field as uiField, pageHeader as uiPageHeader } from '../ui/primitives.js';
+import { setButtonBusy } from '../ui/controls.js';
+import { progress as uiProgress } from '../ui/dataDisplay.js';
 /**
  * DMB Backlog - Reports Page
  */
-import { renderDidBacklog, initDidBacklog } from './didBacklog.js?v=4';
-import { renderDirectorateReport, initDirectorateReport } from './directorateReport.js?v=10';
+import { renderDidBacklog, initDidBacklog } from './didBacklog.js?v=14';
+import { renderDirectorateReport, initDirectorateReport } from './directorateReport.js?v=20';
 import { escapeHtml } from '../htmlUtils.js';
 import { bindViewStateAction, renderViewState } from './viewState.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
-import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=11';
-import { confirmAction } from '../uiFeedback.js';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=21';
+import { quarterlyGoalsUpdateHref } from './quarterlyGoalsUpdate.js?v=11';
 
 function renderInvolvedTeams(teams) {
   if (!teams || !teams.length) return '—';
@@ -15,6 +21,17 @@ function renderInvolvedTeams(teams) {
 }
 
 const reportConfig = {
+  'team-weekly': {
+    name: 'Еженедельная встреча команды',
+    desc: 'Результаты недели, риски, решения и следующие шаги',
+    icon: 'calendar-range',
+    gradient: 'grad-teal',
+    customEndpoint: '/reports/team-weekly-report',
+    isCustom: true,
+    hideCharts: true,
+    fields: ['public_id','title','team_name','project_name','owner_name','status_name','progress','result','next_step','next_step_due','signal'],
+    filters: []
+  },
   directorate: {
     name: 'Статус для Директорской оперативки',
     desc: 'Еженедельный статус для доклада Лидеру трайба',
@@ -51,10 +68,9 @@ const reportConfig = {
   },
   pip: {
     name: 'PI-планирование трайба',
-    desc: 'Отчет для проведения церемонии Product Increment Planning (PIP)',
+    desc: 'Очередь задач после экспресс-оценки: контекст, решение и следующий статус',
     icon: 'milestone',
     gradient: 'grad-amber',
-    inDevelopment: true,
     isDb: true,
     key: 'pip',
     filters: [],
@@ -72,7 +88,7 @@ const reportConfig = {
   },
   'quarterly-goals': {
     name: 'Светофоры по квартальным целям',
-    desc: 'Статус достижения квартальных целей команд трайба',
+    desc: 'Статус квартальных целей и AD-HOC-задач команд трайба',
     icon: 'trending-up',
     gradient: 'grad-cyan',
     isDb: true,
@@ -80,7 +96,7 @@ const reportConfig = {
     managedFields: true,
     hideCharts: true,
     filters: [],
-    fields: ['id','title','task_type_name','team_name','progress'],
+    fields: ['id','title','task_type_name','team_name','start_shift_name','planned_progress','progress','progress_deviation_percent','progress_indicator','progress_freshness_label'],
     group: null,
     sort: null
   },
@@ -100,6 +116,7 @@ let cachedReportData = null;
 let reportSortField = null;
 let reportSortDir = 'asc';
 let reportColumnFilters = {};
+let pipQueueFilter = 'all';
 
 let dbReportsCache = {};
 let cachedDbReport = null;
@@ -108,6 +125,67 @@ let canManageReportingMeetings = false;
 let canPrepareReportingMeetings = false;
 let meetingView = 'cards';
 let meetingFilters = { kind: 'all', state: 'open', from: '', to: '' };
+let teamWeeklyFilter = 'attention';
+let teamWeeklyTeamId = '';
+
+const PIP_DECISION_META = {
+  accept: {
+    label: 'Принять в работу',
+    icon: 'circle-check-big',
+    tone: 'success',
+    consequence: 'Задача перейдёт в статус «Принята в работу» и покинет очередь PI.',
+    reasonLabel: 'Комментарий к решению',
+    reasonPlaceholder: 'Например: согласованный PI, ограничения или ключевые договорённости',
+  },
+  rework: {
+    label: 'Вернуть на оценку',
+    icon: 'rotate-ccw',
+    tone: 'warning',
+    consequence: 'Задача вернётся в «Экспресс-оценку» своей команды. Причина сохранится в истории.',
+    reasonLabel: 'Что нужно уточнить или переоценить',
+    reasonPlaceholder: 'Опишите конкретные вопросы по объёму, трудозатратам или зависимостям',
+  },
+  reject: {
+    label: 'Отклонить',
+    icon: 'circle-x',
+    tone: 'danger',
+    consequence: 'Задача перейдёт в статус «Отклонена» и покинет рабочую очередь.',
+    reasonLabel: 'Основание отклонения',
+    reasonPlaceholder: 'Зафиксируйте основание, чтобы решение было понятно команде и заказчику',
+  },
+};
+
+export function getPipDecisionGaps(task = {}) {
+  const gaps = [];
+  if (!(Number(task.effort_days) > 0)) gaps.push({ code: 'effort', label: 'Нет итоговых трудозатрат' });
+  if (task.priority_score == null || Number.isNaN(Number(task.priority_score))) gaps.push({ code: 'priority', label: 'Нет Priority Score' });
+  if (task.financial_effect == null || Number.isNaN(Number(task.financial_effect))) gaps.push({ code: 'effect', label: 'Нет финансового эффекта' });
+  return gaps;
+}
+
+export function calculatePipDecisionSummary(tasks = []) {
+  const rows = Array.isArray(tasks) ? tasks : [];
+  const priorities = rows
+    .filter(task => task.priority_score != null && task.priority_score !== '')
+    .map(task => Number(task.priority_score))
+    .filter(Number.isFinite);
+  return {
+    total: rows.length,
+    contextReady: rows.filter(task => getPipDecisionGaps(task).length === 0).length,
+    totalEffort: rows.reduce((sum, task) => sum + (Number(task.effort_days) || 0), 0),
+    totalEffect: rows.reduce((sum, task) => sum + (Number(task.financial_effect) || 0), 0),
+    averagePriority: priorities.length ? Math.round(priorities.reduce((sum, value) => sum + value, 0) / priorities.length) : null,
+  };
+}
+
+export function buildPipDecisionPayload({ decision, version, reason = '' } = {}) {
+  if (!Object.hasOwn(PIP_DECISION_META, decision)) throw new Error('Выберите решение по задаче');
+  const normalizedReason = String(reason || '').trim();
+  if (['rework', 'reject'].includes(decision) && !normalizedReason) {
+    throw new Error('Укажите причину возврата или отклонения задачи');
+  }
+  return { decision, version: Number(version || 0), reason: normalizedReason || null };
+}
 
 const meetingStateLabels = {
   date_pending: 'Нужно назначить дату',
@@ -117,6 +195,7 @@ const meetingStateLabels = {
 };
 
 const meetingKindMeta = {
+  team_weekly: { cadence: 'Каждую неделю · понедельник', icon: 'calendar-range', tone: 'cyan' },
   directorate: { cadence: 'Еженедельно · понедельник', icon: 'briefcase', tone: 'violet' },
   did: { cadence: 'Раз в 2 недели · вторник', icon: 'layers', tone: 'emerald' },
   key_projects: { cadence: 'Раз в месяц · плавающая дата', icon: 'key-round', tone: 'blue' },
@@ -138,7 +217,7 @@ function renderMeetingToolbar() {
   return `<div class="meeting-toolbar" aria-label="Фильтры календаря">
     <div class="meeting-toolbar-filters">
       <label>Тип<select class="input" data-meeting-filter="kind">
-        <option value="all">Все встречи</option><option value="directorate">Директорская</option>
+        <option value="all">Все встречи</option><option value="team_weekly">Командная еженедельная</option><option value="directorate">Директорская</option>
         <option value="did">ДИД</option><option value="key_projects">Ключевые проекты</option>
       </select></label>
       <label>Состояние<select class="input" data-meeting-filter="state">
@@ -164,17 +243,18 @@ function renderMeetingTimeline(items) {
     const meta = meetingKindMeta[meeting.kind] || { tone: 'blue' };
     const timelineState = meeting.is_overdue ? 'overdue' : meeting.state;
     return `<article class="meeting-timeline-item meeting-tone--${meta.tone} is-${timelineState}" data-meeting-row="${meeting.id}">
-      <button class="meeting-timeline-main" data-meeting-jump="${meeting.id}">
+      <button class="ui-surface-action meeting-timeline-main" data-meeting-jump="${meeting.id}">
         <time>${escapeHtml(formatMeetingDate(meeting.scheduled_date))}</time>
         <span class="meeting-timeline-title"><span class="meeting-timeline-kind-icon" aria-hidden="true"><i data-lucide="${meta.icon || 'calendar-days'}"></i></span><strong>${escapeHtml(meeting.title)}</strong></span>
         <span class="meeting-timeline-status is-${timelineState}">${escapeHtml(meeting.is_overdue ? 'Просрочена — требуется актуализировать факт' : meetingStateLabels[meeting.state] || meeting.state)}</span>
       </button>
       <div class="meeting-timeline-actions">
-        ${canManageReportingMeetings && (meeting.state === 'planned' || meeting.state === 'date_pending')
+        ${canManageReportingMeetings && meeting.kind !== 'team_weekly' && (meeting.state === 'planned' || meeting.state === 'date_pending')
           ? `<button class="btn btn-primary btn-sm" data-meeting-action="schedule" data-meeting-id="${meeting.id}">${meeting.scheduled_date ? 'Изменить дату' : 'Назначить дату'}</button>`
           : ''}
         <button class="btn btn-secondary btn-sm" data-meeting-action="prepare" data-meeting-id="${meeting.id}">Статусы</button>
         <button class="btn btn-secondary btn-sm" data-meeting-action="history" data-meeting-id="${meeting.id}">История</button>
+        <a class="btn btn-secondary btn-sm ui-btn" href="#/work-reports?meeting_id=${meeting.id}">Снимок задач</a>
       </div>
     </article>`;
   }).join('')}</div>`;
@@ -183,7 +263,7 @@ function renderMeetingTimeline(items) {
 function getMeetingCards(items) {
   const openStates = new Set(['planned', 'date_pending']);
   if (meetingFilters.state === 'open' || meetingFilters.state === 'planned' || meetingFilters.state === 'date_pending') {
-    return ['directorate', 'did', 'key_projects']
+    return ['team_weekly', 'directorate', 'did', 'key_projects']
       .map(kind => items.find(item => item.kind === kind && openStates.has(item.state)))
       .filter(Boolean);
   }
@@ -226,12 +306,14 @@ function getUpcomingMeetingDates(kind, meeting) {
 
 function renderUpcomingMeetingDates(meeting) {
   const dates = getUpcomingMeetingDates(meeting.kind, meeting);
-  const planAction = canManageReportingMeetings
-    ? `<button type="button" class="meeting-plan-button" data-meeting-action="plan" data-meeting-id="${meeting.id}"><i data-lucide="calendar-plus"></i>Планировать график</button>`
+  const planAction = canManageReportingMeetings && meeting.kind !== 'team_weekly'
+    ? `<button type="button" class="btn btn-secondary btn-sm ui-btn meeting-plan-button" data-meeting-action="plan" data-meeting-id="${meeting.id}"><i data-lucide="calendar-plus"></i>Планировать график</button>`
     : '';
   const heading = `<div class="meeting-section-heading"><div class="meeting-section-label">Следующие встречи</div>${planAction}</div>`;
   if (!dates.length) {
-    const hint = meeting.kind === 'did'
+    const hint = meeting.kind === 'team_weekly'
+      ? 'Следующий недельный срез будет создан автоматически.'
+      : meeting.kind === 'did'
       ? (meeting.scheduled_date ? 'Других встреч в ближайшие 90 дней нет.' : 'После назначения первой даты появится график на каждые две недели.')
       : 'Проектный офис назначает дату каждой ежемесячной встречи.';
     return `<div class="meeting-upcoming is-empty">${heading}<p>${escapeHtml(hint)}</p></div>`;
@@ -267,13 +349,14 @@ function renderReportingMeetingCard(meeting, historical = false) {
   const overdueMessage = 'Дата просрочена. Требуется подтвердить факт проведения встречи, отменить или перенести её.';
   const overdueNotice = meeting.is_overdue ? `
     <div class="meeting-overdue-notice" title="${escapeHtml(overdueMessage)}" aria-label="${escapeHtml(overdueMessage)}"><span class="meeting-overdue-symbol" aria-hidden="true">!</span><span>${escapeHtml(overdueMessage)}</span></div>` : '';
-  const lifecycleActions = canManageReportingMeetings && isOpen && !historical ? `
-      <button class="meeting-management-action is-success" data-meeting-action="complete" data-meeting-id="${meeting.id}" aria-label="Подтвердить, что встреча состоялась"${canComplete ? '' : ` disabled title="${escapeHtml(completeHint)}"`}><i data-lucide="check-circle"></i>Состоялась</button>
-      <button class="meeting-management-action" data-meeting-action="schedule" data-meeting-id="${meeting.id}"><i data-lucide="calendar"></i>${meeting.scheduled_date ? 'Изменить дату' : 'Назначить дату'}</button>
-      <button class="meeting-management-action is-danger" data-meeting-action="cancel" data-meeting-id="${meeting.id}" aria-label="Отменить встречу"><i data-lucide="calendar-x-2"></i>Отменить</button>` : '';
+  const lifecycleActions = canManageReportingMeetings && meeting.kind !== 'team_weekly' && isOpen && !historical ? `
+      <button class="btn btn-success btn-sm ui-btn meeting-management-action is-success" data-meeting-action="complete" data-meeting-id="${meeting.id}" aria-label="Подтвердить, что встреча состоялась"${canComplete ? '' : ` disabled title="${escapeHtml(completeHint)}"`}><i data-lucide="check-circle"></i>Состоялась</button>
+      <button class="btn btn-secondary btn-sm ui-btn meeting-management-action" data-meeting-action="schedule" data-meeting-id="${meeting.id}"><i data-lucide="calendar"></i>${meeting.scheduled_date ? 'Изменить дату' : 'Назначить дату'}</button>
+      <button class="btn btn-danger btn-sm ui-btn meeting-management-action is-danger" data-meeting-action="cancel" data-meeting-id="${meeting.id}" aria-label="Отменить встречу"><i data-lucide="calendar-x-2"></i>Отменить</button>` : '';
   const manageActions = `<div class="meeting-management-actions" aria-label="Управление встречей">
       ${lifecycleActions}
-      <button class="meeting-management-action is-history" data-meeting-action="history" data-meeting-id="${meeting.id}"><i data-lucide="history"></i>История</button>
+      <a class="btn btn-secondary btn-sm ui-btn" href="#/work-reports?meeting_id=${meeting.id}">Снимок задач</a>
+      <button class="btn btn-secondary btn-sm ui-btn meeting-management-action is-history" data-meeting-action="history" data-meeting-id="${meeting.id}"><i data-lucide="history"></i>История</button>
     </div>`;
   const statusActionLabel = isOpen && !historical ? 'Открыть статусы' : 'Открыть срез статусов';
   return `
@@ -296,7 +379,7 @@ function renderReportingMeetingCard(meeting, historical = false) {
       ${manageActions}
       <div class="meeting-fill-status${canPrepareReportingMeetings ? ' is-actionable' : ''}" ${canPrepareReportingMeetings ? `data-meeting-action="prepare" data-meeting-id="${meeting.id}" role="button" tabindex="0" aria-label="${statusActionLabel}. Готовность ${completionPercent}%"` : ''}>
         <div class="meeting-progress"><span>Готовность статусов</span><strong>${completionPercent}%</strong></div>
-        <div class="meeting-progress-track" aria-label="Заполнено ${completionPercent}%"><span style="width:${completionPercent}%"></span></div>
+        ${uiProgress({ value: completionPercent, label: 'Готовность статусов', tone: completionPercent === 100 ? 'success' : 'accent' })}
         <div class="meeting-progress-detail"><span>${escapeHtml(completionSummary)}</span><span class="meeting-missing${meeting.missing_tasks ? '' : ' is-complete'}">${escapeHtml(missingSummary)}</span></div>
         ${canPrepareReportingMeetings ? `<div class="meeting-fill-cta"><i data-lucide="list-checks"></i>${statusActionLabel}</div>` : ''}
       </div>
@@ -370,32 +453,20 @@ function showReportingMeetingForm(meeting, mode) {
         <form class="meeting-management-form" novalidate>
           <div class="modal-header">
             <div><h3 class="modal-title" id="${titleId}">${escapeHtml(title)}</h3><p class="meeting-dialog-subtitle">${escapeHtml(meeting.title)}</p></div>
-            <button type="button" class="modal-close" data-meeting-dialog-close aria-label="Закрыть диалог">&times;</button>
+            ${uiButton({ label: 'Закрыть диалог', icon: 'x', iconOnly: true, variant: 'ghost', className: 'modal-close', attrs: { 'data-meeting-dialog-close': true } })}
           </div>
           <div class="modal-body">
             ${isSchedule ? `
-              <div class="form-group">
-                <label class="form-label" for="meeting-scheduled-date">Дата встречи <span class="required">*</span></label>
-                <input class="input" id="meeting-scheduled-date" name="scheduled_date" type="date" min="${localDateIso()}" value="${escapeHtml(meeting.scheduled_date || '')}" required>
-                ${meeting.kind === 'did' && !hasDate ? '<div class="form-hint">Новая оперативка ДИД должна приходиться на вторник.</div>' : ''}
-                ${meeting.kind === 'directorate' && !hasDate ? '<div class="form-hint">Новая директорская оперативка должна приходиться на понедельник.</div>' : ''}
-              </div>
-              ${hasDate ? `<div class="form-group">
-                <label class="form-label" for="meeting-change-reason">Причина изменения даты</label>
-                <textarea class="input" id="meeting-change-reason" name="reason" rows="3" placeholder="Укажите причину, если дата изменяется"></textarea>
-                <div class="form-hint">Обязательна при выборе даты, отличной от текущей.</div>
-              </div>` : ''}` : isComplete ? `
+              ${uiField({ id: 'meeting-scheduled-date', label: 'Дата встречи', type: 'date', value: meeting.scheduled_date || '', required: true, attrs: { name: 'scheduled_date', min: localDateIso() }, hint: !hasDate && meeting.kind === 'did' ? 'Новая оперативка ДИД должна приходиться на вторник.' : !hasDate && meeting.kind === 'directorate' ? 'Новая директорская оперативка должна приходиться на понедельник.' : '' })}
+              ${hasDate ? uiField({ id: 'meeting-change-reason', label: 'Причина изменения даты', kind: 'textarea', attrs: { name: 'reason', rows: 3, placeholder: 'Укажите причину, если дата изменяется' }, hint: 'Обязательна при выборе даты, отличной от текущей.' }) : ''}` : isComplete ? `
               <div class="meeting-dialog-warning is-success"><i data-lucide="check-circle"></i><span>Текущие отчётные статусы будут зафиксированы и станут статусами предыдущей встречи. Заполнено ${meeting.filled_tasks || 0} из ${meeting.total_tasks || 0} задач.</span></div>` : `
               <div class="meeting-dialog-warning"><i data-lucide="triangle-alert"></i><span>Встреча будет отменена. Заполненные статусы перенесутся в следующую встречу, не заменяя уже подготовленные данные.</span></div>
-              <div class="form-group">
-                <label class="form-label" for="meeting-cancel-reason">Причина отмены <span class="required">*</span></label>
-                <textarea class="input" id="meeting-cancel-reason" name="reason" rows="3" placeholder="Укажите причину отмены" required></textarea>
-              </div>`}
+              ${uiField({ id: 'meeting-cancel-reason', label: 'Причина отмены', kind: 'textarea', required: true, attrs: { name: 'reason', rows: 3, placeholder: 'Укажите причину отмены' } })}`}
             <div class="form-error meeting-dialog-error" role="alert" hidden></div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-meeting-dialog-close>Закрыть</button>
-            <button type="submit" class="btn ${isSchedule || isComplete ? 'btn-primary' : 'btn-danger'} btn-sm">${escapeHtml(confirmLabel)}</button>
+            ${uiButton({ label: 'Закрыть', size: 'small', attrs: { 'data-meeting-dialog-close': true } })}
+            ${uiButton({ label: confirmLabel, variant: isSchedule || isComplete ? 'primary' : 'danger', size: 'small', attrs: { type: 'submit' } })}
           </div>
         </form>
       </div>`;
@@ -490,9 +561,9 @@ function showMeetingDataDialog({ title, subtitle, body }) {
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `<div class="modal meeting-data-dialog" role="dialog" aria-modal="true" aria-labelledby="meeting-data-title">
     <div class="modal-header"><div><h3 class="modal-title" id="meeting-data-title">${escapeHtml(title)}</h3><p class="meeting-dialog-subtitle">${escapeHtml(subtitle || '')}</p></div>
-    <button class="modal-close" type="button" data-meeting-data-close aria-label="Закрыть диалог">&times;</button></div>
+    ${uiButton({ label: 'Закрыть диалог', icon: 'x', iconOnly: true, variant: 'ghost', className: 'modal-close', attrs: { 'data-meeting-data-close': true } })}</div>
     <div class="modal-body">${body}</div>
-    <div class="modal-footer"><button class="btn btn-secondary btn-sm" type="button" data-meeting-data-close>Закрыть</button></div>
+    <div class="modal-footer">${uiButton({ label: 'Закрыть', size: 'small', attrs: { 'data-meeting-data-close': true } })}</div>
   </div>`;
   const close = () => { document.removeEventListener('keydown', keydown); overlay.remove(); returnFocus?.focus?.(); };
   const keydown = event => {
@@ -560,7 +631,7 @@ async function showReportingMeetingHistory(meeting, app) {
       ${item.reason ? `<blockquote>${escapeHtml(item.reason)}</blockquote>` : ''}<small>${escapeHtml(item.changed_by_name || 'Система')}</small></article>`).join('')}</div>`
       : '<div class="empty-state">Изменений встреч этого типа пока нет</div>';
   const relatedMeetings = reportingMeetings.filter(item => item.kind === meeting.kind);
-  const overlay = showMeetingDataDialog({ title: 'История встреч', subtitle: meeting.title, body: '<div class="card-reporting-loading">Загрузка истории…</div>' });
+  const overlay = showMeetingDataDialog({ title: 'История встреч', subtitle: meeting.title, body: '<div class="card-reporting-loading content-loading-state">Загрузка истории…</div>' });
   try {
     const histories = await Promise.all(relatedMeetings.map(async item => {
       if (Array.isArray(item.history)) return item.history;
@@ -581,7 +652,7 @@ async function showReportingMeetingPreparation(meeting, app) {
   const overlay = showMeetingDataDialog({
     title: meeting.state === 'held' ? 'Зафиксированный срез статусов' : meeting.state === 'cancelled' ? 'Статусы отменённой встречи' : 'Статусы предстоящей встречи',
     subtitle: `${meeting.title} · ${formatMeetingDate(meeting.scheduled_date)}`,
-    body: '<div class="card-reporting-loading">Загрузка статусов встречи…</div>',
+    body: '<div class="card-reporting-loading content-loading-state">Загрузка статусов встречи…</div>',
   });
   try {
     const data = await app.api.get(`/reporting-meetings/${meeting.id}/preparation`);
@@ -589,10 +660,10 @@ async function showReportingMeetingPreparation(meeting, app) {
     const body = `<div class="meeting-preparation-summary"><strong>${rows.filter(item => item.filled).length} из ${rows.length}</strong><span>задач в доступной области заполнено</span>
       <label><input type="checkbox" data-preparation-missing> Только незаполненные</label></div>
       <div class="meeting-preparation-list">${rows.map(item => `<article data-preparation-row data-filled="${item.filled}">
-        <div class="meeting-preparation-task"><button type="button" data-open-preparation-task="${item.task_id}">${escapeHtml(item.public_id)}</button><div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.team_name || 'Без команды')}</small></div></div>
-        ${item.can_edit ? `<textarea class="input" rows="3" maxlength="5000" data-preparation-text placeholder="Опишите прогресс, риски и следующие шаги">${escapeHtml(item.text || '')}</textarea>
+        <div class="meeting-preparation-task"><button class="ui-link" type="button" data-open-preparation-task="${item.task_id}">${escapeHtml(item.public_id)}</button><div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.team_name || 'Без команды')}</small></div></div>
+        ${item.can_edit ? `${uiControl({ kind: 'textarea', value: item.text || '', attrs: { rows: 3, maxlength: 5000, 'data-preparation-text': true, placeholder: 'Опишите прогресс, риски и следующие шаги', 'aria-label': 'Отчётный статус: ' + item.title } })}
           ${meeting.kind === 'did' ? `<label class="meeting-demo-check"><input type="checkbox" data-preparation-demo ${item.did_demo ? 'checked' : ''}> Демо для ДИД</label>` : ''}
-          <button class="btn btn-primary btn-sm" type="button" data-save-preparation data-task-id="${item.task_id}" data-version="${item.version}">Сохранить</button>`
+          ${uiButton({ label: 'Сохранить', variant: 'primary', size: 'small', attrs: { 'data-save-preparation': true, 'data-task-id': item.task_id, 'data-version': item.version } })}`
           : `<p class="meeting-preparation-text">${item.text ? escapeHtml(item.text) : 'Статус не заполнен'}</p>`}
         <div class="meeting-status-version"><span>Версия ${item.version}</span>${item.updated_at ? `<small>${escapeHtml(new Date(item.updated_at).toLocaleString('ru-RU'))}${item.updated_by_name ? ` · ${escapeHtml(item.updated_by_name)}` : ''}</small>` : ''}</div>
         ${item.revisions?.length ? `<details class="meeting-status-revisions"><summary>История изменений · ${item.revisions.length}</summary>${item.revisions.map(revision => `<div><small>${escapeHtml(revision.changed_at ? new Date(revision.changed_at).toLocaleString('ru-RU') : '—')} · ${escapeHtml(revision.changed_by_name || 'Система')}</small><p>${escapeHtml(revision.new_text || 'Статус очищен')}</p></div>`).join('')}</details>` : ''}
@@ -606,9 +677,9 @@ async function showReportingMeetingPreparation(meeting, app) {
       const taskButton = event.target.closest('[data-open-preparation-task]');
       if (taskButton) document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: Number(taskButton.dataset.openPreparationTask) } }));
       const save = event.target.closest('[data-save-preparation]');
-      if (!save) return;
+      if (!save || save.disabled) return;
       const row = save.closest('[data-preparation-row]');
-      save.disabled = true;
+      setButtonBusy(save, true);
       try {
         const result = await app.api.put(`/tasks/${save.dataset.taskId}/reporting-statuses/${meeting.id}`, {
           text: row.querySelector('[data-preparation-text]')?.value?.trim() || null,
@@ -622,7 +693,7 @@ async function showReportingMeetingPreparation(meeting, app) {
       } catch (error) {
         if (error?.status === 409) await showReportingMeetingPreparation(meeting, app);
         window.toast?.(error?.status === 409 ? 'Данные обновлены другим пользователем. Загружена актуальная версия.' : 'Не удалось сохранить статус', 'error');
-      } finally { save.disabled = false; }
+      } finally { setButtonBusy(save, false); }
     });
   } catch (error) {
     const modalBody = overlay.querySelector('.modal-body');
@@ -696,6 +767,7 @@ async function fetchDbReports(app) {
 }
 
 let reportFilterDropdown = null;
+let reportFilterPopover = null;
 let reportFilterDropdownField = null;
 
 function isRiskStatus(s) {
@@ -735,21 +807,48 @@ export function renderStatus(status) {
 }
 
 function renderProgress(progress, task = null) {
-  const p = progress || 0;
+  const hasFact = progress != null;
+  const p = hasFact ? progress : 0;
   const indicator = task?.progress_indicator;
   const colors = { green: '#16a34a', yellow: '#f59e0b', red: '#dc2626' };
   const indicatorColor = colors[indicator];
   let colorClass = !indicatorColor && p >= 100 ? 'success' : (!indicatorColor && p > 0 ? 'warning' : '');
   const planText = task?.planned_progress != null ? ` · план ${task.planned_progress}%` : '';
-  const deviationText = task?.progress_deviation_percent != null ? `Относительное отставание: ${task.progress_deviation_percent}%` : '';
+  const deviationText = task?.progress_deviation_percent != null
+    ? `Отклонение от плана: ${task.progress_deviation_percent} п.п.`
+    : (!hasFact && indicator === 'red' ? 'Факт не заполнен' : '');
+  const factText = hasFact ? `${p}%` : 'Нет факта';
   return `
     <div style="display:flex;align-items:center;gap:8px;min-width:160px;" title="${escapeHtml(deviationText)}">
       ${indicatorColor ? `<span style="width:10px;height:10px;border-radius:50%;background:${indicatorColor};box-shadow:0 0 0 3px ${indicatorColor}22;flex-shrink:0"></span>` : ''}
-      <div class="progress-bar" style="flex:1;">
-        <div class="progress-fill ${colorClass}" style="width:${p}%;${indicatorColor ? `background:${indicatorColor}` : ''}"></div>
-      </div>
-      <span style="font-size:var(--text-xs);color:var(--text-secondary);min-width:82px;text-align:right;white-space:nowrap">${p}%${planText}</span>
+      ${uiProgress({ value: hasFact ? p : null, tone: ({ green: 'success', yellow: 'warning', red: 'danger' })[indicator] || colorClass || 'accent' })}
+      <span style="font-size:var(--text-xs);color:var(--text-secondary);min-width:82px;text-align:right;white-space:nowrap">${factText}${planText}</span>
     </div>`;
+}
+
+function renderQuarterlyFact(task) {
+  if (task.progress == null) return '<span class="quarterly-no-fact">Не заполнен</span>';
+  const value = Math.max(0, Math.min(100, Number(task.progress) || 0));
+  return `<div class="quarterly-fact-value">${uiProgress({ value })}<strong>${value}%</strong></div>`;
+}
+
+function renderTrafficLight(task) {
+  const indicator = task.progress_indicator;
+  const meta = {
+    green: ['Зелёный'],
+    yellow: ['Жёлтый'],
+    red: ['Красный'],
+  }[indicator] || ['Не определён'];
+  return `<span class="quarterly-light quarterly-light--${escapeHtml(indicator || 'unknown')}"><i aria-hidden="true"></i><span>${meta[0]}<small>${escapeHtml(task.traffic_reason || '')}</small></span></span>`;
+}
+
+function renderProgressFreshness(task) {
+  const code = task.progress_freshness || 'unconfirmed';
+  const tones = { current: 'success', missing: 'danger', stale: 'warning', unconfirmed: 'warning' };
+  const updated = task.progress_updated_at
+    ? new Date(task.progress_updated_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    : '';
+  return `<span class="badge badge-${tones[code] || 'low'}">${escapeHtml(task.progress_freshness_label || 'Не подтверждён')}</span>${updated ? `<small class="quarterly-freshness-date">Обновлён ${updated}</small>` : ''}`;
 }
 
 function renderCell(task, field) {
@@ -760,7 +859,14 @@ function renderCell(task, field) {
     case 'status_name': return renderStatus(task.status_name || task.status);
     case 'priority': return renderPriority(task.priority_name || task.priority);
     case 'priority_name': return renderPriority(task.priority_name || task.priority);
-    case 'progress': return renderProgress(task.progress, task);
+    case 'progress': return currentReport === 'quarterly-goals' ? renderQuarterlyFact(task) : renderProgress(task.progress, task);
+    case 'start_shift_name': return escapeHtml(task.start_shift_name || 'С первого месяца квартала');
+    case 'planned_progress': return task.planned_progress == null ? '<span class="text-muted">До старта</span>' : `<strong>${task.planned_progress}%</strong>`;
+    case 'progress_deviation_percent': return task.progress_deviation_percent == null
+      ? '<span class="quarterly-no-fact">Нет факта</span>'
+      : `${task.progress_deviation_percent} п.п.`;
+    case 'progress_indicator': return renderTrafficLight(task);
+    case 'progress_freshness_label': return renderProgressFreshness(task);
     case 'team_name': return `<span class="badge badge-info">${escapeHtml(task.team_name || '—')}</span>`;
     case 'project': return escapeHtml(task.project_name || task.project || '—');
     case 'project_name': return escapeHtml(task.project_name || task.project || '—');
@@ -822,7 +928,7 @@ function renderDidStatus(status) {
 }
 
 const fieldLabels = {
-  id: 'ID', title: 'Задача', team_name: 'Команда',
+  id: 'ID', public_id: 'ID', title: 'Задача', team_name: 'Команда',
   project: 'Проект', project_name: 'Проект',
   status: 'Статус', priority: 'Приоритет', deadline: 'Срок',
   progress: '%', financial_effect: 'Фин. эффект',
@@ -835,12 +941,17 @@ const fieldLabels = {
   did_status: 'Статус', key_project_status: 'Статус',
   did_demo: 'Демо', date_received: 'Дата поступления',
   involved_teams: 'Вовлечённые команды',
-  deadline_name: 'Срок', owner_name: 'Владелец'
+  deadline_name: 'Срок', owner_name: 'Владелец',
+  start_shift_name: 'Старт в квартале', planned_progress: 'План',
+  progress_deviation_percent: 'Отставание', progress_indicator: 'Светофор',
+  progress_freshness_label: 'Актуальность факта', result: 'Результат недели',
+  next_step: 'Следующий шаг', next_step_due: 'Срок шага', signal: 'Сигнал встречи'
 };
 
 function getFieldLabel(field) {
   const fl = window.app?.fieldLabels || {};
   const base = field.replace(/_name$/, '_id');
+  if (currentReport === 'quarterly-goals' && field === 'progress') return 'Факт';
   return fl[field] || fl[base] || fieldLabels[field] || field;
 }
 
@@ -876,87 +987,46 @@ function applyReportFilters(kind, tasks) {
 }
 
 function closeFilterDropdown() {
-  if (reportFilterDropdown) {
-    reportFilterDropdown.remove();
-    reportFilterDropdown = null;
-    reportFilterDropdownField = null;
-  }
+  reportFilterPopover?.close();
+  reportFilterPopover = null;
 }
 
 function renderFilterDropdown(field, triggerEl) {
   const wasOpen = reportFilterDropdownField === field;
   closeFilterDropdown();
   if (wasOpen) return;
-
-  const values = [...new Set(tasksCache.map(t => String(t[field] || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const values = [...new Set(tasksCache.map(t => String(t[field] ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const activeVals = reportColumnFilters[field] || [];
-
-  const rect = triggerEl.getBoundingClientRect();
   const dd = document.createElement('div');
-  dd.style.cssText = 'position:fixed;z-index:10000;min-width:180px;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:6px;max-height:280px;overflow-y:auto;';
-
-  let left = rect.left;
-  if (left + 200 > window.innerWidth) left = window.innerWidth - 200;
-  dd.style.left = left + 'px';
-  dd.style.top = (rect.bottom + 4) + 'px';
-
-  const allSelected = activeVals.length === values.length && values.length > 0;
-  const someSelected = activeVals.length > 0 && !allSelected;
-
-  let html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f1f5f9;margin-bottom:2px;">';
-  html += '<span style="font-size:11px;font-weight:600;color:#64748b;">Фильтр</span>';
-  html += activeVals.length ? '<span style="font-size:10px;color:#3b82f6;cursor:pointer" data-clear-field="' + field + '">Сбросить</span>' : '';
-  html += '</div>';
-
-  const allCheckedAttr = allSelected ? ' checked' : '';
-  const allIndeterminate = someSelected ? ' indeterminate' : '';
-  html += '<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:12px;cursor:pointer;border-radius:4px;transition:background 0.1s;">';
-  html += '<input type="checkbox" data-select-all ' + allCheckedAttr + allIndeterminate + ' style="accent-color:#3b82f6;cursor:pointer">';
-  html += '<span style="color:#334155;font-weight:500">Выбрать все</span>';
-  html += '<span style="margin-left:auto;font-size:10px;color:#94a3b8">' + activeVals.length + '/' + values.length + '</span>';
-  html += '</label>';
-
-  if (values.length) {
-    html += '<div style="border-top:1px solid #f1f5f9;margin:4px 0;"></div>';
-    values.forEach(v => {
-      const checked = activeVals.includes(v) ? ' checked' : '';
-      html += '<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:12px;cursor:pointer;border-radius:4px;transition:background 0.1s;">';
-      html += '<input type="checkbox" value="' + v.replace(/"/g, '&quot;') + '"' + checked + ' style="accent-color:#3b82f6;cursor:pointer">';
-      html += '<span style="color:#334155">' + v + '</span>';
-      html += '</label>';
-    });
-  } else {
-    html += '<div style="padding:12px 8px;text-align:center;font-size:12px;color:#94a3b8">Нет значений</div>';
-  }
-
-  dd.innerHTML = html;
-
-  dd.addEventListener('change', (e) => {
-    const cb = e.target;
-    if (cb.dataset.selectAll !== undefined) {
-      const checkboxes = dd.querySelectorAll('input[type=checkbox][value]');
-      const allChecked = cb.checked;
-      checkboxes.forEach(c => c.checked = allChecked);
-    }
-    applyFilterFromDropdown(field, dd);
+  dd.className = 'report-filter-panel';
+  dd.innerHTML = `<div class="ui-popover-header"><strong class="ui-popover-title">Фильтр</strong>
+    <button type="button" class="btn btn-ghost btn-sm" data-clear-field="${escapeHtml(field)}">Сбросить</button></div>
+    <label class="ui-selection-option"><input type="checkbox" data-select-all><span>Выбрать все</span><span class="ui-selection-count" data-selection-count></span></label>
+    ${selectionList({ items: values.map(value => ({ value, label: value })), selected: activeVals })}`;
+  const syncSelection = () => {
+    const checked = dd.querySelectorAll('input[value]:checked').length;
+    const all = dd.querySelector('[data-select-all]');
+    all.checked = checked === values.length && values.length > 0;
+    all.indeterminate = checked > 0 && checked < values.length;
+    dd.querySelector('[data-selection-count]').textContent = `${checked}/${values.length}`;
+  };
+  syncSelection();
+  dd.addEventListener('change', event => {
+    if (event.target.matches('[data-select-all]')) dd.querySelectorAll('input[value]').forEach(input => { input.checked = event.target.checked; });
+    syncSelection(); applyFilterFromDropdown(field, dd); reportFilterPopover?.position();
   });
-
-  dd.addEventListener('click', (e) => {
-    const clearBtn = e.target.closest('[data-clear-field]');
-    if (clearBtn) {
-      const checkboxes = dd.querySelectorAll('input[type=checkbox]');
-      checkboxes.forEach(c => c.checked = false);
-      const selectAll = dd.querySelector('input[data-select-all]');
-      if (selectAll) selectAll.checked = false;
-      applyFilterFromDropdown(field, dd);
-    }
+  dd.addEventListener('click', event => {
+    if (!event.target.closest('[data-clear-field]')) return;
+    dd.querySelectorAll('input[type=checkbox]').forEach(input => { input.checked = false; });
+    syncSelection(); applyFilterFromDropdown(field, dd); reportFilterPopover?.position();
   });
-
-  document.body.appendChild(dd);
   reportFilterDropdown = dd;
   reportFilterDropdownField = field;
-
-  document.addEventListener('click', reportFilterOutsideClick, true);
+  reportFilterPopover = createPopover({ trigger: triggerEl, panel: dd, label: 'Фильтр отчёта', removeOnClose: true,
+    resolveTrigger: () => document.querySelector(`.filter-trigger[data-field="${CSS.escape(field)}"]`),
+    onClose: () => { reportFilterDropdown = null; reportFilterDropdownField = null; },
+  });
+  reportFilterPopover.open();
 }
 
 function applyFilterFromDropdown(field, dd) {
@@ -969,7 +1039,7 @@ function applyFilterFromDropdown(field, dd) {
     selectAll.checked = checkedCount === valCbs.length && valCbs.length > 0;
     selectAll.indeterminate = checkedCount > 0 && checkedCount < valCbs.length;
   }
-  const totalSpan = dd.querySelector('label:first-child span:last-child');
+  const totalSpan = dd.querySelector('[data-selection-count]');
   if (totalSpan) {
     totalSpan.textContent = checked.length + '/' + valCbs.length;
   }
@@ -982,35 +1052,217 @@ function applyFilterFromDropdown(field, dd) {
   }
 }
 
-function reportFilterOutsideClick(e) {
-  if (reportFilterDropdown && !reportFilterDropdown.contains(e.target)) {
-    const trigger = e.target.closest('.filter-trigger');
-    if (trigger && trigger.dataset.field === reportFilterDropdownField) return;
-    closeFilterDropdown();
-    document.removeEventListener('click', reportFilterOutsideClick, true);
-  }
+function getReportQueryParams() {
+  const query = (window.location.hash.split('?')[1] || '').split('#')[0];
+  return new URLSearchParams(query);
 }
 
-function renderReportTable(list, fields) {
+function renderPipMetric(label, value, suffix = '') {
+  return `<div class="pip-summary-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}${suffix ? ` <small>${escapeHtml(suffix)}</small>` : ''}</strong></div>`;
+}
+
+function renderPipDecisionWorkspace(tasks) {
+  const list = Array.isArray(tasks) ? tasks : [];
+  const summary = calculatePipDecisionSummary(list);
+  const params = getReportQueryParams();
+  const transferred = Number(params.get('transferred') || 0);
+  const fromExpress = params.get('source') === 'express-estimate';
+  const canDecide = window.app?.store?.get('currentUser')?.permissions?.pip_decision === 'available';
+  const visible = list.filter(task => {
+    const hasGaps = getPipDecisionGaps(task).length > 0;
+    return pipQueueFilter === 'gaps' ? hasGaps : pipQueueFilter === 'ready' ? !hasGaps : true;
+  });
+  const transferredText = transferred > 0
+    ? `${transferred} ${formatCount(transferred)} передано из экспресс-оценки.`
+    : 'Экспресс-оценка завершена, задачи добавлены в очередь решений.';
+  const flowNotice = fromExpress ? `
+    <div class="pip-handoff-notice" role="status">
+      <i data-lucide="badge-check"></i>
+      <div><strong>Передача в PI выполнена</strong><span>${escapeHtml(transferredText)} Проверьте контекст и зафиксируйте решение по каждой задаче.</span></div>
+    </div>` : '';
+  const cards = visible.map(task => {
+    const gaps = getPipDecisionGaps(task);
+    const contextReady = gaps.length === 0;
+    return `
+      <article class="pip-task-card${contextReady ? ' is-context-ready' : ' has-context-gaps'}" data-pip-task-id="${task.id}">
+        <div class="pip-task-main">
+          <div class="pip-task-heading">
+            <a href="#/backlog?task=${task.id}&source=pip" class="pip-task-id">${escapeHtml(formatTaskPublicId(task))}</a>
+            <span class="pip-context-badge ${contextReady ? 'is-ready' : 'has-gaps'}"><i data-lucide="${contextReady ? 'badge-check' : 'triangle-alert'}"></i>${contextReady ? 'Контекст заполнен' : `${gaps.length} ${gaps.length === 1 ? 'пробел' : 'пробела'}`}</span>
+          </div>
+          <h3>${escapeHtml(task.title || 'Без названия')}</h3>
+          <div class="pip-task-meta">
+            <span><i data-lucide="users"></i>${escapeHtml(task.team_name || 'Без команды')}</span>
+            <span><i data-lucide="folder-kanban"></i>${escapeHtml(task.project_name || 'Без проекта')}</span>
+            <span><i data-lucide="tag"></i>${escapeHtml(task.task_type_name || 'Тип не указан')}</span>
+          </div>
+        </div>
+        <dl class="pip-task-metrics">
+          <div><dt>Трудозатраты</dt><dd>${task.effort_days != null ? `${escapeHtml(String(task.effort_days))} ч/д` : '—'}</dd></div>
+          <div><dt>Фин. эффект</dt><dd>${task.financial_effect != null ? `${Number(task.financial_effect).toLocaleString('ru-RU')} млн ₽` : '—'}</dd></div>
+          <div><dt>Priority Score</dt><dd>${task.priority_score != null ? escapeHtml(String(task.priority_score)) : '—'}</dd></div>
+        </dl>
+        <div class="pip-task-decision">
+          ${gaps.length ? `<div class="pip-context-gaps" aria-label="Недостающие данные">${gaps.map(gap => `<span>${escapeHtml(gap.label)}</span>`).join('')}</div>` : '<p class="pip-context-ok"><i data-lucide="circle-check"></i>Данных достаточно для обсуждения</p>'}
+          ${canDecide
+            ? `<button type="button" class="btn btn-primary btn-sm pip-open-decision" data-task-id="${task.id}"><i data-lucide="scale"></i>Принять решение</button>`
+            : '<p class="pip-view-only"><i data-lucide="lock-keyhole"></i>Решение фиксирует лидер трайба или проектный офис</p>'}
+        </div>
+      </article>`;
+  }).join('');
+  const empty = list.length === 0
+    ? `<div class="pip-queue-empty"><i data-lucide="party-popper"></i><h3>Очередь решений разобрана</h3><p>Задач в статусе «Принятие решения» сейчас нет.</p><a class="btn btn-secondary btn-sm" href="#/express-estimate">Открыть экспресс-оценку</a></div>`
+    : `<div class="pip-queue-empty"><i data-lucide="list-filter"></i><h3>Нет задач в этом фильтре</h3><p>Переключите представление, чтобы увидеть остальную очередь.</p></div>`;
+
+  return `
+    <section class="pip-flow-card" aria-labelledby="pip-flow-title">
+      <div class="pip-flow-heading"><div><span class="pip-eyebrow">Сквозной процесс</span><h2 id="pip-flow-title">От бэклога до решения</h2></div><a href="#/express-estimate" class="btn btn-ghost btn-sm"><i data-lucide="arrow-left"></i>Экспресс-оценка</a></div>
+      <ol class="pip-flow-steps">
+        <li class="is-done"><span>1</span><div><strong>Бэклог</strong><small>Задача подготовлена</small></div></li>
+        <li class="is-done"><span>2</span><div><strong>Экспресс-оценка</strong><small>Объём и трудозатраты</small></div></li>
+        <li class="is-current" aria-current="step"><span>3</span><div><strong>PI-планирование</strong><small>Текущее решение</small></div></li>
+        <li><span>4</span><div><strong>Результат</strong><small>В работу, на оценку или отклонить</small></div></li>
+      </ol>
+      ${flowNotice}
+    </section>
+    <section class="pip-summary-grid" aria-label="Сводка очереди решений">
+      ${renderPipMetric('Ожидают решения', summary.total)}
+      ${renderPipMetric('Полный контекст', `${summary.contextReady} из ${summary.total}`)}
+      ${renderPipMetric('Трудозатраты', summary.totalEffort.toLocaleString('ru-RU'), 'ч/д')}
+      ${renderPipMetric('Финансовый эффект', summary.totalEffect.toLocaleString('ru-RU'), 'млн ₽')}
+      ${renderPipMetric('Средний Priority Score', summary.averagePriority ?? '—')}
+    </section>
+    <section class="pip-queue" aria-labelledby="pip-queue-title">
+      <div class="pip-queue-toolbar">
+        <div><h2 id="pip-queue-title">Очередь решений</h2><p>Сначала показаны задачи с более высоким Priority Score.</p></div>
+        <div class="pip-filter-group" role="group" aria-label="Фильтр полноты контекста">
+          ${[['all', `Все · ${summary.total}`], ['ready', `Контекст заполнен · ${summary.contextReady}`], ['gaps', `Есть пробелы · ${summary.total - summary.contextReady}`]].map(([value, label]) => `<button type="button" class="btn btn-sm ${pipQueueFilter === value ? 'btn-primary is-active' : 'btn-secondary'}" data-pip-filter="${value}" aria-pressed="${pipQueueFilter === value}">${escapeHtml(label)}</button>`).join('')}
+        </div>
+      </div>
+      <div class="pip-task-list">${cards || empty}</div>
+    </section>`;
+}
+
+function showPipDecisionModal(task, app) {
+  document.getElementById('pip-decision-modal')?.remove();
+  const gaps = getPipDecisionGaps(task);
+  const overlay = document.createElement('div');
+  overlay.id = 'pip-decision-modal';
+  overlay.className = 'modal-overlay pip-decision-overlay';
+  overlay.innerHTML = `
+    <div class="app-modal app-modal--medium pip-decision-modal" role="dialog" aria-modal="true" aria-labelledby="pip-decision-title">
+      <div class="app-modal__header pip-decision-header">
+        <div><span class="pip-eyebrow">${escapeHtml(formatTaskPublicId(task))}</span><h2 id="pip-decision-title">Решение по задаче</h2><p>${escapeHtml(task.title || 'Без названия')}</p></div>
+        <button type="button" class="btn btn-ghost btn-icon" data-pip-modal-close data-modal-close aria-label="Закрыть"><i data-lucide="x"></i></button>
+      </div>
+      <div class="app-modal__body">
+        <div class="pip-decision-context">
+          <div><span>Команда</span><strong>${escapeHtml(task.team_name || '—')}</strong></div>
+          <div><span>Трудозатраты</span><strong>${task.effort_days != null ? `${escapeHtml(String(task.effort_days))} ч/д` : '—'}</strong></div>
+          <div><span>Фин. эффект</span><strong>${task.financial_effect != null ? `${Number(task.financial_effect).toLocaleString('ru-RU')} млн ₽` : '—'}</strong></div>
+          <div><span>Priority Score</span><strong>${task.priority_score ?? '—'}</strong></div>
+        </div>
+        ${gaps.length ? `<div class="pip-modal-gaps"><i data-lucide="triangle-alert"></i><div><strong>Контекст неполный</strong><span>${escapeHtml(gaps.map(gap => gap.label).join(' · '))}. Решение доступно, но эти пробелы стоит учесть.</span></div></div>` : ''}
+        <fieldset class="pip-decision-options"><legend>Выберите результат PI-планирования</legend>
+          ${Object.entries(PIP_DECISION_META).map(([value, meta]) => `<label class="pip-decision-option is-${meta.tone}"><input type="radio" name="pip-decision" value="${value}"><span class="pip-decision-option-icon"><i data-lucide="${meta.icon}"></i></span><span><strong>${escapeHtml(meta.label)}</strong><small>${escapeHtml(meta.consequence)}</small></span></label>`).join('')}
+        </fieldset>
+        <div class="pip-decision-consequence" id="pip-decision-consequence" role="status">Выберите результат, чтобы увидеть последствия перехода.</div>
+        <div class="form-group pip-decision-reason">
+          <label class="form-label" for="pip-decision-reason">Комментарий к решению</label>
+          <textarea class="input" id="pip-decision-reason" rows="4" maxlength="2000" placeholder="Сначала выберите результат"></textarea>
+          <small id="pip-decision-reason-help">Для принятия комментарий необязателен; для возврата и отклонения — обязателен.</small>
+          <div class="input-error" id="pip-decision-error" role="alert" hidden></div>
+        </div>
+      </div>
+      <div class="app-modal__footer pip-decision-actions">
+        <button type="button" class="btn btn-secondary btn-sm" data-pip-modal-close>Отмена</button>
+        <button type="button" class="btn btn-primary btn-sm" id="pip-decision-submit" disabled><i data-lucide="check"></i>Зафиксировать решение</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  window.lucide?.createIcons();
+
+  const submit = overlay.querySelector('#pip-decision-submit');
+  const reason = overlay.querySelector('#pip-decision-reason');
+  const error = overlay.querySelector('#pip-decision-error');
+  let submitting = false;
+  const close = () => { if (!submitting) overlay.remove(); };
+  overlay.querySelectorAll('[data-pip-modal-close]').forEach(button => button.addEventListener('click', close));
+  overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
+  overlay.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
+
+  const updateState = () => {
+    const decision = overlay.querySelector('input[name="pip-decision"]:checked')?.value;
+    const meta = PIP_DECISION_META[decision];
+    const required = ['rework', 'reject'].includes(decision);
+    submit.disabled = !decision || (required && !reason.value.trim()) || submitting;
+    reason.required = required;
+    reason.placeholder = meta?.reasonPlaceholder || 'Сначала выберите результат';
+    overlay.querySelector('label[for="pip-decision-reason"]').textContent = meta?.reasonLabel || 'Комментарий к решению';
+    overlay.querySelector('#pip-decision-reason-help').textContent = required ? 'Обязательное поле: причина сохранится в истории задачи.' : 'Необязательно: зафиксируйте важные договорённости PI.';
+    overlay.querySelector('#pip-decision-consequence').textContent = meta?.consequence || 'Выберите результат, чтобы увидеть последствия перехода.';
+    error.hidden = true;
+  };
+  overlay.querySelectorAll('input[name="pip-decision"]').forEach(input => input.addEventListener('change', updateState));
+  reason.addEventListener('input', updateState);
+  overlay.querySelector('input[name="pip-decision"]')?.focus();
+
+  submit.addEventListener('click', async () => {
+    try {
+      const decision = overlay.querySelector('input[name="pip-decision"]:checked')?.value;
+      const payload = buildPipDecisionPayload({ decision, version: task.version, reason: reason.value });
+      submitting = true;
+      updateState();
+      submit.innerHTML = '<span class="spinner" aria-hidden="true"></span>Сохраняем…';
+      await app.api.put(`/tasks/${task.id}/pip-decision`, payload);
+      overlay.remove();
+      window.toast?.({ accept: 'Задача принята в работу', rework: 'Задача возвращена в экспресс-оценку', reject: 'Задача отклонена' }[decision], 'success');
+      await loadReportData(app);
+    } catch (requestError) {
+      submitting = false;
+      updateState();
+      submit.innerHTML = '<i data-lucide="check"></i>Зафиксировать решение';
+      window.lucide?.createIcons();
+      error.textContent = requestError?.status === 409 ? 'Задача уже изменилась. Очередь будет обновлена — откройте решение повторно.' : (window.formatErrorMessage?.(requestError) || requestError.message || 'Не удалось сохранить решение');
+      error.hidden = false;
+      if (requestError?.status === 409) await loadReportData(app);
+    }
+  });
+}
+
+function filteredAndSortedReportRows(list, ignoredFilterFields = []) {
   list = Array.isArray(list) ? list : [];
   let filtered = list;
   const hasFilters = Object.keys(reportColumnFilters).some(k => reportColumnFilters[k] && reportColumnFilters[k].length);
   if (hasFilters) {
     filtered = list.filter(task =>
       Object.entries(reportColumnFilters).every(([field, vals]) => {
+        if (ignoredFilterFields.includes(field)) return true;
         if (!vals || !vals.length) return true;
-        return vals.includes(String(task[field] || '').trim());
+        return vals.includes(String(task[field] ?? '').trim());
       })
     );
   }
 
   if (reportSortField) {
     filtered = [...filtered].sort((a, b) => {
-      const va = String(a[reportSortField] || '').toLowerCase();
-      const vb = String(b[reportSortField] || '').toLowerCase();
+      if (['progress', 'planned_progress', 'progress_deviation_percent'].includes(reportSortField)) {
+        const left = a[reportSortField] == null ? Number.NEGATIVE_INFINITY : Number(a[reportSortField]);
+        const right = b[reportSortField] == null ? Number.NEGATIVE_INFINITY : Number(b[reportSortField]);
+        return reportSortDir === 'asc' ? left - right : right - left;
+      }
+      const va = String(a[reportSortField] ?? '').toLowerCase();
+      const vb = String(b[reportSortField] ?? '').toLowerCase();
       return reportSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
     });
   }
+
+  return filtered;
+}
+
+function renderReportTable(list, fields) {
+  list = Array.isArray(list) ? list : [];
+  const filtered = filteredAndSortedReportRows(list);
 
   const hasAnyFilter = Object.keys(reportColumnFilters).some(k => reportColumnFilters[k] && reportColumnFilters[k].length);
 
@@ -1022,61 +1274,109 @@ function renderReportTable(list, fields) {
     const hasActive = activeVals.length > 0;
     const count = activeVals.length;
 
-    return `<th data-sort="${f}" style="cursor:pointer;user-select:none;white-space:nowrap;padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;border-bottom:1px solid var(--border-color);background:var(--bg-tertiary);position:relative">
+    return `<th data-sort="${f}" style="cursor:pointer;user-select:none;white-space:nowrap;text-align:left;border-bottom:1px solid var(--border-color);position:relative">
       <div style="display:flex;align-items:center;gap:4px;justify-content:space-between">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${label}${arrow}</span>
-        <span class="filter-trigger" data-field="${f}" style="flex-shrink:0;cursor:pointer;padding:3px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;${hasActive ? 'color:#3b82f6;background:#eff6ff' : 'color:#94a3b8'}" title="Фильтр">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-          </svg>
-          ${count > 0 ? `<span style="font-size:9px;margin-left:1px;font-weight:700">${count}</span>` : ''}
-        </span>
+        ${uiButton({ label: `Фильтр: ${label}${count ? `, выбрано ${count}` : ''}`, icon: 'filter', iconOnly: true, size: 'small', variant: 'ghost', className: 'filter-trigger', attrs: { 'data-field': f, 'aria-pressed': hasActive } })}
       </div>
     </th>`;
   }).join('');
 
-  const canMakePipDecision = currentReport === 'pip' && window.app?.store?.get('currentUser')?.permissions?.pip_decision === 'available';
   const widths = {
     id: 90, title: 320, task_type_name: 170, team_name: 190,
     effort_days: 155, effort_rub: 165, financial_effect: 135,
-    cv: 90, priority_score: 115, progress: 235,
+    cv: 90, priority_score: 115, progress: currentReport === 'quarterly-goals' ? 150 : 235,
+    start_shift_name: 210, planned_progress: 90,
+    progress_deviation_percent: 115, progress_indicator: 175, progress_freshness_label: 155,
   };
-  const tableWidth = fields.reduce((sum, field) => sum + (widths[field] || 140), 0)
-    + (canMakePipDecision ? 205 : 0);
-  const colgroup = `<colgroup>${fields.map(f => `<col style="width:${widths[f] || 140}px">`).join('')}${canMakePipDecision ? '<col style="width:205px">' : ''}</colgroup>`;
-  const actionHeader = canMakePipDecision
-    ? '<th style="width:205px;padding:8px 12px;white-space:nowrap;background:var(--bg-tertiary);border-bottom:1px solid var(--border-color);font-size:11px;text-transform:uppercase;color:var(--text-muted)">Действия</th>'
-    : '';
+  const tableWidth = fields.reduce((sum, field) => sum + (widths[field] || 140), 0);
+  const colgroup = `<colgroup>${fields.map(f => `<col style="width:${widths[f] || 140}px">`).join('')}</colgroup>`;
 
   const rows = filtered.map(task => {
-    const cells = fields.map(f => `<td style="padding:8px 12px;border-bottom:1px solid var(--border-color);font-size:13px;overflow:hidden;text-overflow:ellipsis;${f === 'title' ? 'white-space:normal' : 'white-space:nowrap'}">${renderCell(task, f)}</td>`).join('');
-    const actions = canMakePipDecision ? `
-      <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);white-space:nowrap">
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-danger btn-xs pip-decision-btn" data-task-id="${task.id}" data-task-version="${task.version ?? 0}" data-decision="reject">Отклонить</button>
-          <button class="btn btn-primary btn-xs pip-decision-btn" data-task-id="${task.id}" data-task-version="${task.version ?? 0}" data-decision="accept">В работу</button>
-        </div>
-      </td>` : '';
-    return `<tr>${cells}${actions}</tr>`;
+    const cells = fields.map(f => `<td style="border-bottom:1px solid var(--border-color);overflow:hidden;text-overflow:ellipsis;${f === 'title' ? 'white-space:normal' : 'white-space:nowrap'}">${renderCell(task, f)}</td>`).join('');
+    return `<tr>${cells}</tr>`;
   }).join('');
 
-  let footerHtml = `<span style="font-size:11px;color:var(--text-muted)">${filtered.length} из ${list.length} задач</span>`;
+  let footerHtml = `<span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted)">${filtered.length} из ${list.length} задач</span>`;
 
   if (hasAnyFilter) {
-    footerHtml += `<span style="margin-left:12px;font-size:11px;color:#3b82f6;cursor:pointer;text-decoration:underline" id="report-clear-filters">Сбросить все фильтры</span>`;
+    footerHtml += `<span style="margin-left:12px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:#3b82f6;cursor:pointer;text-decoration:underline" id="report-clear-filters">Сбросить все фильтры</span>`;
   }
 
   return `
     <div class="table-container" style="overflow-x:auto">
-      <table class="table report-balanced-table" style="width:100%;min-width:${tableWidth}px;border-collapse:collapse;table-layout:fixed">
+      <table class="ui-table ui-table-data table report-balanced-table" style="width:100%;min-width:${tableWidth}px;table-layout:fixed">
         ${colgroup}
-        <thead><tr>${headers}${actionHeader}</tr></thead>
-        <tbody>${rows || '<tr><td colspan="99" style="text-align:center;padding:24px;color:var(--text-muted)">Нет совпадений</td></tr>'}</tbody>
+        <thead><tr>${headers}</tr></thead>
+        <tbody>${rows || '<tr><td colspan="99" style="text-align:center;color:var(--text-muted)">Нет совпадений</td></tr>'}</tbody>
       </table>
       <div style="padding:8px 12px;">
         ${footerHtml}
       </div>
     </div>`;
+}
+
+function quarterlyAverage(items, field) {
+  const values = items.map(item => item[field]).filter(value => value != null).map(Number);
+  return values.length ? `${Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)}%` : '—';
+}
+
+export function summarizeQuarterlyTeams(tasks) {
+  const grouped = new Map();
+  tasks.forEach(task => {
+    const name = task.team_name || 'Без команды';
+    if (!grouped.has(name)) grouped.set(name, []);
+    grouped.get(name).push(task);
+  });
+  return [...grouped.entries()].map(([name, items]) => {
+    const green = items.filter(item => item.progress_indicator === 'green').length;
+    const yellow = items.filter(item => item.progress_indicator === 'yellow').length;
+    const red = items.filter(item => item.progress_indicator === 'red').length;
+    const dataIssues = items.filter(item => item.progress_freshness !== 'current').length;
+    const confirmedAttention = items.filter(item =>
+      item.progress_freshness === 'current' && ['yellow', 'red'].includes(item.progress_indicator)
+    ).length;
+    return { name, items, green, yellow, red, dataIssues, confirmedAttention, attention: dataIssues + confirmedAttention };
+  }).sort((a, b) => b.attention - a.attention || a.name.localeCompare(b.name, 'ru'));
+}
+
+export function renderQuarterlyTeamSummary(tasks) {
+  const colorFiltered = filteredAndSortedReportRows(tasks, ['team_name']);
+  const activeTeam = (reportColumnFilters.team_name || [])[0] || '';
+  const teams = summarizeQuarterlyTeams(colorFiltered);
+
+  const rows = teams.map(team => `
+    <tr class="${activeTeam === team.name ? 'is-selected' : ''}">
+      <td><button type="button" class="ui-surface-action quarterly-team-select" data-quarterly-team="${escapeHtml(team.name)}">${escapeHtml(team.name)}</button></td>
+      <td><strong>${team.items.length}</strong></td><td>${team.green}</td><td>${team.yellow}</td><td>${team.red}</td>
+      <td>${quarterlyAverage(team.items, 'planned_progress')}</td><td>${quarterlyAverage(team.items, 'progress')}</td>
+      <td><strong class="${team.confirmedAttention ? 'text-danger' : 'text-success'}">${team.confirmedAttention}</strong></td>
+      <td><strong class="${team.dataIssues ? 'text-warning' : 'text-success'}">${team.dataIssues}</strong></td>
+    </tr>`).join('');
+
+  return `<section class="card quarterly-team-summary" aria-labelledby="quarterly-team-summary-title">
+    <div class="card-header quarterly-team-summary__header">
+      <div><h2 class="card-title" id="quarterly-team-summary-title">Сводка по командам</h2><p>Команды с наибольшим числом отклонений показаны первыми.</p></div>
+      ${activeTeam ? `<button type="button" class="btn btn-ghost btn-sm" data-quarterly-team=""><i data-lucide="x"></i>Все команды</button>` : ''}
+    </div>
+    <div class="table-container"><table class="ui-table ui-table-data table quarterly-team-table"><thead><tr><th>Команда</th><th>Всего</th><th><span class="quarterly-dot is-green"></span>Зелёные</th><th><span class="quarterly-dot is-yellow"></span>Жёлтые</th><th><span class="quarterly-dot is-red"></span>Красные</th><th>Средний план</th><th>Средний факт</th><th>Подтверждённое отставание</th><th>Проблемы данных</th></tr></thead><tbody>${rows || '<tr><td colspan="9" class="text-muted">Нет команд по выбранному цвету</td></tr>'}</tbody></table></div>
+  </section>`;
+}
+
+function renderQuarterlyGoalsBody(tasks, fields) {
+  const visible = filteredAndSortedReportRows(tasks);
+  const activeTeam = (reportColumnFilters.team_name || [])[0];
+  const missing = visible.filter(item => item.progress_freshness === 'missing').length;
+  const needsRefresh = visible.filter(item => ['unconfirmed', 'stale'].includes(item.progress_freshness)).length;
+  const confirmedGap = visible.filter(item => item.progress_freshness === 'current' && ['yellow', 'red'].includes(item.progress_indicator)).length;
+  return `<section class="quarterly-data-quality" aria-label="Качество данных отчёта">
+      <div><i data-lucide="database-zap" aria-hidden="true"></i><span><strong>${missing + needsRefresh} требуют обновления</strong><small>${missing} без факта · ${needsRefresh} устарели или не подтверждены</small></span></div>
+      <div><i data-lucide="chart-no-axes-column-decreasing" aria-hidden="true"></i><span><strong>${confirmedGap} с подтверждённым отставанием</strong><small>По актуальному факту</small></span></div>
+    </section>${renderQuarterlyTeamSummary(tasks)}
+    <section class="quarterly-goals-detail" aria-labelledby="quarterly-goals-detail-title">
+      <div class="quarterly-goals-detail__header"><div><h2 id="quarterly-goals-detail-title">Детализация целей и AD-HOC</h2><p>${activeTeam ? `Команда: ${escapeHtml(activeTeam)}` : 'Все команды текущего квартала'}</p></div><span>${visible.length} из ${tasks.length} задач</span></div>
+      ${renderReportTable(tasks, fields)}
+    </section>`;
 }
 
 function exportReportExcel(kind, tasks, app) {
@@ -1122,8 +1422,7 @@ async function loadReportData(app) {
       await fetchDbReports(app);
       const rep = dbReportsCache[config.key];
       if (!rep) {
-        renderPlaceholderReport(config, currentReport);
-        return;
+        throw new Error('Отчёт не зарегистрирован в системе. Обновите страницу или обратитесь к администратору.');
       }
       cachedDbReport = rep;
       const execData = await app.api.get(`/reports/${rep.id}/execute`);
@@ -1138,6 +1437,7 @@ async function loadReportData(app) {
     if (config.customEndpoint) {
       const data = await app.api.get(config.customEndpoint);
       cachedReportData = data;
+      if (currentReport === 'team-weekly') tasksCache = data.items || [];
       renderReportContent(config, currentReport, data);
     } else {
       const data = await app.api.get('/tasks/?per_page=1000');
@@ -1150,32 +1450,155 @@ async function loadReportData(app) {
     }
   } catch (e) {
     const body = document.getElementById('report-body');
-    if (body) body.innerHTML = `<p class="text-muted" style="padding:var(--space-8);">Ошибка загрузки: ${escapeHtml(e.message)}</p>`;
+    if (body) {
+      body.innerHTML = renderViewState({ kind: e.status === 403 ? 'forbidden' : 'error', title: 'Не удалось загрузить отчёт', message: e.message, actionLabel: 'Повторить' });
+      bindViewStateAction(body, () => loadReportData(app));
+    }
   }
+}
+
+const WEEKLY_SIGNAL_META = {
+  decision: { label: 'Нужно решение', icon: 'message-square-warning' },
+  blocker: { label: 'Блокер', icon: 'octagon-alert' },
+  risk: { label: 'Риск', icon: 'triangle-alert' },
+  on_track: { label: 'По плану', icon: 'circle-check' },
+};
+
+function formatWeeklyDate(value, options = { day: 'numeric', month: 'short' }) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('ru-RU', options).format(new Date(`${value}T12:00:00`)).replace('.', '');
+}
+
+function weeklySummary(items) {
+  const ready = items.filter(item => item.is_ready).length;
+  const completed = items.filter(item => item.is_completed_this_week).length;
+  const attention = items.filter(item => ['decision', 'blocker', 'risk'].includes(item.signal)).length;
+  const deltas = items.map(item => item.progress_delta).filter(value => Number.isFinite(value));
+  return {
+    total: items.length,
+    ready,
+    completed,
+    active: Math.max(0, items.length - completed),
+    attention,
+    stale: items.length - ready,
+    readiness: items.length ? Math.round(ready / items.length * 100) : 0,
+    delta: deltas.length ? Math.round(deltas.reduce((sum, value) => sum + value, 0) / deltas.length) : null,
+  };
+}
+
+function weeklyTaskCard(item) {
+  const signal = WEEKLY_SIGNAL_META[item.signal] || WEEKLY_SIGNAL_META.on_track;
+  const delta = Number.isFinite(item.progress_delta)
+    ? `<span class="team-weekly-delta ${item.progress_delta >= 0 ? 'is-positive' : 'is-negative'}">${item.progress_delta >= 0 ? '+' : ''}${item.progress_delta} п.п.</span>`
+    : '';
+  return `<article class="team-weekly-task signal-${escapeHtml(item.signal || 'on_track')}" data-weekly-task="${item.task_id}">
+    <header class="team-weekly-task-head">
+      <button type="button" class="ui-link team-weekly-task-title" data-open-weekly-task="${item.task_id}"><span>${escapeHtml(item.public_id)}</span><strong>${escapeHtml(item.title || 'Без названия')}</strong><i data-lucide="arrow-up-right"></i></button>
+      <span class="team-weekly-signal"><i data-lucide="${signal.icon}"></i>${signal.label}</span>
+    </header>
+    <div class="team-weekly-task-grid">
+      <section><span>Результат недели</span><p>${escapeHtml(item.result || 'Ещё не заполнен')}</p></section>
+      <section><span>Следующий шаг</span><p>${escapeHtml(item.next_step || 'Не указан')}${item.next_step_due ? `<small>До ${escapeHtml(formatWeeklyDate(item.next_step_due, { day: 'numeric', month: 'long' }))}</small>` : ''}</p></section>
+    </div>
+    ${item.decision_request ? `<div class="team-weekly-decision"><i data-lucide="message-square-warning"></i><div><span>Вопрос на встречу</span><strong>${escapeHtml(item.decision_request)}</strong></div></div>` : ''}
+    <footer class="team-weekly-task-meta">
+      <span><i data-lucide="folder-kanban"></i>${escapeHtml(item.project_name || 'Без проекта')}</span>
+      <span><i data-lucide="user-round"></i>${escapeHtml(item.owner_name || 'Не назначен')}</span>
+      <span><i data-lucide="activity"></i>${Number(item.progress || 0)}% ${delta}</span>
+      <span><i data-lucide="circle-dot"></i>${escapeHtml(item.status_name || 'Без статуса')}</span>
+    </footer>
+  </article>`;
+}
+
+export function renderTeamWeeklyReport(data) {
+  const allItems = Array.isArray(data.items) ? data.items : [];
+  const teams = Array.isArray(data.teams) ? data.teams : [];
+  if (teamWeeklyTeamId && !teams.some(team => String(team.id) === String(teamWeeklyTeamId))) teamWeeklyTeamId = '';
+  if (!teamWeeklyTeamId && teams.length === 1) teamWeeklyTeamId = String(teams[0].id);
+  const teamItems = teamWeeklyTeamId
+    ? allItems.filter(item => String(item.team_id) === String(teamWeeklyTeamId))
+    : allItems;
+  const summary = weeklySummary(teamItems);
+  const visible = teamItems.filter(item => {
+    if (teamWeeklyFilter === 'attention') return ['decision', 'blocker', 'risk'].includes(item.signal);
+    if (teamWeeklyFilter === 'completed') return item.is_completed_this_week;
+    if (teamWeeklyFilter === 'stale') return !item.is_ready;
+    return true;
+  });
+  const meeting = data.meeting || {};
+  const range = meeting.scheduled_date && meeting.week_end
+    ? `${formatWeeklyDate(meeting.scheduled_date)}–${formatWeeklyDate(meeting.week_end, { day: 'numeric', month: 'long' })}`
+    : 'Текущая неделя';
+  const activeTeam = teams.find(team => String(team.id) === String(teamWeeklyTeamId));
+  const teamLabel = activeTeam?.name || (teams.length > 1 ? 'Все команды' : teams[0]?.name || 'Команда');
+  const nextDue = teamItems.map(item => item.next_step_due).filter(Boolean).sort()[0];
+  const filters = [
+    ['attention', 'Требуют внимания', summary.attention],
+    ['completed', 'Завершено', summary.completed],
+    ['stale', 'Без обновления', summary.stale],
+    ['all', 'Все задачи', summary.total],
+  ];
+  return `<section class="team-weekly-report" aria-labelledby="team-weekly-focus-title">
+    <div class="team-weekly-context">
+      <div><span>Пульс команды</span><strong>${escapeHtml(teamLabel)}</strong><small>${escapeHtml(range)}</small></div>
+      ${teams.length > 1 ? `<label><span class="sr-only">Команда</span><select class="input" data-team-weekly-team><option value="">Все команды</option>${teams.map(team => `<option value="${team.id}" ${String(team.id) === String(teamWeeklyTeamId) ? 'selected' : ''}>${escapeHtml(team.name)}</option>`).join('')}</select></label>` : ''}
+    </div>
+    <div class="team-weekly-kpis" aria-label="Сводка недели">
+      <button class="ui-surface-action" type="button" data-weekly-filter="all"><i data-lucide="badge-check"></i><span><small>Готовность</small><strong>${summary.readiness}%</strong><em>${summary.ready} из ${summary.total}</em></span></button>
+      <button class="ui-surface-action" type="button" data-weekly-filter="completed"><i data-lucide="circle-check-big"></i><span><small>Завершено</small><strong>${summary.completed}</strong><em>за неделю</em></span></button>
+      <button class="ui-surface-action" type="button" data-weekly-filter="all"><i data-lucide="workflow"></i><span><small>В работе</small><strong>${summary.active}</strong><em>активных</em></span></button>
+      <button class="ui-surface-action" type="button" data-weekly-filter="attention"><i data-lucide="triangle-alert"></i><span><small>Внимание</small><strong>${summary.attention}</strong><em>риск/решение</em></span></button>
+      <button class="ui-surface-action" type="button" data-weekly-filter="stale"><i data-lucide="clock-alert"></i><span><small>Без обновления</small><strong>${summary.stale}</strong><em>нужен статус</em></span></button>
+    </div>
+    <div class="team-weekly-layout">
+      <main class="team-weekly-main">
+        <div class="team-weekly-section-head"><div><span>Повестка</span><h2 id="team-weekly-focus-title">Фокус встречи</h2></div><strong>${visible.length}</strong></div>
+        <div class="team-weekly-filterbar" role="group" aria-label="Фильтр задач">${filters.map(([key, label, count]) => `<button type="button" class="btn btn-secondary btn-sm ui-btn ${teamWeeklyFilter === key ? 'is-active' : ''}" data-weekly-filter="${key}" aria-pressed="${teamWeeklyFilter === key}">${label}<span>${count}</span></button>`).join('')}</div>
+        <div class="team-weekly-list">${visible.length ? visible.map(weeklyTaskCard).join('') : renderViewState({ kind: 'empty', title: 'В этой группе нет задач', message: 'Выберите другой фильтр или обновите статусы.' })}</div>
+      </main>
+      <aside class="team-weekly-rhythm">
+        <div class="team-weekly-rhythm-head"><span><i data-lucide="activity"></i></span><div><small>Динамика</small><h2>Ритм команды</h2></div></div>
+        <div class="team-weekly-readiness-ring" style="--weekly-readiness:${summary.readiness}%"><strong>${summary.readiness}%</strong><span>статусов готово</span></div>
+        <dl>
+          <div><dt>Средний сдвиг прогресса</dt><dd>${summary.delta == null ? '—' : `${summary.delta >= 0 ? '+' : ''}${summary.delta} п.п.`}</dd></div>
+          <div><dt>Ближайший следующий шаг</dt><dd>${nextDue ? escapeHtml(formatWeeklyDate(nextDue, { day: 'numeric', month: 'long' })) : '—'}</dd></div>
+          <div><dt>Решений требуется</dt><dd>${teamItems.filter(item => item.signal === 'decision').length}</dd></div>
+          <div><dt>Блокеров</dt><dd>${teamItems.filter(item => item.signal === 'blocker').length}</dd></div>
+        </dl>
+        <a class="btn btn-primary" href="${reportingStatusHref({ source: 'report', kind: 'team_weekly', meetingId: meeting.id || '' })}"><i data-lucide="clipboard-pen-line"></i>Обновить пульс</a>
+      </aside>
+    </div>
+  </section>`;
 }
 
 function renderReportContent(config, reportKey, data) {
   const body = document.getElementById('report-body');
   if (!body) return;
 
+  if (reportKey === 'team-weekly') {
+    body.innerHTML = renderTeamWeeklyReport(data || {});
+    window.lucide?.createIcons();
+    return;
+  }
+
   if (config.isCustom && data && data.teams) {
     if (!data.teams.length) {
       body.innerHTML = renderReportTable([], config.fields);
       return;
     }
-    body.innerHTML = data.teams.map(team => {
+    body.innerHTML = data.teams.map((team, teamIndex) => {
       const storageKey = 'did-team-collapsed-' + team.team_name;
       const isCollapsed = localStorage.getItem(storageKey) === 'true';
       return `
         <div class="card" style="margin-bottom:var(--space-4);">
           <div class="card-header did-team-header" data-team="${escapeHtml(team.team_name)}" style="cursor:pointer;">
             <div style="display:flex;align-items:center;gap:8px;">
-              <i data-lucide="chevron-${isCollapsed ? 'right' : 'down'}" class="did-chevron" style="width:16px;height:16px;transition:transform 0.2s;flex-shrink:0;"></i>
+              ${uiButton({ label: `Развернуть или свернуть команду ${team.team_name}`, icon: 'chevron-down', iconOnly: true, variant: 'ghost', size: 'small', className: 'did-team-toggle', attrs: { 'aria-expanded': !isCollapsed, 'aria-controls': `did-team-body-${teamIndex}` } })}
               <h3 class="card-title">${escapeHtml(smartCap(team.team_name))}</h3>
             </div>
             <span class="badge badge-info">${team.total} ${formatCount(team.total)}</span>
           </div>
-          <div class="report-group-body ${isCollapsed ? 'collapsed' : ''}">
+          <div id="did-team-body-${teamIndex}" class="report-group-body ${isCollapsed ? 'collapsed' : ''}" ${isCollapsed ? 'hidden' : ''}>
             ${renderReportTable(team.tasks, config.fields)}
           </div>
         </div>`;
@@ -1189,17 +1612,22 @@ function renderReportContent(config, reportKey, data) {
         const teamName = this.dataset.team;
         const card = this.closest('.card');
         const groupBody = card.querySelector('.report-group-body');
-        const chevron = card.querySelector('.did-chevron');
+        const toggle = card.querySelector('.did-team-toggle');
         const isCollapsed = groupBody.classList.toggle('collapsed');
         localStorage.setItem('did-team-collapsed-' + teamName, isCollapsed);
-        chevron.setAttribute('data-lucide', isCollapsed ? 'chevron-right' : 'chevron-down');
-        if (window.lucide) lucide.createIcons();
+        groupBody.hidden = isCollapsed;
+        toggle.setAttribute('aria-expanded', String(!isCollapsed));
       });
     });
     return;
   }
 
   const tasks = Array.isArray(data) ? data : (data && data.items ? data.items : []);
+  if (reportKey === 'pip') {
+    body.innerHTML = renderPipDecisionWorkspace(tasks);
+    window.lucide?.createIcons();
+    return;
+  }
   const total = tasks.length;
   const high = tasks.filter(t => String(t.priority_name || t.priority || '').toUpperCase() === 'ВЫСОКИЙ').length;
   const statusField = config.isDb ? 'status_name' : (reportKey === 'directorate' ? 'directorate_status' : reportKey === 'did' ? 'did_status' : 'status');
@@ -1208,11 +1636,16 @@ function renderReportContent(config, reportKey, data) {
   const avg = total ? Math.round(tasks.reduce((s, t) => s + (t.progress || 0), 0) / total) : 0;
 
   if (reportKey === 'quarterly-goals') {
+    const green = tasks.filter(t => t.progress_indicator === 'green').length;
     const yellow = tasks.filter(t => t.progress_indicator === 'yellow').length;
     const red = tasks.filter(t => t.progress_indicator === 'red').length;
+    const redDataIssues = tasks.filter(t =>
+      t.progress_indicator === 'red' && t.progress_freshness !== 'current'
+    ).length;
+    const redConfirmed = red - redDataIssues;
     const progressCounts = {
       'progress-total': total,
-      'progress-deviations': yellow + red,
+      'progress-green': green,
       'progress-yellow': yellow,
       'progress-red': red,
     };
@@ -1220,6 +1653,10 @@ function renderReportContent(config, reportKey, data) {
       const el = document.getElementById(id);
       if (el) el.textContent = value;
     });
+    const redContext = document.getElementById('progress-red-context');
+    if (redContext) {
+      redContext.textContent = `${redConfirmed} по прогрессу · ${redDataIssues} из-за данных`;
+    }
     updateProgressWidgetState();
   }
 
@@ -1238,6 +1675,12 @@ function renderReportContent(config, reportKey, data) {
 
   if (!tasks.length) {
     body.innerHTML = '<div class="empty-state"><p class="text-muted">Нет данных для отображения</p></div>';
+    return;
+  }
+
+  if (reportKey === 'quarterly-goals') {
+    body.innerHTML = renderQuarterlyGoalsBody(tasks, fields);
+    window.lucide?.createIcons();
     return;
   }
 
@@ -1311,19 +1754,38 @@ function setReportCount(el, value, label) {
   el.setAttribute('aria-label', label);
 }
 
+export function bindReportCardNavigation(app, root = document.getElementById('reports-content')) {
+  if (!root || root.dataset.reportNavigationBound === 'true') return false;
+  root.dataset.reportNavigationBound = 'true';
+
+  const openCard = target => {
+    const card = target?.closest?.('.report-card');
+    if (!card || !root.contains(card)) return false;
+    openMeetingReport(card.dataset.report, app);
+    return true;
+  };
+
+  root.addEventListener('click', event => openCard(event.target));
+  root.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (openCard(event.target)) event.preventDefault();
+  });
+  return true;
+}
+
 export function renderReports(app) {
   const standardKeys = ['directorate', 'did-operational', 'pip', 'did-backlog', 'quarterly-goals', 'pd-estimates'];
   const customKeys = ['reg-directors'];
 
   function renderCard(key, cfg) {
     return `
-      <div class="cursor-pointer ${cfg.gradient} report-card" data-report="${key}" style="border-radius:16px;padding:24px;color:white;display:flex;flex-direction:column;min-height:282px;">
+      <div class="cursor-pointer ${cfg.gradient} report-card" data-report="${key}" role="link" tabindex="0" aria-label="Открыть отчёт: ${escapeHtml(cfg.name)}" style="border-radius:16px;padding:24px;color:white;display:flex;flex-direction:column;min-height:282px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-shrink:0;">
           <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <i data-lucide="${cfg.icon}" style="width:20px;height:20px;"></i>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-            ${cfg.inDevelopment ? '<span style="font-size:10px;font-weight:600;background:rgba(250,204,21,0.22);color:#fde047;border:1px solid rgba(250,204,21,0.5);padding:3px 9px;border-radius:999px;white-space:nowrap;">В разработке</span>' : ''}
+            ${cfg.inDevelopment ? '<span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-weight:600;background:rgba(250,204,21,0.22);color:#fde047;border:1px solid rgba(250,204,21,0.5);padding:3px 9px;border-radius:999px;white-space:nowrap;">В разработке</span>' : ''}
             <i data-lucide="arrow-up-right" style="width:20px;height:20px;opacity:0.6;flex-shrink:0;"></i>
           </div>
         </div>
@@ -1342,13 +1804,25 @@ export function renderReports(app) {
 
   const standardCards = standardKeys.map(k => renderCard(k, reportConfig[k])).join('');
   const customCards = customKeys.map(k => renderCard(k, reportConfig[k])).join('');
+  const weekly = reportConfig['team-weekly'];
+  const weeklyCard = `<div class="team-weekly-feature report-card" data-report="team-weekly" role="link" tabindex="0" aria-label="Открыть отчёт: ${escapeHtml(weekly.name)}">
+    <div class="team-weekly-feature-icon"><i data-lucide="${weekly.icon}"></i></div>
+    <div class="team-weekly-feature-copy"><span>Командный пульс</span><h2>${weekly.name}</h2><p>${weekly.desc}</p></div>
+    <div class="team-weekly-feature-readiness"><strong class="report-count" id="count-team-weekly" role="status" aria-live="polite" aria-label="Загрузка количества задач">${renderReportCountLoader()}</strong><span>задач в текущей неделе</span></div>
+    <div class="team-weekly-feature-action"><span>Открыть встречу</span><i data-lucide="arrow-right"></i></div>
+  </div>`;
 
   return `
     <div class="page-header reporting-status-page-header animate-fade-in">
-      <div><h1>Статусы для встреч</h1><p>Готовые отчёты для оперативок и директорских</p></div>
-      ${canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary" href="${reportingStatusHref({ source: 'report' })}"><i data-lucide="clipboard-pen-line"></i>Заполнить статусы</a>` : ''}
+      ${uiPageHeader({
+        title: 'Статусы для встреч',
+        description: 'Готовые отчёты для оперативок и директорских',
+        className: 'reports-page-header',
+        actions: `<div class="flex gap-2 flex-wrap"><a class="btn btn-primary btn-sm" href="${quarterlyGoalsUpdateHref({ source: 'report' })}"><i data-lucide="gauge"></i>Обновить прогресс и статусы</a>${canUseReportingStatusWorkspace(app) ? `<a class="btn btn-secondary btn-sm" href="${reportingStatusHref({ source: 'report' })}"><i data-lucide="pencil"></i>Заполнить статусы встреч</a>` : ''}</div>`,
+      })}
     </div>
     <div id="reports-content">
+    ${weeklyCard}
     <div style="margin-bottom:32px;">
       <h3 class="text-xs font-bold text-muted" style="text-transform:uppercase;letter-spacing:0.05em;margin-bottom:16px;">Стандартные отчёты</h3>
       <div class="reports-grid">
@@ -1373,8 +1847,7 @@ export function renderReports(app) {
 
 export function renderReportingMeetingsManagement() {
   return `<div class="page-header animate-fade-in">
-    <h1>Управление отчётными встречами</h1>
-    <p>Расписание, готовность статусов и фиксация версий после проведения встречи</p>
+    ${uiPageHeader({ title: 'Управление отчётными встречами', description: 'Расписание, готовность статусов и фиксация версий после проведения встречи' })}
   </div>
   <aside class="meeting-status-help" aria-labelledby="meeting-status-help-title">
     <div class="meeting-status-help-head">
@@ -1390,7 +1863,7 @@ export function renderReportingMeetingsManagement() {
       <div><span>3</span><strong>История</strong><small>Подтверждённые статусы сохраняются как срез</small></div>
     </section>
   </aside>
-  <section id="reporting-meetings-panel" class="reporting-meetings-panel"><div class="card">Загрузка отчётных встреч…</div></section>`;
+  <section id="reporting-meetings-panel" class="reporting-meetings-panel"><div class="card content-loading-state">Загрузка отчётных встреч…</div></section>`;
 }
 
 export async function initReportingMeetingsManagement(app) {
@@ -1428,6 +1901,7 @@ export async function initReportingMeetingsManagement(app) {
 }
 
 export async function initReports(app) {
+  bindReportCardNavigation(app);
   setReportCountLoading();
   try {
     const data = await app.api.get('/tasks/?per_page=1000');
@@ -1452,7 +1926,7 @@ export async function initReports(app) {
       if (config.customEndpoint) {
         try {
           const d = await app.api.get(config.customEndpoint);
-          const count = (d && d.total_tasks != null) ? d.total_tasks : 0;
+          const count = d?.total_tasks ?? d?.summary?.total ?? 0;
           setReportCount(el, count, `Задач: ${count}`);
         } catch (e) { setReportCount(el, '—', 'Количество задач недоступно'); }
         return;
@@ -1460,13 +1934,6 @@ export async function initReports(app) {
       const filtered = applyReportFilters(key, tasksCache);
       setReportCount(el, filtered.length, `Задач: ${filtered.length}`);
     }));
-
-    document.querySelectorAll('.report-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const kind = card.dataset.report;
-        openMeetingReport(kind, app);
-      });
-    });
 
     document.getElementById('refresh-reports')?.addEventListener('click', () => {
       initReports(app);
@@ -1508,24 +1975,39 @@ function updateProgressWidgetState() {
 }
 
 const reportChartInstances = {};
+const reportChartLoads = new Map();
 
+let reportChartThemeObserver;
 function getReportChartColors() {
-  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-  return {
-    textColor: dark ? '#e2e8f0' : '#334155',
-    gridColor: dark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(15, 23, 42, 0.08)',
-    bgCard: dark ? '#1e293b' : '#ffffff',
-  };
+  const theme = chartJsTheme();
+  return { textColor: theme.text, gridColor: theme.grid, bgCard: theme.background };
 }
 
-function createReportChart(canvasId, config) {
+async function createReportChart(canvasId, config) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
+  const generation = Symbol();
+  reportChartLoads.set(canvasId, generation);
+  await loadChartFont();
+  if (reportChartLoads.get(canvasId) !== generation) return;
+  reportChartLoads.delete(canvasId);
+  if (!canvas.isConnected || document.getElementById(canvasId) !== canvas) return;
   if (reportChartInstances[canvasId]) {
     reportChartInstances[canvasId].destroy();
   }
   const ctx = canvas.getContext('2d');
   reportChartInstances[canvasId] = new window.Chart(ctx, config);
+  applyChartJsTheme(reportChartInstances[canvasId]);
+  if (!reportChartThemeObserver) {
+    reportChartThemeObserver = new MutationObserver(() => {
+      Object.entries(reportChartInstances).forEach(([key, chart]) => {
+        if (!chart.canvas?.isConnected) { chart.destroy(); delete reportChartInstances[key]; }
+        else applyChartJsTheme(chart);
+      });
+      if (!Object.keys(reportChartInstances).length) { reportChartThemeObserver.disconnect(); reportChartThemeObserver = null; }
+    });
+    reportChartThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-accent'] });
+  }
 }
 
 function renderReportCharts(tasks) {
@@ -1575,19 +2057,12 @@ function renderReportCharts(tasks) {
     byTeam[team] = (byTeam[team] || 0) + 1;
   });
 
-  const statusColors = {
-    'НОВАЯ ЗАДАЧА': '#6366f1', 'НАЗНАЧЕНА КОМАНДА': '#8b5cf6',
-    'СБОР ТРЕБОВАНИЙ': '#6366f1', 'ПРОВЕРКА ТРЕБОВАНИЙ': '#a78bfa',
-    'УТОЧНЕНИЕ ТРЕБОВАНИЙ': '#c4b5fd', 'ЭКСПРЕСС-ОЦЕНКА': '#8b5cf6',
-    'ПРИНЯТИЕ РЕШЕНИЯ': '#f59e0b', 'ПРИНЯТА В РАБОТУ': '#10b981',
-    'ЭСКАЛАЦИЯ НА ЛТ': '#f97316', 'ХОЛД': '#f43f5e',
-    'ОТКЛОНЕНА': '#ef4444', 'НЕ АКТУАЛЬНА': '#94a3b8',
-    'ВЫПОЛНЕНА': '#22c55e',
-  };
+  const palette = chartPalette();
+  const statusTones = { 'НОВАЯ ЗАДАЧА':0, 'НАЗНАЧЕНА КОМАНДА':3, 'СБОР ТРЕБОВАНИЙ':0, 'ПРОВЕРКА ТРЕБОВАНИЙ':3, 'УТОЧНЕНИЕ ТРЕБОВАНИЙ':3, 'ЭКСПРЕСС-ОЦЕНКА':3, 'ПРИНЯТИЕ РЕШЕНИЯ':1, 'ПРИНЯТА В РАБОТУ':2, 'ЭСКАЛАЦИЯ НА ЛТ':8, 'ХОЛД':5, 'ОТКЛОНЕНА':5, 'НЕ АКТУАЛЬНА':6, 'ВЫПОЛНЕНА':2 };
 
   const statusLabels = Object.keys(byStatus);
   const statusValues = Object.values(byStatus);
-  const statusColorsArr = statusLabels.map(l => statusColors[String(l || '').toUpperCase()] || '#94a3b8');
+  const statusColorsArr = statusLabels.map(l => palette[statusTones[String(l || '').toUpperCase()] ?? 6]);
 
   createReportChart('chart-report-status', {
     type: 'bar',
@@ -1617,9 +2092,9 @@ function renderReportCharts(tasks) {
   const priorityLabels = Object.keys(byPriority);
   const priorityValues = Object.values(byPriority);
   const priorityColors = priorityLabels.map(l => {
-    if (l === 'ВЫСОКИЙ') return '#f43f5e';
-    if (l === 'СРЕДНИЙ') return '#f59e0b';
-    return '#94a3b8';
+    if (l === 'ВЫСОКИЙ') return palette[5];
+    if (l === 'СРЕДНИЙ') return palette[1];
+    return palette[6];
   });
   const priorityTotal = priorityValues.reduce((s, v) => s + v, 0);
 
@@ -1673,7 +2148,7 @@ function renderReportCharts(tasks) {
   });
 
   const teamSorted = Object.entries(byTeam).sort((a, b) => b[1] - a[1]);
-  const teamColors = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#ec4899', '#14b8a6', '#f97316'];
+  const teamColors = palette;
 
   createReportChart('chart-report-team', {
     type: 'bar',
@@ -1715,55 +2190,62 @@ export function renderReportPage(app) {
   const config = reportConfig[currentReport];
   if (!config) return '<p class="text-muted">Отчёт не выбран</p>';
 
+  const reportingKind = currentReport === 'team-weekly' ? 'team_weekly' : currentReport === 'directorate' ? 'directorate' : currentReport === 'did-operational' ? 'did' : '';
+  const reportActions = `
+    ${currentReport === 'pip' ? '<a class="btn btn-secondary btn-sm" href="#/express-estimate"><i data-lucide="calculator"></i>Экспресс-оценка</a>' : currentReport === 'quarterly-goals' ? `<a class="btn btn-primary btn-sm" href="${quarterlyGoalsUpdateHref({ source: 'report-detail' })}"><i data-lucide="gauge"></i>Обновить данные</a>` : (canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary btn-sm" href="${reportingStatusHref({ source: 'report', kind: reportingKind })}"><i data-lucide="clipboard-pen-line"></i>${currentReport === 'team-weekly' ? 'Подготовить встречу' : 'Заполнить статусы'}</a>` : '')}
+    ${!config.isPlaceholder ? `${uiButton({ label: 'Excel', icon: 'file-spreadsheet', size: 'small', attrs: { id: 'report-excel' } })}` : ''}
+    ${uiButton({ label: 'Обновить', icon: 'refresh-cw', size: 'small', attrs: { id: 'report-refresh' } })}`;
+
+  const reportHeader = currentReport === 'quarterly-goals' ? `
+    <header class="quarterly-report-top">
+      ${uiButton({ label: 'Назад к списку отчётов', icon: 'arrow-left', iconOnly: true, variant: 'ghost', className: 'quarterly-report-back', attrs: { id: 'report-back-btn' } })}
+      <div class="quarterly-report-heading">
+        <div class="quarterly-report-title-line">
+          <h1>${config.name}</h1>
+          <span class="badge badge-info">Статус-отчёт</span>
+        </div>
+        <p>${config.desc}</p>
+      </div>
+      <div class="quarterly-report-actions">${reportActions}</div>
+    </header>` : `
+    <div style="display:flex;align-items:flex-start;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap;">
+      ${uiButton({ label: 'Назад к списку отчётов', icon: 'arrow-left', iconOnly: true, variant: 'ghost', attrs: { id: 'report-back-btn' } })}
+      <div style="flex:1;min-width:0;">
+        <h1 style="font-weight:var(--font-bold);color:var(--text-primary);">${config.name}</h1>
+        <p style="color:var(--text-muted);font-size:var(--text-sm);margin-top:var(--space-1);">${config.desc}</p>
+      </div>
+    </div>
+    <div class="action-bar action-bar--end" style="justify-content:space-between;">
+      <span class="badge badge-info" style="">${config.isPlaceholder ? 'В разработке' : currentReport === 'pip' ? 'Очередь решений' : 'Статус-отчёт'}</span>
+      <div class="flex gap-2" style="flex-wrap:wrap;">${reportActions}</div>
+    </div>`;
+
   return `
     <div class="animate-fade-in">
-      <div style="display:flex;align-items:flex-start;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap;">
-        <button class="btn btn-ghost btn-sm" id="report-back-btn" style="margin-top:4px;flex-shrink:0;">
-          <i data-lucide="arrow-left" style="width:18px;height:18px;"></i>
-        </button>
-        <div style="flex:1;min-width:0;">
-          <h1 style="font-weight:var(--font-bold);color:var(--text-primary);">${config.name}</h1>
-          <p style="color:var(--text-muted);font-size:var(--text-sm);margin-top:var(--space-1);">${config.desc}</p>
-        </div>
-      </div>
+      ${reportHeader}
 
-      <div class="action-bar action-bar--end" style="justify-content:space-between;">
-        <span class="badge badge-info" style="font-size:var(--text-xs);">${config.isPlaceholder ? 'В разработке' : 'Статус-отчёт'}</span>
-        <div class="flex gap-2" style="flex-wrap:wrap;">
-          ${canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary btn-sm" href="${reportingStatusHref({ source: 'report', kind: currentReport === 'directorate' ? 'directorate' : currentReport === 'did-operational' ? 'did' : '' })}"><i data-lucide="clipboard-pen-line"></i>Заполнить статусы</a>` : ''}
-          ${!config.isPlaceholder ? `
-          <button class="btn btn-secondary btn-sm" id="report-excel">
-            <i data-lucide="file-spreadsheet" style="width:14px;height:14px;"></i>
-            Excel
-          </button>` : ''}
-          <button class="btn btn-secondary btn-sm" id="report-refresh">
-            <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
-            Обновить
-          </button>
-        </div>
-      </div>
-
-      ${currentReport === 'quarterly-goals' ? `
-      <div class="dashboard-stats" id="progress-widgets" style="margin-bottom:var(--space-6);">
-        <button type="button" class="stat-card progress-widget" data-progress-filter="all" style="text-align:left;cursor:pointer;font-family:inherit">
+      ${currentReport === 'pip' ? '' : currentReport === 'quarterly-goals' ? `
+      <div class="quarterly-kpis" id="progress-widgets" aria-label="Фильтр по светофору">
+        <button type="button" class="ui-surface-action quarterly-kpi progress-widget" data-progress-filter="all">
           <div class="stat-icon" style="background:var(--info-light);color:var(--info);"><i data-lucide="list"></i></div>
           <div class="stat-value" id="progress-total">0</div>
-          <div class="stat-label">Всего задач</div>
+          <div class="stat-label">Всего</div>
         </button>
-        <button type="button" class="stat-card progress-widget" data-progress-filter="deviations" style="text-align:left;cursor:pointer;font-family:inherit">
-          <div class="stat-icon" style="background:var(--warning-light);color:var(--warning);"><i data-lucide="activity"></i></div>
-          <div class="stat-value" id="progress-deviations">0</div>
-          <div class="stat-label">Есть отклонения</div>
+        <button type="button" class="ui-surface-action quarterly-kpi progress-widget" data-progress-filter="green">
+          <div class="stat-icon" style="background:var(--success-light);color:var(--success);"><i data-lucide="circle-check"></i></div>
+          <div class="stat-value" id="progress-green">0</div>
+          <div class="stat-label">Зелёные</div>
         </button>
-        <button type="button" class="stat-card progress-widget" data-progress-filter="yellow" style="text-align:left;cursor:pointer;font-family:inherit">
+        <button type="button" class="ui-surface-action quarterly-kpi progress-widget" data-progress-filter="yellow">
           <div class="stat-icon" style="background:#f59e0b20;color:#f59e0b;"><i data-lucide="circle"></i></div>
           <div class="stat-value" id="progress-yellow">0</div>
-          <div class="stat-label">Жёлтый светофор</div>
+          <div class="stat-label">Жёлтые</div>
         </button>
-        <button type="button" class="stat-card progress-widget" data-progress-filter="red" style="text-align:left;cursor:pointer;font-family:inherit">
+        <button type="button" class="ui-surface-action quarterly-kpi progress-widget" data-progress-filter="red">
           <div class="stat-icon" style="background:var(--danger-light);color:var(--danger);"><i data-lucide="circle"></i></div>
           <div class="stat-value" id="progress-red">0</div>
-          <div class="stat-label">Красный светофор</div>
+          <div class="stat-label">Красные</div>
+          <small class="quarterly-widget-context" id="progress-red-context">0 по прогрессу · 0 из-за данных</small>
         </button>
       </div>
       ` : !config.isCustom && !config.isPlaceholder ? `
@@ -1812,7 +2294,7 @@ export function renderReportPage(app) {
       ` : ''}
 
       <div id="report-body">
-        <div class="text-center text-muted" style="padding:var(--space-8);">Загрузка...</div>
+        <div class="text-center content-loading-state" style="padding:var(--space-8);">Загрузка…</div>
       </div>
     </div>`;
 }
@@ -1822,6 +2304,7 @@ export function initReportPage(app) {
   if (!currentReport) return;
   if (currentReport === 'directorate') { initDirectorateReport(app); return; }
   if (currentReport === 'did-backlog') { initDidBacklog(app); return; }
+  if (currentReport === 'pip') pipQueueFilter = 'all';
   loadReportData(app);
 
   // Update breadcrumb with actual report name
@@ -1829,8 +2312,10 @@ export function initReportPage(app) {
   if (config) {
     const bc = document.getElementById('breadcrumb-nav');
     if (bc) {
+      const parentHref = currentReport === 'pip' ? '#/express-estimate' : '#/reports';
+      const parentLabel = currentReport === 'pip' ? 'Экспресс-оценка' : 'Статусы для встреч';
       bc.innerHTML = `
-        <a href="#/reports" class="breadcrumb-parent">Статусы для встреч</a>
+        <a href="${parentHref}" class="breadcrumb-parent">${parentLabel}</a>
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-current">${config.name}</span>`;
     }
@@ -1838,8 +2323,11 @@ export function initReportPage(app) {
 
   document.getElementById('report-back-btn')?.addEventListener('click', () => {
     Object.keys(reportChartInstances).forEach(k => { reportChartInstances[k]?.destroy(); delete reportChartInstances[k]; });
+    const destination = currentReport === 'pip' && getReportQueryParams().get('source') === 'express-estimate'
+      ? '/express-estimate'
+      : '/reports';
     currentReport = null;
-    app.router.navigate('/reports');
+    app.router.navigate(destination);
   });
 
   document.getElementById('report-refresh')?.addEventListener('click', () => {
@@ -1863,21 +2351,9 @@ export function initReportPage(app) {
     if (currentReport && tasksCache.length) {
       const config = reportConfig[currentReport];
       let visible = tasksCache;
-      if (!config.isDb) {
+      if (!config.isDb || currentReport === 'quarterly-goals') {
         visible = applyReportFilters(currentReport, tasksCache);
-        const hasFilters = Object.keys(reportColumnFilters).some(k => reportColumnFilters[k] && reportColumnFilters[k].length);
-        if (hasFilters) {
-          visible = visible.filter(task =>
-            Object.entries(reportColumnFilters).every(([field, vals]) => !vals || !vals.length || vals.includes(String(task[field] || '').trim()))
-          );
-        }
-        if (reportSortField) {
-          visible = [...visible].sort((a, b) => {
-            const va = String(a[reportSortField] || '').toLowerCase();
-            const vb = String(b[reportSortField] || '').toLowerCase();
-            return reportSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-          });
-        }
+        visible = filteredAndSortedReportRows(visible);
       }
       exportReportExcel(currentReport, visible, app);
     }
@@ -1886,35 +2362,43 @@ export function initReportPage(app) {
   document.getElementById('report-body')?.addEventListener('click', async (e) => {
     const config = reportConfig[currentReport];
 
-    const decisionButton = e.target.closest('.pip-decision-btn');
-    if (decisionButton) {
-      const decision = decisionButton.dataset.decision;
-      const taskId = Number(decisionButton.dataset.taskId);
-      const version = Number(decisionButton.dataset.taskVersion);
-      if (!taskId || !['reject', 'accept'].includes(decision)) return;
-      if (decision === 'reject' && !(await confirmAction({
-        title: 'Отклонить задачу?',
-        message: 'Задача будет переведена в отклонённые. Продолжить?',
-        confirmText: 'Отклонить',
-        destructive: true,
-      }))) return;
+    const weeklyFilter = e.target.closest('[data-weekly-filter]');
+    if (weeklyFilter && currentReport === 'team-weekly' && cachedReportData) {
+      teamWeeklyFilter = weeklyFilter.dataset.weeklyFilter || 'attention';
+      renderReportContent(config, currentReport, cachedReportData);
+      return;
+    }
+    const weeklyTask = e.target.closest('[data-open-weekly-task]');
+    if (weeklyTask && currentReport === 'team-weekly') {
+      document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: Number(weeklyTask.dataset.openWeeklyTask), tab: 'rep' } }));
+      return;
+    }
 
-      const rowButtons = decisionButton.closest('tr')?.querySelectorAll('.pip-decision-btn') || [];
-      rowButtons.forEach(btn => { btn.disabled = true; });
-      app.api.put(`/tasks/${taskId}/pip-decision`, { decision, version })
-        .then(() => {
-          window.toast?.(decision === 'reject' ? 'Задача отклонена' : 'Задача принята в работу', 'success');
-          return loadReportData(app);
-        })
-        .catch(err => {
-          rowButtons.forEach(btn => { btn.disabled = false; });
-          window.toast?.(window.formatErrorMessage?.(err) || err.message || 'Не удалось изменить статус', 'error');
-        });
+    const teamButton = e.target.closest('[data-quarterly-team]');
+    if (teamButton && currentReport === 'quarterly-goals' && cachedReportData) {
+      const teamName = teamButton.dataset.quarterlyTeam;
+      if (teamName) reportColumnFilters.team_name = [teamName];
+      else delete reportColumnFilters.team_name;
+      renderReportContent(config, currentReport, cachedReportData);
+      return;
+    }
+
+    const decisionButton = e.target.closest('.pip-open-decision');
+    if (decisionButton) {
+      const task = tasksCache.find(item => Number(item.id) === Number(decisionButton.dataset.taskId));
+      if (task) showPipDecisionModal(task, app);
+      return;
+    }
+
+    const pipFilter = e.target.closest('[data-pip-filter]');
+    if (pipFilter && currentReport === 'pip') {
+      pipQueueFilter = pipFilter.dataset.pipFilter || 'all';
+      renderReportContent(config, currentReport, cachedReportData);
       return;
     }
 
     if (e.target.closest('.filter-trigger')) {
-      if (config.isCustom || config.isDb) return;
+      if (config.isCustom || (config.isDb && currentReport !== 'quarterly-goals')) return;
       e.stopPropagation();
       const trigger = e.target.closest('.filter-trigger');
       const field = trigger.dataset.field;
@@ -1937,7 +2421,7 @@ export function initReportPage(app) {
     const th = e.target.closest('th[data-sort]');
     if (!th) return;
 
-    if (config.isCustom || config.isDb) return;
+    if (config.isCustom || (config.isDb && currentReport !== 'quarterly-goals')) return;
 
     const field = th.dataset.sort;
     if (reportSortField === field) {
@@ -1946,7 +2430,16 @@ export function initReportPage(app) {
       reportSortField = field;
       reportSortDir = 'asc';
     }
-    const filtered = applyReportFilters(currentReport, tasksCache);
-    renderReportContent(config, currentReport, filtered);
+    if (currentReport === 'quarterly-goals' && cachedReportData) {
+      renderReportContent(config, currentReport, cachedReportData);
+    } else {
+      const filtered = applyReportFilters(currentReport, tasksCache);
+      renderReportContent(config, currentReport, filtered);
+    }
+  });
+  document.getElementById('report-body')?.addEventListener('change', event => {
+    if (!event.target.matches('[data-team-weekly-team]') || currentReport !== 'team-weekly' || !cachedReportData) return;
+    teamWeeklyTeamId = event.target.value;
+    renderReportContent(reportConfig[currentReport], currentReport, cachedReportData);
   });
 }

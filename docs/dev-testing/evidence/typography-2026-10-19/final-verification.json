@@ -1,0 +1,461 @@
+{
+  "verifiedOn": "2026-10-20",
+  "uniqueCases": 68,
+  "unresolved": [],
+  "runs": [
+    {
+      "name": "results-focused",
+      "stats": {
+        "startTime": "2026-10-20T08:17:43.284Z",
+        "duration": 129196.091,
+        "expected": 46,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      }
+    },
+    {
+      "name": "results-final-check",
+      "stats": {
+        "startTime": "2026-10-20T08:21:21.572Z",
+        "duration": 61295.081999999995,
+        "expected": 27,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "name": "results-bulk",
+      "stats": {
+        "startTime": "2026-10-20T08:22:23.947Z",
+        "duration": 35142.644,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "name": "results-font-final",
+      "stats": {
+        "startTime": "2026-10-20T08:24:13.415Z",
+        "duration": 1723.457,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  ],
+  "cases": [
+    {
+      "file": "requirementWorkspace.spec.mjs",
+      "title": "autosave batches neighboring sections and survives session and SPA navigation",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "requirementWorkspace.spec.mjs",
+      "title": "autosave batches neighboring sections and survives session and SPA navigation",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "requirementWorkspace.spec.mjs",
+      "title": "autosave batches neighboring sections and survives session and SPA navigation",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "requirementWorkspace.spec.mjs",
+      "title": "autosave batches neighboring sections and survives session and SPA navigation",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitDialogAcceptance.spec.mjs",
+      "title": "real dialog: modal.showBulkOpsModal",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitDialogAcceptance.spec.mjs",
+      "title": "real dialog: agentChat.showTeamSelectModal",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitDialogAcceptance.spec.mjs",
+      "title": "real dialog: modal.showBulkOpsModal",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitDialogAcceptance.spec.mjs",
+      "title": "real dialog: agentChat.showTeamSelectModal",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitDialogAcceptance.spec.mjs",
+      "title": "real dialog: modal.showBulkOpsModal",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitDialogAcceptance.spec.mjs",
+      "title": "real dialog: agentChat.showTeamSelectModal",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitDialogAcceptance.spec.mjs",
+      "title": "real dialog: modal.showBulkOpsModal",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitDialogAcceptance.spec.mjs",
+      "title": "real dialog: agentChat.showTeamSelectModal",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка light/390",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка light/1440",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка dark/390",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка dark/1440",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка light/390",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка light/1440",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка dark/390",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка dark/1440",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка light/390",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка light/1440",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка dark/390",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка dark/1440",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка light/390",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка light/1440",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка dark/390",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitLogin.spec.mjs",
+      "title": "вход: геометрия, клавиатура, busy и ошибка dark/1440",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "core typography roles apply without page adapters",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: light/320",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: light/640",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: dark/320",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: dark/640",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "core typography roles apply without page adapters",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: light/320",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: light/640",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: dark/320",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: dark/640",
+      "browser": "edge",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "core typography roles apply without page adapters",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: light/320",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: light/640",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: dark/320",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: dark/640",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "core typography roles apply without page adapters",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: light/320",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: light/640",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: dark/320",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "B01 repeat discard stays in native modal with transient body focus: dark/640",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitConsistency.spec.mjs",
+      "title": "same components share computed styles: light/false/1440",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitConsistency.spec.mjs",
+      "title": "same components share computed styles: light/false/1440",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "title": "экспресс-оценка: компактные действия и квадратные иконки, light, 1440",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "title": "экспресс-оценка: компактные действия и квадратные иконки, light, 390",
+      "browser": "chrome",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "title": "экспресс-оценка: компактные действия и квадратные иконки, light, 1440",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "title": "экспресс-оценка: компактные действия и квадратные иконки, light, 390",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "bundled JetBrains Mono renders Russian, Latin and numbers at UI weights",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiTypographyAcceptance.spec.mjs",
+      "title": "bundled JetBrains Mono renders Russian, Latin and numbers at UI weights",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "Inter renders Cyrillic and Latin at every UI weight: light/1440",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "Inter renders Cyrillic and Latin at every UI weight: light/390",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "Inter renders Cyrillic and Latin at every UI weight: dark/1440",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "Inter renders Cyrillic and Latin at every UI weight: dark/390",
+      "browser": "firefox",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "ECharts waits for Inter before its first layout",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "Inter renders Cyrillic and Latin at every UI weight: light/1440",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "Inter renders Cyrillic and Latin at every UI weight: light/390",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "Inter renders Cyrillic and Latin at every UI weight: dark/1440",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "Inter renders Cyrillic and Latin at every UI weight: dark/390",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitTypography.spec.mjs",
+      "title": "Chart.js waits for Inter before measuring labels on a cold load",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitComplexFormsReview.spec.mjs",
+      "title": "resolution modes remain usable on short screens: light/640x360",
+      "browser": "webkit",
+      "status": "passed"
+    },
+    {
+      "file": "uiKitComplexFormsReview.spec.mjs",
+      "title": "resolution modes remain usable on short screens: dark/640x360",
+      "browser": "webkit",
+      "status": "passed"
+    }
+  ]
+}

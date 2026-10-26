@@ -11,7 +11,7 @@ const requestItem = {
   team_name: 'Расчёты',
   reviewer_id: 101,
   reviewer_name: 'Тестовый ревьюер',
-  available_actions: ['approve', 'return', 'reject'],
+  available_actions: ['approve', 'return', 'reject', 'release', 'reroute'],
   created_at: '2026-09-08T08:00:00Z',
   updated_at: '2026-09-08T09:00:00Z',
   draft: {
@@ -53,10 +53,26 @@ async function mockReview(page, { staleOnApprove = false, queueItems = [requestI
       return json(route, { detail: 'Запрос был изменён в другой сессии' }, 409);
     }
     if (path === '/agent/teams/12/ba') { baCalls += 1; return json(route, [{ id: 202, name: 'Бизнес-аналитик', role: 'BA' }]); }
+    if (path === '/agent/teams') return json(route, [{id:12,name:'Расчёты'},{id:13,name:'Другая команда'}]);
     return json(route, {});
   });
   return { statusCalls: () => statusCalls, baCalls: () => baCalls };
 }
+
+for(const theme of ['light','dark'])for(const width of [390,1280])test(`review action dialogs use shared controls ${theme}/${width}`,async({page})=>{
+ await mockReview(page);await page.setViewportSize({width,height:1000});await page.goto('/#/review/8');
+ await expect(page.locator('#btn-return')).toBeVisible();
+ await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.compact='true';},theme);
+ for(const action of ['return','reject','release','reroute']) {
+  await page.locator(`#btn-${action}`).click();const dialog=page.locator('.review-modal');await expect(dialog).toBeVisible();
+  const close=dialog.getByRole('button',{name:'Закрыть диалог',exact:true});const box=await close.boundingBox();
+  expect(box.width).toBeCloseTo(box.height,2);expect(box.height).toBeCloseTo(width===390?44:36,2);
+  const rect=await dialog.boundingBox();expect(rect.x).toBeGreaterThanOrEqual(0);expect(rect.x+rect.width).toBeLessThanOrEqual(width);
+  await expect(dialog.locator('#modal-confirm')).toBeDisabled();
+  await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
+  await expect(page.locator(`#btn-${action}`)).toBeFocused();
+ }
+});
 
 test('desktop review list fills the available viewport height', async ({ page }) => {
   const queueItems = Array.from({ length: 8 }, (_, index) => ({

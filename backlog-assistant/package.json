@@ -1,0 +1,6 @@
+{
+  "name": "backlog-assistant-runtime",
+  "private": true,
+  "version": "0.1.0",
+  "dependencies": { "opencode-ai": "1.17.13" }
+}

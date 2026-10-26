@@ -1,4 +1,18 @@
 /* Shared feedback layout. Loaded after page and responsive styles. */
+.content-loading-state {
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal, 400);
+  line-height: 1.5;
+}
+.content-loading-state :is(h1, h2, h3, h4, p, strong, span) {
+  margin-block: 0;
+  color: inherit;
+  font:inherit;
+  line-height: inherit;
+}
+
 :is(.view-state, .admin-state-error, .meeting-panel-error,
     .customer-request-state.is-error, .chat-sessions-empty.chat-message-error,
     .empty-state:has(> button)) {
@@ -29,12 +43,9 @@
     .empty-state) > button {
   flex: 0 0 auto;
   max-width: 100%;
-  height: auto;
-  min-height: 36px;
   margin: 4px 0 0;
   white-space: normal;
   overflow-wrap: anywhere;
-  line-height: 1.4;
 }
 :is(.view-state, .admin-state-error, .meeting-panel-error) > :is(svg, i) {
   flex: none;
@@ -61,7 +72,7 @@
   min-width: 0;
   max-width: 100%;
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) 24px;
+  grid-template-columns: 20px minmax(0, 1fr) max(var(--control-height-sm), var(--control-target-min));
   align-items: start;
   gap: 10px 12px;
   padding: 16px;
@@ -69,8 +80,8 @@
 }
 #toast-container .toast-icon { grid-column: 1; grid-row: 1; }
 #toast-container .toast-message { grid-column: 2; grid-row: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
-#toast-container .toast-close { grid-column: 3; grid-row: 1; min-height: 24px; }
-#toast-container .toast-action { grid-column: 2; grid-row: 2; justify-self: start; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+#toast-container .toast-close { grid-column: 3; grid-row: 1;  }
+#toast-container .toast-action { grid-column: 2; grid-row: 2; justify-self: start; max-width: 100%; white-space: normal; overflow-wrap: anywhere;  }
 #card-toast { min-width: 0; max-width: calc(100vw - 32px); width: max-content; border-radius: 12px; flex-wrap: wrap; }
 #card-toast > svg { flex: 0 0 16px; }
 #card-toast > span { min-width: 0; flex: 1 1 180px; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }

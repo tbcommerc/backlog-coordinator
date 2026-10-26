@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-15",
+  "action": "One normal login attempt using the prefilled form",
+  "result": "Неверный логин или пароль.",
+  "credentialsRecorded": false,
+  "remainingPrepared": [
+    "exact 50 MiB attachment",
+    "156 directed status transitions"
+  ],
+  "userAction": "Sign in as administrator in existing tab"
+}

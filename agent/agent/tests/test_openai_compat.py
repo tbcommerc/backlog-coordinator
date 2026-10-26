@@ -153,3 +153,23 @@ def test_chat_stream_yields_provider_deltas(monkeypatch):
 
     assert chunks == ["Первый ", "ответ"]
     assert captured["stream"] is True
+
+
+@pytest.mark.parametrize("base_url,expected", [
+    ("https://opencode.ai/zen/go/v1", True),
+    ("https://api.example.test/v1", False),
+])
+def test_session_header_for_opencode(monkeypatch, base_url, expected):
+    monkeypatch.setattr("agent.llm.openai_compat.settings.OPENAI_BASE_URL", base_url)
+    requests = []
+    def respond(req, **kwargs):
+        requests.append(req)
+        return _Response()
+    monkeypatch.setattr("urllib.request.urlopen", respond)
+    provider = OpenAICompatProvider()
+    provider.chat([])
+    provider.chat_json([])
+    headers = [dict((k.lower(), v) for k, v in req.header_items()) for req in requests]
+    assert ("x-opencode-session" in headers[0]) is expected
+    if expected:
+        assert headers[0]["x-opencode-session"] == headers[1]["x-opencode-session"]

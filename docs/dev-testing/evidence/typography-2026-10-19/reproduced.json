@@ -1,0 +1,1518 @@
+[
+  {
+    "name": "chrome",
+    "dashboard": [
+      {
+        "text": "Добрый вечер, Тестовый",
+        "selector": "",
+        "size": "24px",
+        "weight": "600",
+        "line": "30px",
+        "width": 366,
+        "height": 30,
+        "parentWidth": 366,
+        "connected": true
+      },
+      {
+        "text": "Требует вашего действия",
+        "selector": "dashboard-actions-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "18.9px",
+        "width": 228,
+        "height": 18.890625,
+        "parentWidth": 228,
+        "connected": true
+      },
+      {
+        "text": "Обновите статусы к встрече",
+        "selector": "dash-notif-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "19.6px",
+        "width": 260,
+        "height": 19.59375,
+        "parentWidth": 274,
+        "connected": true
+      },
+      {
+        "text": "Новый комментарий",
+        "selector": "dash-notif-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "19.6px",
+        "width": 260,
+        "height": 19.59375,
+        "parentWidth": 274,
+        "connected": true
+      }
+    ],
+    "headers": [
+      {
+        "connected": true,
+        "height": 40,
+        "padding": "4px 12px",
+        "font": "12px",
+        "weight": "600",
+        "spacing": "0.48px",
+        "transform": "uppercase"
+      },
+      {
+        "connected": true,
+        "height": 40,
+        "padding": "4px 12px",
+        "font": "12px",
+        "weight": "600",
+        "spacing": "0.48px",
+        "transform": "uppercase"
+      }
+    ],
+    "outbox": [
+      {
+        "text": "Отправить снова",
+        "client": 142,
+        "scroll": 142,
+        "w": 143.625,
+        "textWidth": 121.625,
+        "textLeft": 11,
+        "textRight": -11,
+        "font": "12px",
+        "weight": "500",
+        "overflowX": "visible"
+      }
+    ],
+    "autoTheme": {
+      "theme": "(auto)",
+      "samples": [
+        {
+          "selector": "li.is-done",
+          "text": "✓Исходные данные",
+          "color": "rgb(134, 239, 172)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.4
+        },
+        {
+          "selector": "li.is-done",
+          "text": "✓Черновик",
+          "color": "rgb(134, 239, 172)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.4
+        },
+        {
+          "selector": "li.is-active",
+          "text": "3Уточнения",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.72
+        },
+        {
+          "selector": "li.",
+          "text": "4Согласование",
+          "color": "rgb(148, 163, 184)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 2.56
+        },
+        {
+          "selector": "span.agent-v2-revision",
+          "text": "Редакция 1",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.72
+        },
+        {
+          "selector": "summary.",
+          "text": "Ещё 16 разделов",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12.16px",
+          "weight": "600",
+          "line": "18.24px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.99
+        }
+      ]
+    },
+    "lightTheme": {
+      "theme": "light",
+      "samples": [
+        {
+          "selector": "li.is-done",
+          "text": "✓Исходные данные",
+          "color": "rgb(22, 101, 52)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 7.13
+        },
+        {
+          "selector": "li.is-done",
+          "text": "✓Черновик",
+          "color": "rgb(22, 101, 52)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 7.13
+        },
+        {
+          "selector": "li.is-active",
+          "text": "3Уточнения",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 5.41
+        },
+        {
+          "selector": "li.",
+          "text": "4Согласование",
+          "color": "rgb(71, 85, 105)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 7.58
+        },
+        {
+          "selector": "span.agent-v2-revision",
+          "text": "Редакция 1",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 5.41
+        },
+        {
+          "selector": "summary.",
+          "text": "Ещё 16 разделов",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12.16px",
+          "weight": "600",
+          "line": "18.24px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 6.29
+        }
+      ]
+    },
+    "requirements": {
+      "textWidth": 140.6875,
+      "textLeft": -7.84375,
+      "textRight": 7.84375,
+      "paddingLeft": "12px",
+      "paddingRight": "12px",
+      "text": "Материалы и история",
+      "client": 123,
+      "scroll": 132,
+      "size": "13px",
+      "weight": "500",
+      "line": "20px",
+      "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "overflowX": "visible",
+      "whiteSpace": "nowrap",
+      "x": 162,
+      "y": 409,
+      "w": 125,
+      "h": 44
+    },
+    "echarts": {
+      "global": {
+        "color": "#475569",
+        "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "fontSize": 12,
+        "fontStyle": "normal",
+        "fontWeight": "normal"
+      },
+      "edge": {
+        "show": true,
+        "position": "middle",
+        "distance": 0,
+        "rotate": false,
+        "align": "center",
+        "verticalAlign": "middle",
+        "fontSize": 9.5,
+        "fontWeight": 600,
+        "color": "#475569",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "textBorderColor": "#ffffff",
+        "textBorderWidth": 3
+      },
+      "nodes": [
+        {
+          "name": "Команда А",
+          "label": {
+            "show": true,
+            "formatter": "Команда А",
+            "position": "top",
+            "distance": 15,
+            "fontSize": 11,
+            "fontWeight": 500,
+            "color": "#475569"
+          }
+        },
+        {
+          "name": "Команда Б",
+          "label": {
+            "show": true,
+            "formatter": "Команда Б",
+            "position": "bottom",
+            "distance": 15,
+            "fontSize": 11,
+            "fontWeight": 500,
+            "color": "#475569"
+          }
+        }
+      ]
+    },
+    "chartjs": {
+      "global": {
+        "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "size": 12,
+        "weight": null
+      },
+      "scales": {
+        "x": {
+          "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          "lineHeight": 13.2,
+          "size": 11,
+          "style": "normal",
+          "weight": null,
+          "string": "normal 11px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        },
+        "y": {
+          "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          "lineHeight": 13.2,
+          "size": 11,
+          "style": "normal",
+          "weight": null,
+          "string": "normal 11px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        }
+      }
+    },
+    "nativeConfirmation": {
+      "parent": "BODY",
+      "insideNative": false,
+      "active": "BODY",
+      "hit": "SELECT",
+      "click": "blocked"
+    }
+  },
+  {
+    "name": "edge",
+    "dashboard": [
+      {
+        "text": "Добрый вечер, Тестовый",
+        "selector": "",
+        "size": "24px",
+        "weight": "600",
+        "line": "30px",
+        "width": 366,
+        "height": 30,
+        "parentWidth": 366,
+        "connected": true
+      },
+      {
+        "text": "Требует вашего действия",
+        "selector": "dashboard-actions-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "18.9px",
+        "width": 228,
+        "height": 18.890625,
+        "parentWidth": 228,
+        "connected": true
+      },
+      {
+        "text": "Обновите статусы к встрече",
+        "selector": "dash-notif-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "19.6px",
+        "width": 260,
+        "height": 19.59375,
+        "parentWidth": 274,
+        "connected": true
+      },
+      {
+        "text": "Новый комментарий",
+        "selector": "dash-notif-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "19.6px",
+        "width": 260,
+        "height": 19.59375,
+        "parentWidth": 274,
+        "connected": true
+      }
+    ],
+    "headers": [
+      {
+        "connected": true,
+        "height": 40,
+        "padding": "4px 12px",
+        "font": "12px",
+        "weight": "600",
+        "spacing": "0.48px",
+        "transform": "uppercase"
+      },
+      {
+        "connected": true,
+        "height": 40,
+        "padding": "4px 12px",
+        "font": "12px",
+        "weight": "600",
+        "spacing": "0.48px",
+        "transform": "uppercase"
+      }
+    ],
+    "outbox": [
+      {
+        "text": "Отправить снова",
+        "client": 142,
+        "scroll": 142,
+        "w": 143.625,
+        "textWidth": 121.625,
+        "textLeft": 11,
+        "textRight": -11,
+        "font": "12px",
+        "weight": "500",
+        "overflowX": "visible"
+      }
+    ],
+    "autoTheme": {
+      "theme": "(auto)",
+      "samples": [
+        {
+          "selector": "li.is-done",
+          "text": "✓Исходные данные",
+          "color": "rgb(134, 239, 172)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.4
+        },
+        {
+          "selector": "li.is-done",
+          "text": "✓Черновик",
+          "color": "rgb(134, 239, 172)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.4
+        },
+        {
+          "selector": "li.is-active",
+          "text": "3Уточнения",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.72
+        },
+        {
+          "selector": "li.",
+          "text": "4Согласование",
+          "color": "rgb(148, 163, 184)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 2.56
+        },
+        {
+          "selector": "span.agent-v2-revision",
+          "text": "Редакция 1",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.72
+        },
+        {
+          "selector": "summary.",
+          "text": "Ещё 16 разделов",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12.16px",
+          "weight": "600",
+          "line": "18.24px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.99
+        }
+      ]
+    },
+    "lightTheme": {
+      "theme": "light",
+      "samples": [
+        {
+          "selector": "li.is-done",
+          "text": "✓Исходные данные",
+          "color": "rgb(22, 101, 52)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 7.13
+        },
+        {
+          "selector": "li.is-done",
+          "text": "✓Черновик",
+          "color": "rgb(22, 101, 52)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 7.13
+        },
+        {
+          "selector": "li.is-active",
+          "text": "3Уточнения",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 5.41
+        },
+        {
+          "selector": "li.",
+          "text": "4Согласование",
+          "color": "rgb(71, 85, 105)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 7.58
+        },
+        {
+          "selector": "span.agent-v2-revision",
+          "text": "Редакция 1",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 5.41
+        },
+        {
+          "selector": "summary.",
+          "text": "Ещё 16 разделов",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12.16px",
+          "weight": "600",
+          "line": "18.24px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 6.29
+        }
+      ]
+    },
+    "requirements": {
+      "textWidth": 140.6875,
+      "textLeft": -7.84375,
+      "textRight": 7.84375,
+      "paddingLeft": "12px",
+      "paddingRight": "12px",
+      "text": "Материалы и история",
+      "client": 123,
+      "scroll": 132,
+      "size": "13px",
+      "weight": "500",
+      "line": "20px",
+      "family": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "overflowX": "visible",
+      "whiteSpace": "nowrap",
+      "x": 162,
+      "y": 409,
+      "w": 125,
+      "h": 44
+    },
+    "echarts": {
+      "global": {
+        "color": "#475569",
+        "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "fontSize": 12,
+        "fontStyle": "normal",
+        "fontWeight": "normal"
+      },
+      "edge": {
+        "show": true,
+        "position": "middle",
+        "distance": 0,
+        "rotate": false,
+        "align": "center",
+        "verticalAlign": "middle",
+        "fontSize": 9.5,
+        "fontWeight": 600,
+        "color": "#475569",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "textBorderColor": "#ffffff",
+        "textBorderWidth": 3
+      },
+      "nodes": [
+        {
+          "name": "Команда А",
+          "label": {
+            "show": true,
+            "formatter": "Команда А",
+            "position": "top",
+            "distance": 15,
+            "fontSize": 11,
+            "fontWeight": 500,
+            "color": "#475569"
+          }
+        },
+        {
+          "name": "Команда Б",
+          "label": {
+            "show": true,
+            "formatter": "Команда Б",
+            "position": "bottom",
+            "distance": 15,
+            "fontSize": 11,
+            "fontWeight": 500,
+            "color": "#475569"
+          }
+        }
+      ]
+    },
+    "chartjs": {
+      "global": {
+        "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "size": 12,
+        "weight": null
+      },
+      "scales": {
+        "x": {
+          "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          "lineHeight": 13.2,
+          "size": 11,
+          "style": "normal",
+          "weight": null,
+          "string": "normal 11px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        },
+        "y": {
+          "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          "lineHeight": 13.2,
+          "size": 11,
+          "style": "normal",
+          "weight": null,
+          "string": "normal 11px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        }
+      }
+    },
+    "nativeConfirmation": {
+      "parent": "DIALOG",
+      "insideNative": true,
+      "active": "BUTTON",
+      "hit": "BUTTON",
+      "click": "accepted"
+    }
+  },
+  {
+    "name": "firefox",
+    "dashboard": [
+      {
+        "text": "Добрый вечер, Тестовый",
+        "selector": "",
+        "size": "24px",
+        "weight": "600",
+        "line": "30px",
+        "width": 366,
+        "height": 30,
+        "parentWidth": 366,
+        "connected": true
+      },
+      {
+        "text": "Требует вашего действия",
+        "selector": "dashboard-actions-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "18.9px",
+        "width": 228,
+        "height": 18.899993896484375,
+        "parentWidth": 228,
+        "connected": true
+      },
+      {
+        "text": "Обновите статусы к встрече",
+        "selector": "dash-notif-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "19.6px",
+        "width": 260,
+        "height": 19.600006103515625,
+        "parentWidth": 274,
+        "connected": true
+      },
+      {
+        "text": "Новый комментарий",
+        "selector": "dash-notif-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "19.6px",
+        "width": 260,
+        "height": 19.600006103515625,
+        "parentWidth": 274,
+        "connected": true
+      }
+    ],
+    "headers": [
+      {
+        "connected": true,
+        "height": 40,
+        "padding": "4px 12px",
+        "font": "12px",
+        "weight": "600",
+        "spacing": "0.48px",
+        "transform": "uppercase"
+      },
+      {
+        "connected": true,
+        "height": 40,
+        "padding": "4px 12px",
+        "font": "12px",
+        "weight": "600",
+        "spacing": "0.48px",
+        "transform": "uppercase"
+      }
+    ],
+    "outbox": [
+      {
+        "text": "Отправить снова",
+        "client": 130,
+        "scroll": 136,
+        "w": 132,
+        "textWidth": 121.63333129882812,
+        "textLeft": 5.183349609375,
+        "textRight": -5.183319091796875,
+        "font": "12px",
+        "weight": "500",
+        "overflowX": "visible"
+      }
+    ],
+    "autoTheme": {
+      "theme": "(auto)",
+      "samples": [
+        {
+          "selector": "li.is-done",
+          "text": "✓Исходные данные",
+          "color": "rgb(134, 239, 172)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.4
+        },
+        {
+          "selector": "li.is-done",
+          "text": "✓Черновик",
+          "color": "rgb(134, 239, 172)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.4
+        },
+        {
+          "selector": "li.is-active",
+          "text": "3Уточнения",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.72
+        },
+        {
+          "selector": "li.",
+          "text": "4Согласование",
+          "color": "rgb(148, 163, 184)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 2.56
+        },
+        {
+          "selector": "span.agent-v2-revision",
+          "text": "Редакция 1",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.72
+        },
+        {
+          "selector": "summary.",
+          "text": "Ещё 16 разделов",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12.1563px",
+          "weight": "600",
+          "line": "18.2333px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 1.99
+        }
+      ]
+    },
+    "lightTheme": {
+      "theme": "light",
+      "samples": [
+        {
+          "selector": "li.is-done",
+          "text": "✓Исходные данные",
+          "color": "rgb(22, 101, 52)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 7.13
+        },
+        {
+          "selector": "li.is-done",
+          "text": "✓Черновик",
+          "color": "rgb(22, 101, 52)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 7.13
+        },
+        {
+          "selector": "li.is-active",
+          "text": "3Уточнения",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 5.41
+        },
+        {
+          "selector": "li.",
+          "text": "4Согласование",
+          "color": "rgb(71, 85, 105)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 7.58
+        },
+        {
+          "selector": "span.agent-v2-revision",
+          "text": "Редакция 1",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 5.41
+        },
+        {
+          "selector": "summary.",
+          "text": "Ещё 16 разделов",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12.1563px",
+          "weight": "600",
+          "line": "18.2333px",
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "contrast": 6.29
+        }
+      ]
+    },
+    "requirements": {
+      "textWidth": 140.66665649414062,
+      "textLeft": -7.8333282470703125,
+      "textRight": 7.8333282470703125,
+      "paddingLeft": "12px",
+      "paddingRight": "12px",
+      "text": "Материалы и история",
+      "client": 123,
+      "scroll": 144,
+      "size": "13px",
+      "weight": "500",
+      "line": "20px",
+      "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "overflowX": "visible",
+      "whiteSpace": "nowrap",
+      "x": 162,
+      "y": 409,
+      "w": 125,
+      "h": 44
+    },
+    "echarts": {
+      "global": {
+        "color": "#475569",
+        "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "fontSize": 12,
+        "fontStyle": "normal",
+        "fontWeight": "normal"
+      },
+      "edge": {
+        "show": true,
+        "position": "middle",
+        "distance": 0,
+        "rotate": false,
+        "align": "center",
+        "verticalAlign": "middle",
+        "fontSize": 9.5,
+        "fontWeight": 600,
+        "color": "#475569",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "textBorderColor": "#ffffff",
+        "textBorderWidth": 3
+      },
+      "nodes": [
+        {
+          "name": "Команда А",
+          "label": {
+            "show": true,
+            "formatter": "Команда А",
+            "position": "top",
+            "distance": 15,
+            "fontSize": 11,
+            "fontWeight": 500,
+            "color": "#475569"
+          }
+        },
+        {
+          "name": "Команда Б",
+          "label": {
+            "show": true,
+            "formatter": "Команда Б",
+            "position": "bottom",
+            "distance": 15,
+            "fontSize": 11,
+            "fontWeight": 500,
+            "color": "#475569"
+          }
+        }
+      ]
+    },
+    "chartjs": {
+      "global": {
+        "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "size": 12,
+        "weight": null
+      },
+      "scales": {
+        "x": {
+          "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          "lineHeight": 13.2,
+          "size": 11,
+          "style": "normal",
+          "weight": null,
+          "string": "normal 11px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        },
+        "y": {
+          "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          "lineHeight": 13.2,
+          "size": 11,
+          "style": "normal",
+          "weight": null,
+          "string": "normal 11px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        }
+      }
+    },
+    "nativeConfirmation": {
+      "parent": "BODY",
+      "insideNative": false,
+      "active": "BUTTON",
+      "hit": "SELECT",
+      "click": "blocked"
+    }
+  },
+  {
+    "name": "webkit",
+    "dashboard": [
+      {
+        "text": "Добрый вечер, Тестовый",
+        "selector": "",
+        "size": "24px",
+        "weight": "600",
+        "line": "30px",
+        "width": 350,
+        "height": 30,
+        "parentWidth": 350,
+        "connected": true
+      },
+      {
+        "text": "Требует вашего действия",
+        "selector": "dashboard-actions-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "18.9px",
+        "width": 212,
+        "height": 18.890625,
+        "parentWidth": 212,
+        "connected": true
+      },
+      {
+        "text": "Обновите статусы к встрече",
+        "selector": "dash-notif-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "19.6px",
+        "width": 244,
+        "height": 19.59375,
+        "parentWidth": 258,
+        "connected": true
+      },
+      {
+        "text": "Новый комментарий",
+        "selector": "dash-notif-title",
+        "size": "14px",
+        "weight": "600",
+        "line": "19.6px",
+        "width": 244,
+        "height": 19.59375,
+        "parentWidth": 258,
+        "connected": true
+      }
+    ],
+    "headers": [
+      {
+        "connected": true,
+        "height": 40,
+        "padding": "4px 12px",
+        "font": "12px",
+        "weight": "600",
+        "spacing": "0.48px",
+        "transform": "uppercase"
+      },
+      {
+        "connected": true,
+        "height": 40,
+        "padding": "4px 12px",
+        "font": "12px",
+        "weight": "600",
+        "spacing": "0.48px",
+        "transform": "uppercase"
+      }
+    ],
+    "outbox": [
+      {
+        "text": "Отправить снова",
+        "client": 130,
+        "scroll": 130,
+        "w": 132,
+        "textWidth": 121.625,
+        "textLeft": 5.1875,
+        "textRight": -5.1875,
+        "font": "12px",
+        "weight": "500",
+        "overflowX": "visible"
+      }
+    ],
+    "autoTheme": {
+      "theme": "(auto)",
+      "samples": [
+        {
+          "selector": "li.is-done",
+          "text": "✓Исходные данные",
+          "color": "rgb(134, 239, 172)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 1.4
+        },
+        {
+          "selector": "li.is-done",
+          "text": "✓Черновик",
+          "color": "rgb(134, 239, 172)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 1.4
+        },
+        {
+          "selector": "li.is-active",
+          "text": "3Уточнения",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 1.72
+        },
+        {
+          "selector": "li.",
+          "text": "4Согласование",
+          "color": "rgb(148, 163, 184)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 2.56
+        },
+        {
+          "selector": "span.agent-v2-revision",
+          "text": "Редакция 1",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 1.72
+        },
+        {
+          "selector": "summary.",
+          "text": "Ещё 16 разделов",
+          "color": "rgb(165, 180, 252)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12.16px",
+          "weight": "600",
+          "line": "18.24px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 1.99
+        }
+      ]
+    },
+    "lightTheme": {
+      "theme": "light",
+      "samples": [
+        {
+          "selector": "li.is-done",
+          "text": "✓Исходные данные",
+          "color": "rgb(22, 101, 52)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 7.13
+        },
+        {
+          "selector": "li.is-done",
+          "text": "✓Черновик",
+          "color": "rgb(22, 101, 52)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 7.13
+        },
+        {
+          "selector": "li.is-active",
+          "text": "3Уточнения",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 5.41
+        },
+        {
+          "selector": "li.",
+          "text": "4Согласование",
+          "color": "rgb(71, 85, 105)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 7.58
+        },
+        {
+          "selector": "span.agent-v2-revision",
+          "text": "Редакция 1",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgba(99, 102, 241, 0.12)"
+          ],
+          "size": "12px",
+          "weight": "600",
+          "line": "18px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 5.41
+        },
+        {
+          "selector": "summary.",
+          "text": "Ещё 16 разделов",
+          "color": "rgb(79, 70, 229)",
+          "backgrounds": [
+            "rgb(248, 250, 252)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ],
+          "size": "12.16px",
+          "weight": "600",
+          "line": "18.24px",
+          "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          "contrast": 6.29
+        }
+      ]
+    },
+    "requirements": {
+      "textWidth": 140.68438720703125,
+      "textLeft": -9.842193603515625,
+      "textRight": 9.842193603515625,
+      "paddingLeft": "12px",
+      "paddingRight": "12px",
+      "text": "Материалы и история",
+      "client": 119,
+      "scroll": 130,
+      "size": "13px",
+      "weight": "500",
+      "line": "20px",
+      "family": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+      "overflowX": "visible",
+      "whiteSpace": "nowrap",
+      "x": 158,
+      "y": 409,
+      "w": 121,
+      "h": 44
+    },
+    "echarts": {
+      "global": {
+        "color": "#475569",
+        "fontFamily": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "fontSize": 12,
+        "fontStyle": "normal",
+        "fontWeight": "normal"
+      },
+      "edge": {
+        "show": true,
+        "position": "middle",
+        "distance": 0,
+        "rotate": false,
+        "align": "center",
+        "verticalAlign": "middle",
+        "fontSize": 9.5,
+        "fontWeight": 600,
+        "color": "#475569",
+        "backgroundColor": "transparent",
+        "padding": 0,
+        "textBorderColor": "#ffffff",
+        "textBorderWidth": 3
+      },
+      "nodes": [
+        {
+          "name": "Команда А",
+          "label": {
+            "show": true,
+            "formatter": "Команда А",
+            "position": "top",
+            "distance": 15,
+            "fontSize": 11,
+            "fontWeight": 500,
+            "color": "#475569"
+          }
+        },
+        {
+          "name": "Команда Б",
+          "label": {
+            "show": true,
+            "formatter": "Команда Б",
+            "position": "bottom",
+            "distance": 15,
+            "fontSize": 11,
+            "fontWeight": 500,
+            "color": "#475569"
+          }
+        }
+      ]
+    },
+    "chartjs": {
+      "global": {
+        "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "size": 12,
+        "weight": null
+      },
+      "scales": {
+        "x": {
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "lineHeight": 13.2,
+          "size": 11,
+          "style": "normal",
+          "weight": null,
+          "string": "normal 11px \"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        "y": {
+          "family": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "lineHeight": 13.2,
+          "size": 11,
+          "style": "normal",
+          "weight": null,
+          "string": "normal 11px \"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      }
+    },
+    "nativeConfirmation": {
+      "parent": "DIALOG",
+      "insideNative": true,
+      "active": "BUTTON",
+      "hit": "BUTTON",
+      "click": "accepted"
+    }
+  }
+]

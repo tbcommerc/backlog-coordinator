@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Каталог уведомлений</title>
+  <script src="/js/lib/lucide.min.js"></script>
   <link rel="stylesheet" href="/css/fonts.css">
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/base.css">
@@ -30,7 +31,7 @@
 
     /* Static samples use the production toast markup, with only fixed positioning disabled. */
     .catalog-toast-stack { display:flex; flex-direction:column; gap:12px; }
-    .catalog-toast-stack .toast { width:100%; min-width:0; max-width:none; display:grid; grid-template-columns:20px minmax(0,1fr) 24px; align-items:start; gap:10px 12px; padding:16px; animation:none; }
+    .catalog-toast-stack .toast { width:100%; min-width:0; max-width:none; display:grid; grid-template-columns:20px minmax(0,1fr) max(var(--control-height-sm),var(--control-target-min)); align-items:start; gap:10px 12px; padding:16px; animation:none; }
     .catalog-toast-stack .toast-icon { grid-column:1; grid-row:1; }
     .catalog-toast-stack .toast-message { grid-column:2; grid-row:1; min-width:0; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
     .catalog-toast-stack .toast-close { grid-column:3; grid-row:1; min-height:24px; }
@@ -72,6 +73,7 @@
       .catalog-live-stage #toast-container { width:calc(100% - 24px); right:12px; bottom:12px; }
     }
   </style>
+  <link rel="stylesheet" href="/css/ui/kit.css?v=8">
 </head>
 <body>
   <main class="catalog-shell">
@@ -128,9 +130,9 @@
     <section class="catalog-section" data-catalog="center-cards">
       <div class="catalog-section-head"><div><h2>Карточки центра уведомлений</h2><p>Состояния непрочитано, прочитано и закрыто с общими метаданными и действием.</p></div><span class="catalog-label">notification center</span></div>
       <div class="notification-center"><div class="catalog-notification-list" role="list">
-        <article role="listitem" class="notification-card is-unread importance-high"><div class="notification-card-icon" style="background:#f59e0b15;color:#f59e0b"><span class="catalog-icon">▣</span></div><div class="notification-card-content"><div class="notification-card-title-row"><span class="notification-unread-dot" aria-hidden="true"></span><h3>Обновите статусы к встрече</h3><span class="notification-new-label">Новое</span><span class="notification-priority notification-title-priority">Высокий</span></div><div class="notification-card-meta"><span class="notification-topic">Встречи</span><time datetime="2026-09-07T08:00:00Z">12 мин. назад</time></div><p>Заполните актуальный статус, риски и следующий шаг по ключевым проектам.</p></div><div class="notification-card-actions"><button class="btn btn-primary btn-sm" type="button">Заполнить статусы →</button><button class="notification-icon-btn notification-read-btn" type="button" aria-label="Отметить прочитанным">✉</button></div></article>
-        <article role="listitem" class="notification-card is-read importance-medium"><div class="notification-card-icon" style="background:#3b82f615;color:#3b82f6"><span class="catalog-icon">@</span></div><div class="notification-card-content"><div class="notification-card-title-row"><h3>Вас упомянули в комментарии</h3></div><div class="notification-card-meta"><span class="notification-topic">Упоминания</span><time datetime="2026-09-06T14:30:00Z">Вчера</time></div><p>Проверьте уточнение по сроку реализации задачи.</p></div><div class="notification-card-actions"><button class="btn btn-primary btn-sm" type="button">Открыть обсуждение →</button><button class="notification-icon-btn notification-unread-btn" type="button" aria-label="Отметить непрочитанным">✉</button></div></article>
-        <article role="listitem" class="notification-card is-read is-resolved importance-low"><div class="notification-card-icon" style="background:#22c55e15;color:#22c55e"><span class="catalog-icon">✓</span></div><div class="notification-card-content"><div class="notification-card-title-row"><h3>Назначение подтверждено</h3></div><div class="notification-card-meta"><span class="notification-topic">Назначения</span><span class="notification-resolved-label">Закрыто</span><time datetime="2026-09-01T09:00:00Z">1 сент.</time></div></div><div class="notification-card-actions"><button class="btn btn-primary btn-sm" type="button">Открыть контекст →</button></div></article>
+        <article role="listitem" class="notification-card is-unread importance-high"><div class="notification-card-icon" style="background:#f59e0b15;color:#f59e0b"><span class="catalog-icon">▣</span></div><div class="notification-card-content"><div class="notification-card-title-row"><span class="notification-unread-dot" aria-hidden="true"></span><h3>Обновите статусы к встрече</h3><span class="notification-new-label">Новое</span><span class="notification-priority notification-title-priority">Высокий</span></div><div class="notification-card-meta"><span class="notification-topic">Встречи</span><time datetime="2026-09-07T08:00:00Z">12 мин. назад</time></div><p>Заполните актуальный статус, риски и следующий шаг по ключевым проектам.</p></div><div class="notification-card-actions"></div></article>
+        <article role="listitem" class="notification-card is-read importance-medium"><div class="notification-card-icon" style="background:#3b82f615;color:#3b82f6"><span class="catalog-icon">@</span></div><div class="notification-card-content"><div class="notification-card-title-row"><h3>Вас упомянули в комментарии</h3></div><div class="notification-card-meta"><span class="notification-topic">Упоминания</span><time datetime="2026-09-06T14:30:00Z">Вчера</time></div><p>Проверьте уточнение по сроку реализации задачи.</p></div><div class="notification-card-actions"></div></article>
+        <article role="listitem" class="notification-card is-read is-resolved importance-low"><div class="notification-card-icon" style="background:#22c55e15;color:#22c55e"><span class="catalog-icon">✓</span></div><div class="notification-card-content"><div class="notification-card-title-row"><h3>Назначение подтверждено</h3></div><div class="notification-card-meta"><span class="notification-topic">Назначения</span><span class="notification-resolved-label">Закрыто</span><time datetime="2026-09-01T09:00:00Z">1 сент.</time></div></div><div class="notification-card-actions"></div></article>
       </div></div>
     </section>
 
@@ -152,6 +154,13 @@
   </main>
   <script type="module">
     import { showToast } from '/js/uiFeedback.js';
+    import { button } from '/js/ui/primitives.js?v=1';
+    const cardActions = document.querySelectorAll('[data-catalog="center-cards"] .notification-card-actions');
+    ['Обновить статусы', 'К обсуждению', 'Открыть контекст'].forEach((label, index) => {
+      cardActions[index].innerHTML = button({ label, icon: 'arrow-right', variant: 'primary', size: 'small' })
+        + (index === 1 ? button({ label: 'Отметить непрочитанным', icon: 'mail', iconOnly: true, variant: 'ghost', size: 'small' }) : '');
+    });
+    window.lucide?.createIcons();
     const messages = { success:'Изменения сохранены', info:'Данные обновлены с сервера', warning:'Проверьте обязательные поля', error:'Failed to fetch' };
     document.querySelectorAll('[data-live-type]').forEach(button => button.addEventListener('click', () => showToast(messages[button.dataset.liveType], button.dataset.liveType, { persistent:true })));
     document.getElementById('live-action').addEventListener('click', () => showToast('Все уведомления отмечены прочитанными', 'success', { persistent:true, actionLabel:'Отменить', onAction:() => { document.body.dataset.actionTriggered='true'; } }));

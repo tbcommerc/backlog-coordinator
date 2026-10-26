@@ -106,7 +106,16 @@ class TestComputeInterval:
 class TestIntegrationWithValue:
     def test_hint_shows_the_range(self, refs):
         task = make_task(team="Core", team_class="serving", title="Витрина отчётности")
-        result = compute_value(task, refs)
+        result = compute_value(
+            task,
+            refs,
+            {
+                "users": 10,
+                "minutes_per_operation": 15,
+                "operations_per_year": 50,
+                "confident": True,
+            },
+        )
 
         assert result.interval is not None
         assert "Диапазон" in result.hint
@@ -121,18 +130,38 @@ class TestIntegrationWithValue:
 
     def test_estimate_lies_inside_its_own_interval(self, refs):
         task = make_task(team="Core", team_class="serving", title="Витрина отчётности")
-        result = compute_value(task, refs)
+        result = compute_value(
+            task,
+            refs,
+            {
+                "users": 10,
+                "minutes_per_operation": 15,
+                "operations_per_year": 50,
+                "confident": True,
+            },
+        )
 
         assert result.interval.low_mln <= result.value_internal_mln <= result.interval.high_mln
 
-    def test_recompute_persists_the_bounds(self, session, refs):
-        from app.core.service import recompute_task
+    def test_recompute_persists_the_bounds(self, session, refs, monkeypatch):
+        from app.core import service
 
         task = make_task(team="Core", team_class="serving", title="Витрина отчётности")
+        calculated = compute_value(
+            task,
+            refs,
+            {
+                "users": 10,
+                "minutes_per_operation": 15,
+                "operations_per_year": 50,
+                "confident": True,
+            },
+        )
+        monkeypatch.setattr(service, "compute_value", lambda *_args, **_kwargs: calculated)
         session.add(task)
         session.flush()
 
-        recompute_task(session, task, use_llm=False)
+        service.recompute_task(session, task, use_llm=False)
 
         assert task.value_low_mln is not None
         assert task.value_high_mln is not None

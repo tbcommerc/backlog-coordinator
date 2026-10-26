@@ -1,0 +1,66 @@
+@startuml
+title Обработка сообщения пользователя
+
+actor User
+participant "DMB Backend" as Backend
+participant "Agent API" as API
+participant "Orchestrator" as Orch
+participant "Input Harness" as InputH
+participant "Extractor" as Ext
+participant "Policy Engine" as Policy
+participant "Planner" as Plan
+participant "Session" as Sess
+participant "Output Harness" as OutH
+participant "Audit" as Audit
+
+User -> Backend: Сообщение
+Backend -> API: POST /api/agent/chat\n(X-Agent-Secret)
+API -> Orch: handle_message(session_id, message, ctx)
+
+Orch -> Sess: get(session_id)
+Sess --> Orch: DialogueState
+
+Orch -> InputH: classify_domain(message)
+InputH --> Orch: verdict (in_domain/out_of_domain/malicious)
+
+alt malicious_or_policy_violation
+  Orch -> Audit: log_refusal()
+  Orch --> API: AgentResponse(action="refused")
+else out_of_domain
+  Orch -> Audit: log_refusal()
+  Orch --> API: AgentResponse(action="out_of_domain")
+else in_domain
+  Orch -> Ext: extract_intent(message)
+  Ext --> Orch: (intent, confidence)
+  
+  Orch -> Ext: opportunistic(state, message)
+  Ext --> Orch: {slot: (value, confidence)}
+  
+  Orch -> Orch: update_slots(state)
+  
+  Orch -> Policy: decide(state, ctx)
+  Policy --> Orch: PolicyDecision(action, slot, reason)
+  
+  alt ASK_QUESTION
+    Orch -> Plan: next_question(state, ctx, slot)
+    Plan --> Orch: {question, chips, priority}
+    Orch --> API: AgentResponse(action="question")
+  else SHOW_SUMMARY
+    Orch --> API: AgentResponse(action="summarize")
+  else CREATE_DRAFT
+    Orch -> Orch: build_draft(state, ctx)
+    Orch -> Audit: log_draft()
+    Orch --> API: AgentResponse(action="draft_ready")
+  else ESCALATE
+    Orch -> Audit: log_event("escalation")
+    Orch --> API: AgentResponse(action="escalated")
+  end
+  
+  Orch -> Sess: save(state)
+  Orch -> Audit: log_dialogue()
+end
+
+API --> Backend: AgentResponse
+Backend --> User: Ответ агента
+
+@enduml

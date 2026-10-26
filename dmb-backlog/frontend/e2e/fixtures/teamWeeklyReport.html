@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Еженедельная встреча команды — fixture</title>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>body{background:var(--bg-secondary)}main{max-width:1440px;margin:0 auto;padding:24px}.fixture-head{margin-bottom:18px}.fixture-head h1{margin:0 0 4px}.fixture-head p{margin:0;color:var(--text-muted)}</style>
+  <link rel="stylesheet" href="/css/ui/kit.css?v=8">
+</head>
+<body>
+  <main>
+    <header class="fixture-head"><h1>Еженедельная встреча команды</h1><p>Результаты, риски, решения и следующий шаг — в одном рабочем срезе.</p></header>
+    <div id="report-body"></div>
+  </main>
+  <script type="module">
+    import { renderTeamWeeklyReport } from '/js/components/reports.js';
+    window.lucide = { createIcons() {} };
+    document.getElementById('report-body').innerHTML = renderTeamWeeklyReport({
+      meeting: { id: 77, scheduled_date: '2026-09-14', week_end: '2026-09-20' },
+      teams: [{ id: 3, name: 'Цифровая платформа' }],
+      items: [
+        { task_id: 11, public_id: 'TASK-011', title: 'Пилот нового клиентского пути', team_id: 3, project_name: 'Личный кабинет', owner_name: 'Анна Смирнова', status_name: 'В работе', progress: 70, progress_delta: 20, result: 'Прототип проверен на фокус-группе, критичные замечания устранены.', next_step: 'Запустить пилот на первой группе', next_step_due: '2026-09-18', decision_request: 'Согласовать объём пилота: 20 клиентов', signal: 'decision', is_ready: true, is_completed_this_week: false },
+        { task_id: 12, public_id: 'TASK-012', title: 'Интеграция с витриной данных', team_id: 3, project_name: 'Data Platform', owner_name: 'Илья Волков', status_name: 'Холд', progress: 45, progress_delta: 5, result: 'Подготовлен контракт обмена и тестовый набор данных.', next_step: 'Получить доступ к промышленному контуру', next_step_due: '2026-09-19', decision_request: '', signal: 'blocker', is_ready: true, is_completed_this_week: false },
+        { task_id: 13, public_id: 'TASK-013', title: 'Обновить метрики воронки', team_id: 3, project_name: 'Growth', owner_name: 'Мария Ким', status_name: 'В работе', progress: 80, progress_delta: 10, result: 'Собрана новая версия дашборда.', next_step: 'Сверить цифры с финансами', next_step_due: '2026-09-20', decision_request: '', signal: 'risk', is_ready: true, is_completed_this_week: false },
+        { task_id: 14, public_id: 'TASK-014', title: 'Документация релиза 3.8', team_id: 3, project_name: 'Core', owner_name: 'Павел Орлов', status_name: 'Выполнена', progress: 100, progress_delta: 25, result: 'Инструкции опубликованы, команда поддержки обучена.', next_step: 'Собрать обратную связь поддержки', next_step_due: '2026-09-20', decision_request: '', signal: 'on_track', is_ready: true, is_completed_this_week: true },
+      ],
+    });
+    document.documentElement.dataset.fixtureReady = 'true';
+  </script>
+</body>
+</html>

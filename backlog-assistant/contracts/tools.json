@@ -1,0 +1,945 @@
+{
+  "contract_version": "1.0",
+  "tools": [
+    {
+      "name": "resolve_context",
+      "description": "resolve_context",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "team",
+              "project",
+              "period",
+              "status",
+              "task",
+              "request"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "search_work_items",
+      "description": "search_work_items",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "additionalProperties": false,
+            "properties": {
+              "object_type": {
+                "default": "task",
+                "enum": [
+                  "task",
+                  "request"
+                ],
+                "title": "Object Type",
+                "type": "string"
+              },
+              "team_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Team Ids",
+                "type": "array"
+              },
+              "project_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Project Ids",
+                "type": "array"
+              },
+              "status_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Status Ids",
+                "type": "array"
+              },
+              "priority_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Priority Ids",
+                "type": "array"
+              },
+              "relationship": {
+                "default": "all",
+                "enum": [
+                  "all",
+                  "mine",
+                  "my_team"
+                ],
+                "title": "Relationship",
+                "type": "string"
+              },
+              "period": {
+                "anyOf": [
+                  {
+                    "maxLength": 80,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Period"
+              },
+              "created_from": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created From"
+              },
+              "created_to": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created To"
+              },
+              "updated_from": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated From"
+              },
+              "updated_to": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated To"
+              },
+              "missing": {
+                "items": {
+                  "enum": [
+                    "owner",
+                    "effort",
+                    "effect",
+                    "period"
+                  ],
+                  "type": "string"
+                },
+                "title": "Missing",
+                "type": "array"
+              },
+              "terms": {
+                "items": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "title": "Terms",
+                "type": "array",
+                "description": "Literal requested search terms; all terms are required (AND). Never omit a user-provided word or public ID."
+              },
+              "sort": {
+                "default": "id",
+                "enum": [
+                  "id",
+                  "updated_desc"
+                ],
+                "title": "Sort",
+                "type": "string"
+              },
+              "cursor": {
+                "default": 0,
+                "maximum": 1000000,
+                "minimum": 0,
+                "title": "Cursor",
+                "type": "integer"
+              }
+            },
+            "title": "QuerySpec",
+            "type": "object"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "read_task",
+      "description": "read_task",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "task_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Exact internal reference task:N including the prefix. Public IDs must be searched first.",
+            "pattern": "^task:[1-9][0-9]*$"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "card",
+                "history",
+                "comments"
+              ]
+            },
+            "maxItems": 3
+          }
+        },
+        "required": [
+          "task_ref"
+        ]
+      }
+    },
+    {
+      "name": "read_request",
+      "description": "read_request",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "request_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^request:[1-9][0-9]*$",
+            "description": "Exact internal reference request:N including the prefix. Public IDs must be searched first."
+          }
+        },
+        "required": [
+          "request_ref"
+        ]
+      }
+    },
+    {
+      "name": "read_requirement_review",
+      "description": "read_requirement_review",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "review_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^review:[1-9][0-9]*$",
+            "description": "Exact internal reference review:N including the prefix. Public IDs must be searched first."
+          }
+        },
+        "required": [
+          "review_ref"
+        ]
+      }
+    },
+    {
+      "name": "query_changes",
+      "description": "query_changes",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "additionalProperties": false,
+            "properties": {
+              "object_type": {
+                "default": "task",
+                "enum": [
+                  "task",
+                  "request"
+                ],
+                "title": "Object Type",
+                "type": "string"
+              },
+              "team_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Team Ids",
+                "type": "array"
+              },
+              "project_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Project Ids",
+                "type": "array"
+              },
+              "status_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Status Ids",
+                "type": "array"
+              },
+              "priority_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Priority Ids",
+                "type": "array"
+              },
+              "relationship": {
+                "default": "all",
+                "enum": [
+                  "all",
+                  "mine",
+                  "my_team"
+                ],
+                "title": "Relationship",
+                "type": "string"
+              },
+              "period": {
+                "anyOf": [
+                  {
+                    "maxLength": 80,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Period"
+              },
+              "created_from": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created From"
+              },
+              "created_to": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created To"
+              },
+              "updated_from": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated From"
+              },
+              "updated_to": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated To"
+              },
+              "missing": {
+                "items": {
+                  "enum": [
+                    "owner",
+                    "effort",
+                    "effect",
+                    "period"
+                  ],
+                  "type": "string"
+                },
+                "title": "Missing",
+                "type": "array"
+              },
+              "terms": {
+                "items": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "title": "Terms",
+                "type": "array",
+                "description": "Literal requested search terms; all terms are required (AND). Never omit a user-provided word or public ID."
+              },
+              "sort": {
+                "default": "id",
+                "enum": [
+                  "id",
+                  "updated_desc"
+                ],
+                "title": "Sort",
+                "type": "string"
+              },
+              "cursor": {
+                "default": 0,
+                "maximum": 1000000,
+                "minimum": 0,
+                "title": "Cursor",
+                "type": "integer"
+              }
+            },
+            "title": "QuerySpec",
+            "type": "object"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Inclusive start with explicit timezone."
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Exclusive end with explicit timezone. Use the requested instant exactly; never subtract one second."
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "status_id",
+                "priority_id",
+                "deadline_id",
+                "owner_id",
+                "progress"
+              ]
+            },
+            "description": "Only requested fields. Planned period=deadline_id, status=status_id, priority=priority_id, owner=owner_id. Omit for all changes."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          }
+        },
+        "required": [
+          "query",
+          "from",
+          "to"
+        ]
+      }
+    },
+    {
+      "name": "aggregate_backlog",
+      "description": "aggregate_backlog",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "additionalProperties": false,
+            "properties": {
+              "object_type": {
+                "default": "task",
+                "enum": [
+                  "task",
+                  "request"
+                ],
+                "title": "Object Type",
+                "type": "string"
+              },
+              "team_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Team Ids",
+                "type": "array"
+              },
+              "project_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Project Ids",
+                "type": "array"
+              },
+              "status_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Status Ids",
+                "type": "array"
+              },
+              "priority_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Priority Ids",
+                "type": "array"
+              },
+              "relationship": {
+                "default": "all",
+                "enum": [
+                  "all",
+                  "mine",
+                  "my_team"
+                ],
+                "title": "Relationship",
+                "type": "string"
+              },
+              "period": {
+                "anyOf": [
+                  {
+                    "maxLength": 80,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Period"
+              },
+              "created_from": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created From"
+              },
+              "created_to": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created To"
+              },
+              "updated_from": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated From"
+              },
+              "updated_to": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated To"
+              },
+              "missing": {
+                "items": {
+                  "enum": [
+                    "owner",
+                    "effort",
+                    "effect",
+                    "period"
+                  ],
+                  "type": "string"
+                },
+                "title": "Missing",
+                "type": "array"
+              },
+              "terms": {
+                "items": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "title": "Terms",
+                "type": "array",
+                "description": "Literal requested search terms; all terms are required (AND). Never omit a user-provided word or public ID."
+              },
+              "sort": {
+                "default": "id",
+                "enum": [
+                  "id",
+                  "updated_desc"
+                ],
+                "title": "Sort",
+                "type": "string"
+              },
+              "cursor": {
+                "default": 0,
+                "maximum": 1000000,
+                "minimum": 0,
+                "title": "Cursor",
+                "type": "integer"
+              }
+            },
+            "title": "QuerySpec",
+            "type": "object"
+          },
+          "group_by": {
+            "enum": [
+              "status",
+              "project",
+              "team",
+              "period"
+            ]
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "count",
+                "cost_rub",
+                "effect_million_rub"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 3
+          }
+        },
+        "required": [
+          "query",
+          "group_by",
+          "metrics"
+        ]
+      }
+    },
+    {
+      "name": "read_meeting_context",
+      "description": "read_meeting_context",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "meeting_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^meeting:[1-9][0-9]*$",
+            "description": "Exact internal reference meeting:N including the prefix. Public IDs must be searched first."
+          },
+          "query": {
+            "additionalProperties": false,
+            "properties": {
+              "object_type": {
+                "default": "task",
+                "enum": [
+                  "task",
+                  "request"
+                ],
+                "title": "Object Type",
+                "type": "string"
+              },
+              "team_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Team Ids",
+                "type": "array"
+              },
+              "project_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Project Ids",
+                "type": "array"
+              },
+              "status_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Status Ids",
+                "type": "array"
+              },
+              "priority_ids": {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 100,
+                "title": "Priority Ids",
+                "type": "array"
+              },
+              "relationship": {
+                "default": "all",
+                "enum": [
+                  "all",
+                  "mine",
+                  "my_team"
+                ],
+                "title": "Relationship",
+                "type": "string"
+              },
+              "period": {
+                "anyOf": [
+                  {
+                    "maxLength": 80,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Period"
+              },
+              "created_from": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created From"
+              },
+              "created_to": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Created To"
+              },
+              "updated_from": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated From"
+              },
+              "updated_to": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated To"
+              },
+              "missing": {
+                "items": {
+                  "enum": [
+                    "owner",
+                    "effort",
+                    "effect",
+                    "period"
+                  ],
+                  "type": "string"
+                },
+                "title": "Missing",
+                "type": "array"
+              },
+              "terms": {
+                "items": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "title": "Terms",
+                "type": "array",
+                "description": "Literal requested search terms; all terms are required (AND). Never omit a user-provided word or public ID."
+              },
+              "sort": {
+                "default": "id",
+                "enum": [
+                  "id",
+                  "updated_desc"
+                ],
+                "title": "Sort",
+                "type": "string"
+              },
+              "cursor": {
+                "default": 0,
+                "maximum": 1000000,
+                "minimum": 0,
+                "title": "Cursor",
+                "type": "integer"
+              }
+            },
+            "title": "QuerySpec",
+            "type": "object"
+          }
+        },
+        "required": [
+          "meeting_ref",
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "compare_tasks",
+      "description": "compare_tasks",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "task_refs": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^task:[1-9][0-9]*$",
+              "description": "Internal task:N reference."
+            }
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "status",
+                "priority",
+                "cost_rub",
+                "effect_million_rub",
+                "cost_value"
+              ]
+            },
+            "maxItems": 5,
+            "description": "Requested comparison fields. Cost/Value = cost_value (server-calculated ratio); cost_rub is cost only, not the ratio."
+          }
+        },
+        "required": [
+          "task_refs",
+          "dimensions"
+        ]
+      }
+    },
+    {
+      "name": "search_help",
+      "description": "search_help",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "topic": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "surface": {
+            "enum": [
+              "backlog",
+              "task",
+              "request",
+              "report",
+              "assistant"
+            ]
+          }
+        },
+        "required": [
+          "topic",
+          "surface"
+        ]
+      }
+    }
+  ]
+}

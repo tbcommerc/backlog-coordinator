@@ -15,8 +15,9 @@ const historyModeMarkup = source.slice(
 );
 
 const importableSource = source
-  .replace("import { confirmAction } from '../uiFeedback.js';", 'const confirmAction = async () => false;')
-  .replace("import { enhanceDialogOverlay } from '../modalAccessibility.js';", 'const enhanceDialogOverlay = () => {};');
+  .replace(/import \{ confirmAction \} from '\.\.\/uiFeedback\.js(?:\?v=\d+)?';/, 'const confirmAction = async () => false;')
+  .replace(/import \{ enhanceDialogOverlay \} from '\.\.\/modalAccessibility\.js(?:\?v=\d+)?';/, 'const enhanceDialogOverlay = () => {};')
+  .replace("'../ui/actionMenu.js'", JSON.stringify(new URL('../js/ui/actionMenu.js', import.meta.url).href));
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(importableSource).toString('base64')}`;
 const { classifyRequirementValue, clearAgentChatTransientStorage, composerDraftStorageKey, formatContent, formatProcessingElapsed, getChatActivity, getDraftIssueSummary, getSessionLifecycle, isNearChatBottom, renderSessionEmptyState } = await import(moduleUrl);
 
@@ -57,7 +58,7 @@ assert.equal(getSessionLifecycle({ phase: 'done', finished: true }), 'complete')
 assert.equal(getSessionLifecycle({ phase: 'draft_ready', request_id: 12 }), 'sent');
 assert.match(formatContent('**Важно**\n\n- пункт\n- [ссылка](https://example.test)'), /<strong>Важно<\/strong>[\s\S]*?<ul>[\s\S]*?<a href="https:\/\/example\.test"/);
 assert.doesNotMatch(formatContent('[опасно](javascript:alert(1))'), /href=/);
-assert.match(formatContent('| Поле | Значение |\n| --- | --- |\n| A | B |'), /<table>[\s\S]*?<th>Поле<\/th>[\s\S]*?<td>B<\/td>/);
+assert.match(formatContent('| Поле | Значение |\n| --- | --- |\n| A | B |'), /<table\b[^>]*>[\s\S]*?<th>Поле<\/th>[\s\S]*?<td>B<\/td>/);
 
 assert.match(source, /slots: \['need_statement', 'to_be', 'role', 'process'\]/, 'the UI minimum must match the agent contract');
 assert.match(source, /id="chat-generate-draft-btn"/, 'early draft must be a visible action');
@@ -134,7 +135,7 @@ assert.match(css, /\.chat-scroll-latest\s*\{[\s\S]*?position:\s*absolute/, 'new-
 assert.match(css, /@media \(max-width:1024px\) and \(max-height:520px\)/, 'short landscape screens need a dedicated compact layout');
 assert.match(css, /@media \(hover:hover\) and \(pointer:fine\)[\s\S]*?\.chat-message-bot:focus-within \.chat-answer-actions/, 'desktop answer actions must stay quiet until they are relevant');
 assert.match(css, /\.chat-message-streaming \.chat-message-content::after/, 'a live streamed reply must have a restrained visual cursor');
-assert.match(css, /\.requirement-map-field-state\s*\{\s*font-size:11px;/, 'requirement field states must stay readable at the compact density');
+assert.match(css, /\.requirement-map-field-state\s*\{\s*font-size:var\(--type-meta-size\);/, 'requirement field states must stay readable at the compact density');
 assert.match(componentsCss, /@media \(max-width: 820px\)[\s\S]*?\.mobile-search-toggle/, 'tablet navigation must collapse search before it crowds the header');
 assert.doesNotMatch(indexMarkup, /class="skip-link"[^>]*style=/, 'the global skip link position must not be overridden inline');
 assert.match(baseCss, /\.skip-link\s*\{[\s\S]*?transform:\s*translateY\(-120%\)/, 'the skip link must have an off-screen resting state');

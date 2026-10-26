@@ -1,0 +1,64 @@
+<!doctype html><html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/components.css"><link rel="stylesheet" href="/css/pages.css"><link rel="stylesheet" href="/css/responsive.css"><link rel="stylesheet" href="/css/ui/kit.css">
+<style>body{padding:16px;background:var(--bg-secondary)}#fixture-extra{margin-top:24px}.fixture-end{position:fixed;bottom:8px;right:8px}</style>
+<script src="/js/lib/chart.min.js"></script><script src="/js/lib/lucide.min.js"></script></head><body><main id="page-content"></main><div id="fixture-extra"></div>
+<script type="module">
+import { renderToolbar, initToolbarControls, initToolbar, getFilteredList } from '/js/components/filterToolbar.js';
+import { renderKanban, initKanban } from '/js/components/kanbanBoard.js';
+import { renderReportPage, initReportPage } from '/js/components/reports.js';
+import { button } from '/js/ui/primitives.js';
+import { bindActionMenu } from '/js/ui/actionMenu.js';
+import { bindTooltip } from '/js/ui/tooltip.js';
+const params = new URLSearchParams(location.search);
+document.documentElement.dataset.theme = params.get('theme') || 'light';
+document.documentElement.dataset.compact = params.get('compact') || 'false';
+const tasks = [{ id:1, title:'Один', team_name:'Команда <img src=x onerror=alert(1)>', progress:0, status_name:'В работе' }, { id:2, title:'Два', team_name:'Команда Б', progress:100, status_name:'Готово' }];
+window.__writes = []; window.__visibleTasks = [];
+const kanbanOverrides = new Map();
+const app = { store:{ get:() => ({ role_name:'Администратор', permissions:{reports:'full',...(params.has('readonly')?{task_edit:'none'}:{})} }) }, api:{
+  async get(path) {
+    if (params.has('error') && !window.__recovered) throw new Error('Проверочная ошибка отчёта');
+    if (path.startsWith('/tasks/')) {
+      if (window.__failKanban) { window.__failKanban = false; throw new Error('Fixture failure'); }
+      return {items: params.get('empty') ? [] : tasks.map((task,index)=>({...task,version:1,status_name:index ? 'ВЫПОЛНЕНА' : 'НОВАЯ ЗАДАЧА',...kanbanOverrides.get(task.id)}))};
+    }
+    if (path === '/reports/did-operational-report') return {teams:[{team_name:'Команда А',total:2,tasks}]};
+    if (path === '/reports/') return ['quarterly-goals','reg-directors','pip'].map((key,index)=>({id:index+1,key,fields:JSON.stringify(['id','title','team_name','progress'])}));
+    if (path.endsWith('/execute')) return {items:params.has('empty')?[]:tasks};
+    return [];
+  }, async put(path,body) {
+    if(params.get('surface')!=='kanban')throw new Error('Writes forbidden');
+    window.__writes.push({path,body});
+    if(window.__holdMove)await new Promise(resolve=>{window.__releaseMove=resolve;});
+    if(window.__failMove){window.__failMove=false;throw new Error('Проверочная ошибка перемещения');}
+    const names=['НОВАЯ ЗАДАЧА','НАЗНАЧЕНА КОМАНДА','СБОР ТРЕБОВАНИЙ','ПРОВЕРКА ТРЕБОВАНИЙ','УТОЧНЕНИЕ ТРЕБОВАНИЙ','ЭКСПРЕСС-ОЦЕНКА','ПРИНЯТИЕ РЕШЕНИЯ','ПРИНЯТА В РАБОТУ','ОТКЛОНЕНА','НЕ АКТУАЛЬНА','ВЫПОЛНЕНА','ЭСКАЛАЦИЯ НА ЛТ','ХОЛД'];
+    const id=Number(path.split('/').at(-1));const result={status_id:body.status_id,status_name:names[body.status_id-1],version:body.version+1};kanbanOverrides.set(id,result);return result;
+  }, async post(path) { window.__writes.push(path); throw new Error('Writes forbidden'); },
+}, router:{ navigate: path => { window.__navigation = path; } } };
+window.app = app; window.toast = () => {};
+// Read-only directory fixtures, no backend or database.
+window.fetch = async () => new Response(JSON.stringify([]), {headers:{'Content-Type':'application/json'}});
+const root = document.getElementById('page-content');
+if (params.get('surface') === 'registry') {
+  const m=await import('/js/components/taskTable.js');
+  root.innerHTML=m.renderTasksPage(app); await m.initTasksPage(app);
+} else if (params.get('surface') === 'kanban') {
+  window.__failKanban = params.has('fail');
+  root.innerHTML = renderKanban(app); await initKanban(app);
+} else if (params.get('surface') === 'report') {
+  history.replaceState(null,'',`#/reports/detail?r=${params.get('kind') || 'quarterly-goals'}`);
+  root.innerHTML = renderReportPage(app); await initReportPage(app);
+} else {
+  const columns = {title:true,team:true,progress:true,status:true}; const order = Object.keys(columns);
+  window.__columnOrder = order;
+  const opts = { title:'Бэклог', columnSettings:columns, columnOrder:order, defaultColumnSettings:{title:true}, columnLabels:{title:'Задача',team:'Команда',progress:'Прогресс',status:'Статус'}, savedViews:true,
+    getSavedViewState:()=>({columns:{...columns},columnOrder:[...order]}), applySavedViewState:state=>{Object.assign(columns,state.columns);}, onColumnChange:()=>{}, onColumnOrderChange:()=>{} };
+  root.innerHTML = renderToolbar('backlog',opts);
+  initToolbarControls('backlog',opts);
+  initToolbar('backlog',tasks,()=>{window.__visibleTasks=getFilteredList('backlog',tasks).map(task=>task.id);});
+}
+document.getElementById('fixture-extra').innerHTML = `<div class="fixture-end">${button({label:'Меню действий',attrs:{id:'menu-trigger'}})}${button({label:'Подсказка',attrs:{id:'tooltip-trigger'}})}${button({label:'Следующий',attrs:{id:'next-control'}})}</div><div id="menu-panel" hidden>${button({label:'Первое действие'})}${button({label:'Недоступное',attrs:{disabled:true}})}${button({label:'Последнее действие с длинной подписью, которая должна переноситься'})}</div><div id="tooltip-panel" hidden>Пояснение к действию с длинным текстом, доступное с клавиатуры.</div>`;
+bindActionMenu({trigger:document.getElementById('menu-trigger'),panel:document.getElementById('menu-panel')});
+bindTooltip({trigger:document.getElementById('tooltip-trigger'),panel:document.getElementById('tooltip-panel')});
+window.lucide?.createIcons(); document.documentElement.dataset.ready='true';
+</script></body></html>

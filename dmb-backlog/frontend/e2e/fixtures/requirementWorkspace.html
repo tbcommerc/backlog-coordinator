@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>БТ — тестовый интерфейс</title>
+<link rel="stylesheet" href="/static/css/tokens.css"><link rel="stylesheet" href="/static/css/fonts.css"><link rel="stylesheet" href="/static/css/base.css"><link rel="stylesheet" href="/static/css/components.css"><link rel="stylesheet" href="/static/css/agent-v2.css"><link rel="stylesheet" href="/static/css/agent-v2-details.css">
+<style>body{margin:0;background:var(--bg-primary);font-family:var(--font-family)}#root{padding:16px;min-width:0}*{box-sizing:border-box}button,a,input,textarea{font:inherit}</style><link rel="stylesheet" href="/static/css/ui/kit.css?v=9"></head><body><main id="root"></main>
+<script type="module">
+import { renderAgentV2, initAgentV2 } from '/static/js/agent-v2/workspace.js';
+import { renderReviewPage, initReviewPage } from '/static/js/components/reviewPage.js';
+const app = { features:{agent_v2:{enabled:true,pilot_allowed:true,operator_role:'BA'}}, api:{getHeaders:()=>({'Authorization':'Bearer fixture'}),refreshToken:async()=>false,get:async()=>[]}, store:{get:()=>({id:11,name:'Аналитик'})} };
+async function render(){ const review=location.hash.startsWith('#/review'); document.getElementById('root').innerHTML=review?renderReviewPage(app):renderAgentV2(app); await (review?initReviewPage(app):initAgentV2(app)); }
+app.router={refreshCurrentRoute:render}; window.app=app; window.addEventListener('hashchange',render); await render();
+</script></body></html>

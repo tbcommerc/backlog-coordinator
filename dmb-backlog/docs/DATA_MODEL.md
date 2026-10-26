@@ -2,7 +2,7 @@
 title: Модель данных Backlog coordinator
 scope: as-is
 status: verified
-last_verified: 2026-09-08
+last_verified: 2026-10-21
 source_of_truth: backend/models.py
 evidence:
   - backend/models.py
@@ -12,7 +12,52 @@ evidence:
 
 # Модель данных Backlog coordinator
 
-Единственный поддерживаемый источник физической схемы — `backend/models.py`. На дату проверки SQLAlchemy metadata содержит 45 таблиц. Этот документ объясняет назначение и связи; точные типы, nullable, defaults, unique constraints и индексы следует читать из моделей.
+## Рабочие задачи: второй этап — 21.10.2026
+
+Миграция `d7f3b1c50e42` добавляет `work_tasks.priority` (обычный по умолчанию),
+`checklist` (JSON, пустой список) и `work_task_templates` (владелец, название,
+JSON-содержание, версия, признак удаления, даты). Применена к PostgreSQL.
+[Контракты и проверки](WORK_TASKS.md#второй-этап-рабочего-места--проверено-21102026).
+
+## Фоновый анализ встреч — проверено 17.10.2026
+
+`MeetingCapture` дополнен `analysis_status` (String(16), NOT NULL, default idle,
+индекс), `analysis_run_id` (UUID строкой), requested/started/finished datetime
+полями с префиксом `analysis_`, `analysis_error_code` (String(32)). Состояние
+анализа (`idle/queued/running/completed/failed`) отделено от человеческого
+`status=draft/saved`. Ошибка-пояснение вычисляется по whitelist кодов, сырой
+ответ провайдера не хранится. Пустой completed отличим от незапущенного idle.
+Захват и публикация результата используют ID запуска/версию; active блокирует
+PUT/confirm. Новых таблиц и защищённых записей нет. Миграция `b6f4c2d9e821`
+применена к локальному PostgreSQL. [Контракт](../../docs/meeting-capture-agent.md).
+
+## CUSTOMER-03: единое состояние прочтения — проверено 17.10.2026
+
+Новых таблиц, колонок и миграций нет. Источник состояния — Notification.is_read/read_at; категория request и точный action_url связывают уведомление с запросом, user_id ограничивает получателя. Отдельный last_viewed_at и клиентское хранилище прочтения не вводятся. Прочтение в центре уведомлений и в customer-карточке использует одни записи. Скрытые уведомления не участвуют в отметке новых событий. [API](API_SPEC.md).
+
+## CUSTOMER-01: результат legacy-задачи — проверено 17.10.2026
+
+Миграция не требуется: используются существующие status (String(20)), version, updated_at и status_history в RequirementRequest, Notification и EventOutbox. Автоматические статусы: completed, not_relevant, task_rejected, task_deleted; при переоткрытии — in_progress. История содержит source=task_result, task_id, previous_status и request_version; автор события — «Система». Ключ уведомления: request-task:{request_id}:{version}:{outcome}. Идемпотентность обеспечивается проверкой перехода и optimistic version запроса, а не объединением уведомлений по состоянию read/dismissed. Повторное завершение после возврата в работу — новое событие.
+
+Session.before_flush охватывает ORM-изменения Task.status_id/is_deleted и смену task_id существующего запроса. Прямые SQL/bulk DML вне ORM не поддерживают этот контракт. Исторические несогласованные записи массово не исправлялись: рабочие БД не изменялись. Это не автоматическое подтверждение WorkResolution. [Контракт API](API_SPEC.md).
+
+## Read-only проекция customer queue — 17.10.2026
+
+CUSTOMER-02 не добавляет таблиц, колонок или миграций. `QueueItem`/`QueueResponse` в [customer_queue.py](../backend/services/customer_queue.py) — типизированные модели ответа, не ORM-сущности. Проекция объединяет существующие RequirementRequest/Task и метаданные сессий агента; даты приводятся к UTC datetime/null на границе API. Она не записывает вычисленный этап обратно в RequirementRequest и не заменяет WorkResolution. [Контракт API](API_SPEC.md).
+
+
+## Разборы встреч — проверено 09.10.2026
+
+`MeetingCapture` / `meeting_captures` хранит приватный источник и JSON
+черновых пунктов с версией. `MeetingAction` / `meeting_actions` хранит только
+подтверждённые поручения/договорённости и необязательную FK на `tasks.id`.
+Уникальность `(capture_id, item_id)`, транзакционное подтверждение и optimistic
+locking защищают от дублей и потерянных правок. Это отдельные сущности,
+не реализация будущей универсальной рабочей задачи.
+Миграция `b7e3a9d1c542` применена к локальной PostgreSQL 09.10.2026.
+[Поля, доступ и границы](../../docs/meeting-capture-agent.md#хранение-и-доступ).
+
+Единственный поддерживаемый источник физической схемы — `backend/models.py`. На дату проверки в моделях объявлено 49 таблиц. Этот документ объясняет назначение и связи; точные типы, nullable, defaults, unique constraints и индексы следует читать из моделей.
 
 ## Границы достоверности
 
@@ -26,7 +71,7 @@ evidence:
 
 | Область | Таблицы |
 |---|---|
-| Пользователи и доступ | `users`, `roles`, `refresh_sessions`, `business_customers` |
+| Пользователи и доступ | `users`, `roles`, `auth_sessions`, `auth_challenges`, `security_events`, `login_reservations`, `refresh_sessions`, `business_customers` |
 | Команды и ресурсы | `teams`, `team_types`, `team_competency_resources` |
 | Задачи | `tasks`, `task_history`, `task_comments`, `task_attachments`, `task_viewers`, `task_jira_links` |
 | Декомпозиция | `epics`, `stories` |
@@ -36,7 +81,7 @@ evidence:
 | События и идемпотентность | `event_outbox`, `idempotency_records` |
 | Отчётные встречи | `reporting_meetings`, `task_reporting_statuses`, `task_reporting_status_revisions`, `reporting_meeting_history` |
 | Отчёты и интерфейс | `reports`, `display_settings`, `field_labels`, `column_labels` |
-| AI Agent | `agent_sessions`, `requirement_requests` |
+| AI Agent | `agent_sessions`, `requirement_requests`, `requirement_reviews` |
 | Аудит и календарь | `audit_log`, `timeline_events` |
 
 ## Пользователи и доступ
@@ -49,7 +94,7 @@ evidence:
 - `team_id → teams.id`;
 - `business_customer_id → business_customers.id`.
 
-Также содержит bcrypt hash пароля, признаки активности и индивидуальные флаги `can_edit`, `can_delete`, `can_export`. Реальная авторизация определяется совместно данными роли и функциями `backend/auth.py`.
+Также содержит nullable Argon2id hash пароля, признаки активности и индивидуальные флаги `can_edit`, `can_delete`, `can_export`. Реальная авторизация определяется совместно данными роли и функциями `backend/auth.py`.
 
 ### `roles`
 
@@ -102,6 +147,7 @@ evidence:
 - `priority_id → priorities.id`;
 - `status_id`, `previous_status_id → statuses.id`;
 - `deadline_id → deadlines.id`;
+- `start_shift_id → start_shifts.id`;
 - `owner_id`, `created_by`, `lock_owner_id → users.id`.
 
 Группы полей:
@@ -109,11 +155,16 @@ evidence:
 - идентификация: `public_id`, `title`, `description`, даты и ссылки;
 - оценки: плановые и фактические трудозатраты по компетенциям;
 - эффект и приоритет: финансовые эффекты, justification, scores, CV;
-- исполнение: progress, forecast, статусы ключевого проекта/дирекции/ДИД;
+- исполнение: progress, `progress_updated_at`, отложенный старт, forecast, статусы ключевого проекта/дирекции/ДИД;
 - метрики: KR plan/fact/unit;
 - техническое состояние: `is_deleted`, optimistic-lock `version`, lock owner/until, timestamps.
 
 `involved_teams` хранится как поле задачи, а не отдельная таблица связи. Значение и формат следует проверять в схемах и роутерах перед изменением.
+
+`start_shifts` — фиксированный справочник начала участия задачи в календарном плане
+квартала: M1, M2 или M3. `tasks.start_shift_id = NULL` совместим с прежними данными
+и трактуется как M1. `tasks.progress_updated_at` фиксирует именно фактическое
+обновление процента выполнения и используется для напоминаний об актуализации.
 
 ## История и совместная работа
 
@@ -171,9 +222,9 @@ evidence:
 
 ### Отчётные встречи и статусы
 
-- `reporting_meetings` хранит конкретные экземпляры трёх типов встреч, плановую и исходную даты, состояние `date_pending/planned/held/cancelled`, причину изменения, версии и отметки отправленных уведомлений.
-- `task_reporting_statuses` хранит один статус задачи на одну встречу (`meeting_id + task_id` уникальны), явный признак подтверждённой готовности `is_ready`, встречный маркер `directorate_attention` для показа лидеру трайба, признак демо ДИД, источник переноса и отдельную optimistic-lock версию. Маркер не переносится в модель задачи и используется только формой подготовки и директорским отчётом.
-- `task_reporting_status_revisions` сохраняет историю изменений текста и признака демо.
+- `reporting_meetings` хранит конкретные экземпляры четырёх типов встреч (`team_weekly`, `directorate`, `did`, `key_projects`), плановую и исходную даты, состояние `date_pending/planned/held/cancelled`, причину изменения, версии и отметки отправленных уведомлений. `team_weekly` создаётся автоматически на понедельник каждой ISO-недели.
+- `task_reporting_statuses` хранит один статус задачи на одну встречу (`meeting_id + task_id` уникальны), явный признак подтверждённой готовности `is_ready`, встречный маркер `directorate_attention` для показа лидеру трайба, признак демо ДИД, источник переноса и отдельную optimistic-lock версию. Для `team_weekly` дополнительно сохраняются JSON `weekly_payload` (`signal`, `next_step`, `next_step_due`, `decision_request`), `progress_snapshot` и `task_status_snapshot`.
+- `task_reporting_status_revisions` сохраняет историю изменений текста, признака демо и структурированного недельного payload.
 - `reporting_meeting_history` фиксирует назначения, переносы, проведение и отмену встреч.
 
 После подтверждения факта встречи её статусы становятся предыдущими. При отмене заполненные статусы переносятся в следующую встречу того же типа без перезаписи уже существующих данных.
@@ -193,6 +244,45 @@ evidence:
 - Для существующего запроса при первом изменении сохраняется доступный `legacy_snapshot`; неизвестные прошлые редакции не реконструируются. У прежнего комментария `legacy_event=true`, `created_at=null`, а `observed_at` обозначает момент сохранения доступного свидетельства, не дату решения.
 
 Связи `user_id`, `reviewer_id`, `assignee_id → users.id`; `team_id → teams.id`.
+
+### Согласование редакции БТ V2 — проверено 09.10.2026
+
+`requirement_reviews` — отдельный предмет общей очереди ревью. Он не является
+пользовательским запросом и не запускает intake lifecycle `RequirementRequest`.
+Согласование или возврат БТ не создают Task и не меняют статус исходного запроса.
+
+- `artifact_id`, `artifact_revision`, `artifact_fingerprint` адресуют точный
+  документ; `artifact_snapshot` хранит полный неизменяемый JSON без изменения
+  canonical fingerprint, включая неизвестные поля.
+- `review_report` отдельно сохраняет пакет AI-проверки, замечаний, источников и
+  решений аналитика. `source_metadata` содержит снимок связанного Task/Request,
+  версию и значимые исходные поля. Для Request учитывается структурный `draft`,
+  для Task — `link_requirements`; смена иных атрибутов задачи не обесценивает БТ.
+- `creator_id`, `reviewer_id` и `source_request_author_id` ссылаются на существующих
+  пользователей. Исходный автор запроса сохраняется и для задачи, созданной из
+  запроса. Эти связи не изменяют пользователей, роли, команды или назначения.
+- Nullable `target_type` + `target_id` задают Task/Request либо самостоятельный
+  документ. Полиморфная связь проверяется сервисом при каждом чтении/решении;
+  удаление или отзыв доступа к исходному объекту закрывают доступ к снимку.
+- Состояния: `submitted`, `returned`, `approved`, `withdrawn`. Claim назначает
+  ревьюера без смены `submitted`. Автор не может согласовать своё БТ даже с
+  `admin_access=full`; отдельное полномочие самоутверждения в MVP отсутствует.
+- Nullable unique `active_artifact_id` вместе с CHECK гарантирует максимум одно
+  активное согласование на документ. Новая рабочая редакция не отзывает снимок;
+  явная замена проверяет версию старого review и атомарно отзывает его вместе
+  с созданием нового пакета.
+- `version` защищает решения от гонок; уникальный `(creator_id, idempotency_key)`
+  и `submission_hash` защищают отправку. `events` содержит решения и ключи действий,
+  ограниченные актором и payload. Повтор чужого ключа не даёт чужие права.
+- Публикация и решение обновляют ранее прочитанный source snapshot и удерживают
+  `FOR UPDATE` исходной Task/Request до commit. Порядок блокировок един: источник,
+  затем review; проверка не использует устаревший объект из identity map сессии.
+- Снимок, пакет проверки и исходные метаданные нельзя переписать через ORM;
+  исправление требует нового согласования. Решение относится к `review.version`,
+  независимо от текущего рабочего черновика.
+
+DDL добавляет миграция `a6d2f8c0b431`. Проверены изолированные доменные тесты и
+PostgreSQL offline SQL; миграция на рабочую БД в этой доработке не применялась.
 
 ## Аудит и timeline
 
@@ -244,3 +334,50 @@ claim/retry. Обработанные записи имеют ограничен
 ## Отчёт ДИД — проверено 04.09.2026
 
 Миграция `a9246d1c7e30` добавляет `did_client_groups` (код, название, порядок, активность), nullable FK `tasks.did_client_group_id` и таблицу `user_report_prefs` с уникальной парой пользователь/отчёт и JSON настроек. Контактное лицо использует существующий `tasks.business_customer_id` → `business_customers`, связанный с `departments`. Отдельный справочник контактов исключён по уточнению владельца продукта от 04.09.2026. Миграция применена локально 04.09.2026 с разрешения владельца продукта; справочник не наполнен. Подробности — [отчёт ДИД](DID_BACKLOG_REPORT.md).
+
+## Граница данных legacy Assistant V2 — проверено 19.09.2026
+
+В отдельной V2 DB `NeedCase.data_classification` сохраняет `synthetic` либо
+`approved_real`. При закрытом real-data gate записи `approved_real` не попадают
+в list projection и недоступны через case API; authorized DMB snapshot создаёт
+только `approved_real` case.
+
+Legacy `assistant-v2/` не добавляет таблиц или FK в основную DMB DB. Это описание
+сохранённого прототипа, а не нового домена `agent-v2/` выше. Authorized snapshots Task,
+Request и goal формируются adapter по текущей DMB policy и содержат только
+allowlisted projection, version, digest и policy metadata. V2 хранит копию в
+отдельной DB `assistant_v2`; её 22 таблицы и Alembic описаны в
+`../../assistant-v2/app/models.py` и `../../assistant-v2/migrations/`.
+
+
+## Учётные записи — изменение от 12.10.2026
+
+[Текущий контракт управления учётными записями](ACCOUNT_SECURITY.md) описывает
+API, модель сессий, интерфейсы, конфигурацию, миграцию и границы проверки.
+Код реализован; миграция и массовый переход рабочих пользователей в этом чате
+не выполнялись. По уточнению пользователя проверено сохранение текущего входа
+администратора; подробности и границы подтверждения — в профильном документе.
+
+## Помощник по бэклогу — 14.10.2026
+
+Добавлена отключённая по умолчанию интеграция самостоятельного сервиса. Gateway `/api/v1/backlog-assistant` обслуживает sessions/messages/runs/cancel/results/feedback; приватный Data API вынесен в отдельный mTLS listener 9450. Страница `#/backlog-assistant` и контекстная панель используют общие разговоры. Миграция `e8f1b2c3d405` создаёт только `backlog_assistant_integration`; очередь и история находятся в отдельной PostgreSQL БД агента.
+
+[Контракты и хранение](../../backlog-assistant/docs/API.md), [эксплуатация](../../backlog-assistant/docs/OPERATIONS.md), [подтверждённые проверки и ограничения пилота](../../backlog-assistant/docs/TESTING.md).
+
+
+## Рабочие задачи — проверено 16.10.2026
+
+Восемь новых таблиц WorkTask/истории/комментариев/файлов, решений и связей запросов, зависимостей и внешних ссылок; notifications получает отдельный nullable work_task_id. Task не получает новых атрибутов.
+
+Фактический scope, API, миграция и ограничения: [Рабочие задачи](WORK_TASKS.md).
+
+
+### Этап 5 рабочих задач — проверено 16.10.2026
+
+Реализованы атомарное разбиение запросов, отдельный отчёт с доступными агрегатами
+и неизменяемые снимки встреч. PostgreSQL обновлён до `a1b2c3d4e517`; интеграционный
+прогон выполнен без записи защищённых данных. [Контракты, поведение и проверки](WORK_TASKS.md#этап-5-разбиение-и-отчётность).
+
+## Доска WorkTask — проверено 21.10.2026
+
+Третий этап не добавляет сущности или статусы: доска является представлением существующих WorkTask. Порядок карточек вычисляется запросом, ручные позиции не сохраняются. Курсоры подписываются, контекст прокрутки хранится только в браузерной сессии. Новых миграций и индексов нет; модель приоритетов, чек-листов и шаблонов этапа 2 сохранена. [Реализация и проверки](WORK_BOARD.md).

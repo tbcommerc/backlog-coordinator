@@ -7,6 +7,7 @@ from uuid import uuid4
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
+from event_outbox import enqueue_user_event
 from models import (
     Notification,
     ReportingMeeting,
@@ -20,8 +21,9 @@ from models import (
 )
 
 
-MEETING_KINDS = ("directorate", "did", "key_projects")
+MEETING_KINDS = ("team_weekly", "directorate", "did", "key_projects")
 MEETING_TITLES = {
+    "team_weekly": "Еженедельная встреча команды",
     "directorate": "Директорская оперативка",
     "did": "Оперативка ДИД",
     "key_projects": "Встреча по ключевым проектам",
@@ -61,6 +63,23 @@ def active_tasks(db: Session, *, team_id: int | None = None) -> list[Task]:
     if team_id is not None:
         query = query.filter(Task.team_id == team_id)
     return query.all()
+
+
+def weekly_reporting_tasks(db: Session, week_start: date, *, team_id: int | None = None) -> list[Task]:
+    """Active work plus tasks completed during the represented week."""
+    query = db.query(Task).options(joinedload(Task.team), joinedload(Task.status)).filter(Task.is_deleted == False)
+    if team_id is not None:
+        query = query.filter(Task.team_id == team_id)
+    result = []
+    for task in query.all():
+        status_name = str(task.status.name if task.status else "").upper()
+        if status_name not in CLOSED_TASK_STATUSES:
+            result.append(task)
+            continue
+        updated_date = task.updated_at.date() if task.updated_at else None
+        if status_name == "ВЫПОЛНЕНА" and updated_date and updated_date >= week_start:
+            result.append(task)
+    return result
 
 
 def can_fill_team_reporting_status(user: User, team: Team | None) -> bool:
@@ -167,6 +186,34 @@ def _ensure_key_projects_meeting(db: Session) -> None:
     _create_meeting(db, "key_projects", f"key-projects-{count + 1}", None)
 
 
+def _ensure_team_weekly_meeting(db: Session, today: date) -> None:
+    """Keep one editable ISO-week snapshot and close older weekly snapshots."""
+    week_start = today - timedelta(days=today.weekday())
+    meetings = db.query(ReportingMeeting).filter(
+        ReportingMeeting.kind == "team_weekly",
+    ).all()
+    now = _utcnow()
+    for meeting in meetings:
+        if (
+            meeting.state == "planned"
+            and meeting.scheduled_date
+            and meeting.scheduled_date < week_start
+        ):
+            from services.work_reporting import capture
+            capture(db, meeting)
+            meeting.state = "held"
+            meeting.held_at = now
+            meeting.version = (meeting.version or 0) + 1
+    if not any(meeting.scheduled_date == week_start for meeting in meetings):
+        iso_year, iso_week, _ = week_start.isocalendar()
+        _create_meeting(
+            db,
+            "team_weekly",
+            f"team-weekly-{iso_year}-W{iso_week:02d}",
+            week_start,
+        )
+
+
 def _current_meeting(db: Session, kind: str) -> ReportingMeeting | None:
     meetings = db.query(ReportingMeeting).filter(
         ReportingMeeting.kind == kind,
@@ -201,7 +248,7 @@ def previous_meeting(db: Session, kind: str) -> ReportingMeeting | None:
 def _backfill_current_legacy_statuses(db: Session) -> None:
     """Однократно переносить legacy-current в ближайшую незавершённую встречу."""
     tasks = db.query(Task).filter(Task.is_deleted == False).all()
-    for kind in MEETING_KINDS:
+    for kind in LEGACY_FIELDS:
         meeting = _current_meeting(db, kind)
         if not meeting:
             continue
@@ -228,6 +275,7 @@ def _backfill_current_legacy_statuses(db: Session) -> None:
 
 def ensure_reporting_schedule(db: Session, today: date | None = None, horizon_days: int = 90) -> None:
     today = today or date.today()
+    _ensure_team_weekly_meeting(db, today)
     _ensure_directorate_meetings(db, today, horizon_days)
     _ensure_did_meetings(db, today, horizon_days)
     _ensure_key_projects_meeting(db)
@@ -236,7 +284,11 @@ def ensure_reporting_schedule(db: Session, today: date | None = None, horizon_da
 
 
 def meeting_completeness(db: Session, meeting: ReportingMeeting) -> dict:
-    tasks = active_tasks(db)
+    tasks = (
+        weekly_reporting_tasks(db, meeting.scheduled_date)
+        if meeting.kind == "team_weekly" and meeting.scheduled_date
+        else active_tasks(db)
+    )
     task_ids = {task.id for task in tasks}
     rows = db.query(TaskReportingStatus).filter(
         TaskReportingStatus.meeting_id == meeting.id,
@@ -274,7 +326,10 @@ def meeting_to_dict(db: Session, meeting: ReportingMeeting, *, include_completen
         "cancelled_at": meeting.cancelled_at.isoformat() if meeting.cancelled_at else None,
         "version": meeting.version or 0,
         "is_overdue": bool(
-            meeting.state == "planned" and meeting.scheduled_date and meeting.scheduled_date < date.today()
+            meeting.kind != "team_weekly"
+            and meeting.state == "planned"
+            and meeting.scheduled_date
+            and meeting.scheduled_date < date.today()
         ),
     }
     if include_completeness:
@@ -300,9 +355,10 @@ def task_reporting_context(db: Session, task: Task, can_edit: bool) -> dict:
                 TaskReportingStatus.meeting_id == previous.id,
                 TaskReportingStatus.task_id == task.id,
             ).first()
-        current_field, previous_field, updated_field = LEGACY_FIELDS[kind]
-        legacy_current = getattr(task, current_field, None) if current_status is None else None
-        legacy_previous = getattr(task, previous_field, None) if previous is None else None
+        legacy_fields = LEGACY_FIELDS.get(kind)
+        current_field, previous_field, updated_field = legacy_fields or (None, None, None)
+        legacy_current = getattr(task, current_field, None) if current_field and current_status is None else None
+        legacy_previous = getattr(task, previous_field, None) if previous_field and previous is None else None
         result.append({
             "kind": kind,
             "title": MEETING_TITLES[kind],
@@ -312,6 +368,9 @@ def task_reporting_context(db: Session, task: Task, can_edit: bool) -> dict:
                 "id": current_status.id,
                 "text": current_status.status_text or "",
                 "did_demo": bool(current_status.did_demo),
+                "weekly": current_status.weekly_payload,
+                "progress_snapshot": current_status.progress_snapshot,
+                "task_status_snapshot": current_status.task_status_snapshot,
                 "source": current_status.source,
                 "version": current_status.version or 0,
                 "updated_at": current_status.updated_at.isoformat() if current_status.updated_at else None,
@@ -324,7 +383,7 @@ def task_reporting_context(db: Session, task: Task, can_edit: bool) -> dict:
                 "version": 0,
                 "updated_at": (
                     getattr(task, updated_field).isoformat()
-                    if getattr(task, updated_field, None) else None
+                    if updated_field and getattr(task, updated_field, None) else None
                 ),
                 "updated_by_name": None,
                 "legacy": True,
@@ -332,6 +391,9 @@ def task_reporting_context(db: Session, task: Task, can_edit: bool) -> dict:
             "previous_status": {
                 "text": previous_status.status_text or "",
                 "did_demo": bool(previous_status.did_demo),
+                "weekly": previous_status.weekly_payload,
+                "progress_snapshot": previous_status.progress_snapshot,
+                "task_status_snapshot": previous_status.task_status_snapshot,
                 "provided": bool(str(previous_status.status_text or "").strip()),
             } if previous_status else ({
                 "text": str(legacy_previous or ""),
@@ -363,6 +425,7 @@ def save_task_reporting_status(
     submitted_version: int | None,
     user_id: int,
     directorate_attention: bool | None = None,
+    weekly_payload: dict | None = None,
 ) -> TaskReportingStatus:
     if meeting.state != "planned" or not meeting.scheduled_date:
         raise ValueError("Заполнение откроется после назначения даты встречи")
@@ -373,6 +436,12 @@ def save_task_reporting_status(
         raise ValueError("Отчётный статус не может быть длиннее 5000 символов")
     if is_ready and not text:
         raise ValueError("Перед подтверждением готовности заполните статус")
+    normalized_weekly = dict(weekly_payload or {}) if meeting.kind == "team_weekly" else None
+    if meeting.kind == "team_weekly" and is_ready:
+        if not str(normalized_weekly.get("next_step") or "").strip():
+            raise ValueError("Для еженедельной встречи укажите следующий шаг")
+        if normalized_weekly.get("signal") == "decision" and not str(normalized_weekly.get("decision_request") or "").strip():
+            raise ValueError("Опишите, какое решение требуется")
     row = db.query(TaskReportingStatus).filter(
         TaskReportingStatus.meeting_id == meeting.id,
         TaskReportingStatus.task_id == task.id,
@@ -390,6 +459,7 @@ def save_task_reporting_status(
         db.flush()
     old_text = row.status_text
     old_demo = bool(row.did_demo)
+    old_weekly = dict(row.weekly_payload or {}) if row.weekly_payload else None
     new_demo = bool(did_demo) if meeting.kind == "did" else False
     new_ready = bool(is_ready and text)
     new_attention = (
@@ -402,6 +472,12 @@ def save_task_reporting_status(
         or old_demo != new_demo
         or bool(row.is_ready) != new_ready
         or bool(row.directorate_attention) != new_attention
+        or old_weekly != normalized_weekly
+        or (meeting.kind == "team_weekly" and row.progress_snapshot != task.progress)
+        or (
+            meeting.kind == "team_weekly"
+            and row.task_status_snapshot != (task.status.name if task.status else None)
+        )
     ):
         db.add(TaskReportingStatusRevision(
             reporting_status_id=row.id,
@@ -409,21 +485,27 @@ def save_task_reporting_status(
             new_text=text or None,
             old_did_demo=old_demo,
             new_did_demo=new_demo,
+            old_weekly_payload=old_weekly,
+            new_weekly_payload=normalized_weekly,
             changed_by=user_id,
         ))
         row.status_text = text or None
         row.did_demo = new_demo
         row.is_ready = new_ready
         row.directorate_attention = new_attention
+        row.weekly_payload = normalized_weekly
+        row.progress_snapshot = task.progress if meeting.kind == "team_weekly" else None
+        row.task_status_snapshot = task.status.name if meeting.kind == "team_weekly" and task.status else None
         row.updated_by = user_id
         row.source = "native"
         row.version = (row.version or 0) + 1
 
-        current_field, _, updated_field = LEGACY_FIELDS[meeting.kind]
-        setattr(task, current_field, row.status_text)
-        setattr(task, updated_field, _utcnow())
-        if meeting.kind == "did":
-            task.did_demo = new_demo
+        if meeting.kind in LEGACY_FIELDS:
+            current_field, _, updated_field = LEGACY_FIELDS[meeting.kind]
+            setattr(task, current_field, row.status_text)
+            setattr(task, updated_field, _utcnow())
+            if meeting.kind == "did":
+                task.did_demo = new_demo
     db.flush()
     remaining, _ = _missing_tasks_by_recipient(db, meeting)
     remaining_ids = set(remaining)
@@ -465,17 +547,39 @@ def _meeting_history(
     ))
 
 
-def _resolve_meeting_notifications(db: Session, meeting_id: int) -> None:
-    now = _utcnow()
-    db.query(Notification).filter(
+def _resolve_meeting_notifications(db: Session, meeting_id: int, *, hide: bool = False) -> None:
+    query = db.query(Notification).filter(
         Notification.group_key == f"reporting_fill_{meeting_id}",
-        Notification.is_resolved == False,
-    ).update({
-        Notification.is_resolved: True,
-        Notification.resolved_at: now,
-        Notification.is_read: True,
-        Notification.read_at: now,
-    }, synchronize_session=False)
+    )
+    query = query.filter(
+        Notification.is_dismissed == False if hide else Notification.is_resolved == False,
+    )
+    affected = query.all()
+    now = _utcnow()
+    for notification in affected:
+        if not notification.is_resolved:
+            notification.is_resolved = True
+            notification.resolved_at = now
+        notification.is_read = True
+        notification.read_at = notification.read_at or now
+        if hide:
+            notification.is_dismissed = True
+
+    notification_ids_by_user: dict[int, list[int]] = defaultdict(list)
+    for notification in affected:
+        if notification.user_id is not None:
+            notification_ids_by_user[notification.user_id].append(notification.id)
+    for recipient_id, notification_ids in notification_ids_by_user.items():
+        enqueue_user_event(
+            db,
+            user_id=recipient_id,
+            event_type="notification.state.changed",
+            payload={
+                "action": "removed" if hide else "resolved",
+                "notification_ids": notification_ids[:100],
+                "meeting_id": meeting_id,
+            },
+        )
 
 
 def schedule_meeting(
@@ -487,6 +591,8 @@ def schedule_meeting(
     user_id: int,
     submitted_version: int | None,
 ) -> ReportingMeeting:
+    if meeting.kind == "team_weekly":
+        raise ValueError("Еженедельная встреча создаётся автоматически и не переносится")
     if meeting.state not in OPEN_MEETING_STATES:
         raise ValueError("Можно назначить или перенести только незавершённую встречу")
     if submitted_version is not None and submitted_version != (meeting.version or 0):
@@ -522,6 +628,8 @@ def create_meeting_instance(
     user_id: int,
 ) -> ReportingMeeting:
     kind = validate_meeting_kind(kind)
+    if kind == "team_weekly":
+        raise ValueError("Еженедельная встреча создаётся автоматически")
     if scheduled_date < date.today():
         raise ValueError("Нельзя добавить встречу на прошедшую дату")
     if kind == "directorate" and scheduled_date.weekday() != 0:
@@ -562,6 +670,8 @@ def complete_meeting(
         raise ValueError("Будущую встречу нельзя отметить состоявшейся")
     if submitted_version is not None and submitted_version != (meeting.version or 0):
         raise RuntimeError("version_conflict")
+    from services.work_reporting import capture
+    capture(db, meeting)
     old_state = meeting.state
     meeting.state = "held"
     meeting.held_at = _utcnow()
@@ -576,13 +686,14 @@ def complete_meeting(
     }
     for task in active_tasks(db):
         row = rows_by_task.get(task.id)
-        current_field, previous_field, updated_field = LEGACY_FIELDS[meeting.kind]
-        setattr(task, previous_field, row.status_text if row else None)
-        setattr(task, current_field, None)
-        setattr(task, updated_field, None)
-        if meeting.kind == "did":
-            task.did_demo = False
-    _resolve_meeting_notifications(db, meeting.id)
+        if meeting.kind in LEGACY_FIELDS:
+            current_field, previous_field, updated_field = LEGACY_FIELDS[meeting.kind]
+            setattr(task, previous_field, row.status_text if row else None)
+            setattr(task, current_field, None)
+            setattr(task, updated_field, None)
+            if meeting.kind == "did":
+                task.did_demo = False
+    _resolve_meeting_notifications(db, meeting.id, hide=True)
     db.flush()
     ensure_reporting_schedule(db)
     return meeting
@@ -618,11 +729,12 @@ def cancel_meeting(
     for source in source_rows:
         task = db.query(Task).filter(Task.id == source.task_id).first()
         if task:
-            current_field, _, updated_field = LEGACY_FIELDS[meeting.kind]
-            setattr(task, current_field, None)
-            setattr(task, updated_field, None)
-            if meeting.kind == "did":
-                task.did_demo = False
+            if meeting.kind in LEGACY_FIELDS:
+                current_field, _, updated_field = LEGACY_FIELDS[meeting.kind]
+                setattr(task, current_field, None)
+                setattr(task, updated_field, None)
+                if meeting.kind == "did":
+                    task.did_demo = False
     db.flush()
     ensure_reporting_schedule(db)
 
@@ -644,17 +756,21 @@ def cancel_meeting(
                 is_ready=bool(source.is_ready),
                 source="carried_from_cancelled",
                 carried_from_status_id=source.id,
+                weekly_payload=source.weekly_payload,
+                progress_snapshot=source.progress_snapshot,
+                task_status_snapshot=source.task_status_snapshot,
                 created_by=user_id,
                 updated_by=user_id,
             )
             db.add(copied)
             task = db.query(Task).filter(Task.id == source.task_id).first()
             if task:
-                current_field, _, updated_field = LEGACY_FIELDS[meeting.kind]
-                setattr(task, current_field, source.status_text)
-                setattr(task, updated_field, _utcnow())
-                if meeting.kind == "did":
-                    task.did_demo = bool(source.did_demo)
+                if meeting.kind in LEGACY_FIELDS:
+                    current_field, _, updated_field = LEGACY_FIELDS[meeting.kind]
+                    setattr(task, current_field, source.status_text)
+                    setattr(task, updated_field, _utcnow())
+                    if meeting.kind == "did":
+                        task.did_demo = bool(source.did_demo)
     db.flush()
     return meeting
 
@@ -676,6 +792,8 @@ def reminder_date(meeting: ReportingMeeting) -> date | None:
         return _subtract_workdays(meeting.scheduled_date, 1)
     if meeting.kind == "did":
         return meeting.scheduled_date - timedelta(days=2)
+    if meeting.kind == "team_weekly":
+        return None
     return meeting.scheduled_date - timedelta(days=3)
 
 

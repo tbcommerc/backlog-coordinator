@@ -7,7 +7,7 @@ import re
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import case as sql_case, desc, or_, func
+from sqlalchemy import case as sql_case, desc, or_, func, text
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 
@@ -33,7 +33,8 @@ from schemas import (
     NotificationTemplateCreate, NotificationTemplateUpdate, NotificationTemplateResponse,
     OutboxRequeueRequest,
 )
-from auth import get_current_user, require_permission, get_password_hash
+from auth import get_current_user, require_permission
+from services.auth_limits import sensitive_limit
 from audit_context import current_audit_request
 from idempotency import reserve_idempotency
 from outbox_admin import DeadLetterConflict, DeadLetterNotFound, requeue_dead_letter, serialize_dead_letter
@@ -509,26 +510,28 @@ def create_role(
     return role
 
 
-@router.put("/roles/{role_id}", response_model=RoleResponse)
+@router.put("/roles/{role_id}", response_model=RoleResponse, dependencies=[Depends(sensitive_limit)])
 def update_role(
     role_id: int,
     role_data: RoleUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "full"))
 ):
+    from services import accounts
+    accounts.authorize(db, current_user, role_data.reauth_token, 'update_role', role_id)
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
 
-    update = role_data.model_dump(exclude_unset=True)
+    update = role_data.model_dump(exclude_unset=True, exclude={"reauth_token"})
     merged = {column.name: getattr(role, column.name) for column in Role.__table__.columns}
     merged.update(update)
     _validate_role_policy(merged)
-    if current_user.role_id == role_id and update.get("admin_access") == "none":
+    if current_user.role_id == role_id and update.get("admin_access") not in (None, "full"):
         raise HTTPException(status_code=400, detail="Cannot revoke your own admin access")
     if role.admin_access == "full" and update.get("admin_access") not in (None, "full"):
         other_admins = db.query(User).join(Role).filter(
-            User.is_active == True, Role.admin_access == "full", User.role_id != role_id
+            User.is_active == True, User.credential_state == "ready", Role.admin_access == "full", User.role_id != role_id
         ).count()
         users_on_role = db.query(User).filter(User.is_active == True, User.role_id == role_id).count()
         if users_on_role and other_admins == 0:
@@ -536,6 +539,10 @@ def update_role(
 
     for field, value in update.items():
         setattr(role, field, value)
+    from services import auth_sessions
+    for member in db.query(User).filter(User.role_id == role_id).with_for_update().all():
+        auth_sessions.invalidate(db, member, 'role_changed')
+        auth_sessions.event(db, 'role_changed', member.id, current_user.id)
     db.commit()
     db.refresh(role)
     return role
@@ -661,105 +668,56 @@ def admin_get_users(
     return users
 
 
-@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def admin_create_user(
-    user_data: UserCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "full"))
-):
-    existing_email = db.query(User).filter(User.email == user_data.email).first()
-    if existing_email:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    existing_name = db.query(User).filter(User.name == user_data.name).first()
-    if existing_name:
-        raise HTTPException(status_code=400, detail="User with this name already exists")
-    if user_data.business_customer_id is not None and not db.query(BusinessCustomer).filter(
-        BusinessCustomer.id == user_data.business_customer_id
-    ).first():
-        raise HTTPException(status_code=422, detail="Business customer not found")
+from services import accounts
+from services.auth_limits import sensitive_limit
+from account_schemas import Confirmation, ReasonConfirmation, LoginChange, AccessChange
 
-    password = user_data.password or "dmb2026"
-    user = User(
-        email=user_data.email,
-        login=user_data.login,
-        password_hash=get_password_hash(password),
-        name=user_data.name,
-        position=user_data.position,
-        team_id=user_data.team_id,
-        role_id=user_data.role_id,
-        business_customer_id=user_data.business_customer_id,
-        is_active=user_data.is_active if user_data.is_active is not None else True,
-        can_edit=user_data.can_edit if user_data.can_edit is not None else True,
-        can_delete=user_data.can_delete if user_data.can_delete is not None else False,
-        can_export=user_data.can_export if user_data.can_export is not None else True,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+@router.post("/users", response_model=UserResponse, status_code=201, dependencies=[Depends(sensitive_limit)])
+def admin_create_user(user_data: UserCreate, db: Session = Depends(get_db), current_user: User = Depends(require_permission("admin", "full"))):
+    return accounts.create(db, current_user, user_data)
 
-
-@router.put("/users/{user_id}", response_model=UserResponse)
-def admin_update_user(
-    user_id: int,
-    user_data: UserUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "full"))
-):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    _protect_admin_identity_change(
-        db, current_user, user,
-        next_active=user_data.is_active,
-        next_role_id=user_data.role_id if "role_id" in user_data.model_fields_set else None,
-    )
-
-    if user_data.name is not None and user_data.name != user.name:
-        existing_name = db.query(User).filter(User.name == user_data.name, User.id != user_id).first()
-        if existing_name:
-            raise HTTPException(status_code=400, detail="User with this name already exists")
-
-    if user_data.email is not None and user_data.email != user.email:
-        existing_email = db.query(User).filter(User.email == user_data.email, User.id != user_id).first()
-        if existing_email:
-            raise HTTPException(status_code=400, detail="Email already registered")
-
-    if "business_customer_id" in user_data.model_fields_set and user_data.business_customer_id is not None:
-        if not db.query(BusinessCustomer).filter(BusinessCustomer.id == user_data.business_customer_id).first():
-            raise HTTPException(status_code=422, detail="Business customer not found")
-
-    was_active = user.is_active
-    for field, value in user_data.model_dump(exclude_unset=True).items():
-        setattr(user, field, value)
-    if was_active and not user.is_active:
-        db.query(RefreshSession).filter(
-            RefreshSession.user_id == user.id,
-            RefreshSession.revoked_at.is_(None),
-        ).update({"revoked_at": datetime.now(timezone.utc)}, synchronize_session=False)
-    db.commit()
-    db.refresh(user)
-    return user
-
+@router.put("/users/{user_id}", response_model=UserResponse, dependencies=[Depends(sensitive_limit)])
+def admin_update_user(user_id: int, user_data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_permission("admin", "full"))):
+    return accounts.update(db, current_user, user_id, user_data)
 
 @router.delete("/users/{user_id}")
-def admin_delete_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("admin", "full"))
-):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    _protect_admin_identity_change(db, current_user, user, next_active=False)
-    user.is_active = False
-    db.query(RefreshSession).filter(
-        RefreshSession.user_id == user.id,
-        RefreshSession.revoked_at.is_(None),
-    ).update({"revoked_at": datetime.now(timezone.utc)}, synchronize_session=False)
-    db.commit()
-    return {"message": "User deactivated", "id": user.id, "is_active": False}
+def admin_delete_user(user_id: int, current_user: User = Depends(require_permission("admin", "full"))):
+    raise HTTPException(410, "USE_ACCESS_STATE_ACTION")
+
+@router.post("/users/{user_id}/invitation", dependencies=[Depends(sensitive_limit)])
+def invitation(user_id: int, data: Confirmation, db: Session = Depends(get_db), current_user: User = Depends(require_permission("admin", "full"))):
+    return accounts.action(db, current_user, user_id, data, 'invitation')
+
+@router.post("/users/{user_id}/password-reset", dependencies=[Depends(sensitive_limit)])
+def password_reset(user_id: int, data: ReasonConfirmation, db: Session = Depends(get_db), current_user: User = Depends(require_permission("admin", "full"))):
+    return accounts.action(db, current_user, user_id, data, 'password_reset')
+
+@router.post("/users/{user_id}/revoke-sessions", dependencies=[Depends(sensitive_limit)])
+def revoke_sessions(user_id: int, data: ReasonConfirmation, db: Session = Depends(get_db), current_user: User = Depends(require_permission("admin", "full"))):
+    return accounts.action(db, current_user, user_id, data, 'revoke_sessions')
+
+@router.patch("/users/{user_id}/login", dependencies=[Depends(sensitive_limit)])
+def change_login(user_id: int, data: LoginChange, db: Session = Depends(get_db), current_user: User = Depends(require_permission("admin", "full"))):
+    return accounts.action(db, current_user, user_id, data, 'change_login')
+
+@router.patch("/users/{user_id}/access-state", dependencies=[Depends(sensitive_limit)])
+def access_state(user_id: int, data: AccessChange, db: Session = Depends(get_db), current_user: User = Depends(require_permission("admin", "full"))):
+    return accounts.action(db, current_user, user_id, data, 'access_state')
+
+
+@router.get("/security-events")
+def admin_security_events(page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100),
+    subject_id: Optional[int] = None, db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("admin", "full"))):
+    from models import SecurityEvent
+    query = db.query(SecurityEvent)
+    if subject_id is not None:
+        query = query.filter(SecurityEvent.subject_id == subject_id)
+    rows = query.order_by(SecurityEvent.id.desc()).offset((page-1)*per_page).limit(per_page).all()
+    return {"page": page, "items": [{"id": r.id, "created_at": r.created_at,
+        "actor_id": r.actor_id, "subject_id": r.subject_id, "session_id": r.session_id,
+        "action": r.action, "outcome": r.outcome, "reason": r.reason,
+        "request_id": r.request_id, "ip_address": r.ip_address} for r in rows]}
 
 
 # ==================== DICTIONARIES CRUD ====================
@@ -811,7 +769,9 @@ def _acquire_dict_lock(dict_type: str, user: User, db: Session) -> DictLockRespo
     """Acquire or extend a lock on a dictionary type for all its active items."""
     items = _dict_items_for_lock(dict_type, db)
     if not items:
-        raise HTTPException(status_code=404, detail="Dictionary not found")
+        # An empty dictionary has no rows on which to store a lease. Opening is
+        # read-only; first save is serialized and checks the empty version below.
+        return DictLockResponse(locked=False, is_mine=False, version=0)
 
     now = datetime.now(timezone.utc)
     new_until = now + timedelta(minutes=DICT_LOCK_MINUTES)
@@ -981,11 +941,16 @@ def save_dictionary_batch(
     supported = {"priority", "status", "task_type", "channel", "deadline", "department", "team_type", "project_status", "tag"}
     if dict_type not in supported:
         raise HTTPException(status_code=400, detail="Пакетное сохранение для этого справочника не поддерживается")
+    # Serialize the empty -> populated transition with all inserts on this table.
+    # Table names are selected from constants, never from request input.
+    if db.get_bind().dialect.name == "postgresql":
+        table = "departments" if dict_type == "department" else "tags" if dict_type == "tag" else "dictionary_items"
+        db.execute(text(f"LOCK TABLE {table} IN SHARE ROW EXCLUSIVE MODE"))
     items = _dict_items_for_lock(dict_type, db)
     first = items[0] if items else None
-    if not first or not _is_dict_lock_active(first) or first.lock_owner_id != current_user.id:
+    if first and (not _is_dict_lock_active(first) or first.lock_owner_id != current_user.id):
         raise HTTPException(status_code=423, detail="Требуется активная блокировка редактирования справочника")
-    current_version = first.version or 0
+    current_version = (first.version or 0) if first else 0
     if data.version != current_version:
         raise HTTPException(status_code=409, detail="Справочник был изменён другим администратором")
     if not data.items:
@@ -1019,7 +984,7 @@ def save_dictionary_batch(
                 "name": payload.name.strip(), "code": (payload.code or "").strip() or None,
                 "color": payload.color, "sort_order": payload.sort_order if payload.sort_order is not None else position,
                 "is_active": True, "version": next_version,
-                "lock_owner_id": current_user.id, "lock_until": first.lock_until,
+                "lock_owner_id": current_user.id, "lock_until": first.lock_until if first else datetime.now(timezone.utc) + timedelta(minutes=DICT_LOCK_MINUTES),
             }
             if dict_type == "department" and not values["code"]:
                 values["code"] = f"DEPT_{payload.id or ('NEW_' + str(position + 1))}"

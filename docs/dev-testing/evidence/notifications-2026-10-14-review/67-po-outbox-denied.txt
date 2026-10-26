@@ -1,0 +1,72 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Бэклог DMB
+  - button "Открыть поиск":
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button:
+    - generic: ДФ
+- main:
+  - heading "Недостаточно прав" [level=1]
+  - paragraph: Раздел доступен пользователям с административным доступом.
+  - link "Вернуться на главную":
+    - /url: "#/dashboard"

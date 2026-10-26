@@ -2,7 +2,7 @@
 title: Навигатор документации Backlog coordinator
 scope: documentation-index
 status: active
-last_reviewed: 2026-09-09
+last_reviewed: 2026-10-17
 ---
 
 # Документация Backlog coordinator
@@ -29,29 +29,44 @@ last_reviewed: 2026-09-09
 
 Статус `AS-IS VERIFIED` допустим только после фактической проверки утверждений по первичным источникам.
 
+Текущие замечания: [единый список задач](../../docs/OPEN_TASKS.md). Сверка навигации 17.10.2026 не заменяет даты проверки профильных документов.
+
 ## Карта документов
+
+Новый модуль от 09.10.2026: [Поручения из встреч](../../docs/meeting-capture-agent.md)
+— проект, отдельная страница, API, модель хранения, проверки и ограничения
+первого сквозного сценария.
 
 Указанный ниже статус относится к назначению документа и степени его проверки, а не гарантирует актуальность каждой строки.
 
 | Документ | Когда читать | Классификация |
 |---|---|---|
-| [`PROJECT_OVERVIEW_AS_IS.md`](PROJECT_OVERVIEW_AS_IS.md) | Первичное знакомство, границы и точки входа | AS-IS VERIFIED на 01.09.2026 |
-| [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) | Подтверждённые возможности и системное поведение | AS-IS VERIFIED на 01.09.2026 |
+| [Техническое задание на канбан рабочих задач](../../docs/work-tasks-kanban-spec.md) | Бизнес-правила, дизайн desktop/mobile, фильтры, API доски, внедрение и приёмка | TO-BE DRAFT от 21.10.2026; первая версия и последующее развитие разделены; не AS-IS |
+| [Помощник по бэклогу](../../docs/backlog-assistant-design.md) и [серверный OpenCode](../../docs/backlog-assistant-opencode.md) | Самостоятельный агентный сервис, тонкий DMB gateway/Data API, HTTP/MCP, ACL, диалоги и изоляция runtime | Целевой контракт; реализация добавлена. AS-IS и ограничения: [README помощника](../../backlog-assistant/README.md) |
+| [Безопасное управление учётными записями](../../docs/account-security-design.md) | Логин без почты, приглашения, смена и восстановление пароля, сессии, API и миграция | Реализованный контур и оставшаяся приёмка: [ACCOUNT_SECURITY.md](ACCOUNT_SECURITY.md) |
+| [Адаптация системы к структуре работ трайба](../../docs/work-structure-system-design.md) | Предлагаемые модель хранения, UX/UI, API, миграция, доступ, интеграция и этапы внедрения | Целевой проект; реализованный локальный контур и этап 5: [WORK_TASKS.md](WORK_TASKS.md) |
+| [Структура работ трайба](../../docs/work-structure.md) | Актуальные сущности, один уровень рабочих задач, классификации, запросы и внешний IT-трекер; схемы и открытые вопросы | TO-BE: решения пользователя зафиксированы 09.10.2026; предложения выделены отдельно; не AS-IS |
+| [Ранний проект трекера](../../docs/archive/design/business-work-tracker-design.md) | История первоначального анализа и технических предложений | Исторический проект от 29.09.2026; заменён актуальной структурой, не действующие требования |
+| [`PROJECT_OVERVIEW_AS_IS.md`](PROJECT_OVERVIEW_AS_IS.md) | Первичное знакомство, границы и точки входа | AS-IS PARTIAL: состав сервисов сверён 17.10.2026; остальные разделы — baseline 01.09.2026 |
+| [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) | Baseline системного поведения; новые контракты перечислены в предупреждении документа | Проверка baseline 08.09.2026; полнота октября требует DOC-01 |
 | [`BUSINESS_REQUIREMENTS.md`](BUSINESS_REQUIREMENTS.md) | Правила фиксации требований и открытые бизнес-вопросы | OPEN QUESTIONS; утверждённый BRD-источник не найден |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Компоненты и технические связи | AS-IS VERIFIED по источникам на 09.09.2026 |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Компоненты, gateway V2 и независимое согласование БТ | Основные источники сверены 09.09.2026; документный V2 и RequirementReview проверены по коду 09.10.2026 |
 | [`CODEBASE_GUIDE.md`](CODEBASE_GUIDE.md) | Структура кода и маршруты изменений | AS-IS VERIFIED по дереву и точкам входа на 09.09.2026 |
-| [`API_SPEC.md`](API_SPEC.md) | Индекс HTTP API и сквозные правила | VERIFIED INDEX по FastAPI registry на 01.09.2026; поля брать из OpenAPI |
-| [`DATA_MODEL.md`](DATA_MODEL.md) | Сущности, таблицы и связи | AS-IS VERIFIED по `backend/models.py` и Alembic на 01.09.2026 |
+| [`API_SPEC.md`](API_SPEC.md) | Индекс HTTP API, V2 document gateway и решения по редакциям БТ | Исторический registry сохраняет дату; новый V2-контракт проверен по коду 09.10.2026, live OpenAPI инкремента не проверялся |
+| [`DATA_MODEL.md`](DATA_MODEL.md) | Сущности, таблицы, независимый RequirementReview и связи | RequirementReview проверен по models/Alembic и изолированным тестам 09.10.2026; рабочая миграция не запускалась |
 | [`db-schema.dbml`](db-schema.dbml) | Визуальное представление схемы | Производный материал; сверять с `backend/models.py` |
-| [`PAGE_LOGIC.md`](PAGE_LOGIC.md) | Маршруты и логика страниц | VERIFIED INDEX по router/components на 01.09.2026 |
-| [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | Токены и компоненты интерфейса | VERIFIED INDEX по CSS/JS на 01.09.2026 |
-| [`STICKY_BACKLOG_TABLES.md`](STICKY_BACKLOG_TABLES.md) | Закрепление панелей и таблиц | AS-IS VERIFIED по реализации и tests на 01.09.2026 |
-| [`IMPORT_SPEC.md`](IMPORT_SPEC.md) | Фактический импорт CSV и клиентская обработка Excel | AS-IS VERIFIED по service/router/frontend на 01.09.2026 |
+| [`PAGE_LOGIC.md`](PAGE_LOGIC.md) | Маршруты и логика страниц | VERIFIED INDEX; контракты UI kit, канбан, поиск, фокус и сохранение черновиков; исправления аудита бэклогов сверены 12.10.2026 |
+| [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | Токены и компоненты интерфейса | VERIFIED INDEX; UI kit v1 сверён 09.10.2026 |
+| [`UI_KIT.md`](UI_KIT.md) | API общих компонентов, каталог и границы миграции | 104 активные поверхности; общие составные компоненты, браузерные контракты и адресные исключения; итоговый статус — в матрице, 09.10.2026 |
+| [`STICKY_BACKLOG_TABLES.md`](STICKY_BACKLOG_TABLES.md) | Закрепление панелей и таблиц | AS-IS VERIFIED по реализации и tests на 12.10.2026 |
+| [`IMPORT_SPEC.md`](IMPORT_SPEC.md) | Фактический импорт CSV и клиентская обработка Excel | AS-IS по service/router; клиентский импорт/экспорт проверен 13.10.2026 |
 | [`error-codes.md`](error-codes.md) | Реально обрабатываемые HTTP-ошибки и типы ошибок импорта | AS-IS VERIFIED по backend/frontend на 01.09.2026 |
-| [`TESTING.md`](TESTING.md) | Наборы тестов, безопасный запуск и CI | AS-IS VERIFIED по tests/workflow на 09.09.2026 |
-| [`SECURITY.md`](SECURITY.md) | Реализованные меры и подтверждённые ограничения безопасности | AS-IS VERIFIED по источникам на 09.09.2026 |
+| [`TESTING.md`](TESTING.md) | Наборы тестов, безопасный запуск и CI | UI kit: матрица, прямые браузерные проверки и итоговые прогоны сверены 09.10.2026 |
+| [`SECURITY.md`](SECURITY.md) | Меры, ограничения, текущая ACL источников V2 и независимость ревьюера | Основные источники сверены 09.09.2026; V2 boundary и allowlist proxy проверены по коду/изолированным тестам 09.10.2026 |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Локальный запуск и поставляемая стендовая topology | AS-IS VERIFIED по scripts/Compose на 01.09.2026; внешние HA/TLS решения остаются вне репозитория |
-| [`SCHEMA_CHANGES.md`](SCHEMA_CHANGES.md) | Изменение схемы БД | AS-IS VERIFIED по models/Alembic на 01.09.2026 |
+| [`SCHEMA_CHANGES.md`](SCHEMA_CHANGES.md) | Изменение схемы БД и миграция RequirementReview | Новый head проверен 09.10.2026 через offline PostgreSQL DDL; миграция на рабочей БД не выполнялась |
+| [`../../docs/assistant-v2-implementation.md`](../../docs/assistant-v2-implementation.md) | Scope сохранённого legacy-прототипа Assistant V2 и stop gates | AS-IS PARTIAL на 19.09.2026 |
+| [`../../docs/agent-v2-implementation.md`](../../docs/agent-v2-implementation.md) | Fork-based Assistant V2: написание, AI-ревью, gateway и согласование редакции БТ | Инкремент 09.10.2026 сверяется с кодом и указанными изолированными проверками; не свидетельство live-развёртывания |
 | [`NOTIFICATION_SERVICE_TOP_DOWN.md`](proposals/NOTIFICATION_SERVICE_TOP_DOWN.md) | Утверждённая продуктовая модель уведомлений и её реализация | AS-IS VERIFIED / PRODUCT DECISION на 07.09.2026 |
 | [`CODE_REVIEW_2026-08-19.md`](archive/reviews/CODE_REVIEW_2026-08-19.md) | История выявленных проблем и решений | Исторический аудит на конкретную дату |
 
@@ -82,3 +97,25 @@ last_reviewed: 2026-09-09
 ## Отчёт для бизнес-заказчиков ДИД
 
 [`DID_BACKLOG_REPORT.md`](DID_BACKLOG_REPORT.md) — реализация отчёта, API, миграция и ограничения наполнения справочников. Проверено по коду 04.09.2026; миграция ожидает применения.
+
+- [Матрица миграции UI kit](UI_KIT_MIGRATION_MATRIX.md) — активные поверхности, состояния, проверки и адресные исключения; актуализировано 09.10.2026.
+
+
+## Учётные записи — изменение от 12.10.2026
+
+[Текущий контракт управления учётными записями](ACCOUNT_SECURITY.md) описывает
+API, модель сессий, интерфейсы, конфигурацию, миграцию и границы проверки.
+Код реализован; миграция и массовый переход рабочих пользователей в этом чате
+не выполнялись. По уточнению пользователя проверено сохранение текущего входа
+администратора; подробности и границы подтверждения — в профильном документе.
+
+## Помощник по бэклогу — 14.10.2026
+
+Добавлена отключённая по умолчанию интеграция самостоятельного сервиса. Gateway `/api/v1/backlog-assistant` обслуживает sessions/messages/runs/cancel/results/feedback; приватный Data API вынесен в отдельный mTLS listener 9450. Страница `#/backlog-assistant` и контекстная панель используют общие разговоры. Миграция `e8f1b2c3d405` создаёт только `backlog_assistant_integration`; очередь и история находятся в отдельной PostgreSQL БД агента.
+
+[Контракты и хранение](../../backlog-assistant/docs/API.md), [эксплуатация](../../backlog-assistant/docs/OPERATIONS.md), [подтверждённые проверки и ограничения пилота](../../backlog-assistant/docs/TESTING.md).
+
+
+- [Рабочие задачи](WORK_TASKS.md) — реализация локального контура от 16.10.2026; AS-IS PARTIAL, миграция рабочей БД и полная приёмка не выполнены.
+
+[Канбан рабочих задач — AS-IS и приёмка 21.10.2026](WORK_BOARD.md).

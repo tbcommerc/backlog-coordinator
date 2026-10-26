@@ -1,19 +1,110 @@
-import { renderDashboard, initDashboard } from './components/dashboard.js?v=6';
-import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=116';
-import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=117';
-import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js?v=30';
-import { renderKanban, initKanban } from './components/kanbanBoard.js?v=5';
-import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=19';
-import { renderAnalytics, initAnalytics } from './components/analytics.js?v=18';
-import { renderNotifications, initNotifications } from './components/notifications.js?v=11';
-import { renderSettings, initSettings } from './components/settings.js';
-import { renderAdmin, initAdmin } from './components/admin.js?v=1';
-import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage, renderCustomerTaskPage, initCustomerTaskPage } from './components/customerPortal.js';
-import { renderAgentChat, initAgentChat } from './components/agentChat.js?v=20';
-import { renderAuditLog, initAuditLog } from './components/auditLog.js';
-import { renderOutboxDeadLetters, initOutboxDeadLetters } from './components/outboxDeadLetters.js?v=1';
-import { renderReviewPage, initReviewPage, renderReviewDetailPage, initReviewDetailPage } from './components/reviewPage.js?v=1';
-import { renderReportingStatuses, initReportingStatuses } from './components/reportingStatuses.js?v=11';
+import { renderSecurity, initSecurity } from './components/accountSecurity.js';
+import { renderDashboard, initDashboard } from './components/dashboard.js?v=20';
+import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=132';
+import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=134';
+import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js?v=41';
+import { renderKanban, initKanban } from './components/kanbanBoard.js?v=14';
+import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=44';
+import { renderAnalytics, initAnalytics } from './components/analytics.js?v=24';
+import { renderNotifications, initNotifications } from './components/notifications.js?v=23';
+import { renderSettings, initSettings } from './components/settings.js?v=7';
+import { renderAdmin, initAdmin } from './components/admin.js?v=15';
+import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage, renderCustomerTaskPage, initCustomerTaskPage } from './components/customerPortal.js?v=8';
+import { renderAgentChat, initAgentChat } from './components/agentChat.js?v=94';
+import { renderAuditLog, initAuditLog } from './components/auditLog.js?v=6';
+import { renderOutboxDeadLetters, initOutboxDeadLetters } from './components/outboxDeadLetters.js?v=7';
+import { renderReviewPage, initReviewPage, renderReviewDetailPage, initReviewDetailPage } from './components/reviewPage.js?v=7';
+import { renderReportingStatuses, initReportingStatuses } from './components/reportingStatuses.js?v=21';
+import { renderQuarterlyGoalsUpdate, initQuarterlyGoalsUpdate } from './components/quarterlyGoalsUpdate.js?v=11';
+
+export const TASK_DETAIL_TABS = Object.freeze(['main', 'rep', 'com', 'sys', 'log', 'work']);
+const TASK_DETAIL_TAB_SET = new Set(TASK_DETAIL_TABS);
+
+export function normalizeTaskDetailTab(tab) {
+    const candidate = String(tab || 'main').trim().toLowerCase();
+    if (candidate === 'files') return 'sys';
+    return TASK_DETAIL_TAB_SET.has(candidate) ? candidate : 'main';
+}
+
+export function parsePositiveTaskId(value) {
+    const candidate = String(value ?? '').trim();
+    if (!/^[1-9]\d*$/.test(candidate)) return null;
+    const taskId = Number(candidate);
+    return Number.isSafeInteger(taskId) ? taskId : null;
+}
+
+export function shouldClearFailedTaskRoute(error) {
+    return new Set([400, 403, 404, 410, 422]).has(Number(error?.status));
+}
+
+export function createTaskOpenHandler(app, options = {}) {
+    const loadTaskModal = options.loadTaskModal || (() => import('./components/modal.js?v=118'));
+    const getTaskOverlay = options.getTaskOverlay || (() => document.getElementById('task-detail-overlay'));
+    const dispatchTaskTabChange = options.dispatchTaskTabChange || ((taskId, tab) => {
+        document.dispatchEvent(new CustomEvent('task-tab-change', { detail: { taskId, tab } }));
+    });
+    const onError = options.onError || (() => {});
+    let pendingRequest = null;
+
+    const activateExistingOverlay = (taskId, tab, commentId = null) => {
+        const overlay = getTaskOverlay();
+        if (!overlay) return null;
+        const routeTaskId = app.router?.currentTaskRoute?.().taskId;
+        if (routeTaskId === taskId) {
+            app.router?.pushTaskRoute?.(taskId, tab, commentId);
+            dispatchTaskTabChange(taskId, tab);
+        }
+        return overlay;
+    };
+
+    return async function handleTaskOpen(event) {
+        const taskId = parsePositiveTaskId(event?.detail?.taskId);
+        if (!taskId) return null;
+        const tab = normalizeTaskDetailTab(event?.detail?.tab);
+        const commentId = tab === 'com' ? parsePositiveTaskId(event?.detail?.commentId) : null;
+
+        const existingOverlay = activateExistingOverlay(taskId, tab, commentId);
+        if (existingOverlay) return existingOverlay;
+
+        if (pendingRequest?.taskId === taskId) {
+            pendingRequest.tab = tab;
+            pendingRequest.commentId = commentId;
+            return pendingRequest.promise;
+        }
+
+        const request = { taskId, tab, commentId, promise: null };
+        pendingRequest = request;
+        request.promise = (async () => {
+            try {
+                const task = await app.api.get(`/tasks/${taskId}`);
+                if (pendingRequest !== request) return null;
+                if (parsePositiveTaskId(task?.id) !== taskId) {
+                    const invalidResponse = new Error('Task response does not match the requested task');
+                    invalidResponse.status = 404;
+                    throw invalidResponse;
+                }
+                const taskModal = await loadTaskModal();
+                if (pendingRequest !== request) return null;
+
+                const overlay = activateExistingOverlay(taskId, request.tab, request.commentId);
+                if (overlay) return overlay;
+
+                app.router?.pushTaskRoute?.(taskId, request.tab, request.commentId);
+                return taskModal.openTaskModal(task);
+            } catch (error) {
+                if (pendingRequest !== request) return null;
+                if (shouldClearFailedTaskRoute(error)) {
+                    app.router?.clearTaskRoute?.({ replace: true, expectedTaskId: taskId });
+                }
+                onError(error);
+                return null;
+            } finally {
+                if (pendingRequest === request) pendingRequest = null;
+            }
+        })();
+        return request.promise;
+    };
+}
 
 export class Router {
     constructor(app) {
@@ -26,12 +117,14 @@ export class Router {
             '/kanban': { render: renderKanban, init: initKanban },
             '/reports': { render: renderReports, init: initReports },
             '/reporting-statuses': { render: renderReportingStatuses, init: initReportingStatuses },
+            '/quarterly-goals-update': { render: renderQuarterlyGoalsUpdate, init: initQuarterlyGoalsUpdate },
             '/reporting-meetings': { render: renderReportingMeetingsManagement, init: initReportingMeetingsManagement },
             '/reports/detail': { render: renderReportPage, init: initReportPage },
             '/analytics/tribe': { render: (app) => renderAnalytics('tribe', app), init: (app) => initAnalytics('tribe', app) },
             '/analytics/po-pl': { render: (app) => renderAnalytics('po-pl', app), init: (app) => initAnalytics('po-pl', app) },
             '/analytics/it': { render: (app) => renderAnalytics('it', app), init: (app) => initAnalytics('it', app) },
             '/notifications': { render: renderNotifications, init: initNotifications },
+            '/account/security': { render: renderSecurity, init: initSecurity },
             '/settings': { render: renderSettings, init: initSettings },
             '/admin': { render: renderAdmin, init: initAdmin },
             '/audit-log': { render: renderAuditLog, init: initAuditLog },
@@ -43,7 +136,9 @@ export class Router {
         this.defaultRoute = '/dashboard';
         this.onBeforeNavigate = null;
         this.lastHash = null;
+        this.renderedPath = null;
         this.lastDeepLinkedTask = null;
+        this.taskOpenTimer = null;
         this.focusSidebarWasCollapsed = null;
         this.navigationGeneration = 0;
     }
@@ -64,18 +159,67 @@ export class Router {
         await this.handleRoute();
     }
 
-    pushTaskRoute(taskId, tab = 'main') {
+    currentTaskRoute() {
         const hash = window.location.hash.slice(1) || this.defaultRoute;
         const [path, query = ''] = hash.split('?');
         const params = new URLSearchParams(query);
-        if (Number(params.get('task')) === Number(taskId)) return;
-        params.set('task', String(taskId));
-        if (tab && tab !== 'main') params.set('tab', tab);
+        const rawTab = params.get('tab');
+        const commentId = parsePositiveTaskId(params.get('comment'));
+        return {
+            path,
+            taskId: params.has('task') ? parsePositiveTaskId(params.get('task')) : null,
+            tab: rawTab == null && commentId ? 'com' : normalizeTaskDetailTab(rawTab),
+            commentId,
+        };
+    }
+
+    replaceTaskQuery(path, params, { clearModalMarker = false } = {}) {
+        const nextHash = params.toString() ? `${path}?${params.toString()}` : path;
+        const nextState = clearModalMarker && history.state
+            ? Object.fromEntries(Object.entries(history.state).filter(([key]) => key !== 'dmbTaskModal'))
+            : history.state;
+        history.replaceState(nextState, '', '#' + nextHash);
+        this.lastHash = nextHash;
+        return nextHash;
+    }
+
+    cancelPendingTaskOpen() {
+        if (this.taskOpenTimer !== null) {
+            clearTimeout(this.taskOpenTimer);
+            this.taskOpenTimer = null;
+        }
+    }
+
+    pushTaskRoute(taskId, tab, commentId = null) {
+        const normalizedTaskId = parsePositiveTaskId(taskId);
+        if (!normalizedTaskId) return;
+        const hash = window.location.hash.slice(1) || this.defaultRoute;
+        const [path, query = ''] = hash.split('?');
+        const params = new URLSearchParams(query);
+        const explicitTab = tab !== undefined && tab !== null;
+        const normalizedTab = normalizeTaskDetailTab(tab);
+        const normalizedCommentId = normalizedTab === 'com' ? parsePositiveTaskId(commentId) : null;
+        if (parsePositiveTaskId(params.get('task')) === normalizedTaskId) {
+            if (explicitTab) this.updateTaskTabRoute(normalizedTab);
+            if (normalizedCommentId) {
+                const currentHash = window.location.hash.slice(1) || this.defaultRoute;
+                const [currentPath, currentQuery = ''] = currentHash.split('?');
+                const currentParams = new URLSearchParams(currentQuery);
+                currentParams.set('comment', String(normalizedCommentId));
+                this.replaceTaskQuery(currentPath, currentParams);
+            }
+            return;
+        }
+        params.set('task', String(normalizedTaskId));
+        params.delete('comment');
+        if (normalizedTab !== 'main') params.set('tab', normalizedTab);
         else params.delete('tab');
+        if (normalizedCommentId) params.set('comment', String(normalizedCommentId));
+        else params.delete('comment');
         const nextHash = `${path}?${params.toString()}`;
         history.pushState({ ...(history.state || {}), dmbTaskModal: true }, '', '#' + nextHash);
         this.lastHash = nextHash;
-        this.lastDeepLinkedTask = `${path}:${Number(taskId)}`;
+        this.lastDeepLinkedTask = `${path}:${normalizedTaskId}`;
     }
 
     updateTaskTabRoute(tab) {
@@ -83,45 +227,98 @@ export class Router {
         const [path, query = ''] = hash.split('?');
         const params = new URLSearchParams(query);
         if (!params.has('task')) return;
-        if (tab && tab !== 'main') params.set('tab', tab);
+        const normalizedTab = normalizeTaskDetailTab(tab);
+        if (normalizedTab !== 'main') params.set('tab', normalizedTab);
         else params.delete('tab');
+        if (normalizedTab !== 'com') params.delete('comment');
         const nextHash = `${path}?${params.toString()}`;
         history.replaceState(history.state, '', '#' + nextHash);
         this.lastHash = nextHash;
     }
 
-    clearTaskRoute() {
+    clearTaskRoute(options = {}) {
+        const { replace = false, expectedTaskId = null } = options || {};
         const hash = window.location.hash.slice(1) || this.defaultRoute;
         const [path, query = ''] = hash.split('?');
         const params = new URLSearchParams(query);
-        if (!params.has('task')) return;
-        if (history.state?.dmbTaskModal) {
+        if (path === '/review' && !params.has('task')) return false;
+        if (!params.has('task') && !params.has('tab') && !params.has('comment')) return false;
+        const currentTaskId = params.has('task') ? parsePositiveTaskId(params.get('task')) : null;
+        if (expectedTaskId !== null && currentTaskId !== parsePositiveTaskId(expectedTaskId)) return false;
+        this.cancelPendingTaskOpen();
+        if (!replace && history.state?.dmbTaskModal) {
             history.back();
-            return;
+            return true;
         }
         params.delete('task');
         params.delete('tab');
-        const nextHash = params.toString() ? `${path}?${params.toString()}` : path;
-        history.replaceState(history.state, '', '#' + nextHash);
-        this.lastHash = nextHash;
+        params.delete('comment');
+        this.replaceTaskQuery(path, params, { clearModalMarker: replace });
         this.lastDeepLinkedTask = null;
+        return true;
     }
 
     openDeepLinkedTask(path, query) {
         const params = new URLSearchParams(query);
-        const linkedTaskId = Number(params.get('task'));
-        const linkedTaskTab = params.get('tab') || 'main';
-        if (Number.isInteger(linkedTaskId) && linkedTaskId > 0) {
-            const deepLinkKey = `${path}:${linkedTaskId}`;
-            if (this.lastDeepLinkedTask !== deepLinkKey) {
-                this.lastDeepLinkedTask = deepLinkKey;
-                setTimeout(() => document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: linkedTaskId, tab: linkedTaskTab } })), 100);
-            } else {
-                document.dispatchEvent(new CustomEvent('task-tab-change', { detail: { taskId: linkedTaskId, tab: linkedTaskTab } }));
+        if (!params.has('task')) {
+            if (path !== '/review' && (params.has('tab') || params.has('comment'))) {
+                params.delete('tab');
+                params.delete('comment');
+                this.replaceTaskQuery(path, params, { clearModalMarker: true });
             }
-        } else {
+            this.cancelPendingTaskOpen();
             this.lastDeepLinkedTask = null;
+            return;
         }
+
+        const linkedTaskId = parsePositiveTaskId(params.get('task'));
+        if (!linkedTaskId) {
+            params.delete('task');
+            params.delete('tab');
+            params.delete('comment');
+            this.replaceTaskQuery(path, params, { clearModalMarker: true });
+            this.cancelPendingTaskOpen();
+            this.lastDeepLinkedTask = null;
+            return;
+        }
+
+        const rawTab = params.get('tab');
+        let commentId = parsePositiveTaskId(params.get('comment'));
+        if (params.has('comment') && !commentId) {
+            params.delete('comment');
+            this.replaceTaskQuery(path, params);
+        }
+        const linkedTaskTab = rawTab == null && commentId ? 'com' : normalizeTaskDetailTab(rawTab);
+        if (rawTab != null && linkedTaskTab !== 'com' && params.has('comment')) {
+            params.delete('comment');
+            commentId = null;
+            this.replaceTaskQuery(path, params);
+        }
+        if (params.has('tab') && linkedTaskTab === 'main') {
+            params.delete('tab');
+            this.replaceTaskQuery(path, params);
+        } else if (params.has('tab') && rawTab !== linkedTaskTab) {
+            params.set('tab', linkedTaskTab);
+            this.replaceTaskQuery(path, params);
+        }
+
+        const deepLinkKey = `${path}:${linkedTaskId}`;
+        if (this.lastDeepLinkedTask !== deepLinkKey || this.taskOpenTimer !== null) {
+            this.lastDeepLinkedTask = deepLinkKey;
+            this.cancelPendingTaskOpen();
+            this.taskOpenTimer = setTimeout(() => {
+                this.taskOpenTimer = null;
+                const current = this.currentTaskRoute();
+                if (current.path !== path || current.taskId !== linkedTaskId) return;
+                document.dispatchEvent(new CustomEvent('open-task', {
+                    detail: { taskId: linkedTaskId, tab: current.tab },
+                }));
+            }, 100);
+            return;
+        }
+        document.dispatchEvent(new CustomEvent('open-task', {
+            detail: { taskId: linkedTaskId, tab: linkedTaskTab },
+        }));
     }
 
     async handleRoute() {
@@ -131,7 +328,13 @@ export class Router {
         const from = this.lastHash;
 
         const user = this.app?.store?.get('currentUser');
-        const businessCustomerAllowedPaths = new Set(['/customer', '/customer/create']);
+        const isAssistantV2Route = path === '/assistant-v2' || path.startsWith('/assistant-v2/');
+        if (isAssistantV2Route) {
+            history.replaceState(null, '', '#/agent-v2');
+            return this.handleRoute();
+        }
+        const isAgentV2Route = path === '/agent-v2' || path.startsWith('/agent-v2/');
+        const businessCustomerAllowedPaths = new Set(['/customer', '/customer/create', '/agent-v2', '/backlog-assistant', '/account/security', '/notifications', '/settings']);
         const isCustomerRequestDetail = /^\/customer\/request\/\d+$/.test(path);
         const isCustomerTaskDetail = /^\/customer\/task\/\d+$/.test(path);
         if (user?.permissions?.customer_portal_mode === 'only' && !businessCustomerAllowedPaths.has(path) && !isCustomerRequestDetail && !isCustomerTaskDetail) {
@@ -140,9 +343,20 @@ export class Router {
             }
             return this.handleRoute();
         }
+        if (path === '/kanban') {
+            try {
+                const options = await this.app.api.get('/work-tasks/options');
+                if (generation !== this.navigationGeneration) return;
+                if (options.board_enabled === true) {
+                    sessionStorage.setItem('work-board-redirect-notice','1');
+                    history.replaceState(null,'',`#/work-tasks?display=board&view=${user?.team_id?'team':'all'}&status=active&sort=attention`);
+                    return this.handleRoute();
+                }
+            } catch { /* Keep the legacy route available when capability discovery fails. */ }
+        }
         const adminAccess = user?.permissions?.admin || 'none';
         const requiresAdmin = path === '/admin' || path === '/audit-log';
-        const requiresFullAdmin = path === '/outbox-dead-letters' || path === '/reporting-meetings';
+        const requiresFullAdmin = path === '/audit-log' || path === '/outbox-dead-letters' || path === '/reporting-meetings';
         if ((requiresAdmin && adminAccess === 'none') || (requiresFullAdmin && adminAccess !== 'full')) {
             const container = document.getElementById('page-content');
             if (container) {
@@ -164,7 +378,8 @@ export class Router {
         this.lastHash = hash;
         this.syncAssistantFocusMode(path);
         const fromPath = from?.split('?')[0];
-        if (from !== null && path === fromPath) {
+        const queryDrivenWorkPage = path === '/work-reports' || /^\/work-tasks(?:\/\d+)?$/.test(path);
+        if (from !== null && path === fromPath && this.renderedPath === path && path !== '/meeting-capture' && !queryDrivenWorkPage) {
             this.openDeepLinkedTask(path, query);
             this.updateSidebarActive(path);
             return;
@@ -191,10 +406,43 @@ export class Router {
           };
         } else if (reviewMatch) {
           const requestId = reviewMatch[1];
-          dynamicHandler = {
+            dynamicHandler = {
             render: () => renderReviewDetailPage(this.app, requestId),
             init: () => initReviewDetailPage(this.app, requestId),
-          };
+            };
+        } else if (isAgentV2Route) {
+          // The dedicated page is always discoverable; its API access remains server-gated.
+        const module = await import('./agent-v2/routes.js?v=10');
+          if (generation !== this.navigationGeneration) return;
+          dynamicHandler = module.resolveAgentV2Route(path, this.app);
+        } else if (path === '/backlog-assistant') {
+          const module = await import('./backlog-assistant/page.js');
+          if (generation !== this.navigationGeneration) return;
+          dynamicHandler = { render: module.renderPage, init: module.initPage };
+        } else if (path === '/work-reports') {
+          const legacy = new URLSearchParams(location.hash.split('?')[1] || '');
+          if (!legacy.has('meeting_id')) {
+            const next = new URLSearchParams({display:'summary',view:'all'});
+            if (legacy.has('task')) next.set('parent',legacy.get('task'));
+            if (legacy.has('team_id')) next.set('team',legacy.get('team_id'));
+            location.replace('#/work-tasks?'+next);
+            return;
+          }
+          const module = await import('./components/workReports.js?v=7');
+          if (generation !== this.navigationGeneration) return;
+          dynamicHandler = { render: module.renderWorkReports, init: module.initWorkReports };
+        } else if (path === '/work-projects') {
+          const module = await import('./components/workProjects.js?v=13');
+          if (generation !== this.navigationGeneration) return;
+          dynamicHandler = { render: module.renderWorkProjects, init: module.initWorkProjects };
+        } else if (/^\/work-tasks(?:\/\d+)?$/.test(path)) {
+          const module = await import('./components/workTasks.js?v=26');
+          if (generation !== this.navigationGeneration) return;
+          dynamicHandler = { render: module.renderWorkTasks, init: module.initWorkTasks };
+        } else if (path === '/meeting-capture') {
+          const module = await import('./components/meetingCapture.js?v=6');
+          if (generation !== this.navigationGeneration) return;
+          dynamicHandler = { render: module.renderMeetingCapture, init: module.initMeetingCapture };
         }
 
         const resolved = dynamicHandler || route;
@@ -205,6 +453,7 @@ export class Router {
                 const markup = await resolved.render(this.app);
                 if (generation !== this.navigationGeneration || (window.location.hash.slice(1) || this.defaultRoute) !== hash) return;
                 container.innerHTML = markup;
+                this.renderedPath = path;
 
                 if (window.lucide) {
                     window.lucide.createIcons();
@@ -213,14 +462,21 @@ export class Router {
                 // Update breadcrumb
                 const bc = document.getElementById('breadcrumb-nav');
                 if (bc) {
+                    bc.hidden = Boolean(container.querySelector('h1'));
                     const names = {
                         '/dashboard': 'Главная',
+                        '/work-tasks': 'Рабочие задачи',
+                        '/work-projects': 'Структура работ проекта',
+                        '/work-reports': 'Снимок задач встречи',
+                        '/meeting-capture': 'Поручения из встреч',
+                        '/backlog-assistant': 'Помощник по бэклогу',
                         '/backlog': 'Бэклог DMB',
                         '/team-backlog': 'Бэклог команды',
                         '/express-estimate': 'Экспресс-оценка',
                         '/kanban': 'Канбан-доска',
                         '/reports': 'Статусы для встреч',
                         '/reporting-statuses': 'Заполнение статусов',
+                        '/quarterly-goals-update': 'Обновить прогресс и статусы',
                         '/reporting-meetings': 'Управление отчётными встречами',
                         '/reports/detail': 'Статус-отчёт',
                         '/analytics/tribe': 'Аналитика ЛТ',
@@ -233,9 +489,10 @@ export class Router {
                         '/outbox-dead-letters': 'Ошибки доставки событий',
                         '/customer': 'Мои запросы',
                         '/customer/create': 'ИИ-ассистент',
+                        '/agent-v2': 'ИИ-ассистент V2',
                         '/review': 'Ревью запросов',
                     };
-                    const pageName = names[path] || (requestMatch ? 'Запрос' : '') || (customerTaskMatch ? 'Задача по запросу' : '') || (reviewMatch ? 'Ревью запроса' : path);
+                    const pageName = names[path] || (/^\/work-tasks\/\d+$/.test(path) ? 'Рабочая задача' : '') || (requestMatch ? 'Запрос' : '') || (customerTaskMatch ? 'Задача по запросу' : '') || (reviewMatch ? 'Ревью запроса' : path);
                     // For multi-segment paths like /analytics/tribe, only show the final name
                     const segments = path.split('/').filter(Boolean);
                     if (segments.length <= 1 || !names[path]) {

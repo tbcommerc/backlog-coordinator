@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from auth import require_permission, task_read_scope_clause
 from database import get_db, db_lower
-from models import Task, TaskType, TaskStatus, Deadline, User, UserReportPreference
+from models import Task, TaskType, TaskStatus, Deadline, User, UserReportPreference, DictionaryItem
 from services.did_backlog import (COLUMNS, EXCLUDED_STATUSES, clean_prefs, current_quarter,
     report_quarters, task_row, apply_view, summary)
 from services.did_backlog_export import workbook, print_html
@@ -23,6 +23,19 @@ def portfolio_query(db, user):
         Task.is_deleted.is_(False), task_read_scope_clause(user, Task),
         db_lower(func.trim(TaskType.name)).in_(["квартальная/годовая цель", "ad-hoc"]),
         or_(Task.status_id.is_(None), ~db_lower(func.trim(TaskStatus.name)).in_(EXCLUDED_STATUSES)))
+
+
+def portfolio_reference_orders(db):
+    return {
+        dict_type: {
+            (item.name or "").strip().casefold(): item.sort_order or 0
+            for item in db.query(DictionaryItem).filter(
+                DictionaryItem.dict_type == dict_type,
+                DictionaryItem.is_active == True,
+            ).all()
+        }
+        for dict_type in ("task_type", "deadline")
+    }
 
 
 def portfolio_rows(db, user, quarter):
@@ -84,6 +97,7 @@ def report(quarter: str | None = Query(None, pattern=r"^[1-4]Q 20\d{2}$"), db: S
     quarter = quarter or current_quarter()
     rows = apply_view(portfolio_rows(db, user, quarter), {})
     return {"quarter": quarter, "total_tasks": len(rows), **summary(rows), "tasks": rows,
+            "sort_orders": portfolio_reference_orders(db),
             "can_export": bool(user.can_export and user.role and user.role.can_export)}
 
 
@@ -92,7 +106,7 @@ def export(format: Literal["xlsx", "pdf"], command: ViewCommand, db: Session = D
     if not (user.can_export and user.role and user.role.can_export):
         raise HTTPException(403, "Нет права на экспорт")
     prefs = clean_prefs(command.model_dump())
-    rows = apply_view(portfolio_rows(db, user, command.quarter), prefs)
+    rows = apply_view(portfolio_rows(db, user, command.quarter), prefs, portfolio_reference_orders(db))
     if "ordered_ids" in command.model_fields_set:
         if len(command.ordered_ids) != len(rows) or set(command.ordered_ids) != {r["id"] for r in rows}:
             raise HTTPException(409, "Состав отчёта изменился. Обновите отчёт перед выгрузкой.")

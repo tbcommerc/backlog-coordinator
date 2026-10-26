@@ -1,0 +1,7 @@
+<!doctype html><html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UI kit — вход</title>
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/components.css"><link rel="stylesheet" href="/css/pages.css"><link rel="stylesheet" href="/css/responsive.css"><link rel="stylesheet" href="/css/ui/kit.css"><script src="/js/lib/lucide.min.js"></script></head><body><div id="app"></div><script type="module">
+import {renderLogin,initLogin} from '/js/components/login.js';
+const params=new URLSearchParams(location.search);document.documentElement.dataset.theme=params.get('theme')||'light';document.documentElement.dataset.compact=params.get('compact')||'false';
+document.getElementById('app').innerHTML=renderLogin();window.__calls=[];window.__fail=true;window.__hold=false;
+initLogin(async(email,password)=>{window.__calls.push({email,password});if(window.__hold)await new Promise(resolve=>window.__release=resolve);if(window.__fail)throw Error('Test error');document.getElementById('app').innerHTML='<p role="status">Вход выполнен</p>';});window.lucide?.createIcons();
+</script></body></html>

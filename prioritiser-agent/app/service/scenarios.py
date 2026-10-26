@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import datetime as dt
 import time
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 from typing import Any
 
 from pydantic import ValidationError
@@ -67,6 +69,30 @@ _METHOD_MAP = {
 # Индекс аналогий тяжёл в постройке (прогон текстов через модель эмбеддингов),
 # поэтому строится один раз на процесс. Слепок между запросами не меняется.
 _ANALOGY_INDEX: AnalogyIndex | None = None
+_ANALOGY_INDEX_LOCK = Lock()
+_ASSESSMENT_EXECUTOR: ThreadPoolExecutor | None = None
+_ASSESSMENT_EXECUTOR_LOCK = Lock()
+
+
+def _assessment_executor() -> ThreadPoolExecutor:
+    global _ASSESSMENT_EXECUTOR
+    with _ASSESSMENT_EXECUTOR_LOCK:
+        if _ASSESSMENT_EXECUTOR is None:
+            _ASSESSMENT_EXECUTOR = ThreadPoolExecutor(
+                max_workers=max(1, get_settings().assessment_max_workers),
+                thread_name_prefix="priority-assessment",
+            )
+        return _ASSESSMENT_EXECUTOR
+
+
+def close_assessment_executor() -> None:
+    """Release assessment workers on application shutdown; reopen lazily."""
+    global _ASSESSMENT_EXECUTOR
+    with _ASSESSMENT_EXECUTOR_LOCK:
+        executor = _ASSESSMENT_EXECUTOR
+        _ASSESSMENT_EXECUTOR = None
+    if executor is not None:
+        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _analogy_index(snapshot: ValueSnapshot) -> AnalogyIndex | None:
@@ -74,7 +100,9 @@ def _analogy_index(snapshot: ValueSnapshot) -> AnalogyIndex | None:
     if not get_settings().value_analogy or not snapshot.available:
         return None
     if _ANALOGY_INDEX is None:
-        _ANALOGY_INDEX = AnalogyIndex.from_snapshot(snapshot)
+        with _ANALOGY_INDEX_LOCK:
+            if _ANALOGY_INDEX is None:
+                _ANALOGY_INDEX = AnalogyIndex.from_snapshot(snapshot)
     return _ANALOGY_INDEX
 
 
@@ -524,12 +552,15 @@ def handle_request(
 
     missing = check_required(attrs, request_type)
     if missing:
-        return ErrorResponse(
-            task_id=attrs.task_id,
-            request_type=request_type,  # type: ignore[arg-type]
-            status="insufficient_data",
-            error="Не заполнены обязательные атрибуты",
-            missing_attributes=missing,
+        return _record_response(
+            ErrorResponse(
+                task_id=attrs.task_id,
+                request_type=request_type,  # type: ignore[arg-type]
+                status="insufficient_data",
+                error="Не заполнены обязательные атрибуты",
+                missing_attributes=missing,
+            ),
+            started,
         )
 
     refs = ReferenceBundle(session)
@@ -550,7 +581,8 @@ def handle_request(
         restored.audit.reused_from_request_id = previous.request_id
         restored.audit.request_id = new_request_id()
         restored.audit.duration_ms = int((time.monotonic() - started) * 1000)
-        return restored
+        restored.audit.phase_duration_ms = {"response_cache": restored.audit.duration_ms}
+        return _record_response(restored, started)
 
     warnings: list[str] = []
     if not snapshot.available:
@@ -560,16 +592,29 @@ def handle_request(
         )
 
     task = build_task(attrs, refs)
+    phases: dict[str, int] = {}
     try:
         response = _compute(
-            task, attrs, request_type, refs, snapshot, session, warnings, key, started
+            task,
+            attrs,
+            request_type,
+            refs,
+            snapshot,
+            session,
+            warnings,
+            key,
+            started,
+            phases,
         )
     except LLMExecutionError:
-        return ErrorResponse(
-            task_id=attrs.task_id,
-            request_type=request_type,  # type: ignore[arg-type]
-            status="error",
-            error="LLM недоступна. Расчёт не выполнен.",
+        return _record_response(
+            ErrorResponse(
+                task_id=attrs.task_id,
+                request_type=request_type,  # type: ignore[arg-type]
+                status="error",
+                error="LLM недоступна. Расчёт не выполнен.",
+            ),
+            started,
         )
 
     remember(
@@ -590,6 +635,29 @@ def handle_request(
         reference_versions=versions,
         llm_calls=response.audit.llm_calls,
         duration_ms=response.audit.duration_ms,
+    )
+    return _record_response(response, started)
+
+
+def _record_response(
+    response: AgentResponse | ErrorResponse, started: float
+) -> AgentResponse | ErrorResponse:
+    """Record operational telemetry without changing the response payload."""
+    from app.service.metrics import record_request
+
+    audit = response.audit if isinstance(response, AgentResponse) else None
+    duration_ms = (
+        audit.duration_ms
+        if audit is not None and audit.duration_ms is not None
+        else int((time.monotonic() - started) * 1000)
+    )
+    record_request(
+        request_type=response.request_type,
+        status=response.status,
+        cached=bool(audit.cached) if audit is not None else False,
+        duration_ms=duration_ms,
+        llm_calls=audit.llm_calls if audit is not None else 0,
+        phases=audit.phase_duration_ms if audit is not None else None,
     )
     return response
 
@@ -625,6 +693,7 @@ def _compute(
     warnings: list[str],
     key: str,
     started: float,
+    phases: dict[str, int],
 ) -> AgentResponse:
     from app.llm.factory import classify_with_cache, get_adapter
     from app.strategy.analysts import get_dependency_analyst, get_strategy_analyst
@@ -637,20 +706,39 @@ def _compute(
     hints: dict[str, Any] = {}
     if task.value_manual_mln is None and not (task.is_regulatory or task.is_rnd):
         text = " ".join(filter(None, [task.title, task.project, task.comment]))
+        phase_started = time.perf_counter()
         try:
+            cache_status: dict[str, bool] = {}
             classified = classify_with_cache(
-                get_adapter(), text, task.team, task.team_class, session
+                get_adapter(),
+                text,
+                task.team,
+                task.team_class,
+                session,
+                cache_status,
             )
             hints = classified.as_dict()
-            llm_calls += 1
+            llm_calls += int(not cache_status.get("hit", False))
             if classified.kind == "regulatory":
                 task.is_regulatory = True
             elif classified.kind == "rnd":
                 task.is_rnd = True
         except Exception as exc:  # noqa: BLE001
             raise LLMExecutionError("Не выполнена классификация задачи") from exc
+        finally:
+            phases["value_classification"] = int(
+                (time.perf_counter() - phase_started) * 1000
+            )
 
-    core = compute_value(task, refs, hints, _analogy_index(snapshot))
+    phase_started = time.perf_counter()
+    needs_analogy = task.value_manual_mln is None and not (
+        task.is_regulatory or task.is_rnd
+    )
+    analogy_index = _analogy_index(snapshot) if needs_analogy else None
+    phases["analogy_index"] = int((time.perf_counter() - phase_started) * 1000)
+    phase_started = time.perf_counter()
+    core = compute_value(task, refs, hints, analogy_index)
+    phases["value_calculation"] = int((time.perf_counter() - phase_started) * 1000)
     task.value_internal_mln = core.value_internal_mln
     task.value_source = core.source
     task.value_confidence = core.confidence
@@ -671,7 +759,7 @@ def _compute(
             status="ok" if value_out.value_mln is not None else "insufficient_data",
             value=value_out,
             warnings=warnings,
-            audit=_audit(key, snapshot, refs, llm_calls, started),
+            audit=_audit(key, snapshot, refs, llm_calls, started, phases),
         )
 
     # --- Приоритет -----------------------------------------------------------
@@ -680,31 +768,51 @@ def _compute(
     # Проект по гранулярности ближе к стратегии, чем название задачи, поэтому
     # он идёт первым: оценщик читает его как основной сигнал.
     strategy_text = " ".join(filter(None, [task.project, task.title, task.comment]))
-    try:
-        assessment = get_strategy_analyst().assess(strategy_text, task.team, refs.strategy_rubric)
-        if assessment is not None:
-            apply_strategy_to_task(task, assessment)
-            if settings.strategy_provider != "stub":
-                llm_calls += 1
-    except Exception as exc:  # noqa: BLE001
-        raise LLMExecutionError("Не выполнена оценка стратегического соответствия") from exc
+    # F5 и F6 независимы: они отвечают по разным рубрикам и применяются к Task
+    # только после завершения обоих. Параллельный запуск меняет только latency.
+    from app.core.db import session_scope
+
+    cache_sessions = session_scope if session is not None else None
+    strategy_analyst = get_strategy_analyst(session_factory=cache_sessions)
 
     # Субагент зависимостей нужен, только когда команды не перечислены человеком:
     # заполненное поле точнее любого вывода модели.
     if task.involved_teams_raw:
         analyst = get_dependency_analyst("declared")
     else:
-        analyst = get_dependency_analyst()
+        analyst = get_dependency_analyst(session_factory=cache_sessions)
+
+    assessment_started = time.perf_counter()
     try:
-        assessment = analyst.assess(
-            text, task.team, task.involved_teams_raw, refs.team_names, refs.strategy_rubric
+        executor = _assessment_executor()
+        strategy_future = executor.submit(
+            strategy_analyst.assess, strategy_text, task.team, refs.strategy_rubric
         )
-        if assessment is not None:
-            apply_dependencies_to_task(task, assessment)
-            if not task.involved_teams_raw and settings.dependency_provider != "declared":
-                llm_calls += 1
+        dependency_future = executor.submit(
+            analyst.assess,
+            text,
+            task.team,
+            task.involved_teams_raw,
+            refs.team_names,
+            refs.strategy_rubric,
+        )
+        strategy_assessment = strategy_future.result()
+        dependency_assessment = dependency_future.result()
     except Exception as exc:  # noqa: BLE001
-        raise LLMExecutionError("Не выполнена оценка зависимостей") from exc
+        raise LLMExecutionError("Не выполнена оценка факторов F5/F6") from exc
+    finally:
+        phases["factor_assessments"] = int(
+            (time.perf_counter() - assessment_started) * 1000
+        )
+
+    if strategy_assessment is not None:
+        apply_strategy_to_task(task, strategy_assessment)
+        if settings.strategy_provider != "stub":
+            llm_calls += int(not getattr(strategy_analyst, "last_cache_hit", False))
+    if dependency_assessment is not None:
+        apply_dependencies_to_task(task, dependency_assessment)
+        if not task.involved_teams_raw and settings.dependency_provider != "declared":
+            llm_calls += int(not getattr(analyst, "last_cache_hit", False))
 
     # Шкала F1 берётся из слепка: без неё Value этой задачи считался бы в
     # другой шкале, чем у соседей по бэклогу.
@@ -718,7 +826,9 @@ def _compute(
             "максимум по бэклогу неизвестен, и балл несопоставим с соседями."
         )
 
+    phase_started = time.perf_counter()
     scored = score_task(task, refs, ctx)
+    phases["priority_scoring"] = int((time.perf_counter() - phase_started) * 1000)
     task.priority = scored.priority
     task.priority_score = scored.score
 
@@ -728,7 +838,7 @@ def _compute(
         value=value_out if attrs.value_internal_mln is None else None,
         priority=_priority_result(task, refs, scored),
         warnings=warnings,
-        audit=_audit(key, snapshot, refs, llm_calls, started),
+        audit=_audit(key, snapshot, refs, llm_calls, started, phases),
     )
 
 
@@ -738,6 +848,7 @@ def _audit(
     refs: ReferenceBundle,
     llm_calls: int,
     started: float,
+    phases: dict[str, int],
 ) -> ResponseAudit:
     settings = get_settings()
     return ResponseAudit(
@@ -749,5 +860,6 @@ def _audit(
         llm_calls=llm_calls,
         model=settings.llm_provider,
         duration_ms=int((time.monotonic() - started) * 1000),
+        phase_duration_ms=dict(phases),
         computed_at=dt.datetime.now(dt.timezone.utc),
     )

@@ -4,11 +4,32 @@ from __future__ import annotations
 
 import json
 import time
+from email.utils import parsedate_to_datetime
+from functools import lru_cache
 from typing import Any
 
 import httpx
 
 from app.llm.base import SYSTEM_PROMPT, TaskHints, build_user_prompt, parse_hints
+
+
+@lru_cache(maxsize=1)
+def _http_client() -> httpx.Client:
+    """A thread-safe process client reuses TCP/TLS connections between calls."""
+    return httpx.Client(
+        limits=httpx.Limits(
+            max_connections=16,
+            max_keepalive_connections=8,
+            keepalive_expiry=30.0,
+        )
+    )
+
+
+def close_http_client() -> None:
+    """Close pooled connections during controlled shutdowns and tests."""
+    if _http_client.cache_info().currsize:
+        _http_client().close()
+        _http_client.cache_clear()
 
 
 class OpenAICompatAdapter:
@@ -23,6 +44,9 @@ class OpenAICompatAdapter:
         base_url: str,
         model: str,
         timeout: float = 30.0,
+        retry_attempts: int = 3,
+        retry_base_seconds: float = 0.5,
+        retry_max_seconds: float = 5.0,
     ) -> None:
         if not api_key.strip():
             raise RuntimeError("не задан PRIORITISER_OPENAI_API_KEY")
@@ -30,7 +54,27 @@ class OpenAICompatAdapter:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
+        self.retry_attempts = max(1, retry_attempts)
+        self.retry_base_seconds = max(0.0, retry_base_seconds)
+        self.retry_max_seconds = max(self.retry_base_seconds, retry_max_seconds)
         self.last_usage: dict[str, int | float | None] = {}
+
+    def _retry_delay(self, response: httpx.Response | None, attempt: int) -> float:
+        retry_after = response.headers.get("Retry-After") if response is not None else None
+        if retry_after:
+            try:
+                return min(self.retry_max_seconds, max(0.0, float(retry_after)))
+            except ValueError:
+                try:
+                    retry_at = parsedate_to_datetime(retry_after)
+                    delay = retry_at.timestamp() - time.time()
+                    return min(self.retry_max_seconds, max(0.0, delay))
+                except (TypeError, ValueError, OverflowError):
+                    pass
+        return min(
+            self.retry_max_seconds,
+            self.retry_base_seconds * (2**attempt),
+        )
 
     def _complete(
         self,
@@ -70,13 +114,35 @@ class OpenAICompatAdapter:
         }
         if is_opencode_zen:
             headers["x-opencode-client"] = "cli"
-        response = httpx.post(
-            f"{self.base_url}/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
+        response: httpx.Response | None = None
+        for attempt in range(self.retry_attempts):
+            try:
+                response = _http_client().post(
+                    f"{self.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                break
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                if status not in {429, 502, 503, 504} or attempt + 1 >= self.retry_attempts:
+                    raise
+                from app.service.metrics import record_llm_retry
+
+                record_llm_retry()
+                time.sleep(self._retry_delay(exc.response, attempt))
+            except (httpx.TimeoutException, httpx.NetworkError):
+                if attempt + 1 >= self.retry_attempts:
+                    raise
+                from app.service.metrics import record_llm_retry
+
+                record_llm_retry()
+                time.sleep(self._retry_delay(None, attempt))
+
+        if response is None:  # pragma: no cover - loop always attempts at least once
+            raise RuntimeError("OpenAI-compatible запрос не был выполнен")
         data = response.json()
         usage = data.get("usage") or {}
         self.last_usage = {

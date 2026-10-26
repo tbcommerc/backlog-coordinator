@@ -1,6 +1,6 @@
 """API календаря отчётных встреч и статусов задач."""
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -24,6 +24,7 @@ from reporting_meetings import (
     schedule_meeting,
     task_reporting_context,
     validate_meeting_kind,
+    weekly_reporting_tasks,
 )
 
 
@@ -57,12 +58,28 @@ class MeetingCompleteCommand(BaseModel):
     version: Optional[int] = Field(None, ge=0)
 
 
+class WeeklyStatusPayload(BaseModel):
+    signal: str = Field("on_track", pattern="^(on_track|risk|blocker|decision)$")
+    next_step: Optional[str] = Field(None, max_length=2000)
+    next_step_due: Optional[date] = None
+    decision_request: Optional[str] = Field(None, max_length=2000)
+
+
 class ReportingStatusUpdate(BaseModel):
     text: Optional[str] = Field(None, max_length=5000)
     did_demo: bool = False
     is_ready: bool = False
     directorate_attention: Optional[bool] = None
+    weekly: Optional[WeeklyStatusPayload] = None
     version: Optional[int] = Field(None, ge=0)
+
+
+class ReportingStatusBatchItem(ReportingStatusUpdate):
+    task_id: int = Field(gt=0)
+
+
+class ReportingStatusBatchUpdate(BaseModel):
+    items: List[ReportingStatusBatchItem] = Field(min_length=1, max_length=500)
 
 
 class DirectorateAttentionUpdate(BaseModel):
@@ -88,6 +105,24 @@ def _history_to_dict(row: ReportingMeetingHistory) -> dict:
         "reason": row.reason,
         "changed_at": row.changed_at.isoformat() if row.changed_at else None,
         "changed_by_name": row.changer.name if row.changer else None,
+    }
+
+
+def _reporting_status_to_dict(row: TaskReportingStatus) -> dict:
+    return {
+        "id": row.id,
+        "meeting_id": row.meeting_id,
+        "task_id": row.task_id,
+        "text": row.status_text or "",
+        "did_demo": bool(row.did_demo),
+        "is_ready": bool(row.is_ready),
+        "directorate_attention": bool(row.directorate_attention),
+        "weekly": row.weekly_payload,
+        "progress_snapshot": row.progress_snapshot,
+        "task_status_snapshot": row.task_status_snapshot,
+        "source": row.source,
+        "version": row.version or 0,
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }
 
 
@@ -212,7 +247,15 @@ def get_reporting_meeting_preparation(
         team = db.query(Team).filter(Team.id == current_user.team_id).first()
         if not can_fill_team_reporting_status(current_user, team):
             raise HTTPException(status_code=403, detail="Заполнение статусов доступно PO/PL/CL и BA/участникам своей команды")
-    tasks = active_tasks(db, team_id=None if is_admin else current_user.team_id)
+    tasks = (
+        weekly_reporting_tasks(
+            db,
+            meeting.scheduled_date,
+            team_id=None if is_admin else current_user.team_id,
+        )
+        if meeting.kind == "team_weekly" and meeting.scheduled_date
+        else active_tasks(db, team_id=None if is_admin else current_user.team_id)
+    )
     expected = current_meeting(db, meeting.kind)
     previous = previous_meeting(db, meeting.kind)
     rows = {row.task_id: row for row in db.query(TaskReportingStatus).filter(
@@ -238,21 +281,33 @@ def get_reporting_meeting_preparation(
             "did_demo": bool(row.did_demo) if row else False,
             "is_ready": filled,
             "directorate_attention": bool(row.directorate_attention) if row else False,
+            "weekly": (
+                (row.weekly_payload if row and row.weekly_payload else {
+                    "signal": "on_track",
+                    "next_step": "",
+                    "next_step_due": None,
+                    "decision_request": "",
+                })
+                if meeting.kind == "team_weekly" else None
+            ),
+            "progress": task.progress,
+            "progress_updated_at": task.progress_updated_at.isoformat() if task.progress_updated_at else None,
+            "status_name": task.status.name if task.status else None,
+            "priority_name": task.priority.name if task.priority else None,
+            "project_name": task.project.name if task.project else None,
+            "owner_name": task.owner.name if task.owner else None,
+            "deadline_name": task.deadline.name if task.deadline else None,
             "previous_status": {
                 "text": previous_row.status_text or "",
                 "did_demo": bool(previous_row.did_demo),
+                "weekly": previous_row.weekly_payload,
+                "progress_snapshot": previous_row.progress_snapshot,
+                "task_status_snapshot": previous_row.task_status_snapshot,
                 "meeting_date": previous.scheduled_date.isoformat() if previous and previous.scheduled_date else None,
             } if previous_row else None,
             "version": row.version or 0 if row else 0,
             "updated_at": row.updated_at.isoformat() if row and row.updated_at else None,
             "updated_by_name": row.updater.name if row and row.updater else None,
-            "revisions": [{
-                "id": revision.id,
-                "old_text": revision.old_text or "",
-                "new_text": revision.new_text or "",
-                "changed_at": revision.changed_at.isoformat() if revision.changed_at else None,
-                "changed_by_name": revision.changer.name if revision.changer else None,
-            } for revision in sorted((row.revisions if row else []), key=lambda item: item.id, reverse=True)],
             "filled": filled,
             "can_edit": bool(
                 expected
@@ -278,6 +333,65 @@ def get_reporting_meeting_preparation(
             "read_only": not any(item["can_edit"] for item in items),
         },
     }
+
+
+@router.put("/{meeting_id}/statuses/batch")
+def update_reporting_statuses_batch(
+    meeting_id: int,
+    payload: ReportingStatusBatchUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Atomically save several task statuses for one current meeting."""
+    meeting = _meeting_or_404(db, meeting_id)
+    expected = current_meeting(db, meeting.kind)
+    if not expected or expected.id != meeting.id:
+        raise HTTPException(status_code=409, detail="Эта встреча больше не является ближайшей для заполнения")
+
+    task_ids = [item.task_id for item in payload.items]
+    if len(task_ids) != len(set(task_ids)):
+        raise HTTPException(status_code=400, detail="Задача не должна повторяться в массовом запросе")
+    tasks = {
+        task.id: task
+        for task in db.query(Task).filter(Task.id.in_(task_ids), Task.is_deleted == False).all()
+    }
+    missing_ids = [task_id for task_id in task_ids if task_id not in tasks]
+    if missing_ids:
+        raise HTTPException(status_code=404, detail={"message": "Задачи не найдены", "task_ids": missing_ids})
+    denied_ids = [task_id for task_id in task_ids if not _can_fill_status(current_user, tasks[task_id])]
+    if denied_ids:
+        raise HTTPException(status_code=403, detail={"message": "Нет доступа к отчётным статусам", "task_ids": denied_ids})
+
+    saved = []
+    try:
+        for item in payload.items:
+            saved.append(save_task_reporting_status(
+                db,
+                task=tasks[item.task_id],
+                meeting=meeting,
+                status_text=item.text,
+                did_demo=item.did_demo,
+                is_ready=item.is_ready,
+                submitted_version=item.version,
+                user_id=current_user.id,
+                directorate_attention=item.directorate_attention,
+                weekly_payload=item.weekly.model_dump(mode="json") if item.weekly else None,
+            ))
+        db.commit()
+        for row in saved:
+            db.refresh(row)
+    except RuntimeError as exc:
+        db.rollback()
+        if str(exc) == "version_conflict":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Один из статусов изменён другим пользователем. Пакет не сохранён.",
+            )
+        raise
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"items": [_reporting_status_to_dict(row) for row in saved], "saved_count": len(saved)}
 
 
 @router.post("/{meeting_id}/schedule")
@@ -378,6 +492,7 @@ def update_task_reporting_status(
             submitted_version=payload.version,
             user_id=current_user.id,
             directorate_attention=payload.directorate_attention,
+            weekly_payload=payload.weekly.model_dump(mode="json") if payload.weekly else None,
         )
         db.commit()
         db.refresh(row)
@@ -400,18 +515,7 @@ def update_task_reporting_status(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
-    return {
-        "id": row.id,
-        "meeting_id": row.meeting_id,
-        "task_id": row.task_id,
-        "text": row.status_text or "",
-        "did_demo": bool(row.did_demo),
-        "is_ready": bool(row.is_ready),
-        "directorate_attention": bool(row.directorate_attention),
-        "source": row.source,
-        "version": row.version or 0,
-        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-    }
+    return _reporting_status_to_dict(row)
 
 
 @task_router.put("/{task_id}/reporting-statuses/{meeting_id}/directorate-attention")

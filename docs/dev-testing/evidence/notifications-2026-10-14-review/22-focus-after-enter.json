@@ -1,0 +1,18 @@
+{
+  "firstCards": [
+    {
+      "cls": "notification-card is-unread  importance-high",
+      "id": "1"
+    },
+    {
+      "cls": "notification-card is-unread  importance-medium",
+      "id": "3"
+    },
+    {
+      "cls": "notification-card is-unread  importance-medium",
+      "id": "4"
+    }
+  ],
+  "focus": "BODY",
+  "focusId": ""
+}

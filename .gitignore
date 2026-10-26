@@ -24,6 +24,8 @@ tasks_all.json
 !.env.*.example
 .venv/
 .venv-prioritiser/
+.venv-assistant-v2/
+.venv-agent-v2/
 .runtime/
 .pytest_cache/
 .test-tmp-agent/
@@ -31,6 +33,7 @@ tasks_all.json
 .tmp_pytest/
 node_modules/
 test-results/
+test-results-*/
 playwright-report/
 graphify-out/
 *.db.bak*

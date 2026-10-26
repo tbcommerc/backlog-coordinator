@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, EmailStr, Field, field_validator, model_validator
 from typing import Optional, List, Dict, Any, ClassVar, Literal
 from datetime import datetime, date
 from urllib.parse import urlsplit
@@ -26,11 +26,15 @@ def _validate_external_url_list(values: Optional[List[str]]) -> Optional[List[st
 # ==================== AUTH ====================
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    model_config = {"extra": "forbid"}
+    login: str = Field(min_length=1, max_length=254)
     password: str = Field(min_length=1, max_length=128)
 
 
 class TokenResponse(BaseModel):
+    session_expires_at: Optional[datetime] = None
+    last_activity_at: Optional[datetime] = None
+    idle_timeout_seconds: Optional[int] = None
     access_token: str
     token_type: str = "bearer"
     expires_in: int
@@ -40,8 +44,8 @@ class TokenResponse(BaseModel):
 # ==================== USER ====================
 
 class UserBase(BaseModel):
-    login: Optional[str] = Field(None, max_length=50)
-    email: EmailStr
+    login: Optional[str] = Field(None, max_length=254)
+    email: Optional[str] = None
     name: str = Field(max_length=100)
     position: Optional[str] = Field(None, max_length=100)
     team_id: Optional[int] = None
@@ -51,15 +55,19 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str = Field(default="dmb2026", max_length=128)
+    model_config = {"extra": "forbid"}
+    login: str = Field(min_length=3, max_length=254)
+    reauth_token: str = Field(max_length=128)
     can_edit: bool = True
     can_delete: bool = False
     can_export: bool = True
 
 
 class UserUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+    reauth_token: str = Field(max_length=128)
     name: Optional[str] = Field(None, max_length=100)
-    login: Optional[str] = Field(None, max_length=50)
+    login: Optional[str] = Field(None, max_length=254)
     email: Optional[str] = None
     position: Optional[str] = Field(None, max_length=100)
     team_id: Optional[int] = None
@@ -72,6 +80,9 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(UserBase):
+    login: Optional[str] = Field(None, validation_alias=AliasChoices("login_normalized", "login"))
+    credential_state: str = "invited"
+    password_changed_at: Optional[datetime] = None
     id: int
     last_login: Optional[datetime] = None
     created_at: datetime
@@ -167,6 +178,8 @@ class RoleCreate(RoleBase):
 
 
 class RoleUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+    reauth_token: str = Field(max_length=128)
     name: Optional[str] = Field(None, max_length=50)
     status: Optional[str] = Field(None, max_length=20)
     description: Optional[str] = Field(None, max_length=2000)
@@ -453,8 +466,25 @@ class PrioritiserTaskUpdate(TaskUpdate):
 
 
 class PipDecisionRequest(BaseModel):
-    decision: Literal["reject", "accept"]
+    decision: Literal["reject", "accept", "rework"]
     version: int = Field(ge=0)
+    reason: Optional[str] = Field(None, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_reason(self):
+        self.reason = (self.reason or "").strip() or None
+        if self.decision in {"reject", "rework"} and not self.reason:
+            raise ValueError("Укажите причину возврата или отклонения задачи")
+        return self
+
+
+class PipDecisionContext(BaseModel):
+    """Latest structured PI decision exposed for cross-stage navigation."""
+
+    decision: Literal["reject", "accept", "rework"]
+    reason: Optional[str] = None
+    decided_at: Optional[datetime] = None
+    decided_by_name: Optional[str] = None
 
 
 class TaskResponse(TaskBase):
@@ -489,6 +519,7 @@ class TaskResponse(TaskBase):
     business_customer_name: Optional[str] = None
     did_demo: bool = False
     tags: Optional[List['TagResponse']] = None
+    latest_pip_decision: Optional[PipDecisionContext] = None
 
     class Config:
         from_attributes = True
@@ -510,6 +541,16 @@ class CustomerTaskResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CustomerTaskListResponse(BaseModel):
+    """Paginated list whose items are restricted to the customer projection."""
+
+    items: List[CustomerTaskResponse]
+    total: int
+    page: int
+    per_page: int
+    pages: int
 
 
 class TaskListResponse(BaseModel):
@@ -581,12 +622,55 @@ class TaskLinkUpdate(BaseModel):
         return _validate_external_url(v)
 
 
+class BulkTaskFields(TaskUpdate):
+    """Reuse single-task constraints before any bulk preview or mutation."""
+    model_config = {'extra': 'forbid', 'allow_inf_nan': False}
+    version: int = 0
+    tags_add: List[str] = Field(default_factory=list, max_length=50)
+    tags_remove: List[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator('progress', mode='before')
+    @classmethod
+    def _bulk_progress(cls, value):
+        if value is None or isinstance(value, bool):
+            raise ValueError('Прогресс должен быть целым числом от 0 до 100')
+        try:
+            number = float(value)
+        except (ValueError, TypeError):
+            raise ValueError('Прогресс должен быть целым числом от 0 до 100')
+        if not number.is_integer() or not 0 <= number <= 100:
+            raise ValueError('Прогресс должен быть целым числом от 0 до 100')
+        return value
+
+    @field_validator('tags_add', 'tags_remove')
+    @classmethod
+    def _bulk_tags(cls, values):
+        if any(len(value.strip()) > 100 for value in values):
+            raise ValueError('Название тега не должно превышать 100 символов')
+        return values
+
+
 class BulkActionRequest(BaseModel):
     action: str = Field(max_length=50)
     task_ids: List[int] = Field(min_length=1)
     versions: Dict[int, int] = Field(default_factory=dict)
     fields: Optional[Dict[str, Any]] = None
     updates: Optional[Dict[str, Any]] = None  # deprecated, use fields instead
+
+    @model_validator(mode='after')
+    def _validate_bulk_fields(self):
+        if self.action == 'update':
+            if self.fields is not None and self.updates is not None:
+                raise ValueError('Передайте только fields или updates')
+            raw = self.fields if self.fields is not None else self.updates or {}
+            normalized = BulkTaskFields.model_validate(raw).model_dump(
+                exclude_unset=True, exclude={'version'}, mode='python')
+            # Keep unsupported names visible to the router allowlist.
+            if 'version' in raw:
+                normalized['version'] = raw['version']
+            self.fields = normalized
+            self.updates = None
+        return self
 
 
 class TaskHistoryResponse(BaseModel):
@@ -668,7 +752,8 @@ class ReportResponse(ReportBase):
 # ==================== NOTIFICATION ====================
 
 class NotificationTargetResponse(BaseModel):
-    kind: Literal["task", "task_discussion", "task_reporting", "reporting_statuses", "request", "inbox"]
+    work_task_id: Optional[int] = None
+    kind: Literal["work", "task", "task_discussion", "task_reporting", "reporting_statuses", "quarterly_goals_update", "request", "inbox", "meeting_capture"]
     url: str
     task_id: Optional[int] = None
     tab: Optional[Literal["com", "rep"]] = None
@@ -695,6 +780,8 @@ class NotificationResponse(BaseModel):
     read_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
     target: Optional[NotificationTargetResponse] = None
+    deadline: Optional[date] = None
+    days_remaining: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -733,7 +820,7 @@ class NotificationUxEventRequest(BaseModel):
         "notification_realtime_lag_detected",
     ]
     surface: Literal["center", "bell", "dashboard", "toast"]
-    category: Optional[Literal["assignment", "reporting", "mention", "comment", "request"]] = None
+    category: Optional[Literal["assignment", "reporting", "mention", "comment", "request", "meeting_capture"]] = None
     state: Optional[Literal["unread", "read", "resolved"]] = None
     duration_ms: Optional[int] = Field(None, ge=0, le=300_000)
 
@@ -1380,6 +1467,29 @@ class TaskVersionsRequest(BaseModel):
     versions: Dict[int, int]
 
 
+class QuickEstimateBlocker(BaseModel):
+    code: Literal["missing_decomposition", "missing_effort", "invalid_effort"]
+    entity_type: Literal["task", "epic", "story"]
+    entity_id: int
+    entity_title: str
+    message: str
+
+
+class QuickEstimateBlockingTask(BaseModel):
+    task_id: int
+    public_id: Optional[str] = None
+    title: str
+    blockers: List[QuickEstimateBlocker] = Field(default_factory=list)
+
+
+class QuickEstimateReadiness(BaseModel):
+    ready: bool
+    total_tasks: int
+    ready_tasks: int
+    total_blockers: int
+    blocking_tasks: List[QuickEstimateBlockingTask] = Field(default_factory=list)
+
+
 class QuickEstimateTaskResponse(TaskResponse):
     """Task with nested epics and stories for the quick estimate page"""
     epics: List[EpicResponse] = []
@@ -1391,6 +1501,7 @@ class QuickEstimateTaskResponse(TaskResponse):
 class QuickEstimateResponse(BaseModel):
     tasks: List[QuickEstimateTaskResponse]
     total: int
+    readiness: QuickEstimateReadiness
 
 
 # ==================== TIMELINE ====================

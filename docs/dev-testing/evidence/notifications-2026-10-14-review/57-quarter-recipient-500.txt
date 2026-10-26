@@ -1,0 +1,125 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Мои уведомления
+  - button "Открыть поиск":
+  - 'button "Уведомления: не удалось обновить данные"':
+    - generic: "!"
+  - button "Переключить тему":
+  - button:
+    - generic: ДФ
+- main:
+  - heading "Мои уведомления" [level=1]
+  - paragraph: Назначения, отчётные статусы и обсуждения команды
+  - generic "Сводка уведомлений":
+    - strong: —
+    - text: требуют действия
+    - strong: —
+    - text: непрочитанных
+    - strong: —
+    - text: сегодня
+  - link "Настроить":
+    - /url: "#/settings?section=notifications"
+    - text: Настроить
+  - button "Прочитать все":
+    - generic: Прочитать все
+  - generic "Фильтры уведомлений":
+    - group "Состояние":
+      - generic: Состояние
+      - button "Все" [pressed]:
+        - generic: Все
+      - button "Требуют действия":
+        - generic: Требуют действия
+      - button "Непрочитанные":
+        - generic: Непрочитанные
+      - button "Закрытые":
+        - generic: Закрытые
+    - button "Сбросить" [disabled]:
+      - generic: Сбросить
+    - group "Категория":
+      - generic: Категория
+      - button "Назначения":
+        - generic: Назначения
+      - button "Встречи":
+        - generic: Встречи
+      - button "Упоминания":
+        - generic: Упоминания
+      - button "Комментарии":
+        - generic: Комментарии
+      - button "Запросы":
+        - generic: Запросы
+    - group "Приоритет":
+      - generic: Приоритет
+      - button "Высокий":
+        - generic: Высокий
+      - button "Обычный":
+        - generic: Обычный
+      - button "Информационный":
+        - generic: Информационный
+  - region "Уведомления":
+    - heading "Уведомления" [level=2]
+    - status: Загрузка…
+    - list:
+      - alert:
+        - heading "Не удалось загрузить данные" [level=3]
+        - paragraph: HTTP 500
+        - button "Повторить":
+          - generic: Повторить

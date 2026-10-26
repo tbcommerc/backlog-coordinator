@@ -1,0 +1,155 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - generic: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Контроль исполнения":
+      - /url: "#/work-reports"
+      - generic: Контроль исполнения
+    - link "Структура работ проекта":
+      - /url: "#/work-projects"
+      - generic: Структура работ проекта
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link "Настройки":
+      - /url: "#/settings"
+      - generic: Настройки
+    - link "Управление отчётными встречами":
+      - /url: "#/reporting-meetings"
+      - generic: Отчётные встречи
+    - link "Администрирование":
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+    - link "Ошибки доставки событий":
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Администрирование
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button "Q.admin":
+    - generic: QA
+    - generic: Q.admin
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - generic: Структура
+    - tab "Команды":
+      - generic: Команды
+    - tab "Проекты":
+      - generic: Проекты
+    - tab "Бизнес-заказчики":
+      - generic: Бизнес-заказчики
+    - generic: Доступы
+    - tab "Пользователи":
+      - generic: Пользователи
+    - tab "Роли":
+      - generic: Роли
+    - generic: Настройки
+    - tab "Справочники":
+      - generic: Справочники
+    - tab "Отображение":
+      - generic: Отображение
+    - generic: Инструменты
+    - tab "Таймлайн" [active] [selected]:
+      - generic: Таймлайн
+    - tab "Отчёты":
+      - generic: Отчёты
+    - generic: Контроль
+    - tab "Журнал действий":
+      - generic: Журнал действий
+  - tabpanel "Таймлайн":
+    - heading "События таймлайна" [level=2]
+    - button "Добавить событие":
+      - generic: Добавить событие
+    - table:
+      - rowgroup:
+        - row "Дата Название Описание Повторение Уровень Действия":
+          - columnheader "Дата"
+          - columnheader "Название"
+          - columnheader "Описание"
+          - columnheader "Повторение"
+          - columnheader "Уровень"
+          - columnheader "Действия"
+      - rowgroup:
+        - row "21 сентября 2026 PIP — Нет Все уровни Редактировать событие Удалить событие":
+          - cell "21 сентября 2026"
+          - cell "PIP": PIP
+          - cell "—"
+          - cell "Нет"
+          - cell "Все уровни"
+          - cell "Редактировать событие Удалить событие":
+            - button "Редактировать событие":
+            - button "Удалить событие":
+        - row "14 декабря 2026 Стратсессия DMB — Нет Все уровни Редактировать событие Удалить событие":
+          - cell "14 декабря 2026"
+          - cell "Стратсессия DMB": Стратсессия DMB
+          - cell "—"
+          - cell "Нет"
+          - cell "Все уровни"
+          - cell "Редактировать событие Удалить событие":
+            - button "Редактировать событие":
+            - button "Удалить событие":

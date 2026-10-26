@@ -1,3 +1,4 @@
+import { bindActionMenu } from '../ui/actionMenu.js';
 /**
  * DMB AI Business Analyst Assistant - chat widget.
  * Multi-turn dialogue that collects a business requirement and, after
@@ -133,17 +134,17 @@ export function renderAgentChat(app) {
                 </div>
               </div>
               <div class="chat-header-actions">
-                ${focusMode ? `<button class="btn btn-secondary btn-sm chat-history-drawer-toggle" id="chat-history-drawer-toggle" type="button" aria-label="Открыть историю требований" aria-expanded="false"><i data-lucide="history" style="width:14px;height:14px;"></i></button>` : ''}
+                ${focusMode ? `<button class="square-icon btn btn-secondary btn-sm chat-history-drawer-toggle" id="chat-history-drawer-toggle" type="button" aria-label="Открыть историю требований" aria-expanded="false"><i data-lucide="history"></i></button>` : ''}
                 <div class="chat-session-identity" id="chat-session-identity" hidden>
                   <span class="chat-session-identity-label">ID диалога</span>
                   <code id="chat-session-id">—</code>
-                  <button type="button" id="chat-session-copy" aria-label="Скопировать ID диалога" title="Скопировать ID диалога">
+                  <button class="btn btn-ghost btn-sm square-icon ui-btn" type="button" id="chat-session-copy" aria-label="Скопировать ID диалога" title="Скопировать ID диалога">
                     <i data-lucide="copy"></i>
                   </button>
                 </div>
-                <button class="btn btn-secondary btn-sm" id="agent-chat-clear-btn" aria-label="Создать новое требование" title="Новое требование">
-                  <i data-lucide="file-plus-2" style="width:14px;height:14px;"></i>
-                  <span>Новое требование</span>
+                <button class="btn btn-secondary btn-sm ui-btn ui-responsive-icon" id="agent-chat-clear-btn" aria-label="Создать новое требование" title="Новое требование">
+                  <i data-lucide="file-plus-2"></i>
+                  <span class="ui-responsive-icon-label">Новое требование</span>
                 </button>
               </div>
             </div>
@@ -157,7 +158,7 @@ export function renderAgentChat(app) {
               ${renderChatRestoringState()}
             </div>
             <div class="sr-only" id="chat-live-announcer" aria-live="polite" aria-atomic="true"></div>
-            <button class="chat-scroll-latest" id="chat-scroll-latest" type="button" hidden>
+            <button class="btn btn-secondary btn-sm ui-btn chat-scroll-latest" id="chat-scroll-latest" type="button" hidden>
               <span id="chat-scroll-latest-label">К последним сообщениям</span>
               <i data-lucide="arrow-down" aria-hidden="true"></i>
             </button>
@@ -175,14 +176,14 @@ export function renderAgentChat(app) {
                 <label class="sr-only" for="agent-chat-input">Ответ ассистенту</label>
                 <textarea
                   id="agent-chat-input"
-                  class="chat-input"
+                  class="input ui-control chat-input"
                   placeholder="Опишите проблему или доработку..."
                   rows="1"
                   maxlength="4000"
                   aria-describedby="chat-input-hint chat-input-count"
                 ></textarea>
-                <button class="btn btn-primary chat-send-btn" id="agent-chat-send-btn" aria-label="Отправить сообщение" disabled>
-                  <i data-lucide="send" style="width:16px;height:16px;" aria-hidden="true"></i>
+                <button class="square-icon btn btn-primary chat-send-btn" id="agent-chat-send-btn" aria-label="Отправить сообщение" disabled>
+                  <i data-lucide="send" aria-hidden="true"></i>
                 </button>
               </div>
               <div class="chat-input-meta">
@@ -195,8 +196,8 @@ export function renderAgentChat(app) {
         </div>
 
         <div class="chat-mobile-tabs" role="tablist" aria-label="Режим страницы">
-          <button class="chat-mobile-tab active" id="chat-dialog-tab" data-chat-view="dialog" role="tab" aria-controls="chat-dialog-pane" aria-selected="true" tabindex="0">Диалог</button>
-          <button class="chat-mobile-tab" id="chat-requirement-tab" data-chat-view="requirement" role="tab" aria-controls="chat-requirement-pane" aria-selected="false" tabindex="-1">Требование <span class="requirement-tab-count"></span></button>
+          <button class="btn btn-secondary btn-sm ui-btn chat-mobile-tab active" id="chat-dialog-tab" data-chat-view="dialog" role="tab" aria-controls="chat-dialog-pane" aria-selected="true" tabindex="0">Диалог</button>
+          <button class="btn btn-secondary btn-sm ui-btn chat-mobile-tab" id="chat-requirement-tab" data-chat-view="requirement" role="tab" aria-controls="chat-requirement-pane" aria-selected="false" tabindex="-1">Требование <span class="requirement-tab-count"></span></button>
         </div>
 
         <aside class="chat-sidebar" id="chat-requirement-pane" role="tabpanel" aria-labelledby="chat-requirement-tab">
@@ -243,12 +244,12 @@ function renderSessionHistory(persistent = false) {
   return `
           <div class="chat-sessions-card${persistent ? ' chat-history-panel' : ''}">
             ${persistent ? `
-            <button class="chat-sessions-header chat-sessions-header--static" id="chat-history-collapse" type="button" aria-expanded="true" aria-label="Свернуть историю требований">
+            <button class="ui-surface-action chat-sessions-header chat-sessions-header--static" id="chat-history-collapse" type="button" aria-expanded="true" aria-label="Свернуть историю требований">
               <i data-lucide="history" style="width:16px;height:16px;color:var(--primary);"></i>
               <span id="chat-sessions-title">История требований</span>
               <i class="chat-sessions-chevron" data-lucide="panel-left-close"></i>
             </button>` : `
-            <button class="chat-sessions-header" id="chat-sessions-toggle" type="button" aria-expanded="false" aria-controls="chat-sessions-popover">
+            <button class="ui-surface-action chat-sessions-header" id="chat-sessions-toggle" type="button" aria-expanded="false" aria-controls="chat-sessions-popover">
               <i data-lucide="history" style="width:16px;height:16px;color:var(--primary);"></i>
               <span id="chat-sessions-title">История требований</span>
               <i class="chat-sessions-chevron" data-lucide="chevron-down"></i>
@@ -256,30 +257,30 @@ function renderSessionHistory(persistent = false) {
             <div class="chat-sessions-popover" id="chat-sessions-popover"${persistent ? '' : ' hidden'}>
               <div class="chat-sessions-popover-head">
                 <strong>История требований</strong>
-                <button type="button" class="chat-sessions-close" id="chat-sessions-close" aria-label="Закрыть историю">
+                <button type="button" class="btn btn-ghost btn-sm square-icon ui-btn chat-sessions-close" id="chat-sessions-close" aria-label="Закрыть историю">
                   <i data-lucide="x"></i>
                 </button>
               </div>
               <div class="chat-sessions-tabs" role="tablist" aria-label="Фильтр истории">
-                <button class="chat-sessions-tab active" id="chat-sessions-tab-active" data-session-mode="active" role="tab" aria-controls="chat-sessions-list" aria-selected="true" tabindex="0"><span>Активные</span><span class="chat-sessions-tab-count" data-session-mode-count="active"></span></button>
-                <button class="chat-sessions-tab" id="chat-sessions-tab-archive" data-session-mode="archive" role="tab" aria-controls="chat-sessions-list" aria-selected="false" tabindex="-1"><span>Архив</span><span class="chat-sessions-tab-count" data-session-mode-count="archive"></span></button>
+                <button class="btn btn-secondary btn-sm ui-btn chat-sessions-tab active" id="chat-sessions-tab-active" data-session-mode="active" role="tab" aria-controls="chat-sessions-list" aria-selected="true" tabindex="0"><span>Активные</span><span class="chat-sessions-tab-count" data-session-mode-count="active"></span></button>
+                <button class="btn btn-secondary btn-sm ui-btn chat-sessions-tab" id="chat-sessions-tab-archive" data-session-mode="archive" role="tab" aria-controls="chat-sessions-list" aria-selected="false" tabindex="-1"><span>Архив</span><span class="chat-sessions-tab-count" data-session-mode-count="archive"></span></button>
               </div>
               <div class="chat-sessions-tools">
                 <label class="chat-sessions-search">
                   <i data-lucide="search" aria-hidden="true"></i>
                   <span class="sr-only">Поиск по истории требований</span>
-                  <input id="chat-sessions-search" type="search" placeholder="Найти требование…" autocomplete="off">
+                  <input class="input ui-control" id="chat-sessions-search" type="search" placeholder="Найти требование…" autocomplete="off">
                 </label>
                 <div class="chat-sessions-filters" role="group" aria-label="Статус требования">
-                  <button type="button" class="active" data-session-filter="all" aria-pressed="true"><span>Все</span><span data-session-filter-count="all"></span></button>
-                  <button type="button" data-session-filter="action" aria-pressed="false"><span>Нужен ответ</span><span data-session-filter-count="action"></span></button>
-                  <button type="button" data-session-filter="draft" aria-pressed="false"><span>Черновики</span><span data-session-filter-count="draft"></span></button>
-                  <button type="button" data-session-filter="sent" aria-pressed="false"><span>Отправленные</span><span data-session-filter-count="sent"></span></button>
+                  <button type="button" class="btn btn-secondary btn-sm ui-btn active" data-session-filter="all" aria-pressed="true"><span>Все</span><span data-session-filter-count="all"></span></button>
+                  <button class="btn btn-secondary btn-sm ui-btn" type="button" data-session-filter="action" aria-pressed="false"><span>Нужен ответ</span><span data-session-filter-count="action"></span></button>
+                  <button class="btn btn-secondary btn-sm ui-btn" type="button" data-session-filter="draft" aria-pressed="false"><span>Черновики</span><span data-session-filter-count="draft"></span></button>
+                  <button class="btn btn-secondary btn-sm ui-btn" type="button" data-session-filter="sent" aria-pressed="false"><span>Отправленные</span><span data-session-filter-count="sent"></span></button>
                 </div>
               </div>
               <div class="chat-sessions-notice" id="chat-sessions-notice" role="status" hidden></div>
               <div class="chat-sessions-list" id="chat-sessions-list" role="tabpanel" aria-labelledby="chat-sessions-tab-active">
-                <div class="chat-sessions-empty">Загрузка...</div>
+                <div class="chat-sessions-empty content-loading-state">Загрузка…</div>
               </div>
             </div>
           </div>
@@ -298,15 +299,15 @@ function renderAgentWelcome(userName) {
       </div>
       <div class="chat-welcome-starters" aria-label="Примеры начала требования">
         <div class="chat-welcome-starters-title">Можно начать с примера</div>
-        <button type="button" data-starter-prompt="Сейчас процесс выполняется вручную и занимает много времени. Хотим автоматизировать основные шаги, сократить ошибки и видеть результат выполнения.">
+        <button class="ui-surface-action" type="button" data-starter-prompt="Сейчас процесс выполняется вручную и занимает много времени. Хотим автоматизировать основные шаги, сократить ошибки и видеть результат выполнения.">
           <i data-lucide="workflow" aria-hidden="true"></i>
           <span><strong>Автоматизировать процесс</strong><small>Описать текущий и желаемый сценарий</small></span>
         </button>
-        <button type="button" data-starter-prompt="В системе возникает ошибка, из-за которой пользователь не может завершить операцию. Нужно исправить поведение, показать понятную причину и дать безопасно повторить действие.">
+        <button class="ui-surface-action" type="button" data-starter-prompt="В системе возникает ошибка, из-за которой пользователь не может завершить операцию. Нужно исправить поведение, показать понятную причину и дать безопасно повторить действие.">
           <i data-lucide="alert-circle" aria-hidden="true"></i>
           <span><strong>Исправить проблему</strong><small>Описать ошибку и ожидаемый результат</small></span>
         </button>
-        <button type="button" data-starter-prompt="Нужно изменить интерфейс для рабочей роли: добавить понятное действие и отображать актуальный статус. Доступность действия должна учитывать права пользователя и состояние процесса.">
+        <button class="ui-surface-action" type="button" data-starter-prompt="Нужно изменить интерфейс для рабочей роли: добавить понятное действие и отображать актуальный статус. Доступность действия должна учитывать права пользователя и состояние процесса.">
           <i data-lucide="layout-dashboard" aria-hidden="true"></i>
           <span><strong>Изменить интерфейс</strong><small>Указать роль, действие и ограничения</small></span>
         </button>
@@ -317,7 +318,7 @@ function renderAgentWelcome(userName) {
 }
 
 function renderChatRestoringState() {
-  return `<div class="chat-resume-loading" role="status">
+  return `<div class="chat-resume-loading content-loading-state" role="status">
     <span class="spinner" aria-hidden="true"></span>
     <div><strong>Восстанавливаем диалог…</strong><span>Проверяем последнюю сессию и черновик требования.</span></div>
   </div>`;
@@ -486,7 +487,7 @@ export async function initAgentChat(app) {
     if (container) container.innerHTML = '';
     const notice = addMessage('bot', `Не удалось восстановить диалог: ${formatAgentError(error)} История не удалена. Повторите загрузку страницы или откройте диалог из истории.`, { error: true });
     const retry = document.createElement('button');
-    retry.className = 'chat-retry-btn';
+    retry.className = 'btn btn-secondary btn-sm ui-btn chat-retry-btn';
     retry.textContent = 'Повторить загрузку';
     retry.addEventListener('click', () => window.location.reload());
     notice?.querySelector('.chat-message-body')?.appendChild(retry);
@@ -565,18 +566,18 @@ function renderSessions(app) {
       const stage = s.request_status ? status.label : (PHASE_LABELS[s.phase] || status.label);
       return `
       <div class="chat-session-row${s.active ? ' active' : ''}">
-        <button class="chat-session-item" data-session-id="${escapeHtml(s.session_id)}" aria-keyshortcuts="ArrowUp ArrowDown ArrowRight" title="${escapeHtml(sessionTitle)}"${s.active ? ' aria-current="true"' : ''}>
+        <button class="ui-surface-action chat-session-item" data-session-id="${escapeHtml(s.session_id)}" aria-keyshortcuts="ArrowUp ArrowDown ArrowRight" title="${escapeHtml(sessionTitle)}"${s.active ? ' aria-current="true"' : ''}>
           <div class="chat-session-title">${escapeHtml(sessionTitle)}</div>
           <div class="chat-session-meta"><span class="chat-session-state ${status.className}">${escapeHtml(status.label)}</span>${time ? `<time>${escapeHtml(time)}</time>` : ''}</div>
           <div class="chat-session-reference">${getLockedRequestId(s) ? 'Открыть диалог отправленного запроса' : 'Продолжить подготовку'} · ${escapeHtml(requestMeta)}</div>
         </button>
-        <button class="chat-session-menu-toggle" tabindex="-1" data-session-menu="${escapeHtml(s.session_id)}" aria-label="Действия с требованием «${escapeHtml(sessionTitle)}»" aria-expanded="false" aria-controls="chat-session-menu-${escapeHtml(s.session_id)}">
+        <button class="btn btn-ghost btn-sm square-icon ui-btn chat-session-menu-toggle" tabindex="-1" data-session-menu="${escapeHtml(s.session_id)}" aria-label="Действия с требованием «${escapeHtml(sessionTitle)}»" aria-expanded="false" aria-controls="chat-session-menu-${escapeHtml(s.session_id)}">
           <i data-lucide="more-horizontal" aria-hidden="true"></i>
         </button>
         <div class="chat-session-menu" id="chat-session-menu-${escapeHtml(s.session_id)}" data-session-menu-panel="${escapeHtml(s.session_id)}" hidden>
           ${s.request_id ? `<a href="#/customer/request/${encodeURIComponent(s.request_id)}">Открыть запрос #${escapeHtml(s.request_id)}</a>` : ''}
-          <button type="button" data-copy-session="${escapeHtml(s.session_id)}"><i data-lucide="copy" aria-hidden="true"></i>Копировать ID</button>
-          <button type="button" data-archive-session="${escapeHtml(s.session_id)}" data-archived="${s.archived ? 'true' : 'false'}"><i data-lucide="${s.archived ? 'archive-restore' : 'archive'}" aria-hidden="true"></i>${s.archived ? 'Вернуть из архива' : 'Переместить в архив'}</button>
+          <button class="btn btn-secondary btn-sm ui-btn" type="button" data-copy-session="${escapeHtml(s.session_id)}"><i data-lucide="copy" aria-hidden="true"></i>Копировать ID</button>
+          <button class="btn btn-secondary btn-sm ui-btn" type="button" data-archive-session="${escapeHtml(s.session_id)}" data-archived="${s.archived ? 'true' : 'false'}"><i data-lucide="${s.archived ? 'archive-restore' : 'archive'}" aria-hidden="true"></i>${s.archived ? 'Вернуть из архива' : 'Переместить в архив'}</button>
         </div>
       </div>
     `}).join('');
@@ -598,24 +599,10 @@ function renderSessions(app) {
       btn.addEventListener('click', () => setSessionArchived(app, btn.dataset.archiveSession, btn.dataset.archived !== 'true'));
     });
     list.querySelectorAll('[data-copy-session]').forEach(btn => btn.addEventListener('click', () => copySessionId(btn.dataset.copySession)));
-    list.querySelectorAll('[data-session-menu]').forEach(btn => btn.addEventListener('click', event => {
-      event.stopPropagation();
-      const panel = list.querySelector(`[data-session-menu-panel="${CSS.escape(btn.dataset.sessionMenu)}"]`);
-      const open = panel?.hidden !== false;
-      list.querySelectorAll('[data-session-menu-panel]').forEach(item => { item.hidden = true; });
-      list.querySelectorAll('[data-session-menu]').forEach(item => item.setAttribute('aria-expanded', 'false'));
-      if (panel) panel.hidden = !open;
-      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) panel?.querySelector('button')?.focus();
-    }));
-    list.querySelectorAll('[data-session-menu-panel]').forEach(panel => panel.addEventListener('keydown', event => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      panel.hidden = true;
-      const toggle = list.querySelector(`[data-session-menu="${CSS.escape(panel.dataset.sessionMenuPanel)}"]`);
-      toggle?.setAttribute('aria-expanded', 'false');
-      toggle?.focus();
-    }));
+    list.querySelectorAll('[data-session-menu]').forEach(trigger => {
+      const panel = list.querySelector(`[data-session-menu-panel="${CSS.escape(trigger.dataset.sessionMenu)}"]`);
+      if (panel) bindActionMenu({ trigger, panel, label: 'Действия с требованием' });
+    });
     if (window.lucide) window.lucide.createIcons();
 }
 
@@ -752,7 +739,7 @@ function showSessionsNotice(message, actionLabel = '', action = null) {
   const notice = document.getElementById('chat-sessions-notice');
   if (!notice) return;
   notice.hidden = false;
-  notice.innerHTML = `<span>${escapeHtml(message)}</span>${actionLabel ? `<button type="button">${escapeHtml(actionLabel)}</button>` : ''}`;
+  notice.innerHTML = `<span>${escapeHtml(message)}</span>${actionLabel ? `<button class="btn btn-secondary btn-sm ui-btn" type="button">${escapeHtml(actionLabel)}</button>` : ''}`;
   notice.querySelector('button')?.addEventListener('click', action);
   window.setTimeout(() => { if (notice.textContent.includes(message)) notice.hidden = true; }, 6000);
 }
@@ -1076,7 +1063,7 @@ function beginStreamingReply(onCancel) {
       <div class="chat-message-content"></div>
       <div class="chat-stream-controls">
         <span><i data-lucide="sparkles" aria-hidden="true"></i> Ответ поступает</span>
-        <button type="button" class="chat-stop-waiting">Остановить</button>
+        <button type="button" class="btn btn-secondary btn-sm ui-btn chat-stop-waiting">Остановить</button>
       </div>
     </div>
   `;
@@ -1393,7 +1380,7 @@ function updateProgressPanel(progress, quality = {}) {
     const color = p.needs_review ? 'var(--warning)' : (p.filled ? 'var(--success)' : (p.skipped ? 'var(--text-muted)' : 'var(--text-secondary)'));
     const suffix = p.needs_review ? ' — требуется проверка' : '';
     return `
-      <button type="button" class="chat-progress-item" data-progress-slot="${escapeHtml(p.key || p.slot || '')}">
+      <button type="button" class="ui-surface-action chat-progress-item" data-progress-slot="${escapeHtml(p.key || p.slot || '')}">
         <i data-lucide="${icon}" style="width:14px;height:14px;color:${color};"></i>
         <span>${escapeHtml(p.label + suffix)}</span>
       </button>
@@ -1554,9 +1541,9 @@ export function renderCoreRequirementProgress() {
     </div>
     <div class="chat-core-progress-body">
       <strong class="chat-core-progress-title">Основа требования</strong>
-      <button type="button" id="chat-interview-progress-text" class="chat-core-progress-status" aria-live="polite" aria-atomic="true"></button>
+      <button type="button" id="chat-interview-progress-text" class="ui-surface-action chat-core-progress-status" aria-live="polite" aria-atomic="true"></button>
       <div class="chat-core-progress-fields" role="group" aria-label="Открыть основной атрибут">
-        ${CORE_PROGRESS_FIELDS.map(field => `<button type="button" class="chat-core-progress-field" data-core-progress-slot="${field.key}" data-core-field="${field.key}" data-state="empty"><span class="chat-core-field-symbol" aria-hidden="true">·</span><span>${field.label}</span><span class="sr-only" data-core-field-status></span></button>`).join('')}
+        ${CORE_PROGRESS_FIELDS.map(field => `<button type="button" class="ui-surface-action chat-core-progress-field" data-core-progress-slot="${field.key}" data-core-field="${field.key}" data-state="empty"><span class="chat-core-field-symbol" aria-hidden="true">·</span><span>${field.label}</span><span class="sr-only" data-core-field-status></span></button>`).join('')}
       </div>
     </div>
   </div>`;
@@ -1670,7 +1657,7 @@ function renderRequirementMapField(key, state = getRequirementFieldState(key)) {
   const displayValue = semanticValue || (required ? 'Нужно заполнить' : (state.key === 'skipped' ? 'Пропущено' : 'Не добавлено'));
   const valueMarkup = sentRequestId
     ? `<div class="requirement-map-value is-readonly" aria-label="Поле ${escapeHtml(SLOT_LABELS[key] || key)}, только чтение">${escapeHtml(displayValue)}</div>`
-    : `<button type="button" class="requirement-map-value" data-edit-slot="${escapeHtml(key)}" aria-label="Изменить поле ${escapeHtml(SLOT_LABELS[key] || key)}">${escapeHtml(displayValue)}</button>`;
+    : `<button type="button" class="ui-link requirement-map-value" data-edit-slot="${escapeHtml(key)}" aria-label="Изменить поле ${escapeHtml(SLOT_LABELS[key] || key)}">${escapeHtml(displayValue)}</button>`;
   return `<article class="requirement-map-field state-${escapeHtml(state.key)}${review ? ' needs-review' : ''}${filled ? '' : ' is-empty'}" data-slot-card="${escapeHtml(key)}">
     <div class="requirement-map-field-head">
       <span>${escapeHtml(SLOT_LABELS[key] || key)}</span>
@@ -1712,10 +1699,10 @@ function editRequirementField(slot) {
   const value = Array.isArray(raw) ? raw.join('; ') : (raw || '');
   card.classList.add('is-editing');
   card.innerHTML = `<label class="requirement-map-editor-label" for="requirement-edit-${escapeHtml(slot)}">${escapeHtml(SLOT_LABELS[slot] || slot)}</label>
-    <textarea id="requirement-edit-${escapeHtml(slot)}" class="requirement-map-editor" rows="3" maxlength="5000" placeholder="${escapeHtml(SLOT_PLACEHOLDERS[slot] || 'Введите значение…')}">${escapeHtml(value)}</textarea>
+    <textarea id="requirement-edit-${escapeHtml(slot)}" class="input ui-control requirement-map-editor" rows="3" maxlength="5000" placeholder="${escapeHtml(SLOT_PLACEHOLDERS[slot] || 'Введите значение…')}">${escapeHtml(value)}</textarea>
     <div class="requirement-map-editor-secondary">
-      <button type="button" data-slot-state="${escapeHtml(slot)}" data-state-value="Не знаю, нужно уточнить">Не знаю</button>
-      ${REQUIRED_SLOTS.has(slot) ? '' : `<button type="button" data-slot-state="${escapeHtml(slot)}" data-state-value="Не применимо">Не применимо</button>`}
+      <button class="btn btn-secondary btn-sm ui-btn" type="button" data-slot-state="${escapeHtml(slot)}" data-state-value="Не знаю, нужно уточнить">Не знаю</button>
+      ${REQUIRED_SLOTS.has(slot) ? '' : `<button class="btn btn-secondary btn-sm ui-btn" type="button" data-slot-state="${escapeHtml(slot)}" data-state-value="Не применимо">Не применимо</button>`}
     </div>
     <div class="requirement-map-editor-actions">
       <button type="button" class="btn btn-secondary btn-sm" data-cancel-slot="${escapeHtml(slot)}">Отмена</button>
@@ -1843,7 +1830,7 @@ function bindSidebarControls() {
   }, { signal });
 
   document.addEventListener('click', event => {
-    if (!event.target.closest('.chat-sessions-card') && !event.target.closest('#chat-history-drawer-toggle')) {
+    if (!event.target.closest('.chat-sessions-card, [data-session-menu-panel]') && !event.target.closest('#chat-history-drawer-toggle')) {
       closeHistoryPopover();
       closeHistoryDrawer();
     }
@@ -1969,11 +1956,11 @@ function showDraftPanel(draft, sessionId) {
 
   actions.innerHTML = `
     <button class="btn btn-primary btn-sm" data-draft-action="${blockingCount ? 'fix' : 'send_review'}" style="width:100%;">
-      <i data-lucide="send" style="width:14px;height:14px;"></i>
+      <i data-lucide="send"></i>
       ${blockingCount ? 'Уточнить требование' : (currentRequestContext.request_status === 'returned' ? 'Отправить исправления на ревью' : 'Отправить на ревью')}
     </button>
     <button class="btn btn-secondary btn-sm" data-draft-action="dialog" style="width:100%;margin-top:8px;">
-      <i data-lucide="message-circle" style="width:14px;height:14px;"></i>
+      <i data-lucide="message-circle"></i>
       Продолжить в диалоге
     </button>
   `;
@@ -2248,7 +2235,7 @@ async function showTeamSelectModal(sessionId, draft, triggerBtn) {
     <div class="modal chat-submit-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-submit-title" aria-describedby="chat-submit-description">
       <div class="modal-header">
         <div><span class="chat-dialog-eyebrow">Финальный шаг</span><h3 id="chat-submit-title">Проверка и отправка требования</h3></div>
-        <button type="button" class="modal-close" id="modal-close" aria-label="Закрыть окно отправки"><span aria-hidden="true">&times;</span></button>
+        <button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" id="modal-close" aria-label="Закрыть окно отправки"><span aria-hidden="true">&times;</span></button>
       </div>
       <div class="modal-body">
         <p class="text-muted" id="chat-submit-description">${resubmitting ? `Будет отправлена следующая версия запроса #${escapeHtml(currentRequestContext.request_id)}.` : `После отправки будет создан запрос «${escapeHtml(draft?.title || 'Требование')}».`} Его содержание останется доступно в истории.</p>
@@ -2481,7 +2468,7 @@ function showSectionEditModal(draft, initialField = '') {
   modal.className = 'modal-overlay';
   modal.innerHTML = `
     <div class="modal chat-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-edit-title" aria-describedby="chat-edit-description">
-      <div class="modal-header"><div><span class="chat-dialog-eyebrow">Редактирование черновика</span><h3 id="chat-edit-title">Изменить раздел требования</h3></div><button type="button" class="modal-close" aria-label="Закрыть редактирование"><span aria-hidden="true">&times;</span></button></div>
+      <div class="modal-header"><div><span class="chat-dialog-eyebrow">Редактирование черновика</span><h3 id="chat-edit-title">Изменить раздел требования</h3></div><button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" aria-label="Закрыть редактирование"><span aria-hidden="true">&times;</span></button></div>
       <div class="modal-body">
         <p class="text-muted" id="chat-edit-description">Изменение сохранится в текущем черновике. Перед отправкой его можно проверить ещё раз.</p>
         <label class="form-label" for="draft-edit-section">Раздел</label>
@@ -2689,10 +2676,10 @@ function addMessage(role, content, options = {}) {
           ${formatContent(normalizedContent)}
         </div>
         ${options.error || options.info || !normalizedContent ? '' : `<div class="chat-answer-actions" aria-label="Действия с ответом">
-          <button type="button" data-answer-copy aria-label="Скопировать ответ"><i data-lucide="copy" aria-hidden="true"></i><span>Копировать</span></button>
-          <button type="button" data-answer-feedback="helpful" aria-label="Ответ полезен" aria-pressed="false"><i data-lucide="thumbs-up" aria-hidden="true"></i></button>
-          <button type="button" data-answer-feedback="problem" aria-label="В ответе есть проблема" aria-pressed="false"><i data-lucide="thumbs-down" aria-hidden="true"></i></button>
-          <button type="button" data-answer-sources>Контекст</button>
+          <button class="btn btn-secondary btn-sm ui-btn" type="button" data-answer-copy aria-label="Скопировать ответ"><i data-lucide="copy" aria-hidden="true"></i><span>Копировать</span></button>
+          <button class="square-icon btn btn-secondary btn-sm ui-btn" type="button" data-answer-feedback="helpful" aria-label="Ответ полезен" aria-pressed="false"><i data-lucide="thumbs-up" aria-hidden="true"></i></button>
+          <button class="square-icon btn btn-secondary btn-sm ui-btn" type="button" data-answer-feedback="problem" aria-label="В ответе есть проблема" aria-pressed="false"><i data-lucide="thumbs-down" aria-hidden="true"></i></button>
+          <button class="btn btn-secondary btn-sm ui-btn" type="button" data-answer-sources>Контекст</button>
         </div>`}
       </div>
     `;
@@ -2847,7 +2834,7 @@ export function formatContent(content) {
       index += 1;
       const rows = [];
       while (index + 1 < lines.length && lines[index + 1].includes('|') && lines[index + 1].trim()) rows.push(splitRow(lines[++index]));
-      output.push(`<div class="chat-markdown-table-wrap"><table><thead><tr>${headers.map(cell => `<th>${formatInlineMarkdown(cell)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${headers.map((_, cellIndex) => `<td>${formatInlineMarkdown(row[cellIndex] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+      output.push(`<div class="chat-markdown-table-wrap"><table class="ui-table ui-table-prose"><thead><tr>${headers.map(cell => `<th>${formatInlineMarkdown(cell)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${headers.map((_, cellIndex) => `<td>${formatInlineMarkdown(row[cellIndex] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
       continue;
     }
     const unordered = line.match(/^\s*[-*]\s+(.+)$/);
@@ -2891,7 +2878,7 @@ function showTyping({ cancellable = false, onCancel = null } = {}) {
       <div class="chat-processing-row">
         <div class="chat-typing-dots" aria-hidden="true"><span></span><span></span><span></span></div>
         <span class="chat-processing-label" id="chat-processing-label">Ожидаем ответ…</span>
-        ${cancellable ? '<button type="button" class="chat-stop-waiting" id="chat-stop-waiting">Остановить ожидание</button>' : ''}
+        ${cancellable ? '<button type="button" class="btn btn-secondary btn-sm ui-btn chat-stop-waiting" id="chat-stop-waiting">Остановить ожидание</button>' : ''}
       </div>
     </div>
   `;

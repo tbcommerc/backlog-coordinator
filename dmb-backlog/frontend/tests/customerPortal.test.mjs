@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { renderCustomerPortal } from '../js/components/customerPortal.js';
+
+const markup = renderCustomerPortal();
 
 const portal = readFileSync(new URL('../js/components/customerPortal.js', import.meta.url), 'utf8');
 const presentation = readFileSync(new URL('../js/components/requestPresentation.js', import.meta.url), 'utf8');
@@ -7,11 +10,11 @@ const router = readFileSync(new URL('../js/router.js', import.meta.url), 'utf8')
 const sidebar = readFileSync(new URL('../js/components/sidebar.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../css/pages.css', import.meta.url), 'utf8');
 
-assert.match(portal, />Мои запросы<\/h1>/);
+assert.match(markup, />Мои запросы<\/h1>/);
 assert.match(portal, /class="review-queue-card customer-request-list request-list-panel animate-fade-in"/);
 assert.doesNotMatch(portal, /class="card review-queue-card customer-request-list/);
 assert.doesNotMatch(portal, /class="card-header customer-request-toolbar"/);
-assert.match(portal, /<h1 class="toolbar-title" id="customer-requests-title">Мои запросы<\/h1>/);
+assert.match(markup, /<h1 class="toolbar-title" id="customer-requests-title">Мои запросы<\/h1>/);
 assert.doesNotMatch(portal, /customer-requests-count|customer-requests-updated|lastLoadedAt|Обновлено/);
 assert.doesNotMatch(portal, /class="page-header customer-request-header animate-fade-in"/);
 assert.doesNotMatch(portal, /<h[12]>Мои задачи<\/h[12]>/);
@@ -42,7 +45,9 @@ assert.match(portal, /function reliableDate\(item\)/);
 assert.doesNotMatch(portal, /item\.draft\?\.expected_date/);
 assert.match(portal, /role="progressbar"/);
 assert.match(portal, /request-card-decision/);
-assert.match(portal, /app\.api\.get\('\/agent\/sessions'\)/);
+assert.match(portal, /\/customer\/queue\?/);
+assert.doesNotMatch(portal, /per_page=200|requestsResult|tasksResult|sessionsResult/);
+assert.match(markup, /aria-label="Страницы моих запросов"/);
 assert.match(portal, /data-draft-session/);
 assert.match(portal, /Продолжить черновик/);
 assert.match(portal, /app\.api\.post\('\/agent\/new-dialog'\)/);
@@ -55,11 +60,12 @@ assert.match(portal, /Название или номер запроса/);
 assert.match(portal, /id="customer-request-sort"/);
 assert.doesNotMatch(portal, /id="customer-request-filter"/);
 assert.match(portal, /class="filter-panel customer-request-filter-panel"/);
-assert.match(portal, /class="quick-filter-btn"/);
+assert.match(markup, /class="quick-filter-btn"/);
 assert.match(portal, /`#\/customer\/request\/\$\{escapeHtml\(item\.id\)\}`/);
 assert.match(css, /\.customer-request-controls\{display:flex;align-items:center;gap:8px;width:100%\}/);
 assert.match(css, /\.customer-request-quick-filters\{box-sizing:border-box;display:grid;grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
-assert.match(css, /\.customer-request-main-filters>\.input\{box-sizing:border-box;[^}]*height:32px;[^}]*padding:6px 32px 6px 10px/);
+assert.match(css, /\.customer-request-main-filters>\.input\{box-sizing:border-box;/);
+assert.doesNotMatch(css, /\.customer-request-main-filters>\.input\{[^}]*(?:height|padding|line-height):/);
 assert.match(css, /\.customer-request-filter-panel\{box-sizing:border-box;width:100%;max-width:100%;min-width:0/);
 assert.match(css, /\.customer-request-toolbar\{display:grid!important;grid-template-columns:minmax\(0,1fr\);justify-content:stretch!important;justify-items:stretch;gap:8px;width:100%;padding:0!important\}/);
 assert.match(css, /\.request-list-title-row\{width:100%;min-height:40px;flex-wrap:nowrap\}/);

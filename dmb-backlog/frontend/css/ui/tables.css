@@ -1,0 +1,61 @@
+.ui-table { width: 100%; border-collapse: collapse; }
+.ui-table th,
+.ui-table td { padding: var(--table-cell-padding-y) 12px; border-bottom: 1px solid var(--border-color); text-align: left; font-size: var(--text-control-sm); }
+.ui-table th { background: var(--bg-tertiary); color: var(--text-secondary); font-weight: var(--font-medium); }
+.ui-table-scroll { overflow-x: auto; }
+
+/* Shared UI contract. Page compatibility belongs in adapters.css. */
+:root .ui-table:is(.ui-table-data, .ui-table-admin, .ui-table-editor, .ui-table-prose) {
+  --ui-table-padding-y: var(--table-cell-padding-y);
+  --ui-table-padding-x: var(--space-3);
+  width: 100%;
+  border-spacing: 0;
+  color: var(--text-primary);
+  font-size: var(--text-control-sm);
+}
+:root .ui-table[data-ui-density="compact"],
+:root .ui-table.ui-table-editor {
+  --ui-table-padding-y: var(--space-1);
+  --ui-table-padding-x: var(--space-2);
+}
+:root .ui-table:is(.ui-table-data, .ui-table-admin, .ui-table-editor) > :is(thead, tbody, tfoot) > tr > :is(th, td) {
+  padding: var(--ui-table-padding-y) var(--ui-table-padding-x);
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--text-control-sm);
+  line-height: 1.4;
+  vertical-align: middle;
+}
+:root .ui-table:is(.ui-table-data, .ui-table-admin, .ui-table-editor) > thead > tr > th {
+  height: auto;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: var(--text-control-sm);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.25;
+}
+:root .ui-table:is(.ui-table-data, .ui-table-admin, .ui-table-editor) > tbody > tr:last-child > td { border-bottom: 0; }
+:root .ui-table:is(.ui-table-data, .ui-table-admin):not(.ui-table-matrix) > tbody > tr:not(.selected):hover > td { background-color: var(--bg-hover); }
+:root .ui-table :is(.table-sort-button, .did-sort) {
+  font-size: inherit; font-weight: inherit; line-height: inherit;
+  letter-spacing: inherit; text-transform: inherit;
+}
+:root .ui-table.ui-table-prose { border-collapse: collapse; }
+:root .ui-table.ui-table-prose > :is(thead, tbody) > tr > :is(th, td) {
+  padding: var(--ui-table-padding-y) var(--ui-table-padding-x);
+  border: 1px solid var(--border-color);
+  font-size: inherit; line-height: 1.5;
+}
+:root .ui-table.ui-table-prose > thead > tr > th { background: var(--bg-tertiary); color: var(--text-secondary); font-weight: var(--font-semibold); text-transform: none; }
+.ui-table-surface { border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-secondary); }
+:root .ui-table-editor[data-ui-layout="resource"] {
+  --ui-table-padding-y: calc(var(--space-1) - 1px);
+  --ui-table-padding-x: var(--space-1);
+}
+:root .ui-data-grid-head { padding: var(--table-cell-padding-y) var(--space-3); background: var(--bg-tertiary); color: var(--text-secondary); font-size: var(--text-control-sm); font-weight: var(--font-semibold); text-transform: uppercase; letter-spacing: .04em; line-height: 1.25; }
+:root .ui-table:is(.ui-table-data, .ui-table-admin) > thead > tr > th {
+  box-sizing: border-box;
+  height: max(var(--table-header-height), calc(max(var(--control-height-sm), var(--control-target-min)) + 2 * var(--space-1) + 1px));
+  padding: var(--space-1) var(--space-3);
+}

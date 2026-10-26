@@ -1,7 +1,14 @@
+import { auditActionLabel, auditEntityLabel, credentialLabel } from '../adminLabels.js';
+import { confirmCredentials, manageAccount } from './accountSecurity.js';
+import { showFieldError, clearFieldError } from '../uiFeedback.js';
+import { enhanceDialogOverlay } from '../modalAccessibility.js';
+import { button as uiButton, checkbox as uiCheckbox, control as uiControl, field as uiField, pageHeader as uiPageHeader, tab as uiTab, icon as uiIcon } from '../ui/primitives.js';
+import { setButtonBusy, tabNavigationTarget } from '../ui/controls.js';
+import { renderViewState } from './viewState.js';
 import { TASK_COLUMNS, buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
-import { renderDictionariesTab } from './adminDictionaries.js';
-import { acquireDictionaryLock, DICTIONARY_CONFIG, getDictionaryChanges, persistDictionaryItems, releaseDictionaryLock, renderDictionaryForm } from './adminDictionaries.js';
-import { executeAdminReport, getReportFields, getReportPayload, parseReportJson, renderFilterRow, renderReportForm, REPORT_GROUP_OPTIONS, scriptManagedReportKeys, updateReportFilterRow, validateReportForm } from './adminReports.js';
+import { renderDictionariesTab } from './adminDictionaries.js?v=3';
+import { acquireDictionaryLock, DICTIONARY_CONFIG, getDictionaryChanges, persistDictionaryItems, releaseDictionaryLock, renderDictionaryForm, renderDictionaryRow, renderDictionaryRowAction, renderCompetencyRateControl } from './adminDictionaries.js?v=3';
+import { executeAdminReport, getReportFields, getReportPayload, parseReportJson, renderFilterRow, renderReportForm, REPORT_GROUP_OPTIONS, scriptManagedReportKeys, updateReportFilterRow, validateReportForm } from './adminReports.js?v=9';
 
 function escapeHtml(str) {
     const div = document.createElement('div');
@@ -40,6 +47,7 @@ let currentDictVersion = 0;
 let adminLoadState = {};
 let adminModalReturnFocus = null;
 let adminModalKeyHandler = null;
+let closeDictionaryColorPalette = null;
 let competencyEditorReturnFocus = null;
 let adminFormInitialSnapshot = '';
 let adminFormSaving = false;
@@ -108,18 +116,21 @@ function paginateAdminItems(items, tab) {
 function renderAdminListTools(tab, total, filterOptions = [], filterLabel = 'Все') {
   const state = adminListState[tab];
   const hasCriteria = Boolean(state.search || state.filter);
-  return `<div class="admin-list-tools"><div class="admin-list-search"><i data-lucide="search" aria-hidden="true"></i><input class="input admin-list-search-input" data-list-tab="${tab}" value="${escapeHtmlAttribute(state.search)}" placeholder="Поиск" aria-label="Поиск"></div>${filterOptions.length ? `<select class="input admin-list-filter" data-list-tab="${tab}" aria-label="Фильтр"><option value="">${escapeHtml(filterLabel)}</option>${filterOptions.map(option => `<option value="${escapeHtmlAttribute(option.value)}"${String(state.filter) === String(option.value) ? ' selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select>` : ''}<span class="admin-list-count" role="status" aria-live="polite">Найдено: ${total}</span>${hasCriteria ? `<button type="button" class="btn btn-ghost btn-sm admin-list-reset" data-list-tab="${tab}">Сбросить фильтры</button>` : ''}</div>`;
+  const search = uiControl({ type: 'search', value: state.search, className: 'admin-list-search-input', attrs: { 'data-list-tab': tab, placeholder: 'Поиск', 'aria-label': 'Поиск' } });
+  const filter = filterOptions.length ? uiControl({ kind: 'select', value: state.filter, options: [{ value: '', label: filterLabel }, ...filterOptions], className: 'admin-list-filter', attrs: { 'data-list-tab': tab, 'aria-label': 'Фильтр' } }) : '';
+  return `<div class="admin-list-tools"><div class="admin-list-search">${uiIcon('search')}${search}</div>${filter}<span class="admin-list-count" role="status" aria-live="polite">Найдено: ${total}</span>${hasCriteria ? uiButton({ label: 'Сбросить фильтры', variant: 'ghost', size: 'small', className: 'admin-list-reset', attrs: { 'data-list-tab': tab } }) : ''}</div>`;
 }
 
 function renderAdminPagination(tab, page, pages, total, pageSize = ADMIN_PAGE_SIZE) {
   if (pages <= 1) return '';
-  return `<nav class="admin-pagination" aria-label="Страницы списка"><span>${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} из ${total}</span><div><button type="button" class="btn btn-ghost btn-sm admin-list-page" data-list-tab="${tab}" data-page="${page - 1}"${page === 1 ? ' disabled' : ''}>Назад</button><span>${page} / ${pages}</span><button type="button" class="btn btn-ghost btn-sm admin-list-page" data-list-tab="${tab}" data-page="${page + 1}"${page === pages ? ' disabled' : ''}>Далее</button></div></nav>`;
+  const action = (label, nextPage, disabled) => uiButton({ label, variant: 'ghost', size: 'small', className: 'admin-list-page', attrs: { 'data-list-tab': tab, 'data-page': nextPage, disabled } });
+  return `<nav class="admin-pagination" aria-label="Страницы списка"><span>${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} из ${total}</span><div>${action('Назад', page - 1, page === 1)}<span>${page} / ${pages}</span>${action('Далее', page + 1, page === pages)}</div></nav>`;
 }
 
 function adminFormSnapshot() {
   const form = document.getElementById('modal-form-body');
   if (!form) return '';
-  const controls = Array.from(form.querySelectorAll('input, select, textarea')).map(control => ({
+  const controls = Array.from(form.querySelectorAll('input, select, textarea')).filter(control => control.id !== 'dict-search').map(control => ({
     key: control.id || control.name || control.className,
     value: control.type === 'checkbox' || control.type === 'radio' ? control.checked : control.value,
   }));
@@ -133,31 +144,26 @@ function isAdminFormDirty() {
 
 function clearAdminFormErrors() {
   const overlay = document.getElementById('admin-modal-overlay');
+  overlay?.querySelectorAll('.admin-field-invalid').forEach(clearAdminFieldError);
   overlay?.querySelectorAll('.admin-field-error').forEach(error => error.remove());
-  overlay?.querySelectorAll('.admin-field-invalid').forEach(field => {
-    field.classList.remove('admin-field-invalid'); field.removeAttribute('aria-invalid'); field.removeAttribute('aria-describedby');
-  });
   const summary = document.getElementById('admin-form-error-summary');
   if (summary) { summary.hidden = true; summary.innerHTML = ''; }
 }
 
 function clearAdminFieldError(field) {
   if (!field?.classList.contains('admin-field-invalid')) return;
-  const describedBy = field.getAttribute('aria-describedby');
-  if (describedBy) document.getElementById(describedBy)?.remove();
-  field.classList.remove('admin-field-invalid'); field.removeAttribute('aria-invalid'); field.removeAttribute('aria-describedby');
+  const remaining = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => {
+    const node = document.getElementById(id);
+    if (node?.classList.contains('admin-field-error')) { node.remove(); return false; }
+    return Boolean(node);
+  });
+  field.classList.remove('admin-field-invalid'); field.removeAttribute('aria-invalid');
+  if (remaining.length) field.setAttribute('aria-describedby', remaining.join(' ')); else field.removeAttribute('aria-describedby');
 }
 
 function setAdminFormSaving(saving) {
   adminFormSaving = saving;
-  const button = document.querySelector('#admin-modal-overlay .modal-save-btn');
-  if (!button) return;
-  if (saving) {
-    button.dataset.originalText ||= button.textContent;
-    button.disabled = true; button.setAttribute('aria-busy', 'true'); button.textContent = 'Сохранение…';
-  } else {
-    button.disabled = false; button.removeAttribute('aria-busy'); button.textContent = button.dataset.originalText || 'Сохранить';
-  }
+  setButtonBusy(document.querySelector('#admin-modal-overlay .modal-save-btn'), saving, 'Сохранение…');
 }
 
 function showAdminFormErrors(errors, focus = true) {
@@ -172,7 +178,7 @@ function showAdminFormErrors(errors, focus = true) {
     const field = document.getElementById(error.field);
     if (!field) return;
     const errorId = `admin-field-error-${index}`;
-    field.classList.add('admin-field-invalid'); field.setAttribute('aria-invalid', 'true'); field.setAttribute('aria-describedby', errorId);
+    field.classList.add('admin-field-invalid'); field.setAttribute('aria-invalid', 'true'); field.setAttribute('aria-describedby', [field.getAttribute('aria-describedby'), errorId].filter(Boolean).join(' '));
     const message = document.createElement('div'); message.id = errorId; message.className = 'admin-field-error'; message.textContent = error.message;
     field.closest('.form-group')?.appendChild(message);
   });
@@ -186,13 +192,12 @@ function showAdminFormErrors(errors, focus = true) {
 function validateAdminEntityForm(type, data) {
   const required = {
     team: [['modal-name', 'Введите название команды']],
-    user: [['modal-name', 'Введите ФИО'], ['modal-email', 'Введите email']],
+    user: [['modal-name', 'Введите ФИО'], ['modal-email', 'Введите логин']],
     role: [['modal-name', 'Введите название роли']],
     project: [['project-code', 'Введите код проекта'], ['project-name', 'Введите название проекта']],
     bc: [['bc-name', 'Введите ФИО бизнес-заказчика']],
   };
   const errors = (required[type] || []).filter(([field]) => !getFieldVal(field).trim()).map(([field, message]) => ({ field, message }));
-  if (type === 'user' && getFieldVal('modal-email').trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(getFieldVal('modal-email').trim())) errors.push({ field: 'modal-email', message: 'Введите корректный email' });
   if (type === 'user') {
     const name = getFieldVal('modal-name').trim().toLocaleLowerCase();
     if ((adminData.users || []).some(user => user.id !== data.id && String(user.name || '').trim().toLocaleLowerCase() === name)) errors.push({ field: 'modal-name', message: 'Пользователь с таким именем уже существует' });
@@ -225,6 +230,7 @@ function prepareAdminFormValidation(type) {
 }
 
 function deactivateAdminModalFocus() {
+  closeDictionaryColorPalette?.();
   if (adminModalKeyHandler) document.removeEventListener('keydown', adminModalKeyHandler);
   adminModalKeyHandler = null;
   const target = adminModalReturnFocus;
@@ -238,6 +244,7 @@ function activateAdminModalFocus() {
   if (!adminModalReturnFocus) adminModalReturnFocus = document.activeElement;
   if (adminModalKeyHandler) document.removeEventListener('keydown', adminModalKeyHandler);
   adminModalKeyHandler = event => {
+    if (event.defaultPrevented || document.querySelector('#dict-color-dialog, [role="alertdialog"]')) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       dialog.querySelector('.modal-close-x, .modal-cancel-btn')?.click();
@@ -275,11 +282,12 @@ function showConfirmModal(message, onConfirm, options = {}) {
                 ${details ? `<div class="admin-impact-details">${details}</div>` : ''}
             </div>
             <div class="modal-footer">
-                <button class="btn btn-ghost modal-cancel-btn" data-modal-close style="min-width:100px;">Отмена</button>
-                <button class="btn btn-danger modal-confirm-btn" style="min-width:100px;"${canConfirm ? '' : ' disabled'}>${escapeHtml(options.confirmText || 'Подтвердить')}</button>
+                ${uiButton({ label: 'Отмена', variant: 'ghost', className: 'modal-cancel-btn', attrs: { 'data-modal-close': true } })}
+                ${uiButton({ label: options.confirmText || 'Подтвердить', variant: 'danger', className: 'modal-confirm-btn', attrs: { disabled: !canConfirm } })}
             </div>
         </div>`;
     document.body.appendChild(overlay);
+    enhanceDialogOverlay(overlay);
     if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' });
     const close = () => overlay.remove();
     overlay.querySelector('.modal-cancel-btn').addEventListener('click', close);
@@ -336,7 +344,7 @@ window.updateUserAvatarPreview = function(name) {
   el.style.background = window.getAvatarColor(name);
   const emailInput = document.getElementById('modal-email');
   if (emailInput) {
-    emailInput.value = generateEmail(name);
+    // Логин назначается администратором явно.
   }
 };
 
@@ -440,7 +448,7 @@ window.autoFillDictRow = function(input) {
     const c = autoDictColor(name);
     colorInput.value = c;
     const swatch = row.querySelector('.dict-color-swatch');
-    if (swatch) swatch.style.background = c;
+    if (swatch) swatch.querySelector('.dict-color-dot').style.background = c;
   }
 };
 
@@ -457,15 +465,15 @@ function dictCodePlaceholder(dictKey) {
 
 function getStatusBadge(active) {
   return active
-    ? '<span class="badge badge-success" style="font-size:11px">Активен</span>'
-    : '<span class="badge badge-muted" style="font-size:11px">Неактивен</span>';
+    ? '<span class="badge badge-success" style="">Активен</span>'
+    : '<span class="badge badge-muted" style="">Неактивен</span>';
 }
 
 function getRoleStatusBadge(status) {
   const map = {
-    active: '<span class="badge badge-success" style="font-size:11px">Активна</span>',
-    in_dev: '<span class="badge badge-warning" style="font-size:11px">В разработке</span>',
-    archived: '<span class="badge badge-muted" style="font-size:11px">Архивная</span>',
+    active: '<span class="badge badge-success" style="">Активна</span>',
+    in_dev: '<span class="badge badge-warning" style="">В разработке</span>',
+    archived: '<span class="badge badge-muted" style="">Архивная</span>',
   };
   return map[status] || map.active;
 }
@@ -473,6 +481,7 @@ function getRoleStatusBadge(status) {
 // ==================== RENDER ADMIN ====================
 
 export function renderAdmin(app) {
+  syncDisplayDraftOwner(app);
   const requestedTab = hydrateAdminUrlState().tab;
   adminLoadState = {};
   const adminAccess = getAdminAccess(app);
@@ -484,10 +493,7 @@ export function renderAdmin(app) {
   const tabLabels = { teams: 'Команды', projects: 'Проекты', businessCustomers: 'Бизнес-заказчики', users: 'Пользователи', roles: 'Роли', home: 'Таймлайн', dictionaries: 'Справочники', display: 'Отображение', reports: 'Отчёты', audit: 'Журнал действий' };
   const tabIcons = { teams: 'users', projects: 'briefcase', businessCustomers: 'user-cog', users: 'user', roles: 'shield', home: 'calendar', dictionaries: 'book-open', display: 'eye', reports: 'bar-chart-3', audit: 'scroll-text' };
 
-  const tabButton = t => `<button class="admin-tab${adminTab === t ? ' active' : ''}" data-tab="${t}" role="tab" aria-selected="${adminTab === t}" aria-controls="admin-content" tabindex="${adminTab === t ? '0' : '-1'}">
-      <i data-lucide="${tabIcons[t]}" aria-hidden="true" style="width:22px;height:22px;"></i>
-      <span>${tabLabels[t]}</span>
-    </button>`;
+  const tabButton = t => uiTab({ id: 'admin-tab-' + t, label: tabLabels[t], panelId: 'admin-content', selected: adminTab === t, iconMarkup: uiIcon(tabIcons[t]), className: 'admin-tab' + (adminTab === t ? ' active' : ''), attrs: { 'data-tab': t } });
   const groups = [
     ['Структура', ['teams', 'projects', 'businessCustomers']], ['Доступы', ['users', 'roles']],
     ['Настройки', ['dictionaries', 'display']], ['Инструменты', ['home', 'reports']], ['Контроль', ['audit']],
@@ -495,22 +501,17 @@ export function renderAdmin(app) {
   const tabBar = `<div class="admin-tab-groups">${groups.map(([label, groupTabs]) => {
     const visible = groupTabs.filter(tab => tabs.includes(tab));
     return visible.length ? `<div class="admin-tab-group"><span class="admin-tab-group-label">${label}</span><div class="admin-tab-group-buttons">${visible.map(tabButton).join('')}</div></div>` : '';
-  }).join('')}</div><select class="input admin-tab-mobile-select" id="admin-tab-mobile-select" aria-label="Раздел администрирования">${tabs.map(tab => `<option value="${tab}"${adminTab === tab ? ' selected' : ''}>${tabLabels[tab]}</option>`).join('')}</select>`;
+  }).join('')}</div>${uiControl({ kind: 'select', id: 'admin-tab-mobile-select', value: adminTab, options: tabs.map(tab => ({ value: tab, label: tabLabels[tab] })), className: 'admin-tab-mobile-select', attrs: { 'aria-label': 'Раздел администрирования' } })}`;
 
   const content = renderTabContent(adminTab, app);
 
   return `<div class="admin-access-${adminAccess}">
-    <div class="page-header animate-fade-in">
-      <div>
-        <h1>Администрирование</h1>
-        <p>Настройки системы, справочники и управление доступами</p>
-      </div>
-    </div>
-    <div style="position:sticky;top:var(--navbar-height);z-index:30;background:var(--bg-primary);padding-bottom:var(--space-2)">
+    <div class="page-header animate-fade-in">${uiPageHeader({ title: 'Администрирование', description: 'Настройки системы, справочники и управление доступами' })}</div>
+    <div class="admin-navigation-bar" style="background:var(--bg-primary);padding-bottom:var(--space-2)">
       <div class="admin-tabs" id="admin-tab-bar" role="tablist" aria-label="Разделы администрирования">${tabBar}</div>
       <div id="admin-sticky-bar"></div>
     </div>
-    <div id="admin-content" role="tabpanel" aria-live="polite" style="padding-top:var(--space-2)">${content}</div>
+    <div id="admin-content" role="tabpanel" aria-labelledby="admin-tab-${adminTab}" aria-live="polite" style="padding-top:var(--space-2)">${content}</div>
     <div id="admin-modal-root"></div></div>
   `;
 }
@@ -523,7 +524,8 @@ function pullStickyBars() {
 
   const bars = content.querySelectorAll('.admin-action-row');
   bars.forEach(b => container.appendChild(b));
-  initAdminStickyThead();
+  if (stickyScroll) { window.removeEventListener('scroll', stickyScroll); window.removeEventListener('resize', stickyScroll); stickyScroll = null; }
+  if (stickyHeader) { stickyHeader.remove(); stickyHeader = null; }
 }
 
 let stickyHeader = null;
@@ -553,6 +555,7 @@ function initAdminStickyThead() {
         stickyHeader = document.createElement('div');
         stickyHeader.style.cssText = 'position:fixed;z-index:20;overflow:hidden;background:var(--bg-tertiary);box-shadow:0 2px 8px rgba(0,0,0,0.15)';
         const cloneTable = document.createElement('table');
+        cloneTable.className = table.className;
         cloneTable.style.cssText = 'margin:0;border-collapse:collapse;font-size:13px;width:' + table.offsetWidth + 'px';
         cloneTable.appendChild(thead.cloneNode(true));
         stickyHeader.appendChild(cloneTable);
@@ -590,9 +593,19 @@ function normalizeAdminTables() {
   const content = document.getElementById('admin-content');
   if (!content) return;
   content.dataset.adminTab = adminTab;
+  content.setAttribute('aria-labelledby', 'admin-tab-' + adminTab);
   content.querySelectorAll('table').forEach(table => {
     if (table.id === 'comp-cost-table') return;
     table.classList.add('admin-unified-table');
+    let surface = table.parentElement;
+    if (surface.tagName !== 'DIV' || surface.children.length !== 1) {
+      surface = document.createElement('div');
+      table.before(surface);
+      surface.appendChild(table);
+    }
+    surface.classList.add('ui-table-scroll', 'ui-table-surface');
+    surface.style.removeProperty('padding');
+    surface.style.removeProperty('overflow-x');
     if (adminTab === 'roles') table.classList.add('admin-role-matrix');
     const headers = Array.from(table.querySelector('thead tr:first-child')?.querySelectorAll('th') || []).map(header => header.textContent.trim());
     table.querySelectorAll('tbody tr').forEach(row => {
@@ -606,7 +619,7 @@ function normalizeAdminTables() {
       });
       if (adminTab !== 'roles' && cells.length > 3 && !cells[0].querySelector('.admin-row-details-toggle')) {
         const toggle = document.createElement('button');
-        toggle.type = 'button'; toggle.className = 'admin-row-details-toggle'; toggle.setAttribute('aria-expanded', 'false'); toggle.textContent = 'Подробнее';
+        toggle.type = 'button'; toggle.className = 'btn btn-ghost btn-sm ui-btn admin-row-details-toggle'; toggle.setAttribute('aria-expanded', 'false'); toggle.textContent = 'Подробнее';
         cells[0].appendChild(toggle);
       }
     });
@@ -614,6 +627,8 @@ function normalizeAdminTables() {
 }
 
 function enhanceAdminAccessibility(root = document) {
+  const names = { 'admin-filter-role': 'Роль пользователя', 'admin-filter-team': 'Команда пользователя', 'admin-filter-status': 'Статус пользователя', 'role-compare-left': 'Первая роль', 'role-compare-right': 'Вторая роль', 'audit-action': 'Действие', 'audit-entity': 'Сущность', 'audit-user': 'Пользователь' };
+  Object.entries(names).forEach(([id, label]) => root.querySelector(`#${id}`)?.setAttribute('aria-label', label));
   root.querySelectorAll('button[title]:not([aria-label])').forEach(button => button.setAttribute('aria-label', button.title));
   root.querySelectorAll('button svg, button i[data-lucide]').forEach(icon => icon.setAttribute('aria-hidden', 'true'));
   root.querySelectorAll('.form-group').forEach((group, index) => {
@@ -630,13 +645,13 @@ function enhanceAdminAccessibility(root = document) {
 function renderTabContent(tab, app) {
   const state = adminLoadState[tab];
   if (!state || state.status === 'loading') {
-    return '<div class="admin-state" role="status" aria-live="polite"><div class="spinner" aria-hidden="true"></div><p>Загрузка данных…</p></div>';
+    return renderViewState({ kind: 'loading', title: 'Загрузка данных…' });
   }
   if (state.status === 'error') {
     const message = state.statusCode === 403
       ? 'Недостаточно прав для просмотра этого раздела.'
       : 'Не удалось загрузить данные. Проверьте соединение и повторите попытку.';
-    return `<div class="admin-state admin-state-error" role="alert"><i data-lucide="triangle-alert" aria-hidden="true"></i><p>${message}</p><button class="btn btn-secondary" id="admin-retry-btn">Повторить</button></div>`;
+    return renderViewState({ kind: state.statusCode === 403 ? 'forbidden' : 'error', message, actionLabel: 'Повторить', actionId: 'admin-retry-btn' });
   }
   switch (tab) {
     case 'teams': return renderTeamsTab(app);
@@ -665,11 +680,11 @@ function renderTeamsTab(app) {
   const cards = teams.length
     ? teams.map(t => {
         const leads = [];
-        if (t.pl) leads.push(`<div style="font-size:11px;color:var(--text-muted);line-height:1.6">PL: ${escapeHtml(t.pl)}</div>`);
-        if (t.po) leads.push(`<div style="font-size:11px;color:var(--text-muted);line-height:1.6">PO: ${escapeHtml(t.po)}</div>`);
-        if (t.cl) leads.push(`<div style="font-size:11px;color:var(--text-muted);line-height:1.6">CL: ${escapeHtml(t.cl)}</div>`);
-        if (t.it_pl) leads.push(`<div style="font-size:11px;color:var(--text-muted);line-height:1.6">IT PL: ${escapeHtml(t.it_pl)}</div>`);
-        const leadInfo = leads.length ? leads.join('') : '<div style="font-size:11px;color:var(--text-muted);line-height:1.6">Нет руководителей</div>';
+        if (t.pl) leads.push(`<div style="font-size:var(--type-meta-size);color:var(--text-muted);line-height:var(--type-meta-line);">PL: ${escapeHtml(t.pl)}</div>`);
+        if (t.po) leads.push(`<div style="font-size:var(--type-meta-size);color:var(--text-muted);line-height:var(--type-meta-line);">PO: ${escapeHtml(t.po)}</div>`);
+        if (t.cl) leads.push(`<div style="font-size:var(--type-meta-size);color:var(--text-muted);line-height:var(--type-meta-line);">CL: ${escapeHtml(t.cl)}</div>`);
+        if (t.it_pl) leads.push(`<div style="font-size:var(--type-meta-size);color:var(--text-muted);line-height:var(--type-meta-line);">IT PL: ${escapeHtml(t.it_pl)}</div>`);
+        const leadInfo = leads.length ? leads.join('') : '<div style="font-size:var(--type-meta-size);color:var(--text-muted);line-height:var(--type-meta-line);">Нет руководителей</div>';
         const abbr = getTeamAbbr(t.name, t.abbr);
         const gradient = getColorGradient(t.color);
         return `
@@ -680,11 +695,11 @@ function renderTeamsTab(app) {
                 <div style="font-weight:600;font-size:14px;color:var(--text-primary);word-break:break-word">${escapeHtml(t.name)}</div>
               </div>
               <div style="flex-shrink:0;display:flex;align-items:flex-start;gap:4px">
-                <button class="admin-edit-btn" data-type="team" data-id="${t.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать команду">
-                  <i data-lucide="pen-line" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:var(--text-muted)"></i>
+                <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="team" data-id="${t.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать команду">
+                  <i data-lucide="pen-line" width="18" height="18" style="color:var(--text-muted)"></i>
                 </button>
-                <button class="admin-delete-btn" data-type="team" data-id="${t.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить команду">
-                  <i data-lucide="trash-2" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:#f43f5e"></i>
+                <button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="team" data-id="${t.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить команду">
+                  <i data-lucide="trash-2" width="18" height="18" style="color:#f43f5e"></i>
                 </button>
               </div>
             </div>
@@ -699,7 +714,7 @@ function renderTeamsTab(app) {
     <div class="admin-action-row admin-list-action-row">
       ${renderAdminListTools('teams', pageData.total)}
       <button class="btn btn-primary btn-sm admin-add-btn" data-type="team">
-        <i data-lucide="plus" style="width:14px;height:14px"></i> Новая команда
+        <i data-lucide="plus"></i> Новая команда
       </button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">${cards}</div>
@@ -726,20 +741,20 @@ function renderProjectsTab(app) {
     const pl = users.find(u => u.id === p.responsible_pl);
     return `
       <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted)">#${p.id}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(p.code)}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:13px;color:var(--text-primary)">${escapeHtml(p.name)}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(p.description || '—')}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary)">${escapeHtml(status ? status.name : '—')}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary)">${escapeHtml(pl ? pl.name : '—')}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:11px;color:var(--text-muted)">${p.created_at ? p.created_at.slice(0, 10) : '—'}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);text-align:right">
+        <td style="color:var(--text-muted)">#${p.id}</td>
+        <td style="font-weight:600;color:var(--text-primary)">${escapeHtml(p.code)}</td>
+        <td style="color:var(--text-primary)">${escapeHtml(p.name)}</td>
+        <td style="color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(p.description || '—')}</td>
+        <td style="color:var(--text-secondary)">${escapeHtml(status ? status.name : '—')}</td>
+        <td style="color:var(--text-secondary)">${escapeHtml(pl ? pl.name : '—')}</td>
+        <td style="color:var(--text-muted)">${p.created_at ? p.created_at.slice(0, 10) : '—'}</td>
+        <td style="text-align:right">
           <div style="display:flex;gap:4px;justify-content:flex-end">
-            <button class="admin-edit-btn" data-type="project" data-id="${p.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
-              <i data-lucide="pen-line" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:var(--text-muted)"></i>
+            <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="project" data-id="${p.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
+              <i data-lucide="pen-line" width="18" height="18" style="color:var(--text-muted)"></i>
             </button>
-            <button class="admin-delete-btn" data-type="project" data-id="${p.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
-              <i data-lucide="trash-2" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:#f43f5e"></i>
+            <button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="project" data-id="${p.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
+              <i data-lucide="trash-2" width="18" height="18" style="color:#f43f5e"></i>
             </button>
           </div>
         </td>
@@ -751,24 +766,24 @@ function renderProjectsTab(app) {
     <div class="admin-action-row admin-list-action-row">
       ${renderAdminListTools('projects', pageData.total, statuses.map(status => ({ value: status.id, label: status.name })), 'Все статусы')}
       <button class="btn btn-primary btn-sm" id="project-add-btn">
-        <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить проект
+        <i data-lucide="plus"></i> Добавить проект
       </button>
     </div>
     <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse">
+      <table class="ui-table ui-table-admin" style="width:100%;border-collapse:collapse">
         <thead>
           <tr>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color);width:50px">ID</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color)">Код</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color)">Название</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color)">Описание</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color)">Статус</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color)">Ответственный PL</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color)">Создан</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color);width:80px"></th>
+            <th style="text-align:left;width:50px">ID</th>
+            <th style="text-align:left">Код</th>
+            <th style="text-align:left">Название</th>
+            <th style="text-align:left">Описание</th>
+            <th style="text-align:left">Статус</th>
+            <th style="text-align:left">Ответственный PL</th>
+            <th style="text-align:left">Создан</th>
+            <th style="text-align:left;width:80px"></th>
           </tr>
         </thead>
-        <tbody>${rows || '<tr><td colspan="8" style="padding:20px;text-align:center;font-size:13px;color:var(--text-muted)">По заданным условиям ничего не найдено</td></tr>'}</tbody>
+        <tbody>${rows || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted)">По заданным условиям ничего не найдено</td></tr>'}</tbody>
       </table>
     </div>
     ${renderAdminPagination('projects', pageData.page, pageData.pages, pageData.total)}
@@ -790,17 +805,17 @@ function renderBusinessCustomersTab(app) {
   const rows = customers.map(c => {
     return `
       <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-muted)">#${c.id}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(c.name)}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:12px;color:var(--text-secondary)">${escapeHtml(c.department_name || (c.department_id && deptMap[c.department_id]) || '—')}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);font-size:11px;color:var(--text-muted)">${c.created_at ? c.created_at.slice(0, 10) : '—'}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid var(--border-color);text-align:right">
+        <td style="color:var(--text-muted)">#${c.id}</td>
+        <td style="font-weight:600;color:var(--text-primary)">${escapeHtml(c.name)}</td>
+        <td style="color:var(--text-secondary)">${escapeHtml(c.department_name || (c.department_id && deptMap[c.department_id]) || '—')}</td>
+        <td style="color:var(--text-muted)">${c.created_at ? c.created_at.slice(0, 10) : '—'}</td>
+        <td style="text-align:right">
           <div style="display:flex;gap:4px;justify-content:flex-end">
-            <button class="admin-edit-btn" data-type="bc" data-id="${c.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
-              <i data-lucide="pen-line" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:var(--text-muted)"></i>
+            <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="bc" data-id="${c.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
+              <i data-lucide="pen-line" width="18" height="18" style="color:var(--text-muted)"></i>
             </button>
-            <button class="admin-delete-btn" data-type="bc" data-id="${c.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
-              <i data-lucide="trash-2" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:#f43f5e"></i>
+            <button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="bc" data-id="${c.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
+              <i data-lucide="trash-2" width="18" height="18" style="color:#f43f5e"></i>
             </button>
           </div>
         </td>
@@ -812,21 +827,21 @@ function renderBusinessCustomersTab(app) {
     <div class="admin-action-row admin-list-action-row">
       ${renderAdminListTools('businessCustomers', pageData.total, departments.map(department => ({ value: department.id, label: department.name })), 'Все подразделения')}
       <button class="btn btn-primary btn-sm" id="bc-add-btn">
-        <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить бизнес-заказчика
+        <i data-lucide="plus"></i> Добавить бизнес-заказчика
       </button>
     </div>
     <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse">
+      <table class="ui-table ui-table-admin" style="width:100%;border-collapse:collapse">
         <thead>
           <tr>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color);width:50px">ID</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color)">ФИО</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color)">Подразделение</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color)">Создан</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;border-bottom:2px solid var(--border-color);width:80px"></th>
+            <th style="text-align:left;width:50px">ID</th>
+            <th style="text-align:left">ФИО</th>
+            <th style="text-align:left">Подразделение</th>
+            <th style="text-align:left">Создан</th>
+            <th style="text-align:left;width:80px"></th>
           </tr>
         </thead>
-        <tbody>${rows || '<tr><td colspan="5" style="padding:20px;text-align:center;font-size:13px;color:var(--text-muted)">По заданным условиям ничего не найдено</td></tr>'}</tbody>
+        <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">По заданным условиям ничего не найдено</td></tr>'}</tbody>
       </table>
     </div>
     ${renderAdminPagination('businessCustomers', pageData.page, pageData.pages, pageData.total)}
@@ -834,23 +849,9 @@ function renderBusinessCustomersTab(app) {
 }
 
 function renderBusinessCustomerForm(data) {
-  const departments = adminData.departments || [];
-  const deptOpts = departments.map(d => `<option value="${d.id}"${data.department_id == d.id ? ' selected' : ''}>${escapeHtml(d.name)}</option>`).join('');
-  const isEdit = adminModal.mode === 'edit';
-  return `
-    <div class="form-group">
-      <label class="form-label">ID</label>
-      <input class="input modal-field" value="${data.id || '—'}" readonly style="color:var(--text-muted)">
-    </div>
-    <div class="form-group">
-      <label class="form-label">ФИО <span class="required">*</span></label>
-      <input class="input modal-field" id="bc-name" value="${escapeHtml(data.name || '')}" placeholder="ФИО бизнес-заказчика">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Подразделение</label>
-      <select class="input modal-field" id="bc-department"><option value="">—</option>${deptOpts}</select>
-    </div>
-  `;
+  return adminField('bc-id', 'ID', data.id || '—', { readonly: true })
+    + adminField('bc-name', 'ФИО', data.name, { required: true, attrs: { placeholder: 'ФИО бизнес-заказчика' } })
+    + adminField('bc-department', 'Подразделение', data.department_id, { kind: 'select', options: adminOptions(adminData.departments || []) });
 }
 
 function getBusinessCustomerPayload() {
@@ -872,7 +873,7 @@ function renderUsersTab(app) {
   if (userSearch) {
     const q = userSearch.toLowerCase();
     users = users.filter(u =>
-      (u.name || '').toLowerCase().includes(q)
+      [u.name, u.login, u.email].some(value => (value || '').toLowerCase().includes(q))
     );
   }
 
@@ -928,7 +929,7 @@ function renderUsersTab(app) {
   };
 
   const th = (field, label) => `
-    <th style="padding:7px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;white-space:nowrap" class="admin-sort-th" data-sort="${field}">
+    <th style="text-align:left;white-space:nowrap" class="admin-sort-th" data-sort="${field}">
       ${label}${sortArrow(field)}
     </th>`;
 
@@ -947,59 +948,60 @@ function renderUsersTab(app) {
         const avatarColor = window.getAvatarColor(u.name);
         return `
           <tr>
-            <td style="padding:12px 16px;border-bottom:1px solid var(--border-color)">
+            <td >
               <div style="display:flex;align-items:center;gap:10px">
-                <div style="width:32px;height:32px;border-radius:50%;background:${safeHexColor(avatarColor)};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0">${escapeHtml(initials)}</div>
+                <div style="width:32px;height:32px;border-radius:50%;background:${safeHexColor(avatarColor)};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:white;flex-shrink:0">${escapeHtml(initials)}</div>
                 <div>
                   <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${escapeHtml(u.name)}</div>
                 </div>
               </div>
             </td>
-            <td style="padding:12px 16px;border-bottom:1px solid var(--border-color)">
-              ${role ? `<span class="badge badge-info" style="font-size:11px">${getRoleDisplayName(role)}</span>` : '<span class="text-muted" style="font-size:12px">—</span>'}
+            <td >
+              ${role ? `<span class="badge badge-info" style="">${getRoleDisplayName(role)}</span>` : '<span class="text-muted" style="font-size:12px">—</span>'}
             </td>
-            <td style="padding:12px 16px;border-bottom:1px solid var(--border-color);color:var(--text-secondary);font-size:13px">${escapeHtml(teamName)}</td>
-            <td style="padding:12px 16px;border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:12px">${escapeHtml(u.email || '—')}</td>
-            <td style="padding:12px 16px;border-bottom:1px solid var(--border-color)">${getStatusBadge(u.is_active)}</td>
-            <td style="padding:12px 16px;border-bottom:1px solid var(--border-color);text-align:right">
+            <td style="color:var(--text-secondary)">${escapeHtml(teamName)}</td>
+            <td style="color:var(--text-muted)">${escapeHtml(u.login || '—')}</td>
+            <td ><div>${getStatusBadge(u.is_active)} <span title="${escapeHtmlAttribute(u.credential_state || 'invited')}">${credentialLabel(u.credential_state)}</span></div></td>
+            <td style="text-align:right">
               <div style="display:flex;gap:4px;justify-content:flex-end">
-                <button class="admin-edit-btn" data-type="user" data-id="${u.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
-                  <i data-lucide="pen-line" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:var(--text-muted)"></i>
+                <button class="btn btn-ghost btn-sm" data-account-security="${u.id}">Доступ</button>
+                <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="user" data-id="${u.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
+                  <i data-lucide="pen-line" width="18" height="18" style="color:var(--text-muted)"></i>
                 </button>
-                ${u.is_active ? `<button class="admin-delete-btn" data-type="user" data-id="${u.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Деактивировать пользователя">
-                  <i data-lucide="user-x" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:#f43f5e"></i>
+                ${u.is_active ? `<button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="user" data-id="${u.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Деактивировать пользователя">
+                  <i data-lucide="user-x" width="18" height="18" style="color:#f43f5e"></i>
                 </button>` : ''}
               </div>
             </td>
           </tr>
         `;
       }).join('')
-    : '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">По заданным условиям ничего не найдено</td></tr>';
+    : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">По заданным условиям ничего не найдено</td></tr>';
 
   return `
     <div class="admin-action-row admin-list-action-row">
       <div class="admin-list-tools">
         <div class="admin-list-search">
           <i data-lucide="search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted)"></i>
-          <input class="input" id="admin-user-search" value="${escapeHtmlAttribute(userSearch)}" placeholder="Поиск пользователей" style="padding-left:32px;padding-right:32px">
-          ${userSearch ? `<button id="admin-user-search-clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;padding:2px;color:var(--text-muted);line-height:1" title="Очистить"><i data-lucide="x" style="width:12px;height:12px"></i></button>` : ''}
+          <input class="input ui-control ui-search-clearable" id="admin-user-search" value="${escapeHtmlAttribute(userSearch)}" placeholder="Поиск пользователей">
+          ${userSearch ? `<button class="square-icon btn btn-secondary btn-sm ui-btn" id="admin-user-search-clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%)" title="Очистить"><i data-lucide="x" style=""></i></button>` : ''}
         </div>
-        ${roleFilter}${teamFilter}${statusFilter}
+        <details class="admin-user-filter-group"${window.innerWidth > 900 && window.innerHeight > 600 ? ' open' : ''}><summary>Фильтры${Object.values(userFilters).some(Boolean) ? ' · применены' : ''}</summary><div class="admin-user-filter-fields">${roleFilter}${teamFilter}${statusFilter}</div></details>
         <span class="admin-list-count" role="status" aria-live="polite">Найдено: ${userPageData.total}</span>
         ${(userSearch || userFilters.role || userFilters.team || userFilters.status) ? '<button type="button" class="btn btn-ghost btn-sm" id="admin-user-filters-reset">Сбросить фильтры</button>' : ''}
       </div>
-      <button class="btn btn-primary btn-sm admin-add-btn" data-type="user"><i data-lucide="plus" style="width:14px;height:14px"></i> Новый пользователь</button>
+      <button class="btn btn-primary btn-sm admin-add-btn" data-type="user"><i data-lucide="plus"></i> Новый пользователь</button>
     </div>
     <div class="admin-section" style="padding:0;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <table class="ui-table ui-table-admin" style="width:100%;border-collapse:collapse;font-size:13px">
         <thead>
           <tr style="background:var(--bg-tertiary)">
             ${th('name', 'Пользователь')}
             ${th('role', 'Роль')}
             ${th('team', 'Команда')}
-            ${th('email', 'Email')}
+            ${th('email', 'Логин')}
             ${th('status', 'Статус')}
-            <th style="padding:10px 16px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px"></th>
+            <th style="text-align:right"></th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -1094,46 +1096,46 @@ function renderRolesTab(app) {
         const compared = [roleCompare.left, roleCompare.right].includes(String(r.id));
         return `
           <tr class="${compared ? 'role-is-compared' : ''}" data-role-id="${r.id}">
-            <td style="padding:10px 12px;border-bottom:1px solid var(--border-color)">
+            <td >
               <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${getRoleDisplayName(r)}</div>
-              ${r.description ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${escapeHtml(r.description)}</div>` : ''}
+              ${r.description ? `<div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);margin-top:2px">${escapeHtml(r.description)}</div>` : ''}
               ${warning}
             </td>
             ${perms}
-            <td style="padding:10px 12px;text-align:center;border-bottom:1px solid var(--border-color)">${getRoleStatusBadge(r.status)}</td>
-            <td style="padding:10px 12px;text-align:right;border-bottom:1px solid var(--border-color)">
+            <td style="text-align:center">${getRoleStatusBadge(r.status)}</td>
+            <td style="text-align:right">
               <div style="display:flex;gap:4px;justify-content:flex-end">
-                <button class="admin-edit-btn" data-type="role" data-id="${r.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
-                  <i data-lucide="pen-line" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:var(--text-muted)"></i>
+                <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="role" data-id="${r.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
+                  <i data-lucide="pen-line" width="18" height="18" style="color:var(--text-muted)"></i>
                 </button>
-                <button class="role-preview-btn" data-id="${r.id}" title="Предпросмотреть интерфейс роли" aria-label="Предпросмотреть интерфейс роли"><i data-lucide="scan-eye"></i></button>
-                <button class="admin-delete-btn" data-type="role" data-id="${r.id}" style="padding:6px;border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
-                  <i data-lucide="trash-2" width="18" height="18" style="width:18px;height:18px;flex-shrink:0;min-width:18px;min-height:18px;color:#f43f5e"></i>
+                <button class="square-icon btn btn-secondary btn-sm ui-btn role-preview-btn" data-id="${r.id}" title="Предпросмотреть интерфейс роли" aria-label="Предпросмотреть интерфейс роли"><i data-lucide="scan-eye"></i></button>
+                <button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="role" data-id="${r.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
+                  <i data-lucide="trash-2" width="18" height="18" style="color:#f43f5e"></i>
                 </button>
               </div>
             </td>
           </tr>
         `;
       }).join('')
-    : '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">По заданным условиям ничего не найдено</td></tr>';
+    : '<tr><td colspan="10" style="text-align:center;color:var(--text-muted)">По заданным условиям ничего не найдено</td></tr>';
 
   return `
     <div class="admin-action-row admin-list-action-row">
       ${renderAdminListTools('roles', pageData.total, [{ value: 'active', label: 'Активные' }, { value: 'in_dev', label: 'В разработке' }, { value: 'archived', label: 'Архивные' }], 'Все статусы')}
       <button class="btn btn-primary btn-sm admin-add-btn" data-type="role">
-        <i data-lucide="plus" style="width:14px;height:14px"></i> Новая роль
+        <i data-lucide="plus"></i> Новая роль
       </button>
     </div>
     <div class="role-matrix-meta"><div class="role-access-legend"><span>${renderAccessBadge('none')}</span><span>${renderAccessBadge('read')}</span><span>${renderAccessBadge('read_write')}</span><span>${renderAccessBadge('full')}</span></div><div class="role-compare-controls"><select class="input role-compare-select" id="role-compare-left"><option value="">Первая роль</option>${allRoles.map(role => `<option value="${role.id}"${roleCompare.left === String(role.id) ? ' selected' : ''}>${getRoleDisplayName(role)}</option>`).join('')}</select><span>и</span><select class="input role-compare-select" id="role-compare-right"><option value="">Вторая роль</option>${allRoles.map(role => `<option value="${role.id}"${roleCompare.right === String(role.id) ? ' selected' : ''}>${getRoleDisplayName(role)}</option>`).join('')}</select></div></div>
     ${renderRoleComparison(allRoles, permLevels)}
     <div class="admin-section" style="padding:0;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <table class="ui-table ui-table-admin" style="width:100%;border-collapse:collapse;font-size:13px">
         <thead>
           <tr style="background:var(--bg-tertiary)">
-            <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Роль</th>
+            <th style="text-align:left">Роль</th>
             ${permLevels.map(permission => `<th style="text-align:center" title="${escapeHtmlAttribute(permission.help)}">${escapeHtml(permission.label)} <span class="role-header-help" aria-label="${escapeHtmlAttribute(permission.help)}">?</span></th>`).join('')}
-            <th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Статус</th>
-            <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px"></th>
+            <th style="text-align:center">Статус</th>
+            <th style="text-align:right"></th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -1165,28 +1167,30 @@ function renderAuditTab() {
     const fields = Array.isArray(details.changed_fields) && details.changed_fields.length ? details.changed_fields.join(', ') : '—';
     const success = details.success !== false && Number(details.status_code || 200) < 400;
     const correlationId = item.trace_id || item.request_id || '';
-    return `<tr><td>${escapeHtml(item.created_at ? new Date(item.created_at).toLocaleString('ru-RU') : '—')}</td><td>${escapeHtml(item.user_name || 'Система')}</td><td><span class="badge ${success ? 'badge-success' : 'badge-danger'}">${success ? 'Успешно' : 'Ошибка'}</span></td><td>${escapeHtml(item.action)}</td><td>${escapeHtml(item.entity_type)}${item.entity_id ? ` #${item.entity_id}` : ''}</td><td class="audit-fields" title="${escapeHtmlAttribute(fields)}">${escapeHtml(fields)}</td><td><code title="${escapeHtmlAttribute(correlationId)}">${escapeHtml(correlationId || '—')}</code></td><td>${escapeHtml(item.ip_address || '—')}</td></tr>`;
+    return `<tr><td>${escapeHtml(item.created_at ? new Date(item.created_at).toLocaleString('ru-RU') : '—')}</td><td>${escapeHtml(item.user_name || 'Система')}</td><td><span class="badge ${success ? 'badge-success' : 'badge-danger'}">${success ? 'Успешно' : 'Ошибка'}</span></td><td title="${escapeHtmlAttribute(item.action)}">${escapeHtml(auditActionLabel(item.action))}</td><td title="${escapeHtmlAttribute(item.entity_type)}">${escapeHtml(auditEntityLabel(item.entity_type))}${item.entity_id ? ` #${item.entity_id}` : ''}</td><td class="audit-fields" title="${escapeHtmlAttribute(fields)}">${escapeHtml(fields)}</td><td><code title="${escapeHtmlAttribute(correlationId)}">${escapeHtml(correlationId || '—')}</code></td><td>${escapeHtml(item.ip_address || '—')}</td></tr>`;
   }).join('') : '<tr><td colspan="8" class="admin-empty-cell">По заданным условиям ничего не найдено</td></tr>';
   const option = (value, label, selected) => `<option value="${escapeHtmlAttribute(value)}"${String(value) === String(selected) ? ' selected' : ''}>${escapeHtml(label)}</option>`;
   return `<div class="admin-action-row audit-toolbar">
     <input class="input" id="audit-search" value="${escapeHtmlAttribute(auditState.search)}" placeholder="Поиск по журналу" aria-label="Поиск по журналу">
-    <select class="input audit-filter" id="audit-action"><option value="">Все действия</option>${filters.actions.map(value => option(value, value, auditState.action)).join('')}</select>
-    <select class="input audit-filter" id="audit-entity"><option value="">Все сущности</option>${filters.entity_types.map(value => option(value, value, auditState.entityType)).join('')}</select>
+    <select class="input audit-filter" id="audit-action"><option value="">Все действия</option>${filters.actions.map(value => option(value, auditActionLabel(value), auditState.action)).join('')}</select>
+    <select class="input audit-filter" id="audit-entity"><option value="">Все сущности</option>${filters.entity_types.map(value => option(value, auditEntityLabel(value), auditState.entityType)).join('')}</select>
     <select class="input audit-filter" id="audit-user"><option value="">Все пользователи</option>${filters.users.map(user => option(user.id, user.name, auditState.userId)).join('')}</select>
     <input class="input audit-filter" type="date" id="audit-date-from" value="${escapeHtmlAttribute(auditState.dateFrom)}" aria-label="Дата с">
     <input class="input audit-filter" type="date" id="audit-date-to" value="${escapeHtmlAttribute(auditState.dateTo)}" aria-label="Дата по">
     <span class="admin-list-count" role="status" aria-live="polite">Записей: ${data.total || 0}</span>
     <button type="button" class="btn btn-ghost btn-sm" id="audit-reset">Сбросить</button>
-  </div><div class="admin-section audit-table-wrap"><table class="admin-table audit-table"><thead><tr><th>Дата</th><th>Пользователь</th><th>Результат</th><th>Действие</th><th>Сущность</th><th>Изменённые поля</th><th>Trace / Request ID</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div><div class="admin-section audit-table-wrap"><table class="ui-table ui-table-admin admin-table audit-table"><thead><tr><th>Дата</th><th>Пользователь</th><th>Результат</th><th>Действие</th><th>Сущность</th><th>Изменённые поля</th><th>Trace / Request ID</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table></div>
   ${renderAdminPagination('audit', data.page || 1, data.pages || 1, data.total || 0, auditState.perPage)}`;
 }
 
 async function refreshAuditTab(app, focusSearch = false) {
+  if (adminTab !== 'audit' || !document.getElementById('admin-content')) return;
   adminLoadState.audit = { status: 'loading' };
   const content = document.getElementById('admin-content');
   if (content) content.innerHTML = renderTabContent('audit', app);
   await loadAdminTab(app, 'audit', true);
-  if (content) content.innerHTML = renderTabContent('audit', app);
+  if (adminTab !== 'audit' || !content?.isConnected) return;
+  content.innerHTML = renderTabContent('audit', app);
   pullStickyBars(); bindAdminEvents(app);
   if (window.lucide) lucide.createIcons();
   if (focusSearch) restoreAdminSearchFocus('#audit-search');
@@ -1222,9 +1226,7 @@ function renderHomeTab(app) {
     <div class="admin-section">
       <div class="admin-section-header">
         <h2>События таймлайна</h2>
-        <button class="btn btn-primary btn-sm add-btn" data-action="add-tl-event">
-          <i data-lucide="plus" style="width:16px;height:16px;"></i> Добавить событие
-        </button>
+        ${getAdminAccess(app) !== 'read' ? uiButton({ label: 'Добавить событие', icon: 'plus', variant: 'primary', size: 'small', className: 'add-btn', attrs: { 'data-action': 'add-tl-event' } }) : ''}
       </div>
       <div id="tl-admin-list">${renderTimelineEventList(app)}</div>
     </div>`;
@@ -1232,27 +1234,27 @@ function renderHomeTab(app) {
 
 function renderTimelineEventList(app) {
   const events = tlAdminData.events;
+  if (!events.length) return renderViewState({ kind: 'empty', title: 'Нет событий', message: 'Добавленные события появятся на таймлайне.' });
   const rows = events.length === 0
-    ? '<tr><td colspan="6" class="text-muted" style="text-align:center;padding:var(--space-6)">Нет событий</td></tr>'
+    ? '<tr><td colspan="6" class="text-muted" style="text-align:center">Нет событий</td></tr>'
     : events.map(ev => {
         const recurLabel = ev.is_recurring && ev.recurring_interval ? (RECUR_LABELS[ev.recurring_interval] || ev.recurring_interval) : 'Нет';
         const visLabel = VIS_LABELS[ev.visibility_level] || ev.visibility_level || 'Все уровни';
         return `
         <tr>
           <td style="white-space:nowrap">${formatDateRu(ev.date)}</td>
-          <td><span class="tl-admin-dot" style="background:${ev.color};"></span>${escapeHtml(ev.title)}</td>
+          <td><span class="tl-admin-title"><span class="tl-admin-dot" style="background:${safeHexColor(ev.color)};"></span><span>${escapeHtml(ev.title)}</span></span></td>
           <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.description ? escapeHtml(ev.description.substring(0, 60)) : '—'}</td>
-          <td>${recurLabel}</td>
-          <td>${visLabel}</td>
+          <td>${escapeHtml(recurLabel)}</td>
+          <td>${escapeHtml(visLabel)}</td>
           <td>
-            <button class="btn btn-ghost btn-sm" data-action="edit-tl-event" data-id="${ev.id}"><i data-lucide="pencil" style="width:14px;height:14px;"></i></button>
-            <button class="btn btn-ghost btn-sm" data-action="delete-tl-event" data-id="${ev.id}"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+            ${getAdminAccess(app) !== 'read' ? uiButton({ label: 'Редактировать событие', icon: 'pencil', iconOnly: true, variant: 'ghost', size: 'small', attrs: { 'data-action': 'edit-tl-event', 'data-id': ev.id } }) + uiButton({ label: 'Удалить событие', icon: 'trash-2', iconOnly: true, variant: 'ghost', size: 'small', attrs: { 'data-action': 'delete-tl-event', 'data-id': ev.id } }) : '—'}
           </td>
         </tr>`;
       }).join('');
 
   return `
-    <table class="admin-table">
+    <table class="ui-table ui-table-admin admin-table">
       <thead>
         <tr>
           <th>Дата</th>
@@ -1271,70 +1273,27 @@ function renderTimelineEventList(app) {
 
 function renderTimelineEventModal(data, app) {
   const isEdit = !!data.id;
-
-  const recurOpts = [
-    { value: '', label: 'Нет' },
-    { value: 'daily', label: 'Ежедневно' },
-    { value: 'weekly', label: 'Еженедельно' },
-    { value: 'monthly', label: 'Ежемесячно' },
-    { value: 'quarterly', label: 'Ежеквартально' },
-    { value: 'yearly', label: 'Ежегодно' },
-  ];
-
-  const visOpts = [
-    { value: 'all', label: 'Все уровни' },
-    { value: 'quarter', label: 'Только квартал' },
-    { value: 'month', label: 'Только месяц' },
-  ];
-
-  return `
-    <div class="modal-backdrop" id="tl-modal-backdrop">
-      <div class="modal modal-timeline" role="dialog" aria-modal="true" aria-labelledby="tl-modal-title">
-        <div class="modal-header">
-          <h3 class="modal-title" id="tl-modal-title">${isEdit ? 'Редактировать событие' : 'Новое событие'}</h3>
-          <button type="button" class="modal-close" id="tl-modal-close" data-modal-close aria-label="Закрыть">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Название <span class="required">*</span></label>
-            <input class="input" id="tl-field-title" value="${escapeHtml(data.title || '')}" placeholder="Название события">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Описание</label>
-            <textarea class="input" id="tl-field-desc" placeholder="Описание события" style="min-height:60px">${escapeHtml(data.description || '')}</textarea>
-          </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div class="form-group">
-                <label class="form-label">Дата <span class="required">*</span></label>
-                <input class="input" type="date" id="tl-field-date" value="${data.date || ''}">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Цвет</label>
-                <input type="hidden" id="tl-field-color" value="${data.color || '#6366f1'}">
-                <div id="tl-color-palette" style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;">${COLOR_PALETTE.map(c => `<span class="color-swatch ${(data.color || '#6366f1') === c ? 'active' : ''}" data-color="${c}" style="background:${c};"></span>`).join('')}</div>
-              </div>
-            </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="form-group">
-              <label class="form-label">Повторение</label>
-              <select class="input" id="tl-field-interval">
-                ${recurOpts.map(o => `<option value="${o.value}"${(data.is_recurring ? (data.recurring_interval || '') : '') === o.value ? ' selected' : ''}>${o.label}</option>`).join('')}
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Показывать на уровне</label>
-              <select class="input" id="tl-field-visibility">
-                ${visOpts.map(o => `<option value="${o.value}"${(data.visibility_level || 'all') === o.value ? ' selected' : ''}>${o.label}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" id="tl-modal-cancel">Отмена</button>
-          <button type="button" class="btn btn-primary" id="tl-modal-save" data-edit-id="${data.id || ''}">${isEdit ? 'Сохранить' : 'Создать'}</button>
+  const color = safeHexColor(data.color, '#6366f1');
+  return `<div class="modal-overlay modal-backdrop" id="tl-modal-backdrop">
+    <div class="modal modal-timeline" role="dialog" aria-modal="true" aria-labelledby="tl-modal-title">
+      <div class="modal-header"><h3 class="modal-title" id="tl-modal-title">${isEdit ? 'Редактировать событие' : 'Новое событие'}</h3>
+        ${uiButton({ label: 'Закрыть', icon: 'x', iconOnly: true, variant: 'ghost', className: 'modal-close', attrs: { id: 'tl-modal-close', 'data-modal-close': true } })}</div>
+      <div class="modal-body ui-editor-stack">
+        ${uiField({ id: 'tl-field-title', label: 'Название', value: data.title || '', required: true, attrs: { autofocus: true, placeholder: 'Название события' } })}
+        ${uiField({ id: 'tl-field-desc', label: 'Описание', kind: 'textarea', value: data.description || '', attrs: { rows: 3, placeholder: 'Описание события' } })}
+        ${uiField({ id: 'tl-field-date', label: 'Дата', type: 'date', value: data.date || '', required: true })}
+        <fieldset class="ui-choice-group"><legend class="form-label">Цвет события</legend>
+          <input type="hidden" id="tl-field-color" value="${color}">
+          <div id="tl-color-palette" class="ui-color-options">${COLOR_PALETTE.map(c => uiButton({ label: `Цвет ${c}`, iconOnly: true, variant: 'ghost', iconMarkup: `<span class="dict-color-dot" style="background:${c}"></span>`, attrs: { 'data-color': c, 'aria-pressed': c.toLowerCase() === color.toLowerCase() } })).join('')}</div>
+        </fieldset>
+        <div class="ui-form-grid">
+          ${uiField({ id: 'tl-field-interval', label: 'Повторение', kind: 'select', value: data.is_recurring ? data.recurring_interval || '' : '', options: [{ value: '', label: 'Нет' }, ...Object.entries(RECUR_LABELS).map(([value, label]) => ({ value, label }))] })}
+          ${uiField({ id: 'tl-field-visibility', label: 'Показывать на уровне', kind: 'select', value: data.visibility_level || 'all', options: Object.entries(VIS_LABELS).map(([value, label]) => ({ value, label })) })}
         </div>
       </div>
-    </div>`;
+      <div class="modal-footer">${uiButton({ label: 'Отмена', attrs: { id: 'tl-modal-cancel' } })}${uiButton({ label: isEdit ? 'Сохранить' : 'Создать', variant: 'primary', attrs: { id: 'tl-modal-save', 'data-edit-id': data.id || '' } })}</div>
+    </div>
+  </div>`;
 }
 
 async function loadTimelineAdminEvents(app) {
@@ -1345,6 +1304,7 @@ async function loadTimelineAdminEvents(app) {
     const container = document.getElementById('tl-admin-list');
     if (container) {
       container.innerHTML = renderTimelineEventList(app);
+      normalizeAdminTables();
       try { if (window.lucide) window.lucide.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' }); } catch (_) {}
     }
   } catch (e) {
@@ -1367,6 +1327,7 @@ function handleHomeTabClick(e, app) {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   const action = btn.dataset.action;
+  if (getAdminAccess(app) === 'read') return;
 
   if (action === 'add-tl-event') {
     const root = document.getElementById('admin-modal-root');
@@ -1387,40 +1348,43 @@ function handleHomeTabClick(e, app) {
 
 function bindTimelineEventModal(app) {
   const backdrop = document.getElementById('tl-modal-backdrop');
-  if (backdrop) {
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) backdrop.remove();
-    });
-  }
-  const close = document.getElementById('tl-modal-close');
-  if (close) close.addEventListener('click', () => backdrop?.remove());
-  const cancel = document.getElementById('tl-modal-cancel');
-  if (cancel) cancel.addEventListener('click', () => backdrop?.remove());
-
-  const saveBtn = document.getElementById('tl-modal-save');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', () => saveTimelineEvent(saveBtn.dataset.editId, app));
-  }
-
-  const palette = document.getElementById('tl-color-palette');
-  if (palette) {
-    palette.addEventListener('click', (e) => {
-      const swatch = e.target.closest('.color-swatch');
-      if (!swatch) return;
-      palette.querySelectorAll('.color-swatch').forEach(s => s.style.borderColor = 'transparent');
-      swatch.style.borderColor = 'var(--accent)';
-      const input = document.getElementById('tl-field-color');
-      if (input) input.value = swatch.dataset.color;
-    });
-  }
+  const origin = document.activeElement;
+  const snapshot = () => JSON.stringify([...backdrop.querySelectorAll('input, select, textarea')].map(field => field.value));
+  const initial = snapshot();
+  const close = () => {
+    backdrop.remove();
+    if (origin?.isConnected) origin.focus({ preventScroll: true });
+  };
+  backdrop.closeEditor = close;
+  const requestClose = () => {
+    if (backdrop.getAttribute('aria-busy') === 'true') return;
+    if (snapshot() !== initial) showConfirmModal('Закрыть событие без сохранения изменений?', close);
+    else close();
+  };
+  backdrop.addEventListener('click', event => { if (event.target === backdrop) requestClose(); });
+  backdrop.querySelector('#tl-modal-close').addEventListener('click', requestClose);
+  backdrop.querySelector('#tl-modal-cancel').addEventListener('click', requestClose);
+  backdrop.querySelector('#tl-modal-save').addEventListener('click', event => saveTimelineEvent(event.currentTarget.dataset.editId, app));
+  backdrop.addEventListener('input', event => clearFieldError(event.target));
+  backdrop.querySelector('#tl-color-palette').addEventListener('click', event => {
+    const swatch = event.target.closest('[data-color]');
+    if (!swatch) return;
+    backdrop.querySelectorAll('[data-color]').forEach(button => button.setAttribute('aria-pressed', String(button === swatch)));
+    backdrop.querySelector('#tl-field-color').value = swatch.dataset.color;
+  });
+  enhanceDialogOverlay(backdrop, origin);
+  window.lucide?.createIcons();
 }
 
 async function saveTimelineEvent(editId, app) {
+  const backdrop = document.getElementById('tl-modal-backdrop');
+  const saveButton = backdrop?.querySelector('#tl-modal-save');
+  if (!saveButton || saveButton.disabled) return;
   const title = document.getElementById('tl-field-title')?.value?.trim();
-  if (!title) { toast('Название обязательно', 'error'); return; }
+  if (!title) { showFieldError(document.getElementById('tl-field-title'), 'Введите название события'); return; }
 
   const date = document.getElementById('tl-field-date')?.value;
-  if (!date) { toast('Дата обязательна', 'error'); return; }
+  if (!date) { showFieldError(document.getElementById('tl-field-date'), 'Укажите дату события'); return; }
 
   const interval = document.getElementById('tl-field-interval')?.value || '';
 
@@ -1434,6 +1398,10 @@ async function saveTimelineEvent(editId, app) {
     visibility_level: document.getElementById('tl-field-visibility')?.value || 'all',
   };
 
+  setButtonBusy(saveButton, true, 'Сохранение…');
+  backdrop.setAttribute('aria-busy', 'true');
+  const controls = [...backdrop.querySelectorAll('input, select, textarea, button')].filter(control => control !== saveButton && !control.disabled);
+  controls.forEach(control => { control.disabled = true; });
   try {
     if (editId) {
       await app.api.put(`/timeline/admin/${editId}`, payload);
@@ -1442,11 +1410,14 @@ async function saveTimelineEvent(editId, app) {
       await app.api.post('/timeline/admin', payload);
       toast('Событие создано', 'success');
     }
-    document.getElementById('admin-modal-root').innerHTML = '';
-    deactivateAdminModalFocus();
+    backdrop.closeEditor();
     await loadTimelineAdminEvents(app);
   } catch (e) {
     toast('Ошибка: ' + (e.message || ''), 'error');
+  } finally {
+    setButtonBusy(saveButton, false);
+    backdrop.removeAttribute('aria-busy');
+    controls.forEach(control => { control.disabled = false; });
   }
 }
 
@@ -1486,15 +1457,15 @@ function renderReportsTab(app) {
         <i data-lucide="file-text" style="width:18px;height:18px;opacity:0.8;flex-shrink:0;margin-top:1px"></i>
         <h4 style="margin:0;font-size:13px;font-weight:600;color:white;line-height:1.3;flex:1;min-height:34px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escapeHtml(r.name)}</h4>
         <div style="display:flex;gap:2px;flex-shrink:0">
-          <button class="admin-edit-btn" data-type="report" data-id="${r.id}" style="padding:4px;border:none;background:rgba(255,255,255,0.15);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Настроить отчёт">
-            <i data-lucide="settings" style="width:14px;height:14px;color:white"></i>
+          <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="report" data-id="${r.id}" style="border:none;background:rgba(255,255,255,0.15);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Настроить отчёт">
+            <i data-lucide="settings" style="color:white"></i>
           </button>
         </div>
       </div>
       <div style="font-size:12px;opacity:0.8;flex:1">${escapeHtml(r.description || '')}</div>
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-        <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;flex-shrink:0">Стандартный</span>
-        ${r.key ? `<span style="font-size:10px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px">${escapeHtml(r.key)}</span>` : ''}
+        <span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;flex-shrink:0">Стандартный</span>
+        ${r.key ? `<span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px">${escapeHtml(r.key)}</span>` : ''}
       </div>
     </div>
   `).join('');
@@ -1513,19 +1484,19 @@ function renderReportsTab(app) {
           <div style="display:flex;align-items:center;gap:8px">
             <i data-lucide="bar-chart-3" style="width:18px;height:18px;color:var(--accent)"></i>
             <h4 style="margin:0;font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(r.name)}</h4>
-            ${r.is_public ? '<span style="font-size:10px;background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Публичный</span>' : ''}
+            ${r.is_public ? '<span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Публичный</span>' : ''}
           </div>
           <div style="display:flex;gap:2px">
-            <button class="admin-edit-btn" data-type="report" data-id="${r.id}" style="padding:4px;border:none;background:transparent;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
-              <i data-lucide="pen-line" style="width:14px;height:14px;color:var(--text-muted)"></i>
+            <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="report" data-id="${r.id}" style="border:none;background:transparent;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
+              <i data-lucide="pen-line" style="color:var(--text-muted)"></i>
             </button>
-            <button class="admin-delete-btn" data-type="report" data-id="${r.id}" style="padding:4px;border:none;background:transparent;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
-              <i data-lucide="trash-2" style="width:14px;height:14px;color:#f43f5e"></i>
+            <button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="report" data-id="${r.id}" style="border:none;background:transparent;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
+              <i data-lucide="trash-2" style="color:#f43f5e"></i>
             </button>
           </div>
         </div>
         <div style="font-size:12px;color:var(--text-muted);flex:1">${escapeHtml(r.description || 'Без описания')}</div>
-        <div style="display:flex;gap:12px;margin-top:10px;font-size:11px;color:var(--text-muted)">
+        <div style="display:flex;gap:12px;margin-top:10px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted)">
           <span>Фильтров: ${filterCount}</span>
           <span>Полей: ${fieldCount || 'все'}</span>
           ${r.group_by ? `<span>Группировка: ${escapeHtml(r.group_by)}</span>` : ''}
@@ -1537,7 +1508,7 @@ function renderReportsTab(app) {
   return `
     <div class="admin-action-row" style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:16px">
       <button class="btn btn-primary btn-sm admin-add-btn" data-type="report">
-        <i data-lucide="plus" style="width:14px;height:14px"></i> Добавить новый отчёт
+        <i data-lucide="plus"></i> Добавить новый отчёт
       </button>
     </div>
     ${standardReports.length ? `
@@ -1567,16 +1538,16 @@ function renderReportView(app) {
     <div class="admin-action-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:12px">
         <button class="btn btn-ghost btn-sm" id="report-view-back" title="Назад к списку">
-          <i data-lucide="arrow-left" style="width:16px;height:16px"></i> Назад
+          <i data-lucide="arrow-left"></i> Назад
         </button>
         <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--text-primary)">${escapeHtml(report.name)}</h3>
       </div>
       <div style="display:flex;gap:8px">
         ${scriptManagedReportKeys.includes(report.key) ? `
-          <span class="badge badge-info" style="font-size:11px;padding:6px 10px;line-height:1.4;white-space:normal;text-align:left">Управляется сценарием страницы «Статусы для встреч»</span>
+          <span class="badge badge-info" style="padding:6px 10px;line-height:1.4;white-space:normal;text-align:left">Управляется сценарием страницы «Статусы для встреч»</span>
         ` : `
           <button class="btn btn-primary btn-sm" id="report-execute-btn" data-report-id="${report.id}">
-            <i data-lucide="play" style="width:14px;height:14px"></i> Выполнить
+            <i data-lucide="play"></i> Выполнить
           </button>
         `}
       </div>
@@ -1584,11 +1555,11 @@ function renderReportView(app) {
     ${report.description ? `<p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0">${escapeHtml(report.description)}</p>` : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
       <div class="card" style="padding:12px">
-        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Фильтры</div>
+        <div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Фильтры</div>
         <div style="font-size:13px;color:var(--text-primary)">${filters && filters.length ? filters.map(f => `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;background:var(--bg-tertiary);font-size:12px">${escapeHtml(f.field)} ${escapeHtml(opLabels[f.operator] || f.operator || '=')} ${escapeHtml(Array.isArray(f.value) ? f.value.join(', ') : f.value)}</span>`).join('') : '<span style="color:var(--text-muted)">Нет фильтров</span>'}</div>
       </div>
       <div class="card" style="padding:12px">
-        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Группировка / Сортировка</div>
+        <div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Группировка / Сортировка</div>
         <div style="font-size:13px;color:var(--text-primary)">
           Группировка: ${escapeHtml(report.group_by || 'нет')} · Сортировка: ${escapeHtml(report.sort_by || 'нет')} ${report.sort_by ? `(${escapeHtml(report.sort_order || 'asc')})` : ''}
         </div>
@@ -1617,10 +1588,24 @@ const DISPLAY_DEFAULTS = buildColumnSettings();
 
 let displaySettingsData = {};
 let columnLabelsData = {};
+let displayDraft = null;
+let displayDraftOwner = null;
+
+function syncDisplayDraftOwner(app) {
+  const owner = app.store.get('currentUser')?.id ?? null;
+  if (owner !== displayDraftOwner) displayDraft = null;
+  displayDraftOwner = owner;
+}
+
+function captureDisplayDraft() {
+  const rows = [...document.querySelectorAll('.display-col-list .display-col-item')];
+  if (!rows.length) return;
+  displayDraft = rows.map(row => ({ key: row.dataset.col, visible: row.querySelector('input[type="checkbox"]').checked, label: row.querySelector('.display-col-label-input').value }));
+}
 
 function renderDisplayTab(app) {
   const KEY_MAP = { financial: 'financial_effect', effort: 'effort_days' };
-  const raw = displaySettingsData.shared || displaySettingsData.backlog_dmb || {};
+  const raw = displayDraft ? Object.fromEntries(displayDraft.map(row => [row.key, row.visible])) : displaySettingsData.shared || displaySettingsData.backlog_dmb || {};
   const defaultOrder = getAllColumnKeys();
   const validKeys = new Set(defaultOrder);
   const cleaned = {};
@@ -1632,73 +1617,82 @@ function renderDisplayTab(app) {
   defaultOrder.forEach(k => { if (!(k in visibility)) visibility[k] = DISPLAY_DEFAULTS[k] || false; });
 
   const fieldLabels = buildColumnLabels(window.app?.fieldLabels || {});
-  const items = defaultOrder.map(key => {
+  const canManage = getAdminAccess(app) !== 'read';
+  const orderedKeys = [...Object.keys(cleaned), ...defaultOrder.filter(key => !(key in cleaned))];
+  const items = orderedKeys.map(key => {
     const colDef = DISPLAY_COLUMNS.find(c => c.key === key) || {};
-    const label = columnLabelsData[key] || fieldLabels[key] || colDef.label || key;
-    const checked = visibility[key];
-    return `
-      <div class="display-col-item" data-col="${key}" draggable="true" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;font-size:13px;color:var(--text-primary);background:var(--bg-secondary);border:1px solid var(--border-color);cursor:grab;user-select:none;transition:background 0.15s, border-color 0.15s;">
-        <span style="cursor:grab;color:var(--text-muted);display:flex;align-items:center;flex-shrink:0;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg>
-        </span>
-        <input type="checkbox" class="display-col-cb" data-col="${key}" ${checked ? 'checked' : ''} style="width:16px;height:16px;margin:0;flex-shrink:0;">
-        <input type="text" class="display-col-label-input" value="${escapeHtml(label)}" style="flex:1;min-width:100px;font-size:13px;padding:2px 6px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text-primary);">
-        <span style="font-size:10px;color:var(--text-muted);font-family:monospace">${key}</span>
-      </div>
-    `;
+    const label = displayDraft?.find(row => row.key === key)?.label ?? (columnLabelsData[key] || fieldLabels[key] || colDef.label || key);
+    return `<div class="display-col-item" data-col="${key}" draggable="${canManage}">
+      ${uiButton({ label: `Переместить колонку: ${label}`, icon: 'grip-vertical', iconOnly: true, variant: 'ghost', className: 'display-col-handle', attrs: { disabled: !canManage, 'aria-describedby': 'display-order-hint' } })}
+      ${uiCheckbox({ id: `display-visible-${key}`, label: 'Показывать', checked: visibility[key], disabled: !canManage, attrs: { 'data-col': key, 'aria-label': `Показывать колонку: ${label}` }, className: 'display-col-choice' })}
+      ${uiField({ id: `display-label-${key}`, label: `Название колонки: ${fieldLabels[key] || colDef.label || key}`, value: label, disabled: !canManage, controlClassName: 'display-col-label-input' })}
+    </div>`;
   }).join('');
-
-  return `
-    <div style="max-width:900px">
-      <div class="admin-action-row" style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-        <button class="btn btn-primary btn-sm" id="save-display-settings">
-          <i data-lucide="save" style="width:14px;height:14px"></i> Сохранить настройки
-        </button>
-      </div>
-      <div class="card" style="padding:20px;margin-bottom:20px">
-        <h3 style="font-size:15px;font-weight:600;margin:0 0 4px 0;color:var(--text-primary)">Колонки бэклогов</h3>
-        <p style="font-size:12px;color:var(--text-muted);margin:0 0 16px 0">Настройка применяется к обеим страницам (Бэклог DMB и Бэклог команды). Перетаскивайте колонки для изменения порядка. Отмечайте галочками видимые по умолчанию. Редактируйте названия колонок — изменения сохранятся в БД.</p>
-        <div style="display:flex;gap:8px;margin-bottom:12px;">
-          <button class="btn btn-sm btn-ghost" id="display-select-all" style="font-size:11px;">Выбрать всё</button>
-          <button class="btn btn-sm btn-ghost" id="display-deselect-all" style="font-size:11px;">Снять всё</button>
-        </div>
-        <div class="display-col-list" style="display:flex;flex-direction:column;gap:4px;max-height:520px;overflow-y:auto;padding-right:4px;">${items}</div>
-      </div>
-    </div>
-  `;
+  return `<div class="display-settings-editor">
+    <div class="admin-action-row">${canManage ? uiButton({ label: 'Сохранить настройки', icon: 'save', variant: 'primary', attrs: { id: 'save-display-settings' } }) : ''}<span id="display-save-status" role="status" aria-live="polite"></span></div>
+    <section class="ui-panel ui-editor-stack" aria-labelledby="display-editor-title">
+      <div><h2 id="display-editor-title">Колонки бэклогов</h2><p class="form-hint" id="display-order-hint">Настройки применяются к бэклогу DMB и бэклогу команды. Перетаскивайте колонки или используйте стрелки вверх и вниз на кнопке перемещения. Выберите видимые колонки и отредактируйте их названия.</p></div>
+      ${canManage ? `<div class="display-editor-actions">${uiButton({ label: 'Выбрать всё', variant: 'ghost', size: 'small', attrs: { id: 'display-select-all' } })}${uiButton({ label: 'Снять всё', variant: 'ghost', size: 'small', attrs: { id: 'display-deselect-all' } })}</div>` : ''}
+      <div class="display-col-list">${items}</div>
+      <span class="sr-only" id="display-order-status" role="status" aria-live="polite"></span>
+    </section>
+  </div>`;
 }
 
 function bindDisplayEvents(app) {
+  if (getAdminAccess(app) === 'read') return;
   initDisplayDragDrop();
+  const list = document.querySelector('.display-col-list');
+  list?.addEventListener('keydown', event => {
+    if (!event.target.closest('.display-col-handle') || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const row = event.target.closest('.display-col-item');
+    const sibling = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+    if (!sibling) return;
+    if (event.key === 'ArrowUp') list.insertBefore(row, sibling); else list.insertBefore(sibling, row);
+    event.target.focus();
+    document.getElementById('display-order-status').textContent = `Позиция ${[...list.children].indexOf(row) + 1} из ${list.children.length}`;
+  });
   document.getElementById('display-select-all')?.addEventListener('click', () => {
-    document.querySelectorAll('.display-col-cb').forEach(cb => { cb.checked = true; });
+    list.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; });
   });
   document.getElementById('display-deselect-all')?.addEventListener('click', () => {
-    document.querySelectorAll('.display-col-cb').forEach(cb => { cb.checked = false; });
+    list.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
   });
-  document.getElementById('save-display-settings')?.addEventListener('click', async () => {
-    const items = document.querySelectorAll('.display-col-item');
+  document.getElementById('save-display-settings')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
+    if (button.disabled) return;
+    const status = document.getElementById('display-save-status');
+    const settings = {}, labels = {};
     const validKeys = new Set(getAllColumnKeys());
-    const settings = {};
-    const labels = {};
-    items.forEach(item => {
-      const cb = item.querySelector('.display-col-cb');
-      const labelInput = item.querySelector('.display-col-label-input');
+    list.querySelectorAll('.display-col-item').forEach(item => {
       const key = item.dataset.col;
       if (!validKeys.has(key)) return;
-      settings[key] = cb.checked;
-      const label = labelInput.value.trim();
+      settings[key] = item.querySelector('input[type="checkbox"]').checked;
+      const label = item.querySelector('.display-col-label-input').value.trim();
       if (label) labels[key] = label;
     });
+    setButtonBusy(button, true, 'Сохранение…');
+    const controls = [...document.querySelectorAll('.display-settings-editor input, .display-settings-editor button')].filter(control => !control.disabled);
+    controls.forEach(control => { control.disabled = true; });
+    list.querySelectorAll('.display-col-item').forEach(item => { item.draggable = false; });
+    status.textContent = '';
     try {
       await app.api.put('/admin/display-settings/shared', { settings });
       await app.api.put('/admin/field-labels', { labels });
       columnLabelsData = {};
       displaySettingsData.shared = { ...settings };
       if (window.app) window.app.fieldLabels = { ...(window.app.fieldLabels || {}), ...labels };
+      status.textContent = 'Настройки сохранены';
+      displayDraft = null;
       toast('Настройки отображения и названия колонок сохранены', 'success');
-    } catch (e) {
-      toast('Ошибка сохранения: ' + (e.message || 'Неизвестная ошибка'), 'error');
+    } catch (error) {
+      status.textContent = 'Не удалось сохранить все настройки. Повторите сохранение.';
+      toast('Ошибка сохранения: ' + (error.message || 'Неизвестная ошибка'), 'error');
+    } finally {
+      setButtonBusy(button, false);
+      controls.forEach(control => { control.disabled = false; });
+      list.querySelectorAll('.display-col-item').forEach(item => { item.draggable = true; });
     }
   });
 }
@@ -1802,11 +1796,11 @@ function renderNotificationTemplatesTab(app) {
     <td>${escapeHtml(NOTIFICATION_EVENTS[item.event_type] || item.event_type)}</td>
     <td>${(item.recipients || []).map(value => `<span class="badge badge-muted">${escapeHtml(notificationRecipientOptions().find(option => option.value === value)?.label || value)}</span>`).join(' ')}</td>
     <td>${item.repeat_frequency ? escapeHtml(NOTIFICATION_FREQUENCIES[item.repeat_frequency] || item.repeat_frequency) : 'Однократно'}</td>
-    <td><button type="button" class="notification-template-toggle ${item.is_active ? 'is-active' : ''}" data-id="${item.id}" aria-pressed="${item.is_active}" aria-label="${item.is_active ? 'Отключить' : 'Включить'} шаблон"${canManage ? '' : ' disabled'}><span></span>${item.is_active ? 'Включён' : 'Выключен'}</button></td>
-    <td class="actions"><button class="admin-edit-btn" data-type="notificationTemplate" data-id="${item.id}" title="Редактировать"><i data-lucide="pen-line"></i></button><button class="admin-delete-btn" data-type="notificationTemplate" data-id="${item.id}" title="Удалить"><i data-lucide="trash-2"></i></button></td>
+    <td><button type="button" class="btn btn-secondary btn-sm ui-btn notification-template-toggle ${item.is_active ? 'is-active' : ''}" data-id="${item.id}" aria-pressed="${item.is_active}" aria-label="${item.is_active ? 'Отключить' : 'Включить'} шаблон"${canManage ? '' : ' disabled'}><span></span>${item.is_active ? 'Включён' : 'Выключен'}</button></td>
+    <td class="actions"><button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="notificationTemplate" data-id="${item.id}" title="Редактировать"><i data-lucide="pen-line"></i></button><button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="notificationTemplate" data-id="${item.id}" title="Удалить"><i data-lucide="trash-2"></i></button></td>
   </tr>`).join('') : '<tr><td colspan="6" class="admin-empty-cell">Шаблоны пока не созданы</td></tr>';
   return `<div class="admin-action-row admin-list-action-row"><div><h2 style="margin:0">Шаблоны уведомлений</h2><p class="text-muted" style="margin:4px 0 0">Тестовая отправка не выполняется</p></div><button class="btn btn-primary btn-sm admin-add-btn" data-type="notificationTemplate"><i data-lucide="plus"></i> Новый шаблон</button></div>
-    <div class="admin-section audit-table-wrap"><table class="admin-table"><thead><tr><th>Шаблон</th><th>Событие</th><th>Получатели</th><th>Периодичность</th><th>Статус</th><th>Действия</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <div class="admin-section audit-table-wrap"><table class="ui-table ui-table-admin admin-table"><thead><tr><th>Шаблон</th><th>Событие</th><th>Получатели</th><th>Периодичность</th><th>Статус</th><th>Действия</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function renderNotificationTemplateForm(data) {
@@ -1817,7 +1811,7 @@ function renderNotificationTemplateForm(data) {
     <div class="form-group"><label class="form-label">Название <span class="required">*</span></label><input class="input modal-field" id="notification-template-name" maxlength="150" value="${escapeHtml(data.name || '')}"></div>
     <div class="form-group"><label class="form-label">Событие <span class="required">*</span></label><select class="input modal-field" id="notification-template-event"><option value="">Выберите событие</option>${eventOptions}</select></div>
     <div class="form-group"><label class="form-label">Получатели <span class="required">*</span></label><div class="notification-recipient-grid">${notificationRecipientOptions().map(option => `<label><input type="checkbox" class="notification-recipient" value="${escapeHtmlAttribute(option.value)}"${recipients.has(option.value) ? ' checked' : ''}> ${escapeHtml(option.label)}</label>`).join('')}</div></div>
-    <div class="form-group"><label class="form-label">Текст <span class="required">*</span></label><textarea class="input modal-field" id="notification-template-text" maxlength="4000" rows="6">${escapeHtml(data.text || '')}</textarea><div class="notification-variable-list">${NOTIFICATION_VARIABLES.map(variable => `<button type="button" class="notification-variable" data-variable="${variable}">{${variable}}</button>`).join('')}</div><div id="notification-template-variable-error" class="admin-field-error" hidden></div></div>
+    <div class="form-group"><label class="form-label">Текст <span class="required">*</span></label><textarea class="input modal-field" id="notification-template-text" maxlength="4000" rows="6">${escapeHtml(data.text || '')}</textarea><div class="notification-variable-list">${NOTIFICATION_VARIABLES.map(variable => `<button type="button" class="ui-surface-action notification-variable" data-variable="${variable}">{${variable}}</button>`).join('')}</div><div id="notification-template-variable-error" class="admin-field-error" hidden></div></div>
     <div class="notification-schedule-grid"><div class="form-group"><label class="form-label">За сколько дней</label><input class="input" type="number" min="0" max="365" id="notification-template-deadline" value="${data.deadline_days ?? ''}"></div><div class="form-group"><label class="form-label">Периодичность</label><select class="input" id="notification-template-frequency"><option value="">Однократно</option>${frequencyOptions}</select></div><div class="form-group"><label class="form-label">День повтора</label><input class="input" type="number" min="1" max="31" id="notification-template-repeat-day" value="${data.repeat_day ?? ''}"></div></div>
     <label class="notification-active-field"><input type="checkbox" id="notification-template-active"${data.is_active !== false ? ' checked' : ''}> Шаблон включён</label>
     <div class="notification-preview"><span>Предпросмотр</span><strong id="notification-template-preview-title">${escapeHtml(data.name || 'Название уведомления')}</strong><p id="notification-template-preview-text"></p></div>
@@ -1867,7 +1861,7 @@ function renderModal() {
   const isView = mode === 'view';
   const titleLabels = { team: 'команды', user: 'пользователя', role: 'роли', dict: 'справочника', project: 'проекта', bc: 'бизнес-заказчика', report: 'отчёта', notificationTemplate: 'шаблона уведомления' };
   const title = type === 'rolePreview' ? `Интерфейс роли «${getRoleDisplayName(data)}»` : type === 'dict' ? `Редактирование ${titleLabels[type]}` : isEdit ? `Редактирование ${titleLabels[type] || type}` : (isView ? `Просмотр ${titleLabels[type] || type}` : `Добавление ${titleLabels[type] || type}`);
-  const sizeClass = (type === 'rolePreview' || type === 'role') ? 'app-modal--large' : (type === 'report' || type === 'project' || type === 'bc' || type === 'notificationTemplate') ? 'app-modal--medium' : '';
+  const sizeClass = (type === 'rolePreview' || type === 'role' || type === 'report' || type === 'dict') ? 'app-modal--large' : (type === 'project' || type === 'bc' || type === 'notificationTemplate') ? 'app-modal--medium' : '';
 
   let body = '';
   if (type === 'team') body = renderTeamForm(data);
@@ -1886,9 +1880,7 @@ function renderModal() {
         <div class="modal-header-sticky">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
             <h3 id="admin-modal-title" style="margin:0;font-size:16px;font-weight:600">${title}</h3>
-            <button type="button" class="modal-close-x" data-modal-close aria-label="Закрыть">
-              <i data-lucide="x" style="width:18px;height:18px;color:var(--text-muted)"></i>
-            </button>
+            ${uiButton({ label: 'Закрыть', icon: 'x', iconOnly: true, variant: 'ghost', className: 'modal-close-x', attrs: { 'data-modal-close': true } })}
           </div>
         </div>
         <div class="modal-body-scroll">
@@ -1898,15 +1890,15 @@ function renderModal() {
         <div class="modal-footer-sticky">
           ${(type === 'project' && isView) || type === 'rolePreview' ? `
           <div style="display:flex;justify-content:flex-end;gap:var(--space-3)">
-            <button class="btn btn-secondary modal-cancel-btn">Закрыть</button>
+            ${uiButton({ label: 'Закрыть', className: 'modal-cancel-btn' })}
           </div>` : type !== 'dict' ? `
           <div style="display:flex;justify-content:flex-end;gap:var(--space-3)">
-            <button class="btn btn-secondary modal-cancel-btn">Отмена</button>
-            <button class="btn btn-primary modal-save-btn">${isEdit ? 'Сохранить' : 'Создать'}</button>
+            ${uiButton({ label: 'Отмена', className: 'modal-cancel-btn' })}
+            ${uiButton({ label: isEdit ? 'Сохранить' : 'Создать', variant: 'primary', className: 'modal-save-btn' })}
           </div>` : `
           <div style="display:flex;justify-content:flex-end;gap:var(--space-3)">
-            <button class="btn btn-secondary modal-cancel-btn">Отмена</button>
-            <button class="btn btn-primary modal-save-btn">Сохранить</button>
+            ${uiButton({ label: 'Отмена', className: 'modal-cancel-btn' })}
+            ${uiButton({ label: 'Сохранить', variant: 'primary', className: 'modal-save-btn' })}
           </div>`}
         </div>
       </div>
@@ -1923,78 +1915,30 @@ const COLOR_PALETTE = [
   '#059669', '#0284c7', '#9333ea', '#db2777', '#65a30d',
 ];
 
+function adminField(id, label, value, props = {}) {
+  return uiField({ id, label, value: value ?? '', controlClassName: 'modal-field', ...props });
+}
+
+function adminOptions(items, label = item => item.name, value = item => item.id) {
+  return [{ value: '', label: '—' }, ...items.map(item => ({ value: value(item), label: label(item) }))];
+}
+
 function renderTeamForm(data) {
-  const colorSwatches = COLOR_PALETTE.map(c =>
-    `<span class="color-swatch ${data.color === c ? 'active' : ''}" data-color="${c}" style="background:${c};"></span>`
-  ).join('');
-  const users = adminData.users || [];
-  const teamTypes = adminData.teamTypeRefs || [];
-  const typeOpts = teamTypes.map(tt => `<option value="${tt.id}"${data.team_type_id == tt.id ? ' selected' : ''}>${escapeHtml(tt.name)}</option>`).join('');
-  return `
-    <div class="form-group">
-      <label class="form-label">Название команды <span class="required">*</span></label>
-      <input class="input modal-field" id="modal-name" value="${escapeHtml(data.name || '')}" placeholder="Название">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Аббревиатура (на аватаре)</label>
-      <input class="input modal-field" id="modal-abbr" value="${escapeHtml(data.abbr || '')}" placeholder="Напр: PT" maxlength="4" style="width:100px">
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">1-4 буквы, отображаются на аватаре команды</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Тип команды</label>
-      <select class="input modal-field" id="modal-team-type"><option value="">—</option>${typeOpts}</select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Цвет</label>
-      <input type="hidden" id="modal-color" value="${safeHexColor(data.color, '#6366f1')}">
-      <div id="color-palette" style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;">${colorSwatches}</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Product Leader (PL)</label>
-      <select class="input modal-field" id="modal-pl">
-        <option value="">—</option>
-        ${users.map(u => `<option value="${escapeHtml(u.name)}"${data.pl === u.name ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Product Owner (PO)</label>
-      <select class="input modal-field" id="modal-po">
-        <option value="">—</option>
-        ${users.map(u => `<option value="${escapeHtml(u.name)}"${data.po === u.name ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Cluster Lead (CL)</label>
-      <select class="input modal-field" id="modal-cl">
-        <option value="">—</option>
-        ${users.map(u => `<option value="${escapeHtml(u.name)}"${data.cl === u.name ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">IT Product Lead (IT PL)</label>
-      <select class="input modal-field" id="modal-it-pl">
-        <option value="">—</option>
-        ${users.map(u => `<option value="${escapeHtml(u.name)}"${data.it_pl === u.name ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Описание</label>
-      <textarea class="input modal-field" id="modal-description" placeholder="Описание команды" style="min-height:60px">${escapeHtml(data.description || '')}</textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Домен</label>
-      <input class="input modal-field" id="modal-domain" value="${escapeHtml(data.domain || '')}" placeholder="Домен">
-    </div>
-  `;
+  const colorSwatches = COLOR_PALETTE.map(c => `<span class="color-swatch ${data.color === c ? 'active' : ''}" data-color="${c}" style="background:${c};"></span>`).join('');
+  const users = adminOptions(adminData.users || [], item => item.name, item => item.name);
+  for (const value of [data.pl, data.po, data.cl, data.it_pl]) { if (value && !users.some(option => option.value === value)) users.push({ value, label: value + ' (текущее значение)' }); }
+  const teamTypes = adminOptions(adminData.teamTypeRefs || []);
+  if (data.team_type_id && !teamTypes.some(option => String(option.value) === String(data.team_type_id))) teamTypes.push({ value: data.team_type_id, label: data.team_type_name || 'Текущий тип команды' });
+  return `${adminField('modal-name', 'Название команды', data.name, { required: true, attrs: { placeholder: 'Название' } })}
+    ${adminField('modal-abbr', 'Аббревиатура (на аватаре)', data.abbr, { attrs: { placeholder: 'Напр: PT', maxlength: 4 }, hint: '1–4 буквы, отображаются на аватаре команды' })}
+    ${adminField('modal-team-type', 'Тип команды', data.team_type_id, { kind: 'select', options: teamTypes })}
+    <div class="form-group"><label class="form-label">Цвет</label><input type="hidden" id="modal-color" value="${safeHexColor(data.color, '#6366f1')}"><div id="color-palette" style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;">${colorSwatches}</div></div>
+    ${[['pl', 'Product Leader (PL)'], ['po', 'Product Owner (PO)'], ['cl', 'Cluster Lead (CL)'], ['it-pl', 'IT Product Lead (IT PL)']].map(([key, label]) => adminField('modal-' + key, label, data[key.replace('-', '_')], { kind: 'select', options: users })).join('')}
+    ${adminField('modal-description', 'Описание', data.description, { kind: 'textarea', attrs: { rows: 3, placeholder: 'Описание команды' } })}
+    ${adminField('modal-domain', 'Домен', data.domain, { attrs: { placeholder: 'Домен' } })}`;
 }
 
 function renderUserForm(data) {
-  const teams = adminData.teams || [];
-  const roles = adminData.roles || [];
-  const businessCustomers = adminData.businessCustomers || [];
-  const teamOpts = teams.map(t => `<option value="${t.id}"${data.team_id == t.id ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('');
-  const roleOpts = roles.map(r => `<option value="${r.id}"${data.role_id == r.id ? ' selected' : ''}>${getRoleDisplayName(r)}</option>`).join('');
-  const customerOpts = businessCustomers.map(c => `<option value="${c.id}"${data.business_customer_id == c.id ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
   const initials = window.getUserInitials(data.name);
   const avatarColor = window.getAvatarColor(data.name);
   return `
@@ -2002,34 +1946,12 @@ function renderUserForm(data) {
       <div id="user-avatar-preview" style="width:56px;height:56px;border-radius:50%;background:${safeHexColor(avatarColor)};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:white;flex-shrink:0">${escapeHtml(initials)}</div>
       <div style="font-size:13px;color:var(--text-muted)">Аватар формируется автоматически по первой букве имени и фамилии</div>
     </div>
-    <div class="form-group">
-      <label class="form-label">ФИО</label>
-      <input class="input modal-field" id="modal-name" value="${escapeHtml(data.name || '')}" placeholder="ФИО пользователя">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Email</label>
-      <input class="input modal-field" id="modal-email" value="${escapeHtml(data.email || '')}" placeholder="Email" type="email">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Роль</label>
-      <select class="input modal-field" id="modal-role"><option value="">—</option>${roleOpts}</select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Команда</label>
-      <select class="input modal-field" id="modal-team"><option value="">—</option>${teamOpts}</select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Бизнес-заказчик</label>
-      <select class="input modal-field" id="modal-business-customer"><option value="">—</option>${customerOpts}</select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Статус</label>
-      <select class="input modal-field" id="modal-is-active">
-        <option value="1"${data.is_active !== false ? ' selected' : ''}>Активен</option>
-        <option value="0"${data.is_active === false ? ' selected' : ''}>Неактивен</option>
-      </select>
-    </div>
-  `;
+    ${adminField('modal-name', 'ФИО', data.name, { required: true, attrs: { placeholder: 'ФИО пользователя' } })}
+    ${adminField('modal-email', 'Логин', data.login, { required: true, readonly: !!data.id, attrs: { placeholder: 'ivan.petrov', maxlength: 254 } })}
+    ${adminField('modal-role', 'Роль', data.role_id, { kind: 'select', options: adminOptions(adminData.roles || []) })}
+    ${adminField('modal-team', 'Команда', data.team_id, { kind: 'select', options: adminOptions(adminData.teams || []) })}
+    ${adminField('modal-business-customer', 'Бизнес-заказчик', data.business_customer_id, { kind: 'select', options: adminOptions(adminData.businessCustomers || []) })}
+    ${data.id ? '<p>Включение и отключение — через кнопку «Доступ» в списке пользователей.</p>' : adminField('modal-is-active', 'Статус', '1', { kind: 'select', options: [{ value: '1', label: 'Активен' }, { value: '0', label: 'Неактивен' }] })}`;
 }
 
 function renderRoleForm(data) {
@@ -2043,49 +1965,25 @@ function renderRoleForm(data) {
     { key: 'admin_access', label: 'Администрирование', opts: ['none','partial','full'] },
   ];
   const permHtml = permFields.map(p => {
-    const isAdminField = p.key === 'admin_access';
-    const isOwnRole = currentAdminUser && data.id === currentAdminUser.role_id;
-    const blocked = isAdminField && isOwnRole;
-    const opts = p.opts.map(o => {
-      const disabled = blocked && o === 'none' ? ' disabled' : '';
-      const selected = data[p.key] === o ? ' selected' : '';
-      return `<option value="${o}"${selected}${disabled}>${getAccessLabel(o)}${disabled ? ' (заблокировано)' : ''}</option>`;
-    }).join('');
-    return `
-      <div class="form-group">
-        <label class="form-label">${p.label}${blocked ? ' <span style="color:#f43f5e;font-size:11px">— нельзя лишить себя доступа</span>' : ''}</label>
-        <select class="input modal-field" id="modal-${p.key}">${opts}</select>
-      </div>
-    `;
+    const blocked = p.key === 'admin_access' && currentAdminUser && data.id === currentAdminUser.role_id;
+    return adminField('modal-' + p.key, p.label, data[p.key] || p.opts[0], {
+      kind: 'select',
+      options: p.opts.map(value => ({ value, label: getAccessLabel(value) + (blocked && value === 'none' ? ' (заблокировано)' : ''), disabled: blocked && value === 'none' })),
+      hint: blocked ? 'Нельзя лишить себя доступа к администрированию.' : '',
+    });
   }).join('');
   const roleName = String(data.name || '').trim().toLocaleLowerCase('ru-RU');
   const portalOnly = data.customer_portal_only ?? roleName === 'бизнес-заказчик';
   const reviewAccess = data.review_access || (['проектный офис (админ)', 'администратор'].includes(roleName) ? 'all' : ['po/pl/cl', 'ba/участник команды', 'ba/бизнес-аналитик', 'лидер трайба'].includes(roleName) ? 'team' : 'none');
   const taskScopes = getRolePreview(data).taskScopes;
-  const scopeOptions = selected => [['none', 'Запрещено'], ['team', 'Только своя команда'], ['all', 'Все команды']].map(([value, label]) => `<option value="${value}"${selected === value ? ' selected' : ''}>${label}</option>`).join('');
-
-  return `
-    <div class="form-group">
-      <label class="form-label">Название роли <span class="required">*</span></label>
-      <input class="input modal-field" id="modal-name" value="${getRoleDisplayName(data) || escapeHtml(data.name || '')}" placeholder="Название">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Описание</label>
-      <input class="input modal-field" id="modal-description" value="${escapeHtml(data.description || '')}" placeholder="Описание">
-    </div>
-    <div style="margin:16px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border-color)">
-      <strong style="font-size:14px">Права доступа</strong>
-    </div>
-    ${permHtml}
-    <div style="margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border-color)"><strong style="font-size:14px">Сценарии интерфейса</strong><div style="font-size:11px;color:var(--text-muted);margin-top:4px">Эти настройки не зависят от названия роли.</div></div>
-    <div class="form-group"><label class="form-label" for="modal-customer-portal-only">Режим бизнес-заказчика</label><select class="input modal-field" id="modal-customer-portal-only"><option value="0"${!portalOnly ? ' selected' : ''}>Обычный интерфейс</option><option value="1"${portalOnly ? ' selected' : ''}>Только «Мои запросы» и ИИ-ассистент</option></select></div>
-    <div class="form-group"><label class="form-label" for="modal-review-access">Ревью запросов</label><select class="input modal-field" id="modal-review-access"><option value="none"${reviewAccess === 'none' ? ' selected' : ''}>Нет доступа</option><option value="team"${reviewAccess === 'team' ? ' selected' : ''}>Только запросы своей команды</option><option value="all"${reviewAccess === 'all' ? ' selected' : ''}>Запросы всех команд</option></select></div>
-    <div style="margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border-color)"><strong style="font-size:14px">Операции с задачами</strong></div>
-    <div class="form-group"><label class="form-label" for="modal-task-edit-scope">Редактирование</label><select class="input modal-field" id="modal-task-edit-scope">${scopeOptions(taskScopes.edit)}</select></div>
-    <div class="form-group"><label class="form-label" for="modal-task-comment-scope">Комментирование</label><select class="input modal-field" id="modal-task-comment-scope">${scopeOptions(taskScopes.comment)}</select></div>
-    <div class="form-group"><label class="form-label" for="modal-task-delete-scope">Удаление</label><select class="input modal-field" id="modal-task-delete-scope">${scopeOptions(taskScopes.delete)}</select></div>
-    <div class="form-group"><label class="form-label" for="modal-pip-decision-access">PIP-решения</label><select class="input modal-field" id="modal-pip-decision-access"><option value="0"${!taskScopes.pip ? ' selected' : ''}>Запрещены</option><option value="1"${taskScopes.pip ? ' selected' : ''}>Разрешены</option></select></div>
-  `;
+  const scopeOptions = [{ value: 'none', label: 'Запрещено' }, { value: 'team', label: 'Только своя команда' }, { value: 'all', label: 'Все команды' }];
+  return adminField('modal-name', 'Название роли', data.name, { required: true, attrs: { placeholder: 'Название' } })
+    + adminField('modal-description', 'Описание', data.description, { attrs: { placeholder: 'Описание' } })
+    + permHtml
+    + adminField('modal-customer-portal-only', 'Режим бизнес-заказчика', portalOnly ? '1' : '0', { kind: 'select', options: [{ value: '0', label: 'Обычный интерфейс' }, { value: '1', label: 'Только «Мои запросы» и ИИ-ассистент' }] })
+    + adminField('modal-review-access', 'Ревью запросов', reviewAccess, { kind: 'select', options: [{ value: 'none', label: 'Нет доступа' }, { value: 'team', label: 'Только запросы своей команды' }, { value: 'all', label: 'Запросы всех команд' }] })
+    + [['edit', 'Редактирование'], ['comment', 'Комментирование'], ['delete', 'Удаление']].map(([key, label]) => adminField('modal-task-' + key + '-scope', label, taskScopes[key], { kind: 'select', options: scopeOptions })).join('')
+    + adminField('modal-pip-decision-access', 'PIP-решения', taskScopes.pip ? '1' : '0', { kind: 'select', options: [{ value: '0', label: 'Запрещены' }, { value: '1', label: 'Разрешены' }] });
 }
 
 function readRolePolicyFromForm() {
@@ -2122,7 +2020,7 @@ function enhanceRoleFormWorkspace() {
     ['special', 'Специальные сценарии', ['modal-customer-portal-only', 'modal-review-access']],
   ];
   const workspace = document.createElement('div'); workspace.className = 'role-form-workspace';
-  workspace.innerHTML = `<nav class="role-form-nav" aria-label="Разделы роли">${sections.map(([id, label], index) => `<button type="button" class="role-form-nav-btn${index === 0 ? ' is-active' : ''}" data-role-section="${id}">${label}</button>`).join('')}</nav><div class="role-form-columns"><div class="role-form-main"></div><aside class="role-form-aside" id="role-form-live-summary" aria-live="polite"></aside></div>`;
+  workspace.innerHTML = `<nav class="role-form-nav" aria-label="Разделы роли">${sections.map(([id, label], index) => uiButton({ label, variant: 'ghost', size: 'small', className: 'role-form-nav-btn' + (index === 0 ? ' is-active' : ''), attrs: { 'data-role-section': id, 'aria-controls': 'role-section-' + id, 'aria-current': index === 0 ? 'location' : undefined } })).join('')}</nav><div class="role-form-columns"><div class="role-form-main"></div><aside class="role-form-aside" id="role-form-live-summary" aria-live="polite"></aside></div>`;
   const main = workspace.querySelector('.role-form-main');
   sections.forEach(([id, label, fieldIds]) => {
     const section = document.createElement('section'); section.className = 'role-form-section'; section.id = `role-section-${id}`; section.innerHTML = `<h4>${label}</h4>`;
@@ -2157,6 +2055,7 @@ function openCompetencyInlineEditor(mode, trigger) {
   input.min = mode === 'year' ? '2000' : '';
   input.max = mode === 'year' ? '2100' : '';
   input.value = '';
+  input.removeAttribute('aria-invalid');
   document.getElementById('cc-inline-error').textContent = '';
   input.focus();
 }
@@ -2165,6 +2064,7 @@ function showCompetencyInlineError(message) {
   const error = document.getElementById('cc-inline-error');
   const input = document.getElementById('cc-inline-value');
   if (error) error.textContent = message;
+  input?.setAttribute('aria-invalid', 'true');
   input?.focus();
 }
 
@@ -2174,11 +2074,11 @@ function addCompetencyCostYear(input) {
   const table = document.querySelector('#comp-cost-table');
   if (!table) return false;
   if (table.querySelector(`th[data-year="${year}"]`)) { showCompetencyInlineError('Этот год уже есть в таблице'); return false; }
-  table.querySelector('thead tr').insertAdjacentHTML('beforeend', `<th data-year="${year}" style="padding:8px;text-align:center;font-size:12px">${year}</th>`);
+  table.querySelector('thead tr').insertAdjacentHTML('beforeend', `<th data-year="${year}" style="text-align:center">${year}</th>`);
   table.querySelectorAll('tbody tr').forEach(tr => {
     const first = tr.querySelector('.comp-cost-input');
     const comp = first ? first.dataset.comp : '';
-    tr.insertAdjacentHTML('beforeend', `<td style="padding:4px"><input class="input comp-cost-input" data-comp="${escapeHtml(comp)}" data-year="${year}" data-id="" value="" placeholder="0" style="width:90px"></td>`);
+    tr.insertAdjacentHTML('beforeend', `<td class="competency-rate-cell">${renderCompetencyRateControl({ competency: comp, year })}</td>`);
   });
   return true;
 }
@@ -2192,10 +2092,10 @@ function addCompetencyCostCompetency(input) {
   const yearCells = Array.from(table.querySelectorAll('thead th[data-year]'));
   const tbody = table.querySelector('tbody');
   const tr = document.createElement('tr');
-  tr.insertAdjacentHTML('beforeend', `<td style="padding:8px;font-weight:500;font-size:13px">${escapeHtml(comp)}</td>`);
+  tr.insertAdjacentHTML('beforeend', `<td style="font-weight:500">${escapeHtml(comp)}</td>`);
   yearCells.forEach(th => {
     const year = th.dataset.year;
-    tr.insertAdjacentHTML('beforeend', `<td style="padding:4px"><input class="input comp-cost-input" data-comp="${escapeHtml(comp)}" data-year="${year}" data-id="" value="" placeholder="0" style="width:90px"></td>`);
+    tr.insertAdjacentHTML('beforeend', `<td class="competency-rate-cell">${renderCompetencyRateControl({ competency: comp, year })}</td>`);
   });
   tbody.querySelector('tr td.text-muted')?.closest('tr')?.remove();
   tbody.appendChild(tr);
@@ -2273,36 +2173,39 @@ async function saveCompetencyCosts(app) {
 }
 
 window.openDictColorPalette = function(swatch) {
-    const existing = document.querySelector('.dict-color-popup');
-    if (existing) existing.remove();
-
-    const currentColor = swatch.previousElementSibling.value || '#6366f1';
-    const popup = document.createElement('div');
-    popup.className = 'dict-color-popup';
-    popup.style.cssText = 'position:absolute;z-index:1000;background:var(--bg-elevated);border:1px solid var(--border-color);border-radius:8px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,0.25);display:flex;flex-wrap:wrap;gap:4px;width:196px;';
-    COLOR_PALETTE.forEach(c => {
-        const dot = document.createElement('span');
-        dot.className = 'color-swatch' + (c === currentColor ? ' active' : '');
-        dot.style.cssText = `background:${c};width:22px;height:22px;border-radius:4px;cursor:pointer;border:2px solid ${c === currentColor ? 'var(--accent)' : 'transparent'};`;
-        dot.onclick = (e) => {
-            e.stopPropagation();
-            swatch.style.background = c;
-            swatch.previousElementSibling.value = c;
-            markDictEdited(swatch.previousElementSibling);
-            popup.remove();
-        };
-        popup.appendChild(dot);
-    });
-    swatch.parentElement.style.position = 'relative';
-    swatch.parentElement.appendChild(popup);
-
-    const closePopup = (e) => {
-        if (!popup.contains(e.target) && e.target !== swatch) {
-            popup.remove();
-            document.removeEventListener('click', closePopup);
-        }
-    };
-    setTimeout(() => document.addEventListener('click', closePopup), 0);
+  if (swatch.disabled) return;
+  closeDictionaryColorPalette?.();
+  const currentColor = swatch.previousElementSibling.value || '#6366f1';
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'dict-color-dialog';
+  overlay.innerHTML = `<div class="modal modal-sm dict-color-popup" role="dialog" aria-modal="true" aria-labelledby="dict-color-title">
+    <div class="modal-header"><h3 class="modal-title" id="dict-color-title">Цвет значения</h3>${uiButton({ label: 'Закрыть выбор цвета', icon: 'x', iconOnly: true, variant: 'ghost', attrs: { 'data-modal-close': true } })}</div>
+    <div class="modal-body"><div class="dict-color-options" role="group" aria-label="Доступные цвета">${COLOR_PALETTE.map(color => uiButton({ label: 'Цвет ' + color, iconOnly: true, iconMarkup: `<span class="dict-color-dot" style="background:${color}" aria-hidden="true"></span>`, variant: 'ghost', className: 'dict-palette-option', attrs: { 'data-color': color, 'aria-pressed': color === currentColor, autofocus: color === currentColor } })).join('')}</div></div>
+    <div class="modal-footer">${uiButton({ label: 'Отмена', attrs: { 'data-modal-close': true } })}</div>
+  </div>`;
+  const close = () => {
+    overlay.remove(); swatch.setAttribute('aria-expanded', 'false'); swatch.removeAttribute('aria-controls');
+    closeDictionaryColorPalette = null;
+    if (swatch.isConnected) swatch.focus({ preventScroll: true });
+  };
+  closeDictionaryColorPalette = close;
+  swatch.setAttribute('aria-expanded', 'true'); swatch.setAttribute('aria-controls', overlay.id);
+  overlay.addEventListener('click', event => {
+    const choice = event.target.closest('[data-color]');
+    if (choice) {
+      swatch.querySelector('.dict-color-dot').style.background = choice.dataset.color;
+      swatch.previousElementSibling.value = choice.dataset.color;
+      window.markDictEdited(swatch.previousElementSibling);
+      close();
+    } else if (event.target === overlay || event.target.closest('[data-modal-close]')) close();
+  });
+  // Also works in isolated render fixtures without the global dialog observer.
+  overlay.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); event.stopPropagation(); close(); }
+  });
+  document.body.appendChild(overlay);
+  enhanceDialogOverlay(overlay, swatch);
+  window.lucide?.createIcons();
 };
 
 // ==================== EVENT HANDLERS ====================
@@ -2310,6 +2213,8 @@ window.openDictColorPalette = function(swatch) {
 async function handleAdminClick(e, app) {
   const target = e.target.closest('button, .modal-close-x, .admin-dict-card, [data-report], [data-admin-report-id], .color-swatch, .admin-sort-th');
   if (!target) return;
+
+  if (target.id === 'dict-search-reset') { const input = document.getElementById('dict-search'); input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); return; }
 
   if (target.id === 'role-compare-clear') {
     roleCompare = { left: '', right: '' };
@@ -2320,7 +2225,7 @@ async function handleAdminClick(e, app) {
   }
 
   if (target.classList.contains('role-form-nav-btn')) {
-    document.querySelectorAll('.role-form-nav-btn').forEach(button => button.classList.toggle('is-active', button === target));
+    document.querySelectorAll('.role-form-nav-btn').forEach(button => { button.classList.toggle('is-active', button === target); if (button === target) button.setAttribute('aria-current', 'location'); else button.removeAttribute('aria-current'); });
     document.getElementById(`role-section-${target.dataset.roleSection}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
@@ -2358,6 +2263,12 @@ async function handleAdminClick(e, app) {
     updateAdminUrl('push'); document.getElementById('admin-content').innerHTML = renderTabContent(adminTab, app);
     pullStickyBars();
     bindAdminEvents(app);
+    if (target.classList.contains('admin-list-page')) {
+      const content = document.getElementById('admin-content');
+      content.tabIndex = -1;
+      content.focus({ preventScroll: true });
+      content.scrollIntoView({ block: 'start' });
+    }
     if (window.lucide) lucide.createIcons();
     return;
   }
@@ -2525,7 +2436,7 @@ async function handleAdminClick(e, app) {
   if (target.classList.contains('admin-dict-card')) {
     const dictKey = target.dataset.dict;
     if (dictKey === 'did-client-groups') {
-      const { openCustomerReferences } = await import('./customerReferences.js?v=1');
+      const { openCustomerReferences } = await import('./customerReferences.js?v=5');
       await openCustomerReferences(dictKey, app); return;
     }
     const lock = dictLocks[DICTIONARY_CONFIG[dictKey]?.type];
@@ -2569,6 +2480,7 @@ async function handleAdminClick(e, app) {
   if (target.classList.contains('report-filter-remove') || target.closest('.report-filter-remove')) {
     const row = target.closest('.report-filter-row');
     if (row) row.remove();
+    updateReportPreview(); updateReportValidationNotice();
     return;
   }
 
@@ -2602,28 +2514,36 @@ function updateDictionaryEditorState() {
   if (empty && activeRows.length) empty.remove();
   const saveButton = document.querySelector('#admin-modal-overlay .modal-save-btn');
   if (saveButton && adminModal.type === 'dict') {
-    saveButton.disabled = changed === 0 || activeRows.length === 0 || Boolean(document.querySelector('.dict-editor-row.has-error'));
-    saveButton.textContent = changed ? `Сохранить изменения (${changed})` : 'Нет изменений';
+    saveButton.disabled = adminFormSaving || changed === 0 || activeRows.length === 0 || Boolean(document.querySelector('#dict-items-container .dict-editor-row.has-error'));
+    if (!adminFormSaving) { const label = changed ? `Сохранить изменения (${changed})` : 'Нет изменений'; if (saveButton.textContent !== label) saveButton.textContent = label; }
   }
 }
 
 function validateDictionaryEditor() {
   const rows = Array.from(document.querySelectorAll('#dict-items-container .dict-editor-row'));
   const names = new Map(); const codes = new Map(); let errors = 0;
-  rows.forEach(row => { row.classList.remove('has-error'); row.querySelector('.dict-row-error').textContent = ''; });
   rows.forEach(row => {
-    const name = row.querySelector('.dict-value-input').value.trim();
-    const code = row.querySelector('.dict-code-input').value.trim();
-    const nameKey = name.toLocaleLowerCase(); const codeKey = code.toLocaleLowerCase();
-    if (nameKey) names.set(nameKey, (names.get(nameKey) || 0) + 1); if (codeKey) codes.set(codeKey, (codes.get(codeKey) || 0) + 1);
+    row.classList.remove('has-error');
+    row.querySelectorAll('.dict-row-error').forEach(error => { error.textContent = ''; error.hidden = true; });
+    row.querySelectorAll('.ui-control').forEach(control => control.removeAttribute('aria-invalid'));
+    const nameKey = row.querySelector('.dict-value-input').value.trim().toLocaleLowerCase();
+    const codeKey = row.querySelector('.dict-code-input').value.trim().toLocaleLowerCase();
+    if (nameKey) names.set(nameKey, (names.get(nameKey) || 0) + 1);
+    if (codeKey) codes.set(codeKey, (codes.get(codeKey) || 0) + 1);
   });
   rows.forEach(row => {
-    const name = row.querySelector('.dict-value-input').value.trim(); const code = row.querySelector('.dict-code-input').value.trim();
-    const nameKey = name.toLocaleLowerCase(); const codeKey = code.toLocaleLowerCase();
-    let message = !name ? 'Введите название' : '';
-    if (!message && names.get(nameKey) > 1) message = 'Название уже используется';
-    if (!message && codeKey && codes.get(codeKey) > 1) message = 'Код уже используется';
-    if (message) { row.classList.add('has-error'); row.querySelector('.dict-row-error').textContent = message; errors += 1; }
+    const name = row.querySelector('.dict-value-input'); const code = row.querySelector('.dict-code-input');
+    const nameKey = name.value.trim().toLocaleLowerCase(); const codeKey = code.value.trim().toLocaleLowerCase();
+    const issues = [
+      [name, !nameKey ? 'Введите название' : names.get(nameKey) > 1 ? 'Название уже используется' : ''],
+      [code, codeKey && codes.get(codeKey) > 1 ? 'Код уже используется' : ''],
+    ].filter(([, message]) => message);
+    if (issues.length) { row.classList.add('has-error'); errors += 1; }
+    issues.forEach(([control, message]) => {
+      control.setAttribute('aria-invalid', 'true');
+      const error = document.getElementById(control.id + '-error');
+      error.textContent = message; error.hidden = false;
+    });
   });
   const empty = rows.length === 0;
   const summary = document.getElementById('dict-validation-summary');
@@ -2633,25 +2553,29 @@ function validateDictionaryEditor() {
 }
 
 function createDictionaryEditorRow() {
-  const row = document.createElement('div'); const defaultColor = autoDictColor('');
-  row.className = 'dict-editor-row is-dirty is-new'; row.draggable = true; row.dataset.itemId = ''; row.dataset.active = 'true'; row.dataset.usage = '0';
-  row.innerHTML = `<button type="button" class="dict-drag-handle" title="Перетащить для сортировки"><i data-lucide="grip-vertical"></i></button><input type="hidden" class="dict-color-input" value="${defaultColor}"><button type="button" class="dict-color-swatch" style="background:${defaultColor}" title="Выбрать цвет"></button><div class="dict-editor-field"><label>Название</label><input class="input dict-value-input" placeholder="Значение"><span class="dict-row-error"></span></div><div class="dict-editor-field dict-code-field"><label>Код</label><input class="input dict-code-input" placeholder="${escapeHtmlAttribute(dictCodePlaceholder((adminModal.data || {}).dictKey))}"></div><span class="dict-usage-badge" title="Количество связанных записей"><i data-lucide="link"></i>0</span><span class="dict-row-state">Новое</span><button type="button" class="dict-remove-btn dict-row-action" title="Удалить новую строку"><i data-lucide="x"></i></button>`;
-  return row;
+  const holder = document.createElement('div');
+  holder.innerHTML = renderDictionaryRow({ name: '', code: '', color: autoDictColor('') }, {
+    dictKey: adminModal.data?.dictKey, safeHexColor, autoDictColor, dictCodePlaceholder, isNew: true,
+  });
+  return holder.firstElementChild;
 }
 
 function moveDictionaryRowToArchive(row) {
+  row.classList.remove('has-error');
+  row.querySelectorAll('[aria-invalid]').forEach(control => control.removeAttribute('aria-invalid'));
+  row.querySelectorAll('.dict-row-error').forEach(error => { error.textContent = ''; error.hidden = true; });
   row.classList.add('is-archived', 'is-dirty'); row.dataset.active = 'false'; row.draggable = false;
   row.querySelectorAll('input').forEach(input => { if (input.type !== 'hidden') input.disabled = true; });
-  row.querySelector('.dict-drag-handle').disabled = true; row.querySelector('.dict-row-state').textContent = 'Будет архивировано';
-  const action = row.querySelector('.dict-remove-btn'); action.className = 'dict-restore-btn dict-row-action'; action.title = 'Восстановить'; action.innerHTML = '<i data-lucide="archive-restore"></i>';
-  document.getElementById('dict-archive-container').appendChild(row); updateDictionaryEditorState(); validateDictionaryEditor();
+  row.querySelector('.dict-drag-handle').disabled = true; row.querySelector('.dict-color-swatch').disabled = true; row.querySelector('.dict-row-state').textContent = 'Будет архивировано';
+  row.querySelector('.dict-remove-btn').outerHTML = renderDictionaryRowAction(false);
+  document.getElementById('dict-archive-container').appendChild(row); document.getElementById('dict-archive').open = true; updateDictionaryEditorState(); validateDictionaryEditor(); row.querySelector('.dict-restore-btn').focus();
 }
 
 function restoreDictionaryRow(row) {
   row.classList.remove('is-archived'); row.classList.add('is-dirty'); row.dataset.active = 'true'; row.draggable = true;
-  row.querySelectorAll('input').forEach(input => { input.disabled = false; }); row.querySelector('.dict-drag-handle').disabled = false; row.querySelector('.dict-row-state').textContent = 'Восстановлено';
-  const action = row.querySelector('.dict-restore-btn'); action.className = 'dict-remove-btn dict-row-action'; action.title = 'Архивировать'; action.innerHTML = '<i data-lucide="archive"></i>';
-  document.getElementById('dict-items-container').appendChild(row); updateDictionaryEditorState(); validateDictionaryEditor();
+  row.querySelectorAll('input').forEach(input => { input.disabled = false; }); row.querySelector('.dict-drag-handle').disabled = false; row.querySelector('.dict-color-swatch').disabled = false; row.querySelector('.dict-row-state').textContent = 'Восстановлено';
+  row.querySelector('.dict-restore-btn').outerHTML = renderDictionaryRowAction(true);
+  document.getElementById('dict-items-container').appendChild(row); updateDictionaryEditorState(); validateDictionaryEditor(); row.querySelector('.dict-remove-btn').focus();
 }
 
 function handleDictEvents(e, app) {
@@ -2676,7 +2600,7 @@ function handleDictEvents(e, app) {
   if (target.classList.contains('dict-remove-btn')) {
     const row = target.closest('.dict-editor-row');
     if (!row) return;
-    if (row.classList.contains('is-new')) { row.remove(); updateDictionaryEditorState(); validateDictionaryEditor(); }
+    if (row.classList.contains('is-new')) { row.remove(); updateDictionaryEditorState(); validateDictionaryEditor(); document.getElementById('dict-add-value')?.focus(); }
     else if (Number(row.dataset.usage || 0) > 0) showConfirmModal(`Значение используется в ${row.dataset.usage} связанных записях. Архивировать его?`, () => { moveDictionaryRowToArchive(row); if (window.lucide) lucide.createIcons(); });
     else moveDictionaryRowToArchive(row);
     if (window.lucide) lucide.createIcons();
@@ -2697,8 +2621,12 @@ function handleDictEvents(e, app) {
 async function handleAdminTabClick(e, app) {
   const btn = e.target.closest('.admin-tab[data-tab]');
   if (!btn) return;
+  captureDisplayDraft();
   document.querySelectorAll('.admin-tab').forEach(button => { const active = button === btn; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); button.tabIndex = active ? 0 : -1; });
   adminTab = btn.dataset.tab;
+  const selectedTab = adminTab;
+  const mobileSelect = document.getElementById('admin-tab-mobile-select');
+  if (mobileSelect) mobileSelect.value = selectedTab;
   updateAdminUrl('push');
   adminReportView = null;
   const content = document.getElementById('admin-content');
@@ -2707,18 +2635,17 @@ async function handleAdminTabClick(e, app) {
       adminLoadState[adminTab] = { status: 'loading' };
       content.innerHTML = renderTabContent(adminTab, app);
     }
-    await loadAdminTab(app, adminTab);
+    await loadAdminTab(app, selectedTab);
+    if (adminTab !== selectedTab || !content.isConnected) return;
     content.innerHTML = renderTabContent(adminTab, app);
     pullStickyBars();
     if (window.lucide) lucide.createIcons();
     bindAdminEvents(app);
-    if (adminTab === 'home') {
-      loadTimelineAdminEvents(app);
-    }
   }
 }
 
 async function applyAdminHistoryState(app) {
+  captureDisplayDraft();
   const desired = hydrateAdminUrlState();
   const allowedTabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'home', 'dictionaries', 'display', 'reports', ...(getAdminAccess(app) === 'full' ? ['audit'] : [])];
   const nextTab = allowedTabs.includes(desired.tab) ? desired.tab : 'teams';
@@ -2735,7 +2662,8 @@ async function applyAdminHistoryState(app) {
   const mobileSelect = document.getElementById('admin-tab-mobile-select'); if (mobileSelect) mobileSelect.value = adminTab;
   const content = document.getElementById('admin-content');
   if (!content) return;
-  await loadAdminTab(app, adminTab);
+  await loadAdminTab(app, nextTab);
+  if (adminTab !== nextTab || !content.isConnected) return;
   content.innerHTML = renderTabContent(adminTab, app); pullStickyBars(); bindAdminEvents(app); if (window.lucide) lucide.createIcons();
   if (desired.dictKey && adminTab === 'dictionaries' && DICTIONARY_CONFIG[desired.dictKey] && !adminModal.show) await openDictModal(desired.dictKey, app, { fromHistory: true });
 }
@@ -2781,6 +2709,7 @@ function saveModalData(app) {
   clearAdminFormErrors();
   if (type !== 'dict' && type !== 'report' && showAdminFormErrors(validateAdminEntityForm(type, data))) return;
   if (type === 'team') {
+    if (adminLoadState.teams?.status !== 'success') { toast('Данные команды загружены не полностью. Откройте форму повторно.', 'error'); return; }
     const payload = {
       name: getFieldVal('modal-name'),
       abbr: getFieldVal('modal-abbr') || null,
@@ -2798,16 +2727,17 @@ function saveModalData(app) {
     const teamId = parseInt(getFieldVal('modal-team')) || null;
     const payload = {
       name: getFieldVal('modal-name'),
-      email: getFieldVal('modal-email'),
+      login: getFieldVal('modal-email'),
       role_id: parseInt(getFieldVal('modal-role')) || null,
       team_id: teamId,
       business_customer_id: parseInt(getFieldVal('modal-business-customer')) || null,
       is_active: getFieldVal('modal-is-active') === '1',
     };
     if (mode === 'add') {
-      payload.password = 'dmb2026';
+      // Новый пользователь активируется только через приглашение.
     }
-    saveEntity('user', { ...data, ...payload }, app);
+    if (mode !== 'add') { delete payload.login; delete payload.is_active; }
+    saveEntity('user', { id: data.id, ...payload }, app);
   } else if (type === 'role') {
     const payload = {
       name: getFieldVal('modal-name'),
@@ -2866,7 +2796,7 @@ async function saveDictData(app) {
     return;
   }
   if (!validateDictionaryEditor()) {
-    document.querySelector('.dict-editor-row.has-error input')?.focus();
+    document.querySelector('.dict-editor-row [aria-invalid="true"]')?.focus();
     return;
   }
   const rows = document.querySelectorAll('#dict-items-container > div');
@@ -2931,14 +2861,28 @@ async function saveEntity(type, data, app) {
 
   const saveButton = document.querySelector('#admin-modal-overlay .modal-save-btn');
   if (adminFormSaving || saveButton?.disabled) return;
-  adminFormSaving = true;
-  if (saveButton) { saveButton.dataset.originalText = saveButton.textContent; saveButton.disabled = true; saveButton.setAttribute('aria-busy', 'true'); saveButton.textContent = 'Сохранение…'; }
+  setAdminFormSaving(true);
 
   try {
-    if (data.id) {
-      await app.api.put(`${endpoint.replace(/\/$/, '')}/${data.id}`, data);
+    const entityId = data.id;
+    if (type === 'user' || (type === 'role' && entityId)) {
+      const purpose = type === 'role' ? 'update_role' : entityId ? 'update_user' : 'create_user';
+      const reauth_token = await confirmCredentials(app, purpose, entityId || null, type === 'role' ? 'Изменить полномочия роли' : 'Сохранить пользователя');
+      if (type === 'user') {
+        const allowed = ['name','login','position','team_id','role_id','business_customer_id','can_edit','can_delete','can_export'];
+        if (!entityId) allowed.push('is_active');
+        data = Object.fromEntries(Object.entries(data).filter(([key]) => allowed.includes(key)));
+      } else {
+        const {id, created_at, users, ...fields} = data;
+        data = fields;
+      }
+      data.reauth_token = reauth_token;
+    }
+    let saved;
+    if (entityId) {
+      saved = await app.api.put(`${endpoint.replace(/\/$/, '')}/${entityId}`, data);
     } else {
-      await app.api.post(endpoint, data);
+      saved = await app.api.post(endpoint, data);
     }
     adminModal.show = false;
     adminModal.clientRequestId = null;
@@ -2948,7 +2892,9 @@ async function saveEntity(type, data, app) {
     deactivateAdminModalFocus();
     toast('Сохранено', 'success');
     await initAdmin(app);
+    if (type === 'user' && !entityId && saved) await manageAccount(app, saved, () => initAdmin(app));
   } catch (e) {
+    if (!e) { setAdminFormSaving(false); return; }
     const status = Number(e.status || e.statusCode || 0);
     const prefix = status === 409 ? 'Данные уже изменены другим пользователем. Обновите список и повторите.' : status === 0 || status >= 500 ? 'Не удалось связаться с сервером. Введённые данные сохранены в форме.' : (e.message || 'Не удалось сохранить данные');
     const fieldAliases = { name: type === 'notificationTemplate' ? 'notification-template-name' : type === 'bc' ? 'bc-name' : type === 'project' ? 'project-name' : type === 'report' ? 'report-name' : 'modal-name', text: 'notification-template-text', recipients: null, repeat_day: 'notification-template-repeat-day', event_type: 'notification-template-event', email: 'modal-email', code: 'project-code', project_name: 'project-name', customer_access: 'modal-customer_access', admin_access: 'modal-admin_access', review_access: 'modal-review-access', task_edit_scope: 'modal-task-edit-scope', task_comment_scope: 'modal-task-comment-scope', task_delete_scope: 'modal-task-delete-scope', pip_decision_access: 'modal-pip-decision-access' };
@@ -2960,16 +2906,12 @@ async function saveEntity(type, data, app) {
       if (summary) { summary.hidden = false; summary.textContent = prefix; summary.focus(); }
     }
     toast(prefix, 'error');
-    adminFormSaving = false;
-    if (saveButton?.isConnected) {
-      saveButton.disabled = false;
-      saveButton.removeAttribute('aria-busy');
-      saveButton.textContent = saveButton.dataset.originalText || (data.id ? 'Сохранить' : 'Создать');
-    }
+    setAdminFormSaving(false);
   }
 }
 
 async function confirmDelete(type, id, app) {
+  if (type === 'user') { await manageAccount(app, adminData.users.find(u => u.id === id), () => initAdmin(app)); return; }
   const typeLabel = { team: 'команда', user: 'пользователь', role: 'роль', project: 'проект', bc: 'бизнес-заказчик', report: 'отчёт', notificationTemplate: 'шаблон уведомления' };
   const keyMap = { team: 'teams', user: 'users', role: 'roles', project: 'projects', bc: 'businessCustomers', report: 'reports', notificationTemplate: 'notificationTemplates' };
   const target = (adminData[keyMap[type]] || []).find(item => item.id === id);
@@ -3056,7 +2998,7 @@ async function openDictModal(dictKey, app, { fromHistory = false } = {}) {
       toast(`Справочник заблокирован: ${lock ? (lock.lock_owner_name || 'Администратор') : 'другой администратор'}`, 'error');
       return;
     }
-    toast('Ошибка при открытии справочника', 'error');
+    toast('Не удалось открыть справочник. Проверьте соединение и нажмите на справочник, чтобы повторить.', 'error');
     return;
   }
 
@@ -3116,43 +3058,13 @@ function refreshModal() {
 }
 
 function renderProjectForm(data) {
-  const projectStatuses = adminData.projectStatuses || [];
-  const users = adminData.users || [];
-  const statusOpts = projectStatuses.map(s => `<option value="${s.id}"${data.status_id == s.id ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
-  const plOpts = users.map(u => `<option value="${u.id}"${data.responsible_pl == u.id ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
   const isEdit = adminModal.mode === 'edit';
-  return `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group">
-        <label class="form-label">ID</label>
-        <input class="input modal-field" value="${data.id || '—'}" readonly style="color:var(--text-muted)">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Дата создания</label>
-        <input class="input modal-field" value="${data.created_at ? data.created_at.slice(0, 10) : '—'}" readonly style="color:var(--text-muted)">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Код проекта <span class="required">*</span></label>
-      <input class="input modal-field" id="project-code" value="${escapeHtml(data.code || '')}" placeholder="Код проекта" ${isEdit ? 'readonly' : ''}>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Название <span class="required">*</span></label>
-      <input class="input modal-field" id="project-name" value="${escapeHtml(data.name || '')}" placeholder="Название проекта">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Описание</label>
-      <textarea class="input modal-field" id="project-description" placeholder="Описание проекта" style="min-height:60px">${escapeHtml(data.description || '')}</textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Статус</label>
-      <select class="input modal-field" id="project-status"><option value="">—</option>${statusOpts}</select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Ответственный PL</label>
-      <select class="input modal-field" id="project-pl"><option value="">—</option>${plOpts}</select>
-    </div>
-  `;
+  return `<div class="ui-form-grid">${adminField('project-id', 'ID', data.id || '—', { readonly: true })}${adminField('project-created-at', 'Дата создания', data.created_at ? data.created_at.slice(0, 10) : '—', { readonly: true })}</div>`
+    + adminField('project-code', 'Код проекта', data.code, { required: true, readonly: isEdit, attrs: { placeholder: 'Код проекта' } })
+    + adminField('project-name', 'Название', data.name, { required: true, attrs: { placeholder: 'Название проекта' } })
+    + adminField('project-description', 'Описание', data.description, { kind: 'textarea', attrs: { rows: 3, placeholder: 'Описание проекта' } })
+    + adminField('project-status', 'Статус', data.status_id, { kind: 'select', options: adminOptions(adminData.projectStatuses || []) })
+    + adminField('project-pl', 'Ответственный PL', data.responsible_pl, { kind: 'select', options: adminOptions(adminData.users || []) });
 }
 
 function getProjectPayload() {
@@ -3171,7 +3083,7 @@ function setReportWizardStep(wizard, step) {
   if (!wizard) return;
   if (wizard.dataset.scriptManaged === 'true') step = 1;
   wizard.dataset.step = String(step);
-  wizard.querySelectorAll('.report-step').forEach(button => button.classList.toggle('active', Number(button.dataset.reportStep) === step));
+  wizard.querySelectorAll('.report-step').forEach(button => { const active = Number(button.dataset.reportStep) === step; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); button.tabIndex = active ? 0 : -1; });
   wizard.querySelectorAll('.report-step-panel').forEach(panel => {
     const active = Number(panel.dataset.reportPanel) === step;
     panel.classList.toggle('active', active);
@@ -3198,7 +3110,7 @@ function syncReportSelectedFields() {
     const label = document.createElement('span'); label.textContent = definitions.get(key)?.label || `Неизвестное поле: ${key}`;
     const drag = document.createElement('span'); drag.className = 'report-selected-drag'; drag.textContent = '⋮⋮';
     const actions = document.createElement('span'); actions.className = 'report-selected-actions';
-    actions.innerHTML = '<button type="button" class="report-field-up" aria-label="Переместить вверх">↑</button><button type="button" class="report-field-down" aria-label="Переместить вниз">↓</button>';
+    actions.innerHTML = '<button type="button" class="btn btn-ghost btn-sm square-icon ui-btn report-field-up" aria-label="Переместить вверх">↑</button><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn report-field-down" aria-label="Переместить вниз">↓</button>';
     row.append(drag, label, actions); container.appendChild(row);
   });
   if (!current.length) container.innerHTML = '<p class="text-muted report-no-fields">Поля не выбраны</p>';
@@ -3213,6 +3125,16 @@ function updateReportPreview() {
   const filterCount = document.querySelectorAll('.report-filter-row').length;
   const group = document.getElementById('report-group-by')?.selectedOptions?.[0]?.textContent || 'Без группировки';
   target.textContent = `${name} · ${fieldCount} полей · ${filterCount} фильтров · ${group}`;
+}
+
+function updateReportValidationNotice() {
+  const box = document.getElementById('report-form-error');
+  if (!box || box.hidden) return;
+  const errors = validateReportForm(adminModal.data);
+  box.hidden = errors.length === 0;
+  box.textContent = errors.map(error => error.message).join('. ');
+  const summary = document.getElementById('admin-form-error-summary');
+  if (summary) { summary.hidden = !errors.length; summary.textContent = box.textContent; }
 }
 
 function bindAdminEvents(app) {
@@ -3230,6 +3152,7 @@ function bindAdminEvents(app) {
 
   page.removeEventListener('input', window._adminDelegatedInput);
   window._adminDelegatedInput = (event) => {
+    if (event.target.closest('.report-wizard')) updateReportValidationNotice();
     if (event.target.closest('.role-form-workspace')) updateRoleFormSummary();
     clearAdminFieldError(event.target);
     if (event.target.id === 'dict-search') {
@@ -3241,31 +3164,40 @@ function bindAdminEvents(app) {
         const text = `${row.querySelector('.dict-value-input')?.value || ''} ${row.querySelector('.dict-code-input')?.value || ''}`.toLocaleLowerCase();
         row.hidden = Boolean(query && !text.includes(query));
       });
+      const archive = document.getElementById('dict-archive');
+      if (query && archive?.querySelector('.dict-editor-row:not([hidden])')) archive.open = true;
+      const found = [...document.querySelectorAll('.dict-editor-row')].filter(row => !row.hidden).length;
+      const result = document.getElementById('dict-search-result');
+      if (result) { result.hidden = !query; result.querySelector('span').textContent = found ? `Найдено: ${found}` : 'Ничего не найдено'; }
     } else if (event.target.id === 'audit-search') {
       auditState.search = event.target.value; auditState.page = 1;
       updateAdminUrl('replace');
       clearTimeout(window._auditSearchTimer);
-      window._auditSearchTimer = setTimeout(() => refreshAuditTab(app, true), 300);
+      const searchContent = document.getElementById('admin-content');
+      window._auditSearchTimer = setTimeout(() => { if (searchContent?.isConnected) refreshAuditTab(app, true); }, 300);
     } else if (event.target.classList.contains('admin-list-search-input')) {
       const tab = event.target.dataset.listTab;
       adminListState[tab].search = event.target.value;
       adminListState[tab].page = 1;
       updateAdminUrl('replace');
       clearTimeout(window._adminListSearchTimer);
+      const searchContent = document.getElementById('admin-content');
       window._adminListSearchTimer = setTimeout(() => {
-        document.getElementById('admin-content').innerHTML = renderTabContent(adminTab, app);
+        if (adminTab !== tab || !searchContent?.isConnected) return;
+        searchContent.innerHTML = renderTabContent(tab, app);
         pullStickyBars(); bindAdminEvents(app);
         restoreAdminSearchFocus(`.admin-list-search-input[data-list-tab="${tab}"]`);
         if (window.lucide) lucide.createIcons();
       }, 180);
-    } else if (event.target.classList.contains('dict-value-input')) { window.autoFillDictRow(event.target); window.markDictEdited(event.target); validateDictionaryEditor(); }
+    } else if (event.target.id === 'cc-inline-value') { event.target.removeAttribute('aria-invalid'); document.getElementById('cc-inline-error').textContent = ''; }
+    else if (event.target.classList.contains('dict-value-input')) { window.autoFillDictRow(event.target); window.markDictEdited(event.target); validateDictionaryEditor(); }
     else if (event.target.matches('.dict-code-input')) { window.markDictEdited(event.target); validateDictionaryEditor(); }
     else if (event.target.matches('.comp-cost-input')) window.markDictEdited(event.target);
     else if (event.target.id === 'modal-name' && adminModal.type === 'user') window.updateUserAvatarPreview(event.target.value);
     else if (event.target.id === 'report-field-search') {
       const query = event.target.value.trim().toLowerCase();
       document.querySelectorAll('.report-field-option').forEach(option => { option.hidden = !option.dataset.search.includes(query); });
-    } else if (event.target.closest('.report-wizard')) updateReportPreview();
+    } else if (event.target.closest('.report-wizard')) { updateReportPreview(); updateReportValidationNotice(); }
     else if (event.target.closest('.notification-template-form')) updateNotificationTemplatePreview();
   };
   page.addEventListener('input', window._adminDelegatedInput);
@@ -3300,17 +3232,23 @@ function bindAdminEvents(app) {
     }
     if (event.target.classList.contains('report-field-cb')) syncReportSelectedFields();
     if (event.target.classList.contains('report-filter-field')) updateReportFilterRow(event.target.closest('.report-filter-row'));
-    if (event.target.closest('.report-wizard')) updateReportPreview();
+    if (event.target.id === 'report-sort-by') {
+      const sortGroup = document.getElementById('report-sort-order-group');
+      if (sortGroup) sortGroup.style.display = event.target.value ? '' : 'none';
+    }
+    if (event.target.closest('.report-wizard')) { updateReportPreview(); updateReportValidationNotice(); }
     if (event.target.closest('.notification-template-form')) updateNotificationTemplatePreview();
   };
   page.addEventListener('change', window._adminDelegatedChange);
 
   page.removeEventListener('keydown', window._adminDelegatedKeydown);
   window._adminDelegatedKeydown = event => {
-    if (event.target.classList.contains('admin-tab') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-      const tabs = Array.from(document.querySelectorAll('.admin-tab:not([disabled])')); const current = tabs.indexOf(event.target); let index = current;
-      if (event.key === 'Home') index = 0; else if (event.key === 'End') index = tabs.length - 1; else index = (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
-      event.preventDefault(); tabs[index]?.focus(); tabs[index]?.click(); return;
+    const card = event.target.closest('.admin-dict-card');
+    if (card && event.target === card && ['Enter', ' '].includes(event.key)) { event.preventDefault(); if (card.getAttribute('aria-disabled') !== 'true') card.click(); return; }
+    const tabRoot = event.target.closest('#admin-tab-bar, .report-wizard-steps');
+    if (tabRoot) {
+      const next = tabNavigationTarget(tabRoot, event);
+      if (next) { event.preventDefault(); next.focus(); next.click(); return; }
     }
     if (event.target.classList.contains('dict-drag-handle') && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
       const row = event.target.closest('.dict-editor-row'); const sibling = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
@@ -3374,8 +3312,10 @@ function bindAdminEvents(app) {
       adminListState.users.page = 1;
       updateAdminUrl('replace');
       clearTimeout(window._searchTimer);
+      const searchContent = document.getElementById('admin-content');
       window._searchTimer = setTimeout(() => {
-        document.getElementById('admin-content').innerHTML = renderTabContent(adminTab, app);
+        if (adminTab !== 'users' || !searchContent?.isConnected) return;
+        searchContent.innerHTML = renderTabContent('users', app);
         pullStickyBars();
         if (window.lucide) lucide.createIcons();
         bindAdminEvents(app);
@@ -3408,6 +3348,13 @@ function bindAdminEvents(app) {
     tabBar.addEventListener('click', window._adminTabClick);
   }
 
+  window.removeEventListener('resize', window._adminLayoutResize);
+  window._adminLayoutResize = () => {
+    const select = document.getElementById('admin-tab-mobile-select'); if (select) select.value = adminTab;
+    const group = document.querySelector('.admin-user-filter-group');
+    if (group) group.open = window.innerWidth > 900 && window.innerHeight > 600;
+  };
+  window.addEventListener('resize', window._adminLayoutResize);
   const mobileTabSelect = document.getElementById('admin-tab-mobile-select');
   if (mobileTabSelect) {
     mobileTabSelect.removeEventListener('change', window._adminMobileTabChange);
@@ -3428,13 +3375,6 @@ function bindAdminEvents(app) {
 
   updateNotificationTemplatePreview();
 
-  const sortByEl = document.getElementById('report-sort-by');
-  if (sortByEl) {
-    sortByEl.addEventListener('change', function() {
-      const sortGroup = document.getElementById('report-sort-order-group');
-      if (sortGroup) sortGroup.style.display = this.value ? '' : 'none';
-    });
-  }
 }
 
 // ==================== INIT ====================
@@ -3447,7 +3387,10 @@ async function loadAdminTab(app, tab, force = false) {
   if (!force && adminLoadState[tab]?.status === 'success') return;
   adminLoadState[tab] = { status: 'loading' };
   const loaders = {
-    teams: async () => { adminData.teams = asItems(await app.api.get('/admin/teams')); },
+    teams: async () => {
+      const [teams, users, types] = await Promise.all([app.api.get('/admin/teams'), app.api.get('/admin/users'), app.api.get('/admin/team-types')]);
+      adminData.teams = asItems(teams); adminData.users = asItems(users); adminData.teamTypeRefs = asItems(types);
+    },
     projects: async () => {
       const [projects, statuses, users] = await Promise.all([
         app.api.get('/admin/projects'), app.api.get('/admin/project-statuses'), app.api.get('/admin/users'),
@@ -3465,7 +3408,7 @@ async function loadAdminTab(app, tab, force = false) {
       adminData.users = asItems(users); adminData.roles = asItems(roles); adminData.teams = asItems(teams); adminData.businessCustomers = asItems(customers);
     },
     roles: async () => { adminData.roles = asItems(await app.api.get('/admin/roles')); },
-    home: async () => {},
+    home: async () => { const response = await app.api.get(`/timeline?year=${tlAdminData.year}`); tlAdminData.events = response.items || []; },
     dictionaries: async () => {
       const values = await Promise.all([
         app.api.get('/admin/priorities'), app.api.get('/admin/statuses'), app.api.get('/admin/task-types'),
@@ -3511,7 +3454,9 @@ async function loadAdminTab(app, tab, force = false) {
 }
 
 export async function initAdmin(app) {
+  syncDisplayDraftOwner(app);
   currentAdminUser = app.store.get('currentUser');
+  if (getAdminAccess(app) === 'none') return;
   await loadAdminTab(app, adminTab, true);
   const content = document.getElementById('admin-content');
   if (!content) return;
@@ -3522,7 +3467,13 @@ export async function initAdmin(app) {
   window.removeEventListener('popstate', window._adminPopState);
   window._adminPopState = () => applyAdminHistoryState(app);
   window.addEventListener('popstate', window._adminPopState);
-  if (adminTab === 'home' && adminLoadState.home?.status === 'success') await loadTimelineAdminEvents(app);
   const desired = hydrateAdminUrlState();
   if (desired.dictKey && adminTab === 'dictionaries' && DICTIONARY_CONFIG[desired.dictKey] && !adminModal.show) await openDictModal(desired.dictKey, app, { fromHistory: true });
 }
+
+if (typeof document !== 'undefined') document.addEventListener('click', event => {
+  const button = event.target.closest('[data-account-security]');
+  if (!button) return;
+  const user = adminData.users.find(u => u.id === Number(button.dataset.accountSecurity));
+  if (user) manageAccount(window.app, user, () => initAdmin(window.app));
+});

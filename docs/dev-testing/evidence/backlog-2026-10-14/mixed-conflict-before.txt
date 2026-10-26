@@ -1,0 +1,79 @@
+ric: — ч/д
+    - text: Стоимость по ЭО
+    - generic "Только чтение":
+    - generic: —
+    - text: C/V по ЭО
+    - generic "Только чтение":
+    - generic: —
+    - generic: Факт (ФТЗ)
+    - text: Фактические трудозатраты
+    - generic "Только чтение":
+    - generic: — ч/д
+    - text: Стоимость по ФТЗ
+    - generic "Только чтение":
+    - generic: —
+    - text: C/V по ФТЗ
+    - generic "Только чтение":
+    - generic: —
+    - generic: Priority Score
+    - generic "Автоматически":
+    - button "AI-расчет":
+      - generic: AI-расчет
+    - generic: —
+    - generic: / 100
+    - generic "› Обоснование агента"
+    - generic: Финансовый эффект
+    - button "AI-расчет":
+      - generic: AI-расчет
+    - spinbutton
+    - generic: млн ₽
+    - generic: Обоснование расчёта
+    - textbox "Обоснование фин. эффекта"
+    - 'generic "Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ) › Развернуть"':
+      - text: "Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)"
+      - generic: › Развернуть
+  - strong: Редактирование карточки
+  - status: "Изменено: Название задачи, Описание задачи"
+  - generic: Не сохранено · 2
+  - button "Отменить изменения":
+    - generic: Отменить изменения
+  - button "Сохранить · 2":
+    - generic: Сохранить · 2
+- generic: Режим редактирования включён
+- alertdialog "Конфликт версий":
+  - heading "Конфликт версий" [level=3]
+  - paragraph: Задача была изменена другим пользователем. Выберите значения для каждого изменённого поля.
+  - text: "Ваша версия:"
+  - strong: "7"
+  - generic: →
+  - text: "Текущая версия:"
+  - strong: "8"
+  - table:
+    - rowgroup:
+      - row "Поле На сервере Ваше значение":
+        - columnheader
+        - columnheader
+        - columnheader "Поле"
+        - columnheader "На сервере"
+        - columnheader "Ваше значение"
+    - rowgroup:
+      - row "Название UX-AUDIT-20261014 mixed server UX-AUDIT-20261014 mixed local":
+        - cell:
+          - radio [checked] [active]
+        - cell:
+          - radio
+        - cell "Название"
+        - cell "UX-AUDIT-20261014 mixed server"
+        - cell "UX-AUDIT-20261014 mixed local"
+      - row "Описание UX-AUDIT mixed server description UX-AUDIT mixed local description":
+        - cell:
+          - radio [checked]
+        - cell:
+          - radio
+        - cell "Описание"
+        - cell "UX-AUDIT mixed server description"
+        - cell "UX-AUDIT mixed local description"
+  - button "Сохранить выбранные"
+  - button "Принудительно сохранить"
+  - button "Обновить с сервера"
+  - button "Отмена"

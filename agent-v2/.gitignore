@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+*.db
+*.log
+.pytest_cache/
+.test-tmp*/
+.codex-agent-*/

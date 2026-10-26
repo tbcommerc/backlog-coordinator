@@ -1,0 +1,616 @@
+[
+  {
+    "file": "01_valid_utf8_bom_semicolon.csv",
+    "bytes": 73,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "02_valid_utf8_comma.csv",
+    "bytes": 72,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "','",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "03_valid_cp1251_semicolon.csv",
+    "bytes": 78,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "04_valid_technical_headers_case_space.csv",
+    "bytes": 73,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "05_valid_russian_labels.csv",
+    "bytes": 128,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "06_unknown_column_ignored.csv",
+    "bytes": 91,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "07_header_only.csv",
+    "bytes": 15,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 0,
+    "created": 0,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "08_blank_lines_only.csv",
+    "bytes": 4,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "','",
+    "total": 0,
+    "created": 0,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "09_empty_zero_bytes.csv",
+    "bytes": 0,
+    "stage": "router",
+    "outcome": "http_400_empty"
+  },
+  {
+    "file": "10_missing_title_header.csv",
+    "bytes": 38,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "','",
+    "total": 1,
+    "created": 0,
+    "skipped": 1,
+    "error_types": {
+      "required_missing": 1
+    },
+    "fatal_errors": 1,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "11_missing_team_header.csv",
+    "bytes": 39,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "','",
+    "total": 1,
+    "created": 0,
+    "skipped": 1,
+    "error_types": {
+      "required_missing": 1
+    },
+    "fatal_errors": 1,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "12_unknown_headers_only.csv",
+    "bytes": 14,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 0,
+    "skipped": 1,
+    "error_types": {
+      "required_missing": 2
+    },
+    "fatal_errors": 2,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "13_empty_required_cells.csv",
+    "bytes": 74,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 3,
+    "created": 0,
+    "skipped": 3,
+    "error_types": {
+      "required_missing": 4
+    },
+    "fatal_errors": 4,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "14_whitespace_required_cells.csv",
+    "bytes": 22,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 0,
+    "skipped": 1,
+    "error_types": {
+      "required_missing": 2
+    },
+    "fatal_errors": 2,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "15_duplicate_title_header.csv",
+    "bytes": 63,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "16_duplicate_team_header.csv",
+    "bytes": 121,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 0,
+    "skipped": 1,
+    "error_types": {
+      "required_missing": 1,
+      "team_not_found": 1
+    },
+    "fatal_errors": 2,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "17_empty_header_cell.csv",
+    "bytes": 82,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "18_missing_trailing_cell.csv",
+    "bytes": 85,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "19_extra_trailing_cell.csv",
+    "bytes": 77,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "20_mixed_delimiters_header_semicolon.csv",
+    "bytes": 83,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 0,
+    "skipped": 1,
+    "error_types": {
+      "required_missing": 1
+    },
+    "fatal_errors": 1,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "21_tab_delimited.csv",
+    "bytes": 64,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "','",
+    "total": 1,
+    "created": 0,
+    "skipped": 1,
+    "error_types": {
+      "required_missing": 2
+    },
+    "fatal_errors": 2,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "22_pipe_delimited.csv",
+    "bytes": 65,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "','",
+    "total": 1,
+    "created": 0,
+    "skipped": 1,
+    "error_types": {
+      "required_missing": 2
+    },
+    "fatal_errors": 2,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "23_blank_first_line_semicolon.csv",
+    "bytes": 74,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "','",
+    "total": 2,
+    "created": 0,
+    "skipped": 2,
+    "error_types": {
+      "required_missing": 4
+    },
+    "fatal_errors": 4,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "24_mac_cr_line_endings.csv",
+    "bytes": 65,
+    "stage": "parse",
+    "outcome": "Error",
+    "message": "new-line character seen in unquoted field - do you need to open the file with newline=''?"
+  },
+  {
+    "file": "25_quoted_delimiters_and_quotes.csv",
+    "bytes": 108,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "26_quoted_multiline.csv",
+    "bytes": 98,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "27_malformed_unclosed_quote.csv",
+    "bytes": 95,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "28_utf16le_bom.csv",
+    "bytes": 108,
+    "stage": "parse",
+    "outcome": "Error",
+    "message": "new-line character seen in unquoted field - do you need to open the file with newline=''?"
+  },
+  {
+    "file": "29_undecodable_byte_98.csv",
+    "bytes": 1,
+    "stage": "parse",
+    "outcome": "ValueError",
+    "message": "Не удалось декодировать файл. Убедитесь, что файл в формате UTF-8 или Windows-1251"
+  },
+  {
+    "file": "30_nul_bytes.csv",
+    "bytes": 52,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "31_dates_boundaries.csv",
+    "bytes": 937,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 13,
+    "created": 8,
+    "skipped": 5,
+    "error_types": {
+      "invalid_date": 5
+    },
+    "fatal_errors": 5,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "32_progress_boundaries.csv",
+    "bytes": 865,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 14,
+    "created": 9,
+    "skipped": 5,
+    "error_types": {
+      "invalid_progress": 5
+    },
+    "fatal_errors": 5,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "33_numeric_formats.csv",
+    "bytes": 1129,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 10,
+    "created": 5,
+    "skipped": 5,
+    "error_types": {
+      "invalid_number": 19
+    },
+    "fatal_errors": 19,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "34_boolean_spellings.csv",
+    "bytes": 753,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 13,
+    "created": 13,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "35_reference_not_found.csv",
+    "bytes": 1183,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 13,
+    "created": 4,
+    "skipped": 9,
+    "error_types": {
+      "business_customer_not_found": 1,
+      "channel_not_found": 1,
+      "deadline_not_found": 1,
+      "department_not_found": 1,
+      "did_client_group_not_found": 1,
+      "owner_not_found": 1,
+      "priority_not_found": 1,
+      "project_not_found": 1,
+      "required_missing": 1,
+      "status_not_found": 1,
+      "task_type_not_found": 1,
+      "team_not_found": 2
+    },
+    "fatal_errors": 10,
+    "nonfatal_errors": 3
+  },
+  {
+    "file": "36_lists_and_urls.csv",
+    "bytes": 356,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 2,
+    "created": 2,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "37_length_and_injection.csv",
+    "bytes": 3061,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 4,
+    "created": 4,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "38_repeated_same_task.csv",
+    "bytes": 125,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 2,
+    "created": 2,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "39_partial_success.csv",
+    "bytes": 130,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 2,
+    "created": 1,
+    "skipped": 1,
+    "error_types": {
+      "invalid_progress": 1,
+      "required_missing": 1,
+      "team_not_found": 1
+    },
+    "fatal_errors": 3,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "49_uppercase_extension.CSV",
+    "bytes": 74,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 1,
+    "skipped": 0,
+    "error_types": {},
+    "fatal_errors": 0,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "50_xlsx_bytes_named_csv.csv",
+    "bytes": 3769,
+    "stage": "parse",
+    "outcome": "ValueError",
+    "message": "Не удалось декодировать файл. Убедитесь, что файл в формате UTF-8 или Windows-1251"
+  },
+  {
+    "file": "51_exactly_10000_rows.csv",
+    "bytes": 290014,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 10000,
+    "created": 0,
+    "skipped": 10000,
+    "error_types": {
+      "required_missing": 10000
+    },
+    "fatal_errors": 10000,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "52_over_10000_rows.csv",
+    "bytes": 290043,
+    "stage": "parse",
+    "outcome": "ValueError",
+    "message": "CSV содержит больше 10000 строк"
+  },
+  {
+    "file": "53_exactly_10mb.csv",
+    "bytes": 10485760,
+    "stage": "parse",
+    "outcome": "ValueError",
+    "message": "CSV содержит больше 10000 строк"
+  },
+  {
+    "file": "54_over_10mb.csv",
+    "bytes": 10485761,
+    "stage": "router",
+    "outcome": "http_413"
+  },
+  {
+    "file": "55_many_preview_errors.csv",
+    "bytes": 1400,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 25,
+    "created": 0,
+    "skipped": 25,
+    "error_types": {
+      "invalid_date": 25,
+      "invalid_number": 25,
+      "invalid_progress": 25,
+      "required_missing": 25
+    },
+    "fatal_errors": 100,
+    "nonfatal_errors": 0
+  },
+  {
+    "file": "56_long_server_messages.csv",
+    "bytes": 5083,
+    "stage": "rows",
+    "outcome": "completed",
+    "delimiter": "';'",
+    "total": 1,
+    "created": 0,
+    "skipped": 1,
+    "error_types": {
+      "channel_not_found": 1
+    },
+    "fatal_errors": 1,
+    "nonfatal_errors": 0
+  }
+]

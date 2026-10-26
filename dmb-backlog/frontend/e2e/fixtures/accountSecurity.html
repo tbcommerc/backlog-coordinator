@@ -1,0 +1,9 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/components.css"><link rel="stylesheet" href="/css/pages.css"><link rel="stylesheet" href="/css/ui/kit.css"><link rel="stylesheet" href="/css/account-security.css"></head><body><div id="app"></div><script type="module">
+import {renderSecurity,initSecurity,showSetup,confirmCredentials,showOneTimeSecret} from '/js/components/accountSecurity.js';
+import {API} from '/js/api.js';
+const user={id:7,login:'ivan.petrov',permissions:{customer_portal_mode:'only'}};
+window.app={api:new API(),store:{get:()=>user,set:()=>{}},auth:{},renderLoginPage(){document.getElementById('app').innerHTML='<h1>Вход</h1>';}};
+window.confirmCredentials=()=>confirmCredentials(app,'revoke_others',null,'Завершить остальные сессии');
+window.showOneTimeSecret=showOneTimeSecret;
+if(location.hash.startsWith('#/activate'))showSetup(app);else{document.getElementById('app').innerHTML=renderSecurity(app);await initSecurity(app);}
+</script></body></html>

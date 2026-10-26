@@ -1,17 +1,21 @@
 import { escapeHtml } from '../htmlUtils.js';
 import {
   formatNotificationTime,
+  notificationDeadlineMeta,
   notificationCategoryMeta,
   notificationActionLabel,
   notificationImportanceMeta,
+  notificationReadLocked,
   openNotificationTarget,
   recordNotificationUxEvent,
   resolveNotificationTarget,
-} from '../notificationUtils.js?v=3';
+} from '../notificationUtils.js?v=12';
 import { bindViewStateAction, renderViewState } from './viewState.js';
+import { button, icon, pageHeader, filterChip } from '../ui/primitives.js';
+import { setButtonBusy } from '../ui/controls.js';
 
 let page = 1, hasMore = true, loading = false, category = '', importance = '', view = 'all', requestId = 0, total = 0, liveHandler;
-const CATEGORY_FILTERS = [['assignment','Назначения','user-plus'],['reporting','Встречи','clipboard-check'],['mention','Упоминания','at-sign'],['comment','Комментарии','message-circle'],['request','Запросы','clipboard-check']];
+const CATEGORY_FILTERS = [['assignment','Назначения','user-plus'],['reporting','Встречи','clipboard-check'],['meeting_capture','Разборы встреч','clipboard-check'],['mention','Упоминания','at-sign'],['comment','Комментарии','message-circle'],['request','Запросы','clipboard-check']];
 const IMPORTANCE_FILTERS = [['high','Высокий'],['medium','Обычный'],['low','Информационный']];
 
 function plural(number, one, few, many) {
@@ -40,19 +44,24 @@ function renderItem(n) {
   const { icon, label: topic } = notificationCategoryMeta(n.category);
   const { color, label: priority } = notificationImportanceMeta(n.importance);
   const isUnread = !n.is_read && !n.is_resolved;
+  const readLocked = notificationReadLocked(n);
   const hasTarget = resolveNotificationTarget(n) !== '/notifications';
   const priorityBadge = ['critical','high'].includes(n.importance)
     ? `<span class="notification-priority notification-title-priority">${priority}</span>`
     : '';
   const unreadBadge = isUnread ? '<span class="notification-new-label">Новое</span>' : '';
-  const readAction = n.is_resolved ? '' : isUnread
-    ? '<button type="button" class="notification-icon-btn notification-read-btn" data-mark-read aria-label="Отметить прочитанным" title="Отметить прочитанным"><i data-lucide="mail-open" aria-hidden="true"></i></button>'
-    : '<button type="button" class="notification-icon-btn notification-unread-btn" data-mark-unread aria-label="Отметить непрочитанным" title="Отметить непрочитанным"><i data-lucide="mail" aria-hidden="true"></i></button>';
-  return `<article role="listitem" class="notification-card ${isUnread ? 'is-unread' : 'is-read'} ${n.is_resolved ? 'is-resolved' : ''} importance-${escapeHtml(n.importance || 'low')}" data-notif-id="${n.id}" data-category="${escapeHtml(n.category || '')}">
+  const deadline = notificationDeadlineMeta(n);
+  const deadlineBadge = deadline
+    ? `<span class="notification-deadline-badge is-${deadline.tone}"><i data-lucide="calendar-clock" aria-hidden="true"></i><span>Срок ${escapeHtml(deadline.dateLabel)}</span><strong>${escapeHtml(deadline.daysLabel)}</strong></span>`
+    : '';
+  const readAction = n.is_resolved || readLocked ? '' : isUnread
+    ? button({ label: 'Отметить прочитанным', icon: 'mail-open', iconOnly: true, variant: 'ghost', size: 'small', className: 'notification-read-btn', attrs: { 'data-mark-read': true } })
+    : button({ label: 'Отметить непрочитанным', icon: 'mail', iconOnly: true, variant: 'ghost', size: 'small', className: 'notification-unread-btn', attrs: { 'data-mark-unread': true } });
+  return `<article role="listitem" class="notification-card ${isUnread ? 'is-unread' : 'is-read'} ${n.is_resolved ? 'is-resolved' : ''} importance-${escapeHtml(n.importance || 'low')}" data-notif-id="${n.id}" data-category="${escapeHtml(n.category || '')}" data-read-locked="${readLocked ? 'true' : 'false'}">
     <div class="notification-card-icon" style="background:${color}15;color:${color}"><i data-lucide="${icon}" aria-hidden="true"></i></div>
     <div class="notification-card-content"><div class="notification-card-title-row">${isUnread ? '<span class="notification-unread-dot" aria-hidden="true"></span>' : ''}<h3>${escapeHtml(n.title)}</h3>${unreadBadge}${priorityBadge}</div>
-      <div class="notification-card-meta"><span class="notification-topic">${topic}</span>${n.is_resolved ? '<span class="notification-resolved-label">Закрыто</span>' : ''}<time datetime="${escapeHtml(n.created_at || '')}">${formatNotificationTime(n.created_at)}</time>${n.group_count > 1 ? `<span class="notification-group-count">${n.group_count} ${plural(n.group_count,'событие','события','событий')}</span>` : ''}</div>${n.body ? `<p>${escapeHtml(n.body)}</p>` : ''}</div>
-    <div class="notification-card-actions">${hasTarget ? `<button type="button" data-open-notification data-task-id="${n.task_id || ''}" data-action-url="${encodeURIComponent(n.target?.url || n.action_url || '')}" class="btn btn-primary btn-sm" aria-label="${escapeHtml(actionLabel(n))}: ${escapeHtml(n.title)}">${actionLabel(n)} <i data-lucide="arrow-right" aria-hidden="true"></i></button>` : ''}${readAction}</div>
+      <div class="notification-card-meta"><span class="notification-topic">${topic}</span>${n.is_resolved ? '<span class="notification-resolved-label">Закрыто</span>' : ''}${deadlineBadge}<time datetime="${escapeHtml(n.created_at || '')}">${formatNotificationTime(n.created_at)}</time>${n.group_count > 1 ? `<span class="notification-group-count">${n.group_count} ${plural(n.group_count,'событие','события','событий')}</span>` : ''}</div>${n.body ? `<p>${escapeHtml(n.body)}</p>` : ''}</div>
+    <div class="notification-card-actions">${hasTarget ? button({ label: actionLabel(n), icon: 'arrow-right', variant: 'ghost', className: 'ui-link', size: 'small', attrs: { 'data-open-notification': true, 'data-task-id': n.task_id || '', 'data-action-url': encodeURIComponent(n.target?.url || n.action_url || ''), 'aria-label': `${actionLabel(n)}: ${n.title}` } }) : ''}${readAction}</div>
   </article>`;
 }
 
@@ -72,6 +81,9 @@ function setCardReadState(card, isRead) {
   const action = card.querySelector('[data-mark-read],[data-mark-unread]');
   card.classList.toggle('is-read', isRead);
   card.classList.toggle('is-unread', !isRead);
+  const targetAction = card.querySelector('[data-open-notification]');
+  targetAction?.classList.remove('btn-primary', 'btn-secondary');
+  targetAction?.classList.add('btn-ghost', 'ui-link');
   titleRow?.querySelector('.notification-unread-dot')?.remove();
   titleRow?.querySelector('.notification-new-label')?.remove();
   if (!isRead && titleRow) {
@@ -95,6 +107,12 @@ function updateVisibleReadStates(ids, isRead) {
   (ids || []).forEach(id => {
     const card = document.querySelector(`.notification-card[data-notif-id="${Number(id)}"]`);
     setCardReadState(card, isRead);
+  });
+}
+
+function removeVisibleNotifications(ids) {
+  (ids || []).forEach(id => {
+    document.querySelector(`.notification-card[data-notif-id="${Number(id)}"]`)?.remove();
   });
 }
 
@@ -159,10 +177,10 @@ function updateFilterState() {
   if (reset) reset.disabled = !filtered;
 }
 
-function emptyState(container) {
+function emptyState(container, app) {
   const filtered = category || importance || view !== 'all';
   container.innerHTML = renderViewState({ kind:'empty', title:filtered ? 'Ничего не найдено' : 'У вас пока нет уведомлений', message:filtered ? 'Измените или сбросьте фильтры.' : 'Новые события появятся здесь.', actionLabel:filtered ? 'Сбросить фильтры' : '' });
-  if (filtered) bindViewStateAction(container, () => { resetControls(); document.getElementById('notification-reset')?.click(); });
+  if (filtered) bindViewStateAction(container, () => { resetControls(); syncRouteState(); page=1; hasMore=true; load(app); });
 }
 
 async function summary(app) {
@@ -182,22 +200,32 @@ async function badge(app) {
 }
 
 async function load(app, append=false, silent=false) {
-  if (loading && append) return; const id=++requestId, list=document.getElementById('notifications-list'), more=document.getElementById('notifications-load-more'); loading=true;
-  if(!append&&list){list.setAttribute('aria-busy','true');if(!silent)list.innerHTML=renderViewState({kind:'loading',title:'Загружаем уведомления…'});} if(more){more.disabled=true;more.setAttribute('aria-busy','true');}
+  if (append && (loading || !hasMore)) return; const focused=document.activeElement, focusedCard=focused?.closest?.('.notification-card'), focusedId=focusedCard?.dataset.notifId, focusedIndex=focusedCard ? [...document.querySelectorAll('.notification-card')].indexOf(focusedCard) : -1; const id=++requestId, list=document.getElementById('notifications-list'), more=document.getElementById('notifications-load-more'); loading=true;
+  if(!append&&list){list.setAttribute('aria-busy','true');if(!silent)list.innerHTML=renderViewState({kind:'loading',title:'Загружаем уведомления…'});} setButtonBusy(more,true,'Загружаем…');
   try {
-    const data=await app.api.get(`/notifications?${params()}`); if(id!==requestId||!list)return; if(!append)list.innerHTML=''; if(!data.items.length&&!append)emptyState(list);else list.insertAdjacentHTML('beforeend',renderItems(data.items,append));
+    const data=await app.api.get(`/notifications?${params()}`); if(id!==requestId||!list)return; if(!append)list.innerHTML=''; if(!data.items.length&&!append)emptyState(list,app);else list.insertAdjacentHTML('beforeend',renderItems(data.items,append));
+    if (focusedId && (document.activeElement === focused || document.activeElement === document.body)) {
+      const cards=[...list.querySelectorAll('.notification-card')];
+      const next=cards.find(card=>card.dataset.notifId===focusedId)||cards[Math.min(focusedIndex,cards.length-1)];
+      const target=next?.querySelector('[data-mark-read],[data-mark-unread]')||next?.querySelector('button')||document.getElementById('notifications-heading');
+      if(target){if(target.tagName==='H2')target.setAttribute('tabindex','-1');target.focus({preventScroll:true});}
+    }
     total=data.total||0;hasMore=data.items.length>0&&page*20<total;if(data.items.length)page+=1;updateCount();window.lucide?.createIcons();await Promise.allSettled([badge(app),summary(app)]);
   } catch(error) {
-    if(id!==requestId||!list)return; if(append||silent)window.toast?.(window.formatErrorMessage?.(error)||'Не удалось обновить уведомления','error');else{list.innerHTML=renderViewState({kind:'error',message:window.formatErrorMessage?.(error)||'Повторите попытку позже.',actionLabel:'Повторить'});bindViewStateAction(list,()=>load(app));window.lucide?.createIcons();}
-  } finally { if(id===requestId){loading=false;list?.removeAttribute('aria-busy');if(more){more.disabled=false;more.removeAttribute('aria-busy');}} }
+    if(id!==requestId||!list)return; if(append||silent)window.toast?.(window.formatErrorMessage?.(error)||'Не удалось обновить уведомления','error');else{total=0;hasMore=false;updateCount();document.getElementById('notification-results-count').textContent='Количество неизвестно';list.innerHTML=renderViewState({kind:'error',message:window.formatErrorMessage?.(error)||'Повторите попытку позже.',actionLabel:'Повторить'});bindViewStateAction(list,()=>load(app));window.lucide?.createIcons();}
+  } finally { if(id===requestId){loading=false;list?.removeAttribute('aria-busy');setButtonBusy(more,false);} }
 }
 
 export function renderNotifications() {
-  const categoryFilters=CATEGORY_FILTERS.map(([key,label,icon])=>`<button type="button" class="filter-chip notification-filter-chip" data-filter-category="${key}" aria-pressed="false"><i data-lucide="${icon}" aria-hidden="true"></i>${label}</button>`).join('');
-  const importanceFilters=IMPORTANCE_FILTERS.map(([key,label])=>`<button type="button" class="filter-chip notification-filter-chip notification-importance-chip importance-${key}" data-filter-importance="${key}" aria-pressed="false"><span class="notification-filter-dot" aria-hidden="true"></span>${label}</button>`).join('');
-  return `<section class="notification-center animate-fade-in"><header class="notification-hero page-header"><div><h1>Мои уведомления</h1><p>Личные назначения, отчётные статусы и обсуждения команды</p><div class="notification-stats" aria-label="Сводка уведомлений"><span><strong id="notif-stat-action">—</strong> требуют действия</span><span><strong id="notif-stat-unread">—</strong> непрочитанных</span><span><strong id="notif-stat-today">—</strong> сегодня</span></div></div><div class="notification-header-actions"><a class="btn btn-secondary btn-sm" href="#/settings?section=notifications"><i data-lucide="settings" aria-hidden="true"></i> Настроить</a><button type="button" class="btn btn-secondary btn-sm" id="mark-all-read"><i data-lucide="check-check" aria-hidden="true"></i> Прочитать все</button></div></header>
-  <div class="notification-workspace"><div class="notification-toolbar" aria-label="Фильтры уведомлений"><div class="notification-filter-group notification-state-filter" role="group" aria-labelledby="notification-state-label"><span class="notification-filter-group-label" id="notification-state-label">Состояние</span><div class="notification-filter-options"><button type="button" class="filter-chip notification-filter-chip active" aria-pressed="true" data-view="all">Все</button><button type="button" class="filter-chip notification-filter-chip" aria-pressed="false" data-view="action">Требуют действия</button><button type="button" class="filter-chip notification-filter-chip" aria-pressed="false" data-view="unread">Непрочитанные</button><button type="button" class="filter-chip notification-filter-chip" aria-pressed="false" data-view="resolved">Закрытые</button></div></div><button type="button" class="btn btn-secondary btn-sm" id="notification-reset" disabled>Сбросить</button><div class="notification-quick-filters"><div class="notification-filter-group" role="group" aria-labelledby="notification-category-label"><span class="notification-filter-group-label" id="notification-category-label">Категория</span><div class="notification-filter-options">${categoryFilters}</div></div><div class="notification-filter-group" role="group" aria-labelledby="notification-importance-label"><span class="notification-filter-group-label" id="notification-importance-label">Приоритет</span><div class="notification-filter-options">${importanceFilters}</div></div></div></div>
-  <section class="notification-feed" aria-labelledby="notifications-heading"><div class="notification-feed-header"><div><h2 id="notifications-heading">Уведомления</h2><p id="notification-results-count" role="status" aria-live="polite">Загрузка…</p></div><button type="button" class="btn btn-secondary btn-sm" id="notifications-newer" hidden>Появились новые — показать</button></div><div id="notifications-list" role="list">${renderViewState({kind:'loading',title:'Загружаем уведомления…'})}</div><div class="notification-load-more"><button type="button" class="btn btn-secondary" id="notifications-load-more" hidden>Загрузить ещё</button></div></section></div></section>`;
+  const filter = (label, attrs, selected = false, iconName) => filterChip({ label, icon: iconName, count: null, selected, className: 'notification-filter-chip', attrs });
+  const categoryFilters = CATEGORY_FILTERS.map(([key,label,iconName]) => filter(label, { 'data-filter-category': key }, false, iconName)).join('');
+  const importanceFilters = IMPORTANCE_FILTERS.map(([key,label]) => filter(label, { 'data-filter-importance': key })).join('');
+  const stateFilters = [['all','Все'],['action','Требуют действия'],['unread','Непрочитанные'],['resolved','Закрытые']].map(([key,label]) => filter(label, { 'data-view': key }, key === 'all')).join('');
+  const stats = '<div class="notification-stats" aria-label="Сводка уведомлений"><span><strong id="notif-stat-action">—</strong> требуют действия</span><span><strong id="notif-stat-unread">—</strong> непрочитанных</span><span><strong id="notif-stat-today">—</strong> сегодня</span></div>';
+  const actions = `<div class="notification-header-actions"><a class="btn btn-secondary btn-sm" href="#/settings?section=notifications">${icon('settings')} Настроить</a>${button({ label: 'Прочитать все', icon: 'check-check', size: 'small', attrs: { id: 'mark-all-read', title: 'Во всех категориях, независимо от фильтров. Обязательные действия остаются до выполнения.' } })}</div>`;
+  return `<section class="notification-center animate-fade-in"><header class="page-header">${pageHeader({ title: 'Мои уведомления', description: 'Назначения, отчётные статусы и обсуждения команды', className: 'notification-hero', actions: stats + actions })}</header>
+  <div class="notification-workspace"><div class="notification-toolbar" aria-label="Фильтры уведомлений"><div class="notification-filter-group notification-state-filter" role="group" aria-labelledby="notification-state-label"><span class="notification-filter-group-label" id="notification-state-label">Состояние</span><div class="notification-filter-options">${stateFilters}</div></div>${button({ label: 'Сбросить', size: 'small', attrs: { id: 'notification-reset', disabled: true } })}<div class="notification-quick-filters"><div class="notification-filter-group" role="group" aria-labelledby="notification-category-label"><span class="notification-filter-group-label" id="notification-category-label">Категория</span><div class="notification-filter-options">${categoryFilters}</div></div><div class="notification-filter-group" role="group" aria-labelledby="notification-importance-label"><span class="notification-filter-group-label" id="notification-importance-label">Приоритет</span><div class="notification-filter-options">${importanceFilters}</div></div></div></div>
+  <section class="notification-feed" aria-labelledby="notifications-heading"><div class="notification-feed-header"><div><h2 id="notifications-heading">Уведомления</h2><p id="notification-results-count" role="status" aria-live="polite">Загрузка…</p></div>${button({ label: 'Появились новые — показать', size: 'small', attrs: { id: 'notifications-newer', hidden: true } })}</div><div id="notifications-list" role="list">${renderViewState({kind:'loading',title:'Загружаем уведомления…'})}</div><div class="notification-load-more">${button({ label: 'Загрузить ещё', attrs: { id: 'notifications-load-more', hidden: true } })}</div></section></div></section>`;
 }
 
 export async function initNotifications(app) {
@@ -216,37 +244,42 @@ export async function initNotifications(app) {
   document.getElementById('notifications-newer')?.addEventListener('click',async e=>{e.currentTarget.hidden=true;await reload(true);});
 
   document.getElementById('mark-all-read')?.addEventListener('click',async e=>{
-    const btn=e.currentTarget;btn.disabled=true;btn.setAttribute('aria-busy','true');
+    const btn=e.currentTarget;setButtonBusy(btn,true,'Отмечаем…');
     try{
       const result=await app.api.put('/notifications/read-all');
       const ids=result.changed_ids||[];
       await reload(true);
-      window.toast?.('Все уведомления отмечены прочитанными','success',ids.length?{duration:7000,actionLabel:'Отменить',onAction:async()=>{try{await app.api.put('/notifications/unread',{ids});window.toast?.('Непрочитанные восстановлены','success');await reload(true);}catch(error){window.toast?.(window.formatErrorMessage?.(error)||'Не удалось отменить действие','error');}}}:undefined);
+      window.toast?.(ids.length ? `Отмечено прочитанными: ${ids.length}. Во всех категориях; обязательные действия остаются до выполнения.` : 'Нет уведомлений для отметки. Обязательные действия остаются до выполнения.',ids.length?'success':'info',ids.length?{duration:7000,actionLabel:'Отменить',onAction:async()=>{try{await app.api.put('/notifications/unread',{ids});window.toast?.('Непрочитанные восстановлены','success');await reload(true);}catch(error){window.toast?.(window.formatErrorMessage?.(error)||'Не удалось отменить действие','error');}}}:undefined);
     }catch(error){window.toast?.(window.formatErrorMessage?.(error)||'Не удалось отметить уведомления','error');}
-    finally{btn.removeAttribute('aria-busy');btn.disabled=false;}
+    finally{setButtonBusy(btn,false);}
   });
 
   document.getElementById('notifications-list')?.addEventListener('click',async e=>{
-    const btn=e.target.closest('[data-open-notification],[data-mark-read],[data-mark-unread]');
-    if(!btn)return;
+    const btn=e.target.closest('[data-open-notification],[data-mark-read],[data-mark-unread]') || (!e.target.closest('button,a,input') && !window.getSelection()?.toString() ? e.target.closest('.notification-card')?.querySelector('[data-open-notification]') : null);
+    if(!btn || btn.disabled)return;
     const card=btn.closest('.notification-card'),id=Number(card?.dataset.notifId);
     btn.disabled=true;btn.setAttribute('aria-busy','true');
     try{
       if(btn.matches('[data-mark-read],[data-mark-unread]')){
         const markUnread=btn.matches('[data-mark-unread]');
         setCardReadState(card, !markUnread);
+        setButtonBusy(btn,true);
         try {
           await app.api.put(markUnread?'/notifications/unread':'/notifications/read',{ids:[id]});
           Promise.allSettled([badge(app),summary(app)]);
+          reload(true);
         } catch (error) {
+          setButtonBusy(btn,false);
           setCardReadState(card, markUnread);
           throw error;
         }
       } else {
-        if(card?.classList.contains('is-unread')){
+        setButtonBusy(btn,true,'Открываем…');
+        if(card?.classList.contains('is-unread') && card.dataset.readLocked !== 'true'){
           try{await app.api.put('/notifications/read',{ids:[id]});}catch(error){window.toast?.(window.formatErrorMessage?.(error)||'Не удалось обновить отметку о прочтении','warning');}
         }
-        sessionStorage.setItem('notifications:return-scroll',String(window.scrollY));
+        sessionStorage.setItem('notifications:return-scroll',String(document.querySelector('.main-content')?.scrollTop || window.scrollY));
+        sessionStorage.setItem('notifications:return-pages',String(Math.max(1,page-1)));
         const notification = {
           task_id:Number(btn.dataset.taskId)||null,
           action_url:decodeURIComponent(btn.dataset.actionUrl||''),
@@ -259,16 +292,21 @@ export async function initNotifications(app) {
         openNotificationTarget(app, notification, { surface:'center' });
       }
     }catch(error){window.toast?.(window.formatErrorMessage?.(error)||'Не удалось выполнить действие','error');}
-    finally{if(btn.isConnected){btn.disabled=false;btn.removeAttribute('aria-busy');}}
+    finally{if(btn.isConnected){setButtonBusy(btn,false);btn.disabled=false;btn.removeAttribute('aria-busy');}}
   });
 
   if(liveHandler)document.removeEventListener('dmb:notification-changed',liveHandler);
   liveHandler=async event=>{
     if((window.location.hash.slice(1).split('?')[0]||'')!=='/notifications')return;
     const action=event.detail?.action,ids=event.detail?.notification_ids;
+    if(action==='removed'&&Array.isArray(ids)){
+      removeVisibleNotifications(ids);
+      await reload(true);
+      return;
+    }
     if((action==='read'||action==='unread')&&Array.isArray(ids)){
       updateVisibleReadStates(ids,action==='read');
-      await Promise.allSettled([badge(app),summary(app)]);
+      await reload(true);
       return;
     }
     await Promise.allSettled([badge(app),summary(app)]);
@@ -278,7 +316,14 @@ export async function initNotifications(app) {
   document.addEventListener('dmb:notification-changed',liveHandler);
 
   await load(app);
+  const returnPages = Number(sessionStorage.getItem('notifications:return-pages')) || 1;
+  sessionStorage.removeItem('notifications:return-pages');
+  while (hasMore && page <= returnPages) {
+    const previousPage = page;
+    await load(app,true);
+    if (page === previousPage) break;
+  }
   const returnScroll=Number(sessionStorage.getItem('notifications:return-scroll'));
   sessionStorage.removeItem('notifications:return-scroll');
-  if(Number.isFinite(returnScroll)&&returnScroll>0)requestAnimationFrame(()=>window.scrollTo({top:returnScroll,behavior:'auto'}));
+  if(Number.isFinite(returnScroll)&&returnScroll>0)requestAnimationFrame(()=>{const scroller=document.querySelector('.main-content');if(scroller)scroller.scrollTop=returnScroll;else window.scrollTo({top:returnScroll,behavior:'auto'});});
 }

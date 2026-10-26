@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import time
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+
 import pytest
 from sqlalchemy import select
 
 from app.core.models import LlmCall
 from app.llm.base import parse_hints, prompt_hash
-from app.llm.factory import classify_with_cache, get_adapter
+from app.llm.factory import classify_with_cache, complete_with_cache, get_adapter
 from app.llm.mock import MockAdapter
+from app.llm.singleflight import reset_singleflight
 from app.rag.search import search_corpus
 from app.strategy.decomposer import StubStrategyDecomposer
 
@@ -91,6 +96,128 @@ class TestCache:
 
         calls = session.scalars(select(LlmCall)).all()
         assert len(calls) == 1, "второй вызов должен был попасть в кэш"
+
+    def test_structured_completion_is_logged_and_cached(self, session):
+        """Оценщики F5/F6 используют тот же кэш и аудит, что классификатор."""
+
+        class CountingAdapter:
+            name = "counting"
+            model = "counting-1"
+            last_usage = {"tokens_in": 12, "tokens_out": 4, "latency_ms": 9}
+
+            def __init__(self):
+                self.calls = 0
+
+            def complete(self, *_args, **_kwargs):
+                self.calls += 1
+                return '{"answers":{"criterion":true}}'
+
+        adapter = CountingAdapter()
+        first, first_hit = complete_with_cache(
+            adapter,
+            purpose="assess_strategy",
+            system_prompt="system",
+            user_prompt="task",
+            schema={"type": "object"},
+            session=session,
+        )
+        second, second_hit = complete_with_cache(
+            adapter,
+            purpose="assess_strategy",
+            system_prompt="system",
+            user_prompt="task",
+            schema={"type": "object"},
+            session=session,
+        )
+
+        calls = session.scalars(
+            select(LlmCall).where(LlmCall.purpose == "assess_strategy")
+        ).all()
+        assert first == second
+        assert first_hit is False
+        assert second_hit is True
+        assert adapter.calls == 1
+        assert len(calls) == 1
+        assert calls[0].tokens_in == 12
+        assert calls[0].tokens_out == 4
+
+    def test_concurrent_identical_completions_share_one_network_call(self):
+        started = Event()
+        release = Event()
+        second_entered = Event()
+
+        class BlockingAdapter:
+            name = "blocking"
+            model = "blocking-1"
+
+            def __init__(self):
+                self.calls = 0
+
+            def complete(self, *_args, **_kwargs):
+                self.calls += 1
+                started.set()
+                assert release.wait(timeout=2)
+                return '{"ok":true}'
+
+        adapter = BlockingAdapter()
+        reset_singleflight()
+
+        def complete():
+            return complete_with_cache(
+                adapter,
+                purpose="assess_strategy",
+                system_prompt="system",
+                user_prompt="same task",
+            )
+
+        def complete_second():
+            second_entered.set()
+            return complete()
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(complete)
+            assert started.wait(timeout=1)
+            second = executor.submit(complete_second)
+            assert second_entered.wait(timeout=1)
+            time.sleep(0.05)
+            release.set()
+            results = [first.result(), second.result()]
+
+        assert adapter.calls == 1
+        assert [shared for _raw, shared in results].count(True) == 1
+        reset_singleflight()
+
+    def test_singleflight_does_not_become_a_cache_when_cache_is_unavailable(self):
+        class CountingAdapter:
+            name = "no-cache"
+            model = "no-cache-1"
+
+            def __init__(self):
+                self.calls = 0
+
+            def complete(self, *_args, **_kwargs):
+                self.calls += 1
+                return '{"ok":true}'
+
+        adapter = CountingAdapter()
+        reset_singleflight()
+
+        first = complete_with_cache(
+            adapter,
+            purpose="assess_strategy",
+            system_prompt="system",
+            user_prompt="same task",
+        )
+        second = complete_with_cache(
+            adapter,
+            purpose="assess_strategy",
+            system_prompt="system",
+            user_prompt="same task",
+        )
+
+        assert adapter.calls == 2
+        assert first[1] is False
+        assert second[1] is False
 
     def test_failure_is_logged_and_propagated_without_mock_fallback(self, session):
         """Сбой настроенной модели не подменяется правдоподобной эвристикой."""

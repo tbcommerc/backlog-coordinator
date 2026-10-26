@@ -140,6 +140,7 @@ def test_prioritiser_client_sends_service_secret(monkeypatch):
         captured["secret"] = request.get_header("X-prioritiser-secret")
         return Response()
 
+    monkeypatch.setattr(prioritiser_router.settings, "PRIORITISER_ENABLED", True)
     monkeypatch.setattr(prioritiser_router.settings, "PRIORITISER_SECRET", "service-test-secret")
     monkeypatch.setattr(prioritiser_router.urllib.request, "urlopen", fake_urlopen)
 
@@ -147,6 +148,21 @@ def test_prioritiser_client_sends_service_secret(monkeypatch):
 
     assert result["status"] == "error"
     assert captured["secret"] == "service-test-secret"
+
+
+def test_disabled_prioritiser_fails_without_network_call(monkeypatch):
+    monkeypatch.setattr(prioritiser_router.settings, "PRIORITISER_ENABLED", False)
+    monkeypatch.setattr(
+        prioritiser_router.urllib.request,
+        "urlopen",
+        lambda *_args, **_kwargs: pytest.fail("network must not be called"),
+    )
+
+    with pytest.raises(prioritiser_router.HTTPException) as raised:
+        prioritiser_router._call_prioritiser("/agent/value/full", {"task": {}})
+
+    assert raised.value.status_code == 503
+    assert raised.value.detail == "Сервис приоритизации отключён в текущем запуске"
 
 
 def test_insufficient_value_forwards_real_missing_inputs():

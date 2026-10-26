@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru" data-theme="light" data-accent="indigo">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>UI kit — персональные настройки</title>
+  <script src="/js/lib/lucide.min.js"></script>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/modal-system.css">
+  <link rel="stylesheet" href="/css/ui/kit.css">
+  <style>body { overflow:auto; } #page-content { padding:24px; } @media(max-width:640px) { #page-content { padding:12px; } }</style>
+</head>
+<body>
+  <main id="page-content"></main>
+  <script type="module">
+    import { renderSettings, initSettings } from '/js/components/settings.js';
+    import { applyThemePreference } from '/js/theme.js';
+    const params=new URLSearchParams(location.search);
+    if(params.has('theme')) localStorage.setItem('dmb_theme',params.get('theme'));
+    if(params.has('compact')) localStorage.setItem('dmb_compact',params.get('compact'));
+    // Use the shell's theme initialization before mounting settings.
+    applyThemePreference(localStorage.getItem('dmb_theme') || 'light');
+    window.__applyThemePreference=applyThemePreference;
+    window.__calls=[]; window.__blocked=[]; window.__failRead=params.has('readError'); window.__failWrite=false; window.__hold=false;
+    window.getUserInitials=()=> 'ТА'; window.getAvatarColor=()=> '#6366f1';
+    const preferences={comment:true};
+    const user={id:1,name:'Тестовый автор <скобки>',email:'long-user-name-for-layout@example.test',role_name:'Участник команды',team_name:'Команда развития клиентских сервисов'};
+    const wait=async()=>{ if(window.__hold) await new Promise(resolve=>{window.__release=()=>{window.__hold=false;resolve();};}); };
+    const block=path=>{window.__blocked.push(path);throw new Error(`Blocked write: ${path}`);};
+    const app={store:{get:key=>key==='currentUser'?user:null},api:{
+      async get(path) {
+        window.__calls.push({method:'get',path});
+        if(path!=='/notifications/preferences') throw new Error(`Unexpected read: ${path}`);
+        await wait();
+        if(window.__failRead) throw new Error('Тестовая ошибка загрузки');
+        return {preferences:{...preferences}};
+      },
+      async put(path,data) {
+        window.__calls.push({method:'put',path,data});
+        if(path!=='/notifications/preferences' || Object.keys(data.preferences).join(',')!=='comment') return block(path);
+        await wait();
+        if(window.__failWrite) throw new Error('Тестовая ошибка сохранения');
+        Object.assign(preferences,data.preferences);
+        return {preferences:{...preferences}};
+      }, post:block, delete:block,
+    }};
+    if(!location.hash) history.replaceState(null,'',`${location.pathname}${location.search}#/settings`);
+    window.__renderSettings=async()=>{
+      document.getElementById('page-content').innerHTML=renderSettings(app);
+      await initSettings(app);
+      window.lucide?.createIcons();
+    };
+    await window.__renderSettings();
+    document.documentElement.dataset.fixtureReady='true';
+  </script>
+</body>
+</html>

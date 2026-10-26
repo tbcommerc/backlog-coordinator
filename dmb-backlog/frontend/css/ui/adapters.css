@@ -1,0 +1,173 @@
+/* Existing SPA consumers only. New reusable components belong in core.css.
+   ID specificity bridges legacy task-dialog styles. */
+@import url("./login.css?v=4");
+@import url("./dialog-bridges.css?v=1");
+/* Typography ownership: page, dialog and document headings are distinct roles. */
+:root :is(.page-header h1, .toolbar-title, .notification-hero h1, .agent-v2-header h1,
+  .an-page h1, .ba-header h1, .mc-page h1, .work-page h1, .directorate-page-heading h1,
+  .reporting-status-hero h1, .quarterly-report-title-line h1, .requirement-reviews h1,
+  .customer-request-header h1, .review-title-line h1) {
+  font-size:var(--type-page-size); font-weight:var(--font-semibold); line-height:var(--type-page-line);
+}
+:root :is(.modal-title, .app-modal__title, .modal-header h3, .admin-modal h3,
+  .customer-reference-dialog h2, #work-resolution-title, #qe-complete-title,
+  #qe-import-title, #qe-handoff-title, #conflict-title, #meeting-data-title,
+  #chat-submit-title, #pip-decision-title, #work-drawer-title,
+  [id^="reporting-meeting-modal-title-"], [id^="review-modal-title-"]) {
+  font-size:var(--type-dialog-size); font-weight:var(--font-semibold); line-height:var(--type-dialog-line);
+  overflow-wrap:anywhere; white-space:normal;
+}
+:root :is(#feedback-confirm-title, #confirm-modal-title, #qe-confirm-title,
+  #admin-confirm-title, #edit-exit-title, #create-duplicate-title) {
+  font-size:var(--type-confirm-size); font-weight:var(--font-semibold); line-height:var(--type-confirm-line);
+}
+:root :is(#task-detail-title, #create-task-title, #chat-edit-title) {
+  font-size:var(--type-workspace-size); font-weight:var(--font-semibold); line-height:var(--type-workspace-line);
+  overflow-wrap:anywhere; white-space:normal;
+}
+:root .agent-v2-document-head h2 { font-size:var(--type-workspace-size); line-height:var(--type-workspace-line); }
+:root .ba-dialog .ba-header h1 { font-size:var(--type-dialog-size); line-height:var(--type-dialog-line); }
+:root .reporting-status-heading h1 { white-space:normal; overflow-wrap:anywhere; }
+:root :is(.form-label, .agent-v2-page label) { font-size:var(--type-meta-size); font-weight:var(--font-medium); line-height:var(--type-meta-line); }
+/* The document body retains its semantic section hierarchy; KPI values keep Unbounded. */
+.bc-row, .bc-table-head { display:grid; grid-template-columns:32px 120px minmax(0,1fr) 140px 110px; }
+.bc-selection, .bc-task-list { display:flex; flex-direction:column; flex:1; min-height:0; }
+.bc-rows-container { flex:1; overflow-y:auto; min-height:100px; }
+@media(max-width:640px) {
+  :root .agent-v2-view-switch { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  :root .agent-v2-view-switch .btn { min-width:0; white-space:normal; overflow-wrap:anywhere; }
+  :root .agent-v2-view-switch .btn:last-child { grid-column:1 / -1; }
+  :root .agent-v2-document .agent-v2-section { padding:var(--space-2) 0; }
+  :root .agent-v2-next-step { gap:var(--space-1); }
+  :root .agent-v2-next-step :is(h2,p) { margin:0; }
+  :root .agent-v2-document-head { gap:var(--space-1); }
+  :root .bc-table-head { display:none; }
+  :root .bc-selection { flex:0 0 auto; }
+  :root .bc-selection-controls { flex-wrap:wrap; gap:8px; }
+  :root .bc-task-list { flex:0 0 auto; min-height:220px; }
+  :root .bc-rows-container { flex:1 0 180px; max-height:280px; }
+  :root .bc-row { grid-template-columns:32px minmax(0,1fr); padding:8px; }
+  :root .bc-row > :first-child { grid-row:1 / 5; padding:0; }
+  :root .bc-row > :not(:first-child) { grid-column:2; padding:4px 8px; min-width:0; overflow-wrap:anywhere; }
+  :root .bc-task-title { white-space:normal; }
+}
+.ui-customer-report-actions { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.ui-customer-report-actions .ui-control { width: auto; min-width: 0; }
+:root .chat-send-btn { align-self: end; }
+@media (max-width: 640px) {
+  :root .work-table.ui-table > tbody > tr > td { padding: var(--space-1) var(--space-2); border-bottom: 0; vertical-align: top; }
+}
+@media (max-width: 1100px) {
+  :root .outbox-table.ui-table > tbody > tr > td { padding: 0; border: 0; }
+}
+.admin-section.ui-table-surface { padding: 0; }
+@media (max-width: 768px) {
+#admin-content .ui-table-surface:has(.admin-unified-table:not(.admin-role-matrix)) { border: 0; border-radius: 0; background: transparent; overflow: visible; }
+}
+@media (max-width: 640px) {
+:is(#task-detail-overlay, #create-task-overlay) .work-table.ui-table > tbody > tr > td { padding: var(--space-1) var(--space-2); border-bottom: 0; vertical-align: top; }
+}
+@media (max-width: 1100px) {
+:is(#task-detail-overlay, #create-task-overlay) .outbox-table.ui-table > tbody > tr > td { padding: 0; border: 0; }
+}
+/* Compatibility extracted from core.css */
+:is(#task-detail-overlay, #create-task-overlay) .ui-btn.btn-primary,
+:is(#task-detail-overlay, #create-task-overlay) .btn.primary {
+  background: var(--action-primary-bg);
+  color: var(--action-primary-text);
+  border: 1px solid transparent;
+}
+:is(#task-detail-overlay, #create-task-overlay) .ui-btn.btn-primary:hover,
+:is(#task-detail-overlay, #create-task-overlay) .btn.primary:hover { background: var(--action-primary-hover); transform: none; }
+:is(#task-detail-overlay, #create-task-overlay) .ui-btn.btn-secondary { color: var(--text-primary); background: var(--bg-secondary); border: 1px solid var(--border-hover); }
+:is(#task-detail-overlay, #create-task-overlay) .ui-btn.btn-secondary:hover { background: var(--bg-tertiary); }
+:is(#task-detail-overlay, #create-task-overlay) .ui-control {
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border-color: var(--border-hover);
+}
+:is(#task-detail-overlay, #create-task-overlay) .ui-control { width: 100%; padding-inline: 10px; }
+:is(#task-detail-overlay, #create-task-overlay) textarea.ui-control { min-height: 104px; resize: vertical; }
+:is(#task-detail-overlay, #create-task-overlay) .ui-control[aria-invalid="true"] { border-color: var(--danger-text); }
+:is(#task-detail-overlay, #create-task-overlay) :is(.ui-btn, .ui-control, .ui-tab):focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
+:is(#task-detail-overlay, #create-task-overlay) .ui-field { display: grid; align-content: start; gap: 6px; }
+:is(#task-detail-overlay, #create-task-overlay) .ui-field .form-label { color: var(--text-secondary); font-size: var(--type-meta-size); line-height:var(--type-meta-line); font-weight:var(--font-medium); }
+:is(#task-detail-overlay, #create-task-overlay) .ui-field .form-error { color: var(--danger-text); font-size:var(--type-body-size); line-height:var(--type-body-line); }
+:is(#task-detail-overlay, #create-task-overlay) .task-readonly-value { display: flex; gap: 7px; align-items: center; color: var(--text-secondary); }
+#task-detail-overlay .editing .field-modified { background: var(--warning-light); box-shadow: 0 0 0 2px var(--warning-light); }
+#task-detail-overlay .editing .field-modified .flt::after { color: var(--warning-text); }
+#admin-modal-overlay #modal-form-body:has(> .ui-field) { display: grid; gap: var(--space-4); }
+.report-step-panel > .ui-field + .ui-field,
+.meeting-management-dialog .modal-body > .ui-field + .ui-field { margin-top: var(--space-4); }
+.report-filter-row .ui-control { min-width: 0; }
+.report-filter-row .report-filter-remove.ui-btn { color: var(--danger-text); }
+.admin-tab.ui-tab { display: inline-flex; align-items: center; gap: var(--space-2); }
+.admin-tab.ui-tab[aria-selected="true"],
+.report-step.ui-tab[aria-selected="true"] { color: var(--accent-text); border-color: var(--accent); background: var(--accent-light); }
+#task-detail-overlay .ui-tab { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; white-space: nowrap; color: var(--text-secondary); }
+#task-detail-overlay .ui-tab[aria-selected="true"] { color: var(--accent-text); border-bottom-color: var(--accent); font-weight: var(--font-semibold); }
+#task-detail-overlay .ui-tab:hover { background: var(--bg-hover); }
+.directorate-filters .ui-field { min-width: 0; }
+.admin-modal-overlay { z-index: var(--z-modal-backdrop); }
+.role-form-workspace,
+.role-form-columns,
+.role-form-main,
+.role-form-nav { min-width: 0; }
+.role-form-section > .ui-field + .ui-field { margin-top: var(--space-4); }
+.role-form-nav .ui-btn[aria-current="location"] { color: var(--accent-text); background: var(--accent-light); }
+.role-live-risk { color: var(--warning-text); }
+.role-live-ok { color: var(--success-text); }
+.dict-editor-field.ui-field .form-label { font-size: var(--text-xs); color: var(--text-secondary); text-transform: none; }
+.dict-editor-field.ui-field .form-error { color: var(--danger-text); }
+.dict-editor-field .form-error[hidden],
+.dict-editor-row[hidden] { display: none; }
+.dict-editor-row > .ui-btn { align-self: start; }
+.dict-color-dot { display: block; width: 22px; height: 22px; border: 1px solid var(--border-hover); border-radius: var(--radius-sm); }
+.dict-color-options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-2); justify-items: center; }
+.dict-color-options .ui-btn[aria-pressed="true"] { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.competency-rate-cell { padding: var(--space-1); }
+.competency-rate-cell .ui-control { width: 110px; }
+.admin-dict-card:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
+.display-settings-editor { max-width: 900px; }
+.display-settings-editor h2 { margin: 0 0 var(--space-2); font-size: var(--text-lg); }
+.admin-action-row:has(#save-display-settings),
+.display-editor-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+#display-save-status { color: var(--text-secondary); font-size: var(--text-sm); }
+.display-col-list { display: grid; gap: var(--space-2); max-height: 520px; overflow-y: auto; padding: var(--space-1); }
+.display-col-item { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: var(--space-3); padding: var(--space-3); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+.display-col-handle { cursor: grab; }
+.display-col-item .form-label { color: var(--text-secondary); text-transform: none; }
+.an-page .an-control.ui-field { min-width: 0; }
+.an-page .an-control.ui-field .form-label { font-size: var(--text-xs); color: var(--text-secondary); font-weight: var(--font-medium); }
+.an-page .p360-project-search .ui-control { width: 100%; }
+.an-page .an-loading-state { display: block; padding: 0; border: 0; }
+.an-page .an-report-nav .ui-btn > span:not(.an-nav-index) { color: inherit; font-size: inherit; letter-spacing: normal; font-weight: inherit; }
+.an-page .an-report-nav .ui-btn[aria-current="location"],
+.an-page .an-chip.ui-btn[aria-pressed="true"] { color: var(--accent-text); background: var(--accent-light); border-color: var(--accent); }
+:root :is(.page-header h1, .notification-hero h1) { font-size: var(--text-2xl); }
+:root :is(.view-state, .customer-request-state) { border-radius: var(--radius-lg); }
+
+@media (max-width: 640px) {
+.dict-editor-row { grid-template-columns: 44px 44px minmax(0, 1fr) 44px; }
+.dict-editor-row > .dict-drag-handle,
+.dict-editor-row > .dict-color-swatch { grid-row: 1; }
+.dict-editor-row > .dict-editor-field { grid-column: 1 / -1; grid-row: 2; }
+.dict-editor-row > .dict-code-field { grid-row: 3; }
+.dict-editor-row > .dict-usage-badge { grid-column: 1 / 3; grid-row: 4; }
+.dict-editor-row > .dict-row-state { grid-column: 3 / -1; grid-row: 4; }
+.display-col-item { grid-template-columns: auto minmax(0, 1fr); }
+.display-col-item > .ui-field { grid-column: 1 / -1; }
+.an-page .an-report-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; }
+.an-page .an-report-toolbar .ui-control,
+.an-page .an-report-toolbar .an-filter-button,
+.an-page .p360-project-search,
+.an-page .p360-flow-toolbar .ui-control { width: 100%; min-width: 0; max-width: none; }
+:is(#task-detail-overlay, #create-task-overlay) .mfoot .factions { min-width: 0; flex-wrap: wrap; }
+:is(#task-detail-overlay, #create-task-overlay) .mfoot .factions .ui-btn { flex: 1 1 auto; }
+#create-task-overlay .mfoot .factions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#create-task-overlay #create-save-btn { grid-column: 1 / -1; }
+#create-task-overlay .create-draft-saved-status { grid-column: 1 / -1; order: 4; }
+#create-task-overlay .task-network-status { grid-column: 1 / -1; order: 5; }
+}
+.bc-field-option { white-space: normal; text-align: left; justify-content: flex-start; }

@@ -1,0 +1,44 @@
+<!doctype html><html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/css/fonts.css?v=1">
+<link rel="stylesheet" href="/static/css/tokens.css?v=32">
+<link rel="stylesheet" href="/static/css/base.css?v=28">
+<link rel="stylesheet" href="/static/css/components.css?v=138">
+<link rel="stylesheet" href="/static/css/pages.css?v=88">
+<link rel="stylesheet" href="/static/css/analytics-lt.css?v=31">
+<link rel="stylesheet" href="/static/css/responsive.css?v=22">
+<link rel="stylesheet" href="/static/css/did-backlog.css?v=5">
+<link rel="stylesheet" href="/static/css/directorate-report.css?v=18">
+<link rel="stylesheet" href="/static/css/feedback.css?v=5">
+<link rel="stylesheet" href="/static/css/modal-system.css?v=2">
+<link rel="stylesheet" href="/static/css/agent-v2.css?v=9">
+<link rel="stylesheet" href="/static/css/agent-v2-details.css?v=3">
+<link rel="stylesheet" href="/static/css/meeting-capture.css?v=1">
+<link rel="stylesheet" href="/static/css/backlog-assistant.css?v=2">
+<link rel="stylesheet" href="/static/css/account-security.css?v=1">
+<link rel="stylesheet" href="/static/css/work-tasks.css?v=6"><link rel="stylesheet" href="/static/css/ui/kit.css?v=23"><script src="/static/js/lib/lucide.min.js"></script><style>body{overflow:auto}main{padding:16px;min-width:0}</style></head><body><main id="page-content"></main><script type="module">
+const params=new URLSearchParams(location.search), surface=params.get('surface');
+const items=[{id:1,public_id:'WRK-1',title:'Подготовить требования',status:'in_progress',assignee_name:'Аналитик',due_date:'2026-10-25',context:{title:'Проект'}}];
+const summary={total:1,active:1,done:0,overdue:0,blocked:0,in_acceptance:0,proposals:0};
+window.__writes=[];
+const app={features:{agent_v2:{enabled:false}},store:{get:()=>({id:1,name:'Аналитик',team_id:1,permissions:{review:'all'}})},router:{navigate:()=>{}},api:{
+ async get(path){
+  if(path.includes('/options'))return {can_create:true,teams:[],users:[],projects:[{id:1,name:'Проект'}]};
+  if(path.startsWith('/work-reports'))return {available:true,mode:'live',summary,items,major_items:[],major_summary:{obligations:0,with_external_links:0}};
+  if(path.startsWith('/work-tasks')||path.includes('/major-tasks'))return {items,total:1,summary};
+  return [];
+ },async post(path){window.__writes.push(path);throw Error('Writes forbidden');},async put(path){window.__writes.push(path);throw Error('Writes forbidden');}
+}};window.app=app;
+const root=document.querySelector('main');
+if(surface==='review'){
+ const m=await import('/static/js/components/reviewPage.js');root.innerHTML=m.renderReviewPage(app);await m.initReviewPage(app);
+}else if(surface.startsWith('work')){
+ const name=surface[0].toUpperCase()+surface.slice(1),m=await import(`/static/js/components/${surface}.js`);root.innerHTML=m['render'+name]();await m['init'+name](app);
+ if(surface==='workProjects'){const select=document.querySelector('#work-project');select.value='1';select.dispatchEvent(new Event('change'));}
+}else if(surface==='agentV1'){
+ const m=await import('/static/js/components/agentChat.js');root.innerHTML=m.renderAgentChat(app);
+}else if(surface==='agentV2'){
+ const m=await import('/static/js/agent-v2/workspace.js');root.innerHTML=m.renderAgentV2(app);
+}else if(surface==='assistant'){
+ const m=await import('/static/js/backlog-assistant/page.js');root.innerHTML=m.renderPage();
+}
+window.lucide?.createIcons();document.documentElement.dataset.fixtureReady='true';
+</script></body></html>

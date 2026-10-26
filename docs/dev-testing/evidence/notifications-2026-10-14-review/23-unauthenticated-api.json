@@ -1,0 +1,32 @@
+[
+  {
+    "path": "/api/v1/notifications",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "path": "/api/v1/notifications/snapshot",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "path": "/api/v1/notifications/unread-count",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "path": "/api/v1/notifications/summary",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "path": "/api/v1/notifications/preferences",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "path": "/api/v1/admin/outbox/dead-letters",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  }
+]

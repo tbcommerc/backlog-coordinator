@@ -1,0 +1,649 @@
+{
+  "images": [
+    {
+      "module": "customerReferences",
+      "fn": "openCustomerReferences",
+      "label": "Справочник клиентов",
+      "project": "chrome",
+      "file": "dialogs/customerReferences-openCustomerReferences-chrome.png"
+    },
+    {
+      "module": "customerReferences",
+      "fn": "openCustomerReferences",
+      "label": "Справочник клиентов",
+      "project": "edge",
+      "file": "dialogs/customerReferences-openCustomerReferences-edge.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showEstimateHandoffModal",
+      "label": "Оценка завершена",
+      "project": "chrome",
+      "file": "dialogs/expressEstimate-showEstimateHandoffModal-chrome.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showEstimateHandoffModal",
+      "label": "Оценка завершена",
+      "project": "edge",
+      "file": "dialogs/expressEstimate-showEstimateHandoffModal-edge.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showImportModal",
+      "label": "Добавление задач в оценку",
+      "project": "chrome",
+      "file": "dialogs/expressEstimate-showImportModal-chrome.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showImportModal",
+      "label": "Добавление задач в оценку",
+      "project": "edge",
+      "file": "dialogs/expressEstimate-showImportModal-edge.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showIncompleteEstimateModal",
+      "label": "Оценка ещё не готова",
+      "project": "chrome",
+      "file": "dialogs/expressEstimate-showIncompleteEstimateModal-chrome.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showIncompleteEstimateModal",
+      "label": "Оценка ещё не готова",
+      "project": "edge",
+      "file": "dialogs/expressEstimate-showIncompleteEstimateModal-edge.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showMeetingDataDialog",
+      "label": "Данные встречи",
+      "project": "chrome",
+      "file": "dialogs/reports-showMeetingDataDialog-chrome.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showMeetingDataDialog",
+      "label": "Данные встречи",
+      "project": "edge",
+      "file": "dialogs/reports-showMeetingDataDialog-edge.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showCompleteEstimateModal",
+      "label": "Завершение оценки",
+      "project": "chrome",
+      "file": "dialogs/expressEstimate-showCompleteEstimateModal-chrome.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showCompleteEstimateModal",
+      "label": "Завершение оценки",
+      "project": "edge",
+      "file": "dialogs/expressEstimate-showCompleteEstimateModal-edge.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showCreateDuplicateWarning",
+      "label": "Возможные дубликаты",
+      "project": "chrome",
+      "file": "dialogs/modal-showCreateDuplicateWarning-chrome.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showCreateDuplicateWarning",
+      "label": "Возможные дубликаты",
+      "project": "edge",
+      "file": "dialogs/modal-showCreateDuplicateWarning-edge.png"
+    },
+    {
+      "module": "agentChat",
+      "fn": "showTeamSelectModal",
+      "label": "Отправка требования",
+      "project": "chrome",
+      "file": "dialogs/agentChat-showTeamSelectModal-chrome.png"
+    },
+    {
+      "module": "agentChat",
+      "fn": "showTeamSelectModal",
+      "label": "Отправка требования",
+      "project": "edge",
+      "file": "dialogs/agentChat-showTeamSelectModal-edge.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showPipDecisionModal",
+      "label": "Решение по задаче",
+      "project": "chrome",
+      "file": "dialogs/reports-showPipDecisionModal-chrome.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showPipDecisionModal",
+      "label": "Решение по задаче",
+      "project": "edge",
+      "file": "dialogs/reports-showPipDecisionModal-edge.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingHistory",
+      "label": "История встреч",
+      "project": "chrome",
+      "file": "dialogs/reports-showReportingMeetingHistory-chrome.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingHistory",
+      "label": "История встреч",
+      "project": "edge",
+      "file": "dialogs/reports-showReportingMeetingHistory-edge.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showPrioritiserRequirementsModal",
+      "label": "Недостаточно данных для расчёта",
+      "project": "chrome",
+      "file": "dialogs/modal-showPrioritiserRequirementsModal-chrome.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showPrioritiserRequirementsModal",
+      "label": "Недостаточно данных для расчёта",
+      "project": "edge",
+      "file": "dialogs/modal-showPrioritiserRequirementsModal-edge.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingPlanner",
+      "label": "Планирование встреч",
+      "project": "chrome",
+      "file": "dialogs/reports-showReportingMeetingPlanner-chrome.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingPlanner",
+      "label": "Планирование встреч",
+      "project": "edge",
+      "file": "dialogs/reports-showReportingMeetingPlanner-edge.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showConfirm",
+      "label": "Подтверждение оценки",
+      "project": "chrome",
+      "file": "dialogs/expressEstimate-showConfirm-chrome.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showConfirm",
+      "label": "Подтверждение оценки",
+      "project": "edge",
+      "file": "dialogs/expressEstimate-showConfirm-edge.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingPreparation",
+      "label": "Подготовка встречи",
+      "project": "chrome",
+      "file": "dialogs/reports-showReportingMeetingPreparation-chrome.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingPreparation",
+      "label": "Подготовка встречи",
+      "project": "edge",
+      "file": "dialogs/reports-showReportingMeetingPreparation-edge.png"
+    },
+    {
+      "module": "admin",
+      "fn": "showConfirmModal",
+      "label": "Подтверждение действия",
+      "project": "chrome",
+      "file": "dialogs/admin-showConfirmModal-chrome.png"
+    },
+    {
+      "module": "admin",
+      "fn": "showConfirmModal",
+      "label": "Подтверждение действия",
+      "project": "edge",
+      "file": "dialogs/admin-showConfirmModal-edge.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showBulkOpsModal",
+      "label": "Массовые операции",
+      "project": "chrome",
+      "file": "dialogs/modal-showBulkOpsModal-chrome.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showBulkOpsModal",
+      "label": "Массовые операции",
+      "project": "edge",
+      "file": "dialogs/modal-showBulkOpsModal-edge.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showBulkResultModal",
+      "label": "Результат массовых операций",
+      "project": "chrome",
+      "file": "dialogs/modal-showBulkResultModal-chrome.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showBulkResultModal",
+      "label": "Результат массовых операций",
+      "project": "edge",
+      "file": "dialogs/modal-showBulkResultModal-edge.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showConfirmModal",
+      "label": "Подтверждение действия",
+      "project": "chrome",
+      "file": "dialogs/modal-showConfirmModal-chrome.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showConfirmModal",
+      "label": "Подтверждение действия",
+      "project": "edge",
+      "file": "dialogs/modal-showConfirmModal-edge.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showConflictModal",
+      "label": "Конфликт версий",
+      "project": "chrome",
+      "file": "dialogs/modal-showConflictModal-chrome.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showConflictModal",
+      "label": "Конфликт версий",
+      "project": "edge",
+      "file": "dialogs/modal-showConflictModal-edge.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showEditExitModal",
+      "label": "Несохранённые изменения",
+      "project": "chrome",
+      "file": "dialogs/modal-showEditExitModal-chrome.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showEditExitModal",
+      "label": "Несохранённые изменения",
+      "project": "edge",
+      "file": "dialogs/modal-showEditExitModal-edge.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showErrorModal",
+      "label": "Результат сохранения",
+      "project": "chrome",
+      "file": "dialogs/modal-showErrorModal-chrome.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showErrorModal",
+      "label": "Результат сохранения",
+      "project": "edge",
+      "file": "dialogs/modal-showErrorModal-edge.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingForm",
+      "label": "Дата встречи",
+      "project": "chrome",
+      "file": "dialogs/reports-showReportingMeetingForm-chrome.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingForm",
+      "label": "Дата встречи",
+      "project": "edge",
+      "file": "dialogs/reports-showReportingMeetingForm-edge.png"
+    },
+    {
+      "module": "agentChat",
+      "fn": "showSectionEditModal",
+      "label": "Редактирование раздела",
+      "project": "chrome",
+      "file": "dialogs/agentChat-showSectionEditModal-chrome.png"
+    },
+    {
+      "module": "agentChat",
+      "fn": "showSectionEditModal",
+      "label": "Редактирование раздела",
+      "project": "edge",
+      "file": "dialogs/agentChat-showSectionEditModal-edge.png"
+    },
+    {
+      "module": "customerReferences",
+      "fn": "openCustomerReferences",
+      "label": "Справочник клиентов",
+      "project": "firefox",
+      "file": "dialogs/customerReferences-openCustomerReferences-firefox.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showEstimateHandoffModal",
+      "label": "Оценка завершена",
+      "project": "firefox",
+      "file": "dialogs/expressEstimate-showEstimateHandoffModal-firefox.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showImportModal",
+      "label": "Добавление задач в оценку",
+      "project": "firefox",
+      "file": "dialogs/expressEstimate-showImportModal-firefox.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showIncompleteEstimateModal",
+      "label": "Оценка ещё не готова",
+      "project": "firefox",
+      "file": "dialogs/expressEstimate-showIncompleteEstimateModal-firefox.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showMeetingDataDialog",
+      "label": "Данные встречи",
+      "project": "firefox",
+      "file": "dialogs/reports-showMeetingDataDialog-firefox.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showCompleteEstimateModal",
+      "label": "Завершение оценки",
+      "project": "firefox",
+      "file": "dialogs/expressEstimate-showCompleteEstimateModal-firefox.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showCreateDuplicateWarning",
+      "label": "Возможные дубликаты",
+      "project": "firefox",
+      "file": "dialogs/modal-showCreateDuplicateWarning-firefox.png"
+    },
+    {
+      "module": "agentChat",
+      "fn": "showTeamSelectModal",
+      "label": "Отправка требования",
+      "project": "firefox",
+      "file": "dialogs/agentChat-showTeamSelectModal-firefox.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showPipDecisionModal",
+      "label": "Решение по задаче",
+      "project": "firefox",
+      "file": "dialogs/reports-showPipDecisionModal-firefox.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingHistory",
+      "label": "История встреч",
+      "project": "firefox",
+      "file": "dialogs/reports-showReportingMeetingHistory-firefox.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showPrioritiserRequirementsModal",
+      "label": "Недостаточно данных для расчёта",
+      "project": "firefox",
+      "file": "dialogs/modal-showPrioritiserRequirementsModal-firefox.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingPlanner",
+      "label": "Планирование встреч",
+      "project": "firefox",
+      "file": "dialogs/reports-showReportingMeetingPlanner-firefox.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showConfirm",
+      "label": "Подтверждение оценки",
+      "project": "firefox",
+      "file": "dialogs/expressEstimate-showConfirm-firefox.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingPreparation",
+      "label": "Подготовка встречи",
+      "project": "firefox",
+      "file": "dialogs/reports-showReportingMeetingPreparation-firefox.png"
+    },
+    {
+      "module": "admin",
+      "fn": "showConfirmModal",
+      "label": "Подтверждение действия",
+      "project": "firefox",
+      "file": "dialogs/admin-showConfirmModal-firefox.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showBulkOpsModal",
+      "label": "Массовые операции",
+      "project": "firefox",
+      "file": "dialogs/modal-showBulkOpsModal-firefox.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showBulkResultModal",
+      "label": "Результат массовых операций",
+      "project": "firefox",
+      "file": "dialogs/modal-showBulkResultModal-firefox.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showConfirmModal",
+      "label": "Подтверждение действия",
+      "project": "firefox",
+      "file": "dialogs/modal-showConfirmModal-firefox.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showConflictModal",
+      "label": "Конфликт версий",
+      "project": "firefox",
+      "file": "dialogs/modal-showConflictModal-firefox.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showEditExitModal",
+      "label": "Несохранённые изменения",
+      "project": "firefox",
+      "file": "dialogs/modal-showEditExitModal-firefox.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showErrorModal",
+      "label": "Результат сохранения",
+      "project": "firefox",
+      "file": "dialogs/modal-showErrorModal-firefox.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingForm",
+      "label": "Дата встречи",
+      "project": "firefox",
+      "file": "dialogs/reports-showReportingMeetingForm-firefox.png"
+    },
+    {
+      "module": "agentChat",
+      "fn": "showSectionEditModal",
+      "label": "Редактирование раздела",
+      "project": "firefox",
+      "file": "dialogs/agentChat-showSectionEditModal-firefox.png"
+    },
+    {
+      "module": "customerReferences",
+      "fn": "openCustomerReferences",
+      "label": "Справочник клиентов",
+      "project": "webkit",
+      "file": "dialogs/customerReferences-openCustomerReferences-webkit.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showEstimateHandoffModal",
+      "label": "Оценка завершена",
+      "project": "webkit",
+      "file": "dialogs/expressEstimate-showEstimateHandoffModal-webkit.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showImportModal",
+      "label": "Добавление задач в оценку",
+      "project": "webkit",
+      "file": "dialogs/expressEstimate-showImportModal-webkit.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showIncompleteEstimateModal",
+      "label": "Оценка ещё не готова",
+      "project": "webkit",
+      "file": "dialogs/expressEstimate-showIncompleteEstimateModal-webkit.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showMeetingDataDialog",
+      "label": "Данные встречи",
+      "project": "webkit",
+      "file": "dialogs/reports-showMeetingDataDialog-webkit.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showCompleteEstimateModal",
+      "label": "Завершение оценки",
+      "project": "webkit",
+      "file": "dialogs/expressEstimate-showCompleteEstimateModal-webkit.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showCreateDuplicateWarning",
+      "label": "Возможные дубликаты",
+      "project": "webkit",
+      "file": "dialogs/modal-showCreateDuplicateWarning-webkit.png"
+    },
+    {
+      "module": "agentChat",
+      "fn": "showTeamSelectModal",
+      "label": "Отправка требования",
+      "project": "webkit",
+      "file": "dialogs/agentChat-showTeamSelectModal-webkit.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showPipDecisionModal",
+      "label": "Решение по задаче",
+      "project": "webkit",
+      "file": "dialogs/reports-showPipDecisionModal-webkit.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingHistory",
+      "label": "История встреч",
+      "project": "webkit",
+      "file": "dialogs/reports-showReportingMeetingHistory-webkit.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showPrioritiserRequirementsModal",
+      "label": "Недостаточно данных для расчёта",
+      "project": "webkit",
+      "file": "dialogs/modal-showPrioritiserRequirementsModal-webkit.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingPlanner",
+      "label": "Планирование встреч",
+      "project": "webkit",
+      "file": "dialogs/reports-showReportingMeetingPlanner-webkit.png"
+    },
+    {
+      "module": "expressEstimate",
+      "fn": "showConfirm",
+      "label": "Подтверждение оценки",
+      "project": "webkit",
+      "file": "dialogs/expressEstimate-showConfirm-webkit.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingPreparation",
+      "label": "Подготовка встречи",
+      "project": "webkit",
+      "file": "dialogs/reports-showReportingMeetingPreparation-webkit.png"
+    },
+    {
+      "module": "admin",
+      "fn": "showConfirmModal",
+      "label": "Подтверждение действия",
+      "project": "webkit",
+      "file": "dialogs/admin-showConfirmModal-webkit.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showBulkOpsModal",
+      "label": "Массовые операции",
+      "project": "webkit",
+      "file": "dialogs/modal-showBulkOpsModal-webkit.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showBulkResultModal",
+      "label": "Результат массовых операций",
+      "project": "webkit",
+      "file": "dialogs/modal-showBulkResultModal-webkit.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showConfirmModal",
+      "label": "Подтверждение действия",
+      "project": "webkit",
+      "file": "dialogs/modal-showConfirmModal-webkit.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showConflictModal",
+      "label": "Конфликт версий",
+      "project": "webkit",
+      "file": "dialogs/modal-showConflictModal-webkit.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showEditExitModal",
+      "label": "Несохранённые изменения",
+      "project": "webkit",
+      "file": "dialogs/modal-showEditExitModal-webkit.png"
+    },
+    {
+      "module": "modal",
+      "fn": "showErrorModal",
+      "label": "Результат сохранения",
+      "project": "webkit",
+      "file": "dialogs/modal-showErrorModal-webkit.png"
+    },
+    {
+      "module": "reports",
+      "fn": "showReportingMeetingForm",
+      "label": "Дата встречи",
+      "project": "webkit",
+      "file": "dialogs/reports-showReportingMeetingForm-webkit.png"
+    },
+    {
+      "module": "agentChat",
+      "fn": "showSectionEditModal",
+      "label": "Редактирование раздела",
+      "project": "webkit",
+      "file": "dialogs/agentChat-showSectionEditModal-webkit.png"
+    }
+  ],
+  "missing": []
+}

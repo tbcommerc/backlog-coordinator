@@ -1,0 +1,10 @@
+{
+  "exact": {
+    "name": "ux-audit-exact-50m.txt",
+    "bytes": 52428800
+  },
+  "over": {
+    "name": "ux-audit-over-50m.txt",
+    "bytes": 52428801
+  }
+}

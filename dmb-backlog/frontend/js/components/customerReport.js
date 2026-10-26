@@ -1,6 +1,7 @@
 console.log('[DMB] customerReport.js loaded');
-import { openTaskModal } from './modal.js?v=92';
+import { openTaskModal } from './modal.js?v=118';
 import { formatTaskPublicId } from '../taskPublicId.js';
+import { button as uiButton, control as uiControl, pageHeader as uiPageHeader } from '../ui/primitives.js';
 
 let tasksCache = null;
 
@@ -10,8 +11,7 @@ export function renderCustomerReport(app) {
 
   return `
     <div class="page-header animate-fade-in">
-      <h1>Отчёт по задачам</h1>
-      <p>Статусы задач, инициированных вами</p>
+      ${uiPageHeader({ title: 'Отчёт по задачам', description: 'Статусы задач, инициированных вами' })}
     </div>
 
     <div class="customer-stats-grid">
@@ -56,28 +56,14 @@ export function renderCustomerReport(app) {
     <div class="card">
       <div class="card-header">
         <h2 class="card-title">Мои задачи</h2>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <select id="customer-status-filter" class="input" style="width:auto;padding:6px 10px;font-size:12px;">
-            <option value="">Все статусы</option>
-            <option value="СБОР ТРЕБОВАНИЙ">СБОР ТРЕБОВАНИЙ</option>
-            <option value="ПРОВЕРКА ТРЕБОВАНИЙ">ПРОВЕРКА ТРЕБОВАНИЙ</option>
-            <option value="УТОЧНЕНИЕ ТРЕБОВАНИЙ">УТОЧНЕНИЕ ТРЕБОВАНИЙ</option>
-            <option value="ЭКСПРЕСС-ОЦЕНКА">ЭКСПРЕСС-ОЦЕНКА</option>
-            <option value="ПРИНЯТИЕ РЕШЕНИЯ">ПРИНЯТИЕ РЕШЕНИЯ</option>
-            <option value="ПРИНЯТА В РАБОТУ">ПРИНЯТА В РАБОТУ</option>
-            <option value="ЭСКАЛАЦИЯ НА ЛТ">ЭСКАЛАЦИЯ НА ЛТ</option>
-            <option value="ХОЛД">ХОЛД</option>
-            <option value="ВЫПОЛНЕНА">ВЫПОЛНЕНА</option>
-            <option value="ОТКЛОНЕНА">ОТКЛОНЕНА</option>
-          </select>
-          <button class="btn btn-secondary btn-sm" id="refresh-tasks-btn" aria-label="Обновить">
-            <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
-          </button>
+        <div class="ui-customer-report-actions">
+          ${uiControl({ id: 'customer-status-filter', kind: 'select', options: [{ value: '', label: 'Все статусы' }, ...['СБОР ТРЕБОВАНИЙ', 'ПРОВЕРКА ТРЕБОВАНИЙ', 'УТОЧНЕНИЕ ТРЕБОВАНИЙ', 'ЭКСПРЕСС-ОЦЕНКА', 'ПРИНЯТИЕ РЕШЕНИЯ', 'ПРИНЯТА В РАБОТУ', 'ЭСКАЛАЦИЯ НА ЛТ', 'ХОЛД', 'ВЫПОЛНЕНА', 'ОТКЛОНЕНА'].map(value => ({ value, label: value }))], attrs: { 'aria-label': 'Статус задачи' } })}
+          ${uiButton({ label: 'Обновить', icon: 'refresh-cw', iconOnly: true, size: 'small', attrs: { id: 'refresh-tasks-btn' } })}
         </div>
       </div>
       <div class="card-body">
         <div class="table-container" style="overflow-x:auto;">
-          <table class="table" id="customer-tasks-table">
+          <table class="ui-table ui-table-data table" id="customer-tasks-table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -130,7 +116,7 @@ async function loadTasks(app) {
     renderTasksTable(items, filter);
   } catch (e) {
     document.getElementById('customer-tasks-tbody').innerHTML =
-      `<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
+      `<tr><td colspan="7" class="text-center text-muted" >Ошибка загрузки: ${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -145,7 +131,7 @@ function renderTasksTable(tasks, statusFilter) {
   }
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" >
       <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
         <i data-lucide="inbox" style="width:32px;height:32px;color:var(--text-muted);"></i>
         <span>Задач пока нет</span>

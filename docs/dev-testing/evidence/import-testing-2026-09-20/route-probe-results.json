@@ -1,0 +1,94 @@
+[
+  {
+    "case": "missing_filename",
+    "status": 400,
+    "detail": "Только CSV файлы поддерживаются",
+    "service_called": false,
+    "service_bytes": null,
+    "rolled_back": false
+  },
+  {
+    "case": "wrong_extension",
+    "status": 400,
+    "detail": "Только CSV файлы поддерживаются",
+    "service_called": false,
+    "service_bytes": null,
+    "rolled_back": false
+  },
+  {
+    "case": "uppercase_extension",
+    "status": 200,
+    "result": {
+      "total": 0,
+      "created": 0,
+      "skipped": 0,
+      "errors": [],
+      "task_ids": []
+    },
+    "service_called": true,
+    "service_bytes": 14,
+    "rolled_back": false
+  },
+  {
+    "case": "permission_denied",
+    "status": 403,
+    "detail": "Permission denied",
+    "service_called": false,
+    "service_bytes": null,
+    "rolled_back": false
+  },
+  {
+    "case": "wrong_extension_before_permission",
+    "status": 400,
+    "detail": "Только CSV файлы поддерживаются",
+    "service_called": false,
+    "service_bytes": null,
+    "rolled_back": false
+  },
+  {
+    "case": "empty",
+    "status": 400,
+    "detail": "Файл пуст",
+    "service_called": false,
+    "service_bytes": null,
+    "rolled_back": false
+  },
+  {
+    "case": "exactly_10mb",
+    "status": 200,
+    "result": {
+      "total": 0,
+      "created": 0,
+      "skipped": 0,
+      "errors": [],
+      "task_ids": []
+    },
+    "service_called": true,
+    "service_bytes": 10485760,
+    "rolled_back": false
+  },
+  {
+    "case": "over_10mb",
+    "status": 413,
+    "detail": "CSV файл слишком большой (максимум 10 МБ)",
+    "service_called": false,
+    "service_bytes": null,
+    "rolled_back": false
+  },
+  {
+    "case": "service_value_error",
+    "status": 400,
+    "detail": "synthetic validation",
+    "service_called": true,
+    "service_bytes": 1,
+    "rolled_back": false
+  },
+  {
+    "case": "service_runtime_error",
+    "status": 500,
+    "detail": "Внутренняя ошибка импорта",
+    "service_called": true,
+    "service_bytes": 1,
+    "rolled_back": true
+  }
+]

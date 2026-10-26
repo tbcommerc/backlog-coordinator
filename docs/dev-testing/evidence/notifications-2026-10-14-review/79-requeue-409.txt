@@ -1,0 +1,132 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "4"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+    - link:
+      - /url: "#/reporting-meetings"
+      - generic: Отчётные встречи
+    - link:
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link:
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+    - link:
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Ошибки доставки событий
+  - button "Открыть поиск":
+  - 'button "Уведомления: 4 непрочитанных"':
+    - generic: "4"
+  - button "Переключить тему":
+  - button:
+    - generic: ТБ
+- main:
+  - heading "Ошибки доставки событий" [level=1]
+  - paragraph: Контроль событий, которые не удалось передать во внешние сервисы
+  - button "Обновить":
+    - generic: Обновить
+  - main:
+    - region "Состояние очереди ошибок":
+      - strong: Очередь требует проверки
+      - paragraph: Устраните причину сбоя во внешнем сервисе, затем верните событие в очередь кнопкой «Отправить снова».
+      - generic: Требуют внимания
+      - strong: "1"
+      - generic: Показано на странице
+      - strong: "1"
+      - generic: Обновлено 22:24
+    - search:
+      - generic: Поиск ошибок доставки
+      - searchbox "Поиск ошибок доставки"
+      - button "Найти":
+        - generic: Найти
+      - generic: Поиск выполняется по всей очереди ошибок
+    - heading "События с ошибкой" [level=2]
+    - paragraph: Повторная отправка доступна отдельно для каждого события
+    - generic: 1 событий
+    - table:
+      - rowgroup:
+        - 'row "Событие #2664 task.activity.changed Объект task ID 261 · версия — Попыток 2 Дата сбоя 14.10.2026, 22:20:01 Причина UX-NOTIF-CLONE: controlled version conflict Данные Действие Отправить снова"':
+          - 'cell "Событие #2664 task.activity.changed"':
+            - text: Событие
+            - generic: "#2664"
+            - strong: task.activity.changed
+          - cell "Объект task ID 261 · версия —":
+            - text: Объект
+            - strong: task
+            - generic: ID 261 · версия —
+          - cell "Попыток 2":
+            - text: Попыток
+            - generic: "2"
+          - cell "Дата сбоя 14.10.2026, 22:20:01":
+            - text: Дата сбоя
+            - time: 14.10.2026, 22:20:01
+          - 'cell "Причина UX-NOTIF-CLONE: controlled version conflict"':
+            - text: Причина
+            - 'generic "UX-NOTIF-CLONE: controlled version conflict"':
+              - generic: "UX-NOTIF-CLONE: controlled version conflict"
+          - cell "Данные":
+            - text: Данные
+            - generic "JSON":
+              - generic: JSON
+          - cell "Действие Отправить снова":
+            - text: Действие
+            - button "Отправить снова":
+              - generic: Отправить снова

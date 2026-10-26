@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>UI kit — уведомления и служебные реестры</title>
+  <script src="/js/lib/lucide.min.js"></script>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/modal-system.css">
+  <link rel="stylesheet" href="/css/feedback.css">
+  <link rel="stylesheet" href="/css/ui/kit.css">
+  <style>body { overflow:auto; } #page-content { padding:24px; } @media(max-width:640px) { #page-content { padding:12px; } }</style>
+</head>
+<body>
+  <main id="page-content"></main>
+  <script type="module">
+    import { initModalAccessibility } from '/js/modalAccessibility.js';
+    import { renderAuditLog, initAuditLog } from '/js/components/auditLog.js';
+    import { renderOutboxDeadLetters, initOutboxDeadLetters } from '/js/components/outboxDeadLetters.js';
+    import { renderNotifications, initNotifications } from '/js/components/notifications.js';
+    const params = new URLSearchParams(location.search);
+    document.documentElement.dataset.theme = params.get('theme') || 'light';
+    document.documentElement.dataset.compact = params.get('compact') || 'false';
+    const surface = params.get('surface') || 'audit';
+    window.__calls = []; window.__blocked = []; window.__notices = []; window.__navigation = [];
+    window.__failRead = params.has('error'); window.__failWrite = false;
+    window.__failFilters = params.has('filtersError'); window.__hold = false;
+    window.toast = message => window.__notices.push(message);
+    const notifications = Array.from({ length:23 }, (_, index) => ({
+      id:index+1, title:index ? `Обсуждение задачи ${index}` : 'Заполните статусы к встрече команды',
+      body:'Длинное описание события для проверки переноса текста на узком экране.',
+      category:index ? 'comment' : 'reporting', importance:index ? 'medium' : 'high',
+      is_read:false, is_resolved:false, created_at:'2026-10-09T10:00:00Z',
+      task_id:index ? 42 : null, action_url:index ? '/backlog?task=42&tab=com' : '/reporting-statuses?source=notification&meeting_id=42',
+    }));
+    const events = [{ id:7, event_type:'task.updated', aggregate_type:'Task', aggregate_id:42, aggregate_version:3, attempts:12, dead_lettered_at:'2026-10-09T10:00:00Z', last_error:'Сервис временно недоступен. Повторите после восстановления соединения.', payload:{ title:'<img src=x onerror=alert(1)>', task_id:42 } }];
+    const snapshot = () => ({ summary: { unread:notifications.filter(n=>!n.is_read).length, requires_action:1, today:23, by_category:{} } });
+    const wait = async () => { if(window.__hold) await new Promise(resolve=>{ window.__release = () => { window.__hold=false; resolve(); }; }); };
+    const api = {
+      async get(path) {
+        window.__calls.push({ method:'get', path });
+        const url = new URL(path, location.origin), query = url.searchParams;
+        if(url.pathname === '/admin/audit-log/filters') {
+          if(window.__failFilters) throw new Error('Фильтры недоступны');
+          return { actions:['create','update'], entity_types:['tasks'], users:[{id:1,name:'Тестовый автор'}] };
+        }
+        await wait();
+        if(window.__failRead) throw new Error('Тестовая ошибка загрузки');
+        if(url.pathname === '/admin/audit-log') return { items:query.get('search') === 'missing' ? [] : [{ id:1, created_at:'2026-10-09T10:00:00Z', user_name:'Тестовый автор', action:'update', entity_type:'tasks', entity_id:42, details:{changes:{title:'Обновлённое название'}}, trace_id:`request-page-${query.get('page')}`, ip_address:'127.0.0.1' }], total:query.get('search') === 'missing' ? 0 : 120, pages:Math.ceil(120/Number(query.get('per_page'))) };
+        if(url.pathname === '/admin/outbox/dead-letters') return { items:query.get('search') === 'missing' ? [] : structuredClone(events), total:events.length ? 51 : 0, pages:events.length ? 2 : 0 };
+        if(url.pathname === '/notifications') {
+          let items=notifications.filter(n => (!query.has('category') || n.category === query.get('category')) && (!query.has('importance') || n.importance === query.get('importance')) && (!query.has('unread_only') || !n.is_read) && (!query.has('requires_action') || n.category === 'reporting') && (!query.has('resolved') || n.is_resolved));
+          const start=(Number(query.get('page'))-1)*20;
+          return { items:structuredClone(items.slice(start,start+20)), total:items.length };
+        }
+        throw new Error(`Unexpected read: ${path}`);
+      },
+      async put(path, data) {
+        window.__calls.push({method:'put',path,data}); await wait();
+        if(window.__failWrite) throw new Error('Тестовая ошибка сохранения');
+        if(!['/notifications/read','/notifications/unread','/notifications/read-all'].includes(path)) { window.__blocked.push(path); throw new Error('Blocked write'); }
+        const changed = notifications.filter(n => n.category !== 'reporting' && (path.endsWith('read-all') || data?.ids.includes(n.id)));
+        changed.forEach(n=>{n.is_read=path !== '/notifications/unread';});
+        return {changed_ids:changed.map(n=>n.id)};
+      },
+      async post(path, data) {
+        window.__calls.push({method:'post',path,data});
+        if(path === '/notifications/ux-events') return {};
+        if(path !== '/admin/outbox/dead-letters/7/requeue') { window.__blocked.push(path); throw new Error('Blocked write'); }
+        await wait();
+        if(window.__failWrite) throw new Error('Тестовая ошибка повторной отправки');
+        events.splice(0); return {};
+      },
+    };
+    const app={ api, notificationStore:{refresh:async()=>snapshot()}, refreshNotifications:async()=>{}, router:{navigate:path=>window.__navigation.push(path)} };
+    document.addEventListener('open-task',event=>window.__navigation.push(event.detail));
+    initModalAccessibility();
+    const [render,init] = surface === 'audit' ? [renderAuditLog,initAuditLog] : surface === 'outbox' ? [renderOutboxDeadLetters,initOutboxDeadLetters] : [renderNotifications,initNotifications];
+    if(surface === 'notifications' && !location.hash) history.replaceState(null,'',`${location.pathname}${location.search}#/notifications`);
+    document.getElementById('page-content').innerHTML=render(app);
+    await init(app);
+    window.lucide?.createIcons();
+    document.documentElement.dataset.fixtureReady='true';
+  </script>
+</body>
+</html>

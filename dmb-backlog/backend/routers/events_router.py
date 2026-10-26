@@ -48,6 +48,9 @@ def get_event_stream_principal(
     payload = decode_token(credentials.credentials)
     if payload is None or payload.get("type") != "access" or payload.get("sub") is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+    from auth import get_current_user
+    with SessionLocal() as db:
+        get_current_user(credentials, db)
     principal = _load_principal(int(payload["sub"]))
     if principal is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or access revoked")
@@ -75,6 +78,17 @@ def _load_principal(user_id: int) -> EventStreamPrincipal | None:
 
 
 def _stream_event_visible(fields: dict, principal: EventStreamPrincipal) -> bool:
+    if fields.get("aggregate_type") == "work":
+        from services.work_tasks import get_work
+        try:
+            with SessionLocal() as db:
+                user = db.get(User, principal.user_id)
+                if not user or not user.is_active:
+                    return False
+                get_work(db, int(fields.get("aggregate_id") or 0), user)
+                return True
+        except (HTTPException, ValueError, TypeError):
+            return False
     audience = fields.get("audience_user_id")
     if audience:
         return audience == str(principal.user_id)

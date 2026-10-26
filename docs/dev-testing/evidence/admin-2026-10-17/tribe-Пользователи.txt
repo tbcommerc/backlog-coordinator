@@ -1,0 +1,418 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - generic: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Контроль исполнения":
+      - /url: "#/work-reports"
+      - generic: Контроль исполнения
+    - link "Структура работ проекта":
+      - /url: "#/work-projects"
+      - generic: Структура работ проекта
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link "Настройки":
+      - /url: "#/settings"
+      - generic: Настройки
+    - link "Администрирование":
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Администрирование
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button "Q.tribe-lead":
+    - generic: QT
+    - generic: Q.tribe-lead
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - generic: Структура
+    - tab "Команды":
+      - generic: Команды
+    - tab "Проекты":
+      - generic: Проекты
+    - tab "Бизнес-заказчики":
+      - generic: Бизнес-заказчики
+    - generic: Доступы
+    - tab "Пользователи" [active] [selected]:
+      - generic: Пользователи
+    - tab "Роли":
+      - generic: Роли
+    - generic: Настройки
+    - tab "Справочники":
+      - generic: Справочники
+    - tab "Отображение":
+      - generic: Отображение
+    - generic: Инструменты
+    - tab "Таймлайн":
+      - generic: Таймлайн
+    - tab "Отчёты":
+      - generic: Отчёты
+  - textbox "Поиск пользователей"
+  - combobox:
+    - option "Все роли" [selected]
+    - option "Администратор"
+    - option "PO/PL/CL"
+    - option "BA/Участник команды"
+    - option "IT PL"
+    - option "Бизнес-заказчик"
+    - option "Лидер трайба"
+    - option "QA No Access"
+  - combobox:
+    - option "Все команды" [selected]
+    - option "Pre-Trade"
+    - option "Post-Trade (Products & Service)"
+    - option "IB"
+    - option "Core"
+    - option "Delivery"
+    - option "Post-Trade (Finance)"
+    - option "Methodology"
+    - option "ИТ ЛТ"
+    - option "AI"
+    - option "Проектный офис"
+    - option "QA Team A"
+    - option "QA Team B"
+  - combobox:
+    - option "Все статусы" [selected]
+    - option "Активен"
+    - option "Неактивен"
+  - status: "Найдено: 40"
+  - tabpanel "Пользователи":
+    - table:
+      - rowgroup:
+        - row "Пользователь Роль ↑ Команда Логин Статус":
+          - columnheader "Пользователь"
+          - columnheader "Роль ↑"
+          - columnheader "Команда"
+          - columnheader "Логин"
+          - columnheader "Статус"
+          - columnheader
+      - rowgroup:
+        - row "ТБ Тимофей Бабяк Администратор Проектный офис t.babiak@dmb.ru Активен ready Доступ":
+          - cell "ТБ Тимофей Бабяк":
+            - generic: ТБ
+            - generic: Тимофей Бабяк
+          - cell "Администратор":
+            - generic: Администратор
+          - cell "Проектный офис"
+          - cell "t.babiak@dmb.ru"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QA QA admin Администратор — qa.admin Активен ready Доступ":
+          - cell "QA QA admin":
+            - generic: QA
+            - generic: QA admin
+          - cell "Администратор":
+            - generic: Администратор
+          - cell "—"
+          - cell "qa.admin"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QC QA customer-a Бизнес-заказчик — qa.customer-a Активен ready Доступ":
+          - cell "QC QA customer-a":
+            - generic: QC
+            - generic: QA customer-a
+          - cell "Бизнес-заказчик":
+            - generic: Бизнес-заказчик
+          - cell "—"
+          - cell "qa.customer-a"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QC QA customer-b Бизнес-заказчик — qa.customer-b Активен ready Доступ":
+          - cell "QC QA customer-b":
+            - generic: QC
+            - generic: QA customer-b
+          - cell "Бизнес-заказчик":
+            - generic: Бизнес-заказчик
+          - cell "—"
+          - cell "qa.customer-b"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QC QA customer-unlinked Бизнес-заказчик — qa.customer-unlinked Активен ready Доступ":
+          - cell "QC QA customer-unlinked":
+            - generic: QC
+            - generic: QA customer-unlinked
+          - cell "Бизнес-заказчик":
+            - generic: Бизнес-заказчик
+          - cell "—"
+          - cell "qa.customer-unlinked"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "UТ UX тест — бизнес-заказчик Бизнес-заказчик — ux-notifications-customer Активен ready Доступ":
+          - cell "UТ UX тест — бизнес-заказчик":
+            - generic: UТ
+            - generic: UX тест — бизнес-заказчик
+          - cell "Бизнес-заказчик":
+            - generic: Бизнес-заказчик
+          - cell "—"
+          - cell "ux-notifications-customer"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "АК А. Коптелов Лидер трайба ИТ ЛТ a.koptelev@dmb.ru Активен ready Доступ":
+          - cell "АК А. Коптелов":
+            - generic: АК
+            - generic: А. Коптелов
+          - cell "Лидер трайба":
+            - generic: Лидер трайба
+          - cell "ИТ ЛТ"
+          - cell "a.koptelev@dmb.ru"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QT QA tribe-lead Лидер трайба — qa.tribe-lead Активен ready Доступ":
+          - cell "QT QA tribe-lead":
+            - generic: QT
+            - generic: QA tribe-lead
+          - cell "Лидер трайба":
+            - generic: Лидер трайба
+          - cell "—"
+          - cell "qa.tribe-lead"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "РХ Р. Хачатрян BA/Участник команды Core r.khachatryan@dmb.ru Активен ready Доступ":
+          - cell "РХ Р. Хачатрян":
+            - generic: РХ
+            - generic: Р. Хачатрян
+          - cell "BA/Участник команды":
+            - generic: BA/Участник команды
+          - cell "Core"
+          - cell "r.khachatryan@dmb.ru"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QB QA ba-a BA/Участник команды QA Team A qa.ba-a Активен ready Доступ":
+          - cell "QB QA ba-a":
+            - generic: QB
+            - generic: QA ba-a
+          - cell "BA/Участник команды":
+            - generic: BA/Участник команды
+          - cell "QA Team A"
+          - cell "qa.ba-a"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QB QA ba-a-peer BA/Участник команды QA Team A qa.ba-a-peer Активен ready Доступ":
+          - cell "QB QA ba-a-peer":
+            - generic: QB
+            - generic: QA ba-a-peer
+          - cell "BA/Участник команды":
+            - generic: BA/Участник команды
+          - cell "QA Team A"
+          - cell "qa.ba-a-peer"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QB QA ba-b BA/Участник команды QA Team B qa.ba-b Активен ready Доступ":
+          - cell "QB QA ba-b":
+            - generic: QB
+            - generic: QA ba-b
+          - cell "BA/Участник команды":
+            - generic: BA/Участник команды
+          - cell "QA Team B"
+          - cell "qa.ba-b"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QB QA ba-no-team BA/Участник команды — qa.ba-no-team Активен ready Доступ":
+          - cell "QB QA ba-no-team":
+            - generic: QB
+            - generic: QA ba-no-team
+          - cell "BA/Участник команды":
+            - generic: BA/Участник команды
+          - cell "—"
+          - cell "qa.ba-no-team"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QI QA inactive BA/Участник команды QA Team A qa.inactive Неактивен ready Доступ":
+          - cell "QI QA inactive":
+            - generic: QI
+            - generic: QA inactive
+          - cell "BA/Участник команды":
+            - generic: BA/Участник команды
+          - cell "QA Team A"
+          - cell "qa.inactive"
+          - cell "Неактивен ready":
+            - generic: Неактивен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QI QA invited BA/Участник команды QA Team A qa.invited Активен invited Доступ":
+          - cell "QI QA invited":
+            - generic: QI
+            - generic: QA invited
+          - cell "BA/Участник команды":
+            - generic: BA/Участник команды
+          - cell "QA Team A"
+          - cell "qa.invited"
+          - cell "Активен invited":
+            - generic: Активен
+            - text: invited
+          - cell "Доступ":
+            - button "Доступ"
+        - row "QR QA reset-required BA/Участник команды QA Team A qa.reset-required Активен reset_required Доступ":
+          - cell "QR QA reset-required":
+            - generic: QR
+            - generic: QA reset-required
+          - cell "BA/Участник команды":
+            - generic: BA/Участник команды
+          - cell "QA Team A"
+          - cell "qa.reset-required"
+          - cell "Активен reset_required":
+            - generic: Активен
+            - text: reset_required
+          - cell "Доступ":
+            - button "Доступ"
+        - row "UТ UX тест — без команды BA/Участник команды — ux-notifications-no-team Активен ready Доступ":
+          - cell "UТ UX тест — без команды":
+            - generic: UТ
+            - generic: UX тест — без команды
+          - cell "BA/Участник команды":
+            - generic: BA/Участник команды
+          - cell "—"
+          - cell "ux-notifications-no-team"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "АН А. Нуждин IT PL Pre-Trade a.nuzhdin@dmb.ru Активен ready Доступ":
+          - cell "АН А. Нуждин":
+            - generic: АН
+            - generic: А. Нуждин
+          - cell "IT PL":
+            - generic: IT PL
+          - cell "Pre-Trade"
+          - cell "a.nuzhdin@dmb.ru"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "ВГ В. Гусев IT PL IB v.gusev@dmb.ru Активен ready Доступ":
+          - cell "ВГ В. Гусев":
+            - generic: ВГ
+            - generic: В. Гусев
+          - cell "IT PL":
+            - generic: IT PL
+          - cell "IB"
+          - cell "v.gusev@dmb.ru"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+        - row "ВЛ В. Лемце IT PL Core v.lemtse@dmb.ru Активен ready Доступ":
+          - cell "ВЛ В. Лемце":
+            - generic: ВЛ
+            - generic: В. Лемце
+          - cell "IT PL":
+            - generic: IT PL
+          - cell "Core"
+          - cell "v.lemtse@dmb.ru"
+          - cell "Активен ready":
+            - generic: Активен
+            - text: ready
+          - cell "Доступ":
+            - button "Доступ"
+    - navigation "Страницы списка":
+      - generic: 1–20 из 40
+      - button "Назад" [disabled]:
+        - generic: Назад
+      - generic: 1 / 2
+      - button "Далее":
+        - generic: Далее

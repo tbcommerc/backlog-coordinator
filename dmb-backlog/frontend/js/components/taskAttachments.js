@@ -19,7 +19,7 @@ function getFileIcon(mimeType) {
   return '📄';
 }
 
-function renderAttachmentItem(attachment) {
+function renderAttachmentItem(attachment, canDelete) {
   const taskId = Number(attachment.task_id) || 0;
   const attachmentId = Number(attachment.id) || 0;
   const size = formatFileSize(attachment.file_size);
@@ -28,11 +28,12 @@ function renderAttachmentItem(attachment) {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
       })
     : '';
-  return `<div class="attachment-item" data-id="${attachmentId}">
-    <div class="attachment-item-icon">${getFileIcon(attachment.mime_type)}</div>
+  const fileName = escapeHtml(attachment.original_name || 'Файл');
+  return `<article class="attachment-item" data-id="${attachmentId}" role="listitem" aria-label="Файл ${fileName}">
+    <div class="attachment-item-icon" aria-hidden="true">${getFileIcon(attachment.mime_type)}</div>
     <div class="attachment-item-info">
       <div class="attachment-item-name">
-        <button type="button" class="attachment-download-link" onclick="window.__downloadAttachment(${taskId}, ${attachmentId})">${escapeHtml(attachment.original_name)}</button>
+        <button type="button" class="ui-link attachment-download-link" onclick="window.__downloadAttachment(${taskId}, ${attachmentId})" aria-label="Скачать ${fileName}">${fileName}</button>
       </div>
       <div class="attachment-item-meta">
         ${size ? `<span>${size}</span>` : ''}
@@ -40,16 +41,17 @@ function renderAttachmentItem(attachment) {
         ${date ? `<span>${escapeHtml(date)}</span>` : ''}
       </div>
     </div>
-    <button class="attachment-item-delete" title="Удалить файл" onclick="window.__deleteAttachment(${taskId}, ${attachmentId})">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-    </button>
-  </div>`;
+    ${canDelete ? `<button type="button" class="btn btn-ghost btn-sm square-icon ui-btn attachment-item-delete" title="Удалить файл" aria-label="Удалить ${fileName}" onclick="window.__deleteAttachment(${taskId}, ${attachmentId})">
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    </button>` : ''}
+  </article>`;
 }
 
-export function renderAttachments(container, attachments) {
+export function renderAttachments(container, attachments, options = {}) {
   if (!container) return;
   const items = Array.isArray(attachments) ? attachments : [];
+  const canDelete = options.canDelete !== false;
   container.innerHTML = items.length
-    ? `<div class="attachments-list">${items.map(renderAttachmentItem).join('')}</div>`
-    : '';
+    ? `<div class="attachments-list" role="list" aria-label="Вложения задачи">${items.map(item => renderAttachmentItem(item, canDelete)).join('')}</div>`
+    : '<div class="ui-component-empty" role="status">Вложений пока нет</div>';
 }

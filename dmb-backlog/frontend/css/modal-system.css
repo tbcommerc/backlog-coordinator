@@ -143,41 +143,6 @@ dialog.customer-reference-dialog::backdrop {
   gap: 10px;
 }
 
-/* Отмена и другие вторичные действия всегда читаются как полноценные кнопки. */
-:is(
-  .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
-  .admin-modal-overlay,
-  .feedback-confirm-overlay,
-  .conflict-overlay,
-  .modal-backdrop
-) :is(
-  .modal-footer,
-  .modal-footer-sticky,
-  .app-modal__footer,
-  .feedback-confirm-actions
-) :is(.btn-secondary, .btn-ghost, .modal-cancel-btn, .conflict-btn-ghost) {
-  border: 1px solid color-mix(in srgb, var(--text-secondary) 42%, var(--border-color));
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-}
-
-:is(
-  .modal-overlay:not(#task-detail-overlay):not(#create-task-overlay),
-  .admin-modal-overlay,
-  .feedback-confirm-overlay,
-  .conflict-overlay,
-  .modal-backdrop
-) :is(
-  .modal-footer,
-  .modal-footer-sticky,
-  .app-modal__footer,
-  .feedback-confirm-actions
-) :is(.btn-secondary, .btn-ghost, .modal-cancel-btn, .conflict-btn-ghost):hover {
-  border-color: var(--border-hover);
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
 .admin-modal .modal-header-sticky {
   flex: 0 0 auto;
   margin: 0;
@@ -218,12 +183,7 @@ dialog.customer-reference-dialog::backdrop {
   .customer-reference-dialog [data-close]
 ) {
   box-sizing: border-box;
-  flex: 0 0 40px;
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px;
-  padding: 0;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -231,8 +191,6 @@ dialog.customer-reference-dialog::backdrop {
   border-radius: 10px;
   background: var(--bg-tertiary);
   color: var(--text-secondary);
-  font-size: 20px;
-  line-height: 1;
   cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }

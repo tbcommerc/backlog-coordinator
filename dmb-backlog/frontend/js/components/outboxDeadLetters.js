@@ -1,5 +1,8 @@
 import { escapeHtml } from '../htmlUtils.js';
 import { confirmAction, formatErrorMessage, showToast } from '../uiFeedback.js';
+import { button, control, icon, pageHeader } from '../ui/primitives.js';
+import { setButtonBusy } from '../ui/controls.js';
+import { renderViewState } from './viewState.js';
 
 
 let state = { page: 1, perPage: 50, search: '', data: { items: [], total: 0, pages: 0 }, loading: true, lastUpdatedAt: null };
@@ -44,9 +47,10 @@ function attemptTone(attempts) {
 
 
 function renderOverview() {
-  const visible = state.data.items?.length || 0;
-  const total = Number(state.data.total || 0);
-  const updated = state.lastUpdatedAt
+  const unknown = state.loading || state.data.error;
+  const visible = unknown ? '—' : state.data.items?.length || 0;
+  const total = unknown ? '—' : Number(state.data.total || 0);
+  const updated = state.data.error ? 'Не удалось обновить; состояние очереди неизвестно' : state.loading ? 'Обновляем…' : state.lastUpdatedAt
     ? `Обновлено ${state.lastUpdatedAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
     : 'Данные ещё не обновлены';
   return `<div class="outbox-overview-metrics" aria-live="polite">
@@ -58,22 +62,19 @@ function renderOverview() {
 
 
 function renderRows() {
-  if (state.loading) return '<tr><td colspan="7" class="admin-empty-cell outbox-loading-state"><i data-lucide="loader-circle" aria-hidden="true"></i><span>Загружаем события…</span></td></tr>';
-  if (state.data.error) return `<tr><td colspan="7" class="admin-empty-cell outbox-error-state"><i data-lucide="cloud-off" aria-hidden="true"></i><strong>Не удалось загрузить события</strong><span>${escapeHtml(state.data.error)}</span></td></tr>`;
-  if (!state.data.items?.length) return `<tr><td colspan="7" class="admin-empty-cell outbox-empty-state">
-    <i data-lucide="circle-check" aria-hidden="true"></i>
-    <strong>Ошибок доставки нет</strong>
-    <span>${state.search ? 'По текущему запросу ничего не найдено.' : 'Все системные события были успешно отправлены.'}</span>
-  </td></tr>`;
+  const tableState = props => `<tr><td colspan="7" class="outbox-table-state">${renderViewState(props)}</td></tr>`;
+  if (state.loading) return tableState({ kind: 'loading', title: 'Загружаем события…' });
+  if (state.data.error) return tableState({ kind: 'error', title: 'Не удалось загрузить события', message: state.data.error, actionLabel: 'Повторить' });
+  if (!state.data.items?.length) return tableState({ kind: 'empty', title: state.search ? 'Ничего не найдено' : 'Ошибок доставки нет', message: state.search ? 'Измените запрос или сбросьте поиск.' : 'В очереди нет событий с исчерпанными попытками. События в обработке могут ещё ожидать доставки.', actionLabel: state.search ? 'Сбросить поиск' : '' });
   return state.data.items.map(item => `
     <tr>
       <td data-label="Событие"><div class="outbox-event-cell"><span class="outbox-event-id">#${escapeHtml(item.id)}</span><strong>${escapeHtml(item.event_type)}</strong></div></td>
       <td data-label="Объект"><div class="outbox-aggregate"><strong>${escapeHtml(item.aggregate_type || '—')}</strong><span>${item.aggregate_id == null ? 'Без ID' : `ID ${escapeHtml(item.aggregate_id)}`} · версия ${escapeHtml(item.aggregate_version ?? '—')}</span></div></td>
       <td data-label="Попыток"><span class="outbox-attempts${attemptTone(item.attempts)}">${escapeHtml(item.attempts)}</span></td>
-      <td data-label="Зафиксировано"><time class="outbox-date" datetime="${escapeHtml(item.dead_lettered_at || '')}">${escapeHtml(formatDate(item.dead_lettered_at))}</time></td>
-      <td data-label="Причина"><div class="outbox-error-message" title="${escapeHtml(item.last_error || '')}"><i data-lucide="circle-alert" aria-hidden="true"></i><span>${escapeHtml(item.last_error || 'Причина не указана')}</span></div></td>
-      <td data-label="Данные"><details class="outbox-details"><summary><i data-lucide="braces" aria-hidden="true"></i><span>JSON</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary><pre class="outbox-payload">${eventPayload(item)}</pre></details></td>
-      <td data-label="Действие"><button type="button" class="btn btn-primary btn-sm outbox-requeue" data-requeue-id="${escapeHtml(item.id)}" data-attempts="${escapeHtml(item.attempts)}"><i data-lucide="rotate-ccw" aria-hidden="true"></i>Отправить снова</button></td>
+      <td data-label="Дата сбоя"><time class="outbox-date" datetime="${escapeHtml(item.dead_lettered_at || '')}">${escapeHtml(formatDate(item.dead_lettered_at))}</time></td>
+      <td data-label="Причина"><div class="outbox-error-message" title="${escapeHtml(item.last_error || '')}">${icon('circle-alert')}<span>${escapeHtml(item.last_error || 'Причина не указана')}</span></div></td>
+      <td data-label="Данные"><details class="outbox-details"><summary class="btn btn-secondary btn-sm"><i data-lucide="braces" aria-hidden="true"></i><span>JSON</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary><pre class="outbox-payload">${eventPayload(item)}</pre></details></td>
+      <td data-label="Действие">${button({ label: 'Отправить снова', icon: 'rotate-ccw', variant: 'primary', size: 'small', className: 'outbox-requeue', attrs: { 'data-requeue-id': item.id, 'data-attempts': item.attempts } })}</td>
     </tr>`).join('');
 }
 
@@ -81,11 +82,11 @@ function renderRows() {
 function renderPagination() {
   const pages = Number(state.data.pages || 0);
   if (pages <= 1) return '';
-  return `<div class="admin-pagination">
-    <button class="btn btn-sm" data-outbox-page="${state.page - 1}" ${state.page <= 1 ? 'disabled' : ''}>Назад</button>
+  return `<nav class="admin-pagination" aria-label="Страницы ошибок доставки">
+    ${button({ label: 'Назад', icon: 'chevron-left', size: 'small', attrs: { 'data-outbox-page': state.page - 1, disabled: state.page <= 1 || state.loading } })}
     <span>Страница ${state.page} из ${pages} · событий: ${state.data.total || 0}</span>
-    <button class="btn btn-sm" data-outbox-page="${state.page + 1}" ${state.page >= pages ? 'disabled' : ''}>Далее</button>
-  </div>`;
+    ${button({ label: 'Далее', icon: 'chevron-right', size: 'small', attrs: { 'data-outbox-page': state.page + 1, disabled: state.page >= pages || state.loading } })}
+  </nav>`;
 }
 
 
@@ -97,29 +98,29 @@ function renderBody() {
   if (body) body.innerHTML = renderRows();
   if (pagination) pagination.innerHTML = renderPagination();
   if (overview) overview.innerHTML = renderOverview();
-  if (total) total.textContent = `${Number(state.data.total || 0)} событий`;
+  if (total) total.textContent = state.loading || state.data.error ? 'Количество неизвестно' : `${Number(state.data.total || 0)} событий`;
+  body?.closest('table')?.setAttribute('aria-busy', String(state.loading));
+  setButtonBusy(document.getElementById('outbox-refresh-btn'), state.loading, 'Обновляем…');
+  setButtonBusy(document.getElementById('outbox-search-btn'), state.loading, 'Ищем…');
   window.lucide?.createIcons();
 }
 
 
 export function renderOutboxDeadLetters() {
-  return `<div class="page-header outbox-page-header animate-fade-in">
-    <div class="outbox-title-block"><span class="outbox-kicker"><i data-lucide="shield-alert" aria-hidden="true"></i>Администрирование</span><h1>Ошибки доставки событий</h1><p>Контроль событий, которые не удалось передать во внешние сервисы</p></div>
-    <button id="outbox-refresh-btn" class="btn btn-secondary"><i data-lucide="refresh-cw" aria-hidden="true"></i>Обновить</button>
-  </div>
+  return `<header class="page-header animate-fade-in">${pageHeader({ title: 'Ошибки доставки событий', description: 'Контроль событий, которые не удалось передать во внешние сервисы', className: 'outbox-page-header', actions: button({ label: 'Обновить', icon: 'refresh-cw', size: 'small', attrs: { id: 'outbox-refresh-btn' } }) })}</header>
   <main class="outbox-page">
     <section class="outbox-overview" aria-label="Состояние очереди ошибок">
-      <div class="outbox-overview-copy"><span class="outbox-overview-icon"><i data-lucide="triangle-alert" aria-hidden="true"></i></span><div><strong>Очередь требует проверки</strong><p>Устраните причину сбоя во внешнем сервисе, затем верните событие в очередь кнопкой «Отправить снова».</p></div></div>
+      <div class="outbox-overview-copy"><span class="outbox-overview-icon">${icon('triangle-alert')}</span><div><strong>Контроль ошибок доставки</strong><p>Устраните причину сбоя во внешнем сервисе, затем верните событие в очередь кнопкой «Отправить снова».</p></div></div>
       <div id="outbox-overview-metrics">${renderOverview()}</div>
     </section>
     <div class="admin-action-row outbox-toolbar" role="search">
-      <label class="outbox-search-field" for="outbox-search"><i data-lucide="search" aria-hidden="true"></i><input id="outbox-search" class="input" type="search" value="${escapeHtml(state.search)}" placeholder="Тип события, объект или текст ошибки" autocomplete="off"></label>
-      <button id="outbox-search-btn" class="btn btn-secondary"><i data-lucide="search" aria-hidden="true"></i>Найти</button>
+      <label class="outbox-search-field" for="outbox-search"><span class="sr-only">Поиск ошибок доставки</span>${icon('search')}${control({ id: 'outbox-search', type: 'search', value: state.search, attrs: { placeholder: 'Тип события, объект или текст ошибки', autocomplete: 'off' } })}</label>
+      ${button({ label: 'Найти', icon: 'search', attrs: { id: 'outbox-search-btn' } })}
       <span class="outbox-toolbar-hint">Поиск выполняется по всей очереди ошибок</span>
     </div>
     <div class="admin-section outbox-table-wrap">
       <div class="outbox-table-heading"><div><h2>События с ошибкой</h2><p>Повторная отправка доступна отдельно для каждого события</p></div><span id="outbox-total-count">${escapeHtml(state.data.total || 0)} событий</span></div>
-      <table class="admin-table outbox-table"><thead><tr><th>Событие</th><th>Объект</th><th>Попыток</th><th>Зафиксировано</th><th>Причина</th><th>Данные</th><th>Действие</th></tr></thead>
+      <table class="ui-table ui-table-data admin-table outbox-table"><thead><tr><th>Событие</th><th>Объект</th><th>Попыток</th><th>Зафиксировано</th><th>Причина</th><th>Данные</th><th>Действие</th></tr></thead>
       <tbody id="outbox-dead-letter-body">${renderRows()}</tbody></table>
       <div id="outbox-dead-letter-pagination">${renderPagination()}</div>
     </div>
@@ -139,6 +140,13 @@ export async function initOutboxDeadLetters(app) {
   });
   document.getElementById('outbox-refresh-btn')?.addEventListener('click', () => load(app));
   document.querySelector('.admin-section')?.addEventListener('click', async event => {
+    if (event.target.closest('[data-view-state-action]')) {
+      if (!state.data.error) {
+        document.getElementById('outbox-search').value = '';
+        reloadFromSearch();
+      } else await load(app);
+      return;
+    }
     const pageButton = event.target.closest('[data-outbox-page]');
     if (pageButton && !pageButton.disabled) {
       state.page = Number(pageButton.dataset.outboxPage);
@@ -146,7 +154,7 @@ export async function initOutboxDeadLetters(app) {
       return;
     }
     const button = event.target.closest('[data-requeue-id]');
-    if (!button) return;
+    if (!button || button.disabled) return;
     const eventId = Number(button.dataset.requeueId);
     const attempts = Number(button.dataset.attempts);
     const confirmed = await confirmAction({
@@ -155,7 +163,7 @@ export async function initOutboxDeadLetters(app) {
       confirmText: 'Отправить снова',
     });
     if (!confirmed) return;
-    button.disabled = true;
+    setButtonBusy(button, true, 'Отправляем…');
     try {
       await app.api.post(`/admin/outbox/dead-letters/${eventId}/requeue`, {
         expected_attempts: attempts,
@@ -165,7 +173,8 @@ export async function initOutboxDeadLetters(app) {
       await load(app);
     } catch (error) {
       showToast(formatErrorMessage(error), 'error');
-      button.disabled = false;
+    } finally {
+      setButtonBusy(button, false);
     }
   });
   await load(app);

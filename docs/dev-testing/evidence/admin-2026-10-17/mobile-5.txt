@@ -1,0 +1,170 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/work-reports"
+      - generic: Контроль исполнения
+    - link:
+      - /url: "#/work-projects"
+      - generic: Структура работ проекта
+    - link:
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+    - link:
+      - /url: "#/reporting-meetings"
+      - generic: Отчётные встречи
+    - link:
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link:
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+    - link:
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Администрирование
+  - button "Открыть поиск":
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button:
+    - generic: QA
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - combobox "Раздел администрирования":
+      - option "Команды"
+      - option "Проекты"
+      - option "Бизнес-заказчики"
+      - option "Пользователи"
+      - option "Роли"
+      - option "Таймлайн"
+      - option "Справочники" [selected]
+      - option "Отображение"
+      - option "Отчёты"
+      - option "Журнал действий"
+  - strong: Справочники системы
+  - generic: 11 групп значений
+  - tabpanel "Справочники":
+    - button "Клиенты ДИД":
+      - generic: Клиенты ДИД
+      - generic: — значений
+      - generic: Нет значений
+    - button "Приоритеты":
+      - generic: Приоритеты
+      - generic: 3 значений
+      - generic: ВЫСОКИЙ
+      - generic: СРЕДНИЙ
+      - generic: НИЗКИЙ
+    - button "Статусы задачи":
+      - generic: Статусы задачи
+      - generic: 13 значений
+      - generic: НОВАЯ ЗАДАЧА
+      - generic: НАЗНАЧЕНА КОМАНДА
+      - generic: СБОР ТРЕБОВАНИЙ
+    - button "Типы задач":
+      - generic: Типы задач
+      - generic: 5 значений
+      - generic: КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ
+      - generic: AD-HOC
+      - generic: ТЕХДОЛГ
+    - button "Каналы":
+      - generic: Каналы
+      - generic: 4 значений
+      - generic: Почта
+      - generic: СберЧат
+      - generic: Встреча/Звонок
+    - button "Сроки":
+      - generic: Сроки
+      - generic: 8 значений
+      - generic: 1Q 2026
+      - generic: 2Q 2026
+      - generic: 3Q 2026
+    - button "Подразделения":
+      - generic: Подразделения
+      - generic: 11 значений
+      - generic: IB
+      - generic: L2P
+      - generic: M&A
+    - button "Типы команд":
+      - generic: Типы команд
+      - generic: 2 значений
+      - generic: С разработкой
+      - generic: Без разработки
+    - button "Статусы проектов":
+      - generic: Статусы проектов
+      - generic: 3 значений
+      - generic: Активен
+      - generic: Завершен
+      - generic: Архивный
+    - button "Стоимость компетенций":
+      - generic: Стоимость компетенций
+      - generic: 8 значений
+      - generic: "Delivery: 15000"
+      - generic: "Designee: 15000"
+      - generic: "Tester: 10000"
+    - button "Теги":
+      - generic: Теги
+      - generic: 0 значений
+      - generic: Нет значений

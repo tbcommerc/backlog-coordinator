@@ -1,14 +1,21 @@
 from datetime import date, timedelta
 from uuid import uuid4
 
-from models import ReportingMeeting, Task, Team
+from models import EventOutbox, Notification, ReportingMeeting, Task, Team
 import pytest
 from types import SimpleNamespace
 
 import reporting_meetings
 from reporting_meetings import complete_meeting, create_meeting_instance, meeting_completeness, reminder_date, save_task_reporting_status, task_reporting_context
 from routers import reporting_meetings_router
-from routers.reporting_meetings_router import MeetingCompleteCommand, MeetingCreateCommand, MeetingDateCommand, _can_fill_status
+from routers.reporting_meetings_router import (
+    MeetingCompleteCommand,
+    MeetingCreateCommand,
+    MeetingDateCommand,
+    ReportingStatusBatchItem,
+    ReportingStatusBatchUpdate,
+    _can_fill_status,
+)
 
 
 def meeting(kind: str, scheduled: date) -> ReportingMeeting:
@@ -25,6 +32,10 @@ def test_did_reminder_is_two_calendar_days_before():
 
 def test_key_projects_reminder_is_three_calendar_days_before():
     assert reminder_date(meeting("key_projects", date(2026, 9, 3))) == date(2026, 8, 31)
+
+
+def test_team_weekly_meeting_has_no_reminder_date():
+    assert reminder_date(meeting("team_weekly", date(2026, 9, 14))) is None
 
 
 def test_po_pl_cl_and_team_participants_can_fill_reporting_status():
@@ -50,6 +61,37 @@ def test_admin_can_fill_reporting_status_for_any_team():
     task = SimpleNamespace(team=SimpleNamespace(id=7, po_id=10, pl_id=20, cl_id=30))
 
     assert _can_fill_status(user, task) is True
+
+
+def test_reporting_status_batch_saves_multiple_rows_atomically(db, monkeypatch):
+    team = Team(name=f"Команда batch {uuid4()}")
+    db.add(team)
+    db.flush()
+    tasks = [Task(team_id=team.id, title=f"Задача {index}") for index in range(2)]
+    meeting_row = ReportingMeeting(
+        kind="directorate",
+        occurrence_key=f"batch-{uuid4()}",
+        scheduled_date=date.today(),
+        state="planned",
+    )
+    db.add_all([*tasks, meeting_row])
+    db.commit()
+    monkeypatch.setattr(reporting_meetings_router, "current_meeting", lambda *_: meeting_row)
+    monkeypatch.setattr(reporting_meetings_router, "_can_fill_status", lambda *_: True)
+
+    result = reporting_meetings_router.update_reporting_statuses_batch(
+        meeting_id=meeting_row.id,
+        payload=ReportingStatusBatchUpdate(items=[
+            ReportingStatusBatchItem(task_id=task.id, text=f"Статус {task.id}", is_ready=True)
+            for task in tasks
+        ]),
+        db=db,
+        current_user=SimpleNamespace(id=None),
+    )
+
+    assert result["saved_count"] == 2
+    assert {item["task_id"] for item in result["items"]} == {task.id for task in tasks}
+    assert all(item["is_ready"] for item in result["items"])
 
 
 def test_calendar_list_can_skip_expensive_completeness(monkeypatch):
@@ -87,7 +129,7 @@ def test_calendar_list_can_skip_expensive_completeness(monkeypatch):
     assert captured == {"include_completeness": False}
 
 
-def test_reporting_status_requires_explicit_readiness_confirmation(db):
+def test_reporting_status_requires_explicit_readiness_confirmation(db, monkeypatch):
     team = Team(name=f"Команда готовности {uuid4()}")
     db.add(team)
     db.flush()
@@ -100,6 +142,25 @@ def test_reporting_status_requires_explicit_readiness_confirmation(db):
     )
     db.add_all([task, meeting_row])
     db.flush()
+    reminder = Notification(
+        user_id=None,
+        type="meeting.status_update.required",
+        category="reporting",
+        title="Заполните статусы",
+        message="Заполните статусы",
+        group_key=f"reporting_fill_{meeting_row.id}",
+    )
+    db.add(reminder)
+    db.flush()
+
+    def missing_until_confirmed(session, meeting):
+        row = session.query(reporting_meetings.TaskReportingStatus).filter(
+            reporting_meetings.TaskReportingStatus.meeting_id == meeting.id,
+            reporting_meetings.TaskReportingStatus.task_id == task.id,
+        ).first()
+        return ({0: [task]} if not row or not row.is_ready else {}, 0)
+
+    monkeypatch.setattr(reporting_meetings, "_missing_tasks_by_recipient", missing_until_confirmed)
 
     draft = save_task_reporting_status(
         db,
@@ -112,6 +173,9 @@ def test_reporting_status_requires_explicit_readiness_confirmation(db):
         user_id=None,
     )
     assert draft.is_ready is False
+    db.refresh(reminder)
+    assert reminder.is_read is False
+    assert reminder.is_resolved is False
     assert meeting_completeness(db, meeting_row)["filled_tasks"] == 0
 
     confirmed = save_task_reporting_status(
@@ -127,6 +191,9 @@ def test_reporting_status_requires_explicit_readiness_confirmation(db):
     )
     assert confirmed.is_ready is True
     assert confirmed.directorate_attention is True
+    db.refresh(reminder)
+    assert reminder.is_read is True
+    assert reminder.is_resolved is True
     assert meeting_completeness(db, meeting_row)["filled_tasks"] == 1
 
     with pytest.raises(ValueError, match="заполните статус"):
@@ -143,6 +210,57 @@ def test_reporting_status_requires_explicit_readiness_confirmation(db):
     db.rollback()
 
 
+def test_team_weekly_status_requires_next_step_and_saves_snapshot(db):
+    team = Team(name=f"Команда weekly {uuid4()}")
+    db.add(team)
+    db.flush()
+    task = Task(team_id=team.id, title="Еженедельный статус", progress=45)
+    meeting_row = ReportingMeeting(
+        kind="team_weekly",
+        occurrence_key=f"weekly-{uuid4()}",
+        scheduled_date=date.today() - timedelta(days=date.today().weekday()),
+        state="planned",
+    )
+    db.add_all([task, meeting_row])
+    db.flush()
+
+    with pytest.raises(ValueError, match="следующий шаг"):
+        save_task_reporting_status(
+            db,
+            task=task,
+            meeting=meeting_row,
+            status_text="Завершили интеграцию",
+            did_demo=False,
+            is_ready=True,
+            submitted_version=None,
+            user_id=None,
+            weekly_payload={"signal": "on_track"},
+        )
+
+    saved = save_task_reporting_status(
+        db,
+        task=task,
+        meeting=meeting_row,
+        status_text="Завершили интеграцию",
+        did_demo=False,
+        is_ready=True,
+        submitted_version=None,
+        user_id=None,
+        weekly_payload={
+            "signal": "decision",
+            "next_step": "Запустить пилот",
+            "next_step_due": "2026-09-18",
+            "decision_request": "Согласовать группу пилота",
+        },
+    )
+
+    assert saved.is_ready is True
+    assert saved.weekly_payload["next_step"] == "Запустить пилот"
+    assert saved.progress_snapshot == 45
+    assert saved.task_status_snapshot is None
+    db.rollback()
+
+
 def test_overdue_meeting_can_be_completed_until_fact_is_recorded(monkeypatch):
     stored = ReportingMeeting(
         id=42,
@@ -155,7 +273,12 @@ def test_overdue_meeting_can_be_completed_until_fact_is_recorded(monkeypatch):
     monkeypatch.setattr(reporting_meetings, "meeting_completeness", lambda db, item: {"missing_tasks": 4})
     monkeypatch.setattr(reporting_meetings, "_meeting_history", lambda *args, **kwargs: None)
     monkeypatch.setattr(reporting_meetings, "active_tasks", lambda db: [])
-    monkeypatch.setattr(reporting_meetings, "_resolve_meeting_notifications", lambda *args: None)
+    resolved_notifications = []
+    monkeypatch.setattr(
+        reporting_meetings,
+        "_resolve_meeting_notifications",
+        lambda db, meeting_id, **kwargs: resolved_notifications.append((meeting_id, kwargs)),
+    )
     monkeypatch.setattr(reporting_meetings, "ensure_reporting_schedule", lambda db: None)
 
     class EmptyQuery:
@@ -169,6 +292,80 @@ def test_overdue_meeting_can_be_completed_until_fact_is_recorded(monkeypatch):
     result = complete_meeting(db, stored, user_id=7, submitted_version=None)
 
     assert result.state == "held"
+    assert resolved_notifications == [(42, {"hide": True})]
+
+
+def test_held_meeting_hides_only_its_own_status_notifications(db):
+    target = Notification(
+        user_id=1,
+        type="meeting.status_update.required",
+        category="reporting",
+        title="Статусы встречи 42",
+        message="Статусы встречи 42",
+        group_key="reporting_fill_42",
+    )
+    other = Notification(
+        user_id=1,
+        type="meeting.status_update.required",
+        category="reporting",
+        title="Статусы встречи 43",
+        message="Статусы встречи 43",
+        group_key="reporting_fill_43",
+    )
+    db.add_all([target, other])
+    db.flush()
+
+    reporting_meetings._resolve_meeting_notifications(db, 42, hide=True)
+    db.flush()
+    db.expire_all()
+
+    assert target.is_resolved is True
+    assert target.is_read is True
+    assert target.is_dismissed is True
+    assert other.is_resolved is False
+    assert other.is_read is False
+    assert other.is_dismissed is False
+    event = db.query(EventOutbox).filter(
+        EventOutbox.audience_user_id == 1,
+        EventOutbox.event_type == "notification.state.changed",
+    ).order_by(EventOutbox.id.desc()).first()
+    assert event is not None
+    assert event.audience_user_id == 1
+    assert event.event_type == "notification.state.changed"
+    assert event.payload == {
+        "action": "removed",
+        "notification_ids": [target.id],
+        "meeting_id": 42,
+    }
+    db.rollback()
+
+
+def test_held_meeting_also_hides_already_resolved_status_notification(db):
+    notification = Notification(
+        user_id=2,
+        type="meeting.status_update.required",
+        category="reporting",
+        title="Закрытые статусы встречи 42",
+        message="Закрытые статусы встречи 42",
+        group_key="reporting_fill_42",
+        is_resolved=True,
+        is_read=True,
+    )
+    db.add(notification)
+    db.flush()
+
+    reporting_meetings._resolve_meeting_notifications(db, 42, hide=True)
+    db.flush()
+    db.refresh(notification)
+
+    assert notification.is_dismissed is True
+    event = db.query(EventOutbox).filter(
+        EventOutbox.audience_user_id == 2,
+        EventOutbox.event_type == "notification.state.changed",
+    ).order_by(EventOutbox.id.desc()).first()
+    assert event is not None
+    assert event.payload["action"] == "removed"
+    db.rollback()
 
 
 def test_future_meeting_cannot_be_completed(monkeypatch):
@@ -293,6 +490,9 @@ def test_context_falls_back_to_current_task_status_when_meeting_row_is_missing(d
         "did": task.did_status,
         "key_projects": task.key_project_status,
     }
-    assert {item["kind"]: item["current_status"]["text"] for item in context["items"]} == expected
-    assert all(item["current_status"]["version"] == 0 for item in context["items"])
+    legacy_items = {item["kind"]: item for item in context["items"] if item["kind"] in expected}
+    assert {kind: item["current_status"]["text"] for kind, item in legacy_items.items()} == expected
+    assert all(item["current_status"]["version"] == 0 for item in legacy_items.values())
+    weekly = next(item for item in context["items"] if item["kind"] == "team_weekly")
+    assert weekly["current_status"] is None
     db.rollback()

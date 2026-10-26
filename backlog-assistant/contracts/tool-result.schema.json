@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "Coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "matched_total": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Matched Total",
+          "type": "integer"
+        },
+        "displayed_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Displayed Count",
+          "type": "integer"
+        },
+        "history_complete": {
+          "default": false,
+          "title": "History Complete",
+          "type": "boolean"
+        },
+        "omitted_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Omitted Count",
+          "type": "integer"
+        },
+        "unknown_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Unknown Count",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Reasons",
+          "type": "array"
+        }
+      },
+      "title": "Coverage",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "receipt_ref": {
+          "title": "Receipt Ref",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_id",
+        "receipt_ref",
+        "kind",
+        "version",
+        "fields"
+      ],
+      "title": "Source",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Contract Version"
+    },
+    "tool_call_id": {
+      "title": "Tool Call Id",
+      "type": "string"
+    },
+    "execution_ref": {
+      "title": "Execution Ref",
+      "type": "string"
+    },
+    "tool_name": {
+      "title": "Tool Name",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "partial",
+        "unavailable"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "data": {
+      "title": "Data",
+      "type": "object"
+    },
+    "snapshot_ref": {
+      "title": "Snapshot Ref",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "tool_call_id",
+    "execution_ref",
+    "tool_name",
+    "status",
+    "data",
+    "snapshot_ref",
+    "observed_at",
+    "coverage",
+    "sources",
+    "limitations"
+  ],
+  "title": "ToolResult",
+  "type": "object"
+}

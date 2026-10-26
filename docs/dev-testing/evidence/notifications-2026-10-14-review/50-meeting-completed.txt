@@ -1,0 +1,170 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "3"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+    - link:
+      - /url: "#/reporting-meetings"
+      - generic: Отчётные встречи
+    - link:
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link:
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+    - link:
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Управление отчётными встречами
+  - button "Открыть поиск":
+  - 'button "Уведомления: 3 непрочитанных"':
+    - generic: "3"
+  - button "Переключить тему":
+  - button:
+    - generic: ТБ
+- main:
+  - heading "Управление отчётными встречами" [level=1]
+  - paragraph: Расписание, готовность статусов и фиксация версий после проведения встречи
+  - complementary "Как работают отчётные статусы":
+    - heading "Как работают отчётные статусы" [level=2]
+    - paragraph: Коротко о подготовке и фиксации статусов к каждой встрече.
+    - region "Жизненный цикл статусов":
+      - generic: "1"
+      - strong: Подготовка
+      - generic: Команды обновляют и подтверждают статусы
+      - generic: "2"
+      - strong: Проведение
+      - generic: Проектный офис фиксирует состоявшуюся встречу
+      - generic: "3"
+      - strong: История
+      - generic: Подтверждённые статусы сохраняются как срез
+  - generic "Фильтры календаря":
+    - text: Тип
+    - combobox "Тип":
+      - option "Все встречи" [selected]
+      - option "Командная еженедельная"
+      - option "Директорская"
+      - option "ДИД"
+      - option "Ключевые проекты"
+    - text: Состояние
+    - combobox "Состояние":
+      - option "Предстоящие"
+      - option "Все"
+      - option "Запланированные"
+      - option "Без даты"
+      - option "Состоявшиеся" [selected]
+      - option "Отменённые"
+    - text: Дата с
+    - textbox "Дата с"
+    - text: Дата по
+    - textbox "Дата по"
+    - group "Представление календаря":
+      - button "Карточки"
+      - button "Хронология"
+    - button "Сбросить":
+      - text: Сбросить
+  - article:
+    - button "31 августа 2026 г. Директорская оперативка Состоялась":
+      - time: 31 августа 2026 г.
+      - strong: Директорская оперативка
+      - generic: Состоялась
+    - button "Статусы"
+    - button "История"
+  - article:
+    - button "1 сентября 2026 г. Оперативка ДИД Состоялась":
+      - time: 1 сентября 2026 г.
+      - strong: Оперативка ДИД
+      - generic: Состоялась
+    - button "Статусы"
+    - button "История"
+  - article:
+    - button "14 сентября 2026 г. Еженедельная встреча команды Состоялась":
+      - time: 14 сентября 2026 г.
+      - strong: Еженедельная встреча команды
+      - generic: Состоялась
+    - button "Статусы"
+    - button "История"
+  - article:
+    - button "21 сентября 2026 г. Еженедельная встреча команды Состоялась":
+      - time: 21 сентября 2026 г.
+      - strong: Еженедельная встреча команды
+      - generic: Состоялась
+    - button "Статусы"
+    - button "История"
+  - article:
+    - button "28 сентября 2026 г. Еженедельная встреча команды Состоялась":
+      - time: 28 сентября 2026 г.
+      - strong: Еженедельная встреча команды
+      - generic: Состоялась
+    - button "Статусы"
+    - button "История"
+  - article:
+    - button "5 октября 2026 г. Еженедельная встреча команды Состоялась":
+      - time: 5 октября 2026 г.
+      - strong: Еженедельная встреча команды
+      - generic: Состоялась
+    - button "Статусы"
+    - button "История"
+  - article:
+    - button "14 октября 2026 г. Встреча по ключевым проектам Состоялась":
+      - time: 14 октября 2026 г.
+      - strong: Встреча по ключевым проектам
+      - generic: Состоялась
+    - button "Статусы"
+    - button "История"

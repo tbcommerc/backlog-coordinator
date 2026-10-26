@@ -1,5 +1,31 @@
 import { expect, test } from '@playwright/test';
 
+test('versioned dialog manager restores focus from an unversioned opener',async({page})=>{
+ await page.goto('/e2e/fixtures/uiKitAdminReports.html?surface=customer');
+ await page.evaluate(async()=>{
+  const manager=await import('/js/modalAccessibility.js?test-manager');manager.initModalAccessibility();
+  const opener=await import('/js/modalAccessibility.js');
+  const button=document.createElement('button');button.id='focus-origin';button.textContent='Открыть';document.body.append(button);button.focus();
+  const overlay=document.createElement('div');overlay.className='modal-overlay';
+  overlay.innerHTML='<div role="dialog"><button data-modal-close>Закрыть</button></div>';
+  document.body.append(overlay);opener.enhanceDialogOverlay(overlay);
+  overlay.querySelector('button').onclick=()=>overlay.remove();
+ });
+ await expect(page.locator('[data-modal-close]')).toBeFocused();await page.keyboard.press('Escape');await expect(page.locator('#focus-origin')).toBeFocused();
+});
+
+test('shared modal keyboard loop skips controls in hidden sections',async({page})=>{
+ await page.goto('/e2e/fixtures/uiKitReportingWorkspaces.html');
+ await page.evaluate(()=>{
+  const overlay=document.createElement('div');overlay.className='feedback-confirm-overlay';
+  overlay.innerHTML='<div role="dialog" aria-label="Проверка фокуса"><button id="first">Первое</button><div hidden><input id="hidden-input"></div><button id="last">Последнее</button><div hidden><button>Скрытое</button></div></div>';
+  document.body.append(overlay);
+ });
+ await expect(page.locator('#first')).toBeFocused();
+ await page.locator('#last').focus();await page.keyboard.press('Tab');await expect(page.locator('#first')).toBeFocused();
+ await page.keyboard.press('Shift+Tab');await expect(page.locator('#last')).toBeFocused();
+});
+
 test('каталог фиксирует единый визуальный контракт модальных окон', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/e2e/fixtures/modalCatalog.html');

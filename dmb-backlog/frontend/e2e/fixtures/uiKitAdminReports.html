@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>UI kit — администрирование и отчёты</title>
+  <script src="/js/lib/lucide.min.js"></script>
+  <script src="/js/lib/echarts.min.js"></script>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <link rel="stylesheet" href="/css/analytics-lt.css">
+  <link rel="stylesheet" href="/css/directorate-report.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/modal-system.css">
+  <link rel="stylesheet" href="/css/ui/kit.css?v=8">
+  <style>body { overflow: auto; } #page-content { padding: 24px; } @media(max-width:640px) { #page-content { padding: 12px; } }</style>
+</head>
+<body>
+  <main id="page-content"></main>
+  <script type="module">
+    // All responses and writes remain in this document. No backend connection.
+    const params = new URLSearchParams(location.search);
+    document.documentElement.dataset.theme = params.get('theme') === 'dark' ? 'dark' : 'light';
+    window.__apiCalls = [];
+    window.__blockedWrites = [];
+    window.__failRead = params.get('readError') === 'true';
+    window.__notices = [];
+    window.toast = (message) => window.__notices.push(message);
+    window.getUserInitials = name => String(name || '').slice(0, 2);
+    window.getAvatarColor = () => '#6366f1';
+    const user = { id: 1, role_id: 101, name: 'Тестовый администратор', permissions: { admin: params.get('access') || 'full', reports: 'full' } };
+    const roles = [{ id: 101, name: 'Роль "А" <тест>', description: 'Тестовая роль', status: 'active', backlog_dmb_access: 'read_write', backlog_team_access: 'write_own', reports_access: 'read_write', analytics_access: 'read', customer_access: 'read', settings_access: 'available', admin_access: 'full', customer_portal_only: false, review_access: 'team', task_edit_scope: 'team', task_comment_scope: 'team', task_delete_scope: 'none', pip_decision_access: false }];
+    const priorities = [{ id: 1, name: 'Высокий "А" <тест>', code: 'HIGH', color: '#6366f1', usage_count: 0, sort_order: 0 }, { id: 2, name: 'Средний', code: 'MEDIUM', color: '#10b981', usage_count: 0, sort_order: 1 }, { id: 3, name: 'Архивный', code: 'OLD', color: '#64748b', is_active: false, usage_count: 1 }];
+    const rates = [{ id: 1, competency: 'Frontend "UI" <тест>', year: 2026, rate: 0 }, { id: 2, competency: 'Аналитика', year: 2026, rate: 15000 }];
+    const events = [{ id: 31, title: 'Релиз "А" <тест>', description: 'Описание события', date: '2026-10-20', color: '#6366f1', is_recurring: true, recurring_interval: 'monthly', visibility_level: 'quarter' }];
+    let displaySettings = { title: true, id: false };
+    let fieldLabels = { title: 'Задача "А" <тест>' };
+    const teams = Array.from({ length: 23 }, (_, i) => ({ id: i + 1, name: i === 0 ? 'Команда "А" <тест>' : `Команда ${i + 1}`, abbreviation: `Т${i + 1}`, team_type: 'Команда', color: '#6366f1', is_active: true, description: 'Описание команды' }));
+    const reports = [{ id: 42, name: 'Тестовый отчёт', description: 'Описание отчёта', type: 'custom', created_by: 1, is_public: false, fields: '["id","title"]', filters: '[{"field":"progress","operator":"gt","value":0},{"field":"did_demo","operator":"equals","value":false}]' }];
+    const tasks = [{ id: 11, title: 'Подготовить витрину', project_name: 'Витрина', task_type_name: 'Разработка', team_name: 'Команда А', directorate_status: 'Готово к запуску', previous_directorate_status: 'Проверяем', status_name: 'ПРИНЯТА В РАБОТУ', progress: 75 }, { id: 12, title: 'Проверить API', project_name: 'Платформа', task_type_name: 'Проверка', team_name: 'Команда А', directorate_status: 'Проверки завершены', status_name: 'ВЫПОЛНЕНА', progress: 100 }];
+    const api = {
+      async get(path) {
+        window.__apiCalls.push(['get', path]);
+        if (window.__failRead) { window.__failRead = false; throw Object.assign(new Error('Нет связи'), { status: 503 }); }
+        if (path.startsWith('/timeline?')) return { items: structuredClone(events) };
+        if (path === '/admin/display-settings') return [{ page: 'shared', settings: structuredClone(displaySettings) }];
+        if (path === '/admin/column-labels') return structuredClone(fieldLabels);
+        if (path.startsWith('/tasks/analytics/')) return { active_period: 'q4_2026', periods: [{ id: 'q3_2026', label: 'III квартал 2026' }, { id: 'q4_2026', label: 'IV квартал 2026' }], tasks: tasks.map((task, index) => ({ ...task, period_ids: [index ? 'q3_2026' : 'q4_2026'], effort_days: 10 + index, financial_effect: 300000, channel_name: index ? 'Внеплановый' : 'По бизнес-плану', department_name: 'Продукты', involved_team_names: ['Команда Б'], is_completed: index === 1, is_terminal: index === 1 })) };
+        if (path === '/admin/teams') return structuredClone(teams);
+        if (path === '/admin/roles') return structuredClone(roles);
+        if (path === '/admin/audit-log/filters') return {users:[],actions:[],entity_types:[]};
+        if (path.startsWith('/admin/audit-log?')) return {items:[],total:0,page:1,per_page:50};
+        if (path === '/admin/priorities') return structuredClone(priorities.filter(item => item.is_active !== false));
+        if (path === '/admin/competency-costs') return structuredClone(rates);
+        if (path === '/admin/dict-locks') return params.get('locked') === 'true' ? { priority: { locked: true, is_mine: false, lock_owner_name: 'Другой администратор' } } : {};
+        if (path === '/admin/dictionaries/priority/workspace') return { items: structuredClone(priorities) };
+        if (path === '/reports/') return structuredClone(reports);
+        if (path === '/tasks/?per_page=1000') return { items: structuredClone(tasks) };
+        if (path === '/reports/team-weekly-report') return { total_tasks: 246 };
+        if (['/reports/did-operational-report', '/reports/did-backlog'].includes(path)) return { total_tasks: 2 };
+        if (path === '/reports/42/execute') return { items: tasks };
+        if (path === '/reports/directorate-report') return { total_tasks: 2, teams: [{ team_name: 'Команда А', total: 2, tasks }], meeting: { scheduled_date: '2026-10-12' } };
+        if (path.startsWith('/customer/tasks')) return { items: tasks.map(task => ({ ...task, status: task.status_name })), total: 2 };
+        if (path.startsWith('/reporting-meetings?')) return { can_manage: true, can_prepare: true, items: [{ id: 1, kind: 'did', scheduled_date: '2026-10-13', state: 'planned', version: 1, total_tasks: 2, filled_tasks: 1, missing_tasks: 1 }] };
+        if (path.startsWith('/admin/')) return [];
+        throw new Error(`Unexpected fixture read: ${path}`);
+      },
+      async post(path, payload) {
+        if (/^\/timeline\/admin(?:\/\d+)?$/.test(path) || ['/admin/display-settings/shared', '/admin/field-labels'].includes(path)) {
+          window.__apiCalls.push(['write', path, structuredClone(payload)]);
+          if (window.__holdWrite) await new Promise(resolve => { window.__releaseWrite = resolve; });
+          window.__holdWrite = false;
+          if (window.__failWrite) { window.__failWrite = false; throw Object.assign(new Error('Сервис временно недоступен'), { status: 503 }); }
+          if (path === '/admin/display-settings/shared') { displaySettings = structuredClone(payload.settings); return {}; }
+          if (path === '/admin/field-labels') { fieldLabels = structuredClone(payload.labels); return {}; }
+          const id = Number(path.split('/')[3]) || 32;
+          const saved = { ...payload, id };
+          const index = events.findIndex(item => item.id === id);
+          if (index < 0) events.push(saved); else events[index] = saved;
+          return saved;
+        }
+        // Only lock metadata is simulated; protected records are never written.
+        if (/^\/admin\/(priority|competency_cost)\/lock$/.test(path)) {
+          window.__apiCalls.push(['post', path]);
+          if (params.get('locked') === 'true') throw Object.assign(new Error('Справочник занят'), { status: 423 });
+          return { version: 7 };
+        }
+        if (!/^\/reports\/?(?:\d+)?$/.test(path)) { window.__blockedWrites.push(path); throw new Error(`Protected or unexpected fixture write: ${path}`); }
+        window.__apiCalls.push(['post', path, structuredClone(payload)]);
+        if (window.__holdWrite) await new Promise(resolve => { window.__releaseWrite = resolve; });
+        window.__holdWrite = false;
+        if (window.__failWrite) { window.__failWrite = false; throw Object.assign(new Error('Сервис временно недоступен'), { status: 503 }); }
+        const saved = { ...payload, id: payload.id || 43, type: 'custom', created_by: 1 };
+        const index = reports.findIndex(item => item.id === saved.id);
+        if (index < 0) reports.push(saved); else reports[index] = saved;
+        return saved;
+      },
+      async put(path, payload) { return this.post(path, payload); },
+      async delete(path) {
+        if (/^\/admin\/(priority|competency_cost)\/lock$/.test(path)) { window.__apiCalls.push(['delete', path]); return {}; }
+        window.__blockedWrites.push(path); throw new Error('Fixture deletion is forbidden');
+      },
+    };
+    window.app = { api, store: { get: key => key === 'currentUser' ? user : null }, fieldLabels: {}, router: { navigate: path => { window.__navigation = path; } } };
+    if (params.get('dialogA11y') === 'true') {
+      const { initModalAccessibility } = await import('/js/modalAccessibility.js');
+      initModalAccessibility();
+    }
+    const root = document.getElementById('page-content');
+    const surface = params.get('surface') || 'admin';
+    if (surface === 'admin') {
+      const { renderAdmin, initAdmin } = await import('/js/components/admin.js?v=6');
+      root.innerHTML = renderAdmin(window.app);
+      await initAdmin(window.app);
+    } else if (surface === 'reports') {
+      const { renderReports, initReports } = await import('/js/components/reports.js');
+      root.innerHTML = renderReports(window.app);
+      await initReports(window.app);
+    } else if (surface === 'directorate') {
+      const { renderDirectorateReport, initDirectorateReport } = await import('/js/components/directorateReport.js');
+      root.innerHTML = renderDirectorateReport(window.app);
+      initDirectorateReport(window.app);
+    } else if (surface === 'customer') {
+      const { renderCustomerReport, initCustomerReport } = await import('/js/components/customerReport.js');
+      root.innerHTML = renderCustomerReport(window.app);
+      await initCustomerReport(window.app);
+    } else if (surface === 'meetings') {
+      const { renderReportingMeetingsManagement, initReportingMeetingsManagement } = await import('/js/components/reports.js');
+      root.innerHTML = renderReportingMeetingsManagement(window.app);
+      await initReportingMeetingsManagement(window.app);
+    } else if (surface === 'dashboard') {
+      const { renderDashboard, initDashboard } = await import('/js/components/dashboard.js');
+      root.innerHTML = renderDashboard(window.app);
+      await initDashboard(window.app);
+    } else if (surface === 'analytics') {
+      root.classList.add('main-content');
+      const { renderAnalytics, initAnalytics } = await import('/js/components/analytics.js');
+      const type = params.get('type') || 'tribe';
+      root.innerHTML = renderAnalytics(type, window.app);
+      await initAnalytics(type, window.app);
+    }
+    window.lucide?.createIcons();
+    document.documentElement.dataset.fixtureReady = 'true';
+  </script>
+</body>
+</html>

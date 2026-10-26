@@ -1,0 +1,31 @@
+[
+  {
+    "file": "40_valid_minimal.xlsx",
+    "sheets": [
+      "Данные"
+    ],
+    "formulaErrorScan": "{\"kind\":\"notice\",\"message\":\"Cell search matched 0 entries.\"}"
+  },
+  {
+    "file": "41_valid_all_fields.xlsx",
+    "sheets": [
+      "Данные"
+    ],
+    "formulaErrorScan": "{\"kind\":\"notice\",\"message\":\"Cell search matched 0 entries.\"}"
+  },
+  {
+    "file": "42_multisheet_instructions_first.xlsx",
+    "sheets": [
+      "Инструкция",
+      "Данные"
+    ],
+    "formulaErrorScan": "{\"kind\":\"notice\",\"message\":\"Cell search matched 0 entries.\"}"
+  },
+  {
+    "file": "43_header_offset.xlsx",
+    "sheets": [
+      "Данные"
+    ],
+    "formulaErrorScan": "{\"kind\":\"notice\",\"message\":\"Cell search matched 0 entries.\"}"
+  }
+]

@@ -1,0 +1,8 @@
+/* Semantic roles; size variants continue to own control typography. */
+.ui-page-title { font-size:var(--type-page-size); font-weight:var(--font-semibold); line-height:var(--type-page-line); }
+.ui-dialog-title { font-size:var(--type-dialog-size); font-weight:var(--font-semibold); line-height:var(--type-dialog-line); }
+.ui-dialog-title--compact { font-size:var(--type-confirm-size); line-height:var(--type-confirm-line); }
+.ui-dialog-title--workspace { font-size:var(--type-workspace-size); line-height:var(--type-workspace-line); }
+.ui-meta { font-size:var(--type-meta-size); line-height:var(--type-meta-line); }
+.ui-body { font-size:var(--type-body-size); line-height:var(--type-body-line); }
+:where(code, pre, kbd, samp) { font-family:var(--font-mono); }

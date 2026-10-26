@@ -1,5 +1,8 @@
-import { showConfirmModal, showErrorModal } from './modal.js?v=92';
-import { updateStickyOffsets } from './filterToolbar.js?v=97';
+import { quickSaveConfirmation } from '../taskDisplay.js';
+import { formatTaskPublicId } from '../taskPublicId.js';
+import { escapeHtml } from '../htmlUtils.js';
+import { showConfirmModal, showErrorModal } from './modal.js?v=118';
+import { updateStickyOffsets } from './filterToolbar.js?v=108';
 
 console.log('[DMB] quickEdit.js v20260804 loaded');
 
@@ -61,14 +64,15 @@ export function renderQuickEditToolbar(scope) {
     <div id="qe-toolbar-${scope}" class="qe-toolbar" style="display:none;padding:12px;background:var(--bg-secondary);border-radius:8px;margin-bottom:0;">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <span style="color:var(--warning);font-weight:600;">⚠ Режим быстрого редактирования</span>
-        <span id="qe-count-${scope}" style="color:var(--text-secondary);font-size:13px;">Изменений: 0 в 0 задачах</span>
+        <span role="status" aria-live="polite" id="qe-count-${scope}" style="color:var(--text-secondary);font-size:13px;">Изменений: 0 в 0 задачах</span>
         <div style="flex:1;"></div>
-        <button class="btn btn-secondary btn-sm" id="qe-undo-${scope}" title="Отменить 1 шаг" disabled>↩</button>
-        <button class="btn btn-secondary btn-sm" id="qe-redo-${scope}" title="Вернуть изменения" disabled>↪</button>
+        <button class="btn btn-secondary btn-sm" id="qe-undo-${scope}" title="Отменить 1 шаг" aria-label="Отменить последнее изменение" disabled>↩</button>
+        <button class="btn btn-secondary btn-sm" id="qe-redo-${scope}" title="Вернуть изменения" aria-label="Повторить отменённое изменение" disabled>↪</button>
         <button class="btn btn-secondary btn-sm" id="qe-cancel-${scope}">Отменить все</button>
         <button class="btn btn-secondary btn-sm" id="qe-retry-${scope}" style="display:none;">Повторить неуспешные</button>
         <button class="btn btn-primary btn-sm" id="qe-save-${scope}">Сохранить</button>
       </div>
+      <div id="qe-error-${scope}" role="alert" class="qe-error-summary"></div>
     </div>
   `;
 }
@@ -123,6 +127,7 @@ export function initQuickEdit(scope, opts = {}) {
 }
 
 function handleKeydown(scope, e) {
+  if (e.defaultPrevented || document.getElementById('qe-exit-confirm-overlay')) return;
   if (e.ctrlKey || e.metaKey) {
     if (e.code === 'KeyZ' && !e.shiftKey) { e.preventDefault(); undo(scope); return; }
     if (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)) { e.preventDefault(); redo(scope); return; }
@@ -188,18 +193,19 @@ export async function requestExitQuickEdit(scope) {
 }
 
 function showQuickEditExitModal() {
+  const focusOrigin = document.activeElement;
   return new Promise(resolve => {
     document.getElementById('qe-exit-confirm-overlay')?.remove();
     const overlay = document.createElement('div');
     overlay.id = 'qe-exit-confirm-overlay';
     overlay.className = 'modal-overlay';
-    overlay.style.zIndex = '1200';
+    overlay.classList.add('ui-confirm-overlay');
     overlay.innerHTML = `
       <div class="modal modal-md" role="alertdialog" aria-modal="true" aria-labelledby="qe-exit-title">
         <div class="modal-header"><div class="modal-title" id="qe-exit-title">Несохранённые изменения</div></div>
         <div class="modal-body"><p class="app-modal__subtitle">В режиме быстрого редактирования есть несохранённые изменения. Что сделать перед выходом?</p></div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" data-qe-exit="continue">Продолжить редактирование</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-qe-exit="continue" data-modal-close>Продолжить редактирование</button>
           <button type="button" class="btn btn-secondary btn-sm" data-qe-exit="discard">Выйти без сохранения</button>
           <button type="button" class="btn btn-primary btn-sm" data-qe-exit="save">Сохранить и выйти</button>
         </div>
@@ -212,6 +218,7 @@ function showQuickEditExitModal() {
       settled = true;
       document.removeEventListener('keydown', onKeydown);
       overlay.remove();
+      if (focusOrigin?.isConnected) window.requestAnimationFrame(() => focusOrigin.focus());
       resolve(decision);
     };
     overlay.querySelectorAll('[data-qe-exit]').forEach(button => button.addEventListener('click', () => finish(button.dataset.qeExit)));
@@ -233,6 +240,18 @@ export function updateQuickEditCount(scope) {
   const redoBtn = document.getElementById(`qe-redo-${scope}`);
   const saveBtn = document.getElementById(`qe-save-${scope}`);
   const retryBtn = document.getElementById(`qe-retry-${scope}`);
+  const errorSummary = document.getElementById(`qe-error-${scope}`);
+  if (errorSummary) {
+    const opts = scopeOpts[scope] || {};
+    const tasks = opts.getTasks?.() || [];
+    errorSummary.textContent = Object.entries(st.validationErrors || {}).flatMap(([id, fields]) => {
+      const task = tasks.find(item => String(item.id) === id) || { id };
+      return Object.entries(fields).map(([field, message]) => {
+        const col = Object.keys(DISPLAY_TO_FIELD).find(key => DISPLAY_TO_FIELD[key] === field) || field;
+        return `${opts.getColumnLabel?.(col) || col} — ${formatTaskPublicId(task)}: ${message}`;
+      });
+    }).join(' · ');
+  }
   if (countEl) {
     const taskCount = Object.keys(st.changes).length;
     const fieldCount = Object.keys(st.changes).reduce((acc, tid) => acc + Object.keys(st.changes[tid]).length, 0);
@@ -362,6 +381,10 @@ function setCellValidationError(scope, taskId, field, message, element) {
   element.classList.toggle('qe-validation-error', !!message);
   element.setAttribute('aria-invalid', message ? 'true' : 'false');
   element.title = message || '';
+  const error = document.getElementById(`qe-error-${scope}`);
+  if (error) error.textContent = message ? `${element.getAttribute('aria-label')}: ${message}` : '';
+  if (message) element.setAttribute('aria-describedby', `qe-error-${scope}`);
+  else element.removeAttribute('aria-describedby');
 }
 
 function hasValidationErrors(scope) {
@@ -369,7 +392,7 @@ function hasValidationErrors(scope) {
 }
 
 function focusFirstValidationError(scope) {
-  const first = document.querySelector(`.qe-validation-error[data-task][data-field]`);
+  const first = document.querySelector(`[aria-invalid="true"][data-task][data-field]`);
   first?.focus();
   if (first) window.toast?.(first.title || 'Исправьте ошибочные значения', 'warning');
 }
@@ -418,7 +441,7 @@ async function confirmAndSave(scope) {
     window.toast?.('Нет изменений для сохранения', 'info');
     return;
   }
-  const confirmed = await showConfirmModal(`Будет сохранено ${count} изменений. Продолжить?`, 'Сохранить изменения');
+  const confirmed = await showConfirmModal(quickSaveConfirmation(count), 'Сохранить изменения');
   if (!confirmed) return;
   await saveQuickEditChanges(scope);
 }
@@ -536,7 +559,9 @@ export function renderQuickEditCell(scope, col, task) {
   const change = st.changes[taskId]?.[field];
   const value = change ? change.newValue : currentValue;
   const validationMessage = st.validationErrors[taskId]?.[field] || '';
-  const validationAttrs = validationMessage ? ` class="qe-validation-error" aria-invalid="true" title="${escapeHtml(validationMessage)}"` : ' aria-invalid="false"';
+  const label = scopeOpts[scope]?.getColumnLabel?.(col) || col;
+  const name = `${label} — ${formatTaskPublicId(task)}`;
+  const validationAttrs = ` aria-label="${escapeHtml(name)}" aria-invalid="${!!validationMessage}"${validationMessage ? ` aria-describedby="qe-error-${scope}" title="${escapeHtml(validationMessage)}"` : ''}`;
 
   if (EDITABLE_FIELDS.tags.includes(field)) {
     const toNames = v => Array.isArray(v)
@@ -544,19 +569,19 @@ export function renderQuickEditCell(scope, col, task) {
       : String(v || '');
     const curNames = toNames(currentValue);
     const valNames = toNames(value);
-    return `<input type="text"${validationAttrs} value="${escapeHtml(valNames)}" data-task="${taskId}" data-field="${field}" data-original="${escapeHtml(curNames)}" style="width:100%;padding:4px 6px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;box-sizing:border-box;" placeholder="теги через запятую">`;
+    return `<input class="input ui-control" type="text"${validationAttrs} value="${escapeHtml(valNames)}" data-task="${taskId}" data-field="${field}" data-original="${escapeHtml(curNames)}" style="width:100%;box-sizing:border-box" placeholder="теги через запятую">`;
   }
   if (EDITABLE_FIELDS.text.includes(field)) {
-    return `<input type="text"${validationAttrs} value="${escapeHtml(value || '')}" data-task="${taskId}" data-field="${field}" data-original="${escapeHtml(currentValue || '')}" style="width:100%;padding:4px 6px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;box-sizing:border-box;">`;
+    return `<input class="input ui-control" type="text"${validationAttrs} value="${escapeHtml(value || '')}" data-task="${taskId}" data-field="${field}" data-original="${escapeHtml(currentValue || '')}" style="width:100%;box-sizing:border-box">`;
   }
   if (EDITABLE_FIELDS.number.includes(field)) {
-    return `<input type="number"${validationAttrs} value="${value != null ? value : ''}" data-task="${taskId}" data-field="${field}" data-original="${currentValue != null ? currentValue : ''}" style="width:80px;padding:4px 6px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;box-sizing:border-box;">`;
+    return `<input class="input ui-control" type="number"${validationAttrs} value="${value != null ? value : ''}" data-task="${taskId}" data-field="${field}" data-original="${currentValue != null ? currentValue : ''}" style="width:80px;box-sizing:border-box">`;
   }
   if (EDITABLE_FIELDS.checkbox.includes(field)) {
-    return `<input type="checkbox" ${value ? 'checked' : ''} data-task="${taskId}" data-field="${field}" data-original="${currentValue ? 'true' : 'false'}" style="margin:0;">`;
+    return `<input type="checkbox"${validationAttrs} ${value ? 'checked' : ''} data-task="${taskId}" data-field="${field}" data-original="${currentValue ? 'true' : 'false'}" style="margin:0;">`;
   }
   if (EDITABLE_FIELDS.date.includes(field)) {
-    return `<input type="date"${validationAttrs} value="${value || ''}" data-task="${taskId}" data-field="${field}" data-original="${currentValue || ''}" style="padding:4px 6px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;box-sizing:border-box;">`;
+    return `<input class="input ui-control" type="date"${validationAttrs} value="${value || ''}" data-task="${taskId}" data-field="${field}" data-original="${currentValue || ''}" style="box-sizing:border-box">`;
   }
   if (EDITABLE_FIELDS.select.includes(field)) {
     return renderSelectForEdit(col, taskId, field, value, currentValue, validationAttrs, st.changes[taskId]?.department_id?.newValue ?? task.department_id);
@@ -619,13 +644,8 @@ function renderSelectForEdit(col, taskId, field, value, currentValue, validation
       return `<span>${displayValue || '—'}</span>`;
   }
 
-  return `<select${validationAttrs} data-task="${taskId}" data-field="${field}" data-original="${currentValue || ''}" style="width:100%;padding:4px 6px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;box-sizing:border-box;background:var(--bg-primary);">${options}</select>`;
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  options = `<option value="" ${value == null || value === '' ? 'selected' : ''}>Не выбрано</option>` + options;
+  return `<select class="input ui-control"${validationAttrs} data-task="${taskId}" data-field="${field}" data-original="${currentValue || ''}" style="width:100%;box-sizing:border-box">${options}</select>`;
 }
 
 export function hasUnsavedChanges() {

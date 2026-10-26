@@ -1,0 +1,113 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - link:
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link:
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "1"
+    - link:
+      - /url: "#/settings"
+      - generic: Настройки
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - generic: Заполнение статусов
+  - button "Открыть поиск":
+  - 'button "Уведомления: 1 непрочитанное"':
+    - generic: "1"
+  - button "Переключить тему":
+  - button:
+    - generic: ДФ
+- main:
+  - region "Статусы к отчётным встречам":
+    - dialog "Статусы к отчётным встречам":
+      - heading "Статусы к отчётным встречам" [level=1]
+      - link "Закрыть диалог":
+        - /url: "#/notifications"
+      - tablist "Отчётные встречи":
+        - tab "Ключевые проекты 15 октября 2026" [selected]:
+          - strong: Ключевые проекты
+          - generic: 15 октября 2026
+      - tabpanel "Ключевые проекты 15 октября 2026":
+        - heading "Встреча по ключевым проектам · 15 октября 2026" [level=2]
+        - generic: Поиск задач
+        - searchbox "Поиск задач"
+        - generic: Pre-Trade
+        - generic: Состояние статуса
+        - combobox "Состояние статуса":
+          - option "Требуют подтверждения" [selected]
+          - option "Черновики"
+          - option "Готовы"
+          - option "Все статусы"
+        - generic: 1 из 1 задач
+        - 'generic "Готовность статусов: 100%"':
+          - strong: 100%
+          - generic: 1 из 1 готово
+        - generic: Все изменения сохранены
+        - button "Сохранить черновики":
+          - text: Сохранить черновики
+        - button "Сохранить и подтвердить":
+          - text: Сохранить и подтвердить
+        - article:
+          - 'button "TASK-000-001 UX-NOTIF-CLONE: квартальное подтверждение"':
+            - generic: TASK-000-001
+            - strong: "UX-NOTIF-CLONE: квартальное подтверждение"
+          - text: Готово
+          - generic "Предыдущая встреча"
+          - generic: Статус к выбранной встрече
+          - textbox "Статус к выбранной встрече 76 / 5000":
+            - /placeholder: Результат · Риски и блокеры · Следующий шаг и срок
+            - text: "UX-NOTIF-CLONE: проверено. Рисков нет. Следующий шаг — подтвердить доставку."
+          - generic: 76 / 5000
+          - generic: Обновлено 14.10, 22:09 · Д. Фомин
+          - alert
+          - button "Готово" [disabled]:
+            - text: Готово

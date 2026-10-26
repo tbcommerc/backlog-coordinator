@@ -2,6 +2,7 @@ from concurrent.futures import Future
 
 from app.api import main
 from app.rag import embeddings
+from app.service import warmup
 
 
 def test_encoder_warmup_is_single_flight(monkeypatch):
@@ -40,8 +41,33 @@ def test_ready_reports_loading_without_waiting_for_encoder(monkeypatch):
     monkeypatch.setattr(
         "app.rag.embeddings.get_encoder_status", lambda _model_name: "loading"
     )
+    monkeypatch.setattr("app.service.warmup.start_runtime_warmup", lambda: pending)
+    monkeypatch.setattr(
+        "app.service.warmup.get_runtime_warmup_status", lambda: "loading"
+    )
 
     response = main.ready()
 
     assert response.status_code == 503
     assert b'"embedding_model":"loading"' in response.body
+    assert b'"runtime_indexes":"loading"' in response.body
+
+
+def test_runtime_index_warmup_is_single_flight(monkeypatch):
+    loaded = []
+
+    def load():
+        loaded.append(True)
+        return {"rag": "vector", "analogy": "ok"}
+
+    warmup.reset_runtime_warmup()
+    monkeypatch.setattr(warmup, "_warm_runtime", load)
+
+    first = warmup.start_runtime_warmup()
+    second = warmup.start_runtime_warmup()
+
+    assert first is second
+    assert first.result() == {"rag": "vector", "analogy": "ok"}
+    assert loaded == [True]
+    assert warmup.get_runtime_warmup_status() == "ok"
+    warmup.reset_runtime_warmup()

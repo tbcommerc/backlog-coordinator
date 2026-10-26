@@ -1,0 +1,125 @@
+{
+  "opened": [
+    {
+      "name": "Приоритеты",
+      "rows": 3,
+      "saveDisabled": true
+    },
+    {
+      "name": "Статусы задачи",
+      "rows": 13,
+      "saveDisabled": true
+    },
+    {
+      "name": "Типы задач",
+      "rows": 5,
+      "saveDisabled": true
+    },
+    {
+      "name": "Каналы",
+      "rows": 4,
+      "saveDisabled": true
+    },
+    {
+      "name": "Сроки",
+      "rows": 8,
+      "saveDisabled": true
+    },
+    {
+      "name": "Подразделения",
+      "rows": 11,
+      "saveDisabled": true
+    },
+    {
+      "name": "Типы команд",
+      "rows": 2,
+      "saveDisabled": true
+    },
+    {
+      "name": "Статусы проектов",
+      "rows": 3,
+      "saveDisabled": true
+    }
+  ],
+  "locks": {
+    "/api/v1/admin/priority/lock": {
+      "method": "DELETE",
+      "status": 200,
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_until": null
+    },
+    "/api/v1/admin/status/lock": {
+      "method": "DELETE",
+      "status": 200,
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_until": null
+    },
+    "/api/v1/admin/task_type/lock": {
+      "method": "DELETE",
+      "status": 200,
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_until": null
+    },
+    "/api/v1/admin/channel/lock": {
+      "method": "DELETE",
+      "status": 200,
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_until": null
+    },
+    "/api/v1/admin/deadline/lock": {
+      "method": "DELETE",
+      "status": 200,
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_until": null
+    },
+    "/api/v1/admin/department/lock": {
+      "method": "DELETE",
+      "status": 200,
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_until": null
+    },
+    "/api/v1/admin/team_type/lock": {
+      "method": "DELETE",
+      "status": 200,
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_until": null
+    },
+    "/api/v1/admin/project_status/lock": {
+      "method": "DELETE",
+      "status": 200,
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_until": null
+    },
+    "/api/v1/admin/competency_cost/lock": {
+      "method": "DELETE",
+      "status": 200,
+      "locked": false,
+      "lock_owner_id": null,
+      "lock_until": null
+    },
+    "/api/v1/admin/tag/lock": {
+      "method": "POST",
+      "status": 404,
+      "detail": "Dictionary not found"
+    }
+  },
+  "unexpectedWrites": [],
+  "findings": [
+    "F07: tag lock 404",
+    "F08/F09 reproduced",
+    "F17: DID client draft discarded on close without warning"
+  ],
+  "draftCancel": {
+    "priorityName": true,
+    "priorityOrder": true,
+    "cost": true
+  }
+}

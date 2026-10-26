@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const index = read('index.html');
 const css = read('css/responsive.css');
 const componentsCss = read('css/components.css');
+const pagesCss = read('css/pages.css');
 const taskTable = read('js/components/taskTable.js');
 const teamBacklog = read('js/components/teamBacklog.js');
 const app = read('js/app.js');
@@ -13,6 +14,7 @@ const fixture = read('tests/fixtures/responsive-shell.html');
 const filterToolbar = read('js/components/filterToolbar.js');
 const quickFilters = read('js/components/quickFilters.js');
 const tableUtils = read('js/components/tableUtils.js');
+const expressEstimate = read('js/components/expressEstimate.js');
 
 assert.match(index, /responsive\.css\?v=\d+/, 'responsive stylesheet must be loaded');
 for (const breakpoint of ['1279px', '1024px', '640px', '420px']) {
@@ -25,7 +27,7 @@ assert.match(tableUtils, /containerWidth\s*-\s*intrinsicWidth/, 'calculated back
 assert.match(tableUtils, /new ResizeObserver\(\(\)\s*=>\s*applyColumnWidths/, 'backlog column widths must react when the workspace is resized');
 assert.match(componentsCss, /thead tr:first-child th:last-child\s*\{[\s\S]*?border-top-right-radius/, 'the original backlog header must follow the rounded table container');
 assert.match(filterToolbar, /overflow:\s*hidden;[\s\S]*?border-radius:\s*var\(--radius-lg\) var\(--radius-lg\) 0 0;/, 'the cloned sticky backlog header must keep the same rounded top edge');
-assert.match(componentsCss, /quick-filters-single-row[\s\S]*repeat\(8, minmax\(0, 1fr\)\)/, 'wide backlog pages must place all quick filters in one equal-width row');
+assert.match(componentsCss, /quick-filters-single-row[\s\S]*repeat\(var\(--quick-filter-columns, 8\), minmax\(0, 1fr\)\)/, 'wide backlog pages must place all quick filters in one equal-width row');
 assert.match(quickFilters, /requiredEqualWidth <= panel\.clientWidth \+ 1/, 'wide quick-filter layout must fit equal copies of the widest button rather than use a fixed breakpoint');
 assert.match(quickFilters, /matchMedia\?\.\('\(max-width: 1024px\)'\)[\s\S]*classList\.remove\('quick-filters-measuring', 'quick-filters-single-row'\)/, 'compact quick-filter disclosure must never retain the desktop single-row layout');
 assert.match(css, /@media \(pointer: coarse\)/, 'touch targets must be adapted for coarse pointers');
@@ -47,7 +49,7 @@ assert.match(componentsCss, /right:\s*var\(--main-content-scrollbar-width, 0px\)
 assert.match(filterToolbar, /mainContent\.offsetWidth - mainContent\.clientWidth - mainBorders/, 'fixed toolbar width must account for the main-content vertical scrollbar');
 assert.match(filterToolbar, /toolbarMainContentObserver\.observe\(mainContent\)/, 'fixed toolbar width must react when the main-content scrollbar changes');
 assert.match(filterToolbar, /baseContentMargin\s*=\s*toolbarIsFixed[\s\S]*?:\s*0;[\s\S]*?marginTop\s*=\s*baseContentMargin/, 'flow toolbar must not leave a synthetic table offset');
-assert.match(filterToolbar, /class="toolbar-add-task-label"/, 'add-task text must be independently hideable');
+assert.match(filterToolbar, /class="ui-responsive-icon-label toolbar-add-task-label"/, 'add-task text uses the shared responsive icon recipe');
 assert.match(css, /\.toolbar-title,[\s\S]*?white-space:\s*nowrap/, 'toolbar title must stay on one line');
 assert.match(css, /@media \(max-width: 1024px\)[\s\S]*?\.sticky-toolbar\s*\{[\s\S]*?position:\s*sticky/, 'compact toolbar must participate in scrolling');
 assert.match(css, /top:\s*calc\(-1 \* var\(--space-5\)\)/, 'tablet sticky toolbar must cover the main-content top padding');
@@ -73,5 +75,27 @@ assert.match(componentsCss, /\.notification-workspace\s*\{[^}]*container-type:\s
 assert.match(componentsCss, /@container notification-workspace \(max-width:920px\)/, 'notification filters must wrap before their labels or reset action overflow');
 assert.match(componentsCss, /\.notification-center\s*\{[^}]*width:\s*100%/, 'notification center must fill the shared page content area');
 assert.doesNotMatch(componentsCss, /\.notification-center\s*\{[^}]*(?:max-width|margin:\s*0 auto)/, 'notification center must not be centered inside the shared page content area on wide screens');
+assert.match(componentsCss, /\.qe-entity-title\s*\{[\s\S]*?flex:\s*1 1 auto/, 'express-estimate entity names must absorb freed wide-screen space');
+assert.match(componentsCss, /\.qe-epic-block > \.qe-estimate-row \.qe-entity-title\s*\{\s*flex-basis:\s*272px/, 'epic names must retain their aligned minimum basis before expanding');
+assert.match(componentsCss, /\.qe-effort-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(8, 48px\)[\s\S]*?flex:\s*0 0 448px/, 'express-estimate effort controls must stay compact and include columns, gaps, padding and borders');
+assert.match(expressEstimate, /class="input ui-control ui-number-cell qe-inline-effort"[\s\S]*?style="width:48px;/, 'express-estimate numeric inputs must keep their compact width');
+assert.match(componentsCss, /\.qe-story-block\s*\{\s*width:\s*calc\(100% - 32px\)/, 'nested stories must account for their left indent without exceeding the epic workspace');
+assert.match(componentsCss, /\.qe-effort-grid\s*\{[\s\S]*?width:\s*448px[\s\S]*?min-width:\s*448px[\s\S]*?flex:\s*0 0 448px/, 'all hierarchy rows must reserve 448px for eight columns, seven gaps, padding and borders');
+assert.match(componentsCss, /\.qe-effort-total\s*\{[^}]*width:\s*60px[^}]*flex:\s*0 0 60px/, 'all hierarchy rows must reserve the same total-column width');
+// Trailing actions use the shared square size. Actual row alignment and
+// desktop/touch dimensions are covered by uiKitExpress.spec.mjs.
+assert.match(componentsCss, /\.qe-task-block > \.qe-estimate-row\s*\{\s*min-width:\s*860px/, 'task rows must establish the hierarchy width floor');
+assert.match(componentsCss, /\.qe-epic-block > \.qe-estimate-row\s*\{\s*min-width:\s*831px/, 'epic row width must compensate its 29px nesting offset');
+assert.match(componentsCss, /\.qe-story-block > \.qe-estimate-row\s*\{\s*min-width:\s*786px/, 'story row width must compensate its 74px nesting offset');
+assert.doesNotMatch(componentsCss, /\.qe-estimate-row\s*\{[^}]*min-width:\s*max-content/, 'long hierarchy titles must not shift competency columns');
+assert.match(componentsCss, /\.qe-task-block\.qe-unestimated,[\s\S]*?border-color:\s*var\(--border-color\)\s*!important;[\s\S]*?border-left-color:\s*var\(--warning\)\s*!important;/, 'attention state must use only a left warning marker instead of an orange perimeter');
+assert.match(componentsCss, /@media\(max-width:960px\)\{[\s\S]*?&#task-detail-overlay\{padding:12px\}[\s\S]*?\.task-detail-modal\.modal\{max-height:calc\(100dvh - 24px\)\}/, 'task card must reduce its outer inset and follow the viewport at intermediate widths');
+assert.match(componentsCss, /@media\(max-width:720px\)\{[\s\S]*?&#task-detail-overlay\{padding:8px\}[\s\S]*?\.task-detail-modal \.head-row1\{[\s\S]*?grid-template-columns:minmax\(0,1fr\) auto/, 'task card header must reflow without introducing a separate mobile version');
+assert.match(componentsCss, /\.tabs-shell\.has-overflow \.tabs\{padding-left:42px;padding-right:42px\}/, 'overflowing task tabs must reserve space for the scroll arrows');
+assert.match(pagesCss, /\.quarterly-update-card\s*\{[\s\S]*?grid-template-areas:\s*"head progress start metrics footer"[\s\S]*?grid-template-columns:\s*minmax\(280px, 1\.5fr\)/, 'quarterly progress must use compact horizontal task cards on wide screens');
+assert.match(pagesCss, /\.quarterly-update-list\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)[\s\S]*?grid-auto-rows:\s*max-content/, 'quarterly progress must keep one elongated card per row');
+assert.match(pagesCss, /@media \(max-width: 900px\)[\s\S]*?grid-template-areas:\s*"head progress" "start metrics" "footer footer"/, 'quarterly progress cards must reflow to two columns on tablets');
+assert.match(pagesCss, /@media \(max-width: 760px\)[\s\S]*?grid-template-areas:\s*"head" "progress" "start" "metrics" "footer"/, 'quarterly progress card controls must stack on mobile');
+assert.match(pagesCss, /@media \(max-width: 760px\)[\s\S]*?\.quarterly-update-summary\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/, 'quarterly progress summary must remain a compact three-column strip');
 
 console.log('responsiveLayout.test.mjs: OK');

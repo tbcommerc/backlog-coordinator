@@ -1,0 +1,149 @@
+{
+  "results": [
+    {
+      "scenario": "UI: создание/готовность/исполнение/результат/возврат/комментарий/повтор/приёмка",
+      "status": "PASS",
+      "work": 43
+    },
+    {
+      "scenario": "ACL qa.ba-b",
+      "ok": true,
+      "actions": []
+    },
+    {
+      "scenario": "ACL qa.no-access",
+      "ok": false,
+      "status": 404
+    },
+    {
+      "scenario": "ACL qa.customer-a",
+      "ok": false,
+      "status": 403
+    },
+    {
+      "scenario": "ACL qa.ba-no-team",
+      "ok": true,
+      "actions": []
+    },
+    {
+      "scenario": "ACL qa.it-pl-a",
+      "ok": true,
+      "actions": [
+        "ready"
+      ]
+    },
+    {
+      "scenario": "Принятие другой командой",
+      "status": "accepted",
+      "assignee": 27
+    },
+    {
+      "scenario": "409/восстановление черновика/повторное сохранение",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Создание из проекта",
+      "status": "PASS",
+      "id": 46
+    },
+    {
+      "scenario": "Customer создание запроса",
+      "status": "FAIL",
+      "message": "Не удалось создать запрос: Агент недоступен (500)"
+    },
+    {
+      "scenario": "TXT upload/download + недоступный файл + запрещённое расширение",
+      "download": 1,
+      "denied": 404
+    },
+    {
+      "scenario": "Чужая правка 403; цикл 422; переоткрытие",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Потеря сети/повтор после восстановления",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Повтор создания с тем же ключом",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Межкомандное исполнение + обязательная приёмка (API)",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Escape/возврат фокуса",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Уведомление ведёт в карточку",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Приёмка требует действия в уведомлениях",
+      "status": "FAIL",
+      "detail": "0 требуют действия при in_acceptance и назначенном текущем приёмщике"
+    },
+    {
+      "scenario": "Enter/URL/перезагрузка фильтра",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Отказ другой команды, повтор предложения",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Перенос в чужой Task без edit",
+      "status": "PASS (отказ доступа)"
+    },
+    {
+      "scenario": "Перенос самостоятельной задачи в проект",
+      "status": "PASS"
+    },
+    {
+      "scenario": "Перенос внутрь Task пользователем с edit, завершение без приёмки",
+      "status": "PASS",
+      "mode": "API",
+      "id": 48
+    }
+  ],
+  "finalRecords": [
+    {
+      "id": 43,
+      "status": "done",
+      "title": "DEV-QA-REVIEW-20261020 приёмка отчёта"
+    },
+    {
+      "id": 44,
+      "status": "cancelled",
+      "title": "DEV-QA-REVIEW-20261020 сохранённый черновик"
+    },
+    {
+      "id": 45,
+      "status": "done",
+      "title": "DEV-QA-REVIEW-20261020 межкомандное поручение"
+    },
+    {
+      "id": 46,
+      "status": "cancelled",
+      "title": "DEV-QA-REVIEW-20261020 задача проекта"
+    },
+    {
+      "id": 47,
+      "status": "cancelled",
+      "title": "DEV-QA-REVIEW-20261020 повтор создания"
+    },
+    {
+      "id": 48,
+      "status": "done",
+      "title": "DEV-QA-REVIEW-20261020 внутри крупной задачи"
+    }
+  ],
+  "limitations": [
+    "request chain blocked by agent null email",
+    "no load testing",
+    "no new snapshot",
+    "no session-expiry test"
+  ]
+}

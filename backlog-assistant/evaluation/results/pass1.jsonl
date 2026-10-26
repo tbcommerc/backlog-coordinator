@@ -1,0 +1,1 @@
+{"id": "E01", "group": "search_card_request", "mode": "live_opencode", "seconds": 50.08, "error": "TimeoutError", "calls": [], "answer": null, "candidate": null, "model_requests": 0, "input_bound": 0, "broker_errors": [], "cleaned": true, "failures": ["no_answer:TimeoutError"], "passed": false}

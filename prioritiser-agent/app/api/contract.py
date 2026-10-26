@@ -552,6 +552,10 @@ class ResponseAudit(BaseModel):
     llm_calls: int = 0
     model: str | None = None
     duration_ms: int | None = None
+    phase_duration_ms: dict[str, int] = Field(
+        default_factory=dict,
+        description="Длительность инженерных фаз запроса; на результат расчёта не влияет",
+    )
     computed_at: dt.datetime
 
 

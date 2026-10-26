@@ -1,0 +1,132 @@
+[
+  {
+    "id": "ADM-01",
+    "result": "PASS",
+    "details": "QA admin login via UI; 10 tabs; teams 12; viewport 1440x900."
+  },
+  {
+    "id": "ADM-02",
+    "result": "FAIL",
+    "details": "Team QA A list has PL/PO/CL/IT PL but editor shows — with only one option for each; stable. Screenshot 02."
+  },
+  {
+    "id": "ADM-03",
+    "result": "PASS",
+    "details": "Dirty team cancel prompts, Escape dismisses confirmation and returns focus to Cancel preserving draft; confirm discards draft."
+  },
+  {
+    "id": "ADM-04",
+    "result": "FAIL",
+    "details": "Search qa.ba-a yields 0 although visible login exists; generic Поиск пользователей."
+  },
+  {
+    "id": "ADM-05",
+    "result": "FAIL",
+    "details": "Pagination 20+20 disjoint rows total40 passes; page2 retains bottom scroll; tabs+filters float over rows with rows above sticky panel screenshot06. User filters have no accessible labels; raw ready/invited/reset_required statuses."
+  },
+  {
+    "id": "ADM-06",
+    "result": "PASS",
+    "details": "Inactive filter 1; with Team B 0; reload retains filters and empty state. New/edit user and Access open/close; no mutations."
+  },
+  {
+    "id": "ADM-07",
+    "result": "PASS",
+    "details": "Projects list25, code search1 and edit consistent; customers8, edit and IB filter1; no saved changes."
+  },
+  {
+    "id": "ADM-08",
+    "result": "PASS",
+    "details": "Role QA No Access editor anchors and Escape; preview explicitly simulation; comparison Administrator vs QA No Access rendered correct 7 sections."
+  },
+  {
+    "id": "ADM-09",
+    "result": "FAIL",
+    "details": "Dictionary priorities palette Escape returns focus. Search nonexistent hides all rows but no no-results message; header still 3 active."
+  },
+  {
+    "id": "ADM-10",
+    "result": "FAIL",
+    "details": "Search only (0 changes, disabled No changes) triggers unsaved changes confirmation on close; screenshot18."
+  },
+  {
+    "id": "ADM-11",
+    "result": "FAIL",
+    "details": "Tags click produces toast Ошибка при открытии справочника; retry stable same."
+  },
+  {
+    "id": "ADM-12",
+    "result": "FAIL",
+    "details": "Display column draft changed to UX черновик ID; switch Timeline and back no warning, original ID задачи restored (draft lost)."
+  },
+  {
+    "id": "ADM-13",
+    "result": "PASS",
+    "details": "Timeline2 records; blank create inline required title error; dirty cancel prompts; discard returns existing2."
+  },
+  {
+    "id": "ADM-14",
+    "result": "FAIL",
+    "details": "Report wizard all4 steps open; fields has two indistinguishable Бизнес-заказчик checkboxes."
+  },
+  {
+    "id": "ADM-15",
+    "result": "FAIL",
+    "details": "From audit focus Teams press ArrowRight: selected/URL projects but audit content persists; resize390 shows selector Справочники with audit content and tabpanel Проекты. Screenshot27 and DOM28."
+  },
+  {
+    "id": "ADM-16",
+    "result": "FAIL",
+    "details": "Mobile390 sticky controls hide much of first card after Подробнее click; investigate details absent. New user modal fits with footer and scroll."
+  },
+  {
+    "id": "ADM-17",
+    "result": "FAIL",
+    "details": "Mobile audit details reveal extra fields; sticky filters cover first card; horizontal clipping date/trace. Timeline color marker stretches full available width and separates name (mobile7). Earlier details absence not confirmed defect."
+  },
+  {
+    "id": "ADM-15-recheck",
+    "result": "PARTIAL",
+    "details": "Normal Teams -> ArrowRight -> Projects works; prior mismatch requires fast audit reset + keyboard transition + resize. Restrict finding to concurrent transition, not all keyboard navigation."
+  },
+  {
+    "id": "ADM-18",
+    "result": "PASS",
+    "details": "Unauthenticated direct /#/admin shows login only."
+  },
+  {
+    "id": "ADM-19",
+    "result": "FAIL",
+    "details": "Tribe lead:9 tabs,no admin audit tab; users no edit/remove but Доступ shown. Sidebar Аудит действий leads to Permission denied: admin(full), contradictory temporary-filter error. Screenshot38."
+  },
+  {
+    "id": "ADM-20",
+    "result": "PASS",
+    "details": "QA no-access menu hides admin; direct route clear Недостаточно прав with return link. Global search no admin destination."
+  },
+  {
+    "id": "ADM-21",
+    "result": "PASS",
+    "details": "User sort by name works; QA search19; dashboard/back restores query/count; Forward/back works."
+  },
+  {
+    "id": "ADM-22",
+    "result": "PASS",
+    "details": "New report required title validation; 4 steps, filter type switches; dirty cancellation prompts; mobile footer Create/Cancel visible; no report created."
+  },
+  {
+    "id": "ADM-23",
+    "result": "PASS",
+    "details": "New Team/Project/Customer/Role dialogs opened and closed without submit. New Team responsible options appear after Users load; team type only —."
+  },
+  {
+    "id": "ADM-24",
+    "result": "BLOCKED",
+    "details": "True browser zoom200 unavailable in IAB; Ctrl+0/Ctrl+plus no DPR change. Native Chrome activation rejected by automatic review (unverified unrelated window)."
+  },
+  {
+    "id": "ADM-25",
+    "result": "BLOCKED",
+    "details": "Further dictionary editor tests paused after audit shows lock_owner_id/lock_until updates on opening/closing despite no save; require explicit authorization for service locks or read-only test contour."
+  }
+]

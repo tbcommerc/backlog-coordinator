@@ -1,0 +1,1750 @@
+[
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 24,
+    "ratio": 18.86943341542573,
+    "required": 3,
+    "text": "Бэклог DMB",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 14,
+    "ratio": 7.323098407279644,
+    "required": 4.5,
+    "text": "Все задачи платформы",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 12,
+    "ratio": 17.057478355515048,
+    "required": 4.5,
+    "text": "Представление…",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(153, 153, 173)",
+    "font": 11,
+    "ratio": 6.103636913366627,
+    "required": 4.5,
+    "text": "Статус:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 12,
+    "ratio": 17.057478355515048,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(153, 153, 173)",
+    "font": 11,
+    "ratio": 6.103636913366627,
+    "required": 4.5,
+    "text": "Приоритет:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 12,
+    "ratio": 17.057478355515048,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(153, 153, 173)",
+    "font": 11,
+    "ratio": 6.103636913366627,
+    "required": 4.5,
+    "text": "Ответственная команда:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 12,
+    "ratio": 17.057478355515048,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(153, 153, 173)",
+    "font": 11,
+    "ratio": 6.103636913366627,
+    "required": 4.5,
+    "text": "Срок:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 12,
+    "ratio": 17.057478355515048,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(153, 153, 173)",
+    "font": 11,
+    "ratio": 6.103636913366627,
+    "required": 4.5,
+    "text": "Проект:",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 12,
+    "ratio": 17.057478355515048,
+    "required": 4.5,
+    "text": "Все",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      26,
+      26,
+      46
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 12,
+    "ratio": 17.057478355515048,
+    "required": 4.5,
+    "text": "Все фильтры",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Просрочено",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(239, 68, 68)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "148",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Важные задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(245, 158, 11)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "77",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "В работе",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 11,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "312",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Холд",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(245, 158, 11)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "0",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Отклонённые",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(245, 158, 11)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "1",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Текущие задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(16, 185, 129)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "75",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Прошлый квартал",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 11,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "69",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Проблемный C/V",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(239, 68, 68)",
+    "font": 11,
+    "ratio": null,
+    "required": 4.5,
+    "text": "135",
+    "unknown": true,
+    "weight": 600
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "ID задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "Название задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "Статус задачи",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "Приоритет",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "Ответственная команда",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "Срок выполнения",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "Оценка трудозатрат (ЭО) (ч/д)",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "Финансовый эффект (value в млн руб.)",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-183",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Стратегия развития платформы DMB",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "СБОР ТРЕБОВАНИЙ",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 165, 165)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ВЫСОКИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "4Q 2026",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "40 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "2,08",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-184",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Единая методика приоритизации для ЛТ",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ПРИНЯТА В РАБОТУ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 211, 77)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(239, 68, 68)",
+    "font": 14,
+    "ratio": 5.014295293505136,
+    "required": 4.5,
+    "text": "3Q 2026",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "20 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "0,61",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-185",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Синхронизация стратегий трайбов",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "СБОР ТРЕБОВАНИЙ",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 165, 165)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ВЫСОКИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(239, 68, 68)",
+    "font": 14,
+    "ratio": 5.014295293505136,
+    "required": 4.5,
+    "text": "2Q 2026",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "25 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "1,84",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-186",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Отчёт об эффективности IT-инвестиций",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "ПРОВЕРКА ТРЕБОВАНИЙ",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 211, 77)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(239, 68, 68)",
+    "font": 14,
+    "ratio": 5.014295293505136,
+    "required": 4.5,
+    "text": "3Q 2026",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "20 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "0,28",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-187",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Кадровая ёмкость команд",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "НАЗНАЧЕНА КОМАНДА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 211, 77)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "4Q 2026",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "25 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "0,48",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-188",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Дорожная карта техдолга",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "СБОР ТРЕБОВАНИЙ",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 165, 165)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ВЫСОКИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Y2026",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "30 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "2,38",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-189",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Гейт качества решений для платформы",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "НОВАЯ ЗАДАЧА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 211, 77)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(239, 68, 68)",
+    "font": 14,
+    "ratio": 5.014295293505136,
+    "required": 4.5,
+    "text": "3Q 2026",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "20 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "0,46",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-190",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Мониторинг KPI команд",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ПРИНЯТА В РАБОТУ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 211, 77)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(239, 68, 68)",
+    "font": 14,
+    "ratio": 5.014295293505136,
+    "required": 4.5,
+    "text": "2Q 2026",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "25 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "1",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-191",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Внедрение практик OKR",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "СБОР ТРЕБОВАНИЙ",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 211, 77)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "1Q 2027",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "30 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "3,75",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-192",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Координация импортозамещения",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "ПРОВЕРКА ТРЕБОВАНИЙ",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 165, 165)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ВЫСОКИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "4Q 2026",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "35 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "2,55",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-193",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Стандарты ИТ-архитектуры",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "НАЗНАЧЕНА КОМАНДА",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 211, 77)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Y2026",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "30 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "1,61",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "TASK-000-194",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "Единый портфель проектов",
+    "unknown": false,
+    "weight": 700
+  },
+  {
+    "bg": [
+      22,
+      33,
+      62
+    ],
+    "color": "rgb(160, 160, 176)",
+    "font": 12,
+    "ratio": 6.168520982157885,
+    "required": 4.5,
+    "text": "СБОР ТРЕБОВАНИЙ",
+    "unknown": false,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(252, 211, 77)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "СРЕДНИЙ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": null,
+    "color": "rgb(147, 197, 253)",
+    "font": 12,
+    "ratio": null,
+    "required": 4.5,
+    "text": "ИТ ЛТ",
+    "unknown": true,
+    "weight": 500
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(239, 68, 68)",
+    "font": 14,
+    "ratio": 5.014295293505136,
+    "required": 4.5,
+    "text": "3Q 2026",
+    "unknown": false,
+    "weight": 600
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "25 дн",
+    "unknown": false,
+    "weight": 400
+  },
+  {
+    "bg": [
+      15,
+      15,
+      35
+    ],
+    "color": "rgb(255, 255, 255)",
+    "font": 14,
+    "ratio": 18.86943341542573,
+    "required": 4.5,
+    "text": "0,48",
+    "unknown": false,
+    "weight": 400
+  }
+]

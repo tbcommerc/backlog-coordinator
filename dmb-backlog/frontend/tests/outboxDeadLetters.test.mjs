@@ -15,12 +15,12 @@ assert.match(component, /Ошибок доставки нет/);
 assert.match(component, /outbox-overview-metrics/);
 assert.match(component, /outbox-search-field/);
 assert.match(component, /outbox-error-message/);
-assert.match(component, /data-lucide="rotate-ccw"/);
+assert.match(component, /icon: 'rotate-ccw'/);
 assert.match(component, /data-label="Причина"/);
 assert.doesNotMatch(component, />Dead-letter outbox</);
 assert.doesNotMatch(component, /innerHTML\s*=\s*item\.payload/);
 
-assert.match(router, /requiresFullAdmin = path === '\/outbox-dead-letters'/);
+assert.match(router, /requiresFullAdmin = [^;]*path === '\/outbox-dead-letters'/);
 assert.match(router, /requiresFullAdmin && adminAccess !== 'full'/);
 assert.match(sidebar, /adminAccess === 'full'/);
 assert.match(sidebar, /Ошибки доставки/);

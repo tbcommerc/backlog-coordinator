@@ -1,35 +1,39 @@
 # Backlog coordinator: документация фактического состояния
 
-Дата проверки: 1 сентября 2026 года. Статус: **AS-IS VERIFIED** в пределах перечисленных ниже источников. Документ описывает реализованное состояние, а не целевую архитектуру.
+Состав сервисов и схема подключений сверены по коду и скриптам 17.10.2026. Статус: **AS-IS PARTIAL**. Остальные разделы сохраняют baseline от 01.09.2026 и требуют адресной сверки; эта редакция не является повторной проверкой всех API, версий зависимостей и сценариев. Открытая работа: [DOC-01](../../docs/OPEN_TASKS.md).
 
 Основные источники проверки: `backend/main.py`, `backend/config.py`, `backend/models.py`, `backend/routers/`, `backend/rate_limit.py`, `frontend/js/`, `agent/agent/`, профильные тесты и корневой `../../.github/workflows/quality.yml`. При расхождении с кодом приоритет имеет исполняемая реализация.
 
 ## Назначение
 
-Backlog coordinator состоит из трёх FastAPI-приложений:
+Репозиторий содержит следующие сервисы:
 
-1. `dmb-backlog` — SPA и backend для управления портфелем задач, отчётами, оценкой, уведомлениями и справочниками.
-2. `agent` — AI Business Analyst Assistant для диалогового сбора и структурирования требований.
-3. `prioritiser-agent` — детерминированный расчёт финансового эффекта и приоритета с HTTP API.
+| Каталог | Назначение | Локальный запуск |
+|---|---|---|
+| `dmb-backlog/` | FastAPI backend и встроенная раздача SPA | Стандартный запуск, порт 8000 |
+| `agent/` | AI Business Analyst Assistant V1 | Стандартный запуск, порт 9000 |
+| `agent-v2/` | Целевой fork V1: подготовка и ревью БТ | Обязателен в start-project.ps1, порт 9300; UI `#/agent-v2` |
+| `backlog-assistant/` | Самостоятельный помощник с OpenCode runtime и ограниченным Data API | `-IncludeBacklogAssistant`; скрипт также включает его при наличии backlog-assistant/.env |
+| `prioritiser-agent/` | Финансовый эффект и приоритет | Только явный `-IncludePrioritiser`, порт 9100 |
+| `assistant-v2/` | Сохранённый greenfield legacy-прототип | Только диагностический `-IncludeAssistantV2`, порт 9200; отдельного UI нет |
 
-Основной backend проксирует запросы к агенту и хранит связанные requirement requests в своей БД. Agent защищает API общим заголовком `X-Agent-Secret`.
+Режим запуска сервиса не заменяет его настройки доступа и allowlist. Основной backend хранит рабочие сущности и проксирует разрешённые запросы к агентам. Новые контуры включают рабочие задачи/проекты, согласование редакций БТ, поручения встреч и безопасность учётных записей.
 
 ## Контекст и компоненты
 
 ```text
-Browser SPA
-└─ /api/v1/* → Backlog coordinator FastAPI :8000
-       ├─ SQLAlchemy → PostgreSQL через DATABASE_URL
-       ├─ shared filesystem → ATTACHMENT_STORAGE_DIR
-       ├─ transactional outbox → Redis Stream → SSE
-       ├─ опциональный hourly notification scheduler
-       ├─ HTTP + X-Agent-Secret → Agent FastAPI :9000
-                                   ├─ PostgreSQL session store через SQLAlchemy
-                                   ├─ local Markdown/JSON knowledge base
-                                   ├─ mock или OpenAI-compatible LLM
-                                   └─ реестры HTTP/MCP-интеграций; активность зависит от конфигурации
-       └─ HTTP/JSON → Task Prioritiser FastAPI :9100
+Browser SPA → DMB FastAPI :8000
+  ├─ PostgreSQL / SQLAlchemy / Alembic
+  ├─ shared attachment storage
+  ├─ transactional outbox → Redis Stream → SSE
+  ├─ Agent V1 :9000
+  ├─ Agent V2 :9300 (gateway /api/v2/agent)
+  ├─ Backlog Assistant (gateway /api/v1/backlog-assistant; OpenCode runtime)
+  ├─ Task Prioritiser :9100 (opt-in)
+  └─ legacy Assistant V2 :9200 (opt-in; gateway /api/v2/assistant)
 ```
+
+Источники сверки: [backend/main.py](../backend/main.py), [router.js](../frontend/js/router.js), [start-project.ps1](../../scripts/start-project.ps1). Подробные действующие контракты: [WORK_TASKS](WORK_TASKS.md), [ACCOUNT_SECURITY](ACCOUNT_SECURITY.md), [Agent V2](../../agent-v2/README.md), [помощник по бэклогу](../../backlog-assistant/README.md). Локальная эксплуатация: [LOCAL_DEVELOPMENT](../../docs/LOCAL_DEVELOPMENT.md).
 
 ## Технологии
 

@@ -1,0 +1,17 @@
+[
+  {
+    "profile": "qa.inactive",
+    "http": 401,
+    "expected": 401
+  },
+  {
+    "profile": "qa.invited",
+    "http": 422,
+    "expected": 401
+  },
+  {
+    "profile": "qa.reset-required",
+    "http": 401,
+    "expected": 401
+  }
+]

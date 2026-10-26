@@ -1,16 +1,5 @@
 import { escapeHtml } from '../htmlUtils.js';
-
-function initials(name) {
-  const parts = String(name || '?').trim().split(/\s+/);
-  return escapeHtml((parts.length > 1 ? parts[0][0] + parts[1][0] : parts[0][0] || '?').toUpperCase());
-}
-
-function avatarColor(name) {
-  const colors = ['#6366f1','#8b5cf6','#a855f7','#ec4899','#f43f5e','#f97316','#f59e0b','#10b981','#06b6d4','#0ea5e9'];
-  let hash = 0;
-  for (const char of String(name || '')) hash = char.charCodeAt(0) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
-}
+import { avatar } from '../ui/dataDisplay.js';
 
 function commentTime(dateStr) {
   if (!dateStr) return '';
@@ -26,8 +15,9 @@ function commentTime(dateStr) {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-function renderComment(comment, users, depth = 0) {
+function renderComment(comment, users, canReply, depth = 0) {
   const name = comment.user_name || 'Пользователь';
+  const commentId = Number(comment.id) || 0;
   let text = escapeHtml(comment.text);
   for (const user of users) {
     if ((comment.mentioned_user_ids || []).includes(user.id)) {
@@ -36,24 +26,25 @@ function renderComment(comment, users, depth = 0) {
       text = text.replace(pattern, `<span class="comment-mention">@${escapedName}</span>`);
     }
   }
-  const replies = (comment.replies || []).map(reply => renderComment(reply, users, depth + 1)).join('');
-  return `<div class="comment-item${depth ? ' comment-item-reply' : ''}">
-    <div class="task-detail-avatar" style="width:32px;height:32px;background:${avatarColor(name)};font-size:12px;flex-shrink:0;">${initials(name)}</div>
+  const replies = (comment.replies || []).map(reply => renderComment(reply, users, canReply, depth + 1)).join('');
+  return `<article class="comment-item${depth ? ' comment-item-reply' : ''}" id="task-comment-${commentId}" data-comment-id="${commentId}" tabindex="-1" aria-label="Комментарий пользователя ${escapeHtml(name)}">
+    ${avatar({ name, className: 'task-detail-avatar' })}
     <div class="comment-body">
       <div class="comment-header"><span class="comment-author">${escapeHtml(name)}</span><span class="comment-time">${escapeHtml(commentTime(comment.created_at))}</span></div>
       <div class="comment-text">${text}</div>
-      <div class="comment-actions"><button class="comment-reply-btn" data-reply-id="${Number(comment.id) || 0}" data-reply-name="${escapeHtml(name)}">Ответить</button></div>
+      ${canReply ? `<div class="comment-actions"><button type="button" class="btn btn-secondary btn-sm ui-btn comment-reply-btn" data-reply-id="${commentId}" data-reply-name="${escapeHtml(name)}" aria-label="Ответить пользователю ${escapeHtml(name)}">Ответить</button></div>` : ''}
       ${replies ? `<div class="comment-replies">${replies}</div>` : ''}
     </div>
-  </div>`;
+  </article>`;
 }
 
-export function renderComments(container, comments, users) {
+export function renderComments(container, comments, users, options = {}) {
   if (!container) return;
   const items = Array.isArray(comments) ? comments : [];
+  const canReply = options.canReply !== false;
   container.innerHTML = items.length
-    ? `<div class="comments-feed">${items.map(item => renderComment(item, users || [])).join('')}</div>`
-    : '<div class="text-muted" style="text-align:center;padding:20px;">Комментариев пока нет</div>';
+    ? `<div class="comments-feed" role="feed" aria-label="Комментарии задачи">${items.map(item => renderComment(item, users || [], canReply)).join('')}</div>`
+    : '<div class="ui-component-empty" role="status">Комментариев пока нет</div>';
   container.querySelectorAll('[data-reply-id]').forEach(button => {
     button.addEventListener('click', () => {
       window.__setReplyTo?.(Number(button.dataset.replyId), button.dataset.replyName || 'Пользователь');
@@ -62,11 +53,26 @@ export function renderComments(container, comments, users) {
 }
 
 export function renderMentionOptions(dropdown, users) {
+  dropdown.setAttribute?.('role', 'listbox');
+  dropdown.setAttribute?.('aria-label', 'Пользователи для упоминания');
   dropdown.innerHTML = users.map((user, index) => {
     const displayName = user.name || user.login || user.email || '';
-    return `<div class="mention-item${index === 0 ? ' selected' : ''}" data-user-id="${Number(user.id) || 0}" data-user-name="${escapeHtml(displayName)}">
-      <div class="task-detail-avatar" style="width:24px;height:24px;background:${avatarColor(displayName)};font-size:9px;">${initials(displayName)}</div>
+    const userId = Number(user.id) || 0;
+    return `<div class="mention-item ui-selection-option${index === 0 ? ' selected' : ''}" id="mention-option-${userId}" role="option" aria-selected="${index === 0 ? 'true' : 'false'}" data-user-id="${userId}" data-user-name="${escapeHtml(displayName)}">
+      ${avatar({ name: displayName, size: 24, className: 'task-detail-avatar' })}
       <span>${escapeHtml(displayName)}</span>
     </div>`;
   }).join('');
+}
+
+export function focusCommentTarget(container, commentId) {
+  const id = Number(commentId);
+  if (!container || !Number.isInteger(id) || id <= 0) return false;
+  const target = container.querySelector?.(`[data-comment-id="${id}"]`);
+  if (!target) return false;
+  container.querySelectorAll?.('.comment-item.is-targeted').forEach(item => item.classList.remove('is-targeted'));
+  target.classList.add('is-targeted');
+  target.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  target.focus?.({ preventScroll: true });
+  return true;
 }

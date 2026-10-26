@@ -4,7 +4,7 @@ globalThis.window = {
   app: { store: { get: () => ({ role: 'Администратор' }) } },
 };
 
-const { columnFilters, getFilteredList } = await import('../js/components/filterToolbar.js');
+const { columnFilters, getFilteredList, savedViewStateKey } = await import('../js/components/filterToolbar.js');
 
 const tasks = [
   {
@@ -58,4 +58,30 @@ columnFilters.backlog = {
 assert.deepEqual(getFilteredList('backlog', tasks).map(task => task.id), [1], 'different filters must combine with AND');
 
 columnFilters.backlog = {};
+
+const legacySavedState = {
+  toolbar: { search: '', sort: 'id-desc', filters: {} },
+  page: { columns: { title: true }, columnOrder: ['title'] },
+};
+const normalizedAppliedState = {
+  toolbar: { filters: {}, sort: 'id-desc', search: '' },
+  page: { columnOrder: ['title', 'new_column'], columns: { title: true, new_column: false } },
+};
+const appliedBaseline = savedViewStateKey(normalizedAppliedState);
+assert.notEqual(
+  savedViewStateKey(legacySavedState),
+  appliedBaseline,
+  'a legacy saved view may differ structurally after new fields are normalized into it',
+);
+assert.equal(
+  savedViewStateKey({ ...normalizedAppliedState, toolbar: { search: '', filters: {}, sort: 'id-desc' } }),
+  appliedBaseline,
+  'the applied baseline must ignore object key order and remain clean before user changes',
+);
+assert.notEqual(
+  savedViewStateKey({ ...normalizedAppliedState, page: { ...normalizedAppliedState.page, columns: { title: false, new_column: false } } }),
+  appliedBaseline,
+  'a real user change must differ from the applied baseline',
+);
+
 console.log('filter toolbar behavior: OK');

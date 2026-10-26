@@ -1,0 +1,25 @@
+/* Small data marks share tokens; their surrounding list/table owns layout. */
+:root { --chart-category-1: #6366f1; --chart-category-2: #f59e0b; --chart-category-3: #10b981; --chart-category-4: #8b5cf6; --chart-category-5: #0ea5e9; --chart-category-6: #f43f5e; --chart-category-7: #94a3b8; --chart-category-8: #14b8a6; --chart-category-9: #f97316; --chart-category-10: #ec4899; }
+:root .ui-avatar { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 var(--avatar-size, 32px); width: var(--avatar-size, 32px); height: var(--avatar-size, 32px); border-radius: var(--radius-full); color: var(--text-primary); background: var(--bg-tertiary); font-size: calc(var(--avatar-size, 32px) * .375); font-weight: var(--font-semibold); }
+.ui-avatar[data-ui-size="20"] { --avatar-size: 20px; }
+.ui-avatar[data-ui-size="24"] { --avatar-size: 24px; }
+.ui-avatar[data-ui-size="28"] { --avatar-size: 28px; }
+.ui-avatar[data-ui-size="40"] { --avatar-size: 40px; }
+.ui-avatar[data-ui-size="48"] { --avatar-size: 48px; }
+.ui-avatar[data-ui-color="indigo"] { background: var(--accent-light); color: var(--accent-text); }
+.ui-avatar[data-ui-color="violet"] { background: var(--info-light); color: var(--info-text); }
+.ui-avatar[data-ui-color="rose"] { background: var(--danger-light); color: var(--danger-text); }
+.ui-avatar[data-ui-color="amber"] { background: var(--warning-light); color: var(--warning-text); }
+.ui-avatar[data-ui-color="emerald"] { background: var(--success-light); color: var(--success-text); }
+.ui-avatar[data-ui-color="sky"] { background: var(--info-light); color: var(--info-text); }
+:root .ui-tag { display: inline-flex; align-items: center; max-width: 100%; gap: var(--space-1); padding: 2px 6px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-tertiary); color: var(--text-secondary); font-size: var(--text-xs); line-height: 1.4; overflow-wrap: anywhere; }
+:root .ui-tag[style] { border-inline-start: 3px solid var(--ui-tag-color, var(--border-color)); }
+.ui-progress { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; width: 100%; --progress-color: var(--accent-solid); }
+.ui-progress[data-ui-tone="success"] { --progress-color: var(--success); }
+.ui-progress[data-ui-tone="warning"] { --progress-color: var(--warning); }
+.ui-progress[data-ui-tone="danger"] { --progress-color: var(--danger); }
+.ui-progress[data-ui-tone="neutral"] { --progress-color: var(--text-muted); }
+.ui-progress[data-ui-tone="info"] { --progress-color: var(--info); }
+.ui-progress-track { display: block; flex: 1; min-width: 24px; height: 6px; overflow: hidden; background: var(--bg-tertiary); border-radius: var(--radius-full); }
+.ui-progress-fill { display: block; height: 100%; background: var(--progress-color); border-radius: inherit; }
+.ui-progress-value { flex: none; color: var(--text-secondary); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }

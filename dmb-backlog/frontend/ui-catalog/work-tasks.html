@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Рабочие задачи · UI kit</title>
+<link rel="stylesheet" href="../css/fonts.css"><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/base.css"><link rel="stylesheet" href="../css/components.css"><link rel="stylesheet" href="../css/ui/kit.css"><link rel="stylesheet" href="../css/work-tasks.css"><link rel="stylesheet" href="../css/work-board.css">+</head><body><main class="work-page work-task-workplace"><h1>Рабочие задачи · состояния компонентов</h1><p>Изолированные примеры на реальных компонентах. Данные демонстрационные, обращения к API отсутствуют.</p>
+<label>Тема <select id="theme" class="form-control"><option value="light">Светлая</option><option value="dark">Тёмная</option></select></label>
+<h2>Очередь, выбранность, длинный текст, сроки и приоритеты</h2><div id="queue"></div>
+<h2>Карточки доски</h2><ul id="cards" class="work-board-items" style="max-width:296px;padding:0;list-style:none"></ul>
+<h2>Состояния действий</h2><div id="actions" class="work-actions"></div><p role="status" id="status"></p>
+<h2>Состояния чисел</h2><p>Выполнены · Не включены</p><p>Есть препятствие · —</p><p>Без исполнителя · 0</p>
+</main><script type="module">
+import {renderWorkQueue,workToday} from '../js/components/workQueue.js?v=3';
+import {boardCard} from '../js/components/workBoard.js?v=3';
+import {button} from '../js/ui/primitives.js?v=4';
+const rows=[
+ {id:1,public_id:'WRK-101',title:'Согласовать критерии готовности требований и подготовить подробное описание ожидаемого результата для всех участников межкомандного процесса',status:'in_progress',assignee_id:1,assignee_name:'Александра Константиновна Константинопольская',due_date:workToday(),priority:'urgent',blocked_reason:'Ожидаем согласование формата выгрузки',blocked:true,blocked_reason_preview:'Ожидаем согласование формата выгрузки',context:{title:'Проект обновления внутреннего реестра и согласования требований'}},
+ {id:2,public_id:'WRK-102',title:'Принять подготовленный результат',status:'in_acceptance',assignee_id:1,assignee_name:'Иван Петров',acceptor_name:'Мария Смирнова',next_step:{actor_name:'Мария Смирнова'},priority:'high',checklist_progress:{done:2,total:3}},
+ {id:3,public_id:'WRK-103',title:'Уточнить ожидаемый результат',status:'new',priority:'normal'}
+];
+document.getElementById('queue').innerHTML=renderWorkQueue({items:rows,total:3},{selectedId:1});
+document.getElementById('cards').innerHTML=rows.map(row=>boardCard(row,1)).join('');
+document.getElementById('actions').innerHTML=button({label:'Начать работу',variant:'primary'})+button({label:'Недоступно',attrs:{disabled:true}})+button({label:'Сохранение…',attrs:{disabled:true,'aria-busy':true}});
+document.getElementById('theme').onchange=e=>document.documentElement.dataset.theme=e.target.value;
+document.querySelector('main').addEventListener('click',e=>{if(e.target.closest('button'))document.getElementById('status').textContent='Это демонстрация состояния; серверные данные не изменяются.';});
+</script></body></html>

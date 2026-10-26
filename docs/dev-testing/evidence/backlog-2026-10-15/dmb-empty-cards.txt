@@ -1,0 +1,83 @@
+ставки событий":
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Бэклог DMB
+  - combobox "Поиск задач"
+  - button "Спросить помощника о текущей странице":
+  - 'button "Уведомления: 10 непрочитанных"':
+    - generic: "10"
+  - button "Переключить тему":
+  - button "Т.Бабяк":
+    - generic: ТБ
+    - generic: Т.Бабяк
+- main:
+  - heading "Бэклог DMB" [level=1]
+  - paragraph: Все задачи платформы
+  - button "Пользовательские представления":
+    - generic: Представление…
+  - button "Сохранить представление":
+  - button "Настройка отображения столбцов":
+  - generic "Режим отображения":
+    - button "Табличное представление":
+    - button "Карточное представление" [active]:
+  - button "Быстрое редактирование" [disabled]:
+  - button "Массовые операции" [disabled]:
+  - group "Импорт и экспорт":
+    - button "Импорт из Excel":
+    - button "Экспорт в CSV":
+  - button "Обновить":
+  - textbox "Поиск по ID, названию и описанию":
+    - /placeholder: Поиск по ID и названию…
+    - text: UX-AUDIT-NOT-FOUND-20261015
+  - generic "Закреплённые фильтры":
+    - 'button "Статус: Все"':
+      - generic: "Статус:"
+      - generic: Все
+    - 'button "Приоритет: Все"':
+      - generic: "Приоритет:"
+      - generic: Все
+    - 'button "Команда: Все"':
+      - generic: "Команда:"
+      - generic: Все
+    - 'button "Срок: Все"':
+      - generic: "Срок:"
+      - generic: Все
+    - 'button "Проект: Все"':
+      - generic: "Проект:"
+      - generic: Все
+  - button "Все фильтры":
+    - generic: Все фильтры
+  - button "Сброс":
+    - text: Сброс
+  - paragraph: В текущей выборке нет задач для изменения.
+  - 'button "Просрочено: 148"':
+    - generic: Просрочено
+    - strong: "148"
+  - 'button "Важные задачи: 77"':
+    - generic: Важные задачи
+    - strong: "77"
+  - 'button "В работе: 247"':
+    - generic: В работе
+    - strong: "247"
+  - 'button "Холд: 0"':
+    - generic: Холд
+    - strong: "0"
+  - 'button "Отклонённые: 1"':
+    - generic: Отклонённые
+    - strong: "1"
+  - 'button "Текущие задачи: 75"':
+    - generic: Текущие задачи
+    - strong: "75"
+  - 'button "Прошлый квартал: 69"':
+    - generic: Прошлый квартал
+    - strong: "69"
+  - 'button "Проблемный C/V: 70"':
+    - generic: Проблемный C/V
+    - strong: "70"
+  - status:
+    - heading "Задачи не найдены" [level=3]
+    - paragraph: Измените условия поиска или сбросьте фильтры.
+  - status: "Найдено: 0 задач"

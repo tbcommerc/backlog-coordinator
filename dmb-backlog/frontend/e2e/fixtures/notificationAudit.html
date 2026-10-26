@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Изолированное ревью уведомлений</title>
+<script src="/js/lib/lucide.min.js"></script>
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/components.css"><link rel="stylesheet" href="/css/pages.css"><link rel="stylesheet" href="/css/responsive.css"><link rel="stylesheet" href="/css/modal-system.css"><link rel="stylesheet" href="/css/feedback.css"><link rel="stylesheet" href="/css/ui/kit.css">
+<style>body{overflow:auto}#page-content{padding:24px}.audit-controls{padding:8px;border:2px dashed #888;display:flex;flex-wrap:wrap;gap:8px}.audit-controls button{padding:6px}#audit-log{white-space:pre-wrap;overflow-wrap:anywhere}@media(max-width:640px){#page-content{padding:12px}}</style></head>
+<body><aside class="audit-controls" aria-label="Управление изолированным стендом"><strong>Тестовые данные; без БД</strong><button id="audit-read-error">Ошибка чтения: выкл</button><button id="audit-write-error">Ошибка записи: выкл</button><button id="audit-external-read">Прочитать #2 в другой вкладке (имитация)</button><button id="audit-empty">Очистить тестовую выборку</button><button id="audit-theme">Переключить тему стенда</button><output id="audit-log" role="status"></output></aside><main id="page-content"></main><div id="toast-container"></div><div id="feedback-dialog-container"></div>
+<script type="module">
+import {renderNotifications,initNotifications} from '/js/components/notifications.js';
+import {renderOutboxDeadLetters,initOutboxDeadLetters} from '/js/components/outboxDeadLetters.js';
+import {renderSettings,initSettings} from '/js/components/settings.js';
+import {showToast,formatErrorMessage} from '/js/uiFeedback.js';
+import {initModalAccessibility} from '/js/modalAccessibility.js';
+const p=new URLSearchParams(location.search), surface=p.get('surface')||'notifications';
+let readError=false,writeError=false;
+const log=value=>document.getElementById('audit-log').textContent=value;
+const addControl=(id,label,handler)=>{const b=document.createElement('button');b.id=id;b.textContent=label;b.onclick=handler;document.querySelector('.audit-controls').appendChild(b);};
+window.toast=showToast;window.formatErrorMessage=formatErrorMessage;
+window.getUserInitials=()=> 'Т';window.getAvatarColor=()=> '#6366f1';
+const base=Date.now();
+let items=Array.from({length:43},(_,i)=>({id:i+1,category:i===0?'reporting':i===2?'mention':i===3?'assignment':i===4?'request':'comment',title:i===0?'Обновите прогресс квартальных целей':`Тестовое уведомление ${i+1}${i===1?' — длинное описание решения по задаче для проверки переноса и доступности действий':''}`,body:i===1?'ОченьДлинноеНеразрывноеЗначение'.repeat(8):'Изолированная проверка интерфейса.',importance:i===0?'high':'medium',is_read:i>35,is_resolved:i===42,created_at:new Date(base-i*86400000/3).toISOString(),task_id:i>0&&i!==4?42:null,action_url:i===0?'#/quarterly-goals-update?source=notification':i===4?'#/customer/request/42':'#/backlog?task=42&tab=com'}));
+const prefs={comment:true};
+addControl('audit-new-event','Новое уведомление (имитация)',()=>{items.unshift({id:100,category:'comment',title:'Новое событие при прокрутке',body:'Контроль сохранения позиции',importance:'medium',is_read:false,is_resolved:false,created_at:new Date().toISOString(),task_id:42,action_url:'#/backlog?task=42&tab=com'});document.dispatchEvent(new CustomEvent('dmb:notification-changed',{detail:{action:'created',notification_ids:[100]}}));});
+Object.assign(document.getElementById('audit-new-event').style,{position:'fixed',bottom:'8px',right:'8px',zIndex:'9999'});
+let events=[{id:7,event_type:'task.updated',aggregate_type:'Task',aggregate_id:42,aggregate_version:3,attempts:12,dead_lettered_at:new Date().toISOString(),last_error:'Соединение с тестовым сервисом прервано',payload:{task_id:42,message:'только тестовые данные'}}];
+const snapshot=()=>({summary:{unread:items.filter(n=>!n.is_read&&!n.is_resolved).length,requires_action:items.filter(n=>n.category==='reporting'&&!n.is_resolved).length,today:items.filter(n=>n.created_at.slice(0,10)===new Date().toISOString().slice(0,10)).length,by_category:{}}});
+const app={store:{get:()=>({name:'Тестовый профиль',role_name:'Изолированный стенд'})},notificationStore:{refresh:async()=>{if(readError)throw Error('Failed to fetch');return snapshot();}},refreshNotifications:async()=>{},router:{navigate:path=>log('Переход: '+path)},api:{
+ async get(path){if(readError)throw Error('Failed to fetch');const u=new URL(path,location.origin),q=u.searchParams;if(u.pathname==='/notifications/preferences')return {preferences:{...prefs}};
+ if(u.pathname==='/admin/outbox/dead-letters'){const found=events.filter(n=>!q.get('search')||JSON.stringify(n).includes(q.get('search')));return {items:structuredClone(found),total:found.length,pages:found.length?1:0};}
+ if(u.pathname!=='/notifications')throw Error('Unexpected '+path);
+ const a=items.filter(n=>(!q.has('category')||n.category===q.get('category'))&&(!q.has('importance')||n.importance===q.get('importance'))&&(!q.has('unread_only')||!n.is_read&&!n.is_resolved)&&(!q.has('requires_action')||n.category==='reporting'&&!n.is_resolved)&&(!q.has('resolved')||n.is_resolved===(q.get('resolved')==='true'))).sort((a,b)=>Number(a.is_read)-Number(b.is_read)||b.created_at.localeCompare(a.created_at)||b.id-a.id);
+ const start=(Number(q.get('page'))-1)*20;return {items:structuredClone(a.slice(start,start+20)),total:a.length};},
+ async put(path,data){if(writeError)throw Error('Failed to fetch');if(path==='/notifications/preferences'){Object.assign(prefs,data.preferences);return {preferences:{...prefs}};}
+ if(!['/notifications/read','/notifications/unread','/notifications/read-all'].includes(path))throw Error('Blocked '+path);
+ const changed=items.filter(n=>n.category!=='reporting'&&!n.is_resolved&&(path.endsWith('read-all')?!n.is_read:data.ids.includes(n.id)));changed.forEach(n=>n.is_read=path!=='/notifications/unread');return {changed_ids:changed.map(n=>n.id)};},
+ async post(path){if(path==='/notifications/ux-events')return {};if(path!=='/admin/outbox/dead-letters/7/requeue')throw Error('Blocked '+path);if(writeError)throw Error('Failed to fetch');events=[];return {};}
+}};
+document.addEventListener('open-task',e=>log('Открытие задачи: '+JSON.stringify(e.detail)));
+document.getElementById('audit-read-error').onclick=e=>{readError=!readError;e.target.textContent='Ошибка чтения: '+(readError?'вкл':'выкл');};
+document.getElementById('audit-write-error').onclick=e=>{writeError=!writeError;e.target.textContent='Ошибка записи: '+(writeError?'вкл':'выкл');};
+document.getElementById('audit-external-read').onclick=()=>{const n=items.find(n=>n.id===2);if(n)n.is_read=true;document.dispatchEvent(new CustomEvent('dmb:notification-changed',{detail:{action:'read',notification_ids:[2]}}));};
+document.getElementById('audit-empty').onclick=()=>{items=[];events=[];document.dispatchEvent(new CustomEvent('dmb:notification-changed',{detail:{action:'read_all'}}));};
+document.getElementById('audit-theme').onclick=()=>document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
+initModalAccessibility();
+if(!location.hash)history.replaceState(null,'',location.pathname+location.search+(surface==='settings'?'#/settings?section=notifications':surface==='outbox'?'#/outbox-dead-letters':'#/notifications'));
+const [render,init]=surface==='settings'?[renderSettings,initSettings]:surface==='outbox'?[renderOutboxDeadLetters,initOutboxDeadLetters]:[renderNotifications,initNotifications];
+document.getElementById('page-content').innerHTML=render(app);await init(app);window.lucide?.createIcons();
+</script></body></html>

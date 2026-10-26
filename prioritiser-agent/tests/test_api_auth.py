@@ -54,4 +54,5 @@ def test_ready_is_public_when_optional_models_disabled(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "mock")
     monkeypatch.setattr(settings, "rag_vector", False)
     monkeypatch.setattr(settings, "value_analogy", False)
+    monkeypatch.setattr(settings, "strategy_use_rag", False)
     assert main.ready().status_code == 200

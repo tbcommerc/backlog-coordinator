@@ -1,0 +1,12 @@
+<!doctype html><html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Рабочие задачи</title>
+<link rel="stylesheet" href="/static/css/fonts.css"><link rel="stylesheet" href="/static/css/tokens.css"><link rel="stylesheet" href="/static/css/base.css"><link rel="stylesheet" href="/static/css/components.css"><link rel="stylesheet" href="/static/css/ui/kit.css"><link rel="stylesheet" href="/static/css/work-tasks.css"></head>
+<body><link rel="stylesheet" href="/static/css/work-board.css"><link rel="stylesheet" href="/static/css/work-workplace.css"><main id="page-content"></main><script type="module">
+import { API } from '/static/js/api.js';
+import { renderWorkTasks, initWorkTasks, mountWorkList } from '/static/js/components/workTasks.js';
+import { initModalAccessibility } from '/static/js/modalAccessibility.js';
+initModalAccessibility();
+document.querySelector('main').innerHTML=renderWorkTasks();
+window.app={api:new API(),store:{get:()=>({id:1,team_id:10})},router:{refreshCurrentRoute:()=>{}}};
+if(new URLSearchParams(location.search).get('presentation') === 'modal') await mountWorkList(document.getElementById('work-list'),window.app);
+else await initWorkTasks(window.app);
+</script></body></html>

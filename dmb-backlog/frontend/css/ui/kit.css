@@ -1,0 +1,4 @@
+/* SPA entry: shared components first, explicit legacy/page adapters last. */
+@import url("./core.css?v=5");
+@import url("./adapters.css?v=3");
+@import url("./registry.css?v=1");

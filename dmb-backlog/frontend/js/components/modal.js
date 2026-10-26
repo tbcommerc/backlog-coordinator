@@ -1,9 +1,24 @@
+import { taskStatusTone, taskPriorityTone } from '../taskDisplay.js';
+import { badge as uiBadge } from '../ui/primitives.js';
+import { mountRelations } from './workRelations.js?v=2';
+import { mountWorkList } from './workTasks.js?v=25';
+import { csvRows, downloadCsv, parseCsvRows, decodeCsvContent } from '../taskCsv.js';
+import { createPopover } from '../ui/popover.js';
+import { bindTooltip } from '../ui/tooltip.js';
 import { safeExternalUrl } from '../urlUtils.js';
-import { renderAttachments } from './taskAttachments.js';
-import { renderComments, renderMentionOptions } from './taskComments.js';
+import { avatar as uiAvatar, tag as uiTag, progress as uiProgress } from '../ui/dataDisplay.js';
+import { renderAttachments } from './taskAttachments.js?v=3';
+import { focusCommentTarget, renderComments, renderMentionOptions } from './taskComments.js?v=4';
 import { formatTaskPublicId } from '../taskPublicId.js';
 import { calculateCv, calculateTaskCv, cvZone } from '../taskMetrics.js';
 import { highlightSearchText } from '../htmlUtils.js';
+import { getTaskCommentPermission, getTaskEditPermission } from '../taskCardPermissions.js';
+import { buildCompetencyRateTable, competencyRateForYear, deadlineYearFromReference } from '../taskCardRates.js';
+import { createTaskCardRequestGate } from '../taskCardRequestGate.js';
+import { createTaskCommentDraftSession, parseCommentTarget } from '../taskCommentDraft.js';
+import { renderTaskCardMarkdown } from '../taskCardMarkdown.js';
+import { button as uiButton, control as uiControl, fieldFrame as uiFieldFrame, tab as uiTab } from '../ui/primitives.js';
+import { setButtonBusy, tabNavigationTarget } from '../ui/controls.js';
 
 // === DMB Backlog — Подробная карточка задачи (Master-Detail) ===
 // === Референс: Карточка задачи - референс.html ===
@@ -35,6 +50,9 @@ let _cardSaveRequestId = null;
 let _cardQuickSaveTimer = null;
 let _taskNetworkStateBound = false;
 let _taskRealtimeBound = false;
+const _taskCardRequestGate = createTaskCardRequestGate();
+const _taskCommentDraftSession = createTaskCommentDraftSession();
+let _commentTargetHandled = null;
 
 function newTaskRequestId() {
   return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -85,7 +103,12 @@ function restoreTaskModalDocumentTitle() {
 }
 
 function hasUnsavedTaskChanges() {
-  return Boolean(cardState?.dirty || _createTaskDirty);
+  return Boolean(
+    cardState?.dirty
+    || cardReportingDirtyCount()
+    || _taskCommentDraftSession.hasChanges(currentTask?.id)
+    || _createTaskDirty
+  );
 }
 
 function ensureTaskBeforeUnloadGuard() {
@@ -99,7 +122,7 @@ function ensureTaskBeforeUnloadGuard() {
 }
 
 function renderExternalTaskChangeBanner(detail) {
-  const body = document.getElementById('td-tiles-container');
+  const body = document.getElementById('mbody') || document.getElementById('td-tiles-container');
   if (!body || !currentTask?.id) return;
   let banner = document.getElementById('td-external-update-banner');
   if (!banner) {
@@ -109,27 +132,45 @@ function renderExternalTaskChangeBanner(detail) {
     banner.setAttribute('role', 'status');
     body.prepend(banner);
   }
-  const hasDraft = modalMode === 'edit' || cardState.dirty;
+  const hasDraft = modalMode === 'edit'
+    || cardState.dirty
+    || cardReportingDirtyCount() > 0
+    || _taskCommentDraftSession.hasChanges(currentTask?.id);
   banner.innerHTML = hasDraft
     ? '<strong>Задача изменена другим пользователем.</strong> Ваш черновик сохранён. При сохранении откроется сравнение версий — не перезагружайте карточку.'
     : '<strong>Задача изменилась.</strong> <button type="button" class="btn btn-sm btn-secondary" id="td-reload-external-task">Загрузить актуальную версию</button>';
   if (!hasDraft) {
     document.getElementById('td-reload-external-task')?.addEventListener('click', async event => {
       const button = event.currentTarget;
+      const taskId = Number(currentTask?.id);
+      const overlay = document.getElementById('task-detail-overlay');
+      const api = window.app?.api;
+      if (!api || !cardMatchesCurrentTask(taskId)) return;
+      const request = _taskCardRequestGate.start('external-task-reload', taskId);
       button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
       try {
-        const fresh = await window.app.api.get(`/tasks/${currentTask.id}`);
+        const fresh = await api.get(`/tasks/${taskId}`, { signal: request.signal });
+        if (!_taskCardRequestGate.isCurrent(request.token, taskId)
+          || !cardMatchesCurrentTask(taskId)
+          || Number(fresh?.id) !== taskId
+          || overlay !== document.getElementById('task-detail-overlay')) return;
         stopLockPolling();
         stopViewerPolling();
-        unregisterViewer(currentTask.id);
+        unregisterViewer(taskId);
         deactivateTaskModalFocusTrap();
-        document.getElementById('task-detail-overlay')?.remove();
-        currentTask = null;
-        currentModal = null;
+        overlay?.remove();
+        if (currentModal === overlay) currentModal = null;
         openTaskModal(fresh);
       } catch (error) {
+        if (request.signal.aborted || error?.name === 'AbortError' || !_taskCardRequestGate.isCurrent(request.token, taskId)) return;
         window.toast?.(window.formatErrorMessage?.(error) || 'Не удалось обновить карточку', 'error');
-        button.disabled = false;
+      } finally {
+        _taskCardRequestGate.finish(request.token);
+        if (button.isConnected) {
+          button.disabled = false;
+          button.removeAttribute('aria-busy');
+        }
       }
     });
   }
@@ -163,8 +204,8 @@ function ensureTaskExternalLinkGuard() {
     try { destination = new URL(link.href, window.location.href); } catch (_) { return; }
     if (!/^https?:$/.test(destination.protocol) || destination.origin === window.location.origin) return;
     event.preventDefault();
-    if (cardState.saving || _createTaskSaving) {
-      window.toast?.('Дождитесь завершения сохранения', 'info');
+    if (cardState.saving || _createTaskSaving || _commentSubmitting) {
+      window.toast?.(_commentSubmitting ? 'Дождитесь завершения отправки комментария' : 'Дождитесь завершения сохранения', 'info');
       return;
     }
     const confirmed = await confirmTaskCardDiscard('Есть несохранённые изменения. Открыть внешнюю ссылку?');
@@ -512,7 +553,7 @@ function attachDictionarySearch(root, configs) {
     wrapper.className = 'dict-search-control';
     const trigger = document.createElement('button');
     trigger.type = 'button';
-    trigger.className = 'dict-combobox-trigger';
+    trigger.className = 'dict-combobox-trigger ui-control';
     trigger.setAttribute('aria-haspopup', 'listbox');
     trigger.setAttribute('aria-expanded', 'false');
     trigger.setAttribute('aria-label', label);
@@ -521,7 +562,7 @@ function attachDictionarySearch(root, configs) {
     panel.hidden = true;
     const search = document.createElement('input');
     search.type = 'search';
-    search.className = 'dict-search-input';
+    search.className = 'dict-search-input ui-control';
     search.placeholder = 'Поиск…';
     search.setAttribute('aria-label', `Поиск: ${label}`);
     const optionsList = document.createElement('div');
@@ -546,7 +587,7 @@ function attachDictionarySearch(root, configs) {
     if (preferredValues) {
       scopeButton = document.createElement('button');
       scopeButton.type = 'button';
-      scopeButton.className = 'dict-search-scope';
+      scopeButton.className = 'ui-link dict-search-scope';
       panel.append(scopeButton);
     }
     panel.append(optionsList);
@@ -578,7 +619,7 @@ function attachDictionarySearch(root, configs) {
         return Number(teamValues.has(b.value)) - Number(teamValues.has(a.value));
       });
       optionsList.innerHTML = visible.length
-        ? visible.map(option => '<button type="button" class="dict-search-option' + (option.value === selectedValue ? ' is-selected' : '') + '" role="option" aria-selected="' + (option.value === selectedValue ? 'true' : 'false') + '" data-value="' + escapeHtml(option.value) + '"' + (option.disabled ? ' disabled' : '') + '>' + escapeHtml(option.text) + '</button>').join('')
+        ? visible.map(option => '<button type="button" class="btn btn-secondary btn-sm ui-btn dict-search-option' + (option.value === selectedValue ? ' is-selected' : '') + '" role="option" aria-selected="' + (option.value === selectedValue ? 'true' : 'false') + '" data-value="' + escapeHtml(option.value) + '"' + (option.disabled ? ' disabled' : '') + '>' + escapeHtml(option.text) + '</button>').join('')
         : '<div class="dict-search-empty">Ничего не найдено</div>';
       if (scopeButton) scopeButton.textContent = showAll ? 'Только моя команда' : `Показать всех · ${originalOptions.filter(option => option.value !== '').length}`;
     };
@@ -654,7 +695,7 @@ function showTaskFormErrorSummary(summaryId, message, target) {
   if (target) {
     const link = document.createElement('button');
     link.type = 'button';
-    link.className = 'form-error-summary-link';
+    link.className = 'ui-link form-error-summary-link';
     link.textContent = 'Перейти к полю';
     link.addEventListener('click', () => {
       focusTaskFormErrorTarget(target);
@@ -691,7 +732,7 @@ function addTaskSaveRetryAction(summaryId, onRetry) {
   summary.querySelector('.form-error-retry')?.remove();
   const retry = document.createElement('button');
   retry.type = 'button';
-  retry.className = 'form-error-summary-link form-error-retry';
+  retry.className = 'ui-link form-error-summary-link form-error-retry';
   retry.textContent = 'Повторить сохранение';
   retry.disabled = isTaskNetworkOffline();
   retry.addEventListener('click', () => {
@@ -734,12 +775,15 @@ function metricFormat(val) {
 
 // === COMMENTS STATE ===
 let _commentsCache = [];
+let _commentsLoadedTaskId = null;
+let _commentsLoadSequence = 0;
 let _usersCache = [];
 let _mentionedUserIds = [];
 let _commentTaskId = null;
 let _mentionSelectedIdx = -1;
 let _mentionQueryStart = -1;
 let _pendingCommentSubmission = null;
+let _commentSubmitting = false;
 
 // === ATTACHMENTS STATE ===
 let _attachmentsCache = [];
@@ -778,21 +822,6 @@ function renderLinkJiraTags(links) {
   }).join('');
 }
 
-function getInitials(name) {
-  if (!name) return '?';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return name[0].toUpperCase();
-}
-
-function avatarColor(name) {
-  const colors = ['#6366f1','#8b5cf6','#a855f7','#ec4899','#f43f5e','#f97316','#f59e0b','#10b981','#06b6d4','#0ea5e9'];
-  if (!name) return colors[0];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
-}
-
 function cvClass(val) {
   if (val === null || val === '—') return '';
   const num = parseFloat(val);
@@ -801,52 +830,8 @@ function cvClass(val) {
   return 'text-warning';
 }
 
-function statusColor(status) {
-  const map = {
-    'НОВАЯ ЗАДАЧА': '#6b7280',
-    'НАЗНАЧЕНА КОМАНДА': '#6b7280',
-    'СБОР ТРЕБОВАНИЙ': '#6b7280',
-    'ПРОВЕРКА ТРЕБОВАНИЙ': '#6b7280',
-    'УТОЧНЕНИЕ ТРЕБОВАНИЙ': '#6b7280',
-    'ЭКСПРЕСС-ОЦЕНКА': '#6b7280',
-    'ПРИНЯТИЕ РЕШЕНИЯ': '#f59e0b',
-    'ПРИНЯТА В РАБОТУ': '#3b82f6',
-    'ЭСКАЛАЦИЯ НА ЛТ': '#8b5cf6',
-    'ХОЛД': '#8b5cf6',
-    'ОТКЛОНЕНА': '#ef4444',
-    'НЕ АКТУАЛЬНА': '#94a3b8',
-    'ВЫПОЛНЕНА': '#10b981'
-  };
-  return map[status] || '#6b7280';
-}
-
-function statusBg(status) {
-  const map = {
-    'НОВАЯ ЗАДАЧА': '#f1f5f9',
-    'НАЗНАЧЕНА КОМАНДА': '#f1f5f9',
-    'СБОР ТРЕБОВАНИЙ': '#f1f5f9',
-    'ПРОВЕРКА ТРЕБОВАНИЙ': '#f1f5f9',
-    'УТОЧНЕНИЕ ТРЕБОВАНИЙ': '#f1f5f9',
-    'ЭКСПРЕСС-ОЦЕНКА': '#f1f5f9',
-    'ПРИНЯТИЕ РЕШЕНИЯ': '#fef3c7',
-    'ПРИНЯТА В РАБОТУ': '#dbeafe',
-    'ЭСКАЛАЦИЯ НА ЛТ': '#ede9fe',
-    'ХОЛД': '#ede9fe',
-    'ОТКЛОНЕНА': '#fee2e2',
-    'НЕ АКТУАЛЬНА': '#f1f5f9',
-    'ВЫПОЛНЕНА': '#d1fae5'
-  };
-  return map[status] || '#f1f5f9';
-}
-
 function priorityColor(priority) {
-  const map = { 'ВЫСОКИЙ': '#ef4444', 'СРЕДНИЙ': '#f59e0b', 'НИЗКИЙ': '#6b7280' };
-  return map[priority] || '#6b7280';
-}
-
-function priorityBg(priority) {
-  const map = { 'ВЫСОКИЙ': '#fee2e2', 'СРЕДНИЙ': '#fef3c7', 'НИЗКИЙ': '#f1f5f9' };
-  return map[priority] || '#f1f5f9';
+  return `var(--${{ danger: 'danger-text', warning: 'warning-text', neutral: 'text-secondary' }[taskPriorityTone(priority)]})`;
 }
 
 // === LOCK HELPERS ===
@@ -884,14 +869,17 @@ async function releaseLock(taskId) {
 function startLockPolling(taskId) {
   stopLockPolling();
   _lockPollTimer = setInterval(async () => {
-    if (!currentTask?.id || currentTask.id !== taskId) return;
+    if (!cardMatchesCurrentTask(taskId)) return;
     // POST is both an atomic acquire and a lease heartbeat for the current
     // editor. View mode remains read-only and only observes lease state.
     const status = modalMode === 'edit'
       ? await acquireLock(taskId)
       : await fetchLockStatus(taskId);
+    if (!cardMatchesCurrentTask(taskId)) return;
     if (status?.error) {
-      _lockInfo = await fetchLockStatus(taskId);
+      const lockInfo = await fetchLockStatus(taskId);
+      if (!cardMatchesCurrentTask(taskId)) return;
+      _lockInfo = lockInfo;
       renderLockBanner();
       return;
     }
@@ -938,14 +926,17 @@ async function fetchViewers(taskId) {
 function startViewerPolling(taskId) {
   stopViewerPolling();
   _viewerPollTimer = setInterval(async () => {
-    if (!document.getElementById('task-detail-overlay')) {
+    if (!document.getElementById('task-detail-overlay') || !cardMatchesCurrentTask(taskId)) {
       stopViewerPolling();
       return;
     }
     // Presence is a renewable lease as well: keep our own last_seen_at alive
     // while the card remains open, then read the other active viewers.
     await registerViewer(taskId);
-    _currentViewers = await fetchViewers(taskId);
+    if (!cardMatchesCurrentTask(taskId)) return;
+    const viewers = await fetchViewers(taskId);
+    if (!cardMatchesCurrentTask(taskId)) return;
+    _currentViewers = viewers;
     renderViewerBanner();
   }, VIEWER_POLL_INTERVAL);
 }
@@ -1036,7 +1027,7 @@ function showConflictModal(errorData, app) {
     <div class="conflict-modal conflict-modal--wide" role="alertdialog" aria-modal="true" aria-labelledby="conflict-title">
       <div class="conflict-modal-header app-modal__header">
         <div class="conflict-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
@@ -1054,11 +1045,11 @@ function showConflictModal(errorData, app) {
       </div>
       ${hasChanges
         ? `<div class="conflict-diff-wrap">
-            <table class="diff-table diff-table--selectable">
+            <table class="ui-table ui-table-editor diff-table diff-table--selectable">
               <thead>
                 <tr>
-                  <th style="width:28px;"></th>
-                  <th style="width:28px;"></th>
+                  <th scope="col">Серверная версия</th>
+                  <th scope="col">Моя версия</th>
                   <th>Поле</th>
                   <th>На сервере</th>
                   <th>Ваше значение</th>
@@ -1071,19 +1062,19 @@ function showConflictModal(errorData, app) {
       }
       </div>
       <div class="conflict-actions conflict-actions--row app-modal__footer">
-        <button class="conflict-btn conflict-btn-primary" id="conflict-btn-save-selected" ${!hasChanges ? 'disabled' : ''}>
+        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-primary" id="conflict-btn-save-selected" ${!hasChanges ? 'disabled' : ''}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           Сохранить выбранные
         </button>
-        <button class="conflict-btn conflict-btn-danger" id="conflict-btn-force">
+        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-danger" id="conflict-btn-force">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Принудительно сохранить
         </button>
-        <button class="conflict-btn conflict-btn-secondary" id="conflict-btn-refresh">
+        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-secondary" id="conflict-btn-refresh">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           Обновить с сервера
         </button>
-        <button class="conflict-btn conflict-btn-ghost" id="conflict-btn-cancel" data-modal-close>Отмена</button>
+        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-ghost" id="conflict-btn-cancel" data-modal-close>Отмена</button>
       </div>
     </div>
   `;
@@ -1136,8 +1127,8 @@ function buildDiffRows(serverTask) {
     const rName = 'cr-' + field;
 
     rows.push(`<tr class="diff-row" data-field="${safeField}">
-      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="server" class="diff-radio" data-field="${safeField}" checked></td>
-      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="local" class="diff-radio" data-field="${safeField}"></td>
+      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="server" aria-label="Оставить серверное значение: ${safeLabel}" class="diff-radio" data-field="${safeField}" checked></td>
+      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="local" aria-label="Использовать моё значение: ${safeLabel}" class="diff-radio" data-field="${safeField}"></td>
       <td class="diff-field">${safeLabel}</td>
       <td class="diff-server">${safeServer}</td>
       <td class="diff-local">${safeLocal}</td>
@@ -1295,27 +1286,15 @@ function closeConflictModal() {
 
 // === STATUS / PRIORITY BADGES ===
 function renderStatusBadge(status) {
-  if (!status) return '<span class="badge badge-low">—</span>';
-  const color = statusColor(status);
-  const bg = statusBg(status);
-  const dotColor = status === 'ПРИНЯТА В РАБОТУ' ? '#3b82f6' : color;
-  return `<span class="task-detail-badge" style="background:${bg};color:${color};border-color:${color}33">
-    <span class="status-dot" style="background:${dotColor};${status === 'ПРИНЯТА В РАБОТУ' ? 'animation:pulse 2s infinite;' : ''}"></span>
-    ${escapeHtml(status)}
-  </span>`;
+  return uiBadge({ label: status || '—', tone: taskStatusTone(status) });
 }
 
 function renderPriorityBadge(priority) {
-  if (!priority) return '<span class="badge badge-low">—</span>';
-  const color = priorityColor(priority);
-  const bg = priorityBg(priority);
-  return `<span class="task-detail-badge" style="background:${bg};color:${color};border-color:${color}33">
-    ${priority === 'ВЫСОКИЙ' ? '🚩 ' : ''}${escapeHtml(priority)}
-  </span>`;
+  return uiBadge({ label: priority || '—', tone: taskPriorityTone(priority) });
 }
 
 function renderTagBadge(tag) {
-  return `<span class="task-detail-tag">${escapeHtml(tag)}</span>`;
+  return uiTag({ label: tag, className: 'task-detail-tag' });
 }
 
 // === SECTION TITLE ===
@@ -1336,9 +1315,7 @@ function infoRow(label, valueHtml, opts = {}) {
 // === AVATAR ===
 function avatarEl(name, size = 24) {
   if (!name) return '';
-  const initials = getInitials(name);
-  const color = avatarColor(name);
-  return `<div class="task-detail-avatar" style="width:${size}px;height:${size}px;background:${color};font-size:${size*0.4}px">${initials}</div>`;
+  return uiAvatar({ name, size, className: 'task-detail-avatar' });
 }
 
 // ============================================================
@@ -1599,8 +1576,7 @@ function renderOverviewDashboard(task) {
         ${tags.map(tag => {
           const name = typeof tag === 'object' && tag !== null ? String(tag.name || '') : String(tag);
           const color = typeof tag === 'object' && tag !== null ? (tag.color || '') : '';
-          const style = color ? `background:${color}22;color:${color};border-color:${color}55;` : '';
-          return name ? `<span class="b-tag" style="${style}">${escapeHtml(name)}</span>` : '';
+          return name ? uiTag({ label: name, color, className: 'b-tag' }) : '';
         }).join('')}
         ${safeExternalUrl(t.link_mockups) ? `<a class="b-tag" href="${escapeHtml(safeExternalUrl(t.link_mockups))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:#1e40af;background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2)">📎 Макеты</a>` : ''}
         ${renderLinkJiraTags(t.link_jira)}
@@ -1648,7 +1624,7 @@ async function renderHistoryTab(taskId, app) {
 
         html += `<div class="history-item">
           <div class="history-item-header">
-            ${item.changed_by_name ? avatarEl(item.changed_by_name, 20) : '<div class="task-detail-avatar" style="width:20px;height:20px;background:#94a3b8;font-size:8px">?</div>'}
+            ${item.changed_by_name ? avatarEl(item.changed_by_name, 20) : '<div class="task-detail-avatar" style="width:20px;height:20px;background:#94a3b8;font-size:var(--type-meta-size);line-height:var(--type-meta-line);">?</div>'}
             <span class="history-user">${escapeHtml(item.changed_by_name || 'Система')}</span>
             <span class="history-time">${time}</span>
           </div>
@@ -1702,13 +1678,13 @@ function renderTaskDetailModalLegacy(task, app) {
               Updated <b>${t.updated_at ? new Date(t.updated_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</b>
             </div>
             <div style="display:flex;gap:6px;align-items:center;">
-              <button class="task-detail-btn-icon" id="td-share-btn" title="Поделиться">
+              <button class="btn btn-secondary btn-sm ui-btn task-detail-btn-icon" id="td-share-btn" title="Поделиться">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               </button>
-              <button class="task-detail-btn-icon" id="td-edit-btn" title="Редактировать">
+              <button class="btn btn-secondary btn-sm ui-btn task-detail-btn-icon" id="td-edit-btn" title="Редактировать">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
-              <button class="task-detail-btn-icon task-detail-btn-close" id="td-close-btn" title="Закрыть" aria-label="Закрыть карточку задачи">
+              <button class="btn btn-secondary btn-sm ui-btn task-detail-btn-icon task-detail-btn-close" id="td-close-btn" title="Закрыть" aria-label="Закрыть карточку задачи">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -1718,19 +1694,19 @@ function renderTaskDetailModalLegacy(task, app) {
         <!-- Activity Tabs Bar (fixed below header) -->
         <div class="b-act-tabs-bar" id="td-act-tabs-bar">
           <div class="b-act-tabs">
-            <button class="b-act-tab active" data-act="overview">
+            <button class="btn btn-secondary btn-sm ui-btn b-act-tab active" data-act="overview">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
               Обзор
             </button>
-            <button class="b-act-tab" data-act="history">
+            <button class="btn btn-secondary btn-sm ui-btn b-act-tab" data-act="history">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
               История <b id="act-history-count">—</b>
             </button>
-            <button class="b-act-tab" data-act="comments">
+            <button class="btn btn-secondary btn-sm ui-btn b-act-tab" data-act="comments">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Комментарии <b id="act-comments-count">—</b>
             </button>
-            <button class="b-act-tab" data-act="files">
+            <button class="btn btn-secondary btn-sm ui-btn b-act-tab" data-act="files">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
               Файлы <b id="act-files-count">—</b>
             </button>
@@ -1757,26 +1733,26 @@ function renderTaskDetailModalLegacy(task, app) {
           <!-- Activity Panels (content only — tabs are above scroll) -->
           <div class="b-activity" id="td-activity">
             <div class="b-act-panel" id="act-panel-history">
-              <div class="text-muted" style="text-align:center;padding:20px">Загрузка истории...</div>
+              <div class="content-loading-state" style="text-align:center;padding:20px">Загрузка истории…</div>
             </div>
             <div class="b-act-panel" id="act-panel-comments">
               <div id="comments-list-container">
-                <div class="text-muted" style="text-align:center;padding:20px">Загрузка комментариев...</div>
+                <div class="content-loading-state" style="text-align:center;padding:20px">Загрузка комментариев…</div>
               </div>
               <div id="comment-form-container" style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:16px;">
                 <div id="reply-indicator" class="reply-indicator" style="display:none;">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
                   <span class="reply-indicator-text"></span>
-                  <button class="reply-indicator-cancel" onclick="window.__cancelReply()">
+                  <button class="btn btn-ghost btn-sm square-icon ui-btn reply-indicator-cancel" onclick="window.__cancelReply()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </div>
                 <div style="position:relative;">
-                  <textarea class="task-detail-input" id="comment-textarea" rows="3" placeholder="Напишите комментарий... Используйте @ для упоминания пользователей"></textarea>
-                  <div id="mention-dropdown" class="mention-dropdown" style="display:none;"></div>
+                  <textarea class="input ui-control task-detail-input" id="comment-textarea" rows="3" placeholder="Напишите комментарий... Используйте @ для упоминания пользователей"></textarea>
+                  <div id="mention-dropdown" class="ui-mention-popover" hidden></div>
                 </div>
                 <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-                  <button class="task-detail-btn task-detail-btn-primary" id="comment-submit-btn" disabled>
+                  <button class="btn btn-secondary btn-sm ui-btn task-detail-btn task-detail-btn-primary" id="comment-submit-btn" disabled>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     Отправить
                   </button>
@@ -1788,7 +1764,7 @@ function renderTaskDetailModalLegacy(task, app) {
                 <input type="file" id="attachment-file-input" multiple style="display:none;" />
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 <div class="attachment-drop-text">Перетащите файлы сюда или <span class="attachment-drop-browse">выберите</span></div>
-                <div class="attachment-drop-hint">Макс. размер: 50 МБ</div>
+                <div class="attachment-drop-hint">Макс. размер: 50 МиБ</div>
               </div>
               <div id="attachments-list-container" class="attachments-list-container"></div>
             </div>
@@ -1802,8 +1778,8 @@ function renderTaskDetailModalLegacy(task, app) {
             <span style="font-size:12px;color:var(--text-muted);">Режим редактирования</span>
           </div>
           <div class="td-edit-bar-actions">
-            <button class="task-detail-btn task-detail-btn-ghost" onclick="window.__cancelEdit()">Отмена</button>
-            <button class="task-detail-btn task-detail-btn-primary" id="td-save-btn" onclick="window.__saveFromEdit()">
+            <button class="btn btn-secondary btn-sm ui-btn task-detail-btn task-detail-btn-ghost" onclick="window.__cancelEdit()">Отмена</button>
+            <button class="btn btn-secondary btn-sm ui-btn task-detail-btn task-detail-btn-primary" id="td-save-btn" onclick="window.__saveFromEdit()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
               Сохранить
             </button>
@@ -1860,22 +1836,35 @@ function initActivityTabs() {
 async function loadAttachments(taskId, app) {
   const api = app?.api || window.app?.api;
   if (!api || !taskId) return;
+  const requestedTaskId = Number(taskId);
   try {
     const data = await api.get(`/tasks/${taskId}/attachments`);
+    if (Number(currentTask?.id) !== requestedTaskId) return;
     _attachmentsCache = data.items || [];
   } catch (e) {
+    if (Number(currentTask?.id) !== requestedTaskId) return;
     console.error('Failed to load attachments:', e);
     _attachmentsCache = [];
   }
+  cardState.filesCount = _attachmentsCache.length;
+  const filesHeading = document.getElementById('task-files-heading');
+  if (filesHeading) filesHeading.lastChild.textContent = 'Файлы' + (cardState.filesCount ? ' · ' + cardState.filesCount : '');
+  cardRenderTabs();
   renderAttachmentsList();
 }
 
 function renderAttachmentsList() {
   const container = document.getElementById('attachments-list-container');
-  renderAttachments(container, _attachmentsCache);
+  renderAttachments(container, _attachmentsCache, { canDelete: cardEditPermission().allowed });
 }
 
 window.__deleteAttachment = async function(taskId, attachmentId) {
+  if (!cardMatchesCurrentTask(taskId)) return;
+  const permission = cardEditPermission();
+  if (!permission.allowed) {
+    window.toast?.(permission.reason, 'warning');
+    return;
+  }
   const approved = await window.confirmAction?.({
     title: 'Удалить вложение?',
     message: 'Файл будет удалён из задачи. Это действие нельзя отменить.',
@@ -1883,6 +1872,11 @@ window.__deleteAttachment = async function(taskId, attachmentId) {
     destructive: true,
   });
   if (!approved) return;
+  const currentPermission = cardEditPermission();
+  if (!cardMatchesCurrentTask(taskId) || !currentPermission.allowed) {
+    if (!currentPermission.allowed) window.toast?.(currentPermission.reason, 'warning');
+    return;
+  }
   const api = window.app?.api;
   if (!api) return;
   try {
@@ -1896,6 +1890,7 @@ window.__deleteAttachment = async function(taskId, attachmentId) {
 };
 
 window.__downloadAttachment = async function(taskId, attachmentId) {
+  if (!cardMatchesCurrentTask(taskId)) return;
   const api = window.app?.api;
   if (!api) return;
   const attachment = _attachmentsCache.find(item => item.id === attachmentId);
@@ -1910,6 +1905,12 @@ window.__downloadAttachment = async function(taskId, attachmentId) {
 };
 
 async function saveTaskLinks(taskId, app) {
+  if (!cardMatchesCurrentTask(taskId)) return;
+  const permission = cardEditPermission();
+  if (!permission.allowed) {
+    window.toast?.(permission.reason, 'warning');
+    return;
+  }
   const api = app?.api || window.app?.api;
   if (!api) return;
   const mockupsInput = document.getElementById('link-mockups-input');
@@ -1940,21 +1941,32 @@ async function saveTaskLinks(taskId, app) {
   }
 }
 
+const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
+const ATTACHMENT_SIZE_ERROR = 'Максимальный размер вложения — 50 МиБ (52 428 800 байт). Уменьшите файл или выберите другой.';
+
 async function uploadFile(taskId, file, app) {
+  if (file.size > MAX_ATTACHMENT_BYTES) return ATTACHMENT_SIZE_ERROR;
+  if (!cardMatchesCurrentTask(taskId)) return 'Карточка задачи закрыта или изменена.';
+  const permission = cardEditPermission();
+  if (!permission.allowed) {
+    return permission.reason;
+  }
   const api = app?.api || window.app?.api;
-  if (!api) return;
+  if (!api) return 'Сервис загрузки недоступен.';
   const clientRequestId = newTaskRequestId();
   try {
     await api.upload(`/tasks/${taskId}/attachments`, file, { client_request_id: clientRequestId });
     window.toast?.(`Файл "${file.name}" загружен`, 'success');
     await loadAttachments(taskId, app);
   } catch (e) {
-    window.toast?.(`Ошибка загрузки "${file.name}": ${e.message || 'неизвестная'}`, 'error');
+    return e.status === 413 ? ATTACHMENT_SIZE_ERROR : (e.message || 'Не удалось загрузить файл. Повторите попытку.');
   }
 }
 
 function initAttachmentForm(taskId, app) {
   if (_attachmentFormInitialized) return;
+  if (!cardMatchesCurrentTask(taskId)) return;
+  if (!cardEditPermission().allowed) return;
 
   const dropZone = document.getElementById('attachment-drop-zone');
   const fileInput = document.getElementById('attachment-file-input');
@@ -1962,22 +1974,56 @@ function initAttachmentForm(taskId, app) {
 
   if (!dropZone || !fileInput) return;
   _attachmentFormInitialized = true;
+  let uploading = false;
+  const feedback = document.createElement('div');
+  feedback.id = 'attachment-upload-feedback';
+  feedback.innerHTML = '<div role="status" id="attachment-upload-status"></div><ul role="alert" id="attachment-upload-errors"></ul>';
+  dropZone.after(feedback);
+  const status = feedback.querySelector('#attachment-upload-status');
+  const errors = feedback.querySelector('#attachment-upload-errors');
+  async function uploadBatch(files) {
+    if (uploading || !files.length) return;
+    uploading = true; fileInput.disabled = true;
+    dropZone.setAttribute('aria-disabled', 'true');
+    dropZone.setAttribute('aria-busy', 'true');
+    errors.replaceChildren();
+    let loaded = 0;
+    try {
+      for (const [index, file] of files.entries()) {
+        if (!cardMatchesCurrentTask(taskId)) break;
+        status.textContent = 'Загрузка ' + (index + 1) + ' из ' + files.length + ': ' + file.name;
+        const error = await uploadFile(taskId, file, app);
+        if (error) { const item = document.createElement('li'); item.textContent = file.name + ': ' + error; errors.appendChild(item); }
+        else loaded++;
+      }
+      status.textContent = 'Загрузка завершена. Загружено: ' + loaded + ' из ' + files.length + '.';
+    } finally {
+      uploading = false; fileInput.disabled = false; fileInput.value = '';
+      dropZone.setAttribute('aria-disabled', 'false');
+      dropZone.setAttribute('aria-busy', 'false');
+    }
+  }
 
   if (saveLinksBtn) {
     saveLinksBtn.addEventListener('click', () => saveTaskLinks(taskId, app));
   }
 
   dropZone.addEventListener('click', (e) => {
+    if (uploading) return;
     if (e.target.closest('.attachment-drop-browse') || e.target === dropZone || e.target.closest('.attachment-drop-zone')) {
       fileInput.click();
     }
   });
 
+  dropZone.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (!uploading) fileInput.click();
+  });
+
   fileInput.addEventListener('change', async () => {
     const files = Array.from(fileInput.files);
-    for (const file of files) {
-      await uploadFile(taskId, file, app);
-    }
+    await uploadBatch(files);
     fileInput.value = '';
   });
 
@@ -1998,9 +2044,7 @@ function initAttachmentForm(taskId, app) {
     e.stopPropagation();
     dropZone.classList.remove('attachment-drop-zone-active');
     const files = Array.from(e.dataTransfer.files);
-    for (const file of files) {
-      await uploadFile(taskId, file, app);
-    }
+    await uploadBatch(files);
   });
 }
 
@@ -2093,7 +2137,9 @@ async function loadHistoryTab(taskId, app) {
 //  LOCK: check status on open
 // ============================================================
 async function checkAndRenderLock(taskId) {
-  _lockInfo = await fetchLockStatus(taskId);
+  const lockInfo = await fetchLockStatus(taskId);
+  if (!cardMatchesCurrentTask(taskId)) return;
+  _lockInfo = lockInfo;
   renderLockBanner();
   if (_lockInfo && _lockInfo.locked && !_lockInfo.is_mine) {
     const editBtn = document.getElementById('td-edit-btn');
@@ -2230,27 +2276,27 @@ function renderEditForm(task) {
   ];
 
   function bsel(id, opts, selected) {
-    return `<select class="b-edit-select" id="${id}">
+    return `<select class="input ui-control b-edit-select" id="${id}">
       ${opts.map(o => `<option value="${escapeHtml(String(o.value))}" ${(o.value === selected || o.label === selected) ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
     </select>`;
   }
 
   function binput(id, type, val, placeholder) {
-    return `<input type="${type}" class="b-edit-input" id="${id}" value="${escapeHtml(String(val ?? ''))}" placeholder="${escapeHtml(placeholder || '')}">`;
+    return `<input type="${type}" class="input ui-control b-edit-input" id="${id}" value="${escapeHtml(String(val ?? ''))}" placeholder="${escapeHtml(placeholder || '')}">`;
   }
 
   function bnum(id, val, placeholder) {
-    return `<input type="number" class="b-edit-num" id="${id}" value="${escapeHtml(String(val ?? ''))}" placeholder="${escapeHtml(placeholder || '')}">`;
+    return `<input type="number" class="input ui-control b-edit-num" id="${id}" value="${escapeHtml(String(val ?? ''))}" placeholder="${escapeHtml(placeholder || '')}">`;
   }
 
   function btextarea(id, val, placeholder, rows = 3) {
-    return `<textarea class="b-edit-textarea" id="${id}" rows="${rows}" placeholder="${escapeHtml(placeholder || '')}">${escapeHtml(val || '')}</textarea>`;
+    return `<textarea class="input ui-control b-edit-textarea" id="${id}" rows="${rows}" placeholder="${escapeHtml(placeholder || '')}">${escapeHtml(val || '')}</textarea>`;
   }
 
   function apiSelect(id, currentId, currentName) {
     const val = currentId || currentName || '';
     const display = currentName || currentId || '';
-    return `<select class="b-edit-select" id="${id}"><option value="${escapeHtml(String(val))}" ${val ? 'selected' : ''}>${escapeHtml(display || 'Загрузка...')}</option></select>`;
+    return `<select class="input ui-control b-edit-select" id="${id}"><option value="${escapeHtml(String(val))}" ${val ? 'selected' : ''}>${escapeHtml(display || 'Загрузка...')}</option></select>`;
   }
 
   function field(label, inputHtml) {
@@ -2329,11 +2375,11 @@ function renderEditForm(task) {
       </div>
       <div style="margin-bottom:8px">
         <label class="b-edit-label">Директорская</label>
-        <textarea class="b-edit-textarea" id="edit-directorate-status" rows="2" placeholder="Опишите статус...">${escapeHtml(t.directorate_status || '')}</textarea>
+        <textarea class="input ui-control b-edit-textarea" id="edit-directorate-status" rows="2" placeholder="Опишите статус...">${escapeHtml(t.directorate_status || '')}</textarea>
       </div>
       <div style="margin-bottom:8px">
         <label class="b-edit-label">ДИД</label>
-        <textarea class="b-edit-textarea" id="edit-did-status" rows="2" placeholder="Опишите статус...">${escapeHtml(t.did_status || '')}</textarea>
+        <textarea class="input ui-control b-edit-textarea" id="edit-did-status" rows="2" placeholder="Опишите статус...">${escapeHtml(t.did_status || '')}</textarea>
       </div>
       <div>
         <label class="b-edit-label">Ключ. проект</label>
@@ -2369,14 +2415,14 @@ function renderEditForm(task) {
     </div>
     <div style="margin-top:10px">
       ${field(FL('tags'), `
-        <select class="b-edit-select" id="edit-tags" multiple style="min-height:96px;width:100%">
+        <select class="input ui-control b-edit-select" id="edit-tags" multiple style="width:100%">
           ${(window.app?.tags || []).map(tg => {
             const name = String(tg.name || '');
             return `<option value="${escapeHtml(name)}" ${tags.includes(name) ? 'selected' : ''}>${escapeHtml(name)}</option>`;
           }).join('')}
         </select>
-        <input type="text" class="b-edit-input" id="edit-tags-new" placeholder="Новые теги через запятую" style="margin-top:6px">
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Выберите из списка или введите новые — они создадутся автоматически</div>
+        <input type="text" class="input ui-control b-edit-input" id="edit-tags-new" placeholder="Новые теги через запятую" style="margin-top:6px">
+        <div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);margin-top:4px;">Выберите из списка или введите новые — они создадутся автоматически</div>
       `)}
     </div>
   </div>`;
@@ -2571,36 +2617,53 @@ async function saveTaskDetail(app) {
 // ============================================================
 export function closeTaskDetailModal() {
   if (document.getElementById('task-detail-overlay')?.classList.contains('modal-closing')) return;
+  const taskId = currentTask?.id;
+  const closingModal = document.getElementById('task-detail-overlay');
   restoreTaskModalDocumentTitle();
   deactivateTaskModalFocusTrap();
   if (_cardRouteTabHandler) { document.removeEventListener('task-tab-change', _cardRouteTabHandler); _cardRouteTabHandler = null; }
   const returnFocus = takeTaskModalReturnFocus();
   window.app?.router?.clearTaskRoute?.();
+  _taskCardRequestGate.cancelAll();
+  if (taskId) _taskCommentDraftSession.clear(taskId);
   cardState.dirty = false;
   cardState.editing = false;
   cardState.draft = null;
+  cardState.prioritiserRunning = '';
+  clearCardReportingDrafts();
   stopLockPolling();
   stopViewerPolling();
   if (currentTask?.id) {
     unregisterViewer(currentTask.id);
   }
   const dropdown = document.getElementById('mention-dropdown');
-  if (dropdown) {
-    dropdown.style.display = 'none';
-  }
+  dropdown?._uiPopover?.close({ restoreFocus: false });
   _commentFormInitialized = false;
   _attachmentFormInitialized = false;
-  const taskId = currentTask?.id;
+  clearTimeout(_cardAttachmentHydrationTimer);
+  _cardAttachmentHydrationTimer = null;
+  _commentsCache = [];
+  _commentsLoadedTaskId = null;
+  _attachmentsCache = [];
+  _usersCache = [];
+  _mentionedUserIds = [];
+  _mentionSelectedIdx = -1;
+  _mentionQueryStart = -1;
+  _replyingTo = null;
+  _commentTaskId = null;
+  _commentTargetHandled = null;
+  _pendingCommentSubmission = null;
+  _commentSubmitting = false;
   const wasEditing = modalMode === 'edit';
-  const overlay = document.getElementById('task-detail-overlay');
+  const overlay = closingModal;
   if (overlay) {
     overlay.classList.add('modal-closing');
     setTimeout(() => {
       overlay.remove();
-      currentTask = null;
-      currentModal = null;
-      modalMode = 'view';
-      restoreTaskModalReturnFocus(returnFocus);
+      if (Number(currentTask?.id) === Number(taskId)) currentTask = null;
+      if (currentModal === overlay) currentModal = null;
+      if (!currentTask) modalMode = 'view';
+      if (!document.getElementById('task-detail-overlay')) restoreTaskModalReturnFocus(returnFocus);
     }, 200);
   }
   if (taskId && wasEditing) {
@@ -2628,11 +2691,53 @@ export function openTaskModal(task = null) {
 
   initTaskDetailModal(window.app);
 
+  if (task?.id) {
+    const prefillKey = `assistant-v2-task-prefill:${task.id}`;
+    const rawPrefill = sessionStorage.getItem(prefillKey);
+    if (rawPrefill) {
+      sessionStorage.removeItem(prefillKey);
+      try {
+        const parsed = JSON.parse(rawPrefill);
+        applyAssistantV2TaskPrefill(parsed, window.app).catch(error => {
+          console.error('Failed to apply Assistant V2 prefill', error);
+          cardToast('Не удалось применить предложение Assistant V2', 'warn');
+        });
+      } catch (error) {
+        console.error('Invalid Assistant V2 prefill', error);
+      }
+    }
+  }
+
   if (window.lucide) {
     window.lucide.createIcons();
   }
 
   return currentModal;
+}
+
+export async function applyAssistantV2TaskPrefill(prefill, app = window.app) {
+  if (!currentTask?.id || !prefill || typeof prefill !== 'object') return false;
+  await cardStartEdit(app, 'title');
+  if (!cardState.editing || !cardState.draft) return false;
+  const allowed = {
+    title: 'title',
+    description: 'description',
+    comment: 'comment',
+    link_mockups: 'mockupUrl',
+    link_requirements: 'reqLinks',
+  };
+  Object.entries(allowed).forEach(([source, target]) => {
+    if (!Object.prototype.hasOwnProperty.call(prefill, source)) return;
+    const value = prefill[source];
+    cardState.draft[target] = target === 'reqLinks'
+      ? (Array.isArray(value) ? value : cardParseLinks(value))
+      : (value ?? '');
+  });
+  cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
+  if (cardState.dirty) saveCardEditDraft();
+  cardRender();
+  cardToast('Предложение Assistant V2 перенесено в форму. Проверьте и сохраните изменения вручную.', 'ok');
+  return cardState.dirty;
 }
 
 // ============================================================
@@ -2648,7 +2753,7 @@ export function initModal(app) {
 
 export function renderTaskCard(task, searchQuery = '') {
   // Мини-карточка для канбан/карточек
-  const prio = task.priority_name || task.priority || 'СРЕДНИЙ';
+  const prio = task.priority_name || task.priority || '';
   const prioClass = prio === 'ВЫСОКИЙ' ? 'badge-high' : prio === 'СРЕДНИЙ' ? 'badge-medium' : 'badge-low';
   const p = task.progress || 0;
   const statusName = task.status_name || task.status;
@@ -2656,26 +2761,26 @@ export function renderTaskCard(task, searchQuery = '') {
   const deadlineName = task.deadline_name || task.deadline || '—';
   const ownerName = task.owner_name || task.owner || '—';
   const safeId = escapeHtml(formatTaskPublicId(task));
-  const safePrio = escapeHtml(prio);
+  const safePrio = escapeHtml(prio || '—');
   const highlight = value => highlightSearchText(value, searchQuery);
   return `
-    <div class="task-card" data-id="${safeId}">
+    <div class="task-card" data-id="${escapeHtml(task.id)}">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-        <span class="font-mono text-muted" style="font-size:11px;flex-shrink:0;">${highlight(formatTaskPublicId(task))}</span>
+        <span class="font-mono text-muted" style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);flex-shrink:0;">${highlight(formatTaskPublicId(task))}</span>
         <div style="display:flex;gap:4px;flex-shrink:0;">
-          <span class="badge ${prioClass}" style="font-size:10px;">${safePrio}</span>
+          <span class="badge ${prioClass}" style="">${safePrio}</span>
         </div>
       </div>
-      <div class="task-card-title">${highlight(task.title)}</div>
+      <div class="task-card-title"><button type="button" class="ui-surface-action task-card-open" data-open-task aria-label="Открыть ${safeId}: ${escapeHtml(task.title)}">${highlight(task.title)}</button></div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;">
         ${renderStatusBadge(statusName)}
-        <span class="badge badge-info" style="font-size:10px;">${escapeHtml(teamName)}</span>
+        <span class="badge badge-info" style="">${escapeHtml(teamName)}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
-        <div class="progress-bar" style="flex:1;height:6px;"><div class="progress-fill ${p >= 100 ? 'success' : ''}" style="width:${p}%;height:6px;"></div></div>
-        <span style="font-size:10px;color:var(--text-muted);min-width:28px;text-align:right;">${escapeHtml(String(p))}%</span>
+        ${uiProgress({ value: p, tone: p >= 100 ? 'success' : 'accent' })}
+        <span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);min-width:28px;text-align:right;">${escapeHtml(String(p))}%</span>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border);font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);">
         <span>${escapeHtml(deadlineName)}</span>
         <span>${escapeHtml(ownerName)}</span>
       </div>
@@ -2721,11 +2826,9 @@ function renderCreateTaskForm() {
         
         <!-- Modal Header -->
         <div class="mhead">
-          <div class="head-row1"><div class="row-badges"><span class="task-head-chip task-head-chip--type">Новая задача</span><span class="header-unsaved-indicator" id="create-unsaved-indicator" role="status" aria-live="polite" hidden><i aria-hidden="true"></i>Не сохранено</span></div>
+          <div class="head-row1"><div class="row-badges">${uiBadge({ label: 'Новая задача', tone: 'neutral', className: 'task-head-chip' })}<span class="header-unsaved-indicator" id="create-unsaved-indicator" role="status" aria-live="polite" hidden><i aria-hidden="true"></i>Не сохранено</span></div>
           <div class="row-actions">
-            <button class="iconbtn close" id="create-close-btn" title="Закрыть" aria-label="Закрыть форму создания задачи">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button></div></div>
+            ${uiButton({ label: 'Закрыть форму создания задачи', iconMarkup: cardIcon('x'), iconOnly: true, size: 'large', variant: 'ghost', className: 'iconbtn close', attrs: { id: 'create-close-btn', title: 'Закрыть' } })}</div></div>
           <h2 class="head-title" id="create-task-title">Создание новой задачи</h2>
         </div>
 
@@ -2739,14 +2842,11 @@ function renderCreateTaskForm() {
         <div class="mfoot">
           <div class="fmeta"><b>*</b> Обязательные поля</div>
           <div class="factions">
-            <button class="btn ghost" id="create-clear-draft-btn" type="button">Очистить форму</button>
+            ${uiButton({ label: 'Очистить форму', attrs: { id: 'create-clear-draft-btn' } })}
             <span class="create-draft-saved-status" id="create-draft-saved-status" role="status" aria-live="polite" hidden></span>
             <span class="task-network-status" role="status" hidden></span>
-            <button class="btn ghost" id="create-cancel-btn" onclick="document.getElementById('create-close-btn')?.click()">Отмена</button>
-            <button class="btn primary" id="create-save-btn" disabled aria-disabled="true" title="Заполните обязательные поля">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-              Создать задачу
-            </button>
+            ${uiButton({ label: 'Отмена', attrs: { id: 'create-cancel-btn' } })}
+            ${uiButton({ label: 'Создать задачу', variant: 'primary', iconMarkup: cardIcon('check'), attrs: { id: 'create-save-btn', disabled: true, 'aria-disabled': true, title: 'Заполните обязательные поля' } })}
           </div>
         </div>
 
@@ -2782,10 +2882,15 @@ function taskFormLabel(key, requiredMark = '') {
 
 function taskFormCreateControl(key, opts = {}) {
   const meta = taskFormMeta(key), id = meta.createId;
-  if (meta.type === 'select') return '<select id="' + id + '"><option value="">' + escapeHtml(opts.placeholder || 'Загрузка...') + '</option></select>';
-  if (meta.type === 'textarea') return '<textarea id="' + id + '" rows="' + (opts.rows || 4) + '" maxlength="' + meta.maxLength + '" placeholder="' + escapeHtml(opts.placeholder || '') + '"></textarea>';
-  const value = opts.value == null ? '' : String(opts.value);
-  return '<input type="' + meta.type + '" id="' + id + '" value="' + escapeHtml(value) + '"' + (key === 'title' ? ' class="title-input" maxlength="255" required autofocus' : '') + (meta.required ? ' required' : '') + ' placeholder="' + escapeHtml(opts.placeholder || '') + '">';
+  return uiControl({
+    id, kind: meta.type === 'select' || meta.type === 'textarea' ? meta.type : 'input',
+    type: meta.type, value: opts.value ?? '', required: meta.required,
+    className: key === 'title' ? 'title-input' : '',
+    options: [{ value: '', label: opts.placeholder || 'Загрузка...' }],
+    attrs: { rows: meta.type === 'textarea' ? opts.rows || 4 : undefined,
+      maxlength: meta.maxLength, autofocus: key === 'title', placeholder: opts.placeholder || '',
+      'aria-describedby': meta.required ? id + '-error' : undefined },
+  });
 }
 
 function taskFormEditControl(key, value) {
@@ -2793,41 +2898,38 @@ function taskFormEditControl(key, value) {
   if (meta.type === 'select') return cardSel(key, cardNameList(meta.dict), value);
   if (meta.type === 'date') return cardDateC(key, value);
   if (meta.type === 'textarea') return '<div class="character-count-wrap">' + cardTaC(key, value, key === 'comment' ? 3 : 4, meta.maxLength) + taskCharacterCounter(key, 'edit') + '</div>';
-  if (meta.type === 'url') return '<input type="url" data-k="' + key + '" value="' + escapeHtml(value || '') + '" placeholder="https://...">';
-  return '<input type="text" data-k="' + key + '" value="' + escapeHtml(value || '') + '">';
+  return uiControl({ type: meta.type, value: value ?? '', attrs: { 'data-k': key, 'aria-label': meta.label, maxlength: meta.maxLength, placeholder: meta.type === 'url' ? 'https://...' : undefined } });
 }
 
 function renderCreateTaskFormFieldsV30() {
-  const req = '<span class="create-required" aria-hidden="true">*</span>';
-  const error = (id, text) => '<div class="create-field-error" id="' + id + '-error" hidden>' + escapeHtml(text) + '</div>';
-  const field = (label, control, opts = {}) => '<div class="icell ' + (opts.span2 ? 'span2cell' : '') + '"><label class="ilab" for="' + opts.forId + '"><span class="flt">' + label + '</span></label><div class="ival">' + control + '</div>' + (opts.error ? error(opts.forId, opts.error) : '') + '</div>';
+  const errors = { title: 'Введите название задачи', team: 'Выберите ответственную команду', type: 'Выберите тип задачи', channel: 'Выберите канал поступления', receivedAt: 'Укажите дату получения' };
+  const field = (key, opts = {}) => {
+    const meta = taskFormMeta(key);
+    const control = taskFormCreateControl(key, opts);
+    return uiFieldFrame({
+      id: meta.createId, label: meta.label, required: meta.required,
+      controlMarkup: meta.maxLength ? '<div class="character-count-wrap">' + control + taskCharacterCounter(key) + '</div>' : control,
+      error: errors[key] || '', errorHidden: true, errorClassName: 'create-field-error',
+      className: opts.className || 'icell' + (opts.span2 ? ' span2cell' : ''),
+    });
+  };
   let h = '<div class="task-top">'
-    + '<div class="task-title-card"><label class="desc-label" for="create-title">' + taskFormLabel('title', req) + '</label><div class="character-count-wrap">' + taskFormCreateControl('title', { placeholder: 'Введите название задачи' }) + taskCharacterCounter('title') + '</div>' + error('create-title', 'Введите название задачи') + '</div>'
-    + '<div class="task-desc"><label class="desc-label" for="create-description">' + taskFormLabel('description') + '</label><div class="character-count-wrap">' + taskFormCreateControl('description', { placeholder: 'Опишите задачу' }) + taskCharacterCounter('description') + '</div></div></div>';
+    + field('title', { className: 'task-title-card', placeholder: 'Введите название задачи' })
+    + field('description', { className: 'task-desc', placeholder: 'Опишите задачу' }) + '</div>';
 
   h += cardSec('Паспорт задачи', 'file') + '<div class="bento">';
   h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('team') + '<span>Регистрация</span></div><div class="cl-grid exec">'
-    + field(taskFormLabel('team', req), taskFormCreateControl('team'), { forId: 'create-team', error: 'Выберите ответственную команду' })
-    + field(taskFormLabel('type', req), taskFormCreateControl('type'), { forId: 'create-task-type', error: 'Выберите тип задачи' })
-    + field(taskFormLabel('channel', req), taskFormCreateControl('channel'), { forId: 'create-channel', error: 'Выберите канал поступления' })
-    + field(taskFormLabel('receivedAt', req), taskFormCreateControl('receivedAt', { value: new Date().toISOString().slice(0, 10) }), { forId: 'create-date-received', error: 'Укажите дату получения' })
-    + '</div></div>';
-
+    + field('team') + field('type') + field('channel')
+    + field('receivedAt', { value: new Date().toISOString().slice(0, 10) }) + '</div></div>';
   h += '<div class="cl half"><div class="cl-h">' + cardIcon('folder') + '<span>Классификация</span></div><div class="cl-grid duo">'
-    + field(taskFormLabel('project'), taskFormCreateControl('project', { placeholder: 'Не выбран' }), { forId: 'create-project' })
-    + field(taskFormLabel('priority'), taskFormCreateControl('priority'), { forId: 'create-priority' })
-    + field(taskFormLabel('deadline'), taskFormCreateControl('deadline', { placeholder: 'Не выбран' }), { forId: 'create-deadline', span2: true })
-    + '</div></div>';
-
+    + field('project', { placeholder: 'Не выбран' }) + field('priority')
+    + field('deadline', { placeholder: 'Не выбран', span2: true }) + '</div></div>';
   h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Участники</span></div><div class="cl-grid duo">'
-    + field(taskFormLabel('customer'), taskFormCreateControl('customer', { placeholder: 'Не выбран' }), { forId: 'create-business-customer' })
-    + field(taskFormLabel('assignee'), taskFormCreateControl('assignee', { placeholder: 'Не назначен' }), { forId: 'create-owner' })
-    + field(taskFormLabel('comment'), '<div class="character-count-wrap">' + taskFormCreateControl('comment', { rows: 3, placeholder: 'Общий комментарий' }) + taskCharacterCounter('comment') + '</div>', { forId: 'create-comment', span2: true })
-    + '</div></div></div>';
-
+    + field('customer', { placeholder: 'Не выбран' }) + field('assignee', { placeholder: 'Не назначен' })
+    + field('comment', { rows: 3, placeholder: 'Общий комментарий', span2: true }) + '</div></div></div>';
   h += cardSec('Ссылки', 'link') + cardGrid(
-    cardF(taskFormLabel('mockupUrl'), taskFormCreateControl('mockupUrl', { placeholder: 'https://...' })),
-    cardF(taskFormLabel('jiraLinks'), taskFormCreateControl('jiraLinks', { placeholder: 'https://...' }))
+    field('mockupUrl', { placeholder: 'https://...', className: 'field' }),
+    field('jiraLinks', { placeholder: 'https://...', className: 'field' })
   );
   return h;
 }
@@ -2838,21 +2940,21 @@ function renderCreateTaskFormFields() {
   ];
 
   function select(id, opts, selected) {
-    return `<select class="task-detail-input" id="${id}">
+    return `<select class="input ui-control task-detail-input" id="${id}">
       ${opts.map(o => `<option value="${escapeHtml(String(o.value))}" ${o.value === selected ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
     </select>`;
   }
 
   function input(id, type, val, placeholder) {
-    return `<input type="${type}" class="task-detail-input" id="${id}" value="${escapeHtml(String(val ?? ''))}" placeholder="${escapeHtml(placeholder || '')}">`;
+    return `<input type="${type}" class="input ui-control task-detail-input" id="${id}" value="${escapeHtml(String(val ?? ''))}" placeholder="${escapeHtml(placeholder || '')}">`;
   }
 
   function textarea(id, val, placeholder, rows = 3) {
-    return `<textarea class="task-detail-input" id="${id}" rows="${rows}" placeholder="${escapeHtml(placeholder || '')}">${escapeHtml(val || '')}</textarea>`;
+    return `<textarea class="input ui-control task-detail-input" id="${id}" rows="${rows}" placeholder="${escapeHtml(placeholder || '')}">${escapeHtml(val || '')}</textarea>`;
   }
 
   function apiSelect(id) {
-    return `<select class="task-detail-input" id="${id}"><option value="">Загрузка...</option></select>`;
+    return `<select class="input ui-control task-detail-input" id="${id}"><option value="">Загрузка...</option></select>`;
   }
 
   function field(label, inputHtml, opts = {}) {
@@ -2872,7 +2974,7 @@ function renderCreateTaskFormFields() {
   // Title (required)
   html += `<div class="td-edit-field td-edit-field-full">
     <label class="td-edit-label">${FL('title')} <span style="color:var(--danger,#ef4444);">*</span></label>
-    <input type="text" class="task-detail-input" id="create-title" placeholder="Введите название задачи" autofocus>
+    <input type="text" class="input ui-control task-detail-input" id="create-title" placeholder="Введите название задачи" autofocus>
     <div class="create-field-error" id="create-title-error" style="display:none;color:var(--danger,#ef4444);font-size:12px;margin-top:4px;">Поле обязательно для заполнения</div>
   </div>`;
 
@@ -2889,7 +2991,7 @@ function renderCreateTaskFormFields() {
   // Description (required)
   html += `<div class="td-edit-field td-edit-field-full">
     <label class="td-edit-label">${FL('description')} <span style="color:var(--danger,#ef4444);">*</span></label>
-    <textarea class="task-detail-input" id="create-description" rows="4" placeholder="Опишите задачу..."></textarea>
+    <textarea class="input ui-control task-detail-input" id="create-description" rows="4" placeholder="Опишите задачу..."></textarea>
     <div class="create-field-error" id="create-description-error" style="display:none;color:var(--danger,#ef4444);font-size:12px;margin-top:4px;">Поле обязательно для заполнения</div>
   </div>`;
 
@@ -2961,6 +3063,7 @@ async function initCreateTaskModal(app) {
   });
 
   document.getElementById('create-close-btn')?.addEventListener('click', requestCloseCreateTaskModal);
+  document.getElementById('create-cancel-btn')?.addEventListener('click', requestCloseCreateTaskModal);
   const handleCreateFormChange = event => {
     if (!_createTaskSaving) _createTaskRequestId = null;
     if (event.target?.id === 'create-title') _createDuplicateOverrideSignature = null;
@@ -3167,6 +3270,7 @@ function showCreateApiFieldError(id, message) {
   }
   error.textContent = message;
   error.hidden = false;
+  control.setAttribute('aria-describedby', error.id);
   return control;
 }
 
@@ -3203,13 +3307,10 @@ async function saveCreateTask(app) {
   if (!api) return;
 
   const saveBtn = document.getElementById('create-save-btn');
-  const originalHtml = saveBtn?.innerHTML || 'Создать задачу';
   if (saveBtn) {
     _createTaskSaving = true;
     updateHeaderUnsavedIndicator('create-unsaved-indicator', _createTaskDirty, true, createTaskChangedFieldNames().length);
-    saveBtn.disabled = true;
-    saveBtn.setAttribute('aria-busy', 'true');
-    saveBtn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Создаём…';
+    setButtonBusy(saveBtn, true, 'Создаём…');
   }
 
   function getVal(id) {
@@ -3263,16 +3364,16 @@ async function saveCreateTask(app) {
   });
 
   try {
-    if (saveBtn) saveBtn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Проверяем дубликаты…';
+    setButtonBusy(saveBtn, true, 'Проверяем дубликаты…');
     const proceedAfterDuplicateCheck = await confirmCreateTaskIsNotDuplicate(app, data.title);
     if (!proceedAfterDuplicateCheck) {
       document.getElementById('create-title')?.focus();
       return;
     }
-    if (saveBtn) saveBtn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Создаём…';
+    setButtonBusy(saveBtn, true, 'Создаём…');
     const createdTask = await runTaskSaveWithSingleRetry(
       () => taskSaveRequestWithTimeout(signal => api.post('/tasks/', data, { signal })),
-      () => { if (saveBtn) saveBtn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Повторяем…'; }
+      () => { setButtonBusy(saveBtn, true, 'Повторяем…'); }
     );
     clearCreateTaskDraft();
     _createTaskRequestId = null;
@@ -3300,10 +3401,7 @@ async function saveCreateTask(app) {
   } finally {
     _createTaskSaving = false;
     updateHeaderUnsavedIndicator('create-unsaved-indicator', _createTaskDirty, false, createTaskChangedFieldNames().length);
-    if (saveBtn) {
-      saveBtn.innerHTML = originalHtml;
-      saveBtn.removeAttribute('aria-busy');
-    }
+    setButtonBusy(saveBtn, false);
     updateCreateFormReadiness();
   }
 }
@@ -3312,39 +3410,76 @@ async function saveCreateTask(app) {
 //  COMMENTS FUNCTIONALITY
 // ============================================================
 
-window.__setReplyTo = function(commentId, userName) {
-  _replyingTo = { id: commentId, name: userName };
+function currentCommentTaskId(taskId = currentTask?.id) {
+  const id = Number(taskId);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+function renderReplyIndicator(reply = _replyingTo) {
   const indicator = document.getElementById('reply-indicator');
-  const textarea = document.getElementById('comment-textarea');
-  if (indicator) {
-    indicator.style.display = 'flex';
-    indicator.querySelector('.reply-indicator-text').textContent = `Ответ на ${userName}`;
+  if (!indicator) return;
+  indicator.style.display = reply ? 'flex' : 'none';
+  const text = indicator.querySelector('.reply-indicator-text');
+  if (text) text.textContent = reply ? `Ответ на ${reply.name || 'комментарий'}` : '';
+}
+
+function updateCommentDraftStatus(taskId = currentTask?.id) {
+  const status = document.getElementById('comment-draft-status');
+  if (!status) return;
+  status.hidden = !_taskCommentDraftSession.hasChanges(taskId);
+}
+
+window.__setReplyTo = function(commentId, userName) {
+  const permission = cardCommentPermission();
+  if (!permission.allowed) {
+    window.toast?.(permission.reason, 'warning');
+    return;
   }
+  const taskId = currentCommentTaskId();
+  if (!taskId) return;
+  _taskCommentDraftSession.begin(taskId);
+  const draft = _taskCommentDraftSession.setReply(commentId, userName);
+  _replyingTo = draft.reply;
+  renderReplyIndicator();
+  updateCommentDraftStatus(taskId);
+  const textarea = document.getElementById('comment-textarea');
   if (textarea) textarea.focus();
 };
 
 window.__cancelReply = cancelReply;
 
 function cancelReply() {
+  const taskId = currentCommentTaskId();
+  if (taskId && _taskCommentDraftSession.snapshot(taskId)) {
+    _taskCommentDraftSession.begin(taskId);
+    _taskCommentDraftSession.clearReply();
+  }
   _replyingTo = null;
-  const indicator = document.getElementById('reply-indicator');
-  if (indicator) indicator.style.display = 'none';
+  renderReplyIndicator();
+  updateCommentDraftStatus(taskId);
 }
 
 async function loadComments(taskId, app) {
   const api = app?.api || window.app?.api;
   if (!api || !taskId) return;
-  _commentTaskId = taskId;
+  const requestedTaskId = Number(taskId);
+  const sequence = ++_commentsLoadSequence;
+  _commentTaskId = requestedTaskId;
   try {
     const [commentsData, usersData] = await Promise.allSettled([
       api.get(`/tasks/${taskId}/comments`),
       api.get('/users/'),
     ]);
+    if (Number(currentTask?.id) !== requestedTaskId || sequence !== _commentsLoadSequence) return;
     if (commentsData.status === 'fulfilled') {
       _commentsCache = commentsData.value.items || [];
+      _commentsLoadedTaskId = requestedTaskId;
+      cardState.commentsCount = _commentsCache.length;
+      cardRenderTabs();
     } else {
       console.error('Failed to load comments:', commentsData.reason);
       _commentsCache = [];
+      _commentsLoadedTaskId = null;
     }
     if (usersData.status === 'fulfilled') {
       const raw = usersData.value.items || usersData.value || [];
@@ -3354,6 +3489,7 @@ async function loadComments(taskId, app) {
     }
     renderCommentList();
   } catch (e) {
+    if (Number(currentTask?.id) !== requestedTaskId) return;
     console.error('Failed to load comments:', e);
     const container = document.getElementById('comments-list-container');
     if (container) container.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;">Не удалось загрузить комментарии</div>';
@@ -3362,33 +3498,69 @@ async function loadComments(taskId, app) {
 
 function renderCommentList() {
   const container = document.getElementById('comments-list-container');
-  renderComments(container, _commentsCache, _usersCache);
+  renderComments(container, _commentsCache, _usersCache, { canReply: cardCommentPermission().allowed });
+  const targetId = parseCommentTarget(window.location.hash);
+  const targetKey = targetId && currentTask?.id ? `${currentTask.id}:${targetId}` : null;
+  if (container && _commentsLoadedTaskId === Number(currentTask?.id) && cardState.tab === 'com' && targetKey && _commentTargetHandled !== targetKey) {
+    requestAnimationFrame(() => {
+      if (!container.isConnected || container !== document.getElementById('comments-list-container') || cardState.tab !== 'com' || `${currentTask?.id}:${parseCommentTarget(window.location.hash)}` !== targetKey || _commentTargetHandled === targetKey) return;
+      const focused = focusCommentTarget(container, targetId);
+      _commentTargetHandled = targetKey;
+      if (!focused) {
+        cardToast('Комментарий по ссылке не найден или больше недоступен', 'warn');
+        (document.getElementById('comment-textarea') || document.getElementById('task-tab-com'))?.focus({ preventScroll: true });
+      }
+    });
+  }
 }
 
 let _commentFormInitialized = false;
 
 function initCommentForm(taskId, app) {
   if (_commentFormInitialized) return;
+  const permission = cardCommentPermission();
+  if (!permission.allowed) return;
   const textarea = document.getElementById('comment-textarea');
   const submitBtn = document.getElementById('comment-submit-btn');
   const dropdown = document.getElementById('mention-dropdown');
   if (!textarea || !submitBtn || !dropdown) return;
+  const activeTaskId = currentCommentTaskId(taskId);
+  if (!activeTaskId) return;
   _commentFormInitialized = true;
+  dropdown._uiPopover = createPopover({ trigger: textarea, panel: dropdown, role: 'listbox', label: 'Пользователи для упоминания', focus: false,
+    onClose: () => { textarea.removeAttribute('aria-activedescendant'); _mentionSelectedIdx = -1; } });
+
+  const draft = _taskCommentDraftSession.begin(activeTaskId);
+  textarea.value = draft.text;
+  _mentionedUserIds = [...draft.mentionedUserIds];
+  _replyingTo = draft.reply;
+  submitBtn.disabled = !textarea.value.trim();
+  renderReplyIndicator();
+  updateCommentDraftStatus(activeTaskId);
 
   textarea.addEventListener('input', () => {
+    _taskCommentDraftSession.begin(activeTaskId);
+    _taskCommentDraftSession.setText(textarea.value);
+    _mentionedUserIds = _mentionedUserIds.filter(userId => {
+      const user = _usersCache.find(item => Number(item.id) === Number(userId));
+      const name = user?.name || user?.login || user?.email;
+      return !name || textarea.value.includes(`@${name}`);
+    });
+    _taskCommentDraftSession.setMentionedUserIds(_mentionedUserIds);
     submitBtn.disabled = !textarea.value.trim();
+    updateCommentDraftStatus(activeTaskId);
     detectMention(textarea, dropdown);
   });
 
   textarea.addEventListener('keydown', (e) => {
-    const isOpen = dropdown.style.display !== 'none';
+    const isOpen = dropdown._uiPopover?.isOpen === true;
     if (isOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
       e.preventDefault();
       const items = dropdown.querySelectorAll('.mention-item');
       if (items.length === 0) return;
       if (e.key === 'ArrowDown') _mentionSelectedIdx = Math.min(_mentionSelectedIdx + 1, items.length - 1);
       else _mentionSelectedIdx = Math.max(_mentionSelectedIdx - 1, 0);
-      items.forEach((it, i) => it.classList.toggle('selected', i === _mentionSelectedIdx));
+      setMentionSelection(textarea, dropdown, _mentionSelectedIdx);
       return;
     }
     if (isOpen && e.key === 'Enter' && _mentionSelectedIdx >= 0) {
@@ -3404,8 +3576,7 @@ function initCommentForm(taskId, app) {
     }
     if (isOpen && e.key === 'Escape') {
       e.preventDefault();
-      dropdown.style.display = 'none';
-      _mentionSelectedIdx = -1;
+      hideMentionDropdown(textarea, dropdown);
       return;
     }
     if (e.key === 'Enter' && !e.shiftKey && !isOpen) {
@@ -3415,7 +3586,7 @@ function initCommentForm(taskId, app) {
   });
 
   textarea.addEventListener('blur', () => {
-    setTimeout(() => { dropdown.style.display = 'none'; _mentionSelectedIdx = -1; }, 150);
+    setTimeout(() => hideMentionDropdown(textarea, dropdown), 150);
   });
 
   submitBtn.addEventListener('click', () => submitComment(taskId, app));
@@ -3431,23 +3602,42 @@ function initCommentForm(taskId, app) {
   });
 }
 
+function hideMentionDropdown(textarea, dropdown) {
+  dropdown?._uiPopover?.close({ restoreFocus: false });
+  textarea?.setAttribute('aria-expanded', 'false');
+  textarea?.removeAttribute('aria-activedescendant');
+  _mentionSelectedIdx = -1;
+}
+
+function setMentionSelection(textarea, dropdown, index) {
+  const items = Array.from(dropdown?.querySelectorAll('.mention-item') || []);
+  items.forEach((item, itemIndex) => {
+    const selected = itemIndex === index;
+    item.classList.toggle('selected', selected);
+    item.setAttribute('aria-selected', selected ? 'true' : 'false');
+  });
+  const active = items[index];
+  if (active?.id) textarea?.setAttribute('aria-activedescendant', active.id);
+  else textarea?.removeAttribute('aria-activedescendant');
+}
+
 function detectMention(textarea, dropdown) {
   const val = textarea.value;
   const pos = textarea.selectionStart;
   const textBefore = val.substring(0, pos);
   const atIndex = textBefore.lastIndexOf('@');
   if (atIndex === -1) {
-    dropdown.style.display = 'none';
+    hideMentionDropdown(textarea, dropdown);
     return;
   }
   const charBefore = atIndex > 0 ? textBefore[atIndex - 1] : '';
   if (charBefore !== '' && charBefore !== ' ' && charBefore !== '\n') {
-    dropdown.style.display = 'none';
+    hideMentionDropdown(textarea, dropdown);
     return;
   }
   const query = textBefore.substring(atIndex + 1);
   if (query.includes(' ') || query.includes('\n')) {
-    dropdown.style.display = 'none';
+    hideMentionDropdown(textarea, dropdown);
     return;
   }
   const lq = query.toLowerCase();
@@ -3457,13 +3647,16 @@ function detectMention(textarea, dropdown) {
     return name.includes(lq) || login.includes(lq);
   }).slice(0, 8);
   if (filtered.length === 0) {
-    dropdown.style.display = 'none';
+    hideMentionDropdown(textarea, dropdown);
     return;
   }
   _mentionQueryStart = atIndex;
   _mentionSelectedIdx = 0;
   renderMentionOptions(dropdown, filtered);
-  dropdown.style.display = 'block';
+  dropdown._uiPopover?.open();
+  dropdown._uiPopover?.position();
+  textarea.setAttribute('aria-expanded', 'true');
+  setMentionSelection(textarea, dropdown, 0);
 }
 
 function insertMention(textarea, userId, userName, dropdown) {
@@ -3478,49 +3671,93 @@ function insertMention(textarea, userId, userName, dropdown) {
   textarea.selectionStart = textarea.selectionEnd = newPos;
   textarea.focus();
   if (!_mentionedUserIds.includes(userId)) _mentionedUserIds.push(userId);
-  dropdown.style.display = 'none';
-  _mentionSelectedIdx = -1;
+  const taskId = currentCommentTaskId();
+  if (taskId) {
+    _taskCommentDraftSession.begin(taskId);
+    _taskCommentDraftSession.setText(newText);
+    _taskCommentDraftSession.setMentionedUserIds(_mentionedUserIds);
+  }
+  hideMentionDropdown(textarea, dropdown);
   const submitBtn = document.getElementById('comment-submit-btn');
   if (submitBtn) submitBtn.disabled = !textarea.value.trim();
+  updateCommentDraftStatus(taskId);
 }
 
 async function submitComment(taskId, app) {
+  const permission = cardCommentPermission();
+  if (!permission.allowed) {
+    window.toast?.(permission.reason, 'warning');
+    return;
+  }
   const api = app?.api || window.app?.api;
   const textarea = document.getElementById('comment-textarea');
   const submitBtn = document.getElementById('comment-submit-btn');
-  if (!api || !textarea || !submitBtn) return;
+  const activeTaskId = currentCommentTaskId(taskId);
+  if (!api || !textarea || !submitBtn || !activeTaskId || !cardMatchesCurrentTask(activeTaskId) || _commentSubmitting) return;
 
-  const text = textarea.value.trim();
+  _taskCommentDraftSession.begin(activeTaskId);
+  _taskCommentDraftSession.setText(textarea.value);
+  _taskCommentDraftSession.setMentionedUserIds(_mentionedUserIds);
+  if (_replyingTo) _taskCommentDraftSession.setReply(_replyingTo);
+  const submittedDraft = _taskCommentDraftSession.current();
+  const text = submittedDraft.text.trim();
   if (!text) return;
+  const request = _taskCardRequestGate.start('comment-submit', activeTaskId);
 
+  _commentSubmitting = true;
   submitBtn.disabled = true;
+  submitBtn.setAttribute('aria-busy', 'true');
   submitBtn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></span>Отправка...';
 
   try {
     const payload = { text };
-    if (_mentionedUserIds.length > 0) {
-      payload.mentioned_user_ids = [..._mentionedUserIds];
+    if (submittedDraft.mentionedUserIds.length > 0) {
+      payload.mentioned_user_ids = [...submittedDraft.mentionedUserIds];
     }
-    if (_replyingTo) {
-      payload.parent_id = _replyingTo.id;
+    if (submittedDraft.reply) {
+      payload.parent_id = submittedDraft.reply.id;
     }
     const fingerprint = JSON.stringify(payload);
     if (!_pendingCommentSubmission || _pendingCommentSubmission.fingerprint !== fingerprint) {
       _pendingCommentSubmission = { fingerprint, id: newTaskRequestId() };
     }
     payload.client_request_id = _pendingCommentSubmission.id;
-    await api.post(`/tasks/${taskId}/comments`, payload);
-    _pendingCommentSubmission = null;
-    textarea.value = '';
-    _mentionedUserIds = [];
-    cancelReply();
+    const submissionId = _pendingCommentSubmission.id;
+    await api.post(`/tasks/${activeTaskId}/comments`, payload, { signal: request.signal });
+    if (!_taskCardRequestGate.isCurrent(request.token, activeTaskId) || !cardMatchesCurrentTask(activeTaskId)) return;
+    if (_pendingCommentSubmission?.id === submissionId) _pendingCommentSubmission = null;
+    const latestDraft = _taskCommentDraftSession.snapshot(activeTaskId);
+    const unchanged = latestDraft
+      && latestDraft.text === submittedDraft.text
+      && JSON.stringify(latestDraft.mentionedUserIds) === JSON.stringify(submittedDraft.mentionedUserIds)
+      && JSON.stringify(latestDraft.reply) === JSON.stringify(submittedDraft.reply);
+    if (unchanged) {
+      _taskCommentDraftSession.clear(activeTaskId);
+      if (Number(currentTask?.id) === activeTaskId) _taskCommentDraftSession.begin(activeTaskId);
+      const activeTextarea = document.getElementById('comment-textarea');
+      if (activeTextarea) activeTextarea.value = '';
+      textarea.value = '';
+      _mentionedUserIds = [];
+      _replyingTo = null;
+      renderReplyIndicator();
+    }
+    updateCommentDraftStatus(activeTaskId);
     window.toast?.('Комментарий добавлен', 'success');
-    await loadComments(taskId, app);
+    await loadComments(activeTaskId, app);
   } catch (e) {
+    if (request.signal.aborted || e?.name === 'AbortError' || !_taskCardRequestGate.isCurrent(request.token, activeTaskId)) return;
     window.toast?.('Ошибка: ' + (e.message || 'не удалось отправить'), 'error');
   } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить';
+    if (_taskCardRequestGate.finish(request.token) && cardMatchesCurrentTask(activeTaskId)) {
+      _commentSubmitting = false;
+      const activeSubmit = document.getElementById('comment-submit-btn') || submitBtn;
+      const activeTextarea = document.getElementById('comment-textarea') || textarea;
+      activeSubmit.disabled = !activeTextarea.value.trim();
+      activeSubmit.removeAttribute('aria-busy');
+      submitBtn.disabled = !activeTextarea.value.trim();
+      submitBtn.removeAttribute('aria-busy');
+      submitBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить';
+    }
   }
 }
 
@@ -3713,13 +3950,13 @@ export function showErrorModal(saved, errors, errorDetails) {
     if (isDetailed) {
       detailsHtml = `
         <div style="margin-top:16px;max-height:400px;overflow-y:auto;">
-          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <table class="ui-table ui-table-data" style="width:100%">
             <thead>
               <tr style="border-bottom:2px solid var(--border-color);">
-                <th style="text-align:left;padding:8px 8px;color:var(--text-secondary);font-weight:600;white-space:nowrap;">ID задачи</th>
-                <th style="text-align:left;padding:8px 8px;color:var(--text-secondary);font-weight:600;">Атрибут</th>
-                <th style="text-align:center;padding:8px 8px;color:var(--text-secondary);font-weight:600;white-space:nowrap;">Код</th>
-                <th style="text-align:left;padding:8px 8px;color:var(--text-secondary);font-weight:600;">Описание</th>
+                <th style="text-align:left;white-space:nowrap">ID задачи</th>
+                <th style="text-align:left">Атрибут</th>
+                <th style="text-align:center;white-space:nowrap">Код</th>
+                <th style="text-align:left">Описание</th>
               </tr>
             </thead>
             <tbody>
@@ -3730,19 +3967,19 @@ export function showErrorModal(saved, errors, errorDetails) {
                 const badgeBg = statusCode >= 500 ? 'var(--danger-light)' : statusCode >= 400 ? 'var(--warning-light)' : 'var(--bg-tertiary)';
                 return `
                   <tr style="border-bottom:1px solid var(--border-color);">
-                    <td style="padding:8px 8px;vertical-align:top;">
-                      <strong style="font-family:monospace;">${formatTaskPublicId(d.taskId)}</strong>
+                    <td style="vertical-align:top">
+                      <strong style="font-family:var(--font-mono);">${formatTaskPublicId(d.taskId)}</strong>
                     </td>
-                    <td style="padding:8px 8px;vertical-align:top;">
+                    <td style="vertical-align:top">
                       <span style="font-size:13px;">${escapeHtml(d.fields || '—')}</span>
                     </td>
-                    <td style="padding:8px 8px;text-align:center;vertical-align:top;">
+                    <td style="text-align:center;vertical-align:top">
                       <span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;color:${badgeColor};background:${badgeBg};">
                         ${d.httpStatus}
                       </span>
-                      <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${escapeHtml(info.label)}</div>
+                      <div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);margin-top:3px;">${escapeHtml(info.label)}</div>
                     </td>
-                    <td style="padding:8px 8px;vertical-align:top;">
+                    <td style="vertical-align:top">
                       <span style="font-size:13px;color:var(--text-primary);">${escapeHtml(info.desc)}</span>
                     </td>
                   </tr>
@@ -3764,7 +4001,7 @@ export function showErrorModal(saved, errors, errorDetails) {
       <div class="app-modal ${isDetailed ? 'app-modal--large' : 'app-modal--medium'}" role="dialog" aria-modal="true" aria-labelledby="error-modal-title">
         <div class="app-modal__header">
           <h3 class="app-modal__title" id="error-modal-title">Результат сохранения</h3>
-          <button type="button" class="modal-close" data-modal-close aria-label="Закрыть">&times;</button>
+          <button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" data-modal-close aria-label="Закрыть">&times;</button>
         </div>
         <div class="app-modal__body">
         <div style="display:flex;gap:16px;margin-bottom:16px;">
@@ -3925,12 +4162,12 @@ function showBulkResultModal(result, tasks, fallbackError = '') {
       <summary style="cursor:pointer;padding:10px 12px;font-size:13px;font-weight:600;color:${group.color};">${group.label} · ${group.ids.length}</summary>
       <div style="padding:0 12px 12px;display:grid;gap:6px;max-height:190px;overflow:auto;">
         ${(group.errors || []).map(error => `<div style="font-size:12px;color:var(--danger);">${escapeHtml(error)}</div>`).join('')}
-        ${group.ids.map(id => `<div style="display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:12px;"><span style="font-family:monospace;color:var(--text-muted);">${formatTaskPublicId(taskMap.get(Number(id)) || id)}</span><span>${escapeHtml(taskMap.get(Number(id))?.title || 'Задача')}</span></div>`).join('')}
+        ${group.ids.map(id => `<div style="display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:12px;"><span style="font-family:var(--font-mono);color:var(--text-muted);">${formatTaskPublicId(taskMap.get(Number(id)) || id)}</span><span>${escapeHtml(taskMap.get(Number(id))?.title || 'Задача')}</span></div>`).join('')}
       </div>
       ${group.key === 'error' && group.ids.length ? `<div style="padding:0 12px 10px;text-align:right;"><button class="btn btn-secondary btn-xs" data-copy-error-ids>Копировать ID</button></div>` : ''}
     </details>`).join('');
   overlay.innerHTML = `<div class="modal modal-md" role="dialog" aria-modal="true" aria-labelledby="bulk-result-title">
-    <div class="modal-header"><div><div class="modal-title" id="bulk-result-title">Результат массовой операции</div><div class="app-modal__subtitle">${result?.operation_id ? `Операция ${escapeHtml(result.operation_id.slice(0, 8))}` : 'Операция не выполнена'}</div></div><button type="button" class="modal-close" data-modal-close aria-label="Закрыть">&times;</button></div>
+    <div class="modal-header"><div><div class="modal-title" id="bulk-result-title">Результат массовой операции</div><div class="app-modal__subtitle">${result?.operation_id ? `Операция ${escapeHtml(result.operation_id.slice(0, 8))}` : 'Операция не выполнена'}</div></div><button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" data-modal-close aria-label="Закрыть">&times;</button></div>
     <div class="modal-body" style="display:grid;gap:8px;">${groupHtml || '<div style="font-size:13px;color:var(--text-muted);">Нет данных о результате</div>'}</div>
     <div class="modal-footer"><button class="btn btn-primary btn-sm" data-close-bulk-result>Закрыть</button></div>
   </div>`;
@@ -3981,7 +4218,12 @@ export function showBulkOpsModal(app, scope, tasks) {
     }
 
     const totalTasks = tasks.length;
-    const totalPages = Math.ceil(totalTasks / PAGE_SIZE);
+    const totalPages = Math.max(1, Math.ceil(totalTasks / PAGE_SIZE));
+
+    function showBulkError(message) {
+      const error = overlay.querySelector('#bc-error');
+      if (error) { error.textContent = message; error.hidden = false; }
+    }
 
     function getSelectedCount() {
       return totalTasks - excluded.size;
@@ -4010,12 +4252,12 @@ export function showBulkOpsModal(app, scope, tasks) {
         for (const t of tasksToShow) {
           const isOff = excluded.has(t.id);
           rowsHtml += `
-            <div class="bc-row ${isOff ? 'bc-row-off' : ''}" data-task-id="${t.id}" style="display:grid;grid-template-columns:22px 130px 1fr 150px 120px;gap:0;border-bottom:1px solid var(--border-color);cursor:pointer;">
+            <div class="bc-row ${isOff ? 'bc-row-off' : ''}" data-task-id="${t.id}" style="gap:0;border-bottom:1px solid var(--border-color);cursor:pointer;">
               <div style="display:flex;align-items:center;justify-content:center;padding:8px;">
-                <input type="checkbox" class="bc-cb" value="${t.id}" ${isOff ? '' : 'checked'} style="margin:0;accent-color:var(--accent);">
+                <input type="checkbox" class="bc-cb" value="${t.id}" aria-label="Выбрать ${escapeHtml(formatTaskPublicId(t))}" ${isOff ? '' : 'checked'} style="margin:0;accent-color:var(--accent);">
               </div>
-              <div style="padding:8px;font-family:monospace;font-size:12px;color:var(--text-muted);">${formatTaskPublicId(t)}</div>
-              <div style="padding:8px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(t.title || '—')}</div>
+              <div style="padding:8px;font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">${formatTaskPublicId(t)}</div>
+              <div class="bc-task-title" style="padding:8px;font-size:13px;overflow-wrap:anywhere;">${escapeHtml(t.title || '—')}</div>
               <div style="padding:8px;font-size:12px;color:var(--text-secondary);">${escapeHtml(t.status_name || t.status || '—')}</div>
               <div style="padding:8px;font-size:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums;">${escapeHtml(t.deadline_name || t.deadline || '—')}</div>
             </div>
@@ -4024,34 +4266,34 @@ export function showBulkOpsModal(app, scope, tasks) {
 
         const paginationHtml = `
           <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;flex-shrink:0;background:var(--bg-tertiary);">
-            <button id="bc-page-prev" class="bc-link-btn" ${currentPage === 1 ? 'disabled style="opacity:.4;cursor:default;"' : ''}>←</button>
+            <button id="bc-page-prev" class="btn btn-secondary btn-sm ui-btn bc-link-btn" ${currentPage === 1 ? 'disabled style="opacity:.4"' : ''}>←</button>
             <span style="font-size:12px;color:var(--text-secondary);">Страница <strong>${currentPage}</strong> из <strong>${totalPages}</strong></span>
-            <button id="bc-page-next" class="bc-link-btn" ${currentPage === totalPages ? 'disabled style="opacity:.4;cursor:default;"' : ''}>→</button>
+            <button id="bc-page-next" class="btn btn-secondary btn-sm ui-btn bc-link-btn" ${currentPage === totalPages ? 'disabled style="opacity:.4"' : ''}>→</button>
           </div>
         `;
 
         const emptyMsg = totalTasks === 0 ? `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">В текущем фильтре нет задач. Закройте окно и измените фильтр в реестре.</div>` : '';
 
         bodyContent = `
-          <div style="display:flex;flex-direction:column;flex:1;min-height:0;padding:12px 16px 16px 16px;">
+          <div class="bc-selection" style="padding:12px 16px 16px 16px;">
             <p style="margin:0 0 12px 0;font-size:13px;color:var(--text-secondary);line-height:1.5;">В список попали задачи с учетом примененных на странице фильтров. Выберите из них те, по которым хотите сделать массовую корректировку атрибутов.</p>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
+            <div class="bc-selection-controls" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
               <span style="font-size:14px;">Выбрано <strong id="bc-count" style="color:var(--accent);">${selected}</strong> из ${totalTasks}</span>
               <div style="display:flex;gap:12px;font-size:13px;">
-                <button id="bc-select-all" class="bc-link-btn" ${selectAllDisabled ? 'disabled style="opacity:.5;cursor:default;"' : ''}>Выбрать все</button>
+                <button id="bc-select-all" class="btn btn-secondary btn-sm ui-btn bc-link-btn" ${selectAllDisabled ? 'disabled style="opacity:.5"' : ''}>Выбрать все</button>
                 <span style="color:var(--text-muted);">·</span>
-                <button id="bc-clear-all" class="bc-link-btn" ${clearAllDisabled ? 'disabled style="opacity:.5;cursor:default;"' : ''}>Снять все</button>
+                <button id="bc-clear-all" class="btn btn-secondary btn-sm ui-btn bc-link-btn" ${clearAllDisabled ? 'disabled style="opacity:.5"' : ''}>Снять все</button>
               </div>
             </div>
-            <div style="display:flex;flex-direction:column;flex:1;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;min-height:0;">
-              <div class="bc-table-head" style="display:grid;grid-template-columns:22px 130px 1fr 150px 120px;gap:0;background:var(--bg-tertiary);border-radius:8px 8px 0 0;flex-shrink:0;">
+            <div class="bc-task-list" style="border-radius:8px;border:1px solid var(--border-color);overflow:hidden;">
+              <div class="bc-table-head" style="gap:0;background:var(--bg-tertiary);border-radius:8px 8px 0 0;flex-shrink:0;">
                 <div style="padding:8px;"></div>
-                <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">ID</div>
-                <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">ЗАДАЧА</div>
-                <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">СТАТУС</div>
-                <div style="padding:8px;font-size:10.5px;uppercase;letter-spacing:.06em;color:var(--text-muted);">СРОК</div>
+                <div style="padding:8px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);uppercase;letter-spacing:.06em;color:var(--text-muted);">ID</div>
+                <div style="padding:8px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);uppercase;letter-spacing:.06em;color:var(--text-muted);">ЗАДАЧА</div>
+                <div style="padding:8px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);uppercase;letter-spacing:.06em;color:var(--text-muted);">СТАТУС</div>
+                <div style="padding:8px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);uppercase;letter-spacing:.06em;color:var(--text-muted);">СРОК</div>
               </div>
-              <div class="bc-rows-container" style="flex:1;overflow-y:auto;min-height:0;padding-left:4px;">
+              <div class="bc-rows-container" style="padding-left:4px;">
                 ${emptyMsg || rowsHtml}
               </div>
               ${paginationHtml}
@@ -4068,44 +4310,44 @@ export function showBulkOpsModal(app, scope, tasks) {
 
           if (ftype === 'select') {
             const opts = getSelectOptions(item.field);
-            controlHtml = `<select class="bc-field-val" data-field="${item.field}" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">${opts}</select>`;
+            controlHtml = `<select class="input ui-control bc-field-val" data-field="${item.field}" aria-label="${escapeHtml(fl)}" style="width:100%;box-sizing:border-box">${opts}</select>`;
           } else if (ftype === 'select_yesno') {
-            controlHtml = `<select class="bc-field-val" data-field="${item.field}" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;"><option value="">—</option><option value="true">Да</option><option value="false">Нет</option></select>`;
+            controlHtml = `<select class="input ui-control bc-field-val" data-field="${item.field}" aria-label="${escapeHtml(fl)}" style="width:100%;box-sizing:border-box"><option value="">—</option><option value="true">Да</option><option value="false">Нет</option></select>`;
           } else if (ftype === 'number') {
-            controlHtml = `<input type="number" class="bc-field-val" data-field="${item.field}" value="${item.value ?? ''}" placeholder="0" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
+            controlHtml = `<input type="number" class="input ui-control bc-field-val" data-field="${item.field}" aria-label="${escapeHtml(fl)}" value="${item.value ?? ''}" placeholder="0" style="width:100%;box-sizing:border-box">`;
           } else if (ftype === 'date') {
-            controlHtml = `<input type="date" class="bc-field-val" data-field="${item.field}" value="${item.value ?? ''}" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
+            controlHtml = `<input type="date" class="input ui-control bc-field-val" data-field="${item.field}" aria-label="${escapeHtml(fl)}" value="${item.value ?? ''}" style="width:100%;box-sizing:border-box">`;
           } else if (ftype === 'comment') {
             const mentionOptions = (window.app?.users || []).map(user =>
               `<option value="${user.id}" ${(item.mentionedUserIds || []).includes(user.id) ? 'selected' : ''}>${escapeHtml(user.name)}</option>`
             ).join('');
-            controlHtml = `<textarea class="bc-field-val" data-field="${item.field}" rows="3" maxlength="5000" placeholder="Введите комментарий" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;resize:vertical;">${escapeHtml(item.value || '')}</textarea>
-              <label style="display:block;margin-top:8px;font-size:11px;color:var(--text-muted);">Упомянуть пользователей</label>
-              <select multiple class="bc-comment-mentions" data-field="${item.field}" size="3" style="width:100%;margin-top:4px;padding:5px 7px;font-size:12px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">${mentionOptions}</select>`;
+            controlHtml = `<textarea class="input ui-control bc-field-val" data-field="${item.field}" aria-label="${escapeHtml(fl)}" rows="3" maxlength="5000" placeholder="Введите комментарий" style="width:100%;box-sizing:border-box;resize:vertical">${escapeHtml(item.value || '')}</textarea>
+              <label style="display:block;margin-top:8px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);">Упомянуть пользователей</label>
+              <select multiple class="input ui-control bc-comment-mentions" data-field="${item.field}" aria-label="Упомянуть пользователей" size="3" style="width:100%;margin-top:4px;box-sizing:border-box">${mentionOptions}</select>`;
           } else if (ftype === 'textarea') {
-            controlHtml = `<textarea class="bc-field-val" data-field="${item.field}" rows="2" placeholder="Введите значение" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;resize:none;">${escapeHtml(item.value || '')}</textarea>`;
+            controlHtml = `<textarea class="input ui-control bc-field-val" data-field="${item.field}" aria-label="${escapeHtml(fl)}" rows="2" placeholder="Введите значение" style="width:100%;box-sizing:border-box;resize:none">${escapeHtml(item.value || '')}</textarea>`;
           } else if (ftype === 'tags') {
-            controlHtml = `<input type="text" class="bc-field-val" data-field="${item.field}" value="${escapeHtml(Array.isArray(item.value) ? item.value.join(', ') : (item.value || ''))}" placeholder="Введите теги через запятую" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
+            controlHtml = `<input type="text" class="input ui-control bc-field-val" data-field="${item.field}" aria-label="${escapeHtml(fl)}" value="${escapeHtml(Array.isArray(item.value) ? item.value.join(', ') : (item.value || ''))}" placeholder="Введите теги через запятую" style="width:100%;box-sizing:border-box">`;
           } else {
-            controlHtml = `<input type="text" class="bc-field-val" data-field="${item.field}" value="${escapeHtml(item.value || '')}" placeholder="Введите значение" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;">`;
+            controlHtml = `<input type="text" class="input ui-control bc-field-val" data-field="${item.field}" aria-label="${escapeHtml(fl)}" value="${escapeHtml(item.value || '')}" placeholder="Введите значение" style="width:100%;box-sizing:border-box">`;
           }
 
           fieldsRowsHtml += `
-            <div class="bc-field-row" data-field="${item.field}" style="display:grid;grid-template-columns:minmax(170px,210px) 1fr 32px;gap:10px;padding:12px;border:1px solid var(--border-color);border-radius:8px;align-items:center;background:var(--bg-primary);margin-bottom:8px;">
-              <div style="padding-right:4px;"><div style="font-size:13px;font-weight:600;color:var(--text-primary);">${fl}</div>${FIELD_HINTS_BULK[item.field] ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.35;">${FIELD_HINTS_BULK[item.field]}</div>` : ''}</div>
+            <div class="bc-field-row" data-field="${item.field}" aria-label="${escapeHtml(fl)}" style="display:grid;grid-template-columns:minmax(170px,210px) 1fr 32px;gap:10px;padding:12px;border:1px solid var(--border-color);border-radius:8px;align-items:center;background:var(--bg-primary);margin-bottom:8px;">
+              <div style="padding-right:4px;"><div style="font-size:13px;font-weight:600;color:var(--text-primary);">${fl}</div>${FIELD_HINTS_BULK[item.field] ? `<div style="font-size:var(--type-meta-size);color:var(--text-muted);margin-top:3px;line-height:var(--type-meta-line);">${FIELD_HINTS_BULK[item.field]}</div>` : ''}</div>
               <div>${controlHtml}</div>
-              <button class="bc-field-remove" data-field="${item.field}" title="Убрать поле" aria-label="Убрать поле ${fl}" style="width:32px;height:32px;border:1px solid var(--border-color);background:var(--bg-secondary);cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center;border-radius:6px;">✕</button>
+              <button class="btn btn-ghost btn-sm square-icon ui-btn bc-field-remove" data-field="${item.field}" title="Убрать поле" aria-label="Убрать поле ${escapeHtml(fl)}" style="display:flex;align-items:center;justify-content:center">✕</button>
             </div>
           `;
         }
 
         const addFieldBtn = `
-          <button id="bc-add-field" class="btn btn-secondary btn-sm" style="width:100%;padding:10px;border-style:dashed;margin-top:4px;justify-content:center;">+ Добавить ещё одно поле</button>
+          <button id="bc-add-field" class="btn btn-secondary btn-sm" style="width:100%;border-style:dashed;margin-top:4px;justify-content:center;">+ Добавить ещё одно поле</button>
         `;
 
         const fieldPickerHtml = `
           <div id="bc-field-picker" class="hidden" style="margin-top:12px;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);">
-            <input type="text" id="bc-field-search" placeholder="Найти поле по названию…" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input);color:var(--text-primary);box-sizing:border-box;margin-bottom:10px;">
+            <input class="input ui-control" type="text" id="bc-field-search" placeholder="Найти поле по названию…" style="width:100%;box-sizing:border-box;margin-bottom:10px">
             <div id="bc-field-list" style="max-height:280px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;"></div>
           </div>
         `;
@@ -4134,16 +4376,16 @@ export function showBulkOpsModal(app, scope, tasks) {
         <div class="modal modal-md" role="dialog" aria-modal="true" aria-labelledby="bc-modal-title">
           <div class="modal-header">
             <div style="display:flex;gap:8px;">
-              <span style="width:24px;height:24px;border-radius:50%;background:${step >= 1 ? 'var(--accent)' : 'var(--bg-secondary)'};color:${step >= 1 ? 'white' : 'var(--text-muted)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">1</span>
-              <span style="width:24px;height:24px;border-radius:50%;background:${step >= 2 ? 'var(--accent)' : 'var(--bg-secondary)'};color:${step >= 2 ? 'white' : 'var(--text-muted)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;">2</span>
+              <span style="width:24px;height:24px;border-radius:50%;background:${step >= 1 ? 'var(--accent)' : 'var(--bg-secondary)'};color:${step >= 1 ? 'white' : 'var(--text-muted)'};display:flex;align-items:center;justify-content:center;font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-weight:600;">1</span>
+              <span style="width:24px;height:24px;border-radius:50%;background:${step >= 2 ? 'var(--accent)' : 'var(--bg-secondary)'};color:${step >= 2 ? 'white' : 'var(--text-muted)'};display:flex;align-items:center;justify-content:center;font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-weight:600;">2</span>
             </div>
             <div style="flex:1;">
               <div class="modal-title" id="bc-modal-title">Массовые операции</div>
               <div class="app-modal__subtitle" id="bc-subtitle">${subtitle}</div>
             </div>
-            <button type="button" class="modal-close" id="bc-modal-close" data-modal-close aria-label="Закрыть">✕</button>
+            <button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" id="bc-modal-close" data-modal-close aria-label="Закрыть">✕</button>
           </div>
-          <div class="modal-body modal-body-scroll" style="display:flex;flex-direction:column;">${bodyContent}</div>
+          <div class="modal-body modal-body-scroll" style="display:flex;flex-direction:column;">${bodyContent}<p id="bc-error" class="fd-error" role="alert" hidden></p></div>
           <div class="modal-footer" style="justify-content:space-between;">
             <button id="bc-cancel" class="btn btn-secondary btn-sm">Отмена</button>
             <div style="display:flex;gap:8px;">
@@ -4357,9 +4599,9 @@ export function showBulkOpsModal(app, scope, tasks) {
               return true;
             });
             if (filteredFields.length === 0) continue;
-            html += `<div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;padding:4px 0 2px 0;border-bottom:1px solid var(--border-color);margin-bottom:2px;">${groupLabel}</div>`;
+            html += `<div style="grid-column:1/-1;font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;padding:4px 0 2px 0;border-bottom:1px solid var(--border-color);margin-bottom:2px;">${groupLabel}</div>`;
             for (const f of filteredFields) {
-              html += `<button class="bc-field-option" data-field="${f}" style="padding:6px 8px;font-size:12px;border:1px solid var(--border-color);border-radius:4px;background:var(--bg-primary);color:var(--text-secondary);cursor:pointer;text-align:left;">${FIELD_LABELS_BULK[f] || f}</button>`;
+              html += `<button class="btn btn-secondary btn-sm bc-field-option" data-field="${f}">${FIELD_LABELS_BULK[f] || f}</button>`;
             }
           }
           fieldList.innerHTML = html || '<div style="grid-column:1/-1;padding:12px;text-align:center;color:var(--text-muted);font-size:12px;">Ничего не найдено</div>';
@@ -4381,7 +4623,7 @@ export function showBulkOpsModal(app, scope, tasks) {
           const commentItem = selectedFields.find(item => item.field === 'comment_add' && hasBulkValue(item.value));
           const otherConfiguredItems = selectedFields.filter(item => item.field !== 'comment_add' && hasBulkValue(item.value));
           if (commentItem && otherConfiguredItems.length) {
-            window.toast?.('Добавление комментария выполняется отдельной операцией', 'warning');
+            showBulkError('Добавление комментария выполняется отдельной операцией');
             return;
           }
           const bulkAction = commentItem ? 'comment' : 'update';
@@ -4406,12 +4648,13 @@ export function showBulkOpsModal(app, scope, tasks) {
               selectedFields.push({ field: 'rejection_reason', value: '' });
               fieldValues['rejection_reason'] = '';
             }
-            window.toast?.('Для выбранного статуса требуется указать причину отклонения', 'warning');
             renderStep();
+            showBulkError('Для выбранного статуса требуется указать причину отклонения');
+            overlay.querySelector('[data-field="rejection_reason"].bc-field-val')?.focus();
             return;
           }
           if (Object.keys(fieldsPayload).length === 0) {
-            window.toast?.('Добавьте хотя бы одно поле со значением', 'warning');
+            showBulkError('Добавьте хотя бы одно поле со значением');
             return;
           }
           const selected = getSelectedCount();
@@ -4431,7 +4674,11 @@ export function showBulkOpsModal(app, scope, tasks) {
               action: bulkAction, task_ids: taskIds, versions, fields: fieldsPayload
             });
           } catch (e) {
-            window.toast?.('Не удалось проверить массовую операцию: ' + (e.message || 'ошибка сервера'), 'error');
+            const validationErrors = Array.isArray(e.data) ? e.data : e.data?.detail;
+            const reason = Array.isArray(validationErrors)
+              ? validationErrors.map(item => item.msg).filter(Boolean).join('; ')
+              : e.message;
+            showBulkError('Не удалось проверить массовую операцию: ' + (reason || 'ошибка сервера'));
             nextBtn.disabled = false;
             nextBtn.textContent = `Применить к ${selected} ${pluralize(selected, 'задаче', 'задачам', 'задачам')}`;
             return;
@@ -4441,7 +4688,7 @@ export function showBulkOpsModal(app, scope, tasks) {
           if (!preview.can_apply) {
             const reasons = [...(preview.errors || [])];
             if (preview.inaccessible_tasks > 0) reasons.push(`Нет прав: ${preview.inaccessible_tasks}`);
-            window.toast?.(`Операцию нельзя применить. ${reasons.join('. ')}`, 'error');
+            showBulkError(`Операцию нельзя применить. ${reasons.join('. ')}`);
             return;
           }
           const previewText = `Изменятся задачи: ${preview.changed_tasks}; без изменений: ${preview.unchanged_tasks}; изменений полей: ${preview.applied_changes}; пропущено совпадающих значений: ${preview.skipped_changes}; уведомлений: ${preview.notifications}.`;
@@ -4507,6 +4754,8 @@ export function showBulkOpsModal(app, scope, tasks) {
 }
 
 export function importTasksFromExcel(app, onSuccess) {
+  const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
+  const sizeError = "Файл слишком большой. Максимум — 10 МиБ (10 485 760 байт). Уменьшите файл или разделите его на части.";
   const existing = document.getElementById('import-tasks-overlay');
   if (existing) existing.remove();
 
@@ -4578,7 +4827,7 @@ export function importTasksFromExcel(app, onSuccess) {
   }
 
   function downloadTemplate() {
-    const header = IMPORT_FIELDS.map(f => fieldLabel(f.key)).join(';');
+    const header = IMPORT_FIELDS.map(f => fieldLabel(f.key));
     const exampleValues = {
       title: 'Пример задачи', team_id: 'Пример команды', description: 'Описание задачи',
       date_received: '2026-01-01', channel_id: 'Почта', business_customer_id: 'ДИД',
@@ -4596,17 +4845,11 @@ export function importTasksFromExcel(app, onSuccess) {
       key_project_status: '', directorate_status: '', did_status: '',
       did_demo: 'false', metric_kr_plan: '', metric_kr_fact: '', metric_kr_unit: ''
     };
-    const exampleRow = IMPORT_FIELDS.map(f => exampleValues[f.key] !== undefined ? exampleValues[f.key] : '').join(';');
-    const csv = '\uFEFF' + header + '\n' + exampleRow + '\n';
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'task_import_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const exampleRow = IMPORT_FIELDS.map(f => exampleValues[f.key] ?? '');
+    downloadCsv(csvRows([header, exampleRow]), 'task_import_template.csv');
   }
 
+  const returnFocus = document.activeElement;
   const overlay = document.createElement('div');
   overlay.id = 'import-tasks-overlay';
   overlay.className = 'modal-overlay';
@@ -4614,7 +4857,7 @@ export function importTasksFromExcel(app, onSuccess) {
     <div class="import-tasks-modal app-modal app-modal--medium" role="dialog" aria-modal="true" aria-labelledby="import-tasks-title">
       <div class="app-modal__header">
         <h2 class="app-modal__title" id="import-tasks-title">Импорт задач из файла</h2>
-        <button type="button" class="modal-close" id="import-close-btn" data-modal-close aria-label="Закрыть">
+        <button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" id="import-close-btn" data-modal-close aria-label="Закрыть">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
@@ -4629,42 +4872,43 @@ export function importTasksFromExcel(app, onSuccess) {
         <span style="font-size:12px;color:var(--text-muted);">Обязательные: ${REQUIRED_IMPORT_FIELDS.map(k => fieldLabel(k)).join(', ')}</span>
       </div>
 
-      <div id="import-drop-zone" style="border:2px dashed var(--border-color);border-radius:8px;padding:32px;text-align:center;cursor:pointer;margin-bottom:16px;transition:all 0.2s;">
+      <div id="import-drop-zone" autofocus role="button" tabindex="0" aria-label="Выбрать CSV или Excel файл" style="border:2px dashed var(--border-color);border-radius:8px;padding:32px;text-align:center;cursor:pointer;margin-bottom:16px;transition:all 0.2s;">
         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="display:block;margin:0 auto 12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <p style="margin:0 0 8px 0;color:var(--text-primary);font-size:14px;">Перетащите CSV или Excel файл сюда или нажмите для выбора</p>
-        <p style="margin:0;color:var(--text-muted);font-size:12px;">Поддерживаются форматы CSV и Excel (.xlsx, .xls). В CSV разделитель — запятая или точка с запятой</p>
+        <p style="margin:0;color:var(--text-muted);font-size:12px;">Поддерживаются форматы CSV и Excel (.xlsx, .xls). Максимум — 10 МиБ; для Excel ограничение действует также после преобразования в CSV. В CSV разделитель — запятая или точка с запятой. Повторный импорт создаёт новые задачи: удалите уже импортированные строки перед повторной отправкой. В Excel читается только первый лист; поместите заголовки в его первую строку, а задачи — ниже.</p>
         <input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" style="display:none;">
       </div>
 
       <div id="import-preview-section" style="display:none;margin-bottom:16px;">
+        <div id="import-file-details" style="font-size:12px;margin-bottom:10px;"></div>
         <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Предпросмотр (первые 5 строк):</div>
         <div style="overflow-x:auto;border:1px solid var(--border-color);border-radius:8px;max-height:200px;overflow-y:auto;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <table class="ui-table ui-table-data" style="width:100%">
             <thead id="import-preview-thead" style="position:sticky;top:0;background:var(--bg-tertiary);"></thead>
             <tbody id="import-preview-tbody"></tbody>
           </table>
         </div>
       </div>
 
-      <div id="import-error-summary" style="display:none;margin-bottom:16px;padding:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;">
+      <div id="import-error-summary" role="alert" style="display:none;margin-bottom:16px;padding:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;">
         <div style="font-size:13px;color:var(--danger);font-weight:600;margin-bottom:8px;">Проверка файла:</div>
         <ul id="import-error-list" style="margin:0;padding-left:20px;font-size:12px;color:var(--danger);"></ul>
       </div>
 
       <div id="import-row-errors" style="display:none;margin-bottom:16px;padding:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);border-radius:8px;">
         <div style="font-size:13px;color:#d97706;font-weight:600;margin-bottom:4px;">Потенциальные ошибки строк: <span id="import-row-errors-count">0</span></div>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Предварительная проверка: импорт не блокируется, финальный результат определит сервер.</div>
+        <div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);margin-bottom:8px;">Предварительная проверка: импорт не блокируется, финальный результат определит сервер.</div>
         <ul id="import-row-errors-list" style="margin:0;padding-left:20px;font-size:12px;color:#b45309;max-height:140px;overflow-y:auto;"></ul>
       </div>
 
-      <div id="import-result" style="display:none;margin-bottom:16px;padding:16px;border-radius:8px;">
+      <div id="import-result" role="status" aria-live="polite" tabindex="-1" aria-label="Результат импорта" style="display:none;margin-bottom:16px;padding:16px;border-radius:8px;">
         <div id="import-result-content" style="font-size:14px;"></div>
         <div id="import-result-actions" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-color);display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-secondary btn-sm" id="import-copy-report" style="padding:8px 16px;">
+          <button class="btn btn-secondary btn-sm" id="import-copy-report" style="">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             Скопировать отчёт
           </button>
-          <button class="btn btn-secondary btn-sm" id="import-download-report" style="padding:8px 16px;">
+          <button class="btn btn-secondary btn-sm" id="import-download-report" style="">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Скачать отчёт (.txt)
           </button>
@@ -4674,22 +4918,29 @@ export function importTasksFromExcel(app, onSuccess) {
       </div>
 
       <div class="app-modal__footer">
-        <button class="btn btn-secondary btn-sm" id="import-cancel-btn" style="padding:8px 16px;">Отмена</button>
-        <button class="btn btn-primary btn-sm" id="import-submit-btn" disabled style="padding:8px 16px;">Импортировать</button>
+        <button class="btn btn-secondary btn-sm" id="import-cancel-btn" style="">Отмена</button>
+        <button class="btn btn-primary btn-sm" id="import-submit-btn" disabled style="">Импортировать</button>
       </div>
     </div>
   `;
 
   document.body.appendChild(overlay);
 
+  let submissionComplete = false;
+  let importing = false;
+  let importedAny = false;
+  let importClosed = false;
   let selectedFile = null;
   let previewData = null;
   let errors = [];
   let rowErrors = [];
 
   const closeImportModal = () => {
+    if (importing || importClosed) return;
+    importClosed = true;
+    if (importedAny && onSuccess) onSuccess();
     overlay.classList.add('modal-closing');
-    setTimeout(() => overlay.remove(), 200);
+    setTimeout(() => { overlay.remove(); if (returnFocus?.isConnected) returnFocus.focus(); }, 200);
   };
 
   overlay.querySelector('#import-close-btn').addEventListener('click', closeImportModal);
@@ -4703,6 +4954,10 @@ export function importTasksFromExcel(app, onSuccess) {
   const fileInput = overlay.querySelector('#import-file-input');
 
   dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (!importing) fileInput.click(); }
+  });
+  dropZone.focus();
 
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -4732,17 +4987,34 @@ export function importTasksFromExcel(app, onSuccess) {
   });
 
   function handleFile(file) {
+    if (importing) return;
+    const resultBlock = overlay.querySelector("#import-result");
+    resultBlock.style.display = "none";
+    overlay.querySelector("#import-result-content").textContent = "";
+    submissionComplete = false;
     selectedFile = file;
+    previewData = null;
+    errors = [];
+    rowErrors = [];
+    renderPreview(); renderErrors(); renderRowErrors();
+    overlay.querySelector('#import-submit-btn').disabled = true;
+    if (file.size > MAX_IMPORT_BYTES) {
+      errors = [sizeError];
+      renderErrors();
+      return;
+    }
     const ext = (file.name || '').toLowerCase().split('.').pop();
     if (ext === 'xlsx' || ext === 'xls') {
       const reader = new FileReader();
       reader.onload = (e) => {
+        if (selectedFile !== file) return;
         try {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array', cellDates: true, cellNF: true });
           const firstSheet = workbook.SheetNames[0];
           const sheet = workbook.Sheets[firstSheet];
           const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          if (aoa.length < 2) throw new Error('Файл не содержит строк задач');
           if (aoa.length > 0) {
             const headers = (aoa[0] || []).map((h, i) => (h != null ? String(h).trim() : `Колонка ${i + 1}`));
             const dataRows = aoa.slice(1).filter(row => row.some(cell => cell != null && cell !== '')).map(row =>
@@ -4756,7 +5028,7 @@ export function importTasksFromExcel(app, onSuccess) {
                 return (cell != null ? String(cell) : '');
               })
             );
-            previewData = { headers, rows: dataRows, delimiter: ';' };
+            previewData = { headers, rows: dataRows, delimiter: ';', format: ext.toUpperCase(), encoding: 'преобразование в UTF-8 CSV', sheet: firstSheet };
             errors = validateData(headers);
             rowErrors = validateRows(previewData);
             renderPreview();
@@ -4765,49 +5037,33 @@ export function importTasksFromExcel(app, onSuccess) {
             overlay.querySelector('#import-submit-btn').disabled = errors.length > 0;
           }
         } catch (err) {
-          window.toast?.('Ошибка чтения Excel: ' + err.message, 'error');
+          errors = ['Ошибка чтения Excel: ' + err.message];
+          renderErrors();
         }
       };
       reader.readAsArrayBuffer(file);
     } else {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const content = e.target.result;
-        parseAndPreview(content);
+        if (selectedFile !== file) return;
+        try {
+          const decoded = decodeCsvContent(e.target.result, true);
+          parseAndPreview(decoded.text, decoded.encoding);
+        }
+        catch (err) { errors = [err.message]; renderErrors(); }
       };
-      reader.readAsText(file, 'UTF-8');
+      reader.readAsArrayBuffer(file);
     }
   }
 
-  function parseAndPreview(content) {
-    const lines = content.split('\n').filter(l => l.trim());
-    if (lines.length === 0) return;
-
-    const delimiter = content.includes(';') ? ';' : ',';
-
-    const rows = [];
-    for (const line of lines) {
-      const cells = [];
-      let inQuotes = false;
-      let current = '';
-      for (const char of line) {
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === delimiter && !inQuotes) {
-          cells.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      cells.push(current.trim());
-      rows.push(cells);
-    }
+  function parseAndPreview(content, encoding) {
+    const { rows, delimiter } = parseCsvRows(content);
+    if (rows.length < 2) throw new Error('Файл не содержит строк задач');
 
     const headers = rows[0].map((h, i) => h.trim() || `Колонка ${i + 1}`);
     const dataRows = rows.slice(1);
 
-    previewData = { headers, rows: dataRows, delimiter };
+    previewData = { headers, rows: dataRows, delimiter, format: 'CSV', encoding };
     errors = validateData(headers);
     rowErrors = validateRows(previewData);
 
@@ -4820,14 +5076,21 @@ export function importTasksFromExcel(app, onSuccess) {
 
   function validateData(headers) {
     const errs = [];
-    const normalized = headers.map(h => h.toLowerCase().replace(/\s+/g, ' ').trim());
+    const normalized = headers.map(_normHeader);
+    const seen = new Set();
+    for (const header of normalized) {
+      const field = IMPORT_FIELDS.find(f => [f.key, fieldLabel(f.key), FIELD_LABEL_FALLBACK[f.key]].filter(Boolean).map(_normHeader).includes(header));
+      const key = field?.key || header;
+      if (seen.has(key)) errs.push('Повторяющаяся колонка: ' + header);
+      seen.add(key);
+    }
     const hasTitle = normalized.some(h => h === 'название задачи' || h === 'title');
     const hasTeam = normalized.some(h => h === 'ответственная команда' || h === 'team_id');
     if (!hasTitle) {
-      errs.push('Не найдена обязательная колонка "Название задачи" (заголовок CSV)');
+      errs.push('Не найдена обязательная колонка "Название задачи" (первая строка файла или первого листа Excel)');
     }
     if (!hasTeam) {
-      errs.push('Не найдена обязательная колонка "Ответственная команда" (заголовок CSV)');
+      errs.push('Не найдена обязательная колонка "Ответственная команда" (первая строка файла или первого листа Excel)');
     }
     return errs;
   }
@@ -4853,7 +5116,7 @@ export function importTasksFromExcel(app, onSuccess) {
 
   function _isValidIntStr(v) {
     const s = String(v).trim();
-    if (!/^-?\d+(\.\d+)?$/.test(s)) return false;
+    if (!/^-?\d+(\.0+)?$/.test(s)) return false;
     return Number.isInteger(Number(s));
   }
 
@@ -4870,7 +5133,8 @@ export function importTasksFromExcel(app, onSuccess) {
     const normalized = data.headers.map(_normHeader);
     const col = {};
     for (const f of IMPORT_FIELDS) {
-      const idx = normalized.indexOf(_normHeader(fieldLabel(f.key)));
+      const aliases = [f.key, fieldLabel(f.key), FIELD_LABEL_FALLBACK[f.key]].filter(Boolean).map(_normHeader);
+      const idx = normalized.findIndex(header => aliases.includes(header));
       if (idx !== -1) col[f.key] = idx;
     }
 
@@ -4886,6 +5150,13 @@ export function importTasksFromExcel(app, onSuccess) {
         }
       }
 
+      if (col.title !== undefined && [...cell('title')].length > 255) {
+        out.push({ row: rowNum, message: 'Название задачи не должно превышать 255 символов' });
+      }
+      if (col.did_demo !== undefined && cell('did_demo') !== '' &&
+          !['true','false','1','0','yes','no','да','нет','y','n'].includes(cell('did_demo').toLowerCase())) {
+        out.push({ row: rowNum, message: 'Поле «Демо ДИД»: ожидается да/нет, true/false, yes/no, y/n или 1/0' });
+      }
       if (col.date_received !== undefined) {
         const v = cell('date_received');
         if (v !== '' && !_isValidDateLike(v)) {
@@ -4902,7 +5173,7 @@ export function importTasksFromExcel(app, onSuccess) {
           if (!_isValidIntStr(v) || num < 0 || num > 100) {
             out.push({ row: rowNum, message: `Неверный формат прогресса: "${v}"` });
           }
-        } else if (!_isValidIntStr(v)) {
+        } else if (!_isValidIntStr(v) || Number(v) < 0 || Number(v) > 10000) {
           out.push({ row: rowNum, message: `Неверный числовой формат: "${v}"` });
         }
       }
@@ -4910,7 +5181,8 @@ export function importTasksFromExcel(app, onSuccess) {
       for (const k of ROW_FLOAT_FIELDS) {
         if (col[k] === undefined) continue;
         const v = cell(k);
-        if (v === '' || _isValidFloatStr(v)) continue;
+        const permitsNegative = ['actual_effort_days', 'cv', 'metric_kr_plan', 'metric_kr_fact'].includes(k);
+        if (v === '' || (_isValidFloatStr(v) && (permitsNegative || Number(v) >= 0))) continue;
         out.push({ row: rowNum, message: `Неверный числовой формат: "${v}"` });
       }
     });
@@ -4929,12 +5201,21 @@ export function importTasksFromExcel(app, onSuccess) {
     }
 
     previewSection.style.display = 'block';
-    thead.innerHTML = `<tr>${previewData.headers.map(h => `<th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border-color);white-space:nowrap;">${escapeHtml(h)}</th>`).join('')}</tr>`;
+    const mapping = previewData.headers.map(header => {
+      const field = IMPORT_FIELDS.find(f => [f.key, fieldLabel(f.key), FIELD_LABEL_FALLBACK[f.key]].filter(Boolean).map(_normHeader).includes(_normHeader(header)));
+      return escapeHtml(header) + ' → ' + escapeHtml(field ? field.key : 'игнорируется');
+    });
+    overlay.querySelector('#import-file-details').innerHTML =
+      escapeHtml(previewData.format + ' · ' + previewData.encoding + ' · разделитель: ' + previewData.delimiter + (previewData.sheet ? ' · лист: ' + previewData.sheet : '')) +
+      '<br>Всего строк: ' + previewData.rows.length + '. Показаны первые 5; справочники и сохранение проверяет сервер.' +
+      '<details><summary>Сопоставление колонок (предварительное)</summary>' + mapping.join('<br>') + '</details>';
+
+    thead.innerHTML = `<tr>${previewData.headers.map(h => `<th style="text-align:left;border-bottom:1px solid var(--border-color);white-space:nowrap">${escapeHtml(h)}</th>`).join('')}</tr>`;
 
     const previewRows = previewData.rows.slice(0, 5);
     tbody.innerHTML = previewRows.map(row => {
       return `<tr>
-        ${row.map((cell, i) => `<td style="padding:6px 12px;border-bottom:1px solid var(--border-color);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cell || '')}</td>`).join('')}
+        ${row.map((cell, i) => `<td style="border-bottom:1px solid var(--border-color);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(cell || '')}</td>`).join('')}
       </tr>`;
     }).join('');
   }
@@ -5037,7 +5318,9 @@ export function importTasksFromExcel(app, onSuccess) {
   }
 
   overlay.querySelector('#import-submit-btn').addEventListener('click', async () => {
-    if (!selectedFile || !previewData) return;
+    if (importing || submissionComplete || !selectedFile || !previewData) return;
+    importing = true;
+    fileInput.disabled = true;
 
     const btn = overlay.querySelector('#import-submit-btn');
     btn.disabled = true;
@@ -5059,6 +5342,11 @@ export function importTasksFromExcel(app, onSuccess) {
           }).join(delimiter))
         ].join('\r\n');
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        if (blob.size > MAX_IMPORT_BYTES) {
+          errors = ['После преобразования Excel в CSV превышен лимит. ' + sizeError];
+          renderErrors();
+          return;
+        }
         const csvFile = new File([blob], selectedFile.name.replace(/\.xlsx?$/i, '.csv'), { type: 'text/csv' });
         formData.append('file', csvFile);
       } else {
@@ -5066,6 +5354,7 @@ export function importTasksFromExcel(app, onSuccess) {
       }
 
       const result = await app.api.post('/tasks/import', formData, true);
+      submissionComplete = true;
 
       const resultDiv = overlay.querySelector('#import-result');
       resultDiv.style.display = 'block';
@@ -5087,7 +5376,7 @@ export function importTasksFromExcel(app, onSuccess) {
         html += `<div style="margin-top:10px;font-size:12px;color:var(--text-secondary);">Полный список ошибок — в отчёте (кнопки ниже).</div>`;
         html += `<ul style="margin:8px 0 0 0;padding-left:20px;font-size:12px;max-height:160px;overflow-y:auto;">`;
         errs.slice(0, 10).forEach(e => {
-          html += `<li><strong>Строка ${e.row}:</strong> ${escapeHtml(e.message || JSON.stringify(e))}</li>`;
+          html += `<li><strong>${e.row == null ? "Ошибка импорта" : `Строка ${escapeHtml(String(e.row))}`}:</strong> ${escapeHtml(e.message || JSON.stringify(e))}</li>`;
         });
         if (errs.length > 10) {
           html += `<li>... и ещё ${errs.length - 10} ошибок</li>`;
@@ -5096,9 +5385,28 @@ export function importTasksFromExcel(app, onSuccess) {
       }
 
       overlay.querySelector('#import-result-content').innerHTML = html;
+      resultDiv.focus();
 
       const actions = overlay.querySelector('#import-result-actions');
       actions.style.display = 'flex';
+      overlay.querySelector('#import-retry-download')?.remove();
+      const failedRows = [...new Set(errs.filter(e => e.fatal === true).map(e => e.row))];
+      const canExportFailed = result.total === previewData.rows.length && result.skipped > 0 &&
+        failedRows.length === result.skipped && failedRows.every(row => Number.isInteger(row) && row >= 2 && row <= result.total + 1);
+      if (canExportFailed) {
+        const retry = document.createElement('button');
+        retry.id = 'import-retry-download'; retry.className = 'btn btn-secondary btn-sm';
+        retry.textContent = 'Скачать только пропущенные строки (.csv)';
+        retry.addEventListener('click', () => {
+          const rows = [previewData.headers, ...failedRows.sort((a,b) => a-b).map(row => previewData.rows[row-2])];
+          const content = '\uFEFF' + rows.map(row => row.map(value => '"' + String(value ?? '').replaceAll('"', '""') + '"').join(';')).join('\r\n');
+          downloadCsv(content, 'import_failed_rows.csv');
+        });
+        actions.appendChild(retry);
+      }
+      const guidance = document.createElement('p');
+      guidance.textContent = canExportFailed ? 'Исправьте скачанные пропущенные строки и выберите исправленный файл. Успешные строки в него не включены.' : 'Повторная отправка этого файла отключена. При общем сбое сверяйтесь с отчётом; не повторяйте успешно созданные строки.';
+      overlay.querySelector('#import-result-content').appendChild(guidance);
       const copyBtn = overlay.querySelector('#import-copy-report');
       const downloadBtn = overlay.querySelector('#import-download-report');
       copyBtn.replaceWith(copyBtn.cloneNode(true));
@@ -5110,17 +5418,16 @@ export function importTasksFromExcel(app, onSuccess) {
         downloadReport(result, selectedFile.name);
       });
 
-      if (!hasErrors) {
-        setTimeout(() => {
-          closeImportModal();
-          if (onSuccess) onSuccess();
-        }, 1500);
-      }
+      importedAny = importedAny || result.created > 0;
+      overlay.querySelector('#import-cancel-btn').textContent = 'Закрыть';
     } catch (e) {
-      window.toast?.('Ошибка импорта: ' + (e.message || 'Неизвестная ошибка'), 'error');
+      errors = [e.status === 413 ? sizeError : 'Ошибка импорта: ' + (e.message || 'Неизвестная ошибка')];
+      renderErrors();
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Импортировать';
+      importing = false;
+      fileInput.disabled = false;
+      btn.disabled = submissionComplete || errors.length > 0;
+      btn.textContent = submissionComplete ? 'Выберите исправленный файл' : 'Импортировать';
     }
   });
 }
@@ -5181,9 +5488,10 @@ const CARD_TABS = [
   ['com', 'Комментарии', 'msg'],
   ['sys', 'Ссылки и файлы', 'link'],
   ['log', 'Лог изменений', 'clock'],
+  ['work', 'Рабочие задачи', 'file'],
 ];
 
-let cardState = { tab: 'main', editing: false, dirty: false, saving: false, prioritiserRunning: '', replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
+let cardState = { tab: 'main', editing: false, dirty: false, saving: false, prioritiserRunning: '', replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0, descriptionExpanded: false };
 let cardRates = null;
 let cardDict = null;
 let cardMaps = null;
@@ -5191,35 +5499,137 @@ let cardAi = null;
 let cardPs = null;
 let cardReportingContext = null;
 let cardReportingLoading = false;
+let cardReportingDrafts = new Map();
 let _cardEscHandler = null;
 let _cardToastTimer = null;
 let _cardRouteTabHandler = null;
 let _cardSavedHighlightTimer = null;
+let _cardAttachmentHydrationTimer = null;
+
+function cardCurrentUser() {
+  return window.app?.store?.get?.('currentUser') || {};
+}
+
+function cardMatchesCurrentTask(taskId) {
+  const requestedId = Number(taskId);
+  return Number.isSafeInteger(requestedId)
+    && requestedId > 0
+    && requestedId === Number(currentTask?.id);
+}
+
+function cardEditPermission() {
+  return getTaskEditPermission(cardCurrentUser(), currentTask || cardState.current || {});
+}
+
+function cardCommentPermission() {
+  return getTaskCommentPermission(cardCurrentUser(), currentTask || cardState.current || {});
+}
+
+function cardReportingDraftKey(kind, meetingId) {
+  return String(kind || '') + ':' + String(meetingId ?? '');
+}
+
+function cardReportingMeetingId(item) {
+  return item?.current_meeting?.id == null ? '' : String(item.current_meeting.id);
+}
+
+function cardReportingBaseline(item) {
+  const kind = String(item?.kind || '');
+  const current = item?.current_status || {};
+  return {
+    kind,
+    meetingId: cardReportingMeetingId(item),
+    text: String(current.text || ''),
+    didDemo: kind === 'did' ? !!current.did_demo : false,
+    version: Number(current.version || 0),
+  };
+}
+
+function cardFindReportingItem(kind, meetingId) {
+  const expectedKey = cardReportingDraftKey(kind, meetingId);
+  return (cardReportingContext?.items || []).find(item =>
+    cardReportingDraftKey(item?.kind, cardReportingMeetingId(item)) === expectedKey
+  ) || null;
+}
+
+function cardReportingValuesForItem(item) {
+  const baseline = cardReportingBaseline(item);
+  const draft = cardReportingDrafts.get(cardReportingDraftKey(baseline.kind, baseline.meetingId));
+  return draft ? { ...draft, version: baseline.version } : baseline;
+}
+
+function cardReportingDirtyCount() {
+  return cardReportingDrafts.size;
+}
+
+function cardReportingDraftNames() {
+  const fallback = { directorate: 'Директорская оперативка', did: 'Оперативка ДИД', key_projects: 'Ключевые проекты' };
+  return Array.from(cardReportingDrafts.values()).map(draft => {
+    const item = cardFindReportingItem(draft.kind, draft.meetingId);
+    return 'Отчётный статус: ' + (item?.title || fallback[draft.kind] || draft.kind || 'встреча');
+  });
+}
+
+function clearCardReportingDrafts() {
+  cardReportingDrafts.clear();
+}
+
+function cardSetReportingDraft(kind, meetingId, text, didDemo) {
+  const item = cardFindReportingItem(kind, meetingId);
+  if (!item) return null;
+  const baseline = cardReportingBaseline(item);
+  const draft = {
+    ...baseline,
+    text: String(text ?? ''),
+    didDemo: baseline.kind === 'did' ? !!didDemo : false,
+  };
+  const key = cardReportingDraftKey(baseline.kind, baseline.meetingId);
+  if (draft.text === baseline.text && draft.didDemo === baseline.didDemo) {
+    cardReportingDrafts.delete(key);
+    return null;
+  }
+  cardReportingDrafts.set(key, draft);
+  return draft;
+}
+
+function cardCaptureReportingDraft(target) {
+  const card = target?.closest?.('.reporting-status-card');
+  const kind = card?.dataset.reportingKind || target?.dataset.reportingText || target?.dataset.reportingDemo;
+  const meetingId = card?.dataset.reportingMeetingId || target?.dataset.reportingMeetingId;
+  if (!kind || meetingId == null || meetingId === '') return null;
+  const textInput = card?.querySelector(`[data-reporting-text="${kind}"]`);
+  const demoInput = card?.querySelector(`[data-reporting-demo="${kind}"]`);
+  return cardSetReportingDraft(kind, meetingId, textInput?.value || '', demoInput?.checked || false);
+}
+
+export function normalizeTaskCardTab(tab) {
+  const normalized = tab === 'files' ? 'sys' : tab;
+  return CARD_TABS.some(item => item[0] === normalized) ? normalized : 'main';
+}
 
 function cardTabFromRoute() {
   const query = window.location.hash.slice(1).split('?')[1] || '';
-  const requested = new URLSearchParams(query).get('tab') || 'main';
-  return CARD_TABS.some(tab => tab[0] === requested) ? requested : 'main';
+  const params = new URLSearchParams(query);
+  const requested = params.get('tab') || (parseCommentTarget(params) ? 'com' : 'main');
+  return normalizeTaskCardTab(requested);
 }
 
 async function cardActivateTab(tab, app, syncRoute = true) {
-  const validTab = CARD_TABS.some(item => item[0] === tab) ? tab : 'main';
+  const validTab = normalizeTaskCardTab(tab);
   cardState.tab = validTab;
   cardState.replyFor = null;
   if (syncRoute) window.app?.router?.updateTaskTabRoute?.(validTab);
   if (validTab === 'com') {
+    _commentTargetHandled = null;
     _commentFormInitialized = false;
     setTimeout(() => { initCommentForm(currentTask?.id, app); renderCommentList(); }, 0);
-  }
-  if (validTab === 'files') {
-    _attachmentFormInitialized = false;
-    setTimeout(() => { initAttachmentForm(currentTask?.id, app); renderAttachmentsList(); }, 0);
   }
   if (validTab === 'log') await cardLoadHistory(app);
   if (validTab === 'rep') await cardLoadReportingContext(app);
   cardRenderTabs();
   cardRenderBody();
   cardRenderFooter();
+  return validTab;
 }
 
 function cardCur() { return cardState.editing ? cardState.draft : cardState.current; }
@@ -5284,23 +5694,18 @@ function cardNum(v) {
 }
 
 function cardBuildRates(items) {
-  const byComp = {};
-  (items || []).forEach(it => {
-    if (!it || it.is_active === false) return;
-    const comp = it.competency;
-    (byComp[comp] = byComp[comp] || {})[it.year] = Number(it.rate || 0);
-  });
-  const rates = {};
-  Object.keys(byComp).forEach(c => {
-    const ys = Object.keys(byComp[c]).map(Number).sort((a, b) => a - b);
-    rates[c] = ys.length ? byComp[c][ys[ys.length - 1]] : 0;
-  });
-  return rates;
+  return buildCompetencyRateTable(items);
 }
 function cardRate(key) {
   if (!cardRates) return 0;
   const comp = CARD_RATES_MAP[key];
-  return comp ? (cardRates[comp] || 0) : 0;
+  if (!comp) return 0;
+  const task = cardCur() || {};
+  const year = deadlineYearFromReference(
+    { name: task.deadline },
+    cardDict?.deadlines || [],
+  );
+  return competencyRateForYear(cardRates, comp, year);
 }
 function cardCalcCost(o) {
   if (!o || !cardRates) return null;
@@ -5323,20 +5728,9 @@ function cardDiffPct(eo, ftz) {
   if (p > 0) return { txt: '+' + p + '%', cls: 'd-bad' };
   return { txt: '0%', cls: 'd-neutral' };
 }
-function cardStatusCls(s) {
-  if (s === 'ВЫПОЛНЕНА') return 'b-green';
-  if (s === 'ОТКЛОНЕНА' || s === 'НЕ АКТУАЛЬНА' || s === 'ЭСКАЛАЦИЯ НА ЛТ') return 'b-red';
-  if (s === 'ХОЛД' || s === 'ПРИНЯТИЕ РЕШЕНИЯ' || s === 'ЭКСПРЕСС-ОЦЕНКА') return 'b-amber';
-  if (s === 'НОВАЯ ЗАДАЧА') return 'b-gray';
-  return 'b-blue';
-}
-function cardPrioCls(p) { return p === 'ВЫСОКИЙ' ? 'b-red' : (p === 'СРЕДНИЙ' ? 'b-amber' : 'b-green'); }
-function cardStatusHex(s) {
-  if (s === 'ВЫПОЛНЕНА') return 'var(--status-done)';
-  if (s === 'ОТКЛОНЕНА' || s === 'НЕ АКТУАЛЬНА' || s === 'ЭСКАЛАЦИЯ НА ЛТ') return 'var(--danger)';
-  if (s === 'ХОЛД' || s === 'ПРИНЯТИЕ РЕШЕНИЯ' || s === 'ЭКСПРЕСС-ОЦЕНКА') return 'var(--warning)';
-  if (s === 'НОВАЯ ЗАДАЧА') return 'var(--status-backlog)';
-  return 'var(--status-progress)';
+function cardStatusHex(status) {
+  const tokens = { success: 'success-text', danger: 'danger-text', info: 'info-text', warning: 'warning-text', accent: 'accent-text', neutral: 'text-secondary' };
+  return `var(--${tokens[taskStatusTone(status)]})`;
 }
 function cardGradePill(v) {
   if (!v) return '—';
@@ -5345,34 +5739,34 @@ function cardGradePill(v) {
   return '<span class="pill status ' + cls + '" title="' + desc + '">' + escapeHtml(v) + '</span>';
 }
 function cardSel(k, options, v) {
-  const opts = options.slice();
+  const opts = options.filter(value => value !== '');
   if (v && opts.indexOf(v) === -1) opts.unshift(v);
-  return '<select data-k="' + k + '">' + opts.map(x => '<option ' + ((x === v) ? 'selected' : '') + '>' + escapeHtml(x) + '</option>').join('') + '</select>';
+  return uiControl({ kind: 'select', value: v || '', options: [{ value: '', label: 'Не выбрано' }, ...opts.map(value => ({ value, label: value }))], attrs: { 'data-k': k, 'aria-label': cardFieldLabel(k) } });
 }
 function cardSelScore(k, v) {
-  const opts = ['A', 'B', 'C', 'D', 'E'];
-  return '<select data-k="' + k + '"><option value="">—</option>' + opts.map(x => '<option ' + ((x === v) ? 'selected' : '') + '>' + x + '</option>').join('') + '</select>';
+  return uiControl({ kind: 'select', value: v, options: [{ value: '', label: '—' }, ...['A', 'B', 'C', 'D', 'E'].map(value => ({ value, label: value }))], attrs: { 'data-k': k, 'aria-label': cardFieldLabel(k) } });
 }
-function cardNumC(k, v, s) { return '<input type="number" step="' + (s || 1) + '" min="0" data-k="' + k + '" value="' + (v == null ? '' : v) + '">'; }
-function cardTxtC(k, v) { return '<input type="text" data-k="' + k + '" value="' + escapeHtml(v) + '">'; }
-function cardTaC(k, v, r, maxLength) { return '<textarea rows="' + (r || 4) + '" data-k="' + k + '"' + (maxLength ? ' maxlength="' + maxLength + '"' : '') + '>' + escapeHtml(v) + '</textarea>'; }
-function cardDateC(k, v) { return '<input type="date" data-k="' + k + '" value="' + (v || '') + '">'; }
+function cardNumC(k, v, s, max = null) { return uiControl({ type: 'number', value: v ?? '', attrs: { step: s || 1, min: 0, max, 'data-k': k, 'aria-label': cardFieldLabel(k) } }); }
+function cardTxtC(k, v) { return uiControl({ value: v, attrs: { 'data-k': k, 'aria-label': cardFieldLabel(k) } }); }
+function cardTaC(k, v, r, maxLength) { return uiControl({ kind: 'textarea', value: v, attrs: { rows: r || 4, 'data-k': k, 'aria-label': cardFieldLabel(k), maxlength: maxLength } }); }
+function cardDateC(k, v) { return uiControl({ type: 'date', value: v || '', attrs: { 'data-k': k, 'aria-label': cardFieldLabel(k) } }); }
+
 function cardProgressEditor(value) {
   const progress = Math.min(100, Math.max(0, Math.round((+value || 0) / 5) * 5));
   return '<div class="prog-edit" style="--progress-position:' + progress + '%"><output class="progress-value" data-progress-value>' + progress + '%</output><input type="range" min="0" max="100" step="5" data-k="progress" value="' + progress + '" aria-label="Прогресс, процентов"></div>';
 }
 function cardF(l, inner, o) {
   o = o || {};
-  const editAttrs = o.editKey ? ' inline-edit-target" data-inline-edit="' + o.editKey + '" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(l) + '" title="Нажмите, чтобы изменить"' : '"';
+  const editAttrs = o.editKey && cardEditPermission().allowed ? ' inline-edit-target" data-inline-edit="' + o.editKey + '" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(l) + '" title="Нажмите, чтобы изменить"' : '"';
   return '<div class="field ' + (o.span2 ? 'span2 ' : '') + (o.span4 ? 'span4 ' : '') + '"><div class="flabel"><span class="flt">' + escapeHtml(l) + '</span>' + (o.lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="fval' + editAttrs + '>' + inner + '</div></div>';
 }
 function cardIcell(l, inner, o) {
   o = o || {};
-  const editAttrs = o.editKey ? ' inline-edit-target" data-inline-edit="' + o.editKey + '" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(l) + '" title="Нажмите, чтобы изменить"' : '"';
+  const editAttrs = o.editKey && cardEditPermission().allowed ? ' inline-edit-target" data-inline-edit="' + o.editKey + '" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(l) + '" title="Нажмите, чтобы изменить"' : '"';
   return '<div class="icell ' + (o.span2 ? 'span2cell' : '') + '"><div class="ilab"><span class="flt">' + escapeHtml(l) + '</span>' + (o.lock ? '<span class="lk">' + cardIcon('lock') + '</span>' : '') + '</div><div class="ival' + (o.valueClass ? ' ' + o.valueClass : '') + editAttrs + '>' + inner + '</div></div>';
 }
 function cardV(v) { return '<div>' + v + '</div>'; }
-function cardROv(v) { return '<div style="display:flex;gap:7px;align-items:center;color:#5A6478">' + v + '</div>'; }
+function cardROv(v) { return '<div class="task-readonly-value">' + v + '</div>'; }
 function cardGrid() { return '<div class="grid">' + Array.prototype.slice.call(arguments).join('') + '</div>'; }
 function cardGrid4() { return '<div class="grid4">' + Array.prototype.slice.call(arguments).join('') + '</div>'; }
 function cardChipsStatic(arr) {
@@ -5380,11 +5774,11 @@ function cardChipsStatic(arr) {
 }
 function cardChipsTeams(all, selArr, field) {
   const ordered = all.slice().sort((a, b) => (selArr.indexOf(b) >= 0 ? 1 : 0) - (selArr.indexOf(a) >= 0 ? 1 : 0));
-  return '<div class="chips">' + ordered.map(x => '<button type="button" class="chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
+  return '<div class="chips">' + ordered.map(x => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
 }
 function cardChipsTags(all, selArr, field, editable) {
   if (!editable) return selArr.length ? '<div class="chips">' + selArr.map(x => '<span class="chip static">' + cardIcon('tag') + escapeHtml(x) + '</span>').join('') + '</div>' : '—';
-  return '<div class="chips">' + all.map(x => '<button type="button" class="chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
+  return '<div class="chips">' + all.map(x => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
 }
 function cardSec(t, i) { return '<h3 class="sec"><span class="sic">' + cardIcon(i) + '</span>' + escapeHtml(t) + '</h3>'; }
 function cardLnk(u) { const safe = safeExternalUrl(u); return safe ? '<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + cardIcon('link') + escapeHtml(u) + '</a>' : 'Некорректная ссылка'; }
@@ -5427,6 +5821,7 @@ function buildCardState(task) {
     priority: t.priority_name || t.priority || '',
     status: t.status_name || t.status || '',
     deadline: t.deadline_name || t.deadline || '',
+    deadlineId: t.deadline_id == null ? null : Number(t.deadline_id),
     assignee: t.owner_name || t.owner || '',
     progress: num(t.progress) || 0,
     effortDays: num(t.effort_days),
@@ -5458,15 +5853,21 @@ function buildCardState(task) {
   };
 }
 
-async function cardLoadDict(app) {
+async function cardLoadDict(app, expectedTaskId = currentTask?.id) {
   const api = app?.api || window.app?.api;
-  if (!api) return;
+  const taskId = Number(expectedTaskId);
+  if (!api || !cardMatchesCurrentTask(taskId)) return false;
+  const request = _taskCardRequestGate.start('task-dictionaries', taskId);
   const norm = r => Array.isArray(r) ? r : ((r && r.items) || []);
   const [ref, legacyTaskTypes, legacyChannels] = await Promise.all([
-    api.get('/tasks/reference').catch(() => null),
-    api.get('/admin/task-types').catch(() => []),
-    api.get('/admin/channels').catch(() => []),
+    api.get('/tasks/reference', { signal: request.signal }).catch(() => null),
+    api.get('/admin/task-types', { signal: request.signal }).catch(() => []),
+    api.get('/admin/channels', { signal: request.signal }).catch(() => []),
   ]);
+  if (!_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) {
+    _taskCardRequestGate.finish(request.token);
+    return false;
+  }
   const cached = app || window.app || {};
   cardDict = {
     teams: norm(ref?.teams || cached.teams),
@@ -5497,6 +5898,8 @@ async function cardLoadDict(app) {
   recoverLegacyRef(cardState.current, 'channel', 'channelId', legacyChannels, cardDict.channels);
   recoverLegacyRef(cardState.draft, 'type', 'taskTypeId', legacyTaskTypes, cardDict.taskTypes);
   recoverLegacyRef(cardState.draft, 'channel', 'channelId', legacyChannels, cardDict.channels);
+  _taskCardRequestGate.finish(request.token);
+  return true;
 }
 function cardNameList(key) {
   return (cardDict && cardDict[key] ? cardDict[key] : []).map(x => (x && (x.name || x.login || x.email)) || '').filter(Boolean);
@@ -5528,32 +5931,65 @@ function cardRenderHeader() {
   if (!el) return;
   const t = cardCur();
   let h = '<div class="head-row1"><div class="row-badges">';
-  h += '<button class="tid" data-action="copy-id" title="Скопировать ID">' + escapeHtml(t.publicId || formatTaskPublicId(t.id)) + cardIcon('copy') + '</button>';
-  h += '<span class="task-head-chip task-head-chip--type" id="hType">' + escapeHtml(t.type) + '</span>';
+  h += '<button class="ui-link tid" data-action="copy-id" title="Скопировать ID">' + escapeHtml(t.publicId || formatTaskPublicId(t.id)) + cardIcon('copy') + '</button>';
+  h += uiBadge({ label: t.type, tone: 'accent', className: 'task-head-chip', attrs: { id: 'hType' } });
   h += '</div><div class="row-status">';
-  h += '<span class="task-head-chip task-head-chip--status ' + cardStatusCls(t.status) + '" id="hStatus">' + escapeHtml(t.status) + '</span>';
-  h += '<span class="task-head-chip task-head-chip--priority ' + cardPrioCls(t.priority) + '" id="hPrio">' + escapeHtml(t.priority) + '</span>';
-  h += '</div><div class="row-actions">' + (cardState.editing ? '<span class="editbadge"><span class="editbadge-mark" aria-hidden="true">' + cardIcon('warning') + '</span>Редактирование</span>' : '') + '<button class="iconbtn" data-action="copy-link" title="Копировать ссылку на задачу" aria-label="Копировать ссылку на задачу">' + cardIcon('link') + '</button><button class="iconbtn close" data-action="close" title="Закрыть (Esc)" aria-label="Закрыть карточку задачи">' + cardIcon('x') + '</button></div></div>';
-  h += '<div class="head-title" id="headerTitle" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</div>';
+  h += uiBadge({ label: t.status, tone: taskStatusTone(t.status), className: 'task-head-chip', attrs: { id: 'hStatus' } });
+  h += uiBadge({ label: t.priority, tone: taskPriorityTone(t.priority), className: 'task-head-chip', attrs: { id: 'hPrio' } });
+  h += '</div><div class="row-actions">' + (cardState.editing ? '<span class="editbadge"><span class="editbadge-mark" aria-hidden="true">' + cardIcon('warning') + '</span>Редактирование</span>' : '') + '' + uiButton({ label: 'Копировать ссылку на задачу', iconMarkup: cardIcon('link'), iconOnly: true, variant: 'ghost', className: 'iconbtn', attrs: { 'data-action': 'copy-link' } }) + uiButton({ label: 'Закрыть карточку задачи', iconMarkup: cardIcon('x'), iconOnly: true, size: 'large', variant: 'ghost', className: 'iconbtn close', attrs: { 'data-action': 'close', title: 'Закрыть (Esc)' } }) + '</div></div>';
+  h += '<h1 class="head-title" id="task-detail-title" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</h1>';
   el.innerHTML = h;
 }
 
 function cardRenderTabs() {
   const el = document.getElementById('tabs');
   if (!el) return;
+  const focusedTab = document.activeElement?.closest?.('#tabs [data-tab]')?.dataset?.tab || '';
   const label = x => {
     if (x[0] === 'com') return 'Комментарии' + (cardState.commentsCount ? ' · ' + cardState.commentsCount : '');
-    if (x[0] === 'files') return 'Файлы' + (cardState.filesCount ? ' · ' + cardState.filesCount : '');
+    if (x[0] === 'sys') return 'Ссылки и файлы' + (cardState.filesCount ? ' · ' + cardState.filesCount : '');
     if (x[0] === 'log') return 'Лог изменений' + (cardState.history.length ? ' · ' + cardState.history.length : '');
     return x[1];
   };
-  el.innerHTML = CARD_TABS.map(x => '<button class="tab ' + (cardState.tab === x[0] ? 'on' : '') + '" data-tab="' + x[0] + '">' + cardIcon(x[2]) + escapeHtml(label(x)) + '</button>').join('') + '<span id="tabInd"></span>';
-  cardPlaceInd();
+  el.innerHTML = CARD_TABS.map(x => {
+    const selected = cardState.tab === x[0];
+    return uiTab({ id: 'task-tab-' + x[0], label: label(x), panelId: 'mbody', selected, iconMarkup: cardIcon(x[2]), className: 'tab' + (selected ? ' on' : ''), attrs: { 'data-tab': x[0] } });
+  }).join('');
+  cardSyncTabsOverflow();
+  if (focusedTab) document.getElementById('task-tab-' + normalizeTaskCardTab(focusedTab))?.focus({ preventScroll: true });
 }
-function cardPlaceInd() {
-  const on = document.querySelector('#tabs .tab.on');
-  const ind = document.getElementById('tabInd');
-  if (on && ind) { ind.style.left = on.offsetLeft + 'px'; ind.style.width = on.offsetWidth + 'px'; }
+
+
+function cardSyncTabsOverflow() {
+  const shell = document.getElementById('task-tabs-shell');
+  const tabs = document.getElementById('tabs');
+  if (!shell || !tabs) return;
+  const maxScroll = Math.max(0, tabs.scrollWidth - tabs.clientWidth);
+  const hasOverflow = maxScroll > 2;
+  const canScrollLeft = hasOverflow && tabs.scrollLeft > 2;
+  const canScrollRight = hasOverflow && tabs.scrollLeft < maxScroll - 2;
+  shell.classList.toggle('has-overflow', hasOverflow);
+  shell.classList.toggle('can-scroll-left', canScrollLeft);
+  shell.classList.toggle('can-scroll-right', canScrollRight);
+  const left = shell.querySelector('[data-action="scroll-tabs-left"]');
+  const right = shell.querySelector('[data-action="scroll-tabs-right"]');
+  if (left) left.disabled = !canScrollLeft;
+  if (right) right.disabled = !canScrollRight;
+}
+
+function cardSyncDescriptionDisclosure() {
+  const shell = document.querySelector('#task-detail-overlay .task-description-shell');
+  const content = shell?.querySelector('.task-description-content');
+  const button = shell?.querySelector('.task-description-toggle');
+  if (!shell || !content || !button) return;
+  const collapsedHeight = Number.parseFloat(getComputedStyle(shell).getPropertyValue('--task-description-collapsed-height')) || 240;
+  const isCollapsible = content.scrollHeight > collapsedHeight + 1;
+  if (!isCollapsible) cardState.descriptionExpanded = false;
+  shell.classList.toggle('is-collapsible', isCollapsible);
+  shell.classList.toggle('is-expanded', isCollapsible && cardState.descriptionExpanded);
+  button.hidden = !isCollapsible;
+  button.setAttribute('aria-expanded', String(isCollapsible && cardState.descriptionExpanded));
+  button.textContent = cardState.descriptionExpanded ? 'Свернуть' : 'Показать полностью';
 }
 
 function cardKpiCard(l, v, lock) {
@@ -5623,7 +6059,7 @@ function showPrioritiserRequirementsModal(kind, items) {
   overlay.style.zIndex = '1250';
   overlay.innerHTML = '<div class="prioritiser-requirements-modal app-modal app-modal--small" role="dialog" aria-modal="true" aria-labelledby="prioritiser-requirements-title">' +
     '<div class="app-modal__header"><h3 class="app-modal__title" id="prioritiser-requirements-title">Не хватает данных для расчёта ' + calculation + '</h3>' +
-    '<button type="button" class="prioritiser-requirements-x" data-modal-close aria-label="Закрыть">' + cardIcon('x') + '</button></div>' +
+    '<button type="button" class="btn btn-ghost btn-lg square-icon ui-btn prioritiser-requirements-x" data-modal-close aria-label="Закрыть">' + cardIcon('x') + '</button></div>' +
     '<div class="app-modal__body"><p>Заполните отмеченные поля в карточке задачи и повторите расчёт.</p>' +
     cardPrioritiserChecklist(items, 'agent-check-list-modal') + '</div>' +
     '<div class="prioritiser-requirements-actions app-modal__footer"><button type="button" class="btn btn-primary btn-sm" data-action="close-requirements">Закрыть</button></div>' +
@@ -5647,11 +6083,14 @@ function cardPrioritiserButton(kind) {
   const running = cardState.prioritiserRunning === kind;
   const action = kind === 'value' ? 'ai-calc-fin' : 'ps-calc';
   const requirements = cardPrioritiserRequirements(kind);
+  const permission = cardEditPermission();
   const tooltipId = 'agent-check-' + kind;
-  return '<span class="agent-check-wrap"><button class="btn ai" data-action="' + action + '" aria-describedby="' + tooltipId + '"' + (cardState.prioritiserRunning ? ' disabled' : '') + '>'
-    + cardIcon('spark') + (running ? 'Расчёт…' : 'AI-расчет') + '</button>'
-    + '<span class="agent-check-tooltip" id="' + tooltipId + '" role="tooltip"><span class="agent-check-title">Для расчёта нужны поля</span>'
-    + cardPrioritiserChecklist(requirements) + '</span></span>';
+  const disabled = Boolean(cardState.prioritiserRunning || !permission.allowed);
+  const tooltipBody = permission.allowed
+    ? '<span class="agent-check-title">Для расчёта нужны поля</span>' + cardPrioritiserChecklist(requirements)
+    : '<span class="agent-check-title">Расчёт недоступен</span><span>' + escapeHtml(permission.reason) + '</span>';
+  return '<span class="agent-check-wrap">' + uiButton({ label: running ? 'Расчёт…' : 'AI-расчет', iconMarkup: cardIcon('spark'), attrs: { 'data-action': action, 'aria-describedby': tooltipId, 'aria-busy': running, disabled } })
+    + '<span class="agent-check-tooltip" id="' + tooltipId + '" role="tooltip">' + tooltipBody + '</span></span>';
 }
 function cardKpiBlock(t, e) {
   const cost = cardCalcCost(t.eo), fcost = cardCalcCost(t.ftz);
@@ -5678,7 +6117,7 @@ function cardKpiBlock(t, e) {
   h += '<div class="kpi"><div class="kl"><span class="flt">Финансовый эффект</span>'
     + cardPrioritiserButton('value') + '</div>';
   h += e
-    ? '<div class="fval"><input type="number" step="0.1" min="0" data-k="finEffect" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:140px;display:inline-block"> <small style="color:var(--tfaint)">млн ₽</small></div>'
+    ? '<div class="fval"><input class="input ui-control" type="number" step="0.1" min="0" data-k="finEffect" aria-label="Финансовый эффект" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:140px;display:inline-block"> <small style="color:var(--tfaint)">млн ₽</small></div>'
     : '<div class="kv big"><span data-dyn="fin">' + cardFmtNum(displayFin, 2) + '</span> <small>млн ₽</small></div>';
   h += '<div class="psbar hide"></div>';
   h += '<div class="just"><div class="flabel"><span class="flt">Обоснование расчёта</span></div><div class="fval">' + (e ? cardTaC('finJust', t.finJust, 5) : '<span class="txt">' + (displayFinJust ? cardNl2br(displayFinJust) : '—') + '</span>') + '</div><div class="aipop" id="finPop"></div></div>';
@@ -5702,7 +6141,7 @@ function cardKpiBlockV30(t, e) {
     + cardStatV30('C/V по ФТЗ', '<span data-dyn="cvF" class="' + cardCvCls(cvF) + '">' + (cvF == null ? '—' : cvF.toLocaleString('ru-RU')) + '</span>') + '</div></div>';
   h += '<div class="psrow"><div class="bigcard"><div class="bc-head"><span class="bc-title">Priority Score</span><span class="lk" title="Автоматически">' + cardIcon('lock') + '</span>' + cardPrioritiserButton('priority') + '</div><div class="bc-value"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div><div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование агента</summary><div class="jtxt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</div></details><div class="aipop" id="psPop"></div></div>';
   h += '<div class="bigcard"><div class="bc-head"><span class="bc-title">Финансовый эффект</span>' + cardPrioritiserButton('value') + '</div>';
-  if (e) h += '<div class="bc-value" style="font-size:18px"><input type="number" step="0.1" min="0" data-k="finEffect" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:150px;display:inline-block"> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><div class="jlab">Обоснование расчёта</div><div class="jtxt">' + cardTaC('finJust', t.finJust, 3) + '</div>';
+  if (e) h += '<div class="bc-value" style="font-size:18px"><input class="input ui-control" type="number" step="0.1" min="0" data-k="finEffect" aria-label="Финансовый эффект" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:150px;display:inline-block"> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><div class="jlab">Обоснование расчёта</div><div class="jtxt">' + cardTaC('finJust', t.finJust, 3) + '</div>';
   else h += '<div class="bc-value"><span data-dyn="fin">' + cardFmtNum(displayFin, 2) + '</span> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование расчёта</summary><div class="jtxt">' + (displayFinJust ? cardNl2br(displayFinJust) : '—') + '</div></details>';
   return h + '<div class="aipop" id="finPop"></div></div></div>';
 }
@@ -5721,12 +6160,12 @@ function cardBodyMain(t, e) {
   let h = '';
   h += cardSec('Исполнение и команды', 'user');
   h += cardGrid4(
-    cardF('Статус задачи', e ? cardSel('status', statuses, t.status) : cardV('<span class="badge ' + cardStatusCls(t.status) + '">' + escapeHtml(t.status) + '</span>')),
-    cardF('Приоритет', e ? cardSel('priority', priorities, t.priority) : cardV('<span class="badge ' + cardPrioCls(t.priority) + '">' + escapeHtml(t.priority) + '</span>')),
+    cardF('Статус задачи', e ? cardSel('status', statuses, t.status) : cardV(uiBadge({ label: t.status, tone: taskStatusTone(t.status) }))),
+    cardF('Приоритет', e ? cardSel('priority', priorities, t.priority) : cardV(uiBadge({ label: t.priority, tone: taskPriorityTone(t.priority) }))),
     cardF('Срок выполнения', e ? cardSel('deadline', deadlines, t.deadline) : cardV('<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>')),
-    cardF('Прогресс', e ? cardProgressEditor(t.progress) : cardV('<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%')),
+    cardF('Прогресс', e ? cardProgressEditor(t.progress) : cardV(uiProgress({ value: t.progress, showValue: true }))),
     cardF('Ответственная команда', e ? cardSel('team', teams, t.team) : cardV('<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>')),
-    cardF('Исполнитель', e ? cardSel('assignee', users, t.assignee) : cardV('<span class="vchip"><span class="ava24">' + getInitials(t.assignee) + '</span>' + escapeHtml(cardPerson(t.assignee)) + '</span>')),
+    cardF('Исполнитель', e ? cardSel('assignee', users, t.assignee) : cardV('<span class="vchip">' + uiAvatar({ name: t.assignee, size: 24 }) + '' + escapeHtml(cardPerson(t.assignee)) + '</span>')),
     cardF('Проект', e ? cardSel('project', projects, t.project) : cardV('<span class="vchip">' + cardIcon('folder') + escapeHtml(t.project) + '</span>')),
     cardF('Тип задачи', e ? cardSel('type', types, t.type) : cardV('<span class="badge nodot b-violet">' + escapeHtml(t.type) + '</span>')),
     cardF('Другие вовлечённые команды · ' + t.otherTeams.length, e ? cardChipsTeams(teams, t.otherTeams, 'otherTeams') : cardChipsStatic(t.otherTeams), { span4: true }),
@@ -5743,7 +6182,7 @@ function cardBodyMain(t, e) {
   h += cardGrid4(
     cardF('Канал поступления', e ? cardSel('channel', channels, t.channel) : cardV(escapeHtml(t.channel))),
     cardF('Дата получения', e ? cardDateC('receivedAt', t.receivedAt) : cardV(cardFmtDate(t.receivedAt))),
-    cardF('Бизнес-заказчик', e ? '<div style="display:flex;gap:8px;align-items:center"><span class="ava24" id="custAva">' + getInitials(t.customer) + '</span>' + cardSel('customer', customers, t.customer) + '</div>' : cardV('<span class="vchip"><span class="ava24">' + getInitials(t.customer) + '</span>' + escapeHtml(cardPerson(t.customer)) + '</span>')),
+    cardF('Бизнес-заказчик', e ? '<div style="display:flex;gap:8px;align-items:center">' + uiAvatar({ name: t.customer, size: 24, id: 'custAva' }) + '' + cardSel('customer', customers, t.customer) + '</div>' : cardV('<span class="vchip">' + uiAvatar({ name: t.customer, size: 24 }) + '' + escapeHtml(cardPerson(t.customer)) + '</span>')),
     cardF('Подразделение бизнес-заказчика', cardROv(escapeHtml(t.customerDept || '—')), { lock: true }),
   );
   h += cardSec('Описание задачи', 'file');
@@ -5762,7 +6201,7 @@ function cardCustomerReference(key, items, value, fallback, editing, departmentI
   const shown = preferred.slice();
   const selected = items.find(i => String(i.id) === String(value));
   if (selected && !shown.includes(selected)) shown.unshift(selected);
-  return '<select data-k="' + key + '"><option value="">Не выбрано</option>' + shown.map(i => '<option value="' + i.id + '"' + (String(i.id) === String(value) ? ' selected' : '') + '>' + escapeHtml(i.name) + '</option>').join('') + (shown.length < items.length ? '<option value="__all">Показать всех контактных лиц…</option>' : '') + '</select>';
+  return '<select class="input ui-control" data-k="' + key + '" aria-label="' + escapeHtml(cardFieldLabel(key)) + '"><option value="">Не выбрано</option>' + shown.map(i => '<option value="' + i.id + '"' + (String(i.id) === String(value) ? ' selected' : '') + '>' + escapeHtml(i.name) + '</option>').join('') + (shown.length < items.length ? '<option value="__all">Показать всех контактных лиц…</option>' : '') + '</select>';
 }
 
 function cardBodyMainV30(t, e) {
@@ -5771,24 +6210,42 @@ function cardBodyMainV30(t, e) {
   const deadlines = cardNameList('deadlines'), channels = cardNameList('channels'), customers = cardNameList('customers'), tags = cardNameList('tags');
   const edit = key => e && (!cardState.entryField || cardState.entryField === key);
   const fullEdit = e && !cardState.entryField;
-  const titleEditAttrs = e ? '"' : ' inline-edit-target" data-inline-edit="title" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('title')) + '" title="Нажмите, чтобы изменить"';
-  const descriptionEditAttrs = e ? '"' : ' inline-edit-target" data-inline-edit="description" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('description')) + '" title="Нажмите, чтобы изменить"';
+  const canEdit = cardEditPermission().allowed;
+  const titleEditAttrs = e || !canEdit ? '"' : ' inline-edit-target" data-inline-edit="title" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('title')) + '" title="Нажмите, чтобы изменить"';
+  const descriptionEditAttrs = e || !canEdit ? '"' : ' inline-edit-target" data-inline-edit="description" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('description')) + '" title="Нажмите, чтобы изменить"';
+  const commentEditAttrs = e || !canEdit ? '"' : ' inline-edit-target" data-inline-edit="comment" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('comment')) + '" title="Нажмите, чтобы изменить"';
+  const descriptionEditor = edit('description') ? taskFormEditControl('description', t.description) : '';
   let h = '<div class="task-top"><div class="task-title-card"><div class="desc-label">' + taskFormLabel('title') + '</div><div class="task-title-row' + titleEditAttrs + '>';
-  h += edit('title') ? '<div class="title-edit-wrap"><input class="title-input" data-k="title" maxlength="255" value="' + escapeHtml(t.title) + '"><span class="tcount task-character-counter" id="titleCount"></span></div>' : '<h1 class="task-title">' + escapeHtml(t.title) + '</h1>';
-  h += '</div></div><div class="task-desc"><div class="desc-label">' + taskFormLabel('description') + '</div><div class="desc-val' + descriptionEditAttrs + '>' + (edit('description') ? taskFormEditControl('description', t.description) : '<span class="txt">' + cardNl2br(t.description) + '</span>') + '</div></div></div>';
+  h += edit('title') ? '<div class="title-edit-wrap">' + uiControl({ value: t.title, className: 'title-input', attrs: { 'data-k': 'title', maxlength: 255, 'aria-label': taskFormLabel('title') } }) + '<span class="tcount task-character-counter" id="titleCount"></span></div>' : '<div class="task-title">' + escapeHtml(t.title) + '</div>';
+  h += '</div></div><div class="task-desc"><div class="desc-label">' + taskFormLabel('description') + '</div>';
+  if (descriptionEditor) {
+    h += '<div class="desc-val' + descriptionEditAttrs + '>' + descriptionEditor + '</div>';
+  } else {
+    h += '<div class="task-description-shell' + (cardState.descriptionExpanded ? ' is-expanded' : '') + '"><div class="desc-val' + descriptionEditAttrs + '><div class="txt task-description-content" id="task-description-content">' + renderTaskCardMarkdown(t.description) + '</div></div><div class="task-description-fade" aria-hidden="true"></div><button type="button" class="ui-link task-description-toggle" data-action="toggle-description" aria-controls="task-description-content" aria-expanded="' + (cardState.descriptionExpanded ? 'true' : 'false') + '" hidden>Показать полностью</button></div>';
+  }
+  h += '</div>';
+  h += '<div class="task-desc task-comment"><div class="desc-label">Внутренний комментарий задачи</div><div class="desc-val' + commentEditAttrs + '>' + (edit('comment') ? taskFormEditControl('comment', t.comment) : '<span class="txt">' + (t.comment ? cardNl2br(t.comment) : '—') + '</span>') + '</div></div></div>';
+  if (!e) h += cardPipDecisionBanner(true);
+  const requirementWorkspace = window.app?.features?.agent_v2;
+  if (!e && requirementWorkspace?.enabled && requirementWorkspace?.pilot_allowed && requirementWorkspace?.operator_role) h += '<div class="task-requirement-entry">' + uiButton({ label: 'Открыть БТ в Агенте V2', attrs: { 'data-action': 'open-requirement-workspace' } }) + '</div>';
   h += cardSec('Паспорт задачи', 'file') + '<div class="bento">';
   h += '<div class="cl sp3" id="clExec" style="border-left:3px solid ' + cardStatusHex(t.status) + '"><div class="cl-h">' + cardIcon('trend') + '<span>Исполнение</span></div><div class="cl-grid exec">'
-    + cardIcell('Статус задачи', edit('status') ? cardSel('status', statuses, t.status) : '<span class="pill status ' + cardStatusCls(t.status) + '">' + escapeHtml(t.status) + '</span>', { editKey: e ? '' : 'status' })
-    + cardIcell(taskFormLabel('priority'), edit('priority') ? taskFormEditControl('priority', t.priority) : '<span class="pill priority ' + cardPrioCls(t.priority) + '">' + escapeHtml(t.priority) + '</span>', { editKey: e ? '' : 'priority' })
+    + cardIcell('Статус задачи', edit('status') ? cardSel('status', statuses, t.status) : uiBadge({ label: t.status, tone: taskStatusTone(t.status) }), { editKey: e ? '' : 'status' })
+    + cardIcell(taskFormLabel('priority'), edit('priority') ? taskFormEditControl('priority', t.priority) : uiBadge({ label: t.priority, tone: taskPriorityTone(t.priority) }), { editKey: e ? '' : 'priority' })
     + cardIcell(taskFormLabel('deadline'), edit('deadline') ? taskFormEditControl('deadline', t.deadline) : '<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>', { editKey: e ? '' : 'deadline' })
-    + cardIcell('Прогресс', edit('progress') ? cardProgressEditor(t.progress) : '<span class="pbar2"><span style="width:' + t.progress + '%"></span></span>' + t.progress + '%', { editKey: e ? '' : 'progress' })
+    + cardIcell('Прогресс', edit('progress') ? cardProgressEditor(t.progress) : uiProgress({ value: t.progress, showValue: true }), { editKey: e ? '' : 'progress' })
     + '<div class="icell exec-grades"><div class="ilab"><span class="flt">Оценки</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="ival grades"><span class="grade-wrap">Hard ' + cardGradePill(t.hardScore) + '</span><span class="grade-wrap">Soft ' + cardGradePill(t.softScore) + '</span></div></div></div></div>';
+  h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('trend') + '<span>Оценка и прогноз</span></div><div class="cl-grid assessment">'
+    + cardIcell('Общая оценка трудозатрат, ч/д', edit('effortDays') ? cardNumC('effortDays', t.effortDays, 1, 10000) : (t.effortDays == null ? '—' : cardFmtNum(t.effortDays) + ' ч/д'), { editKey: e ? '' : 'effortDays' })
+    + cardIcell('Вес оценки, %', edit('weightPercent') ? cardNumC('weightPercent', t.weightPercent, 1, 100) : (t.weightPercent == null ? '—' : cardFmtNum(t.weightPercent) + '%'), { editKey: e ? '' : 'weightPercent' })
+    + cardIcell('Прогноз выполнения, %', edit('forecastPercent') ? cardNumC('forecastPercent', t.forecastPercent, 1, 100) : (t.forecastPercent == null ? '—' : cardFmtNum(t.forecastPercent) + '%'), { editKey: e ? '' : 'forecastPercent' })
+    + '</div></div>';
   h += '<div class="cl half"><div class="cl-h">' + cardIcon('team') + '<span>Команда</span></div><div class="cl-grid duo">'
-    + cardIcell(taskFormLabel('assignee'), '<div class="person-ival"><span class="ava32" id="assigneeAva">' + getInitials(t.assignee) + '</span><div class="person-assignee-control">' + (edit('assignee') ? taskFormEditControl('assignee', t.assignee) : '<span class="person-name">' + escapeHtml(cardPerson(t.assignee)) + '</span>') + '</div></div>', { editKey: e ? '' : 'assignee', valueClass: 'execution-inline-field' })
+    + cardIcell(taskFormLabel('assignee'), '<div class="person-ival">' + uiAvatar({ name: t.assignee, size: 32, id: 'assigneeAva' }) + '<div class="person-assignee-control">' + (edit('assignee') ? taskFormEditControl('assignee', t.assignee) : '<span class="person-name">' + escapeHtml(cardPerson(t.assignee)) + '</span>') + '</div></div>', { editKey: e ? '' : 'assignee', valueClass: 'execution-inline-field' })
     + cardIcell(taskFormLabel('team'), edit('team') ? taskFormEditControl('team', t.team) : '<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>', { editKey: e ? '' : 'team', valueClass: 'execution-inline-field' })
     + cardIcell('Другие вовлечённые команды · ' + t.otherTeams.length, edit('otherTeams') ? cardChipsTeams(teams, t.otherTeams, 'otherTeams') : cardChipsStatic(t.otherTeams), { span2: true, editKey: e ? '' : 'otherTeams' }) + '</div></div>';
   h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Заказчик</span></div><div class="cl-grid duo">'
-    + cardIcell(taskFormLabel('customer'), '<div class="person-ival"><span class="ava32" id="custAva">' + getInitials(t.customer) + '</span><div class="person-assignee-control">' + (edit('customer') ? taskFormEditControl('customer', t.customer) : '<span class="person-name">' + escapeHtml(cardPerson(t.customer)) + '</span>') + '</div></div>', { editKey: e ? '' : 'customer', valueClass: 'customer-row-field' })
+    + cardIcell(taskFormLabel('customer'), '<div class="person-ival">' + uiAvatar({ name: t.customer, size: 32, id: 'custAva' }) + '<div class="person-assignee-control">' + (edit('customer') ? taskFormEditControl('customer', t.customer) : '<span class="person-name">' + escapeHtml(cardPerson(t.customer)) + '</span>') + '</div></div>', { editKey: e ? '' : 'customer', valueClass: 'customer-row-field' })
     + cardIcell('Подразделение', cardCustomerReference('customerDeptId', cardDict?.departments, t.customerDeptId, t.customerDept, edit('customerDeptId')), { editKey: e ? '' : 'customerDeptId', valueClass: 'customer-row-field' })
     + cardIcell('Клиент ДИД', cardCustomerReference('didClientId', cardDict?.didClientGroups, t.didClientId, t.didClientName, edit('didClientId')), { editKey: e ? '' : 'didClientId', valueClass: 'customer-row-field' })
     + cardIcell(taskFormLabel('channel'), fullEdit ? taskFormEditControl('channel', t.channel) : cardV(escapeHtml(t.channel)), { valueClass: 'customer-row-field' })
@@ -5811,7 +6268,7 @@ function cardEffortTable(t, e) {
     rows += '<tr><td><b>' + r.name + '</b></td><td class="num">' + cardRate(r.key).toLocaleString('ru-RU') + '</td><td class="num">' + (e ? cardNumC('eo.' + r.key, eoV, 0.5) : cardFmtNum(eoV)) + '</td><td class="num" title="Тянется из внешней БД (Jira)">' + cardFmtNum(ftzV) + '</td><td class="num" data-costrow="' + r.key + '">' + (eoRub ? cardFmtMoney(eoRub) : '—') + '</td><td class="num" data-ftzrow="' + r.key + '">' + (ftzRub ? cardFmtMoney(ftzRub) : '—') + '</td><td class="num"><span class="diff ' + d.cls + '" data-diffrow="' + r.key + '">' + d.txt + '</span></td></tr>';
   });
   const eoSum = cardCalcSum(t.eo), ftzSum = cardCalcSum(t.ftz), dt = cardDiffPct(eoSum, ftzSum);
-  return '<table class="tbl"><colgroup><col style="width:23%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:15%"><col style="width:15%"><col style="width:14%"></colgroup><thead><tr><th>Компетенция</th><th class="num">Ставка, ₽/ч-д</th><th class="num">ЭО, ч/д</th><th class="num">ФТЗ, ч/д</th><th class="num">ЭО, ₽</th><th class="num">ФТЗ, ₽</th><th class="num">Разница</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td>Итого</td><td class="num">—</td><td class="num">' + cardFmtNum(eoSum) + '</td><td class="num">' + cardFmtNum(ftzSum) + '</td><td class="num"><span data-dyn="costTotal">' + cardFmtMoney(cardCalcCost(t.eo)) + '</span></td><td class="num"><span data-dyn="fcostTotal">' + cardFmtMoney(cardCalcCost(t.ftz)) + '</span></td><td class="num"><span class="diff ' + dt.cls + '" data-dyn="diffTotal">' + dt.txt + '</span></td></tr></tfoot></table>';
+  return '<table class="ui-table ui-table-data tbl"><colgroup><col style="width:23%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:15%"><col style="width:15%"><col style="width:14%"></colgroup><thead><tr><th>Компетенция</th><th class="num">Ставка, ₽/ч-д</th><th class="num">ЭО, ч/д</th><th class="num">ФТЗ, ч/д</th><th class="num">ЭО, ₽</th><th class="num">ФТЗ, ₽</th><th class="num">Разница</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td>Итого</td><td class="num">—</td><td class="num">' + cardFmtNum(eoSum) + '</td><td class="num">' + cardFmtNum(ftzSum) + '</td><td class="num"><span data-dyn="costTotal">' + cardFmtMoney(cardCalcCost(t.eo)) + '</span></td><td class="num"><span data-dyn="fcostTotal">' + cardFmtMoney(cardCalcCost(t.ftz)) + '</span></td><td class="num"><span class="diff ' + dt.cls + '" data-dyn="diffTotal">' + dt.txt + '</span></td></tr></tfoot></table>';
 }
 function cardEffortDisclosure(t, e) {
   return '<details class="effort-disclosure">'
@@ -5829,65 +6286,88 @@ function cardReportingItem(item) {
   const meeting = item.current_meeting;
   const current = item.current_status || {};
   const previous = item.previous_status || {};
+  const meetingId = cardReportingMeetingId(item);
+  const values = cardReportingValuesForItem(item);
+  const reportingDirty = cardReportingDrafts.has(cardReportingDraftKey(item.kind, meetingId));
   const colors = { directorate: '#6C4CD4', did: '#1F9D44', key_projects: '#2E6BE6' };
   const icons = { directorate: 'trend', did: 'clock', key_projects: 'flag' };
   const color = colors[item.kind] || '#64748b';
   const canEdit = !!item.can_edit;
-  let h = '<div class="repcard reporting-status-card" data-reporting-kind="' + escapeHtml(item.kind) + '">';
+  let h = '<div class="repcard reporting-status-card' + (reportingDirty ? ' is-dirty' : '') + '" data-reporting-kind="' + escapeHtml(item.kind) + '" data-reporting-meeting-id="' + escapeHtml(meetingId) + '">';
   h += '<div class="rc-head"><span class="ric" style="background:' + color + '22;color:' + color + '">' + cardIcon(icons[item.kind] || 'flag') + '</span><div><h4>' + escapeHtml(item.title) + '</h4><div class="reporting-status-date">' + escapeHtml(cardReportingDate(meeting?.scheduled_date)) + '</div></div></div><div class="stack">';
   h += '<div class="field reporting-status-field"><div class="flabel"><span class="flt">Статус прошлой встречи' + (item.previous_meeting?.scheduled_date ? ' · ' + escapeHtml(cardReportingDate(item.previous_meeting.scheduled_date)) : '') + '</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">' + (previous.text ? cardNl2br(previous.text) : '—') + '</span></div></div>';
   h += '<div class="field reporting-status-field"><div class="flabel"><span class="flt">Статус к ближайшей встрече</span></div><div class="fval">';
   h += canEdit
-    ? '<textarea class="task-detail-input" data-reporting-text="' + escapeHtml(item.kind) + '" rows="6" maxlength="5000" placeholder="Опишите прогресс, риски и следующие шаги">' + escapeHtml(current.text || '') + '</textarea>'
+    ? uiControl({ kind: 'textarea', value: values.text, className: 'task-detail-input', attrs: { 'data-reporting-text': item.kind, 'data-reporting-meeting-id': meetingId, rows: 6, maxlength: 5000, placeholder: 'Опишите прогресс, риски и следующие шаги', 'aria-label': 'Статус к ближайшей встрече: ' + item.title } })
     : '<span class="txt">' + (current.text ? cardNl2br(current.text) : '—') + '</span>';
   h += '</div></div>';
   if (item.kind === 'did') {
-    h += '<div class="field"><div class="flabel"><span class="flt">Демо для ДИД</span></div><div class="fval"><label class="switch' + (canEdit ? '' : ' view') + '"><input type="checkbox" data-reporting-demo="did" ' + (current.did_demo ? 'checked' : '') + (canEdit ? '' : ' disabled') + '><span class="sl"></span>' + (current.did_demo ? 'да' : 'нет') + '</label></div></div>';
+    h += '<div class="field"><div class="flabel"><span class="flt">Демо для ДИД</span></div><div class="fval"><label class="switch' + (canEdit ? '' : ' view') + '"><input type="checkbox" data-reporting-demo="did" data-reporting-meeting-id="' + escapeHtml(meetingId) + '" ' + (values.didDemo ? 'checked' : '') + (canEdit ? '' : ' disabled') + '><span class="sl"></span>' + (values.didDemo ? 'да' : 'нет') + '</label></div></div>';
   }
   h += '<div class="reporting-status-meta">' + (current.updated_at ? 'Обновлено ' + escapeHtml(cardFmtDT(current.updated_at)) + (current.updated_by_name ? ' · ' + escapeHtml(current.updated_by_name) : '') : 'Статус ещё не заполнялся') + '</div>';
-  if (canEdit) h += '<button class="btn primary reporting-status-save" data-action="save-reporting-status" data-reporting-kind="' + escapeHtml(item.kind) + '" data-meeting-id="' + meeting.id + '" data-version="' + (current.version || 0) + '">' + cardIcon('check') + 'Сохранить статус</button>';
+  if (canEdit) h += uiButton({ label: 'Сохранить статус', variant: 'primary', iconMarkup: cardIcon('check'), className: 'reporting-status-save', attrs: { 'data-action': 'save-reporting-status', 'data-reporting-kind': item.kind, 'data-meeting-id': meetingId, 'data-version': values.version } });
   else h += '<div class="reporting-status-note">' + escapeHtml(item.edit_reason || 'Статус доступен только для просмотра.') + '</div>';
   return h + '</div></div>';
 }
 function cardBodyRep() {
-  if (cardReportingLoading) return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="card-reporting-loading">Загрузка календаря и статусов…</div>';
+  if (cardReportingLoading) return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="card-reporting-loading content-loading-state">Загрузка календаря и статусов…</div>';
   if (!cardReportingContext) return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="card-reporting-loading">Не удалось загрузить статусы. Переключитесь на вкладку ещё раз.</div>';
   return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="reporting-status-help">Статус сохраняется отдельно от остальных полей карточки. После фиксации факта встречи он автоматически станет предыдущим.</div><div class="repgrid">'
     + cardReportingContext.items.map(cardReportingItem).join('') + '</div>';
 }
 
-async function cardLoadReportingContext(app) {
+async function cardLoadReportingContext(app, expectedTaskId = currentTask?.id) {
   const api = app?.api || window.app?.api;
-  if (!api || !currentTask?.id || cardReportingLoading) return;
+  const taskId = Number(expectedTaskId);
+  if (!api || !cardMatchesCurrentTask(taskId) || cardReportingLoading) return null;
+  const request = _taskCardRequestGate.start('reporting-context', taskId);
   cardReportingLoading = true;
   if (cardState.tab === 'rep') cardRenderBody();
   try {
-    cardReportingContext = await api.get(`/tasks/${currentTask.id}/reporting-statuses/context`);
-  } catch (_) {
+    const context = await api.get(`/tasks/${taskId}/reporting-statuses/context`, { signal: request.signal });
+    if (!_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) return null;
+    cardReportingContext = context;
+    return context;
+  } catch (error) {
+    if (request.signal.aborted || !_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) return null;
     cardReportingContext = null;
     cardToast('Не удалось загрузить отчётные статусы', 'err');
+    return null;
   } finally {
-    cardReportingLoading = false;
-    if (cardState.tab === 'rep') cardRenderBody();
+    if (_taskCardRequestGate.finish(request.token) && cardMatchesCurrentTask(taskId)) {
+      cardReportingLoading = false;
+      if (cardState.tab === 'rep') cardRenderBody();
+    }
   }
 }
 
 async function cardSaveReportingStatus(button, app) {
   const api = app?.api || window.app?.api;
+  const taskId = Number(currentTask?.id);
   const kind = button.dataset.reportingKind;
   const meetingId = button.dataset.meetingId;
-  const textInput = document.querySelector(`[data-reporting-text="${kind}"]`);
-  const demoInput = document.querySelector('[data-reporting-demo="did"]');
+  const item = cardFindReportingItem(kind, meetingId);
+  const values = item ? cardReportingValuesForItem(item) : null;
+  if (!api || !values || !cardMatchesCurrentTask(taskId)) {
+    cardToast('Не удалось определить сохраняемый отчётный статус', 'err');
+    return;
+  }
+  if (item?.can_edit !== true) {
+    cardToast(item?.edit_reason || 'Этот отчётный статус доступен только для просмотра', 'warn');
+    return;
+  }
+  const draftKey = cardReportingDraftKey(kind, meetingId);
   button.disabled = true;
   try {
-    await api.put(`/tasks/${currentTask.id}/reporting-statuses/${meetingId}`, {
-      text: textInput?.value?.trim() || null,
-      did_demo: kind === 'did' ? !!demoInput?.checked : false,
-      version: Number(button.dataset.version || 0),
+    await api.put(`/tasks/${taskId}/reporting-statuses/${meetingId}`, {
+      text: values.text.trim() || null,
+      did_demo: kind === 'did' ? values.didDemo : false,
+      version: Number(button.dataset.version || values.version || 0),
     });
+    if (!cardMatchesCurrentTask(taskId)) return;
+    cardReportingDrafts.delete(draftKey);
     cardReportingContext = null;
     await cardLoadReportingContext(app);
-    cardState.dirty = false;
     cardUpdateDirty();
     cardToast('Отчётный статус сохранён', 'ok');
   } catch (error) {
@@ -5898,32 +6378,54 @@ async function cardSaveReportingStatus(button, app) {
 
 function cardBodyCom() {
   const n = cardState.commentsCount;
+  const permission = cardCommentPermission();
+  const draft = _taskCommentDraftSession.snapshot(currentTask?.id);
+  const form = permission.allowed
+    ? '<section id="comment-form-container" aria-label="Новый комментарий" style="margin-top:16px;border-top:1px solid var(--tline);padding-top:16px;">'
+      + '<div id="reply-indicator" class="reply-indicator" style="display:none;">'
+      + '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>'
+      + '<span class="reply-indicator-text"></span>'
+      + '<button type="button" class="btn btn-ghost btn-sm square-icon ui-btn reply-indicator-cancel" onclick="window.__cancelReply()" aria-label="Отменить ответ"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
+      + '<div style="position:relative;"><textarea class="input ui-control task-detail-input" id="comment-textarea" rows="3" aria-label="Текст нового комментария" aria-controls="mention-dropdown" aria-autocomplete="list" aria-expanded="false" placeholder="Напишите комментарий... Используйте @ для упоминания пользователей">' + escapeHtml(draft?.text || '') + '</textarea><div id="mention-dropdown" class="ui-mention-popover" hidden></div></div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;"><span class="text-muted" id="comment-draft-status" role="status" aria-live="polite"' + (draft?.text ? '' : ' hidden') + '>Черновик сохранён в карточке</span><button type="button" class="btn btn-secondary btn-sm ui-btn task-detail-btn task-detail-btn-primary" id="comment-submit-btn"' + (draft?.text?.trim() ? '' : ' disabled') + '><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить</button></div>'
+      + '</section>'
+    : '<div class="reporting-status-note" role="note" style="margin-top:16px;">' + escapeHtml(permission.reason) + '</div>';
   return cardSec('Комментарии' + (n ? ' · ' + n : ''), 'msg')
-    + '<div id="comments-list-container"><div class="text-muted" style="text-align:center;padding:20px">Загрузка комментариев...</div></div>'
-    + '<div id="comment-form-container" style="margin-top:16px;border-top:1px solid var(--tline);padding-top:16px;">'
-    + '<div id="reply-indicator" class="reply-indicator" style="display:none;">'
-    + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>'
-    + '<span class="reply-indicator-text"></span>'
-    + '<button class="reply-indicator-cancel" onclick="window.__cancelReply()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
-    + '<div style="position:relative;"><textarea class="task-detail-input" id="comment-textarea" rows="3" placeholder="Напишите комментарий... Используйте @ для упоминания пользователей"></textarea><div id="mention-dropdown" class="mention-dropdown" style="display:none;"></div></div>'
-    + '<div style="display:flex;justify-content:flex-end;margin-top:8px;"><button class="task-detail-btn task-detail-btn-primary" id="comment-submit-btn" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить</button></div>'
-    + '</div>';
+    + '<div id="comments-list-container"><div class="content-loading-state" style="text-align:center;padding:20px">Загрузка комментариев…</div></div>'
+    + form;
 }
 function cardBodyFiles() {
   const n = cardState.filesCount;
-  return cardSec('Файлы' + (n ? ' · ' + n : ''), 'folder')
-    + '<div id="attachment-drop-zone" class="attachment-drop-zone"><input type="file" id="attachment-file-input" multiple style="display:none;" />'
-    + '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
-    + '<div class="attachment-drop-text">Перетащите файлы сюда или <span class="attachment-drop-browse">выберите</span></div>'
-    + '<div class="attachment-drop-hint">Макс. размер: 50 МБ</div></div>'
+  const permission = cardEditPermission();
+  const uploader = permission.allowed
+    ? '<input type="file" id="attachment-file-input" class="attachment-file-input-hidden" multiple tabindex="-1" aria-hidden="true">'
+      + '<div id="attachment-drop-zone" class="attachment-drop-zone" role="button" tabindex="0" aria-label="Добавить файлы к задаче" aria-describedby="attachment-drop-hint">'
+      + '<svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+      + '<div class="attachment-drop-text">Перетащите файлы сюда или <span class="attachment-drop-browse">выберите</span></div>'
+      + '<div class="attachment-drop-hint" id="attachment-drop-hint">Макс. размер: 50 МиБ</div></div>'
+    : '<div class="reporting-status-note" role="note">' + escapeHtml(permission.reason) + '</div>';
+  return cardSec('Файлы' + (n ? ' · ' + n : ''), 'folder').replace('<h3 ', '<h3 id="task-files-heading" ')
+    + uploader
     + '<div id="attachments-list-container" class="attachments-list-container"></div>';
+}
+
+function cardHydrateAttachments() {
+  if (cardState.tab !== 'sys') return;
+  clearTimeout(_cardAttachmentHydrationTimer);
+  _attachmentFormInitialized = false;
+  _cardAttachmentHydrationTimer = setTimeout(() => {
+    _cardAttachmentHydrationTimer = null;
+    if (cardState.tab !== 'sys' || !currentTask?.id) return;
+    renderAttachmentsList();
+    initAttachmentForm(currentTask.id, window.app);
+  }, 0);
 }
 
 function cardLinksField(label, links, e, addId, delAct, addAct, ph) {
   let inner = '';
   if (e) {
     inner = links.map((u, i) => { const safe = safeExternalUrl(u); return '<div class="jrow">' + (safe ? '<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + cardIcon('link') + escapeHtml(u) + '</a>' : '<span>Некорректная ссылка</span>') + '<button class="iconbtn" data-action="' + delAct + '" data-idx="' + i + '" title="Удалить">' + cardIcon('x') + '</button></div>'; }).join('')
-      + '<div class="jadd"><input type="url" id="' + addId + '" placeholder="' + escapeHtml(ph) + '"><button class="btn ghost" data-action="' + addAct + '">' + cardIcon('plus') + 'Добавить</button></div>';
+      + '<div class="jadd">' + uiControl({ type: 'url', id: addId, attrs: { placeholder: ph, 'aria-label': label + ': новая ссылка' } }) + uiButton({ label: 'Добавить', iconMarkup: cardIcon('plus'), attrs: { 'data-action': addAct } }) + '</div>';
   } else {
     inner = links.map(u => '<div class="jrow">' + cardLnk(u) + '</div>').join('') || '—';
   }
@@ -5937,7 +6439,7 @@ function cardBodySys(t, e) {
   h += cardBodyFiles();
   h += cardSec('Системная информация', 'user');
   h += cardGrid(
-    cardF('Автор задачи', cardROv('<span class="vchip"><span class="ava24">' + getInitials(t.author) + '</span>' + escapeHtml(cardPerson(t.author)) + '</span>'), { lock: true }),
+    cardF('Автор задачи', cardROv('<span class="vchip">' + uiAvatar({ name: t.author, size: 24 }) + '' + escapeHtml(cardPerson(t.author)) + '</span>'), { lock: true }),
     cardF('Дата создания задачи', cardROv(cardFmtDT(t.createdAt)), { lock: true }),
     cardF('Дата последнего изменения', cardROv(cardFmtDT(t.updatedAt)), { lock: true, span2: true }),
   );
@@ -5959,8 +6461,87 @@ const CARD_HISTORY_REFERENCE_KEYS = {
   created_by: 'users',
 };
 
+const CARD_PIP_DECISION_META = {
+  accept: {
+    label: 'Принята в работу',
+    consequence: 'Задача прошла PI-планирование и перешла в работу.',
+    tone: 'accept',
+    icon: 'check',
+  },
+  rework: {
+    label: 'Возвращена на экспресс-оценку',
+    consequence: 'Команде нужно уточнить оценку и снова передать задачу на PI-планирование.',
+    tone: 'rework',
+    icon: 'edit',
+  },
+  reject: {
+    label: 'Отклонена',
+    consequence: 'Задача завершила PI-планирование с решением не брать её в работу.',
+    tone: 'reject',
+    icon: 'alert',
+  },
+};
+
+function parsePipDecisionHistoryValue(value) {
+  if (!value) return null;
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    const meta = CARD_PIP_DECISION_META[parsed?.decision];
+    if (!meta) return null;
+    return {
+      decision: parsed.decision,
+      reason: String(parsed.reason || '').trim() || null,
+      ...meta,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+export function getLatestPipDecision(history = []) {
+  const items = (Array.isArray(history) ? history : [])
+    .filter(item => item?.field_name === 'pip_decision')
+    .map(item => ({ item, outcome: parsePipDecisionHistoryValue(item.new_value) }))
+    .filter(entry => entry.outcome)
+    .sort((left, right) => {
+      const timeDiff = (Date.parse(right.item.changed_at || '') || 0) - (Date.parse(left.item.changed_at || '') || 0);
+      return timeDiff || (Number(right.item.id) || 0) - (Number(left.item.id) || 0);
+    });
+  if (!items.length) return null;
+  const { item, outcome } = items[0];
+  return {
+    ...outcome,
+    changedAt: item.changed_at || null,
+    changedByName: item.changed_by_name || 'Система',
+    historyId: item.id ?? null,
+  };
+}
+
+export function renderPipDecisionOutcome(history = [], { compact = false } = {}) {
+  const outcome = getLatestPipDecision(history);
+  if (!outcome) return '';
+  const reason = outcome.reason
+    ? '<div class="pip-history-reason"><span>Комментарий к решению</span><strong>' + escapeHtml(outcome.reason) + '</strong></div>'
+    : '<div class="pip-history-reason is-empty"><span>Комментарий к решению</span><strong>Не указан</strong></div>';
+  const action = compact
+    ? uiButton({ label: 'Открыть лог', iconMarkup: cardIcon('clock'), className: 'pip-history-open', attrs: { 'data-action': 'open-pip-history' } })
+    : '';
+  return '<section class="pip-history-summary is-' + outcome.tone + (compact ? ' is-compact' : '') + '" aria-label="Последнее PI-решение">'
+    + '<div class="pip-history-icon">' + cardIcon(outcome.icon) + '</div>'
+    + '<div class="pip-history-content"><span class="pip-history-eyebrow">Последнее PI-решение</span><div class="pip-history-title"><strong>' + escapeHtml(outcome.label) + '</strong><span>' + escapeHtml(outcome.consequence) + '</span></div>'
+    + '<div class="pip-history-meta"><span>' + escapeHtml(cardFmtDT(outcome.changedAt)) + '</span><span>' + escapeHtml(outcome.changedByName) + '</span></div>' + reason + '</div>' + action + '</section>';
+}
+
+function cardPipDecisionBanner(compact = false) {
+  return renderPipDecisionOutcome(cardState.history, { compact });
+}
+
 function cardHistoryValue(fieldName, value) {
-  if (value == null) return null;
+  if (value == null || value === '' || value === 'None' || value === 'null') return null;
+  if (fieldName === 'pip_decision') {
+    const outcome = parsePipDecisionHistoryValue(value);
+    return outcome ? outcome.label + (outcome.reason ? ` — ${outcome.reason}` : '') : value;
+  }
   const dictionaryKey = CARD_HISTORY_REFERENCE_KEYS[fieldName];
   if (!dictionaryKey) return value;
   const item = (cardDict?.[dictionaryKey] || []).find(entry => Number(entry?.id) === Number(value));
@@ -5971,15 +6552,15 @@ function cardBodyLog() {
   const items = cardState.history;
   let rows = '';
   if (!items.length) {
-    rows = '<tr><td colspan="5" style="text-align:center;color:var(--tfaint);padding:24px">История изменений пуста</td></tr>';
+    rows = '<tr><td colspan="5" style="text-align:center;color:var(--tfaint)">История изменений пуста</td></tr>';
   } else {
     items.forEach(r => {
       const oldValue = cardHistoryValue(r.field_name, r.old_value);
       const newValue = cardHistoryValue(r.field_name, r.new_value);
-      rows += '<tr><td>' + cardFmtDT(r.changed_at) + '</td><td><b>' + escapeHtml(r.changed_by_name || 'Система') + '</b></td><td>' + escapeHtml(r.field_label || r.field_name || '') + '</td><td>' + escapeHtml(oldValue != null ? String(oldValue) : '—') + '</td><td>' + escapeHtml(newValue != null ? String(newValue) : '—') + '</td></tr>';
+      rows += '<tr><td>' + cardFmtDT(r.changed_at) + '</td><td><b>' + escapeHtml(r.changed_by_name || 'Система') + '</b></td><td>' + escapeHtml(r.field_name === 'attachment' ? 'Вложение' : (r.field_label || window.app?.fieldLabels?.[r.field_name] || r.field_name || 'Поле')) + '</td><td>' + escapeHtml(oldValue != null ? String(oldValue) : '—') + '</td><td>' + escapeHtml(newValue != null ? String(newValue) : '—') + '</td></tr>';
     });
   }
-  return cardSec('История изменений (лог) · ' + items.length, 'clock') + '<table class="tbl"><colgroup><col style="width:16%"><col style="width:18%"><col style="width:24%"><col style="width:21%"><col style="width:21%"></colgroup><thead><tr><th>Дата</th><th>Пользователь</th><th>Поле</th><th>Старое значение</th><th>Новое значение</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  return cardPipDecisionBanner(false) + cardSec('История изменений (лог) · ' + items.length, 'clock') + '<table class="ui-table ui-table-data tbl"><colgroup><col style="width:16%"><col style="width:18%"><col style="width:24%"><col style="width:21%"><col style="width:21%"></colgroup><thead><tr><th>Дата</th><th>Пользователь</th><th>Поле</th><th>Старое значение</th><th>Новое значение</th></tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
 function cardRenderBody() {
@@ -5991,10 +6572,15 @@ function cardRenderBody() {
   if (cardState.tab === 'main') h = cardBodyMainV30(t, e);
   else if (cardState.tab === 'rep') h = cardBodyRep();
   else if (cardState.tab === 'com') h = cardBodyCom();
-  else if (cardState.tab === 'files') h = cardBodyFiles();
   else if (cardState.tab === 'sys') h = cardBodySys(t, fullEdit);
+  else if (cardState.tab === 'work') h = '<div id="task-work-list"></div><div id="task-work-relations"></div>';
   else h = cardBodyLog();
+  el.setAttribute('role', 'tabpanel');
+  el.setAttribute('aria-labelledby', 'task-tab-' + cardState.tab);
+  el.setAttribute('tabindex', '0');
   el.innerHTML = '<div id="td-lock-banner" style="display:none;"></div><div id="td-viewer-banner" style="display:none;"></div><div class="form-error-summary" id="card-form-error-summary" role="alert" hidden></div>' + h;
+  if (cardState.tab === 'work') { mountWorkList(el.querySelector('#task-work-list'), window.app, currentTask.id); mountRelations(el.querySelector('#task-work-relations'), window.app, 'major', currentTask.id, currentTask.version); }
+  cardSyncDescriptionDisclosure();
   cardRefreshDynamic();
   cardRenderPrioritiserValueProposal();
   renderLockBanner();
@@ -6005,6 +6591,24 @@ function cardRenderBody() {
     { selector: '[data-k="customer"]', label: 'Бизнес-заказчик', preferredValues: (cardDict.customers || []).filter(c => String(c.department_id) === String(t.customerDeptId)).map(c => c.name) },
     { selector: '[data-k="assignee"]', label: 'Исполнитель', preferredValues: userValuesForTeam(cardDict?.users, cardMaps?.teamId(t.team), true) },
   ]);
+  el.querySelectorAll('.agent-check-wrap').forEach(wrapper => {
+    const trigger = wrapper.querySelector('button');
+    const panel = wrapper.querySelector('[role="tooltip"]');
+    if (trigger && panel && !panel.dataset.uiBound) {
+      panel.dataset.uiBound = 'true';
+      bindTooltip({ trigger, panel });
+    }
+  });
+  cardHydrateAttachments();
+  if (cardState.tab === 'com') {
+    const taskId = Number(currentTask?.id);
+    _commentFormInitialized = false;
+    requestAnimationFrame(() => {
+      if (!cardMatchesCurrentTask(taskId) || cardState.tab !== 'com') return;
+      renderCommentList();
+      initCommentForm(taskId, window.app);
+    });
+  }
 }
 
 function cardRenderFooter() {
@@ -6012,11 +6616,12 @@ function cardRenderFooter() {
   if (!el) return;
   const t = cardCur();
   if (cardState.tab === 'rep' && !cardState.editing) {
-    el.innerHTML = '<div class="fmeta">Отчётные статусы имеют собственную кнопку сохранения для каждой встречи.</div><span class="dirty" id="dirty"><i></i>Статус не сохранён</span>';
+    el.innerHTML = '<div class="fmeta">Отчётные статусы имеют собственную кнопку сохранения для каждой встречи.</div><span class="dirty" id="dirty" role="status" aria-live="polite"><i></i>Несохранённых статусов · ' + cardReportingDirtyCount() + '</span>';
     cardUpdateDirty();
     return;
   }
   const lockedByOther = _lockInfo && _lockInfo.locked && !_lockInfo.is_mine;
+  const editPermission = cardEditPermission();
   const editingTitle = cardState.entryField
     ? 'Быстрое редактирование · ' + escapeHtml(cardFieldLabel(cardState.entryField))
     : 'Редактирование карточки';
@@ -6025,8 +6630,11 @@ function cardRenderFooter() {
     : '<b>Автор:</b> ' + escapeHtml(cardPerson(t.author)) + ' · <b>Создана:</b> ' + cardFmtDT(t.createdAt) + ' · <b>Изменена:</b> ' + cardFmtDT(t.updatedAt);
   let h = '<div class="fmeta">' + meta + '</div><div class="factions"><span class="task-network-status" role="status" hidden></span><span class="dirty" id="dirty"><i></i>Не сохранено</span>';
   h += cardState.editing
-    ? '<button class="btn ghost" id="cardCancelBtn" data-action="cancel">' + cardIcon('x') + '<span>Выйти из редактирования</span></button><button class="btn primary" id="saveBtn" data-action="save" disabled>' + cardIcon('check') + '<span>Сохранить</span></button>'
-    : '<button class="btn primary" data-action="edit"' + (lockedByOther ? ' disabled style="opacity:.45;cursor:not-allowed" title="Задача редактируется другим пользователем"' : '') + '>' + cardIcon('edit') + 'Редактировать</button>';
+    ? uiButton({ label: 'Выйти из редактирования', iconMarkup: cardIcon('x'), attrs: { id: 'cardCancelBtn', 'data-action': 'cancel' } })
+      + uiButton({ label: 'Сохранить', variant: 'primary', iconMarkup: cardIcon('check'), attrs: { id: 'saveBtn', 'data-action': 'save', disabled: true } })
+    : editPermission.allowed
+      ? uiButton({ label: 'Редактировать', variant: 'primary', iconMarkup: cardIcon('edit'), attrs: { 'data-action': 'edit', disabled: !!lockedByOther, title: lockedByOther ? 'Задача редактируется другим пользователем' : undefined } })
+      : uiButton({ label: 'Только просмотр', iconMarkup: cardIcon('lock'), attrs: { disabled: true, title: editPermission.reason, 'aria-label': 'Только просмотр. ' + editPermission.reason } });
   el.innerHTML = h + '</div>';
   cardUpdateDirty();
 }
@@ -6038,6 +6646,7 @@ function cardRender() {
   cardRenderFooter();
   const modal = document.getElementById('task-detail-modal');
   if (modal) modal.classList.toggle('editing', cardState.editing);
+
 }
 
 function cardRefreshDynamic() {
@@ -6046,16 +6655,16 @@ function cardRefreshDynamic() {
   const ftzT = cardCalcSum(t.ftz), eoSum = cardCalcSum(t.eo);
   const cvE = cardCvCalc(cost, t.finEffect), cvF = cardCvCalc(fcost, t.finEffect);
   const set = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
-  set('headerTitle', el => { el.textContent = t.title; el.title = t.title; });
+  set('task-detail-title', el => { el.textContent = t.title; el.title = t.title; });
   set('hType', el => { el.textContent = t.type || '—'; });
-  set('hStatus', el => { el.textContent = t.status; el.className = 'task-head-chip task-head-chip--status ' + cardStatusCls(t.status); });
-  set('hPrio', el => { el.textContent = t.priority; el.className = 'task-head-chip task-head-chip--priority ' + cardPrioCls(t.priority); });
+  set('hStatus', el => { el.textContent = t.status; el.className = 'badge ui-badge task-head-chip'; el.dataset.uiTone = taskStatusTone(t.status); });
+  set('hPrio', el => { el.textContent = t.priority; el.className = 'badge ui-badge task-head-chip'; el.dataset.uiTone = taskPriorityTone(t.priority); });
   set('hTeam', el => { el.textContent = t.team; });
   set('hAssignee', el => { el.textContent = cardPerson(t.assignee); });
-  set('assigneeAva', el => { el.textContent = getInitials(t.assignee); });
+  set('assigneeAva', el => { el.outerHTML = uiAvatar({ name: t.assignee, id: 'assigneeAva', size: Number(el.dataset.uiSize) }); });
   set('hDeadline', el => { el.textContent = t.deadline; });
   set('hProject', el => { el.textContent = t.project; });
-  set('custAva', el => { el.textContent = getInitials(t.customer); });
+  set('custAva', el => { el.outerHTML = uiAvatar({ name: t.customer, id: 'custAva', size: Number(el.dataset.uiSize) }); });
   set('custDept', el => { el.textContent = t.customerDept || '—'; });
   set('ringFg', el => { el.style.strokeDashoffset = (94.25 * (1 - (+t.progress || 0) / 100)).toFixed(2); });
   set('ringTxt', el => { el.textContent = t.progress + '%'; });
@@ -6095,9 +6704,12 @@ function cardUpdateDirty() {
     ? cardDiffChanges(cardState.current, cardState.draft)
     : [];
   const changesCount = changes.length;
+  const reportingFooter = cardState.tab === 'rep' && !cardState.editing;
+  const reportingChangesCount = cardReportingDirtyCount();
   if (d) {
-    d.style.display = cardState.dirty ? 'inline-flex' : 'none';
-    d.innerHTML = '<i></i>Не сохранено · ' + changesCount;
+    const footerDirty = reportingFooter ? reportingChangesCount > 0 : cardState.dirty;
+    d.style.display = footerDirty ? 'inline-flex' : 'none';
+    d.innerHTML = '<i></i>' + (reportingFooter ? 'Несохранённых статусов' : 'Не сохранено') + ' · ' + (reportingFooter ? reportingChangesCount : changesCount);
   }
   const summary = document.getElementById('card-change-summary');
   if (summary) {
@@ -6109,13 +6721,17 @@ function cardUpdateDirty() {
   }
   const saveButton = document.getElementById('saveBtn');
   if (saveButton) {
+    setButtonBusy(saveButton, cardState.saving);
     saveButton.disabled = !cardState.dirty || cardState.saving;
-    if (!cardState.saving) saveButton.innerHTML = cardIcon('check') + '<span>' + (changesCount ? 'Сохранить · ' + changesCount : 'Сохранить') + '</span>';
+    const label = changesCount ? 'Сохранить · ' + changesCount : 'Сохранить';
+    // Keep the clicked node alive when blur/change fires between pointer events.
+    if (!cardState.saving && saveButton.textContent.trim() !== label) saveButton.innerHTML = cardIcon('check') + '<span>' + label + '</span>';
   }
   const cancelButton = document.getElementById('cardCancelBtn');
   if (cancelButton) {
     cancelButton.disabled = cardState.saving;
-    cancelButton.innerHTML = cardIcon('x') + '<span>' + (changesCount ? 'Отменить изменения' : 'Выйти из редактирования') + '</span>';
+    const label = changesCount ? 'Отменить изменения' : 'Выйти из редактирования';
+    if (cancelButton.textContent.trim() !== label) cancelButton.innerHTML = cardIcon('x') + '<span>' + label + '</span>';
   }
   document.querySelectorAll('#task-detail-overlay .field-modified').forEach(field => field.classList.remove('field-modified'));
   if (!cardState.editing || !cardState.draft) return;
@@ -6240,7 +6856,7 @@ function cardToastAction(msg, label, action) {
   const t = document.getElementById('card-toast');
   if (!t) { cardToast(msg, 'ok'); return; }
   t.className = 'toast show card-toast-action';
-  t.innerHTML = cardIcon('check') + '<span>' + escapeHtml(msg) + '</span><button type="button" class="toast-action-btn">' + escapeHtml(label) + '</button>';
+  t.innerHTML = cardIcon('check') + '<span>' + escapeHtml(msg) + '</span><button type="button" class="btn btn-secondary btn-sm ui-btn toast-action-btn">' + escapeHtml(label) + '</button>';
   clearTimeout(_cardToastTimer);
   const button = t.querySelector('.toast-action-btn');
   button?.addEventListener('click', async () => {
@@ -6275,26 +6891,29 @@ function createTaskChangedFieldNames() {
 
 function taskUnsavedChangeNames() {
   if (_createTaskDirty) return createTaskChangedFieldNames();
-  if (cardState.tab === 'rep' && cardState.dirty) return ['Отчётный статус'];
+  const fields = [];
   if (cardState.editing && cardState.current && cardState.draft) {
-    return cardDiffChanges(cardState.current, cardState.draft).map(change => change.field);
+    fields.push(...cardDiffChanges(cardState.current, cardState.draft).map(change => change.field));
   }
-  return [];
+  fields.push(...cardReportingDraftNames());
+  if (_taskCommentDraftSession.hasChanges(currentTask?.id)) fields.push('Черновик комментария');
+  return fields;
 }
 
-function appendUnsavedChangesSummary(message) {
-  const fields = taskUnsavedChangeNames();
+function appendUnsavedChangesSummary(message, fields = taskUnsavedChangeNames()) {
   if (!fields.length) return message;
   const shown = fields.slice(0, 3).join(', ');
   const remaining = fields.length - 3;
   return `${message} Изменено полей: ${fields.length}. ${shown}${remaining > 0 ? ` и ещё ${remaining}` : ''}.`;
 }
 
-export async function confirmTaskCardDiscard(message = 'Все несохранённые изменения карточки будут потеряны. Продолжить?') {
-  if (!hasUnsavedTaskChanges()) return true;
+export async function confirmTaskCardDiscard(message = 'Все несохранённые изменения карточки будут потеряны. Продолжить?', options = {}) {
+  const changeNames = Array.isArray(options.changeNames) ? options.changeNames : taskUnsavedChangeNames();
+  const hasChanges = options.hasChanges ?? hasUnsavedTaskChanges();
+  if (!hasChanges) return true;
   if (_discardPromptPromise) return _discardPromptPromise;
   _discardPromptPromise = showConfirmModal(
-    appendUnsavedChangesSummary(message),
+    appendUnsavedChangesSummary(message, changeNames),
     'Несохранённые изменения',
     'Потерять изменения',
     'Остаться',
@@ -6311,11 +6930,11 @@ export async function confirmAndCloseTaskFormsForNavigation() {
   const taskOverlay = document.getElementById('task-detail-overlay');
   const createOverlay = document.getElementById('create-task-overlay');
   if (!taskOverlay && !createOverlay) return true;
-  if (cardState.saving || _createTaskSaving) {
-    window.toast?.(createOverlay ? 'Дождитесь завершения создания задачи' : 'Дождитесь завершения сохранения', 'info');
+  if (cardState.saving || _createTaskSaving || _commentSubmitting) {
+    window.toast?.(_commentSubmitting ? 'Дождитесь завершения отправки комментария' : (createOverlay ? 'Дождитесь завершения создания задачи' : 'Дождитесь завершения сохранения'), 'info');
     return false;
   }
-  if (taskOverlay && cardState.dirty) await cardRevealFirstChangedField(window.app);
+  if (taskOverlay && cardState.dirty && (cardState.tab !== 'rep' || cardReportingDirtyCount() === 0)) await cardRevealFirstChangedField(window.app);
   const confirmed = await confirmTaskCardDiscard(
     createOverlay
       ? 'Все введённые данные новой задачи будут потеряны. Перейти на другую страницу?'
@@ -6324,6 +6943,7 @@ export async function confirmAndCloseTaskFormsForNavigation() {
   if (!confirmed) return false;
   if (createOverlay) closeCreateTaskModal();
   if (taskOverlay) {
+    clearCardReportingDrafts();
     clearCardEditDraft();
     closeTaskDetailModal();
   }
@@ -6331,13 +6951,14 @@ export async function confirmAndCloseTaskFormsForNavigation() {
 }
 
 async function cardRequestClose() {
-  if (cardState.saving) {
-    cardToast('Дождитесь завершения сохранения', 'warn');
+  if (cardState.saving || _commentSubmitting) {
+    cardToast(_commentSubmitting ? 'Дождитесь завершения отправки комментария' : 'Дождитесь завершения сохранения', 'warn');
     return false;
   }
-  if (cardState.dirty) await cardRevealFirstChangedField(window.app);
+  if (cardState.dirty && (cardState.tab !== 'rep' || cardReportingDirtyCount() === 0)) await cardRevealFirstChangedField(window.app);
   const confirmed = await confirmTaskCardDiscard();
   if (!confirmed) return false;
+  clearCardReportingDrafts();
   clearCardEditDraft();
   closeTaskDetailModal();
   return true;
@@ -6362,14 +6983,30 @@ function cardFocusEditField(key) {
 
 async function cardStartEdit(app, focusKey = '') {
   if (!currentTask?.id) return;
+  const taskId = Number(currentTask.id);
+  const permission = cardEditPermission();
+  if (!permission.allowed) {
+    cardToast(permission.reason, 'warn');
+    return;
+  }
   if (_lockInfo && _lockInfo.locked && !_lockInfo.is_mine) {
     cardToast('Задача редактируется другим пользователем', 'warn');
     return;
   }
-  const lock = await acquireLock(currentTask.id);
+  const lock = await acquireLock(taskId);
   if (!lock || lock.error) {
     if (lock && lock.status === 423) cardToast('Задача уже редактируется другим пользователем', 'warn');
     else cardToast('Не удалось захватить задачу: ' + (lock?.detail || 'ошибка'), 'warn');
+    return;
+  }
+  if (!cardMatchesCurrentTask(taskId)) {
+    releaseLock(taskId);
+    return;
+  }
+  const currentPermission = cardEditPermission();
+  if (!currentPermission.allowed) {
+    releaseLock(taskId);
+    cardToast(currentPermission.reason, 'warn');
     return;
   }
   _lockInfo = { locked: true, is_mine: true, lock_owner_name: 'Вы' };
@@ -6444,13 +7081,16 @@ function normalizedTaskStatus(value) {
 
 function cardValidate(d) {
   if (!String(d.title || '').trim()) return { message: 'Укажите название задачи — поле обязательно.', key: 'title' };
-  if (!String(d.type || '').trim() || d.type === '—') return { message: 'Укажите тип задачи — поле обязательно.', key: 'type' };
+  if (d.type !== cardState.current.type && (!String(d.type || '').trim() || d.type === '—')) return { message: 'Укажите тип задачи — поле обязательно.', key: 'type' };
   if (!String(d.team || '').trim() || d.team === '—') return { message: 'Укажите ответственную команду — поле обязательно.', key: 'team' };
+  if (d.effortDays != null && (!Number.isInteger(Number(d.effortDays)) || Number(d.effortDays) < 0 || Number(d.effortDays) > 10000)) return { message: 'Общая оценка трудозатрат должна быть целым числом от 0 до 10 000.', key: 'effortDays' };
+  if (d.weightPercent != null && (!Number.isFinite(Number(d.weightPercent)) || Number(d.weightPercent) < 0 || Number(d.weightPercent) > 100)) return { message: 'Вес оценки должен быть от 0 до 100%.', key: 'weightPercent' };
+  if (d.forecastPercent != null && (!Number.isFinite(Number(d.forecastPercent)) || Number(d.forecastPercent) < 0 || Number(d.forecastPercent) > 100)) return { message: 'Прогноз выполнения должен быть от 0 до 100%.', key: 'forecastPercent' };
   if (isTaskDateInFuture(d.receivedAt)) return { message: 'Дата поступления не может быть в будущем.', key: 'receivedAt' };
   const status = normalizedTaskStatus(d.status);
   const progress = Math.max(0, Math.min(100, Math.round((+d.progress || 0) / 5) * 5));
-  if (status === 'ВЫПОЛНЕНА' && progress !== 100) return { message: 'Для выполненной задачи прогресс должен быть равен 100%.', key: 'progress' };
-  if (progress === 100 && status !== 'ВЫПОЛНЕНА') return { message: 'Прогресс 100% допустим только для статуса «Выполнена».', key: 'status' };
+  if (status === 'ВЫПОЛНЕНА' && progress !== 100) return { message: 'Для выполненной задачи прогресс должен быть равен 100%.', key: 'progress', syncKey: 'status' };
+  if (progress === 100 && status !== 'ВЫПОЛНЕНА') return { message: 'Прогресс 100% допустим только для статуса «Выполнена».', key: 'status', syncKey: 'progress' };
   if (d.mockupUrl && !cardUrlOk(d.mockupUrl)) return { message: 'Некорректная ссылка на макеты (ожидается http(s)://…).', key: 'mockupUrl' };
   if (d.channel !== cardState.current.channel && !(cardMaps?.channelId?.(d.channel) != null)) return { message: 'Не удалось определить выбранный канал. Обновите карточку и повторите.', key: 'channel' };
   if (d.type !== cardState.current.type && !(cardMaps?.typeId?.(d.type) != null)) return { message: 'Не удалось определить выбранный тип задачи. Обновите карточку и повторите.', key: 'type' };
@@ -6463,7 +7103,8 @@ function cardApiErrorInfos(error) {
     title: 'title', team_id: 'team', task_type_id: 'type', channel_id: 'channel',
     date_received: 'receivedAt', project_id: 'project', priority_id: 'priority',
     deadline_id: 'deadline', business_customer_id: 'customer', owner_id: 'assignee',
-    link_mockups: 'mockupUrl', description: 'description', comment: 'comment',
+    link_mockups: 'mockupUrl', description: 'description', comment: 'comment', effort_days: 'effortDays',
+    assessment_weight: 'weightPercent', completion_forecast: 'forecastPercent',
   };
   return details.map(item => {
     const apiField = Array.isArray(item?.loc) ? item.loc[item.loc.length - 1] : null;
@@ -6508,11 +7149,12 @@ function cardShowFieldError(key, message) {
 
 const CARD_DIFF_TRACK = [
   ['didClientId', 'Клиент ДИД'], ['customerDeptId', 'Подразделение заказчика'],
-  ['title', 'Название задачи'], ['description', 'Описание задачи'], ['receivedAt', 'Дата получения'],
+  ['title', 'Название задачи'], ['description', 'Описание задачи'], ['comment', 'Внутренний комментарий задачи'], ['receivedAt', 'Дата получения'],
   ['channel', 'Канал поступления'], ['customer', 'Бизнес-заказчик'], ['project', 'Проект'],
   ['type', 'Тип задачи'], ['priority', 'Приоритет'], ['status', 'Статус задачи'],
   ['deadline', 'Срок выполнения'], ['team', 'Ответственная команда'], ['assignee', 'Исполнитель'],
-  ['progress', 'Прогресс'], ['finEffect', 'Финансовый эффект'], ['finJust', 'Обоснование фин. эффекта'],
+  ['progress', 'Прогресс'], ['effortDays', 'Общая оценка трудозатрат'], ['weightPercent', 'Вес оценки'],
+  ['forecastPercent', 'Прогноз выполнения'], ['finEffect', 'Финансовый эффект'], ['finJust', 'Обоснование фин. эффекта'],
   ['mockupUrl', 'Ссылка на макеты'], ['statuses', 'Отчётные статусы'], ['demoDid', 'Демо для ДИД'],
   ['tags', 'Метки (теги)'], ['otherTeams', 'Другие вовлечённые команды'],
   ['jiraLinks', 'Ссылки на Jira'], ['reqLinks', 'Ссылки на бизнес-требования'],
@@ -6553,7 +7195,8 @@ function cardPayload(source = cardState.draft) {
     involved_teams: d.otherTeams.map(n => (m.teamId ? m.teamId(n) : null)).filter(id => id != null),
     tags: d.tags,
     progress: Math.max(0, Math.min(100, Math.round((+d.progress || 0) / 5) * 5)),
-    financial_effect: d.finEffect != null && d.finEffect !== '' ? Math.round(+d.finEffect) : null,
+    effort_days: d.effortDays != null && d.effortDays !== '' ? Math.round(+d.effortDays) : null,
+    financial_effect: d.finEffect != null && d.finEffect !== '' ? +d.finEffect : null,
     financial_effect_justification: d.finJust || null,
     assessment_weight: d.weightPercent != null && d.weightPercent !== '' ? +d.weightPercent : null,
     completion_forecast: d.forecastPercent != null && d.forecastPercent !== '' ? +d.forecastPercent : null,
@@ -6581,38 +7224,72 @@ function cardPatchPayload() {
   return patch;
 }
 
-async function cardReloadTask(app) {
+async function cardReloadTask(app, expectedTaskId = currentTask?.id) {
   const api = app?.api || window.app?.api;
-  if (!api || !currentTask?.id) return;
-  const data = await api.get(`/tasks/${currentTask.id}`);
-  currentTask = data;
-  setTaskModalDocumentTitle(data);
-  cardState.current = buildCardState(data);
-  cardState.history = [];
-  await cardLoadHistory(app);
-}
-
-async function cardLoadHistory(app) {
-  const api = app?.api || window.app?.api;
-  if (!api || !currentTask?.id) return;
+  const taskId = Number(expectedTaskId);
+  if (!api || !cardMatchesCurrentTask(taskId)) return null;
+  const request = _taskCardRequestGate.start('task-reload', taskId);
   try {
-    const data = await api.get(`/tasks/${currentTask.id}/history`);
-    cardState.history = Array.isArray(data) ? data : [];
-  } catch (_) {
+    const data = await api.get(`/tasks/${taskId}`, { signal: request.signal });
+    if (!_taskCardRequestGate.isCurrent(request.token, taskId)
+      || !cardMatchesCurrentTask(taskId)
+      || Number(data?.id) !== taskId) return null;
+    currentTask = data;
+    setTaskModalDocumentTitle(data);
+    cardState.current = buildCardState(data);
     cardState.history = [];
+    await cardLoadHistory(app, taskId);
+    return cardMatchesCurrentTask(taskId) ? data : null;
+  } catch (error) {
+    if (request.signal.aborted || error?.name === 'AbortError' || !_taskCardRequestGate.isCurrent(request.token, taskId)) return null;
+    throw error;
+  } finally {
+    _taskCardRequestGate.finish(request.token);
   }
 }
 
-async function cardUndoSavedChanges(app, previousSnapshot) {
+async function cardLoadHistory(app, expectedTaskId = currentTask?.id) {
   const api = app?.api || window.app?.api;
-  if (!api || !currentTask?.id || !previousSnapshot) return;
+  const taskId = Number(expectedTaskId);
+  if (!api || !cardMatchesCurrentTask(taskId)) return;
+  const request = _taskCardRequestGate.start('task-history', taskId);
+  try {
+    const data = await api.get(`/tasks/${taskId}/history`, { signal: request.signal });
+    if (!_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) return;
+    cardState.history = Array.isArray(data) ? data : [];
+  } catch (error) {
+    if (!request.signal.aborted && _taskCardRequestGate.isCurrent(request.token, taskId) && cardMatchesCurrentTask(taskId)) cardState.history = [];
+  } finally {
+    _taskCardRequestGate.finish(request.token);
+  }
+}
+
+async function cardUndoSavedChanges(app, previousSnapshot, expectedTaskId = currentTask?.id) {
+  const api = app?.api || window.app?.api;
+  const taskId = Number(expectedTaskId);
+  if (!api || !previousSnapshot || !cardMatchesCurrentTask(taskId)) return;
+  const permission = cardEditPermission();
+  if (!permission.allowed) {
+    cardToast(permission.reason, 'warn');
+    return;
+  }
   if (cardState.editing || cardState.saving) {
     cardToast('Сначала завершите текущее редактирование', 'warn');
     return;
   }
-  const lock = await acquireLock(currentTask.id);
+  const lock = await acquireLock(taskId);
   if (!lock || lock.error) {
     cardToast(lock?.status === 423 ? 'Отмена недоступна: задача уже редактируется' : 'Не удалось начать отмену', 'warn');
+    return;
+  }
+  if (!cardMatchesCurrentTask(taskId)) {
+    releaseLock(taskId);
+    return;
+  }
+  const currentPermission = cardEditPermission();
+  if (!currentPermission.allowed) {
+    releaseLock(taskId);
+    cardToast(currentPermission.reason, 'warn');
     return;
   }
   _lockInfo = { locked: true, is_mine: true, lock_owner_name: 'Вы' };
@@ -6628,22 +7305,29 @@ async function cardUndoSavedChanges(app, previousSnapshot) {
       cardToast('Отменять нечего', 'info');
       return;
     }
-    await api.patch(`/tasks/${currentTask.id}`, patch);
-    await cardReloadTask(app);
+    await api.patch(`/tasks/${taskId}`, patch);
+    const reloaded = await cardReloadTask(app, taskId);
+    if (!reloaded) return;
     cardRender();
     cardHighlightSavedFields(cardDiffChanges(cardState.current, previousSnapshot));
     cardToast('Последнее сохранение отменено', 'ok');
   } catch (error) {
+    if (!cardMatchesCurrentTask(taskId)) return;
     if (error?.status === 409) cardToast('Задача уже изменилась. Отмена не выполнена', 'warn');
     else cardToast('Не удалось отменить сохранение', 'err');
   } finally {
-    releaseLock(currentTask.id);
-    _lockInfo = null;
+    releaseLock(taskId);
+    if (cardMatchesCurrentTask(taskId)) _lockInfo = null;
   }
 }
 
 async function cardSaveEdit(app) {
   if (cardState.saving) return;
+  const permission = cardEditPermission();
+  if (!permission.allowed) {
+    cardToast(permission.reason, 'warn');
+    return;
+  }
   if (isTaskNetworkOffline()) {
     cardToast('Нет подключения. Сохранение станет доступно после восстановления сети.', 'warn');
     updateTaskNetworkState();
@@ -6651,7 +7335,13 @@ async function cardSaveEdit(app) {
   }
   const api = app?.api || window.app?.api;
   if (!api || !currentTask?.id) return;
+  const taskId = Number(currentTask.id);
   const err = cardValidate(cardState.draft);
+  if (err?.syncKey) {
+    const key = err.syncKey;
+    await cardSuggestStatusProgressSync(key, cardState.draft[key]);
+    return;
+  }
   if (err) {
     const target = cardShowFieldError(err.key, err.message);
     showTaskFormErrorSummary('card-form-error-summary', err.message, target);
@@ -6663,7 +7353,7 @@ async function cardSaveEdit(app) {
   const changes = cardDiffChanges(cardState.current, cardState.draft);
   const previousSnapshot = JSON.parse(JSON.stringify(cardState.current));
   if (!changes.length) {
-    if (currentTask?.id) releaseLock(currentTask.id);
+    releaseLock(taskId);
     clearCardEditDraft();
     _lockInfo = null;
     cardState.editing = false;
@@ -6681,22 +7371,17 @@ async function cardSaveEdit(app) {
   cardState.saving = true;
   cardUpdateDirty();
   const btn = document.getElementById('saveBtn');
-  const originalButtonHtml = btn?.innerHTML || '';
-  if (btn) {
-    btn.classList.add('loading');
-    btn.disabled = true;
-    btn.setAttribute('aria-busy', 'true');
-    btn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Сохраняем…';
-  }
+
   try {
     const patchPayload = { ...cardPatchPayload(), client_request_id: _cardSaveRequestId || (_cardSaveRequestId = newTaskRequestId()) };
     await runTaskSaveWithSingleRetry(
-      () => taskSaveRequestWithTimeout(signal => api.patch(`/tasks/${currentTask.id}`, patchPayload, { signal })),
-      () => { if (btn) btn.innerHTML = '<span class="spinner task-save-spinner" aria-hidden="true"></span>Повторяем…'; }
+      () => taskSaveRequestWithTimeout(signal => api.patch(`/tasks/${taskId}`, patchPayload, { signal })),
+      () => setButtonBusy(btn, true, 'Повторяем…')
     );
-    if (currentTask?.id) releaseLock(currentTask.id);
+    releaseLock(taskId);
     _lockInfo = null;
-    await cardReloadTask(app);
+    const reloaded = await cardReloadTask(app, taskId);
+    if (!reloaded) return;
     _cardSaveRequestId = null;
     clearCardEditDraft();
     cardState.editing = false;
@@ -6710,10 +7395,12 @@ async function cardSaveEdit(app) {
     cardRender();
     cardHighlightSavedFields(changes);
     cardToast('Сохранено · изменений: ' + changes.length, 'ok');
-    cardToastAction('Сохранено · изменений: ' + changes.length, 'Отменить', () => cardUndoSavedChanges(app, previousSnapshot));
+    const savedTaskId = Number(currentTask?.id);
+    cardToastAction('Сохранено · изменений: ' + changes.length, 'Отменить', () => cardUndoSavedChanges(app, previousSnapshot, savedTaskId));
   } catch (e) {
+    if (!cardMatchesCurrentTask(taskId)) return;
     if (e && e.status === 409) {
-      cardShowConflict(e.data && e.data.detail, app);
+      cardShowConflict(e.data?.detail ?? e.data, app);
     } else if (e && e.status === 423) {
       const message = 'Задача уже редактируется другим пользователем. Ваши изменения сохранены в форме.';
       showTaskFormErrorSummary('card-form-error-summary', message, document.querySelector('[data-k="title"]'));
@@ -6730,20 +7417,21 @@ async function cardSaveEdit(app) {
       cardToast(message, 'err');
     }
   } finally {
-    cardState.saving = false;
-    cardUpdateDirty();
-    const btn2 = document.getElementById('saveBtn');
-    if (btn2) {
-      btn2.classList.remove('loading');
-      btn2.disabled = false;
-      btn2.removeAttribute('aria-busy');
-      if (originalButtonHtml) btn2.innerHTML = originalButtonHtml;
+    if (cardMatchesCurrentTask(taskId)) {
+      cardState.saving = false;
+      cardUpdateDirty();
+
     }
   }
 }
 
 function cardShowConflict(detail, app) {
-  if (!detail) return;
+  if (!detail || typeof detail !== 'object' || !detail.task || detail.current_version == null) {
+    const message = 'Задача изменилась на сервере. Сохранение не выполнено; ваши изменения остались в форме. Закройте редактирование и обновите карточку перед повторным сохранением.';
+    showTaskFormErrorSummary('card-form-error-summary', message);
+    cardToast(message, 'warn');
+    return;
+  }
   const serverTask = detail.task || {};
   const currentVer = detail.current_version ?? '?';
   const submittedVer = detail.submitted_version ?? '?';
@@ -6772,16 +7460,16 @@ function cardShowConflict(detail, app) {
         <span>Текущая версия: <strong>${currentVer}</strong></span>
       </div>
       ${hasChanges
-        ? `<div class="conflict-diff-wrap"><table class="diff-table diff-table--selectable">
-            <thead><tr><th style="width:28px;"></th><th style="width:28px;"></th><th>Поле</th><th>На сервере</th><th>Ваше значение</th></tr></thead>
+        ? `<div class="conflict-diff-wrap"><table class="ui-table ui-table-editor diff-table diff-table--selectable">
+            <thead><tr><th scope="col">Серверная версия</th><th scope="col">Моя версия</th><th>Поле</th><th>На сервере</th><th>Ваше значение</th></tr></thead>
             <tbody>${rows}</tbody></table></div>`
         : '<div class="diff-empty">Все поля совпадают — различий не обнаружено</div>'}
       </div>
       <div class="conflict-actions conflict-actions--row app-modal__footer">
-        <button class="conflict-btn conflict-btn-primary" id="cc-btn-save" ${!hasChanges ? 'disabled' : ''}>Сохранить выбранные</button>
-        <button class="conflict-btn conflict-btn-danger" id="cc-btn-force">Принудительно сохранить</button>
-        <button class="conflict-btn conflict-btn-secondary" id="cc-btn-refresh">Обновить с сервера</button>
-        <button class="conflict-btn conflict-btn-ghost" id="cc-btn-cancel" data-modal-close>Отмена</button>
+        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-primary" id="cc-btn-save" ${!hasChanges ? 'disabled' : ''}>Сохранить выбранные</button>
+        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-danger" id="cc-btn-force">Принудительно сохранить</button>
+        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-secondary" id="cc-btn-refresh">Обновить с сервера</button>
+        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-ghost" id="cc-btn-cancel" data-modal-close>Отмена</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -6790,6 +7478,13 @@ function cardShowConflict(detail, app) {
   document.getElementById('cc-btn-refresh')?.addEventListener('click', () => cardConflictRefresh(serverTask, app));
   document.getElementById('cc-btn-cancel')?.addEventListener('click', cardConflictClose);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) cardConflictClose(); });
+  overlay.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    cardConflictClose();
+  });
+  document.getElementById('cc-btn-save')?.focus();
 }
 
 function cardConflictRows(serverTask) {
@@ -6798,7 +7493,8 @@ function cardConflictRows(serverTask) {
     title: 'Название', status_id: 'Статус', priority_id: 'Приоритет', deadline_id: 'Срок',
     team_id: 'Команда', owner_id: 'Исполнитель', project_id: 'Проект', task_type_id: 'Тип',
     channel_id: 'Канал', business_customer_id: 'Бизнес-заказчик', involved_teams: 'Другие команды',
-    tags: 'Метки', progress: 'Прогресс', description: 'Описание', date_received: 'Дата получения',
+    tags: 'Метки', progress: 'Прогресс', description: 'Описание', comment: 'Внутренний комментарий задачи', date_received: 'Дата получения',
+    effort_days: 'Общая оценка трудозатрат', assessment_weight: 'Вес оценки', completion_forecast: 'Прогноз выполнения',
     financial_effect: 'Финансовый эффект (₽)', financial_effect_justification: 'Обоснование фин. эффекта',
     directorate_status: 'Статус (директорская)', did_status: 'Статус (ДИД)', key_project_status: 'Статус (ключ. проекты)',
     did_demo: 'Демо для ДИД', link_mockups: 'Макеты', link_jira: 'Jira', link_requirements: 'Требования',
@@ -6818,8 +7514,8 @@ function cardConflictRows(serverTask) {
     if (JSON.stringify(sv ?? null) === JSON.stringify(lv ?? null)) return null;
     const rName = 'ccr-' + field;
     return `<tr class="diff-row" data-field="${escapeHtml(field)}">
-      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="server" class="diff-radio" data-field="${escapeHtml(field)}" checked></td>
-      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="local" class="diff-radio" data-field="${escapeHtml(field)}"></td>
+      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="server" aria-label="Оставить серверное значение: ${escapeHtml(labels[field] || field)}" class="diff-radio" data-field="${escapeHtml(field)}" checked></td>
+      <td class="diff-radio-cell"><input type="radio" name="${rName}" value="local" aria-label="Использовать моё значение: ${escapeHtml(labels[field] || field)}" class="diff-radio" data-field="${escapeHtml(field)}"></td>
       <td class="diff-field">${escapeHtml(labels[field] || field)}</td>
       <td class="diff-server">${escapeHtml(fmt(sv))}</td>
       <td class="diff-local">${escapeHtml(fmt(lv))}</td>
@@ -6830,27 +7526,38 @@ function cardConflictRows(serverTask) {
 async function cardDoSave(payload, app) {
   const api = app?.api || window.app?.api;
   if (!api || !currentTask?.id) return;
-  const btn = document.getElementById('saveBtn');
-  if (btn) btn.classList.add('loading');
+  const taskId = Number(currentTask.id);
+  const permission = cardEditPermission();
+  if (!permission.allowed) {
+    cardToast(permission.reason, 'warn');
+    return;
+  }
+  cardState.saving = true;
+  cardUpdateDirty();
   try {
-    await api.patch(`/tasks/${currentTask.id}`, payload);
-    if (currentTask?.id) releaseLock(currentTask.id);
+    await api.patch(`/tasks/${taskId}`, payload);
+    if (!cardMatchesCurrentTask(taskId)) return;
+    releaseLock(taskId);
     _lockInfo = null;
-    await cardReloadTask(app);
+    const reloaded = await cardReloadTask(app, taskId);
+    if (!reloaded) return;
     clearCardEditDraft();
     cardState.editing = false; cardState.entryField = ''; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
     modalMode = 'view';
     cardRender();
     cardToast('Сохранено', 'ok');
   } catch (e2) {
+    if (!cardMatchesCurrentTask(taskId)) return;
     if (e2 && e2.status === 409) {
-      cardShowConflict(e2.data && e2.data.detail, app);
+      cardShowConflict(e2.data?.detail ?? e2.data, app);
     } else {
       cardToast('Ошибка: ' + (e2.message || 'не удалось сохранить'), 'err');
     }
   } finally {
-    const b = document.getElementById('saveBtn');
-    if (b) b.classList.remove('loading');
+    if (cardMatchesCurrentTask(taskId)) {
+      cardState.saving = false;
+      cardUpdateDirty();
+    }
   }
 }
 async function cardConflictMerge(serverTask, app, currentVer) {
@@ -6871,14 +7578,15 @@ async function cardConflictForce(app, currentVer) {
 }
 function cardConflictRefresh(serverTask, app) {
   cardConflictClose();
+  const taskId = Number(serverTask?.id || currentTask?.id);
   currentTask = serverTask;
   cardState.current = buildCardState(serverTask);
   cardState.editing = false; cardState.entryField = ''; cardState.draft = null; cardState.dirty = false; cardState.replyFor = null; cardAi = null;
   modalMode = 'view';
-  if (currentTask?.id) releaseLock(currentTask.id);
+  if (taskId) releaseLock(taskId);
   clearCardEditDraft();
   _lockInfo = null;
-  cardReloadTask(app).then(() => cardRender());
+  cardReloadTask(app, taskId).then(reloaded => { if (reloaded) cardRender(); });
   cardToast('Данные обновлены с сервера', 'info');
 }
 function cardConflictClose() {
@@ -6894,41 +7602,60 @@ function cardRenderPrioritiserValueProposal() {
     '<div class="av">Финансовый эффект: ' + cardFmtNum(cardAi.fin, 2) + ' млн ₽</div>' +
     '<div class="at">' + cardNl2br(cardAi.text) + '</div>' +
     '<div class="ai-suggestion-actions">' +
-      '<button type="button" class="btn mini ghost" data-action="ai-value-reject"' + (busy ? ' disabled' : '') + '>Отклонить</button>' +
-      '<button type="button" class="btn mini primary" data-action="ai-value-accept"' + (busy ? ' disabled' : '') + '>' + cardIcon('check') + (busy ? 'Сохранение…' : 'Принять результат') + '</button>' +
+      uiButton({ label: 'Отклонить', size: 'small', attrs: { 'data-action': 'ai-value-reject', disabled: busy } }) +
+      uiButton({ label: busy ? 'Сохранение…' : 'Принять результат', variant: 'primary', size: 'small', iconMarkup: cardIcon('check'), attrs: { 'data-action': 'ai-value-accept', disabled: busy, 'aria-busy': busy } }) +
     '</div>';
   pop.classList.add('show');
 }
 
 async function cardAcceptPrioritiserValue(app) {
   if (!cardAi || cardAi.target !== 'fin' || cardState.prioritiserRunning || !currentTask?.id) return;
+  const permission = cardEditPermission();
+  if (!permission.allowed) {
+    cardToast(permission.reason, 'warn');
+    return;
+  }
   const api = app?.api || window.app?.api;
   if (!api) return;
+  const taskId = Number(currentTask.id);
+  const request = _taskCardRequestGate.start('prioritiser-value-approve', taskId);
   cardState.prioritiserRunning = 'value-approve';
   cardRenderBody();
   try {
-    const updatedTask = await api.post(`/tasks/${currentTask.id}/prioritiser/value/approve`, {
+    const updatedTask = await api.post(`/tasks/${taskId}/prioritiser/value/approve`, {
       version: currentTask?.version || cardAi.version || 0,
       value_mln: cardAi.fin,
       justification: cardAi.text,
-    });
+    }, { signal: request.signal });
+    if (!_taskCardRequestGate.isCurrent(request.token, taskId) || Number(currentTask?.id) !== taskId) return;
+    if (Number(updatedTask?.id) !== taskId) throw new Error('Сервер вернул данные другой задачи');
     cardAi = null;
     currentTask = updatedTask;
     cardState.current = buildCardState(updatedTask);
-    cardRender();
+    if (cardState.tab === 'main') cardRender();
+    else { cardRenderHeader(); cardRenderTabs(); cardRenderFooter(); }
     cardToast('Финансовый эффект принят и сохранён', 'ok');
   } catch (error) {
+    if (request.signal.aborted || error?.name === 'AbortError' || !_taskCardRequestGate.isCurrent(request.token, taskId)) return;
     if (error?.status === 409) cardToast('Задача изменилась после расчёта. Рассчитайте эффект повторно.', 'warn');
     else if (error?.status === 423) cardToast('Задача редактируется другим пользователем', 'warn');
     else cardToast('Ошибка сохранения: ' + (error?.message || 'не удалось принять результат'), 'err');
   } finally {
-    cardState.prioritiserRunning = '';
-    cardRenderBody();
+    if (_taskCardRequestGate.finish(request.token) && Number(currentTask?.id) === taskId) {
+      cardState.prioritiserRunning = '';
+      if (cardState.tab === 'main') cardRenderBody();
+      else cardRenderFooter();
+    }
   }
 }
 
 async function cardRunPrioritiser(kind, app) {
   if (cardState.prioritiserRunning || !currentTask?.id) return;
+  const permission = cardEditPermission();
+  if (!permission.allowed) {
+    cardToast(permission.reason, 'warn');
+    return;
+  }
   if (cardState.editing) {
     cardToast('Перед расчётом сохраните или отмените изменения карточки', 'warn');
     return;
@@ -6940,12 +7667,15 @@ async function cardRunPrioritiser(kind, app) {
   }
   const api = app?.api || window.app?.api;
   if (!api) return;
+  const taskId = Number(currentTask.id);
+  const request = _taskCardRequestGate.start('prioritiser-calculation', taskId);
   cardState.prioritiserRunning = kind;
   cardRenderBody();
   try {
-    const result = await api.post(`/tasks/${currentTask.id}/prioritiser/${kind}`, {
+    const result = await api.post(`/tasks/${taskId}/prioritiser/${kind}`, {
       version: currentTask?.version || 0,
-    });
+    }, { signal: request.signal });
+    if (!_taskCardRequestGate.isCurrent(request.token, taskId) || Number(currentTask?.id) !== taskId) return;
     if (kind === 'value') {
       const valueMln = Number(result?.value_mln);
       if (!Number.isFinite(valueMln) || valueMln < 0) {
@@ -6957,15 +7687,18 @@ async function cardRunPrioritiser(kind, app) {
         text: String(result.justification || ''),
         version: Number(result.version ?? currentTask?.version ?? 0),
       };
-      cardRenderBody();
+      if (cardState.tab === 'main') cardRenderBody();
       cardToast('Финансовый эффект рассчитан. Проверьте и примите результат.', 'info');
     } else {
+      if (Number(result?.id) !== taskId) throw new Error('Сервер вернул данные другой задачи');
       currentTask = result;
       cardState.current = buildCardState(result);
-      cardRender();
+      if (cardState.tab === 'main') cardRender();
+      else { cardRenderHeader(); cardRenderTabs(); cardRenderFooter(); }
       cardToast('Приоритет рассчитан и сохранён', 'ok');
     }
   } catch (error) {
+    if (request.signal.aborted || error?.name === 'AbortError' || !_taskCardRequestGate.isCurrent(request.token, taskId)) return;
     if (error?.status === 409) cardToast('Задача изменена другим пользователем. Обновите страницу и повторите.', 'warn');
     else if (error?.status === 423) cardToast('Задача редактируется другим пользователем', 'warn');
     else {
@@ -6977,8 +7710,11 @@ async function cardRunPrioritiser(kind, app) {
       }
     }
   } finally {
-    cardState.prioritiserRunning = '';
-    cardRenderBody();
+    if (_taskCardRequestGate.finish(request.token) && Number(currentTask?.id) === taskId) {
+      cardState.prioritiserRunning = '';
+      if (cardState.tab === 'main') cardRenderBody();
+      else cardRenderFooter();
+    }
   }
 }
 
@@ -6993,11 +7729,11 @@ async function cardSuggestStatusProgressSync(changedKey, changedValue) {
   if (changedKey === 'status' && status === 'ВЫПОЛНЕНА' && progress !== 100) {
     targetKey = 'progress';
     targetValue = 100;
-    message = 'Для статуса «Выполнена» требуется прогресс 100%. Установить его автоматически?';
+    message = 'Для статуса «Выполнена» требуется прогресс 100%. Установить его в черновике? Затем нажмите «Сохранить», чтобы сохранить задачу.';
   } else if (changedKey === 'progress' && progress === 100 && status !== 'ВЫПОЛНЕНА') {
     targetKey = 'status';
     targetValue = 'ВЫПОЛНЕНА';
-    message = 'Прогресс достиг 100%. Изменить статус задачи на «Выполнена»?';
+    message = 'Прогресс достиг 100%. Изменить статус в черновике на «Выполнена»? Затем нажмите «Сохранить», чтобы сохранить задачу.';
   }
   if (!targetKey) return;
 
@@ -7021,7 +7757,7 @@ async function cardSuggestStatusProgressSync(changedKey, changedValue) {
 
 function cardOnField(ev, app = window.app) {
   if (cardState.tab === 'rep' && (ev.target.matches('[data-reporting-text]') || ev.target.matches('[data-reporting-demo]'))) {
-    cardState.dirty = true;
+    cardCaptureReportingDraft(ev.target);
     cardUpdateDirty();
     return;
   }
@@ -7076,11 +7812,37 @@ function cardOnField(ev, app = window.app) {
   }
 }
 
+async function cardConfirmTabChange(nextTab) {
+  if (normalizeTaskCardTab(nextTab) === cardState.tab || cardState.tab !== 'rep' || cardReportingDirtyCount() === 0) return true;
+  const confirmed = await confirmTaskCardDiscard(
+    'Несохранённые отчётные статусы будут потеряны. Переключить вкладку?',
+    { hasChanges: true, changeNames: cardReportingDraftNames() }
+  );
+  if (confirmed) clearCardReportingDrafts();
+  return confirmed;
+}
+
 async function cardOnClick(ev, app) {
   const actEl = ev.target.closest('[data-action]');
   if (actEl) {
     const a = actEl.dataset.action;
+    if (a === 'open-requirement-workspace') {
+      const taskId = currentTask?.id;
+      if (taskId && await cardRequestClose()) window.location.hash = '#/agent-v2?object_type=task&object_id=' + encodeURIComponent(taskId);
+      return;
+    }
     if (a === 'close') { cardRequestClose(); return; }
+    if (a === 'toggle-description') {
+      cardState.descriptionExpanded = !cardState.descriptionExpanded;
+      cardSyncDescriptionDisclosure();
+      return;
+    }
+    if (a === 'scroll-tabs-left' || a === 'scroll-tabs-right') {
+      const tabs = document.getElementById('tabs');
+      if (tabs) tabs.scrollBy({ left: (a === 'scroll-tabs-left' ? -1 : 1) * Math.max(180, tabs.clientWidth * .65), behavior: 'smooth' });
+      return;
+    }
+    if (a === 'open-pip-history') { await cardActivateTab('log', app); return; }
     if (a === 'edit') { cardStartEdit(app); return; }
     if (a === 'cancel') { cardCancelEdit(app); return; }
     if (a === 'save') { cardSaveEdit(app); return; }
@@ -7096,6 +7858,8 @@ async function cardOnClick(ev, app) {
       const currentPath = window.location.hash.slice(1).split('?')[0] || '/backlog';
       const params = new URLSearchParams({ task: String(currentTask.id) });
       if (cardState.tab !== 'main') params.set('tab', cardState.tab);
+      const commentTarget = cardState.tab === 'com' ? parseCommentTarget(window.location.hash) : null;
+      if (commentTarget) params.set('comment', String(commentTarget));
       url.hash = `${currentPath}?${params.toString()}`;
       try {
         await navigator.clipboard.writeText(url.toString());
@@ -7140,6 +7904,7 @@ async function cardOnClick(ev, app) {
     if (a === 'del-req') { cardState.draft.reqLinks.splice(+actEl.dataset.idx, 1); cardState.dirty = true; cardRenderBody(); cardUpdateDirty(); return; }
     return;
   }
+  if (ev.target.closest('.task-description-content a')) return;
   const inlineEdit = ev.target.closest('[data-inline-edit]');
   if (inlineEdit && !cardState.editing) {
     await cardStartEdit(app, inlineEdit.dataset.inlineEdit);
@@ -7147,12 +7912,12 @@ async function cardOnClick(ev, app) {
   }
   const tabEl = ev.target.closest('[data-tab]');
   if (tabEl) {
-    if (cardState.tab === 'rep' && cardState.dirty) {
-      const confirmed = await confirmTaskCardDiscard('Несохранённый отчётный статус будет потерян. Переключить вкладку?');
-      if (!confirmed) return;
-      cardState.dirty = false;
+    if (!(await cardConfirmTabChange(tabEl.dataset.tab))) {
+      document.getElementById('task-tab-' + cardState.tab)?.focus({ preventScroll: true });
+      return;
     }
-    cardActivateTab(tabEl.dataset.tab, app);
+    const activeTab = await cardActivateTab(tabEl.dataset.tab, app);
+    document.getElementById('task-tab-' + activeTab)?.focus({ preventScroll: true });
     return;
   }
   const chip = ev.target.closest('[data-toggle]');
@@ -7171,9 +7936,26 @@ async function cardOnClick(ev, app) {
 
 function cardReset() {
   clearTimeout(_cardQuickSaveTimer);
-  cardState = { tab: 'main', editing: false, dirty: false, saving: false, prioritiserRunning: '', replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0 };
+  clearTimeout(_cardAttachmentHydrationTimer);
+  _taskCardRequestGate.cancelAll();
+  _taskCommentDraftSession.clearAll();
+  _cardAttachmentHydrationTimer = null;
+  cardState = { tab: 'main', editing: false, dirty: false, saving: false, prioritiserRunning: '', replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0, descriptionExpanded: false };
   cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
   cardReportingContext = null; cardReportingLoading = false;
+  clearCardReportingDrafts();
+  _commentsCache = [];
+  _commentsLoadedTaskId = null;
+  _attachmentsCache = [];
+  _usersCache = [];
+  _mentionedUserIds = [];
+  _mentionSelectedIdx = -1;
+  _mentionQueryStart = -1;
+  _replyingTo = null;
+  _commentTaskId = null;
+  _commentTargetHandled = null;
+  _pendingCommentSubmission = null;
+  _commentSubmitting = false;
   _statusProgressSuggestionPending = false;
   if (_cardEscHandler) { document.removeEventListener('keydown', _cardEscHandler); _cardEscHandler = null; }
   if (_cardRouteTabHandler) { document.removeEventListener('task-tab-change', _cardRouteTabHandler); _cardRouteTabHandler = null; }
@@ -7181,42 +7963,76 @@ function cardReset() {
 
 async function cardInit(app) {
   const api = app?.api || window.app?.api;
+  const taskId = Number(currentTask?.id);
+  const overlay = document.getElementById('task-detail-overlay');
+  const isActive = () => cardMatchesCurrentTask(taskId)
+    && overlay?.isConnected
+    && overlay === document.getElementById('task-detail-overlay');
   cardRender();
-  if (!api || !currentTask?.id) return;
-  if (cardState.tab === 'rep') await cardLoadReportingContext(app);
+  if (!api || !isActive()) return;
+  if (cardState.tab === 'rep') await cardLoadReportingContext(app, taskId);
+  if (!isActive()) return;
   const ratesData = await api.get('/admin/competency-costs').catch(() => []);
+  if (!isActive()) return;
   cardRates = cardBuildRates(ratesData);
-  await cardLoadDict(app);
+  if (!(await cardLoadDict(app, taskId)) || !isActive()) return;
   cardRender();
-  await cardLoadHistory(app);
-  await loadComments(currentTask.id, app);
-  await loadAttachments(currentTask.id, app);
+  await cardLoadHistory(app, taskId);
+  if (!isActive()) return;
+  if (cardState.tab === 'main' || cardState.tab === 'log') cardRenderBody();
+  await Promise.all([loadComments(taskId, app), loadAttachments(taskId, app)]);
+  if (!isActive()) return;
   cardState.commentsCount = _commentsCache.length;
   cardState.filesCount = _attachmentsCache.length;
   cardRenderTabs();
-  if (cardState.tab === 'com') { _commentFormInitialized = false; initCommentForm(currentTask.id, app); }
-  if (cardState.tab === 'files') { _attachmentFormInitialized = false; initAttachmentForm(currentTask.id, app); }
-  checkAndRenderLock(currentTask.id);
-  registerViewer(currentTask.id).then(() => fetchViewers(currentTask.id).then(v => { _currentViewers = v; renderViewerBanner(); }));
-  startViewerPolling(currentTask.id);
+  if (cardState.tab === 'com') { _commentFormInitialized = false; initCommentForm(taskId, app); }
+  checkAndRenderLock(taskId);
+  registerViewer(taskId).then(async () => {
+    if (!isActive()) return;
+    const viewers = await fetchViewers(taskId);
+    if (!isActive()) return;
+    _currentViewers = viewers;
+    renderViewerBanner();
+  });
+  startViewerPolling(taskId);
   cardRenderTabs();
 }
 
 export function renderTaskDetailModal(task, app) {
+  _taskCardRequestGate.cancelAll();
+  _taskCommentDraftSession.clearAll();
   currentTask = task;
+  if (task?.id) _taskCommentDraftSession.begin(task.id);
   modalMode = task ? 'view' : 'edit';
   cardState.current = buildCardState(task || {});
   cardState.tab = cardTabFromRoute();
-  cardState.editing = false; cardState.entryField = ''; cardState.dirty = false; cardState.saving = false; cardState.replyFor = null;
-  cardState.history = []; cardState.commentsCount = 0; cardState.filesCount = 0;
+  cardState.editing = false; cardState.entryField = ''; cardState.dirty = false; cardState.saving = false; cardState.prioritiserRunning = ''; cardState.replyFor = null;
+  cardState.history = []; cardState.commentsCount = 0; cardState.filesCount = 0; cardState.descriptionExpanded = false;
   cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
   cardReportingContext = null; cardReportingLoading = false;
+  clearCardReportingDrafts();
+  _commentsCache = [];
+  _commentsLoadedTaskId = null;
+  _attachmentsCache = [];
+  _usersCache = [];
+  _mentionedUserIds = [];
+  _mentionSelectedIdx = -1;
+  _mentionQueryStart = -1;
+  _replyingTo = null;
+  _commentTaskId = task?.id ? Number(task.id) : null;
+  _commentTargetHandled = null;
+  _pendingCommentSubmission = null;
+  _commentSubmitting = false;
   return `
     <div class="modal-overlay" id="task-detail-overlay">
-      <div class="task-detail-modal modal" id="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="mhead">
+      <div class="task-detail-modal modal" id="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="task-detail-title">
         <div class="mhead" id="mhead"></div>
-        <div class="tabs" id="tabs"><span id="tabInd"></span></div>
-        <div class="mbody" id="mbody"></div>
+        <div class="tabs-shell" id="task-tabs-shell">
+          <button type="button" class="btn btn-ghost btn-sm square-icon ui-btn tabs-scroll tabs-scroll-left" data-action="scroll-tabs-left" aria-label="Прокрутить вкладки влево" disabled>‹</button>
+          <div class="tabs ui-tabs" id="tabs" role="tablist" aria-label="Разделы карточки задачи" aria-orientation="horizontal"></div>
+          <button type="button" class="btn btn-ghost btn-sm square-icon ui-btn tabs-scroll tabs-scroll-right" data-action="scroll-tabs-right" aria-label="Прокрутить вкладки вправо" disabled>›</button>
+        </div>
+        <div class="mbody" id="mbody" role="tabpanel" tabindex="0"></div>
         <div class="mfoot" id="mfoot"></div>
       </div>
       <div class="toast" id="card-toast"></div>
@@ -7242,7 +8058,22 @@ export function initTaskDetailModal(app) {
   });
   overlay.addEventListener('input', e => cardOnField(e, app));
   overlay.addEventListener('change', e => cardOnField(e, app));
-  overlay.addEventListener('keydown', e => {
+  document.getElementById('tabs')?.addEventListener('scroll', cardSyncTabsOverflow, { passive: true });
+  overlay.addEventListener('keydown', async e => {
+    const currentTab = e.target.closest?.('[role="tab"][data-tab]');
+    if (currentTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+      const nextTab = tabNavigationTarget(document.getElementById('tabs'), e);
+      if (!nextTab) return;
+      e.preventDefault();
+      if (!(await cardConfirmTabChange(nextTab.dataset.tab))) {
+        currentTab.focus({ preventScroll: true });
+        return;
+      }
+      const activeTab = await cardActivateTab(nextTab.dataset.tab, app);
+      document.getElementById('task-tab-' + activeTab)?.focus({ preventScroll: true });
+      return;
+    }
+    if (e.target.closest?.('.task-description-content a')) return;
     if (cardState.editing || (e.key !== 'Enter' && e.key !== ' ')) return;
     const inlineEdit = e.target.closest('[data-inline-edit]');
     if (!inlineEdit) return;
@@ -7251,12 +8082,15 @@ export function initTaskDetailModal(app) {
   });
 
   if (!window._cardResizeBound) {
-    window.addEventListener('resize', cardPlaceInd);
+    window.addEventListener('resize', () => { cardSyncTabsOverflow(); cardSyncDescriptionDisclosure(); });
     window._cardResizeBound = true;
   }
 
   if (_cardEscHandler) document.removeEventListener('keydown', _cardEscHandler);
   _cardEscHandler = (e) => {
+    if (e.key === 'Escape' && document.querySelector(
+      '#confirm-modal-overlay, #card-conflict-overlay, #prioritiser-requirements-overlay'
+    )) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && cardState.editing) {
       e.preventDefault();
       cardSaveEdit(app);
@@ -7277,15 +8111,24 @@ export function initTaskDetailModal(app) {
   document.addEventListener('keydown', _cardEscHandler);
 
   if (_cardRouteTabHandler) document.removeEventListener('task-tab-change', _cardRouteTabHandler);
-  _cardRouteTabHandler = event => {
+  _cardRouteTabHandler = async event => {
     if (Number(event.detail?.taskId) !== Number(currentTask?.id)) return;
-    cardActivateTab(event.detail?.tab || 'main', app, false);
+    const requestedTab = normalizeTaskCardTab(event.detail?.tab || 'main');
+    const currentTab = cardState.tab;
+    if (!(await cardConfirmTabChange(requestedTab))) {
+      window.app?.router?.updateTaskTabRoute?.(currentTab);
+      document.getElementById('task-tab-' + currentTab)?.focus({ preventScroll: true });
+      return;
+    }
+    await cardActivateTab(requestedTab, app, false);
   };
   document.addEventListener('task-tab-change', _cardRouteTabHandler);
 
   cardInit(app);
 
   setTimeout(() => {
+    if (!overlay.isConnected || (document.activeElement && overlay.contains(document.activeElement))) return;
+    if (cardState.tab === 'com' && parseCommentTarget(window.location.hash)) return;
     const first = overlay.querySelector('button, a, input');
     first?.focus();
   }, 150);

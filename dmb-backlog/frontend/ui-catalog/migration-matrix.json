@@ -1,0 +1,4070 @@
+{
+  "reviewed": "2026-10-21",
+  "status": "verified",
+  "statesContract": "Матрица фиксирует 115 активных поверхностей. browser-verified означает проверку реального потребителя в перечисленных сценариях, а не наличие CSS-класса. Общие состояния компонентов дополнительно проверяются каталогом; темы, плотность, mobile и coarse pointer — вычисленными размерами, источник геометрии и запрет обходов — по коду. Список states перечисляет применимые состояния: полный перебор всех сочетаний бизнес-данных не заявляется. Предметные расчёты, таблицы и ограничения не заменяются UI kit; адресные исключения и неактивные поверхности перечислены ниже. Подключение общих классов не означает полного визуального соответствия всех сочетаний состояний. Проверка согласованности 17.10.2026 сравнивает вычисленные стили повторяющихся компонентов на 22 поверхностях; оформление таблиц принадлежит UI Kit, предметная геометрия — страницам. Дополнение 19.10.2026: размещение и подтверждение результата выделены из helper-модуля в самостоятельные поверхности. Сложные диалоги дополнительно проверены на 320×568. Изолированные проверки 19.10 не заменяют живой QA-проход 18.10. Дополнение 22.10.2026: унификация реестров проверена отдельно; подробности в docs/dev-testing/VISUAL_REFRESH_2026-10-22.md.",
+  "surfaces": [
+    {
+      "id": "dashboard",
+      "title": "Главная и таймлайн",
+      "family": 4,
+      "source": "frontend/js/components/dashboard.js",
+      "entry": "/dashboard",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Календарная сетка и временная шкала",
+      "tests": [
+        "uiKitDataDisplay.spec.mjs",
+        "notificationSurfaces.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "backlog",
+      "title": "Бэклог DMB",
+      "family": 1,
+      "source": "frontend/js/components/taskTable.js",
+      "entry": "/backlog",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Sticky-таблица, карточки, массовые операции",
+      "tests": [
+        "uiKitBacklog.spec.mjs",
+        "uiKitComposites.spec.mjs",
+        "visualRefresh.spec.mjs",
+        "registryGeometry.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнение 22.10.2026: компонентные проверки унификации V01–V10, 1440/1280/720/390/320 CSS px, light/dark. Живой ролевой прогон и настоящий zoom 200% не заявляются.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "team-backlog",
+      "title": "Бэклог команды",
+      "family": 1,
+      "source": "frontend/js/components/teamBacklog.js",
+      "entry": "/team-backlog",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Sticky-таблица, карточки, выбор строк",
+      "tests": [
+        "uiKitBacklog.spec.mjs",
+        "uiKitComposites.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "kanban",
+      "title": "Канбан",
+      "family": 1,
+      "source": "frontend/js/components/kanbanBoard.js",
+      "entry": "/kanban",
+      "components": [
+        "PageHeader",
+        "Button",
+        "Badge",
+        "ViewState",
+        "TaskCard"
+      ],
+      "local": "Колонки и drag-and-drop сохраняют предметную компоновку. Перемещение клавиатурой и касанием использует ActionMenu и общий с drop путь сохранения.",
+      "tests": [
+        "uiKitKanban.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × normal/compact/mobile/coarse: геометрия, 13 колонок и счётчики. Ошибка/повтор/empty; меню с клавиатуры, readonly, busy, откат ошибки, fallback после успешной записи без обновления доски, актуальная версия и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "express",
+      "title": "Экспресс-оценка",
+      "family": 3,
+      "source": "frontend/js/components/expressEstimate.js",
+      "entry": "/express-estimate",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Матрица оценок и расчёты",
+      "tests": [
+        "uiKitExpress.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "reports",
+      "title": "Список отчётов",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "/reports",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Карточки видов отчётов",
+      "tests": [
+        "uiKitReportsHeader.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-detail",
+      "title": "Детальный отчёт",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "/reports/detail",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Специализированная таблица и диаграммы",
+      "tests": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "reporting-statuses",
+      "title": "Подготовка статусов",
+      "family": 3,
+      "source": "frontend/js/components/reportingStatuses.js",
+      "entry": "/reporting-statuses",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Предметные статусы, недельные поля и черновики; на время записи контролы и смена встречи блокируются.",
+      "tests": [
+        "uiKitReportingWorkspaces.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × normal/compact/mobile/coarse: размеры, длинный текст, поиск, loading/empty/error/readonly. Дополнительно: недельные обязательные поля, конфликт версии с сохранным вводом, запрет конкурирующей записи, повтор массового подтверждения, Escape и возврат фокуса при смене встречи. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "quarterly-update",
+      "title": "Обновление квартальных целей",
+      "family": 3,
+      "source": "frontend/js/components/quarterlyGoalsUpdate.js",
+      "entry": "/quarterly-goals-update",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Предметный ползунок, месяц старта и светофор; диапазон и расчёты сохранены.",
+      "tests": [
+        "uiKitReportingWorkspaces.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × normal/compact/mobile/coarse: размеры, длинный текст, поиск, loading/empty/error/readonly. Очередь быстрых изменений, ошибка предшественника, повтор, отмена с актуальной версией; запрет ухода во время сохранения и отказ от потери черновика после 409.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "meetings",
+      "title": "Управление встречами",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "/reporting-meetings",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Календарь и переходы состояния встречи",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "meeting-capture",
+      "title": "Поручения из встречи",
+      "family": 3,
+      "source": "frontend/js/components/meetingCapture.js",
+      "entry": "/meeting-capture",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Предпросмотр извлечения, совпадения и подтверждение",
+      "tests": [
+        "meetingCapture.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "analytics-tribe",
+      "title": "Аналитика ЛТ",
+      "family": 4,
+      "source": "frontend/js/components/analytics.js",
+      "entry": "/analytics/tribe",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "ECharts и матрицы",
+      "tests": [
+        "uiKitCharts.spec.mjs",
+        "uiKitAdminReports.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "analytics-po-pl",
+      "title": "Аналитика PO/PL",
+      "family": 4,
+      "source": "frontend/js/components/analytics.js",
+      "entry": "/analytics/po-pl",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "ECharts и матрицы",
+      "tests": [
+        "uiKitCharts.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "analytics-it",
+      "title": "Аналитика IT",
+      "family": 4,
+      "source": "frontend/js/components/analytics.js",
+      "entry": "/analytics/it",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Действующий маршрут-заготовка: только общий заголовок, интерактивная аналитика не реализована. Решение: сохранить как есть, не добавлять бизнес-функции в миграцию.",
+      "tests": [
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "ready"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "notifications",
+      "title": "Уведомления",
+      "family": 4,
+      "source": "frontend/js/components/notifications.js",
+      "entry": "/notifications",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Маршрутизация и состояния встреч",
+      "tests": [
+        "uiKitRegistries.spec.mjs",
+        "notificationSurfaces.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs",
+        "visualRefresh.spec.mjs",
+        "registryGeometry.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit. Дополнение 22.10.2026: компонентные проверки унификации V01–V10, 1440/1280/720/390/320 CSS px, light/dark. Живой ролевой прогон и настоящий zoom 200% не заявляются.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "settings",
+      "title": "Персональные настройки",
+      "family": 4,
+      "source": "frontend/js/components/settings.js",
+      "entry": "/settings",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Профиль только для чтения",
+      "tests": [
+        "uiKitSettings.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin",
+      "title": "Административные реестры",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Предметные редакторы",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "audit",
+      "title": "Аудит",
+      "family": 1,
+      "source": "frontend/js/components/auditLog.js",
+      "entry": "/audit-log",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Прокрутка таблицы, серверная пагинация",
+      "tests": [
+        "uiKitRegistries.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "outbox",
+      "title": "Ошибки доставки",
+      "family": 1,
+      "source": "frontend/js/components/outboxDeadLetters.js",
+      "entry": "/outbox-dead-letters",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Повтор доставки и optimistic version",
+      "tests": [
+        "uiKitRegistries.spec.mjs",
+        "uiKitFamilyContract.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "customer",
+      "title": "Запросы заказчика",
+      "family": 2,
+      "source": "frontend/js/components/customerPortal.js",
+      "entry": "/customer",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Карточки запросов и черновиков",
+      "tests": [
+        "customerPortalResponsive.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "request",
+      "title": "Карточка запроса",
+      "family": 2,
+      "source": "frontend/js/components/customerPortal.js",
+      "entry": "/customer/request/:id",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Редакции запроса",
+      "tests": [
+        "customerPortalResponsive.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "customer-task",
+      "title": "Задача заказчика",
+      "family": 2,
+      "source": "frontend/js/components/customerPortal.js",
+      "entry": "/customer/task/:id",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Просмотр доступной задачи",
+      "tests": [
+        "customerPortalResponsive.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "review",
+      "title": "Очередь ревью",
+      "family": 2,
+      "source": "frontend/js/components/reviewPage.js",
+      "entry": "/review",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Разные предметы ревью: запрос и редакция БТ",
+      "tests": [
+        "reviewResponsive.spec.mjs",
+        "requirementWorkspace.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "review-detail",
+      "title": "Карточка ревью",
+      "family": 2,
+      "source": "frontend/js/components/reviewPage.js",
+      "entry": "/review/:id",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Решение, комментарий и версии",
+      "tests": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "ai-v1",
+      "title": "AI V1",
+      "family": 4,
+      "source": "frontend/js/components/agentChat.js",
+      "entry": "/customer/create",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Диалог, история и редактор секций; меню действий общее",
+      "tests": [
+        "agentChatResponsive.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение с эталоном UI Kit; для AI — исходная разметка/недоступность без живой модели.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "login",
+      "title": "Вход",
+      "family": 0,
+      "source": "frontend/js/components/login.js",
+      "entry": "login",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Состояние авторизации",
+      "tests": [
+        "uiKitLogin.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "ai-v2",
+      "title": "AI V2",
+      "family": 4,
+      "source": "frontend/js/agent-v2/workspace.js",
+      "entry": "/agent-v2",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Документ, источники, замечания, human review и автосохранение",
+      "tests": [
+        "requirementWorkspace.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "unavailable",
+        "loading",
+        "error",
+        "empty",
+        "ready",
+        "editing",
+        "dirty",
+        "saving",
+        "degraded",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Геометрия «Изменить» light/dark × desktop/compact/mobile/coarse. Доменный редактор/автосохранение/конфликт/ревью — requirementWorkspace; не все сочетания состояний. Дополнительно: сравнение с эталоном UI Kit; для AI — исходная разметка/недоступность без живой модели.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-teams",
+      "title": "Админ: teams",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=teams",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-projects",
+      "title": "Админ: projects",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=projects",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-businessCustomers",
+      "title": "Админ: businessCustomers",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=businessCustomers",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-users",
+      "title": "Админ: users",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=users",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-roles",
+      "title": "Админ: roles",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=roles",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-home",
+      "title": "Админ: home",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=home",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-dictionaries",
+      "title": "Админ: dictionaries",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=dictionaries",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-display",
+      "title": "Админ: display",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=display",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-reports",
+      "title": "Админ: reports",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=reports",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "admin-audit",
+      "title": "Админ: audit",
+      "family": 1,
+      "source": "frontend/js/components/admin.js",
+      "entry": "/admin?tab=audit",
+      "components": [
+        "Button",
+        "Control",
+        "Tabs",
+        "ViewState",
+        "Modal",
+        "Table"
+      ],
+      "local": "Предметные таблицы/редакторы; защищённые данные проверяются только на фикстурах",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-team-weekly",
+      "title": "Отчёт: team-weekly",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "/reports/detail?r=team-weekly",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Предметная таблица/иерархия отчёта сохраняется; контролы, состояния и действия используют общий kit.",
+      "tests": [
+        "teamWeeklyReport.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-directorate",
+      "title": "Отчёт: directorate",
+      "family": 3,
+      "source": "frontend/js/components/directorateReport.js",
+      "entry": "/reports/detail?r=directorate",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
+      "local": "Предметная таблица/иерархия отчёта сохраняется; контролы, состояния и действия используют общий kit.",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-did-operational",
+      "title": "Отчёт: did-operational",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "/reports/detail?r=did-operational",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Предметная таблица/иерархия отчёта сохраняется; контролы, состояния и действия используют общий kit.",
+      "tests": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Кнопка сворачивания: normal/compact/mobile/coarse; квадратность, клавиатура и aria-expanded.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-reg-directors",
+      "title": "Отчёт: reg-directors",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "/reports/detail?r=reg-directors",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Предметная таблица/иерархия отчёта сохраняется; контролы, состояния и действия используют общий kit.",
+      "tests": [
+        "uiKitReportCompletion.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-pip",
+      "title": "Отчёт: pip",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "/reports/detail?r=pip",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Предметная таблица/иерархия отчёта сохраняется; контролы, состояния и действия используют общий kit.",
+      "tests": [
+        "uiKitReportCompletion.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-did-backlog",
+      "title": "Отчёт: did-backlog",
+      "family": 3,
+      "source": "frontend/js/components/didBacklog.js",
+      "entry": "/reports/detail?r=did-backlog",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Предметная таблица/иерархия отчёта сохраняется; контролы, состояния и действия используют общий kit.",
+      "tests": [
+        "uiKitAdminReports.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-quarterly-goals",
+      "title": "Отчёт: quarterly-goals",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "/reports/detail?r=quarterly-goals",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Предметная таблица/иерархия отчёта сохраняется; контролы, состояния и действия используют общий kit.",
+      "tests": [
+        "uiKitComposites.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "collapsed",
+        "expanded"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-pd-estimates",
+      "title": "Отчёт: pd-estimates",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "/reports/detail?r=pd-estimates",
+      "components": [
+        "Button",
+        "Control",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Действующая заглушка «в разработке». Решение: общий заголовок и действия, сбор оценок не реализовывать в рамках UI kit.",
+      "tests": [
+        "uiKitReportCompletion.spec.mjs"
+      ],
+      "states": [
+        "ready"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "task-main",
+      "title": "Карточка задачи: main",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "task?tab=main",
+      "components": [
+        "Button",
+        "Control",
+        "Field",
+        "Tabs",
+        "Modal",
+        "Avatar",
+        "Tag",
+        "Progress",
+        "Table"
+      ],
+      "local": "Табличные расчёты, вкладки и бизнес-права сохранены",
+      "tests": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "task-rep",
+      "title": "Карточка задачи: rep",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "task?tab=rep",
+      "components": [
+        "Button",
+        "Control",
+        "Field",
+        "Tabs",
+        "Modal",
+        "Avatar",
+        "Tag",
+        "Progress",
+        "Table"
+      ],
+      "local": "Табличные расчёты, вкладки и бизнес-права сохранены",
+      "tests": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "task-com",
+      "title": "Карточка задачи: com",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "task?tab=com",
+      "components": [
+        "Button",
+        "Control",
+        "Field",
+        "Tabs",
+        "Modal",
+        "Avatar",
+        "Tag",
+        "Progress",
+        "Table"
+      ],
+      "local": "Табличные расчёты, вкладки и бизнес-права сохранены",
+      "tests": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "task-sys",
+      "title": "Карточка задачи: sys",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "task?tab=sys",
+      "components": [
+        "Button",
+        "Control",
+        "Field",
+        "Tabs",
+        "Modal",
+        "Avatar",
+        "Tag",
+        "Progress",
+        "Table"
+      ],
+      "local": "Табличные расчёты, вкладки и бизнес-права сохранены",
+      "tests": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "task-log",
+      "title": "Карточка задачи: log",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "task?tab=log",
+      "components": [
+        "Button",
+        "Control",
+        "Field",
+        "Tabs",
+        "Modal",
+        "Avatar",
+        "Tag",
+        "Progress",
+        "Table"
+      ],
+      "local": "Табличные расчёты, вкладки и бизнес-права сохранены",
+      "tests": [
+        "uiKitTaskForms.spec.mjs",
+        "taskCardIncrement.spec.mjs",
+        "taskCardResponsive.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "error",
+        "readonly",
+        "ready",
+        "editing",
+        "dirty",
+        "invalid",
+        "saving",
+        "conflict"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "columns",
+      "title": "Настройка колонок",
+      "family": 1,
+      "source": "frontend/js/components/filterToolbar.js",
+      "entry": "renderToolbar",
+      "components": [
+        "Popover",
+        "Button"
+      ],
+      "local": "Данные и действия принадлежат странице",
+      "tests": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "states": [
+        "closed",
+        "open",
+        "checked",
+        "reordered"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × desktop/compact/mobile/coarse: границы, фон, квадратность действий, Alt+стрелки, Escape и фокус.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "saved-views",
+      "title": "Сохранённые представления",
+      "family": 1,
+      "source": "frontend/js/components/filterToolbar.js",
+      "entry": "renderSavedViewsControl",
+      "components": [
+        "Popover",
+        "Button"
+      ],
+      "local": "Данные и действия принадлежат странице",
+      "tests": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "states": [
+        "closed",
+        "empty",
+        "open",
+        "selected",
+        "dirty",
+        "rename",
+        "delete-confirm"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × desktop/compact/mobile/coarse: длинное имя, создание, редактор переименования, Escape по уровням, размеры и фокус.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "saved-editor",
+      "title": "Сохранение представления",
+      "family": 1,
+      "source": "frontend/js/components/filterToolbar.js",
+      "entry": "renderSavedViewsControl",
+      "components": [
+        "Popover",
+        "Button"
+      ],
+      "local": "Данные и действия принадлежат странице",
+      "tests": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "states": [
+        "closed",
+        "open",
+        "invalid",
+        "saved"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × desktop/compact/mobile/coarse: ввод и создание представления; восстановление фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-filter",
+      "title": "Фильтр отчёта",
+      "family": 3,
+      "source": "frontend/js/components/reports.js",
+      "entry": "renderFilterDropdown",
+      "components": [
+        "Popover",
+        "SelectionList",
+        "Table"
+      ],
+      "local": "Данные и действия принадлежат странице",
+      "tests": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "states": [
+        "closed",
+        "empty",
+        "open",
+        "selected",
+        "mixed",
+        "cleared"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный quarterly-goals: light/dark × desktop/compact/mobile/coarse; select-all/indeterminate, сброс, экранирование, фокус после рендера.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "toolbar-filter",
+      "title": "Типизированные фильтры",
+      "family": 1,
+      "source": "frontend/js/components/filterToolbar.js",
+      "entry": "toggleDropdown",
+      "components": [
+        "Popover",
+        "SelectionList"
+      ],
+      "local": "Данные и действия принадлежат странице",
+      "tests": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "states": [
+        "closed",
+        "open",
+        "search",
+        "no-match",
+        "selected",
+        "invalid",
+        "applied"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "filter-catalog",
+      "title": "Каталог фильтров",
+      "family": 1,
+      "source": "frontend/js/components/filterToolbar.js",
+      "entry": "initToolbar",
+      "components": [
+        "Popover",
+        "Control",
+        "Button"
+      ],
+      "local": "Группировка предметных фильтров; общая вложенная панель, Escape по уровням.",
+      "tests": [
+        "uiKitComposites.spec.mjs"
+      ],
+      "states": [
+        "closed",
+        "open",
+        "search",
+        "pinned"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Вложенные панели desktop/mobile: первый Escape закрывает фильтр, второй — каталог; клик вне цепочки закрывает оба.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "session-menu",
+      "title": "Действия сессии AI V1",
+      "family": 4,
+      "source": "frontend/js/components/agentChat.js",
+      "entry": "renderSessions",
+      "components": [
+        "Popover",
+        "Button",
+        "ActionMenu",
+        "Table"
+      ],
+      "local": "Данные и действия принадлежат странице",
+      "tests": [
+        "agentChatResponsive.spec.mjs"
+      ],
+      "states": [
+        "closed",
+        "open",
+        "disabled",
+        "selected"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный AI V1: ArrowRight открывает меню, Home/End, Escape и возврат фокуса в историю.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "task-tooltip",
+      "title": "Подсказки расчёта",
+      "family": 3,
+      "source": "frontend/js/components/modal.js",
+      "entry": "cardPrioritiserButton",
+      "components": [
+        "Popover",
+        "Button",
+        "Tooltip",
+        "Table"
+      ],
+      "local": "Данные и действия принадлежат странице",
+      "tests": [
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "states": [
+        "closed",
+        "hover",
+        "focus",
+        "escape"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная карточка задачи: фокус/описание, Escape не закрывает задачу; привязка после перерисовки.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-renderTaskDetailModal",
+      "title": "renderTaskDetailModal",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "renderTaskDetailModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль и действия пользователя в указанных сценариях; геометрия, клавиатура, закрытие и сохранность ввода проверяются по применимости. Каталог дополнительно фиксирует визуальный эталон.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-openCreateTaskModal",
+      "title": "openCreateTaskModal",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "openCreateTaskModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль и действия пользователя в указанных сценариях; геометрия, клавиатура, закрытие и сохранность ввода проверяются по применимости. Каталог дополнительно фиксирует визуальный эталон.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-showCreateDuplicateWarning",
+      "title": "showCreateDuplicateWarning",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "showCreateDuplicateWarning",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-showConflictModal",
+      "title": "showConflictModal",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "showConflictModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-showConfirmModal",
+      "title": "showConfirmModal",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "showConfirmModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-showEditExitModal",
+      "title": "showEditExitModal",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "showEditExitModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-showErrorModal",
+      "title": "showErrorModal",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "showErrorModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-showBulkResultModal",
+      "title": "showBulkResultModal",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "showBulkResultModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-showBulkOpsModal",
+      "title": "showBulkOpsModal",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "showBulkOpsModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-showPrioritiserRequirementsModal",
+      "title": "showPrioritiserRequirementsModal",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "showPrioritiserRequirementsModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-admin-showConfirmModal",
+      "title": "showConfirmModal",
+      "family": 2,
+      "source": "frontend/js/components/admin.js",
+      "entry": "showConfirmModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-admin-renderTimelineEventModal",
+      "title": "renderTimelineEventModal",
+      "family": 2,
+      "source": "frontend/js/components/admin.js",
+      "entry": "renderTimelineEventModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitAdminTools.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль и действия пользователя в указанных сценариях; геометрия, клавиатура, закрытие и сохранность ввода проверяются по применимости. Каталог дополнительно фиксирует визуальный эталон.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-admin-renderModal",
+      "title": "renderModal",
+      "family": 2,
+      "source": "frontend/js/components/admin.js",
+      "entry": "renderModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitAdminReports.spec.mjs",
+        "uiKitAdminEditors.spec.mjs",
+        "uiKitAdminTools.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль и действия пользователя в указанных сценариях; геометрия, клавиатура, закрытие и сохранность ввода проверяются по применимости. Каталог дополнительно фиксирует визуальный эталон.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-admin-openDictModal",
+      "title": "openDictModal",
+      "family": 2,
+      "source": "frontend/js/components/admin.js",
+      "entry": "openDictModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitAdminEditors.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль и действия пользователя в указанных сценариях; геометрия, клавиатура, закрытие и сохранность ввода проверяются по применимости. Каталог дополнительно фиксирует визуальный эталон.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-admin-openCompetencyInlineEditor",
+      "title": "openCompetencyInlineEditor",
+      "family": 2,
+      "source": "frontend/js/components/admin.js",
+      "entry": "openCompetencyInlineEditor",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitAdminEditors.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль и действия пользователя в указанных сценариях; геометрия, клавиатура, закрытие и сохранность ввода проверяются по применимости. Каталог дополнительно фиксирует визуальный эталон.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-agentChat-showTeamSelectModal",
+      "title": "showTeamSelectModal",
+      "family": 2,
+      "source": "frontend/js/components/agentChat.js",
+      "entry": "showTeamSelectModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-agentChat-showSectionEditModal",
+      "title": "showSectionEditModal",
+      "family": 2,
+      "source": "frontend/js/components/agentChat.js",
+      "entry": "showSectionEditModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-customerReferences-openCustomerReferences",
+      "title": "openCustomerReferences",
+      "family": 2,
+      "source": "frontend/js/components/customerReferences.js",
+      "entry": "openCustomerReferences",
+      "components": [
+        "Modal",
+        "Button",
+        "Control"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-expressEstimate-showImportModal",
+      "title": "showImportModal",
+      "family": 2,
+      "source": "frontend/js/components/expressEstimate.js",
+      "entry": "showImportModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-expressEstimate-showConfirm",
+      "title": "showConfirm",
+      "family": 2,
+      "source": "frontend/js/components/expressEstimate.js",
+      "entry": "showConfirm",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-expressEstimate-showIncompleteEstimateModal",
+      "title": "showIncompleteEstimateModal",
+      "family": 2,
+      "source": "frontend/js/components/expressEstimate.js",
+      "entry": "showIncompleteEstimateModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-expressEstimate-showCompleteEstimateModal",
+      "title": "showCompleteEstimateModal",
+      "family": 2,
+      "source": "frontend/js/components/expressEstimate.js",
+      "entry": "showCompleteEstimateModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-expressEstimate-showEstimateHandoffModal",
+      "title": "showEstimateHandoffModal",
+      "family": 2,
+      "source": "frontend/js/components/expressEstimate.js",
+      "entry": "showEstimateHandoffModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-quickEdit-showQuickEditExitModal",
+      "title": "showQuickEditExitModal",
+      "family": 2,
+      "source": "frontend/js/components/quickEdit.js",
+      "entry": "showQuickEditExitModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control"
+      ],
+      "local": "Три предметных решения: продолжить, сохранить, отказаться; общая модальная поверхность и клавиатурный менеджер.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitQuickEdit.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × mobile/desktop: Escape сохраняет черновик, возвращает фокус и не создаёт повторный диалог; отказ очищает изменения.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reports-showReportingMeetingForm",
+      "title": "showReportingMeetingForm",
+      "family": 2,
+      "source": "frontend/js/components/reports.js",
+      "entry": "showReportingMeetingForm",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reports-showMeetingDataDialog",
+      "title": "showMeetingDataDialog",
+      "family": 2,
+      "source": "frontend/js/components/reports.js",
+      "entry": "showMeetingDataDialog",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reports-showReportingMeetingPlanner",
+      "title": "showReportingMeetingPlanner",
+      "family": 2,
+      "source": "frontend/js/components/reports.js",
+      "entry": "showReportingMeetingPlanner",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reports-showReportingMeetingHistory",
+      "title": "showReportingMeetingHistory",
+      "family": 2,
+      "source": "frontend/js/components/reports.js",
+      "entry": "showReportingMeetingHistory",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reports-showReportingMeetingPreparation",
+      "title": "showReportingMeetingPreparation",
+      "family": 2,
+      "source": "frontend/js/components/reports.js",
+      "entry": "showReportingMeetingPreparation",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reports-showPipDecisionModal",
+      "title": "showPipDecisionModal",
+      "family": 2,
+      "source": "frontend/js/components/reports.js",
+      "entry": "showPipDecisionModal",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Предметные поля и данные; оформление контролов и модальная оболочка общие.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitDialogAcceptance.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная функция открытия: четыре сочетания темы/плотности/ширины/touch, длинный текст, вычисленные размеры и квадратность, отсутствие переполнения, Tab, Escape и возврат фокуса. API только в памяти; запись защищённых данных не выполняется. Дополнительно 19.10.2026: 320×568, тёмная тема/coarse, границы viewport, геометрия, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-analytics-showDetail",
+      "title": "Встроенная детализация аналитики",
+      "family": 2,
+      "source": "frontend/js/components/analytics.js",
+      "entry": "showDetail",
+      "components": [
+        "Modal",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Встроенная область под графиком/матрицей, не модальное окно; выбор источника, Escape и возврат фокуса сохраняются.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "readonly",
+        "editing",
+        "invalid",
+        "saving",
+        "error",
+        "closed"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "uiKitFamilyContract: реальная ячейка аналитики открывается Enter; четыре режима темы/плотности/ширины/touch, квадратность закрытия, Escape и возврат на исходную ячейку.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "shell-notifications",
+      "title": "Панель уведомлений в шапке",
+      "source": "frontend/js/app.js",
+      "entry": "initApp / notif-dropdown",
+      "family": 4,
+      "components": [
+        "Popover",
+        "SurfaceAction"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "read-locked",
+        "keyboard",
+        "viewport"
+      ],
+      "local": "Список уведомлений и сроки — предметное содержимое; общая плавающая панель.",
+      "tests": [
+        "notificationSurfaces.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × desktop/compact/mobile/coarse: реальные ответы snapshot, границы панели, End/Escape, фокус при обновлении списка.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "shell-user-menu",
+      "title": "Меню пользователя",
+      "source": "frontend/js/app.js",
+      "entry": "initApp / user-dropdown",
+      "family": 4,
+      "components": [
+        "ActionMenu",
+        "SurfaceAction"
+      ],
+      "states": [
+        "closed",
+        "open",
+        "keyboard",
+        "viewport"
+      ],
+      "local": "Сводка пользователя; общий механизм меню.",
+      "tests": [
+        "notificationSurfaces.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × desktop/compact/mobile/coarse: ArrowDown/Home/End, Escape и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "shell-search",
+      "title": "Глобальный поиск и мобильная панель",
+      "source": "frontend/js/app.js",
+      "entry": "handleSearch",
+      "family": 1,
+      "components": [
+        "Control",
+        "SurfaceAction"
+      ],
+      "states": [
+        "empty-query",
+        "loading",
+        "empty",
+        "ready",
+        "error",
+        "keyboard",
+        "mobile"
+      ],
+      "local": "Ранжирование и выделение совпадений предметные; размещение и закрытие — общий Popover; input сохраняет фокус и aria-activedescendant.",
+      "tests": [
+        "notificationSurfaces.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × normal/compact/mobile/coarse: ввод, стрелки, выбранный option, Escape, Tab, пустой результат, viewport. Устаревший ответ не открывает закрытую панель.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "shell-sidebar",
+      "title": "Боковая навигация и мобильное раскрытие",
+      "source": "frontend/js/components/sidebar.js",
+      "entry": "renderSidebar",
+      "family": 1,
+      "components": [
+        "SurfaceAction",
+        "Button"
+      ],
+      "states": [
+        "expanded",
+        "collapsed",
+        "mobile",
+        "readonly"
+      ],
+      "local": "Навигационный drawer; закрытая мобильная область inert, при desktop breakpoint ограничение снимается.",
+      "tests": [
+        "notificationSurfaces.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark на mobile: открытие, начальный фокус, Escape, возврат к кнопке и сброс при desktop breakpoint.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "report-editor",
+      "title": "Конструктор отчёта: шаги 1–4 и предпросмотр",
+      "source": "frontend/js/components/adminReports.js",
+      "entry": "renderReportForm",
+      "family": 1,
+      "components": [
+        "Dialog",
+        "Tabs",
+        "Field",
+        "Button",
+        "Table"
+      ],
+      "states": [
+        "create",
+        "edit",
+        "readonly",
+        "filter-empty",
+        "filter-remove",
+        "invalid",
+        "saving",
+        "save-error"
+      ],
+      "local": "Предметные фильтры, сортировка и группировка.",
+      "tests": [
+        "uiKitAdminReports.spec.mjs",
+        "uiKitFamilyContract.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "quick-edit-exit",
+      "title": "Выход из массового редактирования",
+      "source": "frontend/js/components/quickEdit.js",
+      "entry": "showQuickEditExitModal",
+      "family": 1,
+      "components": [
+        "Dialog",
+        "Button"
+      ],
+      "states": [
+        "dirty",
+        "cancel",
+        "discard",
+        "save-error"
+      ],
+      "local": "Три предметных решения: продолжить, сохранить, отказаться; общая модальная поверхность и клавиатурный менеджер.",
+      "tests": [
+        "modalCatalogComplete.spec.mjs",
+        "uiKitQuickEdit.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × mobile/desktop: Escape сохраняет черновик, возвращает фокус и не создаёт повторный диалог; отказ очищает изменения.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "task-attachments",
+      "title": "Вложения задачи: выбор и загрузка файлов",
+      "source": "frontend/js/components/taskAttachments.js",
+      "entry": "renderAttachments",
+      "family": 2,
+      "components": [
+        "Button",
+        "Link",
+        "ViewState"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "ready",
+        "uploading",
+        "error",
+        "readonly"
+      ],
+      "local": "Файловый ввод, прогресс и операции вложений; все режимы не подтверждены.",
+      "tests": [
+        "taskCardIncrement.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "task-comments",
+      "title": "Обсуждение: редактор, ответы и упоминания",
+      "source": "frontend/js/components/taskComments.js",
+      "entry": "renderComments / renderMentionOptions",
+      "family": 2,
+      "components": [
+        "Button",
+        "Control",
+        "Avatar"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "ready",
+        "editing",
+        "reply",
+        "mention-list",
+        "saving",
+        "error",
+        "readonly"
+      ],
+      "local": "Ветка обсуждения остаётся предметной. @упоминания используют общий Popover/SelectionOption; textarea сохраняет многострочный ввод и aria-activedescendant.",
+      "tests": [
+        "taskCardIncrement.spec.mjs",
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальная вкладка задачи: light/dark mobile, выбор стрелками/Enter, Escape без закрытия карточки, viewport и цели option ≥44 px; черновики/ошибки/права — существующие тесты карточки.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "requirement-revisions",
+      "title": "Редакции БТ и решения человеческого ревью",
+      "source": "frontend/js/components/requirementReviews.js",
+      "entry": "renderRequirementReviews / renderRequirementReviewDetail",
+      "family": 2,
+      "components": [
+        "Button",
+        "Control"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "ready",
+        "error",
+        "conflict",
+        "readonly"
+      ],
+      "local": "Сравнение и применение редакций остаются предметной компоновкой; общие контролы и состояния.",
+      "tests": [
+        "requirementWorkspace.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-modal-renderModal",
+      "title": "renderModal",
+      "source": "frontend/js/components/modal.js",
+      "entry": "renderModal",
+      "family": 2,
+      "components": [
+        "Button",
+        "Dialog",
+        "Table"
+      ],
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "local": "Алиас renderTaskDetailModal, отдельного DOM и поведения нет; проверяется как карточка задачи.",
+      "tests": [
+        "uiKitTaskForms.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reviewPage-assignModal",
+      "title": "assignModal",
+      "source": "frontend/js/components/reviewPage.js",
+      "entry": "assignModal",
+      "family": 2,
+      "components": [
+        "Button",
+        "Dialog"
+      ],
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "local": "Локальный диалог: применение общих контролов не доказывает соответствие каждого состояния.",
+      "tests": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reviewPage-reasonModal",
+      "title": "reasonModal",
+      "source": "frontend/js/components/reviewPage.js",
+      "entry": "reasonModal",
+      "family": 2,
+      "components": [
+        "Button",
+        "Dialog"
+      ],
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "local": "Локальный диалог: применение общих контролов не доказывает соответствие каждого состояния.",
+      "tests": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reviewPage-releaseModal",
+      "title": "releaseModal",
+      "source": "frontend/js/components/reviewPage.js",
+      "entry": "releaseModal",
+      "family": 2,
+      "components": [
+        "Button",
+        "Dialog"
+      ],
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "local": "Локальный диалог: применение общих контролов не доказывает соответствие каждого состояния.",
+      "tests": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "dialog-reviewPage-rerouteModal",
+      "title": "rerouteModal",
+      "source": "frontend/js/components/reviewPage.js",
+      "entry": "rerouteModal",
+      "family": 2,
+      "components": [
+        "Button",
+        "Dialog"
+      ],
+      "states": [
+        "open",
+        "cancel",
+        "confirm",
+        "error",
+        "keyboard"
+      ],
+      "local": "Локальный диалог: применение общих контролов не доказывает соответствие каждого состояния.",
+      "tests": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "kanban-status-menu",
+      "title": "Канбан: меню статуса",
+      "family": 1,
+      "source": "frontend/js/components/kanbanBoard.js",
+      "entry": "/kanban → меню карточки",
+      "components": [
+        "ActionMenu",
+        "Button"
+      ],
+      "local": "Выбор статуса использует существующие переходы и версии задач; права как у карточки задачи.",
+      "tests": [
+        "uiKitKanban.spec.mjs"
+      ],
+      "states": [
+        "closed",
+        "open",
+        "disabled",
+        "saving",
+        "error"
+      ],
+      "status": "browser-verified",
+      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
+      "verifiedScope": "light/dark × normal/compact/mobile/coarse: геометрия, 13 колонок и счётчики. Ошибка/повтор/empty; меню с клавиатуры, readonly, busy, откат ошибки, fallback после успешной записи без обновления доски, актуальная версия и возврат фокуса.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs"
+      ]
+    },
+    {
+      "id": "backlog-assistant",
+      "title": "Помощник по бэклогу",
+      "family": 4,
+      "source": "frontend/js/backlog-assistant/page.js",
+      "entry": "/backlog-assistant",
+      "components": [
+        "Button",
+        "Control",
+        "Field"
+      ],
+      "local": "Контекст вопроса, источники и таблицы ответа",
+      "tests": [
+        "backlogAssistant.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "error",
+        "ready"
+      ],
+      "status": "browser-verified",
+      "verification": "Проверено 14.10.2026 в перечисленных сценариях.",
+      "verifiedScope": "Отправка, текст и ключ после ошибки, экранирование ответа, ширина 390/1280; синтетический HTTP API. Дополнительно: сравнение с эталоном UI Kit; для AI — исходная разметка/недоступность без живой модели.",
+      "contractEvidence": [
+        "frontend/tests/backlogAssistant.test.mjs"
+      ]
+    },
+    {
+      "id": "backlog-assistant-panel",
+      "title": "Панель помощника по бэклогу",
+      "family": 4,
+      "source": "frontend/js/backlog-assistant/panel.js",
+      "entry": "контекстная панель",
+      "components": [
+        "Button",
+        "Control",
+        "Field"
+      ],
+      "local": "Контекст вопроса, источники и таблицы ответа",
+      "tests": [
+        "backlogAssistant.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "error",
+        "ready"
+      ],
+      "status": "browser-verified",
+      "verification": "Проверено 14.10.2026 в перечисленных сценариях.",
+      "verifiedScope": "Escape, возврат фокуса, сохранение черновика, закрытие без отмены; синтетический HTTP API.",
+      "contractEvidence": [
+        "frontend/tests/backlogAssistant.test.mjs"
+      ]
+    },
+    {
+      "id": "workTasks",
+      "title": "Задачи",
+      "family": 1,
+      "source": "frontend/js/components/workTasks.js",
+      "entry": "/work-tasks",
+      "components": [
+        "Button",
+        "Field",
+        "PageHeader",
+        "Badge",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Предметные фильтры, сводка, адаптивная таблица и пагинация",
+      "tests": [
+        "workPagesUx.spec.mjs",
+        "workTasks.spec.mjs",
+        "workStage5.spec.mjs",
+        "workDensity.spec.mjs",
+        "uiKitConsistency.spec.mjs",
+        "visualRefresh.spec.mjs",
+        "registryGeometry.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Проверено 17.10.2026 на подменённом API.",
+      "verifiedScope": "Фильтры, Enter, сброс, ошибки и повтор; контекст и сброс проекта, устаревшие ответы; поиск и страницы отчёта, снимки; can_create, создание и черновик. Light/dark: 1440 и 390 px. Полная ролевая матрица не заявляется. Компактность: первое содержимое в рабочей области 1440×600 и 1280×600 CSS px; фиксированные данные, оболочка 248/64 px. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit. Дополнение 22.10.2026: компонентные проверки унификации V01–V10, 1440/1280/720/390/320 CSS px, light/dark. Живой ролевой прогон и настоящий zoom 200% не заявляются.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "workProjects",
+      "title": "Структура работ проекта",
+      "family": 1,
+      "source": "frontend/js/components/workProjects.js",
+      "entry": "/work-projects",
+      "components": [
+        "Button",
+        "Field",
+        "PageHeader",
+        "Badge",
+        "ViewState"
+      ],
+      "local": "Предметные фильтры, сводка, адаптивная таблица и пагинация",
+      "tests": [
+        "workPagesUx.spec.mjs",
+        "workTasks.spec.mjs",
+        "workStage5.spec.mjs",
+        "workDensity.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Проверено 17.10.2026 на подменённом API.",
+      "verifiedScope": "Фильтры, Enter, сброс, ошибки и повтор; контекст и сброс проекта, устаревшие ответы; поиск и страницы отчёта, снимки; can_create, создание и черновик. Light/dark: 1440 и 390 px. Полная ролевая матрица не заявляется. Компактность: первое содержимое в рабочей области 1440×600 и 1280×600 CSS px; фиксированные данные, оболочка 248/64 px. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "workReports",
+      "title": "Снимок задач встречи",
+      "family": 3,
+      "source": "frontend/js/components/workReports.js",
+      "entry": "/work-reports",
+      "components": [
+        "Button",
+        "Field",
+        "PageHeader",
+        "Badge",
+        "ViewState",
+        "Table"
+      ],
+      "local": "Предметные фильтры, сводка, адаптивная таблица и пагинация",
+      "tests": [
+        "workPagesUx.spec.mjs",
+        "workTasks.spec.mjs",
+        "workStage5.spec.mjs",
+        "workDensity.spec.mjs",
+        "uiKitConsistency.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Проверено 17.10.2026 на подменённом API.",
+      "verifiedScope": "Фильтры, Enter, сброс, ошибки и повтор; контекст и сброс проекта, устаревшие ответы; поиск и страницы отчёта, снимки; can_create, создание и черновик. Light/dark: 1440 и 390 px. Полная ролевая матрица не заявляется. Компактность: первое содержимое в рабочей области 1440×600 и 1280×600 CSS px; фиксированные данные, оболочка 248/64 px. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "workTaskDrawer",
+      "title": "Карточка рабочей задачи",
+      "family": 2,
+      "source": "frontend/js/components/workTaskDrawer.js",
+      "entry": "/work-tasks/:id",
+      "components": [
+        "Button",
+        "Field",
+        "Badge",
+        "Tabs"
+      ],
+      "local": "Компактная боковая панель, вкладки, закреплённое сохранение, формы переходов статуса и черновик",
+      "tests": [
+        "workTaskDrawer.spec.mjs",
+        "workTasks.spec.mjs",
+        "visualRefresh.spec.mjs",
+        "registryGeometry.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Проверено 17.10.2026 на подменённом API.",
+      "verifiedScope": "Создание, конфликт/черновик, сохранение результата при редактировании полей, обязательная причина отмены, комментарии/файлы без закрытия, версии зависимостей и сохранения. Клавиатура, readonly, light/dark на 1440/390 px. Не полная ролевая приёмка API. Дополнение 22.10.2026: компонентные проверки унификации V01–V10, 1440/1280/720/390/320 CSS px, light/dark. Живой ролевой прогон и настоящий zoom 200% не заявляются.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "account-security",
+      "title": "Безопасность аккаунта и установка пароля",
+      "family": 4,
+      "source": "frontend/js/components/accountSecurity.js",
+      "entry": "/account/security",
+      "components": [
+        "Button",
+        "Control",
+        "Field"
+      ],
+      "local": "Политика паролей, одноразовые коды и управление сессиями",
+      "tests": [
+        "accountSecurity.spec.mjs"
+      ],
+      "states": [
+        "ready",
+        "validation-error",
+        "server-error",
+        "mobile",
+        "secret-open",
+        "secret-closed"
+      ],
+      "status": "browser-verified",
+      "verification": "17.10.2026: 5 Playwright-тестов на реальном модуле с подменённым API.",
+      "verifiedScope": "Установка пароля и очистка кода из URL/storage, несовпадение подтверждения и отказ сервера, ширины 390/1280, закрытие одноразового кода через Escape. Реальные учётные записи и изменения паролей не использовались; живой цикл и серверные гонки остаются QA-06.",
+      "contractEvidence": [
+        "frontend/tests/uiMigrationMatrix.test.mjs",
+        "frontend/e2e/accountSecurity.spec.mjs"
+      ]
+    },
+    {
+      "id": "request-resolution",
+      "title": "Размещение и разбиение запроса",
+      "family": 2,
+      "source": "frontend/js/components/workResolution.js",
+      "entry": "openWorkResolution",
+      "components": [
+        "Dialog",
+        "Button",
+        "Field",
+        "ViewState"
+      ],
+      "local": "Предметная форма запроса с общими контролами, состояниями и прокруткой.",
+      "tests": [
+        "uiKitComplexFormsReview.spec.mjs",
+        "workStage5.spec.mjs"
+      ],
+      "states": [
+        "open",
+        "validation",
+        "busy",
+        "error",
+        "retry",
+        "cancel",
+        "dirty",
+        "keyboard"
+      ],
+      "status": "browser-verified",
+      "verification": "Проверка 19.10.2026 на изолированном API, без рабочей БД.",
+      "verifiedScope": "Две темы: 1440×900, 768×600, 320×568 и 640×360. Четыре режима, поля и footer после прокрутки, required, busy, ошибка/повтор, защита черновика и фокус; разбиение — workStage5.",
+      "contractEvidence": [
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "request-fulfillment",
+      "title": "Подтверждение результата запроса",
+      "family": 2,
+      "source": "frontend/js/components/workResolution.js",
+      "entry": "mountFulfillment",
+      "components": [
+        "Dialog",
+        "Button",
+        "Field",
+        "ViewState"
+      ],
+      "local": "Предметная форма запроса с общими контролами, состояниями и прокруткой.",
+      "tests": [
+        "uiKitComplexFormsReview.spec.mjs",
+        "workStage5.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "ready",
+        "error",
+        "retry",
+        "readonly",
+        "busy",
+        "validation"
+      ],
+      "status": "browser-verified",
+      "verification": "Проверка 19.10.2026 на изолированном API, без рабочей БД.",
+      "verifiedScope": "Изолированный API, 390 px: ошибка чтения/повтор, readonly, busy, защита от дублирования, ошибка записи с сохранением текста и успешное обновление.",
+      "contractEvidence": [
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    },
+    {
+      "id": "work-board",
+      "title": "Канбан рабочих задач",
+      "family": 1,
+      "source": "frontend/js/components/workBoard.js",
+      "entry": "/work-tasks?display=board",
+      "components": [
+        "Button",
+        "Control",
+        "ActionMenu",
+        "Dialog",
+        "Feedback"
+      ],
+      "local": "Колонки, компактные карточки, независимые страницы и переносы; общая карточка задачи",
+      "tests": [
+        "workBoard.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "empty",
+        "filtered",
+        "error",
+        "ready",
+        "busy",
+        "conflict",
+        "mobile",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Playwright и живой PostgreSQL smoke 21.10.2026",
+      "verifiedScope": "Пагинация, меню, DnD, формы, 409, частичная ошибка, SSE с открытым меню; темы и ширины 320–1920. Полная нагрузочная приёмка HTTP отдельно.",
+      "contractEvidence": [
+        "frontend/e2e/workBoard.spec.mjs",
+        "docs/WORK_BOARD.md"
+      ]
+    },
+    {
+      "id": "import-tasks",
+      "title": "Импорт задач из Excel/CSV",
+      "family": 2,
+      "source": "frontend/js/components/modal.js",
+      "entry": "importTasksFromExcel",
+      "components": [
+        "Dialog",
+        "Button",
+        "Control",
+        "Table"
+      ],
+      "local": "Выбор файла, сопоставление колонок и preview импорта; overlay использует app-modal.",
+      "tests": [
+        "importFeedback.spec.mjs",
+        "importValidation.spec.mjs",
+        "importGuards.spec.mjs"
+      ],
+      "states": [
+        "upload",
+        "preview",
+        "error",
+        "busy",
+        "success"
+      ],
+      "status": "browser-verified",
+      "verification": "Изолированные браузерные тесты импорта.",
+      "verifiedScope": "Выбор и проверка файла, ошибки preview и подтверждения. Не заявляет живой импорт защищённых данных.",
+      "contractEvidence": [
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
+    }
+  ],
+  "componentModules": [
+    "frontend/js/components/accountSecurity.js",
+    "frontend/js/components/admin.js",
+    "frontend/js/components/adminDictionaries.js",
+    "frontend/js/components/adminReports.js",
+    "frontend/js/components/agentChat.js",
+    "frontend/js/components/analytics.js",
+    "frontend/js/components/auditLog.js",
+    "frontend/js/components/customerChat.js",
+    "frontend/js/components/customerPortal.js",
+    "frontend/js/components/customerReferences.js",
+    "frontend/js/components/customerReport.js",
+    "frontend/js/components/dashboard.js",
+    "frontend/js/components/didBacklog.js",
+    "frontend/js/components/directorateReport.js",
+    "frontend/js/components/expressEstimate.js",
+    "frontend/js/components/filterToolbar.js",
+    "frontend/js/components/kanbanBoard.js",
+    "frontend/js/components/login.js",
+    "frontend/js/components/meetingCapture.js",
+    "frontend/js/components/modal.js",
+    "frontend/js/components/navbar.js",
+    "frontend/js/components/notifications.js",
+    "frontend/js/components/outboxDeadLetters.js",
+    "frontend/js/components/quarterlyGoalsUpdate.js",
+    "frontend/js/components/quickEdit.js",
+    "frontend/js/components/quickFilters.js",
+    "frontend/js/components/reportingStatuses.js",
+    "frontend/js/components/reports.js",
+    "frontend/js/components/requestPresentation.js",
+    "frontend/js/components/requirementReviews.js",
+    "frontend/js/components/reviewPage.js",
+    "frontend/js/components/settings.js",
+    "frontend/js/components/sidebar.js",
+    "frontend/js/components/tableSelection.js",
+    "frontend/js/components/tableUtils.js",
+    "frontend/js/components/taskAttachments.js",
+    "frontend/js/components/taskColumns.js",
+    "frontend/js/components/taskComments.js",
+    "frontend/js/components/taskTable.js",
+    "frontend/js/components/teamBacklog.js",
+    "frontend/js/components/viewState.js",
+    "frontend/js/components/workActions.js",
+    "frontend/js/components/workBoard.js",
+    "frontend/js/components/workPicker.js",
+    "frontend/js/components/workProductivity.js",
+    "frontend/js/components/workProjects.js",
+    "frontend/js/components/workQueue.js",
+    "frontend/js/components/workRelations.js",
+    "frontend/js/components/workReports.js",
+    "frontend/js/components/workResolution.js",
+    "frontend/js/components/workTaskDrawer.js",
+    "frontend/js/components/workTasks.js",
+    "frontend/js/components/workUi.js"
+  ],
+  "excluded": [
+    {
+      "source": "frontend/js/assistant-v2",
+      "decision": "Legacy greenfield UI: не мигрировать; маршрут /assistant-v2 перенаправляет на /agent-v2, поддерживать только совместимость перехода."
+    },
+    {
+      "source": "frontend/js/components/modal.js#renderTaskDetailModalLegacy",
+      "decision": "Неактивная старая карточка: не мигрировать, не использовать как эталон; удалить отдельной проверкой зависимостей."
+    },
+    {
+      "source": "frontend/js/components/admin.js#renderNotificationTemplatesTab",
+      "decision": "Скрытая вкладка шаблонов: не заявлять активной; перед возвратом в tabs обязательна миграция и приёмка."
+    },
+    {
+      "source": "frontend/prototypes",
+      "decision": "Прототипы: исключить из runtime-приёмки; не подключать в SPA."
+    },
+    {
+      "source": "frontend/modal-catalog.html",
+      "decision": "Standalone каталог диалогов: поддерживать как тестовый стенд, не пользовательский маршрут."
+    },
+    {
+      "source": "frontend/ui-catalog",
+      "decision": "Standalone каталог UI kit: поддерживать и проверять общие компоненты."
+    },
+    {
+      "source": "frontend/e2e/fixtures",
+      "decision": "Изолированные стенды реальных рендереров: не пользовательские маршруты; kit подключать после CSS страниц."
+    },
+    {
+      "source": "../prioritiser-agent",
+      "decision": "Standalone Streamlit: отдельный стек, UI kit SPA не применим; стандартный запуск его не включает."
+    },
+    {
+      "source": "../design-prototypes",
+      "decision": "Исторические макеты: не источник AS-IS и не входят в приёмку активного SPA."
+    },
+    {
+      "source": "frontend/js/components/customerChat.js",
+      "decision": "Нет runtime-импортов в активном SPA; не мигрировать как действующий экран. При подключении требуется отдельная приёмка."
+    },
+    {
+      "source": "frontend/js/components/navbar.js",
+      "decision": "Старый standalone-рендер шапки без runtime-импортов; активная оболочка находится в app.js. Не мигрировать как действующий экран."
+    }
+  ],
+  "moduleDisposition": {
+    "frontend/js/components/admin.js": "active-surface",
+    "frontend/js/components/adminDictionaries.js": "shared-renderer-or-helper",
+    "frontend/js/components/adminReports.js": "active-surface",
+    "frontend/js/components/agentChat.js": "active-surface",
+    "frontend/js/components/analytics.js": "active-surface",
+    "frontend/js/components/auditLog.js": "active-surface",
+    "frontend/js/components/customerChat.js": "inactive",
+    "frontend/js/components/customerPortal.js": "active-surface",
+    "frontend/js/components/customerReferences.js": "active-surface",
+    "frontend/js/components/customerReport.js": "shared-renderer-or-helper",
+    "frontend/js/components/dashboard.js": "active-surface",
+    "frontend/js/components/didBacklog.js": "active-surface",
+    "frontend/js/components/directorateReport.js": "active-surface",
+    "frontend/js/components/expressEstimate.js": "active-surface",
+    "frontend/js/components/filterToolbar.js": "active-surface",
+    "frontend/js/components/kanbanBoard.js": "active-surface",
+    "frontend/js/components/login.js": "active-surface",
+    "frontend/js/components/meetingCapture.js": "active-surface",
+    "frontend/js/components/modal.js": "active-surface",
+    "frontend/js/components/navbar.js": "inactive",
+    "frontend/js/components/notifications.js": "active-surface",
+    "frontend/js/components/outboxDeadLetters.js": "active-surface",
+    "frontend/js/components/quarterlyGoalsUpdate.js": "active-surface",
+    "frontend/js/components/quickEdit.js": "active-surface",
+    "frontend/js/components/quickFilters.js": "shared-renderer-or-helper",
+    "frontend/js/components/reportingStatuses.js": "active-surface",
+    "frontend/js/components/reports.js": "active-surface",
+    "frontend/js/components/requestPresentation.js": "shared-renderer-or-helper",
+    "frontend/js/components/requirementReviews.js": "active-surface",
+    "frontend/js/components/reviewPage.js": "active-surface",
+    "frontend/js/components/settings.js": "active-surface",
+    "frontend/js/components/sidebar.js": "active-surface",
+    "frontend/js/components/tableSelection.js": "shared-renderer-or-helper",
+    "frontend/js/components/tableUtils.js": "shared-renderer-or-helper",
+    "frontend/js/components/taskAttachments.js": "active-surface",
+    "frontend/js/components/taskColumns.js": "shared-renderer-or-helper",
+    "frontend/js/components/taskComments.js": "active-surface",
+    "frontend/js/components/taskTable.js": "active-surface",
+    "frontend/js/components/teamBacklog.js": "active-surface",
+    "frontend/js/components/viewState.js": "shared-renderer-or-helper",
+    "frontend/js/components/workProjects.js": "active-surface",
+    "frontend/js/components/workRelations.js": "shared-renderer-or-helper",
+    "frontend/js/components/workReports.js": "active-surface",
+    "frontend/js/components/workResolution.js": "surface-renderer",
+    "frontend/js/components/workTasks.js": "active-surface",
+    "frontend/js/components/workUi.js": "shared-renderer-or-helper",
+    "frontend/js/components/workTaskDrawer.js": "active-surface",
+    "frontend/js/components/accountSecurity.js": "active-surface",
+    "frontend/js/components/workActions.js": "shared-renderer-or-helper",
+    "frontend/js/components/workBoard.js": "active-surface",
+    "frontend/js/components/workPicker.js": "shared-renderer-or-helper",
+    "frontend/js/components/workProductivity.js": "shared-renderer-or-helper",
+    "frontend/js/components/workQueue.js": "shared-renderer-or-helper"
+  },
+  "exceptions": [
+    {
+      "source": "frontend/js/ui/popover.js",
+      "reason": "Вычисляемые left/top/maxWidth/maxHeight удерживают панель в visualViewport; оформление задаётся CSS-токенами."
+    },
+    {
+      "source": "frontend/js/components/filterToolbar.js",
+      "reason": "--ui-column-rows отражает число колонок; порядок и выбранные значения принадлежат странице."
+    },
+    {
+      "source": "frontend/js/components/kanbanBoard.js",
+      "reason": "Горизонтальные колонки и drag-and-drop отражают поток задач; общие контролы и состояния берутся из kit."
+    },
+    {
+      "source": "frontend/js/components/analytics.js",
+      "reason": "Canvas/ECharts, матрицы и числовые расчёты сохраняют предметную композицию; палитра через charts.js."
+    },
+    {
+      "source": "frontend/js/components/quarterlyGoalsUpdate.js",
+      "reason": "Диапазон факта 0–100, месяц старта, план/отклонение и светофор — специализированная композиция. --quarterly-progress отражает данные; заголовок карточки использует SurfaceAction, поиск и закрытие — общий контракт контролов."
+    },
+    {
+      "source": "frontend/js/components/modal.js",
+      "reason": "Предметная компоновка карточки и вкладок сохраняется. Многострочные поля имеют естественную высоту; single-line контролы, закрытие и действия принадлежат kit. renderModal — совместимый алиас того же рендера."
+    },
+    {
+      "source": "frontend/js/components/expressEstimate.js",
+      "reason": "Иерархия оценок, формулы и числовая сетка остаются предметными; поля и действия используют общий контракт размеров."
+    },
+    {
+      "source": "frontend/js/components/dashboard.js",
+      "reason": "Календарная сетка, даты и размещение событий являются данными, а не отдельными вариантами контролов."
+    },
+    {
+      "source": "frontend/js/components/taskComments.js",
+      "reason": "Многострочный редактор упоминания не заменяется однострочным combobox: aria-autocomplete/activedescendant остаются на textarea, floating surface и выбор пользователя общие."
+    },
+    {
+      "source": "frontend/js/components/analytics.js",
+      "reason": "/analytics/it пока содержит только заголовок: миграция не добавляет отсутствующие бизнес-функции. Действующий scaffold проверен отдельно."
+    },
+    {
+      "source": "frontend/js/components/reports.js",
+      "reason": "pd-estimates сохраняет явную заглушку «в разработке»; таблицы/PI-решения и Chart.js сохраняют расчёты, палитра и тема вынесены в ui/charts.js."
+    },
+    {
+      "source": "frontend/js/agent-v2/workspace.js",
+      "reason": "Документ, история редакций и инспектор V2 сохраняют предметную компоновку. API и генерация текста не заменяются общими компонентами; контролы, панели, loading/error и размеры проверяет requirementWorkspace."
+    },
+    {
+      "source": "frontend/js/components/agentChat.js",
+      "reason": "Чат и редактирование требования V1 сохраняют предметную компоновку; история использует ActionMenu, общие кнопки и поля."
+    },
+    {
+      "source": "frontend/js/components/customerReferences.js",
+      "reason": "Справочная карточка использует нативный dialog с общей геометрией; платформенные focus/Escape semantics сохраняются."
+    },
+    {
+      "source": "frontend/css/work-tasks.css",
+      "reason": "Адресное исключение .work-queue-panel .ui-table.work-queue: неинтерактивный заголовок 24 px, групповые строки, фон выбранности на строке и контейнерная сетка ниже 860/460 px. Размеры кнопок и полей принадлежат sizing.css."
+    }
+  ],
+  "consistencyReview": {
+    "date": "2026-10-19",
+    "scope": "22 поверхности: аналитика, отчёты, встречи, аудит, ошибки доставки, уведомления, настройки, экспресс-оценка, отчётные статусы, квартальные цели, канбан, карточка задачи, ревью, три рабочих экрана и три интерфейса ассистентов. Дополнительно 19.10.2026: гарнитура и начертание контролов/таблиц на 22 поверхностях; реальный Inter через Chromium для кириллицы/латиницы, 400–700; ожидание шрифта до измерения canvas.",
+    "contract": "Заголовки таблиц, кнопки, поля и геометрия бейджей сравниваются с эталоном UI Kit в light/dark, обычной/компактной плотности и на мобильном экране. Выбранные состояния проверяются отдельными поведенческими наборами. Ширины колонок и компоновка не уравниваются. После пользовательского контрпримера добавлена проверка итоговой высоты thead и видимой подписи сортировки на реальных маршрутах бэклога и рабочих отчётов; отступы заголовка независимы от плотности тела.",
+    "variants": "Table Data/Admin — реестры и отчёты; Editor — числовые редакторы; Prose — таблицы в тексте AI; Matrix сохраняет тепловые ячейки. Компактные рабочие таблицы и синхронные строки ресурсов имеют явные варианты. Заголовки у матриц и редакторов общие.",
+    "tests": [
+      "uiKitConsistency.spec.mjs",
+      "adminTableKit.spec.mjs",
+      "uiKitFamilyContract.spec.mjs",
+      "deepLinkContrast.spec.mjs",
+      "workDensity.spec.mjs",
+      "uiKitBacklog.spec.mjs",
+      "uiKitTypography.spec.mjs"
+    ],
+    "limitations": "API подменено фикстурами, рабочая БД не изменяется. Сравнение не охватывает каждый диалог и каждое сочетание данных; AI проверяется без модели. Standalone и legacy остаются исключениями."
+  }
+}

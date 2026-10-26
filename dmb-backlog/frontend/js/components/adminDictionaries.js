@@ -1,3 +1,6 @@
+import { button as uiButton, control as uiControl, field as uiField, icon as uiIcon } from '../ui/primitives.js';
+import { escapeHtml as escapeText } from '../htmlUtils.js';
+
 /** Рендеринг карточек административных справочников. */
 function competencyCostCardData(adminData) {
   const items = adminData.competencyCosts || [];
@@ -36,7 +39,7 @@ export function renderDictionariesTab(adminData, dictLocks, escapeHtml) {
     const isLocked = lock && lock.locked && !lock.is_mine;
     const isMine = lock && lock.locked && lock.is_mine;
     const lockBanner = isLocked
-      ? `<div style="position:absolute;top:0;left:0;right:0;padding:4px 12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;font-size:11px;font-weight:600;border-radius:12px 12px 0 0;text-align:center;z-index:1">
+      ? `<div style="position:absolute;top:0;left:0;right:0;padding:4px 12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-weight:600;border-radius:12px 12px 0 0;text-align:center;z-index:1">
           <i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px"></i>
           Редактируется: ${escapeHtml(lock.lock_owner_name || 'Администратор')}
         </div>`
@@ -45,11 +48,11 @@ export function renderDictionariesTab(adminData, dictLocks, escapeHtml) {
       const label = d.showRate && v.code ? `${v.name}: ${v.code}` : v.name;
       const color = /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : '';
       return color
-        ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:${color}20;color:${color};margin:2px">${escapeHtml(label)}</span>`
-        : `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:var(--bg-tertiary);color:var(--text-muted);margin:2px">${escapeHtml(label)}</span>`;
+        ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);background:${color}20;color:${color};margin:2px">${escapeHtml(label)}</span>`
+        : `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);background:var(--bg-tertiary);color:var(--text-muted);margin:2px">${escapeHtml(label)}</span>`;
     }).join('');
     return `
-      <div class="card rounded-xl p-5 card-hover admin-dict-card${isLocked ? ' dict-locked' : ''}" data-dict="${d.key}" style="cursor:${isLocked ? 'default' : 'pointer'};height:${isLocked ? '220' : '200'}px;position:relative;${isLocked ? 'opacity:0.85' : ''}">
+      <div class="card rounded-xl p-5 card-hover admin-dict-card${isLocked ? ' dict-locked' : ''}" data-dict="${d.key}" role="button" tabindex="0" aria-label="${escapeHtml(d.label)}" aria-disabled="${Boolean(isLocked)}" style="cursor:${isLocked ? 'default' : 'pointer'};height:${isLocked ? '220' : '200'}px;position:relative;${isLocked ? 'opacity:0.85' : ''}">
         ${lockBanner}
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px${lockBanner ? ';margin-top:20px' : ''}">
           <div style="width:40px;height:40px;border-radius:10px;background:${isLocked ? '#f59e0b20' : 'var(--bg-tertiary)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -59,7 +62,7 @@ export function renderDictionariesTab(adminData, dictLocks, escapeHtml) {
             <div style="font-weight:600;font-size:14px;color:var(--text-primary)">${d.label}</div>
             <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${d.count} значений</div>
           </div>
-          ${isMine ? '<span style="font-size:10px;background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Вы редактируете</span>' : '<i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--text-muted)"></i>'}
+          ${isMine ? '<span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Вы редактируете</span>' : '<i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--text-muted)"></i>'}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${previewItems || '<span style="font-size:12px;color:var(--text-muted)">Нет значений</span>'}</div>
       </div>
@@ -67,7 +70,7 @@ export function renderDictionariesTab(adminData, dictLocks, escapeHtml) {
   }).join('');
 
   return `
-    <div class="admin-action-row admin-list-action-row"><div><strong style="font-size:13px;color:var(--text-primary)">Справочники системы</strong><div style="margin-top:2px;font-size:11px;color:var(--text-muted)">${dicts.length} групп значений</div></div></div>
+    <div class="admin-action-row admin-list-action-row"><div><strong style="font-size:13px;color:var(--text-primary)">Справочники системы</strong><div style="margin-top:2px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted)">${dicts.length} групп значений</div></div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">${cards}</div>
   `;
 }
@@ -85,33 +88,46 @@ export const DICTIONARY_CONFIG = Object.freeze({
   tags: { type: 'tag', endpoint: 'tags', dataKey: 'tags', label: 'Теги' },
 });
 
+let dictionaryRowSequence = 0;
+
+export function renderDictionaryRowAction(active, isNew = false) {
+  return uiButton({ label: !active ? 'Восстановить' : isNew ? 'Удалить новую строку' : 'Архивировать', icon: !active ? 'rotate-ccw' : isNew ? 'x' : 'archive', iconOnly: true, variant: 'ghost', size: 'small', className: (active ? 'dict-remove-btn' : 'dict-restore-btn') + ' dict-row-action' });
+}
+
+// Existing and draft rows share labels, error IDs, controls and actions.
+export function renderDictionaryRow(item, { dictKey, safeHexColor, autoDictColor, dictCodePlaceholder, isNew = false }) {
+  const id = `dict-row-${++dictionaryRowSequence}`;
+  const active = item.is_active !== false;
+  const color = safeHexColor(item.color, autoDictColor(item.name));
+  const usage = Number(item.usage_count || 0);
+  return `<div class="dict-editor-row${active ? '' : ' is-archived'}${isNew ? ' is-dirty is-new' : ''}" draggable="${active}" data-item-id="${escapeText(item.id || '')}" data-active="${active}" data-usage="${usage}" data-original-name="${escapeText(item.name || '')}" data-original-code="${escapeText(item.code || '')}">
+    ${uiButton({ label: 'Изменить порядок', icon: 'grip-vertical', iconOnly: true, variant: 'ghost', size: 'small', className: 'dict-drag-handle', attrs: { disabled: !active, title: 'Перетащить или переместить стрелками вверх/вниз' } })}
+    <input type="hidden" class="dict-color-input" value="${color}">
+    ${uiButton({ label: 'Выбрать цвет', iconMarkup: `<span class="dict-color-dot" style="background:${color}" aria-hidden="true"></span>`, iconOnly: true, variant: 'ghost', size: 'small', className: 'dict-color-swatch', attrs: { disabled: !active, 'aria-haspopup': 'dialog', 'aria-expanded': false } })}
+    ${uiField({ id: id + '-name', label: 'Название', value: item.name || '', disabled: !active, error: 'Введите название', errorHidden: true, errorClassName: 'dict-row-error', className: 'dict-editor-field', controlClassName: 'dict-value-input', attrs: { placeholder: 'Значение' } })}
+    ${uiField({ id: id + '-code', label: 'Код', value: item.code || '', disabled: !active, error: 'Проверьте код', errorHidden: true, errorClassName: 'dict-row-error', className: 'dict-editor-field dict-code-field', controlClassName: 'dict-code-input', attrs: { placeholder: dictCodePlaceholder(dictKey) } })}
+    <span class="dict-usage-badge" title="Количество связанных записей">${uiIcon('link')}${usage}</span>
+    <span class="dict-row-state">${!active ? 'В архиве' : isNew ? 'Новое' : ''}</span>
+    ${renderDictionaryRowAction(active, isNew)}
+  </div>`;
+}
+
+export function renderCompetencyRateControl({ competency, year, id = '', rate = '' }) {
+  return uiControl({ value: rate, className: 'comp-cost-input', attrs: { 'data-comp': competency, 'data-year': year, 'data-id': id, placeholder: '0', 'aria-label': `${competency}, ${year}, рублей в день` } });
+}
+
 export function renderDictionaryForm(data, helpers) {
   if (data.dictKey === 'competencyCosts') return renderCompetencyCostDictionaryForm(data, helpers.escapeHtml);
-  const { escapeHtml, safeHexColor, autoDictColor, dictCodePlaceholder } = helpers;
-  const escapeAttr = value => escapeHtml(String(value ?? '')).replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-  const renderRow = item => {
-    const color = safeHexColor(item.color, autoDictColor(item.name));
-    const active = item.is_active !== false;
-    const usage = Number(item.usage_count || 0);
-    return `
-      <div class="dict-editor-row${active ? '' : ' is-archived'}" draggable="${active}" data-item-id="${item.id || ''}" data-active="${active}" data-usage="${usage}" data-original-name="${escapeAttr(item.name)}" data-original-code="${escapeAttr(item.code || '')}">
-        <button type="button" class="dict-drag-handle" title="Перетащить для сортировки" aria-label="Изменить порядок"${active ? '' : ' disabled'}><i data-lucide="grip-vertical"></i></button>
-        <input type="hidden" class="dict-color-input" value="${color}">
-        <button type="button" class="dict-color-swatch" style="background:${color}" title="Выбрать цвет"${active ? '' : ' disabled'}></button>
-        <div class="dict-editor-field"><label>Название</label><input class="input dict-value-input" value="${escapeAttr(item.name)}" placeholder="Значение"${active ? '' : ' disabled'}><span class="dict-row-error"></span></div>
-        <div class="dict-editor-field dict-code-field"><label>Код</label><input class="input dict-code-input" value="${escapeAttr(item.code || '')}" placeholder="${escapeAttr(dictCodePlaceholder(data.dictKey))}"${active ? '' : ' disabled'}></div>
-        <span class="dict-usage-badge" title="Количество связанных записей"><i data-lucide="link"></i>${usage}</span>
-        <span class="dict-row-state">${active ? '' : 'В архиве'}</span>
-        <button type="button" class="${active ? 'dict-remove-btn' : 'dict-restore-btn'} dict-row-action" title="${active ? 'Архивировать' : 'Восстановить'}"><i data-lucide="${active ? 'archive' : 'archive-restore'}"></i></button>
-      </div>`;
-  };
+  const { escapeHtml } = helpers;
+  const renderRow = item => renderDictionaryRow(item, { ...helpers, dictKey: data.dictKey });
   const activeItems = (data.items || []).filter(item => item.is_active !== false).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   const archivedItems = (data.items || []).filter(item => item.is_active === false).sort((a, b) => String(a.name).localeCompare(String(b.name)));
   const list = activeItems.map(renderRow).join('');
   const archive = archivedItems.map(renderRow).join('');
   return `
-    <div class="dict-editor-head"><div><h4>${escapeHtml(data.dictLabel)}</h4><p>Изменения сохраняются одной атомарной операцией. Перетащите строки, чтобы изменить порядок.</p></div><div class="dict-editor-stats" role="status" aria-live="polite"><span><strong id="dict-active-count">${activeItems.length}</strong> активных</span><span><strong id="dict-archive-count">${archivedItems.length}</strong> в архиве</span><span><strong id="dict-pending-count">0</strong> изменений</span></div></div>
-    <div class="dict-editor-toolbar"><div class="admin-list-search"><i data-lucide="search"></i><input class="input" id="dict-search" value="${escapeAttr(data.viewSearch || '')}" placeholder="Поиск по названию или коду" autocomplete="off"></div><button type="button" class="btn btn-primary btn-sm" id="dict-add-value"><i data-lucide="plus"></i> Добавить значение</button></div>
+    <div class="dict-editor-head"><div><h4>${escapeHtml(data.dictLabel)}</h4><p>Изменения вступят в силу после сохранения. Перетащите строку или используйте стрелки вверх/вниз на кнопке изменения порядка.</p></div><div class="dict-editor-stats" role="status" aria-live="polite"><span><strong id="dict-active-count">${activeItems.length}</strong> активных</span><span><strong id="dict-archive-count">${archivedItems.length}</strong> в архиве</span><span><strong id="dict-pending-count">0</strong> изменений</span></div></div>
+    <div class="dict-editor-toolbar"><div class="admin-list-search">${uiIcon('search')}${uiControl({ id: 'dict-search', type: 'search', value: data.viewSearch || '', attrs: { placeholder: 'Поиск по названию или коду', autocomplete: 'off', 'aria-label': 'Поиск значений' } })}</div>${uiButton({ label: 'Добавить значение', icon: 'plus', variant: 'primary', size: 'small', attrs: { id: 'dict-add-value' } })}</div>
+    <div id="dict-search-result" role="status" hidden><span></span><button type="button" class="btn btn-ghost btn-sm" id="dict-search-reset">Сбросить поиск</button></div>
     <div class="dict-validation-summary" id="dict-validation-summary" role="alert" hidden></div>
     <div id="dict-items-container" class="dict-editor-list">${list || '<p class="dict-empty-state">Нет активных значений</p>'}</div>
     <details class="dict-archive"${data.archiveOpen ? ' open' : ''}${archivedItems.length ? '' : ' hidden'} id="dict-archive"><summary>Архив <span id="dict-archive-summary-count">${archivedItems.length}</span></summary><div id="dict-archive-container" class="dict-editor-list">${archive}</div></details>`;
@@ -121,28 +137,28 @@ export function renderCompetencyCostDictionaryForm(data, escapeHtml = String) {
   const items = data.items || [];
   const competencies = [...new Set(items.map(item => item.competency))].sort();
   const years = [...new Set(items.map(item => item.year))].sort((a, b) => a - b);
-  const header = `<th style="padding:8px;text-align:left;font-size:12px">Компетенция</th>${years.map(year => `<th data-year="${year}" style="padding:8px;text-align:center;font-size:12px">${year}</th>`).join('')}`;
+  const header = `<th style="text-align:left">Компетенция</th>${years.map(year => `<th data-year="${year}" style="text-align:center">${year}</th>`).join('')}`;
   const rows = competencies.map(comp => {
     const cells = years.map(year => {
       const item = items.find(candidate => candidate.competency === comp && candidate.year === year);
-      return `<td style="padding:4px"><input class="input comp-cost-input" data-comp="${escapeHtml(comp)}" data-year="${year}" data-id="${item ? item.id : ''}" value="${item ? item.rate : ''}" placeholder="0" style="width:90px"></td>`;
+      return `<td class="competency-rate-cell">${renderCompetencyRateControl({ competency: comp, year, id: item?.id || '', rate: item?.rate ?? '' })}</td>`;
     }).join('');
-    return `<tr><td style="padding:8px;font-weight:500;font-size:13px">${escapeHtml(comp)}</td>${cells}</tr>`;
+    return `<tr><td style="font-weight:500">${escapeHtml(comp)}</td>${cells}</tr>`;
   }).join('');
   return `
     <h4 style="font-size:14px;font-weight:600;margin-bottom:8px">${escapeHtml(data.dictLabel)}</h4>
     <p class="text-muted" style="font-size:12px;margin-bottom:12px">Ставки (руб/день) по годам. Для задачи берётся ставка года её дедлайна; без дедлайна — ставка последнего (актуального) года. Очистка ячейки удаляет ставку, сохранённые effort_rub задач пересчитаются.</p>
-    <div style="overflow-x:auto"><table id="comp-cost-table" style="border-collapse:collapse;min-width:100%"><thead><tr style="border-bottom:1px solid var(--border-color)">${header}</tr></thead><tbody>${rows || '<tr><td style="padding:8px" class="text-muted">Нет значений</td></tr>'}</tbody></table></div>
+    <div class="ui-table-scroll ui-table-surface"><table class="ui-table ui-table-admin" id="comp-cost-table" style="border-collapse:collapse;min-width:100%"><thead><tr style="border-bottom:1px solid var(--border-color)">${header}</tr></thead><tbody>${rows || '<tr><td  class="text-muted">Нет значений</td></tr>'}</tbody></table></div>
     <div class="cc-inline-editor" id="cc-inline-editor" hidden>
       <label class="form-label" id="cc-inline-label" for="cc-inline-value"></label>
       <div class="cc-inline-editor-row">
-        <input class="input" id="cc-inline-value" aria-describedby="cc-inline-error">
-        <button type="button" class="btn btn-primary btn-sm" id="cc-inline-confirm">Добавить</button>
-        <button type="button" class="btn btn-ghost btn-sm" id="cc-inline-cancel">Отмена</button>
+        ${uiControl({ id: 'cc-inline-value', attrs: { 'aria-describedby': 'cc-inline-error' } })}
+        ${uiButton({ label: 'Добавить', variant: 'primary', size: 'small', attrs: { id: 'cc-inline-confirm' } })}
+        ${uiButton({ label: 'Отмена', variant: 'ghost', size: 'small', attrs: { id: 'cc-inline-cancel' } })}
       </div>
       <p class="cc-inline-error" id="cc-inline-error" role="alert" aria-live="polite"></p>
     </div>
-    <div class="cc-add-actions"><button type="button" class="btn btn-secondary btn-sm" id="cc-add-year"><i data-lucide="plus" style="width:14px;height:14px"></i> Добавить год</button><button type="button" class="btn btn-secondary btn-sm" id="cc-add-competency"><i data-lucide="plus" style="width:14px;height:14px"></i> Добавить компетенцию</button></div>`;
+    <div class="cc-add-actions">${uiButton({ label: 'Добавить год', icon: 'plus', size: 'small', attrs: { id: 'cc-add-year' } })}${uiButton({ label: 'Добавить компетенцию', icon: 'plus', size: 'small', attrs: { id: 'cc-add-competency' } })}</div>`;
 }
 
 export function getDictionaryChanges(items, originalItems) {

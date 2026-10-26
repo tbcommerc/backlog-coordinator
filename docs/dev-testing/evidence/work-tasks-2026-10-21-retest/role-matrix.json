@@ -1,0 +1,238 @@
+{
+  "date": "2026-10-21",
+  "transport": "real HTTP API, no mocks",
+  "role_matrix": [
+    {
+      "profile": "qa.admin",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": true,
+      "actions": [
+        "in_acceptance",
+        "cancelled"
+      ],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 200,
+      "patch_expected": 200,
+      "pass": true
+    },
+    {
+      "profile": "qa.tribe-lead",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": false,
+      "actions": [],
+      "options": 200,
+      "can_create": false,
+      "patch_own_test_teamA": 403,
+      "patch_expected": 403,
+      "pass": true
+    },
+    {
+      "profile": "qa.ba-a",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": true,
+      "actions": [
+        "in_acceptance",
+        "cancelled"
+      ],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 200,
+      "patch_expected": 200,
+      "pass": true
+    },
+    {
+      "profile": "qa.ba-a-peer",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": true,
+      "actions": [
+        "in_acceptance",
+        "cancelled"
+      ],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 200,
+      "patch_expected": 200,
+      "pass": true
+    },
+    {
+      "profile": "qa.ba-b",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": false,
+      "actions": [],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 403,
+      "patch_expected": 403,
+      "pass": true
+    },
+    {
+      "profile": "qa.ba-no-team",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": false,
+      "actions": [],
+      "options": 200,
+      "can_create": false,
+      "patch_own_test_teamA": 403,
+      "patch_expected": 403,
+      "pass": true
+    },
+    {
+      "profile": "qa.po-a",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": true,
+      "actions": [
+        "in_acceptance",
+        "cancelled"
+      ],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 200,
+      "patch_expected": 200,
+      "pass": true
+    },
+    {
+      "profile": "qa.pl-a",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": true,
+      "actions": [
+        "in_acceptance",
+        "cancelled"
+      ],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 200,
+      "patch_expected": 200,
+      "pass": true
+    },
+    {
+      "profile": "qa.cl-a",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": true,
+      "actions": [
+        "in_acceptance",
+        "cancelled"
+      ],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 200,
+      "patch_expected": 200,
+      "pass": true
+    },
+    {
+      "profile": "qa.po-b",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": false,
+      "actions": [],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 403,
+      "patch_expected": 403,
+      "pass": true
+    },
+    {
+      "profile": "qa.it-pl-a",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": true,
+      "actions": [
+        "in_acceptance",
+        "cancelled"
+      ],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 200,
+      "patch_expected": 200,
+      "pass": true
+    },
+    {
+      "profile": "qa.it-pl-b",
+      "login": 200,
+      "me": 200,
+      "work57_read": 200,
+      "can_edit": false,
+      "actions": [],
+      "options": 200,
+      "can_create": true,
+      "patch_own_test_teamA": 403,
+      "patch_expected": 403,
+      "pass": true
+    },
+    {
+      "profile": "qa.customer-a",
+      "login": 200,
+      "me": 200,
+      "work57_read": 403,
+      "can_edit": null,
+      "actions": null,
+      "options": 403,
+      "can_create": null,
+      "patch_own_test_teamA": 403,
+      "patch_expected": 403,
+      "pass": true
+    },
+    {
+      "profile": "qa.customer-b",
+      "login": 200,
+      "me": 200,
+      "work57_read": 403,
+      "can_edit": null,
+      "actions": null,
+      "options": 403,
+      "can_create": null,
+      "patch_own_test_teamA": 403,
+      "patch_expected": 403,
+      "pass": true
+    },
+    {
+      "profile": "qa.customer-unlinked",
+      "login": 200,
+      "me": 200,
+      "work57_read": 403,
+      "can_edit": null,
+      "actions": null,
+      "options": 403,
+      "can_create": null,
+      "patch_own_test_teamA": 403,
+      "patch_expected": 403,
+      "pass": true
+    },
+    {
+      "profile": "qa.no-access",
+      "login": 200,
+      "me": 200,
+      "work57_read": 404,
+      "can_edit": null,
+      "actions": null,
+      "options": 200,
+      "can_create": false,
+      "patch_own_test_teamA": 404,
+      "patch_expected": 404,
+      "pass": true
+    }
+  ],
+  "test_work": 58,
+  "final_status": "cancelled",
+  "concurrent_conflict": 409
+}

@@ -1,0 +1,18 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- region "Добро пожаловать":
+  - strong: Backlog Coordinator
+  - heading "Добро пожаловать" [level=1]
+  - paragraph: Введите учётные данные для продолжения
+  - generic: Логин
+  - textbox "Логин":
+    - /placeholder: Выдан администратором
+  - generic: Пароль
+  - textbox "Пароль"
+  - button "Показать пароль":
+  - generic: Забыли пароль? Обратитесь к администратору стенда
+  - link "Есть код приглашения":
+    - /url: "#/activate"
+  - button "Войти в систему":
+    - generic: Войти в систему
+  - generic: © 2026 Backlog Coordinator

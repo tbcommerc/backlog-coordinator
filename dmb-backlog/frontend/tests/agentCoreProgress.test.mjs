@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../js/components/agentChat.js', import.meta.url), 'utf8')
-  .replace("import { confirmAction } from '../uiFeedback.js';", 'const confirmAction = async () => false;')
-  .replace("import { enhanceDialogOverlay } from '../modalAccessibility.js';", 'const enhanceDialogOverlay = () => {};');
+  .replace(/import \{ confirmAction \} from '\.\.\/uiFeedback\.js(?:\?v=\d+)?';/, 'const confirmAction = async () => false;')
+  .replace(/import \{ enhanceDialogOverlay \} from '\.\.\/modalAccessibility\.js(?:\?v=\d+)?';/, 'const enhanceDialogOverlay = () => {};')
+  .replace("'../ui/actionMenu.js'", JSON.stringify(new URL('../js/ui/actionMenu.js', import.meta.url).href));
 const { getCoreRequirementProgress, renderCoreRequirementProgress, getDraftChanges } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const core = { need_statement: 'Нужна сверка', role: 'Оператор', process: 'Расчёты', to_be: 'Система показывает расхождения' };
 

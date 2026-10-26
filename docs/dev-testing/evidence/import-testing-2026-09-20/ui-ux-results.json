@@ -1,0 +1,542 @@
+{
+  "generatedAt": "2026-10-09T20:29:40.220Z",
+  "preflight": {
+    "01_valid_utf8_bom_semicolon.csv": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id"
+      ],
+      "previewRows": 1,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\nQA-IMP-20260920-VALID-BOM\tПроектный офис",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "03_valid_cp1251_semicolon.csv": {
+      "submitEnabled": false,
+      "previewVisible": true,
+      "previewHeaders": [
+        "�������� ������",
+        "������������� �������"
+      ],
+      "previewRows": 1,
+      "previewText": "Предпросмотр (первые 5 строк):\n�������� ������\t������������� �������\nQA-IMP-20260920-CP1251\t��������� ����",
+      "headerErrorsVisible": true,
+      "headerErrorsText": "Не найдена обязательная колонка \"Название задачи\" (заголовок CSV)\nНе найдена обязательная колонка \"Ответственная команда\" (заголовок CSV)",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "09_empty_zero_bytes.csv": {
+      "submitEnabled": false,
+      "previewVisible": false,
+      "previewHeaders": [],
+      "previewRows": 0,
+      "previewText": "\n        Предпросмотр (первые 5 строк):\n        \n          \n            \n            \n          \n        \n      ",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "10_missing_title_header.csv": {
+      "submitEnabled": false,
+      "previewVisible": true,
+      "previewHeaders": [
+        "team_id"
+      ],
+      "previewRows": 1,
+      "previewText": "Предпросмотр (первые 5 строк):\nteam_id\nПроектный офис",
+      "headerErrorsVisible": true,
+      "headerErrorsText": "Не найдена обязательная колонка \"Название задачи\" (заголовок CSV)",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "23_blank_first_line_semicolon.csv": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id"
+      ],
+      "previewRows": 1,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\nQA-IMP-20260920-BLANK-FIRST\tПроектный офис",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "26_quoted_multiline.csv": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id",
+        "description"
+      ],
+      "previewRows": 2,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\tdescription\nQA-IMP-20260920-MULTILINE\tПроектный офис\tline 1\nline 2",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "28_utf16le_bom.csv": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id"
+      ],
+      "previewRows": 1,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\nQA-IMP-20260920-UTF16\tПроектный офис",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "29_undecodable_byte_98.csv": {
+      "submitEnabled": false,
+      "previewVisible": true,
+      "previewHeaders": [
+        "�"
+      ],
+      "previewRows": 0,
+      "previewText": "Предпросмотр (первые 5 строк):\n�",
+      "headerErrorsVisible": true,
+      "headerErrorsText": "Не найдена обязательная колонка \"Название задачи\" (заголовок CSV)\nНе найдена обязательная колонка \"Ответственная команда\" (заголовок CSV)",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "33_numeric_formats.csv": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id",
+        "effort_days",
+        "effort_rub",
+        "effort_designee",
+        "actual_effort_days",
+        "financial_effect",
+        "cv",
+        "metric_kr_plan",
+        "metric_kr_fact"
+      ],
+      "previewRows": 5,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\teffort_days\teffort_rub\teffort_designee\tactual_effort_days\tfinancial_effect\tcv\tmetric_kr_plan\tmetric_kr_fact\nQA-IMP-20260920-NUM-0\tПроектный офис\tabc\tabc\tabc\tabc\tabc\tabc\tabc\tabc\nQA-IMP-20260920-NUM-1\tПроектный офис\t1,5\t1,5\t1,5\t1,5\t1,5\t1,5\t1,5\t1,5\nQA-IMP-20260920-NUM-2\tПроектный офис\t1.5\t1.5\t1.5\t1.5\t1.5\t1.5\t1.5\t1.5\nQA-IMP-20260920-NUM-3\tПроектный офис\t1e3\t1e3\t1e3\t1e3\t1e3\t1e3\t1e3\t1e3\nQA-IMP-20260920-NUM-4\tПроектный офис\tNaN\tNaN\tNaN\tNaN\tNaN\tNaN\tNaN\tNaN",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "35_reference_not_found.csv": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id",
+        "channel_id",
+        "business_customer_id",
+        "department_id",
+        "project_id",
+        "task_type_id",
+        "priority_id",
+        "deadline_id",
+        "status_id",
+        "did_client_group_id",
+        "owner_id",
+        "involved_teams"
+      ],
+      "previewRows": 5,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\tchannel_id\tbusiness_customer_id\tdepartment_id\tproject_id\ttask_type_id\tpriority_id\tdeadline_id\tstatus_id\tdid_client_group_id\towner_id\tinvolved_teams\nQA-IMP-20260920-REF-CHANNEL\tПроектный офис\t__NOT_FOUND__\t\t\t\t\t\t\t\t\t\t\nQA-IMP-20260920-REF-CUSTOMER\tПроектный офис\t\t__NOT_FOUND__\t\t\t\t\t\t\t\t\t\nQA-IMP-20260920-REF-DEPARTMENT\tПроектный офис\t\t\t__NOT_FOUND__\t\t\t\t\t\t\t\t\nQA-IMP-20260920-REF-PROJECT\tПроектный офис\t\t\t\t__NOT_FOUND__\t\t\t\t\t\t\t\nQA-IMP-20260920-REF-TYPE\tПроектный ",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "37_length_and_injection.csv": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id",
+        "description",
+        "link_mockups",
+        "metric_kr_unit"
+      ],
+      "previewRows": 4,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\tdescription\tlink_mockups\tmetric_kr_unit\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\tПроектный офис\tDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "40_valid_minimal.xlsx": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id"
+      ],
+      "previewRows": 1,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\nQA-IMP-20260920-XLSX-MIN\tПроектный офис",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "42_multisheet_instructions_first.xlsx": {
+      "submitEnabled": false,
+      "previewVisible": true,
+      "previewHeaders": [
+        "Этот лист не содержит заголовков импорта"
+      ],
+      "previewRows": 1,
+      "previewText": "Предпросмотр (первые 5 строк):\nЭтот лист не содержит заголовков импорта\nДанные находятся на втором листе",
+      "headerErrorsVisible": true,
+      "headerErrorsText": "Не найдена обязательная колонка \"Название задачи\" (заголовок CSV)\nНе найдена обязательная колонка \"Ответственная команда\" (заголовок CSV)",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "44_valid_spreadsheetml_2003.xls": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id"
+      ],
+      "previewRows": 1,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\nQA-IMP-20260920-XLS-XML\tПроектный офис",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "45_corrupt_excel.xlsx": {
+      "submitEnabled": false,
+      "previewVisible": false,
+      "previewHeaders": [],
+      "previewRows": 0,
+      "previewText": "\n        Предпросмотр (первые 5 строк):\n        \n          \n            \n            \n          \n        \n      ",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    },
+    "55_many_preview_errors.csv": {
+      "submitEnabled": true,
+      "previewVisible": true,
+      "previewHeaders": [
+        "title",
+        "team_id",
+        "date_received",
+        "progress",
+        "effort_days"
+      ],
+      "previewRows": 5,
+      "previewText": "Предпросмотр (первые 5 строк):\ntitle\tteam_id\tdate_received\tprogress\teffort_days\n\tПроектный офис\tbad-date\t101\tbad-number\n\tПроектный офис\tbad-date\t102\tbad-number\n\tПроектный офис\tbad-date\t103\tbad-number\n\tПроектный офис\tbad-date\t104\tbad-number\n\tПроектный офис\tbad-date\t105\tbad-number",
+      "headerErrorsVisible": false,
+      "headerErrorsText": "",
+      "rowErrorsVisible": false,
+      "rowErrorsCount": 0,
+      "rowErrorsText": ""
+    }
+  },
+  "layout": {
+    "desktop-1440x900": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "dialog": {
+        "left": 380,
+        "top": 243.75,
+        "right": 1060,
+        "bottom": 656.25,
+        "width": 680,
+        "height": 412.5
+      },
+      "body": {
+        "left": 381,
+        "top": 321.75,
+        "right": 1059,
+        "bottom": 594.25,
+        "width": 678,
+        "height": 272.5
+      },
+      "footer": {
+        "left": 381,
+        "top": 594.25,
+        "right": 1059,
+        "bottom": 655.25,
+        "width": 678,
+        "height": 61
+      },
+      "dialogInsideViewport": true,
+      "footerInsideDialog": true,
+      "documentHorizontalOverflow": 0,
+      "bodyScrollable": false,
+      "dialogOverflowY": "hidden",
+      "bodyOverflowY": "auto"
+    },
+    "desktop-1280x720": {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "dialog": {
+        "left": 300,
+        "top": 153.75,
+        "right": 980,
+        "bottom": 566.25,
+        "width": 680,
+        "height": 412.5
+      },
+      "body": {
+        "left": 301,
+        "top": 231.75,
+        "right": 979,
+        "bottom": 504.25,
+        "width": 678,
+        "height": 272.5
+      },
+      "footer": {
+        "left": 301,
+        "top": 504.25,
+        "right": 979,
+        "bottom": 565.25,
+        "width": 678,
+        "height": 61
+      },
+      "dialogInsideViewport": true,
+      "footerInsideDialog": true,
+      "documentHorizontalOverflow": 0,
+      "bodyScrollable": false,
+      "dialogOverflowY": "hidden",
+      "bodyOverflowY": "auto"
+    },
+    "tablet-768x800": {
+      "viewport": {
+        "width": 768,
+        "height": 800
+      },
+      "dialog": {
+        "left": 44,
+        "top": 193.75,
+        "right": 724,
+        "bottom": 606.25,
+        "width": 680,
+        "height": 412.5
+      },
+      "body": {
+        "left": 45,
+        "top": 271.75,
+        "right": 723,
+        "bottom": 544.25,
+        "width": 678,
+        "height": 272.5
+      },
+      "footer": {
+        "left": 45,
+        "top": 544.25,
+        "right": 723,
+        "bottom": 605.25,
+        "width": 678,
+        "height": 61
+      },
+      "dialogInsideViewport": true,
+      "footerInsideDialog": true,
+      "documentHorizontalOverflow": 0,
+      "bodyScrollable": false,
+      "dialogOverflowY": "hidden",
+      "bodyOverflowY": "auto"
+    },
+    "mobile-390x844": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dialog": {
+        "left": 8,
+        "top": 158.5,
+        "right": 382,
+        "bottom": 685.5,
+        "width": 374,
+        "height": 527
+      },
+      "body": {
+        "left": 9,
+        "top": 234.5,
+        "right": 381,
+        "bottom": 557.5,
+        "width": 372,
+        "height": 323
+      },
+      "footer": {
+        "left": 9,
+        "top": 557.5,
+        "right": 381,
+        "bottom": 684.5,
+        "width": 372,
+        "height": 127
+      },
+      "dialogInsideViewport": true,
+      "footerInsideDialog": true,
+      "documentHorizontalOverflow": 0,
+      "bodyScrollable": false,
+      "dialogOverflowY": "hidden",
+      "bodyOverflowY": "auto"
+    },
+    "mobile-360x640": {
+      "viewport": {
+        "width": 360,
+        "height": 640
+      },
+      "dialog": {
+        "left": 8,
+        "top": 56.5,
+        "right": 352,
+        "bottom": 583.5,
+        "width": 344,
+        "height": 527
+      },
+      "body": {
+        "left": 9,
+        "top": 132.5,
+        "right": 351,
+        "bottom": 455.5,
+        "width": 342,
+        "height": 323
+      },
+      "footer": {
+        "left": 9,
+        "top": 455.5,
+        "right": 351,
+        "bottom": 582.5,
+        "width": 342,
+        "height": 127
+      },
+      "dialogInsideViewport": true,
+      "footerInsideDialog": true,
+      "documentHorizontalOverflow": 0,
+      "bodyScrollable": false,
+      "dialogOverflowY": "hidden",
+      "bodyOverflowY": "auto"
+    },
+    "mobile-many-errors": {
+      "dialogBottom": 803.25,
+      "footerBottom": 802.25,
+      "viewportHeight": 844,
+      "footerVisible": true,
+      "dialogScrollHeight": 761,
+      "dialogClientHeight": 761
+    }
+  },
+  "accessibility": {
+    "initialActive": {
+      "id": "import-close-btn",
+      "insideDialog": true
+    },
+    "dropZone": {
+      "tabIndex": -1,
+      "role": null,
+      "ariaLabel": null
+    },
+    "tabSequence": [
+      {
+        "id": "download-template-link",
+        "tag": "A",
+        "insideDialog": true
+      },
+      {
+        "id": "import-cancel-btn",
+        "tag": "BUTTON",
+        "insideDialog": true
+      },
+      {
+        "id": "import-close-btn",
+        "tag": "BUTTON",
+        "insideDialog": true
+      },
+      {
+        "id": "download-template-link",
+        "tag": "A",
+        "insideDialog": true
+      },
+      {
+        "id": "import-cancel-btn",
+        "tag": "BUTTON",
+        "insideDialog": true
+      },
+      {
+        "id": "import-close-btn",
+        "tag": "BUTTON",
+        "insideDialog": true
+      },
+      {
+        "id": "download-template-link",
+        "tag": "A",
+        "insideDialog": true
+      },
+      {
+        "id": "import-cancel-btn",
+        "tag": "BUTTON",
+        "insideDialog": true
+      },
+      {
+        "id": "import-close-btn",
+        "tag": "BUTTON",
+        "insideDialog": true
+      },
+      {
+        "id": "download-template-link",
+        "tag": "A",
+        "insideDialog": true
+      }
+    ],
+    "escapeCloses": false
+  },
+  "resultStates": {
+    "success": "Импорт завершён!\nВсего строк: 1\nИмпортировано: 1\nПропущено: 0\nОшибок: 0\nСкопировать отчёт\nСкачать отчёт (.txt)",
+    "successAutoClosed": true,
+    "longError": {
+      "text": "Импорт завершён с ошибками\nВсего строк: 1\nИмпортировано: 0\nПропущено: 1\nОшибок: 1\nПолный список ошибок — в отчёте (кнопки ниже).\nСтрока null: Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Очень длинное сообщение Оч",
+      "horizontalOverflow": 0
+    }
+  },
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED"
+  ],
+  "importRequests": [
+    {
+      "contentType": "multipart/form-data; boundary=----WebKitFormBoundary23bw9ZneoOhTWrMK",
+      "bodyLength": 203
+    },
+    {
+      "contentType": "multipart/form-data; boundary=----WebKitFormBoundaryzXnp7K0yH316SZgc",
+      "bodyLength": 199
+    }
+  ]
+}

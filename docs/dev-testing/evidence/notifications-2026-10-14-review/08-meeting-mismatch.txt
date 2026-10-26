@@ -1,0 +1,197 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - navigation:
+    - link:
+      - /url: "#/dashboard"
+    - link:
+      - /url: "#/backlog"
+    - link:
+      - /url: "#/team-backlog"
+    - link:
+      - /url: "#/express-estimate"
+    - link:
+      - /url: "#/kanban"
+    - link:
+      - /url: "#/reports"
+    - link:
+      - /url: "#/analytics/tribe"
+    - link:
+      - /url: "#/analytics/po-pl"
+    - link:
+      - /url: "#/analytics/it"
+    - link:
+      - /url: "#/customer"
+    - link:
+      - /url: "#/customer/create"
+    - link:
+      - /url: "#/agent-v2"
+    - link:
+      - /url: "#/meeting-capture"
+    - link:
+      - /url: "#/review"
+    - link:
+      - /url: "#/notifications"
+      - generic: "9"
+    - link:
+      - /url: "#/settings"
+    - link:
+      - /url: "#/reporting-meetings"
+    - link:
+      - /url: "#/admin"
+    - link:
+      - /url: "#/audit-log"
+    - link:
+      - /url: "#/outbox-dead-letters"
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Заполнение статусов
+  - button "Открыть поиск":
+  - 'button "Уведомления: 9 непрочитанных"':
+    - generic: "9"
+  - button "Переключить тему":
+  - button:
+    - generic: ТБ
+- main:
+  - region "Статусы к отчётным встречам":
+    - dialog "Статусы к отчётным встречам":
+      - heading "Статусы к отчётным встречам" [level=1]
+      - link "Закрыть диалог" [active]:
+        - /url: "#/notifications"
+      - tablist "Отчётные встречи":
+        - tab "Еженедельная встреча команды 12 октября 2026" [selected]:
+          - strong: Еженедельная встреча команды
+          - generic: 12 октября 2026
+        - tab "Директорская оперативка 7 сентября 2026 Просрочена":
+          - strong: Директорская оперативка
+          - generic: 7 сентября 2026
+          - emphasis: Просрочена
+        - tab "Оперативка ДИД 15 сентября 2026 Просрочена":
+          - strong: Оперативка ДИД
+          - generic: 15 сентября 2026
+          - emphasis: Просрочена
+        - tab "Ключевые проекты 21 сентября 2026 Просрочена":
+          - strong: Ключевые проекты
+          - generic: 21 сентября 2026
+          - emphasis: Просрочена
+      - tabpanel "Еженедельная встреча команды 12 октября 2026":
+        - heading "Еженедельная встреча команды · 12 октября 2026" [level=2]
+        - generic: Поиск задач
+        - searchbox "Поиск задач"
+        - generic: Команда
+        - combobox "Команда":
+          - option "Все команды" [selected]
+          - option "ИТ ЛТ"
+          - option "Проектный офис"
+          - option "AI"
+          - option "Core"
+          - option "Delivery"
+          - option "IB"
+          - option "Methodology"
+          - option "Post-Trade (Finance)"
+          - option "Post-Trade (Products & Service)"
+          - option "Pre-Trade"
+        - generic: Состояние статуса
+        - combobox "Состояние статуса":
+          - option "Требуют подтверждения" [selected]
+          - option "Черновики"
+          - option "Готовы"
+          - option "Все статусы"
+        - generic: 255 из 255 задач
+        - 'generic "Готовность статусов: 0%"':
+          - strong: 0%
+          - generic: 0 из 255 готово
+        - generic: Все изменения сохранены
+        - button "Сохранить черновики" [disabled]:
+          - text: Сохранить черновики
+        - button "Сохранить и подтвердить" [disabled]:
+          - text: Сохранить и подтвердить
+        - article:
+          - button "TASK-000-001 Интеграция с MOEX API":
+            - generic: TASK-000-001
+            - strong: Интеграция с MOEX API
+          - text: Не подтверждено
+          - generic "Предыдущая встреча"
+          - paragraph: Статус не предоставлялся
+          - generic: Результат недели
+          - textbox "Результат недели 0 / 5000":
+            - /placeholder: Что реально изменилось за неделю
+          - generic: 0 / 5000
+          - generic: Сигнал встречи
+          - combobox "Сигнал встречи":
+            - option "Всё по плану" [selected]
+            - option "Риск"
+            - option "Блокер"
+            - option "Нужно решение"
+          - generic: Следующий шаг
+          - textbox "Следующий шаг":
+            - /placeholder: Одно проверяемое действие
+          - generic: Срок шага
+          - textbox "Срок шага"
+          - generic: Какое решение требуется
+          - textbox "Какое решение требуется":
+            - /placeholder: Сформулируйте вопрос для встречи
+          - generic: Ещё не обновлялся
+          - alert
+          - button "Сохранить и подтвердить" [disabled]:
+            - text: Сохранить и подтвердить
+        - article:
+          - button "TASK-000-002 Модуль ценообразования деривативов":
+            - generic: TASK-000-002
+            - strong: Модуль ценообразования деривативов
+          - text: Не подтверждено
+          - generic "Предыдущая встреча"
+          - paragraph: Статус не предоставлялся
+          - generic: Результат недели
+          - textbox "Результат недели 0 / 5000":
+            - /placeholder: Что реально изменилось за неделю
+          - generic: 0 / 5000
+          - generic: Сигнал встречи
+          - combobox "Сигнал встречи":
+            - option "Всё по плану" [selected]
+            - option "Риск"
+            - option "Блокер"
+            - option "Нужно решение"
+          - generic: Следующий шаг
+          - textbox "Следующий шаг":
+            - /placeholder: Одно проверяемое действие
+          - generic: Срок шага
+          - textbox "Срок шага"
+          - generic: Какое решение требуется
+          - textbox "Какое решение требуется":
+            - /placeholder: Сформулируйте вопрос для встречи
+          - generic: Ещё не обновлялся
+          - alert
+          - button "Сохранить и подтвердить" [disabled]:
+            - text: Сохранить и подтвердить
+        - article:
+          - button "TASK-000-003 Распределённое кэширование котировок":
+            - generic: TASK-000-003
+            - strong: Распределённое кэширование котировок
+          - text: Не подтверждено
+          - generic "Предыдущая встреча"
+          - paragraph: Статус не предоставлялся
+          - generic: Результат недели
+          - textbox "Результат недели 0 / 5000":
+            - /placeholder: Что реально изменилось за неделю
+          - generic: 0 / 5000
+          - generic: Сигнал встречи
+          - combobox "Сигнал встречи":
+            - option "Всё по плану" [selected]
+            - option "Риск"
+            - option "Блокер"
+            - option "Нужно решение"
+          - generic: Следующий шаг
+          - textbox "Следующий шаг":
+            - /placeholder: Одно проверяемое действие
+          - generic: Срок шага
+          - textbox "Срок шага"
+          - generic: Какое решение требуется
+          - textbox "Какое решение требуется":
+            - /placeholder: Сформулируйте вопрос для встречи
+          - generic: Ещё не обновлялся
+          - alert
+          - button "Сохранить и подтвердить" [disabled]:
+            - text: Сохранить и подтвердить
+        - article:
+          - button "TASK-000-004 OpenAPI документац

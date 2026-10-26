@@ -1,0 +1,67 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Мои запросы
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button "U.тест":
+    - generic: UТ
+    - generic: U.тест
+- main:
+  - region "Мои запросы":
+    - heading "Мои запросы" [level=1]
+    - paragraph: Черновики, рассмотрение и результат — в одной истории
+    - button "Создать запрос":
+      - generic: Создать запрос
+    - generic: Поиск
+    - searchbox "Поиск по названию или номеру"
+    - combobox "Сортировка запросов":
+      - option "Сначала обновлённые" [selected]
+      - option "Сначала старые"
+    - button "Обновить запросы":
+    - generic "Быстрые фильтры":
+      - button "Все 0" [pressed]:
+        - generic: Все
+        - strong: "0"
+      - button "Нужно мне 0":
+        - generic: Нужно мне
+        - strong: "0"
+      - button "Черновики 0":
+        - generic: Черновики
+        - strong: "0"
+      - button "На ревью 0":
+        - generic: На ревью
+        - strong: "0"
+      - button "В работе 0":
+        - generic: В работе
+        - strong: "0"
+      - button "Завершены 0":
+        - generic: Завершены
+        - strong: "0"
+    - status: Показано 0 из 0
+    - region "Список моих запросов":
+      - status:
+        - heading "У вас пока нет запросов" [level=3]
+        - paragraph: ИИ-ассистент поможет сформулировать потребность и передать её на рассмотрение.
+        - button "Создать первый запрос":
+          - generic: Создать первый запрос
+        - paragraph: Далее запрос пройдёт ревью, проработку и реализацию — все этапы будут видны здесь.

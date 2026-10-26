@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru" data-theme="light" data-compact="false">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>UI kit — изолированное ядро</title>
+  <link rel="stylesheet" href="../css/fonts.css">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/ui/core.css?v=3">
+  <style>
+    html { font-size:16px; } body { margin:0; padding:24px; font:14px/1.5 var(--font-family); color:var(--text-primary); background:var(--bg-primary); }
+    main { max-width:1050px; margin:auto; display:grid; gap:20px; min-width:0; }
+    .workspace-actions { display:flex; flex-wrap:wrap; gap:8px; }
+    .ui-panel { min-width:0; display:grid; gap:16px; }
+    .ui-table-scroll { min-width:0; } .ui-table { min-width:580px; }
+    .table-sort-button { display:inline-flex; align-items:center; min-height:max(var(--control-height-sm),var(--control-target-min)); border:0; padding:0; background:transparent; color:inherit; cursor:pointer; }
+    .ui-table th { text-align:left; } .ui-field .form-hint { color:var(--text-secondary); }
+    .ui-page-header .toolbar-title { overflow-wrap:anywhere; }
+    @media(max-width:640px) { body { padding:12px; } }
+  </style>
+</head>
+<body><main id="workspace"></main>
+  <script type="module">
+    import {pageHeader,button,field,tabs,badge,checkbox} from '../js/ui/primitives.js';
+    import {mountTabs,setButtonBusy} from '../js/ui/controls.js';
+    const title='Согласование требований к обновлению клиентского пути с несколькими подразделениями';
+    document.querySelector('main').innerHTML=pageHeader({title:'Рабочий экран из компонентов',description:'Только tokens.css и core.css; стили SPA и адаптеры не подключены.'})+
+      '<div class="workspace-actions">'+button({label:'Все задачи',attrs:{'aria-pressed':'true'}})+button({label:'Требуют внимания',attrs:{'aria-pressed':'false'}})+button({label:'Недоступно',attrs:{disabled:true}})+'</div>'+
+      '<section class="ui-panel">'+tabs({id:'core',label:'Разделы задачи',items:[{id:'off',label:'Недоступная',disabled:true},{id:'main',label:'Основное'},{id:'history',label:'История'}]})+
+      '<div id="core-main-panel" role="tabpanel" aria-labelledby="core-main-tab" tabindex="0">'+
+      '<form class="ui-editor-stack">'+field({id:'core-title',label:'Название',value:title,required:true,hint:'Уточните ожидаемый результат; введённый текст сохраняется при ошибке.'})+
+      field({id:'core-owner',label:'Исполнитель',kind:'select',error:'Выберите исполнителя.',options:[{value:'',label:'Не выбран'},{value:'qa',label:'Команда клиентского обслуживания и сопровождения'}]})+
+      field({id:'core-description',kind:'textarea',label:'Описание',value:title,attrs:{rows:3}})+checkbox({id:'core-visible',label:'Показывать задачу в общем реестре',checked:true})+
+      '<div class="workspace-actions">'+button({label:'Сохранить',variant:'primary',attrs:{id:'core-save'}})+button({label:'Отмена',variant:'ghost'})+button({label:'Идёт сохранение',attrs:{id:'core-busy'}})+'</div></form></div>'+
+      '<div id="core-history-panel" role="tabpanel" aria-labelledby="core-history-tab" tabindex="0" hidden>История изменений</div></section>'+
+      '<section class="ui-panel"><div class="ui-table-scroll"><table class="ui-table ui-table-data"><thead><tr><th><button class="table-sort-button"><span>Задача</span></button></th><th>Статус</th></tr></thead><tbody><tr><td>'+title+'</td><td>'+badge({label:'В работе',tone:'info'})+'</td></tr><tr><td>Проверить критерии приёмки</td><td>'+badge({label:'Требует внимания',tone:'warning'})+'</td></tr></tbody></table></div></section>';
+    mountTabs(document.querySelector('.ui-tabs'));
+    setButtonBusy(document.querySelector('#core-busy'),true);
+    document.querySelectorAll('[aria-pressed]').forEach(button=>button.addEventListener('click',()=>button.setAttribute('aria-pressed',String(button.getAttribute('aria-pressed')!=='true'))));
+    document.querySelector('form').addEventListener('submit',event=>event.preventDefault());
+    document.documentElement.dataset.ready='true';
+  </script>
+</body></html>

@@ -1,0 +1,300 @@
+@startuml
+!theme plain
+
+' =============================================================================
+' DMB AI Business Analyst Assistant — detailed, current AS-IS architecture.
+' Each component contains: name, implementation note, and plain-language role.
+' =============================================================================
+
+left to right direction
+allowmixing
+hide stereotype
+
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #172033
+skinparam titleFontSize 22
+skinparam titleFontColor #172033
+skinparam shadowing false
+skinparam roundCorner 14
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 42
+skinparam ranksep 58
+skinparam wrapWidth 250
+skinparam ArrowColor #64748B
+skinparam ArrowFontColor #475569
+skinparam ArrowFontSize 10
+skinparam ArrowThickness 1.2
+skinparam NoteBackgroundColor #FFFDF3
+skinparam NoteBorderColor #D9B44A
+skinparam NoteFontColor #4A3B12
+skinparam NoteFontSize 10
+skinparam LegendBackgroundColor #FFFFFF
+skinparam LegendBorderColor #CBD5E1
+skinparam LegendFontColor #334155
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #1E293B
+  FontSize 14
+}
+
+skinparam component {
+  BackgroundColor<<boundary>> #EAF3FF
+  BorderColor<<boundary>> #3977B8
+  FontColor<<boundary>> #173A5E
+
+  BackgroundColor<<security>> #FFF0F2
+  BorderColor<<security>> #C2415A
+  FontColor<<security>> #671C2C
+
+  BackgroundColor<<runtime>> #F2EEFF
+  BorderColor<<runtime>> #7558B6
+  FontColor<<runtime>> #39256B
+
+  BackgroundColor<<data>> #FFF7DF
+  BorderColor<<data>> #B98519
+  FontColor<<data>> #5C420C
+
+  BackgroundColor<<knowledge>> #EAF8EF
+  BorderColor<<knowledge>> #3C8B5C
+  FontColor<<knowledge>> #1D4E31
+
+  BackgroundColor<<workflow>> #E9F8FA
+  BorderColor<<workflow>> #2E8793
+  FontColor<<workflow>> #174C53
+
+  BackgroundColor<<ops>> #F1F5F9
+  BorderColor<<ops>> #64748B
+  FontColor<<ops>> #334155
+
+  BackgroundColor<<optional>> #F7F7F8
+  BorderColor<<optional>> #8A8F98
+  FontColor<<optional>> #4B5563
+}
+
+skinparam database {
+  BackgroundColor #FFF8E7
+  BorderColor #B98519
+  FontColor #5C420C
+}
+
+skinparam cloud {
+  BackgroundColor #F4F4F5
+  BorderColor #71717A
+  FontColor #3F3F46
+}
+
+title <b>Архитектура ИИ-ассистента бизнес-аналитика</b>\n<size:12>Текущий AS-IS runtime · компоненты, реализация и функции · 31 августа 2026</size>
+
+actor "<b>Бизнес-заказчик / аналитик</b>\n<size:10>Описывает потребность и уточняет факты</size>" as User
+actor "<b>BA / PO — ревьюер</b>\n<size:10>Проверяет и принимает подготовленный запрос</size>" as HumanReviewer
+
+package "DMB Platform · пользовательский и продуктовый контур" as DMB {
+  component "<b>D1 · Web-интерфейс</b>\n<size:10><color:#3977B8>Реализация:</color> vanilla JavaScript SPA</size>\n<size:10>Чат, история, просмотр и правка черновика.</size>" as UI <<boundary>>
+
+  component "<b>D2 · DMB Backend</b>\n<size:10><color:#3977B8>Реализация:</color> Python + FastAPI</size>\n<size:10>Проверяет пользователя и проксирует запросы агенту.</size>" as Backend <<boundary>>
+
+  database "<b>D3 · DMB Database</b>\n<size:10><color:#B98519>Реализация:</color> PostgreSQL + SQLAlchemy</size>\n<size:10>Хранит RequirementRequest и статус human review.</size>" as DMBDB
+
+  UI -down-> Backend : REST /api/agent/*
+  Backend -down-> DMBDB : создаёт и читает\nзапрос на ревью
+}
+
+User -right-> UI : ведёт диалог
+HumanReviewer -right-> UI : проверяет результат
+
+package "AI Business Analyst Assistant · отдельный сервис :9000" as Agent {
+
+  package "1 · Запуск, конфигурация и HTTP-граница" as Platform {
+    component "<b>A1 · FastAPI App & Lifecycle</b>\n<size:10><color:#3977B8>Реализация:</color> agent/main.py, lifespan</size>\n<size:10>Запускает сервис, health-check и инициализацию модулей.</size>" as App <<boundary>>
+
+    component "<b>A2 · Runtime Settings</b>\n<size:10><color:#C2415A>Реализация:</color> Pydantic Settings + .env</size>\n<size:10>Проверяет секреты, БД, LLM и безопасный production-режим.</size>" as Config <<security>>
+
+    component "<b>A3 · HTTP API & Schemas</b>\n<size:10><color:#3977B8>Реализация:</color> APIRouter + Pydantic</size>\n<size:10>Чат, сессии, правки, отправка и возврат с ревью.</size>" as API <<boundary>>
+
+    component "<b>A4 · Service Authentication</b>\n<size:10><color:#C2415A>Реализация:</color> X-Agent-Secret + compare_digest</size>\n<size:10>Разрешает вызовы только доверенному DMB Backend.</size>" as ServiceAuth <<security>>
+
+    App -right-> Config
+    App -right-> API
+    API -right-> ServiceAuth
+  }
+
+  package "2 · Основной agentic runtime" as Runtime {
+    component "<b>A5 · Input Guardrails</b>\n<size:10><color:#C2415A>Реализация:</color> Python policies + domain vocabulary</size>\n<size:10>Отсекает injection, чувствительные и явно чужие запросы.</size>" as Guardrails <<security>>
+
+    component "<b>A6 · AgenticOrchestrator</b>\n<size:10><color:#7558B6>Реализация:</color> stateful Python service</size>\n<size:10>Управляет ходом сообщения и разрешёнными операциями.</size>" as Orchestrator <<runtime>>
+
+    component "<b>A7 · AgenticBA</b>\n<size:10><color:#7558B6>Реализация:</color> один structured LLM call на ход</size>\n<size:10>Понимает реплику, извлекает факты и выбирает следующий шаг.</size>" as AgenticBA <<runtime>>
+
+    component "<b>A8 · TurnDecision Validator</b>\n<size:10><color:#C2415A>Реализация:</color> dataclasses, allowlist, limits</size>\n<size:10>Принимает только известные поля, действия и confidence.</size>" as DecisionValidator <<security>>
+
+    component "<b>A9 · Context Adaptation</b>\n<size:10><color:#7558B6>Реализация:</color> UserContext + profile/mode rules</size>\n<size:10>Подбирает глубину и стиль ответа под пользователя.</size>" as ContextAdapter <<runtime>>
+
+    component "<b>A10 · Deterministic Operations</b>\n<size:10><color:#7558B6>Реализация:</color> Python methods базового orchestrator</size>\n<size:10>Подтверждает, редактирует и отправляет драфт без решения LLM.</size>" as DeterministicOps <<runtime>>
+
+    Guardrails -right-> Orchestrator
+    Orchestrator -right-> AgenticBA : один ход
+    AgenticBA -right-> DecisionValidator : TurnDecision
+    DecisionValidator -right-> Orchestrator
+    Orchestrator -down-> ContextAdapter
+    Orchestrator -down-> DeterministicOps
+  }
+
+  package "3 · Промпт и подключение модели" as ModelLayer {
+    component "<b>A11 · System Prompt</b>\n<size:10><color:#7558B6>Реализация:</color> versioned Markdown</size>\n<size:10>Задаёт роль BA, формат JSON и правила следующего вопроса.</size>" as Prompt <<runtime>>
+
+    component "<b>A12 · LLM Factory & Client</b>\n<size:10><color:#7558B6>Реализация:</color> provider factory + OpenAI-compatible HTTP</size>\n<size:10>Выбирает provider, отправляет запрос и обрабатывает ошибки.</size>" as LLMClient <<runtime>>
+
+    component "<b>A13 · Fail-closed Handler</b>\n<size:10><color:#C2415A>Реализация:</color> LLMUnavailable exception path</size>\n<size:10>Возвращает unavailable и не меняет факты при сбое модели.</size>" as FailClosed <<security>>
+
+    Prompt -right-> LLMClient : system contract
+    LLMClient -right-> FailClosed : ошибка / неверный JSON
+  }
+
+  package "4 · Состояние диалога и конкурентный доступ" as StateLayer {
+    component "<b>A14 · DialogueState</b>\n<size:10><color:#B98519>Реализация:</color> Python dataclasses + JSON</size>\n<size:10>Хранит историю, факты, исправления, конфликты и драфт.</size>" as DialogueState <<data>>
+
+    component "<b>A15 · Gap Registry</b>\n<size:10><color:#B98519>Реализация:</color> typed Gap records + sync rules</size>\n<size:10>Ведёт открытые, решённые и отложенные пробелы требований.</size>" as GapRegistry <<data>>
+
+    component "<b>A16 · SessionStore</b>\n<size:10><color:#B98519>Реализация:</color> SQLAlchemy + locks + versioning</size>\n<size:10>Сохраняет сессии, предотвращает гонки и дубли сообщений.</size>" as SessionStore <<data>>
+
+    database "<b>A17 · Session Database</b>\n<size:10><color:#B98519>Реализация:</color> PostgreSQL prod / SQLite local</size>\n<size:10>Таблицы sessions и message_receipts.</size>" as SessionDB
+
+    DialogueState -right-> GapRegistry : синхронизирует пробелы
+    DialogueState -right-> SessionStore : сериализация состояния
+    SessionStore -right-> SessionDB : транзакции и optimistic lock
+  }
+
+  package "5 · Формирование и контроль результата" as ResultLayer {
+    component "<b>A18 · Requirement Composer</b>\n<size:10><color:#2E8793>Реализация:</color> Python builder + Pydantic schema</size>\n<size:10>Собирает RequirementDraft, источники и предположения.</size>" as Composer <<workflow>>
+
+    component "<b>A19 · Quality Model</b>\n<size:10><color:#2E8793>Реализация:</color> deterministic scoring rules</size>\n<size:10>Проверяет полноту, измеримость и противоречия As-Is/To-Be.</size>" as Quality <<workflow>>
+
+    component "<b>A20 · Read-only Draft Reviewer</b>\n<size:10><color:#C2415A>Реализация:</color> independent Python validator</size>\n<size:10>Блокирует отправку при структурной ошибке или конфликте.</size>" as DraftReviewer <<security>>
+
+    component "<b>A21 · Human-review Workflow</b>\n<size:10><color:#2E8793>Реализация:</color> status/reviewer rules in Python</size>\n<size:10>Гарантирует, что финальное решение остаётся за человеком.</size>" as ReviewWorkflow <<workflow>>
+
+    Composer -right-> Quality : рассчитывает качество
+    Quality -right-> DraftReviewer : проверяемый драфт
+    DraftReviewer -right-> ReviewWorkflow : только без блокеров
+  }
+
+  package "6 · База знаний и поиск похожих требований" as KnowledgeLayer {
+    component "<b>A22 · KB Loader & Ontology</b>\n<size:10><color:#3C8B5C>Реализация:</color> manifest + Markdown/JSON parser</size>\n<size:10>Загружает только approved-документы и словарь домена.</size>" as KBLoader <<knowledge>>
+
+    component "<b>A23 · Search & Retrieval Policy</b>\n<size:10><color:#3C8B5C>Реализация:</color> scored search + source contract</size>\n<size:10>Ранжирует знания по релевантности, статусу и давности.</size>" as Retrieval <<knowledge>>
+
+    component "<b>A24 · Requirements History</b>\n<size:10><color:#3C8B5C>Реализация:</color> JSON adapter through common contract</size>\n<size:10>Находит похожие запросы и помогает выявлять дубликаты.</size>" as RequirementHistory <<knowledge>>
+
+    database "<b>A25 · kb_seed/</b>\n<size:10><color:#3C8B5C>Реализация:</color> versioned Markdown + JSON</size>\n<size:10>Исходные знания, онтология и история требований.</size>" as KBSeed
+
+    KBSeed -right-> KBLoader : manifest + документы
+    KBLoader -right-> Retrieval : нормализованные records
+    KBSeed -right-> RequirementHistory : requirements_history.json
+  }
+
+  package "7 · Аудит, трассировка и внешние возможности" as OpsLayer {
+    component "<b>A26 · Audit Logger</b>\n<size:10><color:#64748B>Реализация:</color> append-only JSONL</size>\n<size:10>Фиксирует отказы, эскалации, драфты и отправку на ревью.</size>" as Audit <<ops>>
+
+    component "<b>A27 · OpenTelemetry</b>\n<size:10><color:#64748B>Реализация:</color> FastAPI/SQLAlchemy/urllib instrumentation</size>\n<size:10>Передаёт trace-id и технические трассы при включённой настройке.</size>" as Telemetry <<ops>>
+
+    component "<b>A28 · External Tool Registry</b>\n<size:10><color:#8A8F98>Реализация:</color> config registry + GET-only HTTP tool</size>\n<size:10>Опционально даёт доступ к разрешённым внешним источникам.</size>" as ToolRegistry <<optional>>
+
+    component "<b>A29 · MCP Registry & Client</b>\n<size:10><color:#8A8F98>Реализация:</color> optional MCP stdio connections</size>\n<size:10>Обнаруживает skills/tools настроенных MCP-серверов.</size>" as MCPRegistry <<optional>>
+
+    Audit -[hidden]right-> Telemetry
+    Telemetry -[hidden]right-> ToolRegistry
+    ToolRegistry -[hidden]right-> MCPRegistry
+  }
+
+  Platform -[hidden]down-> Runtime
+  Runtime -[hidden]down-> ModelLayer
+  ModelLayer -[hidden]down-> StateLayer
+  StateLayer -[hidden]down-> ResultLayer
+  ResultLayer -[hidden]down-> KnowledgeLayer
+  KnowledgeLayer -[hidden]down-> OpsLayer
+}
+
+package "Внешняя инфраструктура и интеграции" as External {
+  cloud "<b>E1 · LLM Provider</b>\n<size:10><color:#71717A>OpenAI / Azure / vLLM-compatible</color></size>\n<size:10>Выполняет семантическое решение одного хода.</size>" as LLMProvider
+
+  cloud "<b>E2 · OTLP Collector</b>\n<size:10><color:#71717A>OpenTelemetry endpoint</color></size>\n<size:10>Принимает трассы для диагностики.</size>" as OTLP
+
+  cloud "<b>E3 · MCP Servers</b>\n<size:10><color:#71717A>Опциональные stdio-процессы</color></size>\n<size:10>Предоставляют дополнительные tools и skills.</size>" as MCPServers
+
+  cloud "<b>E4 · Разрешённые HTTP-источники</b>\n<size:10><color:#71717A>GET endpoints из конфигурации</color></size>\n<size:10>Возвращают справочные данные внешних систем.</size>" as ExternalSources
+
+  database "<b>E5 · Audit File</b>\n<size:10><color:#71717A>agent_logs/audit.log</color></size>\n<size:10>Долговременный журнал значимых событий.</size>" as AuditFile
+
+  LLMProvider -[hidden]down-> OTLP
+  OTLP -[hidden]down-> MCPServers
+  MCPServers -[hidden]down-> ExternalSources
+  ExternalSources -[hidden]down-> AuditFile
+}
+
+' =============================================================================
+' FACTUAL RUNTIME CONNECTIONS
+' =============================================================================
+
+Backend -[#3977B8,thickness=2]-> API : HTTPS / X-Agent-Secret\nuser context + session_id
+ServiceAuth -[#3977B8]-> Guardrails : проверенный запрос
+Guardrails -[#7558B6]-> Orchestrator : разрешённое сообщение
+
+Orchestrator -[#B98519]-> DialogueState : читает / применяет факты
+Orchestrator -[#64748B]-> Audit : события и отказы
+DeterministicOps -[#2E8793]-> Composer : формирование драфта
+DeterministicOps -[#2E8793]-> ReviewWorkflow : подтверждение / отправка
+
+AgenticBA -[#7558B6]-> Prompt : контекст + правила
+AgenticBA -[#7558B6]-> LLMClient : structured request
+LLMClient -[#7558B6,thickness=2]-> LLMProvider : HTTPS
+FailClosed -[#C2415A,dashed]-> Orchestrator : action = unavailable\nбез изменения фактов
+
+Composer -[#B98519]-> GapRegistry : открытые вопросы
+Composer -[#3C8B5C]-> RequirementHistory : поиск дубликатов
+KBLoader -[#C2415A]-> Guardrails : словарь предметной области
+Retrieval -[#3C8B5C,dashed]-> Composer : evidence / sources\nв поддерживаемых операциях
+
+ReviewWorkflow -[#2E8793,thickness=2]-> Backend : draft + review status
+
+Audit -[#64748B]-> AuditFile : append JSON line
+App -[#64748B]-> Telemetry : optional instrumentation
+Telemetry -[#64748B,dashed]-> OTLP : OTLP / HTTP
+ToolRegistry -[#8A8F98,dashed]-> ExternalSources : GET only, если настроено
+MCPRegistry -[#8A8F98,dashed]-> MCPServers : stdio, если настроено
+
+note bottom of Orchestrator
+  <b>Главное архитектурное правило</b>
+  LLM отвечает за смысл реплики и предлагает один следующий шаг.
+  Python проверяет решение, сохраняет данные и выполняет операции.
+  Legacy state machine не управляет текущим обычным диалогом.
+end note
+
+note bottom of ReviewWorkflow
+  <b>Human-in-the-loop</b>
+  Ассистент готовит проверяемый черновик, но не принимает бизнес-решение
+  и не создаёт задачу в бэклоге без участия DMB Backend и ревьюера.
+end note
+
+legend bottom
+  <b>Как читать компонент</b>: первая строка — название; вторая — способ реализации; третья — назначение простыми словами.
+  |= Цвет / линия |= Значение |
+  |<#EAF3FF> голубой | HTTP-граница и продуктовая интеграция |
+  |<#FFF0F2> розовый | безопасность, валидация и fail-closed |
+  |<#F2EEFF> фиолетовый | основной agentic runtime и LLM |
+  |<#FFF7DF> жёлтый | состояние и хранилища |
+  |<#EAF8EF> зелёный | база знаний и retrieval |
+  |<#E9F8FA> бирюзовый | сборка результата и human review |
+  |<#F1F5F9> серо-синий | аудит и наблюдаемость |
+  | сплошная стрелка | фактический рабочий вызов или поток данных |
+  | пунктирная стрелка | опциональная, конфигурируемая или вспомогательная связь |
+endlegend
+
+footer DMB AI Business Analyst Assistant · редактируемый источник PlantUML · AS-IS
+
+@enduml

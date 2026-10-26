@@ -1,0 +1,14 @@
+title;team_id;channel_id;business_customer_id;department_id;project_id;task_type_id;priority_id;deadline_id;status_id;did_client_group_id;owner_id;involved_teams
+QA-IMP-20260920-REF-CHANNEL;Проектный офис;__NOT_FOUND__;;;;;;;;;;
+QA-IMP-20260920-REF-CUSTOMER;Проектный офис;;__NOT_FOUND__;;;;;;;;;
+QA-IMP-20260920-REF-DEPARTMENT;Проектный офис;;;__NOT_FOUND__;;;;;;;;
+QA-IMP-20260920-REF-PROJECT;Проектный офис;;;;__NOT_FOUND__;;;;;;;
+QA-IMP-20260920-REF-TYPE;Проектный офис;;;;;__NOT_FOUND__;;;;;;
+QA-IMP-20260920-REF-PRIORITY;Проектный офис;;;;;;__NOT_FOUND__;;;;;
+QA-IMP-20260920-REF-DEADLINE;Проектный офис;;;;;;;__NOT_FOUND__;;;;
+QA-IMP-20260920-REF-STATUS;Проектный офис;;;;;;;;__NOT_FOUND__;;;
+QA-IMP-20260920-REF-DID;Проектный офис;;;;;;;;;__NOT_FOUND__;;
+QA-IMP-20260920-REF-OWNER;Проектный офис;;;;;;;;;;__NOT_FOUND__;
+QA-IMP-20260920-REF-INVOLVED;Проектный офис;;;;;;;;;;;__NOT_FOUND__
+QA-IMP-20260920-REF-INVOLVED-ID;Проектный офис;;;;;;;;;;;999999999
+QA-IMP-20260920-REF-TEAM;__NOT_FOUND__;;;;;;;;;;;

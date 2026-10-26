@@ -1,0 +1,372 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - generic: Управление бэклогом
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Контроль исполнения":
+      - /url: "#/work-reports"
+      - generic: Контроль исполнения
+    - link "Структура работ проекта":
+      - /url: "#/work-projects"
+      - generic: Структура работ проекта
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - link "Канбан-доска":
+      - /url: "#/kanban"
+      - generic: Канбан-доска
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - link "Ревью запросов":
+      - /url: "#/review"
+      - generic: Ревью запросов
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "0"
+    - link "Настройки":
+      - /url: "#/settings"
+      - generic: Настройки
+    - link "Управление отчётными встречами":
+      - /url: "#/reporting-meetings"
+      - generic: Отчётные встречи
+    - link "Администрирование":
+      - /url: "#/admin"
+      - generic: Администрирование
+    - link "Аудит действий":
+      - /url: "#/audit-log"
+      - generic: Аудит действий
+    - link "Ошибки доставки событий":
+      - /url: "#/outbox-dead-letters"
+      - generic: Ошибки доставки
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - generic: Администрирование
+  - combobox "Поиск задач"
+  - 'button "Уведомления: нет непрочитанных"':
+  - button "Переключить тему":
+  - button "Q.admin":
+    - generic: QA
+    - generic: Q.admin
+- main:
+  - heading "Администрирование" [level=1]
+  - paragraph: Настройки системы, справочники и управление доступами
+  - tablist "Разделы администрирования":
+    - generic: Структура
+    - tab "Команды":
+      - generic: Команды
+    - tab "Проекты" [active] [selected]:
+      - generic: Проекты
+    - tab "Бизнес-заказчики":
+      - generic: Бизнес-заказчики
+    - generic: Доступы
+    - tab "Пользователи":
+      - generic: Пользователи
+    - tab "Роли":
+      - generic: Роли
+    - generic: Настройки
+    - tab "Справочники":
+      - generic: Справочники
+    - tab "Отображение":
+      - generic: Отображение
+    - generic: Инструменты
+    - tab "Таймлайн":
+      - generic: Таймлайн
+    - tab "Отчёты":
+      - generic: Отчёты
+    - generic: Контроль
+    - tab "Журнал действий":
+      - generic: Журнал действий
+  - searchbox "Поиск"
+  - combobox "Фильтр":
+    - option "Все статусы" [selected]
+    - option "Активен"
+    - option "Завершен"
+    - option "Архивный"
+  - status: "Найдено: 25"
+  - button "Добавить проект":
+    - text: Добавить проект
+  - tabpanel "Проекты":
+    - table:
+      - rowgroup:
+        - row "ID Код Название Описание Статус Ответственный PL Создан":
+          - columnheader "ID"
+          - columnheader "Код"
+          - columnheader "Название"
+          - columnheader "Описание"
+          - columnheader "Статус"
+          - columnheader "Ответственный PL"
+          - columnheader "Создан"
+          - columnheader
+      - rowgroup:
+        - row "#18 ai_assistant_ib AI ПОМОЩНИК IB AI-помощник для investment banking — — 2026-07-23 Редактировать Удалить":
+          - cell "#18"
+          - cell "ai_assistant_ib"
+          - cell "AI ПОМОЩНИК IB"
+          - cell "AI-помощник для investment banking"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#19 ai_client_reference AI-СПРАВКА ПО КЛИЕНТУ AI-справочная система по клиентам — — 2026-07-23 Редактировать Удалить":
+          - cell "#19"
+          - cell "ai_client_reference"
+          - cell "AI-СПРАВКА ПО КЛИЕНТУ"
+          - cell "AI-справочная система по клиентам"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#20 bi BI Business Intelligence платформа — — 2026-07-23 Редактировать Удалить":
+          - cell "#20"
+          - cell "bi"
+          - cell "BI"
+          - cell "Business Intelligence платформа"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#21 data DATA Управление данными — — 2026-07-23 Редактировать Удалить":
+          - cell "#21"
+          - cell "data"
+          - cell "DATA"
+          - cell "Управление данными"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#22 ib IB Investment Banking платформа — — 2026-07-23 Редактировать Удалить":
+          - cell "#22"
+          - cell "ib"
+          - cell "IB"
+          - cell "Investment Banking платформа"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#23 mis MIS Management Information System — — 2026-07-23 Редактировать Удалить":
+          - cell "#23"
+          - cell "mis"
+          - cell "MIS"
+          - cell "Management Information System"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#2 options_revaluation АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ Автоматизация переоценки опционов СБИ — — 2026-07-23 Редактировать Удалить":
+          - cell "#2"
+          - cell "options_revaluation"
+          - cell "АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ"
+          - cell "Автоматизация переоценки опционов СБИ"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#3 vendor_replacement ВЕНДОРОЗАМЕЩЕНИЕ Программа импортозамещения вендорских решений — — 2026-07-23 Редактировать Удалить":
+          - cell "#3"
+          - cell "vendor_replacement"
+          - cell "ВЕНДОРОЗАМЕЩЕНИЕ"
+          - cell "Программа импортозамещения вендорских решений"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#4 pm_sigma ВЫВОД PM В СИГМУ Вывод проектного менеджмента в SIGMA — — 2026-07-23 Редактировать Удалить":
+          - cell "#4"
+          - cell "pm_sigma"
+          - cell "ВЫВОД PM В СИГМУ"
+          - cell "Вывод проектного менеджмента в SIGMA"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#5 dashboards ДАШБОРДЫ Разработка управленческих дашбордов — — 2026-07-23 Редактировать Удалить":
+          - cell "#5"
+          - cell "dashboards"
+          - cell "ДАШБОРДЫ"
+          - cell "Разработка управленческих дашбордов"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#6 desk_real_estate ДЕСК НЕДВИЖИМОСТИ Автоматизация деска недвижимости — — 2026-07-23 Редактировать Удалить":
+          - cell "#6"
+          - cell "desk_real_estate"
+          - cell "ДЕСК НЕДВИЖИМОСТИ"
+          - cell "Автоматизация деска недвижимости"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#7 core_integrations ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ Доработка ядра и интеграционных решений платформы — — 2026-07-23 Редактировать Удалить":
+          - cell "#7"
+          - cell "core_integrations"
+          - cell "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ"
+          - cell "Доработка ядра и интеграционных решений платформы"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#8 import_substitution ИМПОРТОЗАМЕЩЕНИЕ Программа импортозамещения — — 2026-07-23 Редактировать Удалить":
+          - cell "#8"
+          - cell "import_substitution"
+          - cell "ИМПОРТОЗАМЕЩЕНИЕ"
+          - cell "Программа импортозамещения"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#9 client_card КАРТОЧКА КЛИЕНТА Разработка карточки клиента — — 2026-07-23 Редактировать Удалить":
+          - cell "#9"
+          - cell "client_card"
+          - cell "КАРТОЧКА КЛИЕНТА"
+          - cell "Разработка карточки клиента"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#10 leads_for_km ЛИДЫ ДЛЯ КМ Система лидов для корпоративных менеджеров — — 2026-07-23 Редактировать Удалить":
+          - cell "#10"
+          - cell "leads_for_km"
+          - cell "ЛИДЫ ДЛЯ КМ"
+          - cell "Система лидов для корпоративных менеджеров"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#11 leads_from_km ЛИДЫ ОТ КМ Система лидов от корпоративных менеджеров — — 2026-07-23 Редактировать Удалить":
+          - cell "#11"
+          - cell "leads_from_km"
+          - cell "ЛИДЫ ОТ КМ"
+          - cell "Система лидов от корпоративных менеджеров"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#12 routing МАРШРУТИЗАЦИЯ Маршрутизация сделок — — 2026-07-23 Редактировать Удалить":
+          - cell "#12"
+          - cell "routing"
+          - cell "МАРШРУТИЗАЦИЯ"
+          - cell "Маршрутизация сделок"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#1 new_strategy_did НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД Разработка новой стратегической инициативы ДИД — — 2026-07-23 Редактировать Удалить":
+          - cell "#1"
+          - cell "new_strategy_did"
+          - cell "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД"
+          - cell "Разработка новой стратегической инициативы ДИД"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#13 pipeline_scanner ПАЙПЛАЙН-СКАНЕР СДЕЛОК Сканер пайплайна сделок — — 2026-07-23 Редактировать Удалить":
+          - cell "#13"
+          - cell "pipeline_scanner"
+          - cell "ПАЙПЛАЙН-СКАНЕР СДЕЛОК"
+          - cell "Сканер пайплайна сделок"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+        - row "#25 other_goals ПРОЧИЕ ЦЕЛИ Прочие стратегические цели — — 2026-07-23 Редактировать Удалить":
+          - cell "#25"
+          - cell "other_goals"
+          - cell "ПРОЧИЕ ЦЕЛИ"
+          - cell "Прочие стратегические цели"
+          - cell "—"
+          - cell "—"
+          - cell "2026-07-23"
+          - cell "Редактировать Удалить":
+            - button "Редактировать":
+            - button "Удалить":
+    - navigation "Страницы списка":
+      - generic: 1–20 из 25
+      - button "Назад" [disabled]:
+        - generic: Назад
+      - generic: 1 / 2
+      - button "Далее":
+        - generic: Далее

@@ -1,0 +1,16 @@
+/* A clickable row/card keeps its content layout. Ordinary commands use Button. */
+:root .ui-surface-action { box-sizing: border-box; min-width: 0; min-height: max(var(--control-height), var(--control-target-min)); border-radius: var(--radius-md); font-family: inherit; font-size: var(--control-font); overflow-wrap: anywhere; cursor: pointer; }
+:root .ui-link { display: inline-flex; align-items: center; box-sizing: border-box; max-width: 100%; min-height: max(var(--control-height-sm), var(--control-target-min)); padding: 0; border: 0; border-radius: var(--radius-sm); color: var(--accent-text); background: transparent; font: inherit; text-align: start; overflow-wrap: anywhere; cursor: pointer; }
+:root .ui-link:hover { text-decoration: underline; }
+:root :is(.ui-link, .ui-surface-action, .ui-plot-target):focus-visible { outline: 2px solid var(--focus-color); outline-offset: 2px; }
+:root :is(.ui-link, .ui-surface-action):disabled { cursor: not-allowed; opacity: .55; }
+:root :is(.ui-link, .ui-surface-action, .ui-plot-target)[hidden] { display: none; }
+:root :is(.btn-secondary, .btn-ghost).ui-btn:is(.active, .is-active, [aria-selected="true"]) { background: var(--accent-light); color: var(--accent-text); border-color: var(--accent); }
+:root .ui-control { font-family: inherit; color: var(--text-primary); background-color: var(--bg-secondary); border-color: var(--border-hover); border-radius: var(--radius-md); }
+:root .ui-control:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 1px; }
+:root textarea.ui-control { font-size: var(--control-font); line-height: 1.5; }
+:root :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--accent-solid); }
+.ui-component-empty { padding: var(--space-5); text-align: center; color: var(--text-muted); font-size: var(--text-sm); }
+@media (max-width: 640px), (pointer: coarse) {
+  :root textarea.ui-control { font-size: 16px; }
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "file": "qa.txt",
+    "http": 200,
+    "expected": 200,
+    "download_matches": true,
+    "no_access_download": 404
+  },
+  {
+    "file": "qa.pdf",
+    "http": 200,
+    "expected": 200,
+    "download_matches": true,
+    "no_access_download": 404
+  },
+  {
+    "file": "qa.png",
+    "http": 200,
+    "expected": 200,
+    "download_matches": true,
+    "no_access_download": 404
+  },
+  {
+    "file": "wrong.png",
+    "http": 400,
+    "expected": 400
+  },
+  {
+    "file": "blocked.exe",
+    "http": 422,
+    "expected": 422
+  },
+  {
+    "file": "oversize.txt",
+    "http": 413,
+    "expected": 413
+  }
+]
