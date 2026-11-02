@@ -19,6 +19,10 @@
  * @property {User} user
  */
 
+export function normalizeSessionUser(user) {
+    return user ? { ...user, role_name: user.role_name || user.role || null } : user;
+}
+
 export class Auth {
     /**
      * @param {import('./api.js').API} api
@@ -51,26 +55,34 @@ export class Auth {
      * @returns {Promise<LoginResponse>}
      */
     async login(login, password) {
-        const response = await this.api.post('/auth/login', { login, password });
-        
-        this.api.setAccessToken(response.access_token);
-        this.api.rememberSession(response);
-        localStorage.setItem('dmb_user', JSON.stringify(response.user));
-        
-        return response;
+        const operation = async context => {
+            const response = await this.api.post('/auth/login', { login, password });
+            if (context != null) this.api.assertAuthContext?.(context);
+            response.user = normalizeSessionUser(response.user);
+            this.api.setAccessToken(response.access_token);
+            this.api.rememberSession(response);
+            localStorage.setItem('dmb_user', JSON.stringify(response.user));
+            return response;
+        };
+        return this.api.withAuthTransition ? this.api.withAuthTransition(operation) : operation();
     }
-    
+
     async logout() {
-        await this.api.post('/auth/logout');
-        this.api.setAccessToken(null);
-        localStorage.removeItem('dmb_user');
-        this.store?.set('currentUser', null);
-        this.channel?.postMessage({type:'logout'});
+        const operation = async context => {
+            await this.api.post('/auth/logout');
+            if (context != null) this.api.assertAuthContext?.(context);
+            this.api.setAccessToken(null);
+            localStorage.removeItem('dmb_user');
+            this.store?.set('currentUser', null);
+            this.channel?.postMessage({type:'logout'});
+        };
+        return this.api.withAuthTransition ? this.api.withAuthTransition(operation) : operation();
     }
 
     async restoreSession() {
         const response = await this.api.refreshToken();
         if (!response) return false;
+        response.user = normalizeSessionUser(response.user);
         localStorage.setItem('dmb_user', JSON.stringify(response.user));
         return true;
     }

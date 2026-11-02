@@ -13,6 +13,7 @@ from schemas import TaskCreate
 from services import work_tasks as work
 from idempotency import reserve_idempotency
 from requirement_artifacts import current_revision_history, ensure_request_history, append_status_event
+from notifications import notify_request_decision
 
 router = APIRouter()
 
@@ -55,7 +56,7 @@ def request_for(db, request_id, user, write=False):
 def fulfillment(db, req, user):
     decision = db.query(WorkResolution).filter_by(request_id=req.id).first()
     if not decision:
-        return {'coverage': 'unmapped', 'fulfillment': 'needs_verification', 'works': [], 'message': 'Требует сверки размещения'}
+        return {'coverage': 'unmapped', 'fulfillment': 'not_started', 'works': [], 'message': 'Работы по запросу ещё не размещены'}
     all_rows = db.query(RequestWorkLink).filter_by(request_id=req.id).all()
     rows = [link for link in all_rows if link.is_active]
     works = []
@@ -71,7 +72,9 @@ def fulfillment(db, req, user):
             elif not can_access_task('read', target, user): continue
         works.append({'kind': 'work' if link.work_task_id else 'major', 'id': target.id,
                       'public_id': target.public_id, 'title': target.title,
-                      'status': target.status if link.work_task_id else 'tracked_in_backlog',
+                      'status': target.status if link.work_task_id else (
+                          {'ВЫПОЛНЕНА':'done', 'ОТКЛОНЕНА':'cancelled', 'НЕ АКТУАЛЬНА':'cancelled',
+                           'ПРИНЯТА В РАБОТУ':'in_progress'}.get(target.status.name if target.status else '', 'queued')),
                       'result_text': target.result_text if link.work_task_id else '',
                       'scope_text': link.scope_text, 'coverage': link.coverage})
         if link.work_task_id:
@@ -79,11 +82,11 @@ def fulfillment(db, req, user):
     needs_review = (len(works) != len(all_rows) or not works
         or any(x['status'] == 'cancelled' for x in works)
         or (decision.fulfillment == 'fulfilled' and any(
-            x['kind'] == 'work' and x['status'] != 'done' for x in works))
+            x['status'] != 'done' for x in works))
         or (decision.fulfillment == 'fulfilled' and bool(revisions)
             and decision.confirmed_work_revisions != revisions))
-    return {'review_decision': decision.review_decision, 'coverage': 'partial' if needs_review else decision.coverage,
-            'fulfillment': 'needs_verification' if needs_review else decision.fulfillment,
+    return {'review_decision': decision.review_decision, 'can_confirm': req.status not in {'withdrawn', 'rejected'}, 'coverage': 'partial' if needs_review else decision.coverage,
+            'fulfillment': 'needs_verification' if needs_review else ('awaiting_confirmation' if decision.fulfillment != 'fulfilled' and works and all(x['status']=='done' for x in works) else decision.fulfillment),
             'result_text': decision.result_text, 'works': works, 'version': req.version,
             'legacy_supported': len(works) == 1 and works[0]['kind'] == 'major' and req.task_id == works[0]['id']}
 
@@ -102,7 +105,7 @@ def resolve(request_id: int, body: Resolution, idempotency_key: str = Header(...
     if not fresh: return fulfillment(db, req, user)
     if req.version != body.version or db.query(WorkResolution).filter_by(request_id=req.id).first():
         raise HTTPException(409, 'Запрос уже изменён или размещён')
-    if req.status != 'in_review' or req.reviewer_id != user.id:
+    if req.status != 'accepted' and (req.status != 'in_review' or req.reviewer_id != user.id):
         raise HTTPException(409, 'Сначала возьмите запрос на ревью')
     if req.task_id:
         raise HTTPException(409, 'У запроса уже есть прежнее размещение; требуется сверка')
@@ -114,8 +117,10 @@ def resolve(request_id: int, body: Resolution, idempotency_key: str = Header(...
     if not is_work and not db.query(RequirementRequest).filter(RequirementRequest.task_id == target.id).first():
         req.task_id = target.id
     req.status = 'in_progress'
+    req.coordinator_id = req.coordinator_id or user.id
     req.version += 1
     append_status_event(req, req.status, user, body.scope_text, metadata={'review_decision': body.decision})
+    notify_request_decision(db, req, 'in_progress', user.id)
     reservation.resource_type = 'requirement'
     reservation.resource_id = req.id
     reservation.resource_version = req.version
@@ -134,6 +139,7 @@ def confirm_fulfillment(request_id: int, body: FulfillmentDecision,
     req = request_for(db, request_id, user, write=True)
     decision = db.query(WorkResolution).filter_by(request_id=req.id).first()
     if not decision: raise HTTPException(422, 'Сначала разместите запрос')
+    if req.status in {'withdrawn', 'rejected'}: raise HTTPException(409, 'Сначала возобновите рассмотрение запроса')
     if req.version != body.version: raise HTTPException(409, 'Запрос изменён')
     # Serialize result confirmation against execution/reopening of every linked work.
     work_ids = [x.work_task_id for x in db.query(RequestWorkLink).filter_by(request_id=req.id, is_active=True).all() if x.work_task_id]
@@ -146,6 +152,13 @@ def confirm_fulfillment(request_id: int, body: FulfillmentDecision,
             raise HTTPException(422, 'Нельзя подтвердить итог без полного доступного покрытия')
         if any(x['kind'] == 'work' and x['status'] != 'done' for x in summary['works']):
             raise HTTPException(422, 'Рабочие задачи должны пройти приёмку')
+        for target in summary['works']:
+            if target['kind'] == 'major':
+                task = db.get(Task, target['id'])
+                if not task.status or task.status.name != 'ВЫПОЛНЕНА':
+                    raise HTTPException(422, 'Текущие задачи должны быть выполнены')
+    if decision.fulfillment == body.fulfillment and decision.coverage == body.coverage and decision.result_text == body.result_text:
+        return summary
     decision.coverage = body.coverage
     decision.fulfillment = body.fulfillment
     decision.result_text = body.result_text
@@ -156,6 +169,11 @@ def confirm_fulfillment(request_id: int, body: FulfillmentDecision,
     req.version += 1
     append_status_event(req, req.status, user, body.result_text,
                         metadata={'coverage': body.coverage, 'fulfillment': body.fulfillment})
+    req.status_history = [*req.status_history[:-1], {**req.status_history[-1], 'title': 'Результат запроса подтверждён' if body.fulfillment == 'fulfilled' else 'Результат запроса обновлён'}]
+    if body.fulfillment == 'fulfilled':
+        req.next_action = None
+        req.next_action_due = None
+    notify_request_decision(db, req, body.fulfillment, user.id)
     db.commit()
     return fulfillment(db, req, user)
 
@@ -204,11 +222,11 @@ def split_request(request_id: int, body: SplitResolution,
     if not fresh: return fulfillment(db, req, user)
     if req.version != body.version: raise HTTPException(409, 'Запрос изменён')
     decision = db.query(WorkResolution).filter_by(request_id=req.id).first()
-    if not decision and (req.status != 'in_review' or req.reviewer_id != user.id):
+    if not decision and req.status != 'accepted' and (req.status != 'in_review' or req.reviewer_id != user.id):
         raise HTTPException(409, 'Сначала возьмите запрос на ревью')
     if req.task_id and not decision:
         raise HTTPException(409, 'Прежнее размещение требует сверки перед разбиением')
-    if req.status not in {'in_review', 'in_progress'}:
+    if req.status in {'withdrawn', 'rejected'} or (not decision and req.status not in {'in_review', 'in_progress', 'accepted'}):
         raise HTTPException(409, 'Разбиение доступно на ревью или в работе')
     existing = db.query(RequestWorkLink).filter_by(request_id=req.id).all()
     keys = {('work' if x.work_task_id else 'major', x.work_task_id or x.major_task_id) for x in existing}
@@ -233,8 +251,10 @@ def split_request(request_id: int, body: SplitResolution,
     decision.confirmed_work_revisions = None
     req.task_id = None
     req.status = 'in_progress'
+    req.coordinator_id = req.coordinator_id or user.id
     req.version += 1
     append_status_event(req, req.status, user, body.reason, metadata={'review_decision':'split', 'added_parts':len(body.parts)})
+    notify_request_decision(db, req, 'in_progress', user.id)
     reservation.resource_type, reservation.resource_id, reservation.resource_version = 'requirement', req.id, req.version
     db.add(EventOutbox(event_type='requirement.resolved', aggregate_type='requirement', aggregate_id=req.id,
         aggregate_version=req.version, payload={'owner_user_id':req.user_id,'team_id':req.team_id}))

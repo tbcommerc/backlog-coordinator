@@ -2,7 +2,7 @@
 title: Модель данных Backlog coordinator
 scope: as-is
 status: verified
-last_verified: 2026-10-21
+last_verified: 2026-10-29
 source_of_truth: backend/models.py
 evidence:
   - backend/models.py
@@ -11,6 +11,23 @@ evidence:
 ---
 
 # Модель данных Backlog coordinator
+
+## Сопровождение запросов — проверено 29.10.2026
+
+`RequirementRequest` дополнен `coordinator_id` (nullable FK users),
+`next_action` (nullable String(500)), `next_action_due` (nullable Date).
+Новые решения: `accepted`, `deferred`, `withdrawn`; история дополняется при
+пересмотре без смены номера. `effective_status` вычисляется по решению,
+размещению, состояниям связанных работ и редакциям подтверждённых результатов.
+Это проекция чтения, не новая колонка. Миграция `c4a8e2d19b70` применена локально;
+защищённые записи не меняются. Подробности: [REQUESTS.md](REQUESTS.md).
+
+## Метрики — проверено 26.10.2026
+
+Паспорта kr_metrics, периоды kr_periods, измерения kr_measurements и таблицы
+сотрудничества выделены из Task. Task.metric_id сохраняет старые ссылки;
+старый факт без даты хранится отдельно. [Поля, ограничения и перенос](METRICS.md).
+Источники: backend/metric_models.py и миграция e8a4c2d61f53.
 
 ## Рабочие задачи: второй этап — 21.10.2026
 

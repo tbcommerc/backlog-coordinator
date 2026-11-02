@@ -70,7 +70,7 @@ def boundary(keys, values, before=False):
 
 def transition_options(row, user):
     from work_contract import Transition
-    labels = {'ready':'Переоткрыть' if row.status=='done' else 'Передать исполнителю',
+    labels = {'new':'Восстановить задачу', 'ready':'Переоткрыть' if row.status=='done' else 'Передать исполнителю',
         'in_progress':'Вернуть на доработку' if row.status=='in_acceptance' else 'Начать работу',
         'in_acceptance':'Передать на приёмку','done':'Принять результат' if row.status=='in_acceptance' else 'Завершить',
         'cancelled':'Отменить задачу'}
@@ -87,7 +87,7 @@ def transition_options(row, user):
         if reason=='forbidden': continue
         inputs=[]
         if target in ('done','in_acceptance'): inputs=['confirmation'] if row.status=='in_acceptance' else ['result_text']
-        if target=='cancelled' or row.status=='done' or row.status=='in_acceptance' and target=='in_progress': inputs=['reason']
+        if target=='cancelled' or row.status in ('done','cancelled') or row.status=='in_acceptance' and target=='in_progress': inputs=['reason']
         result.append(dict(target=target,label=labels[target],enabled=enabled,requires_input=inputs,
             disabled_reason_code=reason,missing_fields=missing))
     return result

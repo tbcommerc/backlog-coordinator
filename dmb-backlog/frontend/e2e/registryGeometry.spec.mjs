@@ -5,7 +5,7 @@ test('router keeps one visible page heading at mobile width',async({page})=>{
  await page.route('**/api/v1/**',route=>route.fulfill({json:route.request().url().includes('/options')?{can_create:false,teams:[],users:[],projects:[]}:{items:[],total:0,summary:{}}}));
  await page.goto('/e2e/fixtures/workWorkspaceRouter.html#/work-tasks');
  await expect(page.getByRole('heading',{name:'Рабочие задачи',exact:true})).toBeVisible();
- await expect(page.locator('#breadcrumb-nav')).toBeHidden();
+ await expect(page.locator('#breadcrumb-nav')).toBeVisible();
 });
 
 for(const width of [1440,1280,720,390,320]) for(const theme of ['light','dark']) {
@@ -22,21 +22,25 @@ for(const width of [1440,1280,720,390,320]) for(const theme of ['light','dark'])
   await page.screenshot({path:info.outputPath('search.png')});
   await page.goto(`/e2e/fixtures/uiKitRegistries.html?surface=notifications&theme=${theme}`);
   await expect(page.locator('.notification-card').first()).toBeVisible();
-  await expect(page.locator('.notification-card .btn-primary')).toHaveCount(0);
-  if(width>=1280) {
-   const row=await page.locator('.notification-card').nth(1).boundingBox();
-   expect(row.height).toBeLessThanOrEqual(80); // Wrapped/long text may expand the 64px baseline.
-  }
-  await page.locator('.notification-card').nth(1).locator('h3').click();
+  const card=page.locator('.notification-card').nth(1);
+  await expect(card.locator('.notification-card-icon')).toBeVisible();
+  await expect(card.locator('.notification-new-label')).toBeVisible();
+  await expect(card.locator('[data-open-notification]')).toHaveClass(/btn-primary/);
+  expect(await card.evaluate(el=>parseFloat(getComputedStyle(el).borderRadius))).toBeGreaterThan(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.screenshot({path:info.outputPath('notifications-restored.png')});
+  await card.locator('h3').click();
+  expect(await page.evaluate(()=>window.__navigation.length)).toBe(0);
+  await card.locator('[data-open-notification]').click();
   await expect.poll(()=>page.evaluate(()=>window.__navigation.length)).toBeGreaterThan(0);
   await page.goto(`/e2e/fixtures/uiKitComposites.html?surface=registry&theme=${theme}`);
   await expect(page.locator('#tasks-table')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await page.screenshot({path:info.outputPath('dmb-table.png')});
-  await page.locator('#backlog-more-tools').click();
-  await expect(page.getByRole('dialog',{name:'Действия бэклога'})).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#backlog-more-tools')).toBeFocused();
+  await expect(page.locator('#backlog-more-tools')).toHaveCount(0);
+  if (width > 480) await expect(page.locator('.toolbar-actions #backlog-export-excel')).toBeVisible();
+  else await expect(page.locator('.toolbar-actions #backlog-export-excel')).toBeHidden();
+  await expect(page.locator('.toolbar-actions #backlog-btn-refresh')).toBeVisible();
   expect(await page.evaluate(()=>window.__writes)).toEqual([]);
  });
 }

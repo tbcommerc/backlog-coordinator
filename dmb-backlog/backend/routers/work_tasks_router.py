@@ -22,7 +22,52 @@ def validated_filters(**values):
     except ValidationError:
         raise HTTPException(422, {'code':'invalid_filters','message':'Проверьте значения фильтров рабочих задач'})
 
+def filter_dependency(**values):
+    return validated_filters(**values)
+
+
+# Keep the model query signature and return 422 for model-validation failures.
+from inspect import signature
+filter_dependency.__signature__ = signature(Filters)
+
 router = APIRouter(dependencies=[Depends(require_non_business_customer_access)])
+
+
+@router.get('/workspace-search')
+def workspace_search(q: str = Query(..., min_length=1, max_length=200),
+                     page: int = Query(1, ge=1), per_page: int = Query(20, ge=1, le=50),
+                     db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Search the full accessible task corpus rather than a cached first page."""
+    from auth import task_read_scope_clause, get_request_review_access
+    from models import RequirementRequest
+    from sqlalchemy import select, union_all, literal
+    if not q.strip(): raise HTTPException(422, 'Введите текст поиска')
+    pattern = '%' + q.strip().replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+    work_rows = select(WorkTask.id.label('id'), literal('work').label('kind'),
+        WorkTask.title.label('title'), ('WRK-' + cast(WorkTask.id, String)).label('public_id')).where(
+        WorkTask.is_deleted.is_(False), work.read_scope(user),
+        or_(WorkTask.title.ilike(pattern, escape='\\'), WorkTask.description.ilike(pattern, escape='\\'),
+            WorkTask.result_text.ilike(pattern, escape='\\'), ('WRK-' + cast(WorkTask.id, String)).ilike(pattern, escape='\\')))
+    task_rows = select(Task.id.label('id'), literal('task').label('kind'), Task.title.label('title'),
+        Task.public_id.label('public_id')).where(Task.is_deleted.is_(False), task_read_scope_clause(user, Task),
+        or_(Task.title.ilike(pattern, escape='\\'), Task.public_id.ilike(pattern, escape='\\')))
+    project_rows = select(Project.id.label('id'), literal('project').label('kind'),
+        Project.name.label('title'), (literal('PRJ-') + cast(Project.id, String)).label('public_id')).where(
+        or_(Project.name.ilike(pattern, escape='\\'), (literal('PRJ-') + cast(Project.id, String)).ilike(pattern, escape='\\')))
+    review_scope = get_request_review_access(user)
+    request_access = or_(RequirementRequest.user_id == user.id,
+        (RequirementRequest.status != 'draft') & (True if review_scope == 'all' else
+            RequirementRequest.team_id == user.team_id if review_scope == 'team' and user.team_id else False))
+    request_rows = select(RequirementRequest.id.label('id'), literal('request').label('kind'),
+        RequirementRequest.title.label('title'), (literal('REQ-') + cast(RequirementRequest.id, String)).label('public_id')).where(
+        RequirementRequest.is_deleted.is_(False), request_access,
+        or_(RequirementRequest.title.ilike(pattern, escape='\\'),
+            (literal('REQ-') + cast(RequirementRequest.id, String)).ilike(pattern, escape='\\')))
+    corpus = union_all(work_rows, task_rows, project_rows, request_rows).subquery()
+    total = db.query(func.count()).select_from(corpus).scalar()
+    rows = db.execute(select(corpus).order_by(case((func.lower(corpus.c.public_id) == q.strip().lower(), 0), else_=1),
+        corpus.c.kind, corpus.c.id.desc()).offset((page-1)*per_page).limit(per_page)).mappings()
+    return {'items': [dict(row) for row in rows], 'total': total, 'page': page, 'per_page': per_page}
 
 
 @router.get('/work-tasks/options')
@@ -35,7 +80,7 @@ def options(db: Session = Depends(get_db), user: User = Depends(get_current_user
 
 
 @router.get('/work-tasks/board')
-def board(filters: Filters = Depends(), page_size: int = Query(20, ge=1, le=50), selected_id: int | None = Query(None, gt=0),
+def board(filters: Filters = Depends(filter_dependency), page_size: int = Query(20, ge=1, le=50), selected_id: int | None = Query(None, gt=0),
           db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     with work_board.snapshot(db) as reader:
         return work_board.read(reader, user, filters, page_size, selected_id=selected_id)
@@ -43,7 +88,7 @@ def board(filters: Filters = Depends(), page_size: int = Query(20, ge=1, le=50),
 
 @router.get('/work-tasks/board/columns/{column_status}')
 def board_column(column_status: Literal['new','ready','in_progress','in_acceptance','done','cancelled'],
-                 filters: Filters = Depends(), page_size: int = Query(20, ge=1, le=50), cursor: str | None = None,
+                 filters: Filters = Depends(filter_dependency), page_size: int = Query(20, ge=1, le=50), cursor: str | None = None,
                  db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     with work_board.snapshot(db) as reader:
         return work_board.read(reader, user, filters, page_size, column_status, cursor)
@@ -51,14 +96,14 @@ def board_column(column_status: Literal['new','ready','in_progress','in_acceptan
 
 @router.get('/work-tasks')
 def list_work(view: Literal['all', 'mine', 'team', 'requested', 'acceptance'] = 'mine',
-              status: str | None = None, q: str = '', execution_team_id: int | None = None,
-              assignee_id: int | None = None, major_task_id: int | None = None,
+              status: str | None = None, q: str = '', execution_team_id: str | None = None,
+              assignee_id: str | None = None, major_task_id: int | None = None,
               direct_project_id: int | None = None, work_direction: str | None = None,
-              overdue: bool = False, blocked: bool = False, unassigned: bool = False, focus: Literal['', 'today', 'overdue', 'blocked'] = '',
-              sort: Literal['newest', 'due', 'attention', 'priority'] = 'newest', priority: Priority | None = None,
+              overdue: bool = False, blocked: bool = False, unassigned: bool = False, focus: str = '',
+              sort: Literal['newest', 'due', 'attention', 'priority'] = 'newest', priority: str | None = None,
               page: int = Query(1, ge=1), per_page: int = Query(30, ge=1, le=100),
               db: Session = Depends(get_db), user: User = Depends(get_current_user),
-              effective_project_id: int | None = None, done_period: Literal['all','7d','30d'] = 'all', selected_id: int | None = None):
+              effective_project_id: str | None = None, done_period: Literal['all','7d','30d'] = 'all', selected_id: int | None = None):
     filters = validated_filters(view=view,status=status or '',q=q,execution_team_id=execution_team_id,
         assignee_id=assignee_id,major_task_id=major_task_id,direct_project_id=direct_project_id,
         effective_project_id=effective_project_id,work_direction=work_direction,priority=priority,
@@ -229,11 +274,15 @@ def assignment(work_id: int, req: Assignment, db: Session = Depends(get_db), use
 
 
 @router.get('/work-tasks/{work_id}/history')
-def history(work_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def history(work_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user),
+            before: int | None = Query(None, gt=0), limit: int = Query(100, ge=1, le=200), paginated: bool = False):
     work.get_work(db, work_id, user)
     # Raw context snapshots are never disclosed: they may reference inaccessible objects.
-    return [work.history_item(db, x, user)
-            for x in db.query(WorkHistory).filter_by(work_task_id=work_id).order_by(WorkHistory.id.desc()).limit(100)]
+    query = db.query(WorkHistory).filter_by(work_task_id=work_id)
+    if before is not None: query = query.filter(WorkHistory.id < before)
+    rows = query.order_by(WorkHistory.id.desc()).limit(limit + 1).all()
+    items = [work.history_item(db, x, user) for x in rows[:limit]]
+    return {'items': items, 'next_cursor': rows[limit - 1].id if len(rows) > limit else None} if paginated else items
 
 
 @router.post('/work-tasks/{work_id}/reassignment')
@@ -248,9 +297,14 @@ def reassign(work_id: int, req: Reassignment, db: Session = Depends(get_db), use
 
 
 @router.get('/work-tasks/{work_id}/comments')
-def comments(work_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def comments(work_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user),
+             before: int | None = Query(None, gt=0), limit: int = Query(100, ge=1, le=200), paginated: bool = False):
     work.get_work(db, work_id, user)
-    return db.query(WorkComment).filter_by(work_task_id=work_id).order_by(WorkComment.id).limit(200).all()
+    query = db.query(WorkComment).filter_by(work_task_id=work_id)
+    if before is not None: query = query.filter(WorkComment.id < before)
+    rows = query.order_by(WorkComment.id.desc()).limit(limit + 1).all()
+    items = list(reversed(rows[:limit]))
+    return {'items': items, 'next_cursor': rows[limit - 1].id if len(rows) > limit else None} if paginated else items
 
 
 @router.post('/work-tasks/{work_id}/comments')

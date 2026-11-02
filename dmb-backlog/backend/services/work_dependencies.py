@@ -16,7 +16,7 @@ def blocked_clause(db, user):
     ).outerjoin(TaskStatus, Task.status_id == TaskStatus.id).filter(
         WorkDependency.is_active.is_(True), Task.is_deleted.is_(False),
         or_(TaskStatus.name.is_(None), TaskStatus.name != 'ВЫПОЛНЕНА'),
-        task_read_scope_clause(user, Task)).correlate(None)
+        task_read_scope_clause(user, Task, include_metrics=True)).correlate(None)
     return or_(WorkTask.id.in_(work_ids), WorkTask.id.in_(major_ids))
 
 
@@ -35,7 +35,7 @@ def blockers(db, work_ids, user=None):
     targets = {x.id: x for x in query.all()} if target_ids else {}
     query = db.query(Task).filter(Task.id.in_(major_ids), Task.is_deleted.is_(False))
     if user is not None:
-        query = query.filter(task_read_scope_clause(user, Task))
+        query = query.filter(task_read_scope_clause(user, Task, include_metrics=True))
     majors = {x.id: x for x in query.all()} if major_ids else {}
     statuses = {x.id: x.name for x in db.query(TaskStatus).filter(
         TaskStatus.id.in_({x.status_id for x in majors.values()})).all()} if majors else {}
@@ -61,5 +61,5 @@ def visible_snapshot_blockers(db, items, user):
     readable_work = {id for (id,) in db.query(WorkTask.id).filter(
         WorkTask.id.in_(work_ids), WorkTask.is_deleted.is_(False), read_scope(user)).all()} if work_ids else set()
     readable_major = {id for (id,) in db.query(Task.id).filter(
-        Task.id.in_(major_ids), Task.is_deleted.is_(False), task_read_scope_clause(user, Task)).all()} if major_ids else set()
+        Task.id.in_(major_ids), Task.is_deleted.is_(False), task_read_scope_clause(user, Task, include_metrics=True)).all()} if major_ids else set()
     return [x for x in items if x['target_id'] in (readable_work if x['kind'] == 'work' else readable_major)]

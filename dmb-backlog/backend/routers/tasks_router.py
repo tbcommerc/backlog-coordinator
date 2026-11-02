@@ -32,6 +32,11 @@ def _serialize_task_creation(func):
 
 
 def _require_reference(db, model, value, field_name, label):
+    if model is TaskType and value is not None:
+        kind = db.get(TaskType, value)
+        if kind and kind.code == "metric_kr":
+            raise HTTPException(422, "Метрические KR создаются в разделе «Метрики»")
+
     if db.query(model).filter(model.id == value).first() is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -340,6 +345,7 @@ def task_to_response(
         did_status=task.did_status,
         did_status_updated_at=task.did_status_updated_at,
         prev_did_status=task.prev_did_status,
+        metric_id=task.metric_id,
         metric_kr_plan=task.metric_kr_plan,
         metric_kr_fact=task.metric_kr_fact,
         metric_kr_unit=task.metric_kr_unit,
@@ -522,7 +528,7 @@ def recalculate_effort_rub_for_all(db: Session) -> int:
     Ставки берутся по году дедлайна каждой задачи (fallback — актуальный год).
     Возвращает количество пересчитанных задач.
     """
-    tasks = db.query(Task).filter(Task.is_deleted == False).all()
+    tasks = db.query(Task).filter(Task.is_deleted == False, Task.metric_id.is_(None)).all()
     changed = 0
     for task in tasks:
         if not any(getattr(task, f) for f, _ in COMPETENCY_EFFORT_FIELDS):
@@ -564,7 +570,7 @@ def recalculate_actual_effort_days_for_all(db: Session) -> int:
 
     Возвращает количество пересчитанных задач.
     """
-    tasks = db.query(Task).filter(Task.is_deleted == False).all()
+    tasks = db.query(Task).filter(Task.is_deleted == False, Task.metric_id.is_(None)).all()
     changed = 0
     for task in tasks:
         if not any(getattr(task, f) for f in ACTUAL_EFFORT_FIELDS):
@@ -787,7 +793,7 @@ def get_task_reference(
     deadlines = ordered(db.query(Deadline).all(), "deadline")
     teams = db.query(Team).order_by(Team.name).all()
     projects = db.query(Project).order_by(Project.name).all()
-    task_types = ordered(db.query(TaskType).all(), "task_type")
+    task_types = ordered(db.query(TaskType).filter((TaskType.code != "metric_kr") | TaskType.code.is_(None)).all(), "task_type")
     channels = ordered(db.query(Channel).all(), "channel")
     departments = ordered(db.query(Department).all(), direct_order=lambda item: item.sort_order or 0)
     business_customers = db.query(BusinessCustomer).order_by(BusinessCustomer.name).all()

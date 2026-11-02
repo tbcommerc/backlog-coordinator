@@ -1,3 +1,5 @@
+import { descriptionList } from '../ui/detailComponents.js';
+import { tabNavigationTarget } from '../ui/controls.js';
 import { bindActionMenu } from '../ui/actionMenu.js';
 /**
  * DMB AI Business Analyst Assistant - chat widget.
@@ -182,8 +184,8 @@ export function renderAgentChat(app) {
                   maxlength="4000"
                   aria-describedby="chat-input-hint chat-input-count"
                 ></textarea>
-                <button class="square-icon btn btn-primary chat-send-btn" id="agent-chat-send-btn" aria-label="Отправить сообщение" disabled>
-                  <i data-lucide="send" aria-hidden="true"></i>
+                <button class="ui-btn square-icon btn btn-ai-primary chat-send-btn" id="agent-chat-send-btn" aria-label="Отправить сообщение" disabled>
+                  <i data-lucide="sparkles" aria-hidden="true"></i>
                 </button>
               </div>
               <div class="chat-input-meta">
@@ -212,7 +214,7 @@ export function renderAgentChat(app) {
               ${renderCoreRequirementProgress()}
               <div class="chat-early-draft" id="chat-early-draft" hidden>
                 <span><strong>Обязательный минимум собран.</strong> Остальные детали можно уточнить позже.</span>
-                <button class="btn btn-primary btn-sm" id="chat-generate-draft-btn" type="button">Сформировать черновик</button>
+                <button class="ui-btn btn btn-ai btn-sm" id="chat-generate-draft-btn" type="button"><i data-lucide="sparkles" aria-hidden="true"></i>Сформировать черновик</button>
               </div>
               <div class="requirement-review-comment" id="requirement-review-comment" hidden></div>
               <div class="requirement-map-empty" id="requirement-map-empty">
@@ -245,12 +247,12 @@ function renderSessionHistory(persistent = false) {
           <div class="chat-sessions-card${persistent ? ' chat-history-panel' : ''}">
             ${persistent ? `
             <button class="ui-surface-action chat-sessions-header chat-sessions-header--static" id="chat-history-collapse" type="button" aria-expanded="true" aria-label="Свернуть историю требований">
-              <i data-lucide="history" style="width:16px;height:16px;color:var(--primary);"></i>
+              <i data-lucide="history" style="width:16px;height:16px;color:var(--accent);"></i>
               <span id="chat-sessions-title">История требований</span>
               <i class="chat-sessions-chevron" data-lucide="panel-left-close"></i>
             </button>` : `
             <button class="ui-surface-action chat-sessions-header" id="chat-sessions-toggle" type="button" aria-expanded="false" aria-controls="chat-sessions-popover">
-              <i data-lucide="history" style="width:16px;height:16px;color:var(--primary);"></i>
+              <i data-lucide="history" style="width:16px;height:16px;color:var(--accent);"></i>
               <span id="chat-sessions-title">История требований</span>
               <i class="chat-sessions-chevron" data-lucide="chevron-down"></i>
             </button>`}
@@ -445,12 +447,12 @@ export async function initAgentChat(app) {
     renderSessions(app);
   }));
   historyTabs.forEach((btn, index) => btn.addEventListener('keydown', event => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const root = btn.closest('[role="tablist"]');
+    const next = tabNavigationTarget(root, event);
+    if (!next) return;
     event.preventDefault();
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? historyTabs.length - 1
-      : (index + (event.key === 'ArrowRight' ? 1 : -1) + historyTabs.length) % historyTabs.length;
-    historyTabs[next]?.click();
-    historyTabs[next]?.focus();
+    historyTabs.forEach(tab => { tab.tabIndex = tab === next ? 0 : -1; });
+    next.focus();
   }));
 
   if (window.lucide) window.lucide.createIcons();
@@ -1745,13 +1747,12 @@ function bindWorkspaceControls() {
   tabs.forEach((btn, index) => {
     btn.addEventListener('click', () => applyWorkspaceView(btn.dataset.chatView));
     btn.addEventListener('keydown', event => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      const root = btn.closest('[role="tablist"]');
+      const next = tabNavigationTarget(root, event);
+      if (!next) return;
       event.preventDefault();
-      const nextIndex = event.key === 'Home' ? 0
-        : event.key === 'End' ? tabs.length - 1
-          : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
-      tabs[nextIndex]?.click();
-      tabs[nextIndex]?.focus();
+      tabs.forEach(tab => { tab.tabIndex = tab === next ? 0 : -1; });
+      next.focus();
     });
   });
   applyWorkspaceView(workspaceView);
@@ -2153,7 +2154,7 @@ export function getDraftChanges(before, after) {
 export function renderDraftChangeSummary(change) {
   if (!change?.label || change.before === change.after) return '';
   return `<details class="chat-draft-change" open>
-    <summary><i data-lucide="git-compare-arrows" aria-hidden="true"></i><span><strong>Раздел «${escapeHtml(change.label)}» обновлён</strong><small>Сравните формулировки перед отправкой</small></span></summary>
+    <summary><i data-lucide="git-compare" aria-hidden="true"></i><span><strong>Раздел «${escapeHtml(change.label)}» обновлён</strong><small>Сравните формулировки перед отправкой</small></span></summary>
     <div class="chat-draft-change-grid">
       <div><span>Было</span><p>${escapeHtml(change.before || 'Не заполнено')}</p></div>
       <div><span>Стало</span><p>${escapeHtml(change.after || 'Не заполнено')}</p></div>
@@ -2240,11 +2241,11 @@ async function showTeamSelectModal(sessionId, draft, triggerBtn) {
       <div class="modal-body">
         <p class="text-muted" id="chat-submit-description">${resubmitting ? `Будет отправлена следующая версия запроса #${escapeHtml(currentRequestContext.request_id)}.` : `После отправки будет создан запрос «${escapeHtml(draft?.title || 'Требование')}».`} Его содержание останется доступно в истории.</p>
         <div class="chat-send-summary">${getDraftReviewStatus(draft)}</div>
-        <dl class="chat-submit-facts">
-          <div><dt>Блокирующие вопросы</dt><dd>${issueSummary.blocking}</dd></div>
-          <div><dt>Противоречия и рекомендации</dt><dd>${issueSummary.conflicts + issueSummary.quality}</dd></div>
-          <div><dt>Допущения и открытые вопросы</dt><dd>${issueSummary.assumptions + issueSummary.openQuestions}</dd></div>
-        </dl>
+        ${descriptionList({ className: 'chat-submit-facts', items: [
+          { label: 'Блокирующие вопросы', value: issueSummary.blocking },
+          { label: 'Противоречия и рекомендации', value: issueSummary.conflicts + issueSummary.quality },
+          { label: 'Допущения и открытые вопросы', value: issueSummary.assumptions + issueSummary.openQuestions },
+        ] })}
         <label class="form-label" for="team-select">Команда для первичного ревью</label>
         <select id="team-select" class="input" style="width:100%;"${teamsLoadError || resubmitting ? ' disabled' : ''}>
           <option value="">По умолчанию: ${escapeHtml(defaultRoute)}</option>

@@ -23,7 +23,8 @@ assert.match(pagesCss, /\.audit-filter-panel,\.audit-table-card/);
 assert.match(pagesCss, /\.audit-page-table thead\s*\{[\s\S]*?position:sticky/);
 assert.match(pagesCss, /\.audit-page-table\s*\{[\s\S]*?min-width:1120px/);
 assert.match(pagesCss, /@media\(max-width:820px\)[\s\S]*?\.audit-filter-grid/);
-assert.match(pagesCss, /@media\(max-width:560px\)[\s\S]*?\.audit-period-field>div/);
+assert.match(read('css/ui/intervals.css'), /@media\s*\(max-width:\s*420px\)[\s\S]*?\.ui-interval-fields/, 'range responsiveness belongs to UI Kit');
+assert.match(renderAuditLog(), /id="audit-period"/);
 assert.match(pagesCss, /\.audit-filter-panel:not\(\.is-open\) \.audit-filter-grid/);
 
 console.log('audit log page contracts: OK');

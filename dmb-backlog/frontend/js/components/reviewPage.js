@@ -1,3 +1,7 @@
+import { filterValues, filterMatches, setFilterValue, encodeFilterValues } from '../ui/filterValues.js';
+import { filterChip } from '../ui/primitives.js';
+import { loadMore } from '../ui/specialized.js';
+import { renderViewState } from './viewState.js';
 console.log('[DMB] reviewPage.js loaded');
 
 import { renderRequirementReviews, initRequirementReviews } from './requirementReviews.js?v=4';
@@ -24,16 +28,17 @@ const INTENTS = {
   feature: 'Новая возможность', change: 'Изменение', problem: 'Проблема',
   incident: 'Инцидент', clarification: 'Уточнение',
 };
-const REVIEW_QUEUE_STATE_KEY = 'dmb.review.queue.v2';
+const REVIEW_QUEUE_STATE_KEY = 'dmb.review.queue.v3';
 const REVIEW_FEEDBACK_KEY = 'dmb.review.feedback.v1';
 const REVIEW_DRAFT_KEY_PREFIX = 'dmb.review.action-draft.v1';
-const DEFAULT_QUEUE_STATE = Object.freeze({ search: '', mode: 'action', status: 'any', signals: false, aged: false, sort: 'stage_oldest', scrollTop: 0 });
-const MODES = new Set(['action', 'active', 'history', 'my_review', 'my_work', 'all']);
-const STATUSES = new Set(['any', 'submitted', 'in_review', 'returned', 'in_progress', 'approved', 'rejected', 'completed', 'not_relevant', 'task_rejected', 'task_deleted']);
+const DEFAULT_QUEUE_STATE = Object.freeze({ search: '', team_ids: '', customer_ids: '', coordinator_ids: '', mode: 'all', status: 'any', signals: false, aged: false, sort: 'stage_oldest', scrollTop: 0 });
+const MODES = new Set(['action', 'active', 'history', 'my_review', 'my_work', 'all', 'confirmation', 'verification', 'due']);
+const STATUSES = new Set(['any', 'submitted', 'in_review', 'returned', 'in_progress', 'approved', 'rejected', 'completed', 'not_relevant', 'task_rejected', 'task_deleted', 'accepted', 'deferred', 'withdrawn', 'queued', 'fulfilled', 'awaiting_confirmation', 'needs_verification']);
 const SORTS = new Set(['stage_oldest', 'newest', 'signals', 'quality']);
 const REVIEW_PAGE_SIZE = 250;
 
 let reviewRows = [];
+let reviewMeta = {total:0,counts:{},options:{}};
 let reviewCurrentUser = null;
 let reviewApp = null;
 let reviewAssignPending = false;
@@ -41,6 +46,8 @@ let reviewLoadState = 'idle';
 let reviewLoadError = '';
 let reviewSearchTimer = null;
 let reviewHasMore = false;
+let reviewLoadEpoch = 0;
+let reviewRetryAppend = false;
 
 export function renderReviewPage() {
   const requirements = new URLSearchParams(globalThis.window?.location?.hash?.split('?')[1] || '').get('tab') === 'requirements';
@@ -49,14 +56,17 @@ export function renderReviewPage() {
   return `${subjects}<div class="review-queue-card request-list-panel animate-fade-in" id="review-queue-card">
     <div class="customer-request-toolbar review-request-toolbar">
       <div class="toolbar-title-row request-list-title-row">
-        <div class="toolbar-title-wrap"><h1 class="toolbar-title" id="review-list-title">Ревью запросов</h1><p class="toolbar-subtitle">Найдите запросы, требующие решения, и безопасно передайте их в проработку</p></div>
+        <div class="toolbar-title-wrap"><h1 class="toolbar-title" id="review-list-title">Запросы заказчиков</h1><p class="toolbar-subtitle">Все поступившие потребности, решения и результаты. Ревью — один из этапов запроса.</p></div>
         <div class="request-list-title-meta"><span class="text-secondary" id="review-count" role="status" aria-live="polite">Загрузка…</span></div>
       </div>
       <div class="filter-panel customer-request-filter-panel"><div class="filter-toolbar-row customer-request-controls">
         <label class="relative filter-search-wrap customer-request-search"><span class="sr-only">Поиск</span><i data-lucide="search"></i><input class="input ui-control" id="review-search" type="search" placeholder="Номер, название, автор или команда" aria-label="Поиск по номеру, названию, автору, команде или ответственному"></label>
         <div class="customer-request-main-filters review-filter-grid">
-          <label><span>Режим работы</span><select id="review-mode-filter" class="input"><option value="action">Требуют моего действия</option><option value="active">Все активные</option><option value="history">История решений</option><option value="my_review">Моё ревью</option><option value="my_work">Моя проработка</option><option value="all">Все доступные</option></select></label>
-          <label><span>Стадия</span><select id="review-status-filter" class="input"><option value="any">Любая стадия</option><option value="submitted">Ожидает ревью</option><option value="in_review">На ревью</option><option value="returned">Ожидает уточнения</option><option value="in_progress">В проработке</option><option value="completed">Выполнен</option><option value="not_relevant">Не актуален</option><option value="task_rejected">Задача отклонена</option><option value="task_deleted">Задача удалена</option><option value="approved">Проработка завершена</option><option value="rejected">Отклонён</option></select></label>
+          <label><span>Режим работы</span><select id="review-mode-filter" class="input"><option value="action">Требуют моего действия</option><option value="active">Все активные</option><option value="history">История решений</option><option value="my_review">Моё ревью</option><option value="my_work">Моё сопровождение</option><option value="all">Все доступные</option><option value="confirmation">Ожидают подтверждения</option><option value="verification">Нужна сверка</option><option value="due">Пора пересмотреть</option></select></label>
+          <label><span>Стадия</span><select id="review-status-filter" class="input"><option value="any">Любая стадия</option><option value="submitted">Ожидает ревью</option><option value="in_review">На ревью</option><option value="returned">Ожидает уточнения</option><option value="in_progress">В проработке</option><option value="completed">Выполнен</option><option value="not_relevant">Не актуален</option><option value="task_rejected">Задача отклонена</option><option value="task_deleted">Задача удалена</option><option value="approved">Проработка завершена</option><option value="rejected">Отклонён</option><option value="accepted">Принят в бэклог</option><option value="deferred">Отложен</option><option value="withdrawn">Отозван</option><option value="queued">Ожидает исполнения</option><option value="awaiting_confirmation">Ожидает подтверждения</option><option value="needs_verification">Требует сверки</option><option value="fulfilled">Результат подтверждён</option></select></label>
+          <label><span>Команда</span><select id="review-team_ids" class="input"><option value="">Все команды</option></select></label>
+          <label><span>Бизнес-заказчик</span><select id="review-customer_ids" class="input"><option value="">Все заказчики</option></select></label>
+          <label><span>Ответственный за запрос</span><select id="review-coordinator_ids" class="input"><option value="">Все ответственные</option></select></label>
           <label><span>Порядок</span><select id="review-sort" class="input"><option value="stage_oldest">Дольше на текущем этапе</option><option value="signals">Больше замечаний</option><option value="quality">Низкое качество</option><option value="newest">Недавно обновлённые</option></select></label>
           <label class="review-signals-toggle"><input id="review-signals-only" type="checkbox">Только с замечаниями</label>
         </div>
@@ -74,10 +84,17 @@ export function renderReviewPage() {
 }
 
 export async function initReviewPage(app) {
+  reviewLoadEpoch += 1;
+  reviewRows = [];
+  reviewHasMore = false;
+  reviewLoadState = 'idle';
+  reviewLoadError = '';
+  reviewRetryAppend = false;
   if (document.getElementById('requirement-reviews')) return initRequirementReviews(app);
   reviewApp = app;
   reviewCurrentUser = app.store.get('currentUser') || null;
   restoreQueueControls();
+  ['team_ids','customer_ids','coordinator_ids'].forEach(key=>document.getElementById('review-'+key)?.addEventListener('change',()=>handleQueueControlsChange(true)));
   document.getElementById('review-search')?.addEventListener('input', () => { window.clearTimeout(reviewSearchTimer); reviewSearchTimer = window.setTimeout(() => handleQueueControlsChange(true), 180); });
   document.getElementById('review-mode-filter')?.addEventListener('change', () => handleQueueControlsChange(true));
   document.getElementById('review-status-filter')?.addEventListener('change', () => handleQueueControlsChange(true));
@@ -98,101 +115,111 @@ export async function initReviewPage(app) {
 
 async function loadReviewQueue(app, { append = false } = {}) {
   const content = document.getElementById('review-list-content');
-  if (!content) return;
+  if (!content || (append && ['loading','loading_more'].includes(reviewLoadState))) return;
+  const epoch = ++reviewLoadEpoch;
+  const current = () => epoch === reviewLoadEpoch && content.isConnected && document.getElementById('review-list-content') === content;
+  const previousIds = new Set(reviewRows.map(row => String(row.id)));
   const offset = append ? reviewRows.length : 0;
   reviewLoadState = append ? 'loading_more' : 'loading';
   if (!append) {
     content.innerHTML = renderListLoading();
     setText('review-count', 'Загрузка…');
-  } else {
-    renderReviewList();
-  }
+  } else renderReviewList();
   try {
-    const data = await app.api.get(`/agent/requests/review?limit=${REVIEW_PAGE_SIZE}&offset=${offset}`);
-    const batch = Array.isArray(data) ? data : [];
-    reviewRows = append
-      ? [...new Map([...reviewRows, ...batch].map(request => [String(request.id), request])).values()]
-      : batch;
-    reviewHasMore = batch.length === REVIEW_PAGE_SIZE;
+    const state=queueStateFromControls();
+    const params=new URLSearchParams({q:state.search,mode:state.mode,status:state.status,sort:state.sort,signals:String(state.signals),aged:String(state.aged),team_ids:state.team_ids,customer_ids:state.customer_ids,coordinator_ids:state.coordinator_ids,limit:String(REVIEW_PAGE_SIZE),offset:String(offset)});
+    const data = await app.api.get(`/agent/requests/registry?${params}`);
+    if (!current()) return;
+    const batch = data.items || [];
+    reviewMeta=data;
+    for(const [key,optionKey,label] of [['team_ids','teams','Все команды'],['customer_ids','customers','Все заказчики'],['coordinator_ids','coordinators','Все ответственные']]){const select=document.getElementById('review-'+key);if(select){select.innerHTML=`<option value="">${label}</option>`+(data.options?.[optionKey]||[]).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');setFilterValue(select,state[key]||'');}}
+    reviewRows = append ? [...new Map([...reviewRows, ...batch].map(request => [String(request.id), request])).values()] : batch;
+    reviewHasMore = Boolean(data.has_more);
     reviewLoadState = 'ready';
     reviewLoadError = '';
+    reviewRetryAppend = false;
     updateSummary();
-    renderReviewList();
+    renderReviewList({ restoreScroll: !append });
+    if (append) {
+      const firstNew = [...content.querySelectorAll('.review-request-card-link')].find(link => !previousIds.has(link.dataset.reviewId));
+      (firstNew || content.querySelector('#load-more-review') || content).focus();
+    }
   } catch (error) {
+    if (!current()) return;
+    reviewRetryAppend = append;
     reviewLoadState = reviewRows.length ? 'stale' : 'error';
     reviewLoadError = errorMessage(error, 'Повторите попытку позже');
     renderReviewList();
-    document.getElementById('retry-review-list')?.addEventListener('click', () => loadReviewQueue(app));
+    document.getElementById('retry-review-list')?.focus();
     window.lucide?.createIcons();
   }
 }
 
 function renderListLoading() { return '<div class="customer-request-loading content-loading-state" role="status"><span class="spinner"></span><span>Загружаем запросы…</span></div>'; }
-function quickFilter(kind, value, icon, label, countId) { return `<button type="button" class="quick-filter-btn" data-review-kind="${kind}" data-review-filter="${value}" aria-pressed="false"><span class="quick-filter-icon"><i data-lucide="${icon}"></i></span><span class="quick-filter-info"><span class="quick-filter-label">${label}</span><strong class="quick-filter-count" id="${countId}">—</strong></span></button>`; }
+function quickFilter(kind, value, icon, label, countId) { return filterChip({label,icon,count:'—',countId,attrs:{'data-review-kind':kind,'data-review-filter':value}}); }
 
 function updateSummary() {
-  document.getElementById('review-summary')?.toggleAttribute('hidden', reviewRows.length === 0);
-  setText('review-new-count', reviewRows.filter(request => request.status === 'submitted').length);
-  setText('review-mine-count', reviewRows.filter(request => Number(request.reviewer_id) === Number(reviewCurrentUser?.id)).length);
-  setText('review-action-count', reviewRows.filter(request => availableActions(request).length).length);
-  setText('review-aged-count', reviewRows.filter(isLongWaiting).length);
-  setText('review-risk-count', reviewRows.filter(request => signalCount(request.draft) > 0).length);
+  const counts=reviewMeta.counts||{};
+  for(const [name,key] of [['new','new'],['mine','mine'],['action','action'],['aged','aged'],['risk','risk']])setText(`review-${name}-count`,counts[key]||0);
 }
 
 function handleQueueControlsChange(resetScroll) {
   saveQueueState({ scrollTop: resetScroll ? 0 : currentQueueScroll() });
-  renderReviewList();
+  if(reviewApp)loadReviewQueue(reviewApp);
 }
 
-function renderReviewList() {
+function renderReviewList({ restoreScroll = true } = {}) {
   const content = document.getElementById('review-list-content');
   if (!content) return;
   if (reviewLoadState === 'error') {
     content.innerHTML = `<div class="customer-request-state is-error" role="alert"><i data-lucide="cloud-off"></i><strong>Не удалось загрузить запросы</strong><span>${esc(reviewLoadError)}</span><button type="button" class="btn btn-secondary btn-sm" id="retry-review-list"><i data-lucide="refresh-cw"></i>Повторить</button></div>`;
-    document.getElementById('retry-review-list')?.addEventListener('click', () => reviewApp && loadReviewQueue(reviewApp));
+    document.getElementById('retry-review-list')?.addEventListener('click', () => reviewApp && loadReviewQueue(reviewApp, { append: reviewRetryAppend }));
     window.lucide?.createIcons();
     return;
   }
   const state = queueStateFromControls();
-  const rows = filteredReviewRows(state);
+  const rows = reviewRows;
   document.querySelectorAll('[data-review-filter]').forEach(button => {
     const active = quickFilterActive(button.dataset.reviewKind, button.dataset.reviewFilter, state);
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   });
-  const trulyEmpty = reviewRows.length === 0;
-  document.getElementById('review-queue-card')?.classList.toggle('is-empty', trulyEmpty);
-  setText('review-count', `Показано ${rows.length} · загружено ${reviewRows.length}${reviewHasMore ? ' · есть ещё' : ''}`);
+  const trulyEmpty = reviewRows.length === 0 && !state.search && state.mode==='all' && state.status==='any' && !state.team_ids && !state.customer_ids && !state.coordinator_ids;
+  document.getElementById('review-queue-card')?.classList.remove('is-empty');
+  setText('review-count', `Показано ${rows.length} из ${reviewMeta.total || 0}`);
+  const stale = reviewLoadState === 'stale' ? renderViewState({kind:'stale',scope:'partial',title:'Показаны ранее загруженные данные.',message:reviewLoadError,actionLabel:'Повторить',actionId:'retry-review-list'}) : '';
+  const more = reviewHasMore || reviewLoadState === 'loading_more'
+    ? `<div class="review-load-more">${loadMore({loading:reviewLoadState === 'loading_more',attrs:{id:'load-more-review'}})}</div>`
+    : '';
   if (!rows.length) {
-    content.innerHTML = trulyEmpty
+    const empty = trulyEmpty
       ? '<div class="customer-request-state"><div class="customer-request-state-icon review-empty-icon"><i data-lucide="check"></i></div><strong>Очередь пуста</strong><span>Новые требования появятся здесь после отправки из диалога с ИИ-ассистентом.</span></div>'
-      : '<div class="customer-request-state"><i data-lucide="search-x"></i><strong>Ничего не найдено</strong><span>Измените запрос или вернитесь к очереди, требующей действий.</span><button type="button" class="btn btn-secondary btn-sm" id="clear-review-filters">Сбросить фильтры</button></div>';
-    document.getElementById('clear-review-filters')?.addEventListener('click', () => { setQueueControls(DEFAULT_QUEUE_STATE); saveQueueState(DEFAULT_QUEUE_STATE); renderReviewList(); });
+      : '<div class="customer-request-state"><i data-lucide="search-x"></i><strong>Ничего не найдено</strong><span>Измените поиск или фильтры. Отклонённые доступны в истории и среди всех запросов.</span><button type="button" class="btn btn-secondary btn-sm" id="clear-review-filters">Сбросить фильтры</button></div>';
+    content.innerHTML = `${stale}${empty}${more}`;
+    document.getElementById('retry-review-list')?.addEventListener('click', () => reviewApp && loadReviewQueue(reviewApp, { append: reviewRetryAppend }));
+    document.getElementById('load-more-review')?.addEventListener('click', () => reviewApp && loadReviewQueue(reviewApp, { append: true }));
+    document.getElementById('clear-review-filters')?.addEventListener('click', () => { setQueueControls(DEFAULT_QUEUE_STATE); saveQueueState(DEFAULT_QUEUE_STATE); loadReviewQueue(reviewApp); });
     window.lucide?.createIcons();
     return;
   }
-  const stale = reviewLoadState === 'stale' ? `<div class="review-stale-warning" role="alert"><i data-lucide="cloud-off"></i><span><strong>Показаны ранее загруженные данные.</strong> ${esc(reviewLoadError)}</span><button type="button" class="btn btn-secondary btn-sm" id="retry-review-list">Повторить</button></div>` : '';
-  const more = reviewHasMore || reviewLoadState === 'loading_more'
-    ? `<div class="review-load-more"><button type="button" class="btn btn-secondary" id="load-more-review" ${reviewLoadState === 'loading_more' ? 'disabled aria-busy="true"' : ''}>${reviewLoadState === 'loading_more' ? '<span class="spinner"></span>Загружаем…' : 'Загрузить ещё'}</button></div>`
-    : '';
   content.innerHTML = `${stale}<div class="customer-request-cards review-request-cards" aria-label="Список запросов на ревью">${rows.map(renderReviewCard).join('')}</div>${more}`;
-  document.getElementById('retry-review-list')?.addEventListener('click', () => reviewApp && loadReviewQueue(reviewApp));
+  document.getElementById('retry-review-list')?.addEventListener('click', () => reviewApp && loadReviewQueue(reviewApp, { append: reviewRetryAppend }));
   document.getElementById('load-more-review')?.addEventListener('click', () => reviewApp && loadReviewQueue(reviewApp, { append: true }));
   window.lucide?.createIcons();
   const saved = readQueueState();
-  window.requestAnimationFrame(() => { if (content.isConnected) content.scrollTop = saved.scrollTop; });
+  window.requestAnimationFrame(() => { if (restoreScroll && content.isConnected) content.scrollTop = saved.scrollTop; });
 }
 
 function filteredReviewRows(state = readQueueState(), sourceRows = reviewRows) {
   const query = state.search.trim().toLocaleLowerCase('ru');
   const matchesFilter = request => {
-    const modeMatch = state.mode === 'all'
-      || (state.mode === 'action' && availableActions(request).length > 0)
-      || (state.mode === 'active' && !['done', 'closed'].includes(getRequestStage(request).group))
-      || (state.mode === 'history' && ['done', 'closed'].includes(getRequestStage(request).group))
-      || (state.mode === 'my_review' && Number(request.reviewer_id) === Number(reviewCurrentUser?.id))
-      || (state.mode === 'my_work' && Number(request.assignee_id) === Number(reviewCurrentUser?.id));
-    return modeMatch && (state.status === 'any' || request.status === state.status) && (!state.signals || signalCount(request.draft) > 0) && (!state.aged || isLongWaiting(request));
+    const modeMatch = filterValues(state.mode).includes('all')
+      || (filterValues(state.mode).includes('action') && availableActions(request).length > 0)
+      || (filterValues(state.mode).includes('active') && !['done', 'closed'].includes(getRequestStage(request).group))
+      || (filterValues(state.mode).includes('history') && ['done', 'closed'].includes(getRequestStage(request).group))
+      || (filterValues(state.mode).includes('my_review') && Number(request.reviewer_id) === Number(reviewCurrentUser?.id))
+      || (filterValues(state.mode).includes('my_work') && Number(request.assignee_id) === Number(reviewCurrentUser?.id));
+    return modeMatch && filterMatches(state.status,request.effective_status||request.status,'any') && (!state.signals || signalCount(request.draft) > 0) && (!state.aged || isLongWaiting(request));
   };
   const rows = sourceRows.filter(request => {
     const searchable = [request.id, `#${request.id}`, `запрос #${request.id}`, request.title, request.author_name, request.team_name, request.reviewer_name, request.assignee_name];
@@ -217,12 +244,12 @@ function renderReviewCard(request) {
   const unassigned = isUnassigned(request);
   const regulated = toCardList(draft.regulatory_flags).length > 0;
   const priority = [request.status === 'submitted' ? 'is-new' : '', issues >= 3 || regulated ? 'has-many-signals' : '', unassigned ? 'is-unassigned' : '', aged ? 'is-aged' : ''].filter(Boolean).join(' ');
-  const owner = request.status === 'in_progress' ? request.assignee_name || request.team_name || 'Не назначен' : request.reviewer_name || 'Не взят в работу';
+  const owner = request.coordinator_name || (request.status === 'in_progress' ? request.assignee_name || request.team_name || 'Не назначен' : request.reviewer_name || 'Не взят в работу');
   const product = [draft.product, draft.module].filter(Boolean).map(value => esc(value)).join(' · ');
   const timing = stageAgeText(request);
   const tags = `${draft.priority ? `<span class="request-priority-chip"><i data-lucide="flag"></i>${esc(draft.priority)}</span>` : ''}${product ? `<span class="review-card-secondary"><i data-lucide="boxes"></i>${product}</span>` : ''}${regulated ? '<span class="is-regulated"><i data-lucide="shield-alert"></i>Регуляторные требования</span>' : ''}`;
   const reason = issues ? `${issues} ${plural(issues, 'замечание', 'замечания', 'замечаний')}: ${groups.slice(0, 2).map(([label]) => label.toLocaleLowerCase('ru')).join(', ')}` : cardAction(request);
-  return `<article class="customer-request-card review-request-card ${priority}"><div class="customer-request-card-main"><div class="customer-request-card-heading"><div><span class="customer-request-card-id">Запрос #${esc(request.id)}</span><h3><a class="review-request-card-link" href="#/review/${esc(request.id)}" aria-label="Запрос #${esc(request.id)}: ${esc(request.title || 'Без названия')} — открыть">${esc(request.title || 'Без названия')}</a></h3></div>${renderRequestStatusBadge(request)}</div>${tags ? `<div class="review-card-tags">${tags}</div>` : ''}<p class="review-card-reason">${esc(reason)}</p><div class="customer-request-card-meta"><span><i data-lucide="user"></i>${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')}</span><span class="${unassigned ? 'is-attention' : ''}"><i data-lucide="user-check"></i>${esc(owner)}</span><span class="${aged ? 'is-attention' : ''}" title="Текущий этап начат ${date(request.stage_started_at || request.updated_at || request.created_at)}"><i data-lucide="clock-3"></i>${esc(timing)}</span></div></div><div class="customer-request-card-next review-request-card-next"><span>Следующее действие</span><strong class="review-card-action">${esc(cardAction(request))}</strong><a class="review-card-open" href="#/review/${esc(request.id)}">Открыть <i data-lucide="arrow-right"></i></a></div></article>`;
+  return `<article class="customer-request-card review-request-card ${priority}"><div class="customer-request-card-main"><div class="customer-request-card-heading"><div><span class="customer-request-card-id">Запрос #${esc(request.id)}</span><h3><a class="review-request-card-link" href="#/review/${esc(request.id)}" data-review-id="${esc(request.id)}" aria-label="Запрос #${esc(request.id)}: ${esc(request.title || 'Без названия')} — открыть">${esc(request.title || 'Без названия')}</a></h3></div>${renderRequestStatusBadge(request)}</div>${tags ? `<div class="review-card-tags">${tags}</div>` : ''}<p class="review-card-reason">${esc(reason)}</p><div class="customer-request-card-meta"><span><i data-lucide="user"></i>${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')}</span><span class="${unassigned ? 'is-attention' : ''}"><i data-lucide="user-check"></i>${esc(owner)}</span><span class="${aged ? 'is-attention' : ''}" title="Текущий этап начат ${date(request.stage_started_at || request.updated_at || request.created_at)}"><i data-lucide="clock-3"></i>${esc(timing)}</span></div></div><div class="customer-request-card-next review-request-card-next"><span>Следующее действие</span><strong class="review-card-action">${esc(cardAction(request))}</strong><a class="review-card-open" href="#/review/${esc(request.id)}">Открыть <i data-lucide="arrow-right"></i></a></div></article>`;
 }
 
 export async function renderReviewDetailPage(app, requestId) {
@@ -240,15 +267,17 @@ export async function renderReviewDetailPage(app, requestId) {
   const feedback = takeActionFeedback(request.id);
   const revisionLabel = linkedRevision?.revision || latestRevision(request);
   const v2 = app.features?.agent_v2;
-  const workspaceEntry = !linkedRevision && v2?.enabled && v2?.pilot_allowed && v2?.operator_role ? `<a class="btn btn-secondary" href="#/agent-v2?object_type=request&object_id=${encodeURIComponent(request.id)}">Проработать БТ в Агенте V2</a>` : '';
+  const workspaceEntry = !linkedRevision && v2?.enabled && v2?.pilot_allowed && v2?.operator_role ? `<a class="btn ui-btn btn-ai" href="#/agent-v2?object_type=request&object_id=${encodeURIComponent(request.id)}"><i data-lucide="sparkles" aria-hidden="true"></i>Проработать БТ в Агенте V2</a>` : '';
   const snapshotNotice = linkedRevision ? `<section class="review-snapshot-notice" role="status"><i data-lucide="archive"></i><div><strong>Снимок принятой редакции ${esc(revisionLabel)}</strong><span>Содержимое зафиксировано и открыто только для чтения. <a href="#/review/${esc(request.id)}">Перейти к актуальной карточке</a></span></div></section>` : '';
-  return `${feedback ? renderActionFeedback(feedback) : ''}<div class="page-header review-detail-header"><a href="#/review" class="review-back"><i data-lucide="arrow-left"></i>Очередь ревью</a><div class="review-title-line"><h1>${esc(linkedRevision?.title || request.title)}</h1>${renderRequestStatusBadge(request)}</div><p>#${request.id} · редакция ${esc(revisionLabel)} · ${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')} · ${date(linkedRevision?.created_at || request.created_at)}</p></div>${snapshotNotice}${workspaceEntry}${renderRequestJourney(request)}${renderRequestSummary(request)}${request.reject_reason ? `<section class="review-return-note${request.status === 'rejected' ? ' is-rejected' : ''}"><i data-lucide="${request.status === 'rejected' ? 'x-circle' : 'message-circle-warning'}"></i><div><strong>${request.status === 'rejected' ? 'Причина отклонения' : 'Комментарий к уточнению'}</strong><span>${esc(request.reject_reason)}</span></div></section>` : ''}<div class="review-detail-layout"><main class="review-detail-main">${renderReviewOutline(draft)}${linkedRevision ? '' : renderLatestRevisionDiff(request)}${renderAttentionPanel(draft)}${requirementContent}${renderRequestHistory(request)}<details class="card review-more review-ai-assessment"><summary>Оценка подготовки запроса <span>Справочные сигналы ИИ</span><i data-lucide="chevron-down"></i></summary><div class="card-body"><div class="review-metrics">${metric('Полнота', completeness, 'Насколько заполнены обязательные разделы требования', draft.completeness_assessed_at || draft.assessed_at)}${metric('Качество', quality, 'Насколько формулировки конкретны, непротиворечивы и проверяемы', draft.quality_assessed_at || draft.assessed_at)}<div><span>Уверенность ИИ</span><strong>${confidence(draft.confidence)}</strong><small>Надёжность автоматической интерпретации</small></div><div><span>Тип обращения</span><strong>${esc(INTENTS[draft.intent] || draft.intent || 'Не определён')}</strong><small>Определён ассистентом по содержанию</small></div></div><p class="review-score-help"><i data-lucide="info"></i><span><strong>75–100%</strong> — высокая оценка, <strong>50–74%</strong> — требуется проверка, <strong>до 49%</strong> — существенные пробелы. Проценты помогают при ревью, но не заменяют решение специалиста.</span></p></div></details></main><aside class="review-detail-aside">${linkedRevision ? '' : `<section class="card review-decision-card"><div class="card-header"><h2 class="card-title">Следующий шаг</h2></div><div class="card-body">${nextStep(request, actions)}</div></section>`}${renderRequestParticipants(request)}</aside></div>`;
+  return `${feedback ? renderActionFeedback(feedback) : ''}<div class="page-header review-detail-header"><a href="#/review" class="review-back"><i data-lucide="arrow-left"></i>Все запросы</a><div class="review-title-line"><h1>${esc(linkedRevision?.title || request.title)}</h1>${renderRequestStatusBadge(request)}</div><p>#${request.id} · редакция ${esc(revisionLabel)} · ${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')} · ${date(linkedRevision?.created_at || request.created_at)}</p></div>${snapshotNotice}${workspaceEntry}${renderRequestJourney(request)}${renderRequestSummary(request)}${['returned','rejected'].includes(request.status) && request.reject_reason ? `<section class="review-return-note${request.status === 'rejected' ? ' is-rejected' : ''}"><i data-lucide="${request.status === 'rejected' ? 'x-circle' : 'message-circle'}"></i><div><strong>${request.status === 'rejected' ? 'Причина отклонения' : 'Комментарий к уточнению'}</strong><span>${esc(request.reject_reason)}</span></div></section>` : ''}<div class="review-detail-layout"><div class="review-detail-main">${renderReviewOutline(draft)}${linkedRevision ? '' : renderLatestRevisionDiff(request)}${renderAttentionPanel(draft)}${requirementContent}${renderRequestHistory(request)}<details class="card review-more review-ai-assessment"><summary>Оценка подготовки запроса <span>Справочные сигналы ИИ</span><i data-lucide="chevron-down"></i></summary><div class="card-body"><div class="review-metrics">${metric('Полнота', completeness, 'Насколько заполнены обязательные разделы требования', draft.completeness_assessed_at || draft.assessed_at)}${metric('Качество', quality, 'Насколько формулировки конкретны, непротиворечивы и проверяемы', draft.quality_assessed_at || draft.assessed_at)}<div><span>Уверенность ИИ</span><strong>${confidence(draft.confidence)}</strong><small>Надёжность автоматической интерпретации</small></div><div><span>Тип обращения</span><strong>${esc(INTENTS[draft.intent] || draft.intent || 'Не определён')}</strong><small>Определён ассистентом по содержанию</small></div></div><p class="review-score-help"><i data-lucide="info"></i><span><strong>75–100%</strong> — высокая оценка, <strong>50–74%</strong> — требуется проверка, <strong>до 49%</strong> — существенные пробелы. Проценты помогают при ревью, но не заменяют решение специалиста.</span></p></div></details></div><aside class="review-detail-aside">${linkedRevision ? '' : `<section class="card review-decision-card"><div class="card-header"><h2 class="card-title">Следующий шаг</h2></div><div class="card-body">${nextStep(request, actions)}</div></section>`}${renderRequestParticipants(request)}</aside></div>`;
 }
 
 export async function initReviewDetailPage(app, requestId) {
+  const lifecycleRoot=document.createElement('section');lifecycleRoot.className='card';document.querySelector('.review-detail-aside')?.prepend(lifecycleRoot);
+  import('./requestLifecycle.js?v=1').then(m=>m.mountRequestLifecycle(lifecycleRoot,app,requestId,true));
   const fulfillmentRoot = document.createElement('section'); fulfillmentRoot.className='card';
   document.querySelector('.review-detail-aside')?.append(fulfillmentRoot);
-  import('./workResolution.js?v=2').then(m=>m.mountFulfillment(fulfillmentRoot,app,requestId,true));
+  import('./workResolution.js?v=3').then(m=>m.mountFulfillment(fulfillmentRoot,app,requestId,true));
 
   document.getElementById('retry-review-detail')?.addEventListener('click', () => app.router.refreshCurrentRoute());
   document.getElementById('dismiss-review-feedback')?.addEventListener('click', event => event.currentTarget.closest('.review-action-feedback')?.remove());
@@ -271,17 +300,27 @@ function renderReviewOutline(draft = {}) {
 }
 
 function nextStep(request, actions) {
-  if (request.status === 'returned') return '<div class="review-next-copy"><i data-lucide="message-circle-warning"></i><div><strong>Ожидаем уточнения заказчика</strong><span>Повторное ревью станет доступно после отправки новой редакции. Комментарий возврата сохранён в истории.</span></div></div>';
-  if (request.status === 'approved') return '<div class="review-next-copy is-done"><i data-lucide="circle-check"></i><div><strong>Проработка завершена</strong><span>Решение зафиксировано в истории запроса.</span></div></div>';
-  if (request.status === 'rejected') return '<div class="review-next-copy is-done"><i data-lucide="circle-x"></i><div><strong>Запрос отклонён</strong><span>Причина и решение зафиксированы в истории запроса.</span></div></div>';
+  const deliveryCopy={
+    accepted:['Потребность принята в бэклог','Согласуйте приоритет и план исполнения. Принятие не означает начало работ.'],
+    deferred:['Пересмотр запланирован',request.next_action_due ? `Вернитесь к запросу ${request.next_action_due}.` : 'Укажите дату следующего рассмотрения.'],
+    queued:['Ожидает исполнения','Работы определены. Начало исполнения отслеживается по связанным задачам.'],
+    awaiting_confirmation:['Ожидает подтверждения','Связанные работы выполнены. Проверьте полноту потребности и подтвердите общий результат ниже.'],
+    needs_verification:['Требуется сверка','Проверьте состав работ, их результаты и покрытие исходной потребности.'],
+    fulfilled:['Результат подтверждён','Полное выполнение потребности подтверждено. Итог и связанные работы показаны ниже.'],
+    withdrawn:['Запрос отозван','История сохранена. Связанные работы не отменяются автоматически.'],
+  }[request.effective_status||request.status];
+  if(deliveryCopy)return `<div class="review-next-copy"><div><strong>${esc(deliveryCopy[0])}</strong><span>${esc(deliveryCopy[1])}</span></div></div>`;
+  if (request.status === 'returned') return '<div class="review-next-copy"><i data-lucide="message-circle"></i><div><strong>Ожидаем уточнения заказчика</strong><span>Повторное ревью станет доступно после отправки новой редакции. Комментарий возврата сохранён в истории.</span></div></div>';
+  if (request.status === 'approved') return '<div class="review-next-copy is-done"><i data-lucide="check-circle"></i><div><strong>Проработка завершена</strong><span>Решение зафиксировано в истории запроса.</span></div></div>';
+  if (request.status === 'rejected') return '<div class="review-next-copy is-done"><i data-lucide="x-circle"></i><div><strong>Запрос отклонён</strong><span>Причина и решение зафиксированы в истории запроса.</span></div></div>';
   const effectiveStage = getRequestStage(request);
-  if (effectiveStage.group === 'done') return `<div class="review-next-copy is-done"><i data-lucide="circle-check"></i><div><strong>${esc(effectiveStage.label)}</strong><span>Связанная задача завершена; результат доступен в карточке задачи.</span></div></div>${request.task_id ? `<a class="btn btn-secondary" href="#/backlog?task=${esc(request.task_id)}">Открыть задачу</a>` : ''}`;
-  if (effectiveStage.group === 'closed') return `<div class="review-next-copy is-done"><i data-lucide="circle-x"></i><div><strong>${esc(effectiveStage.label)}</strong><span>Связанная задача закрыта; решение доступно в карточке задачи.</span></div></div>${request.task_id ? `<a class="btn btn-secondary" href="#/backlog?task=${esc(request.task_id)}">Открыть задачу</a>` : ''}`;
+  if (effectiveStage.group === 'done') return `<div class="review-next-copy is-done"><i data-lucide="check-circle"></i><div><strong>${esc(effectiveStage.label)}</strong><span>Связанная задача завершена; результат доступен в карточке задачи.</span></div></div>${request.task_id ? `<a class="btn btn-secondary" href="#/backlog?task=${esc(request.task_id)}">Открыть задачу</a>` : ''}`;
+  if (effectiveStage.group === 'closed') return `<div class="review-next-copy is-done"><i data-lucide="x-circle"></i><div><strong>${esc(effectiveStage.label)}</strong><span>Связанная задача закрыта; решение доступно в карточке задачи.</span></div></div>${request.task_id ? `<a class="btn btn-secondary" href="#/backlog?task=${esc(request.task_id)}">Открыть задачу</a>` : ''}`;
   const signals = signalCount(request.draft);
   const signalNote = signals ? `В запросе ${signals} ${plural(signals, 'сигнал', 'сигнала', 'сигналов')} для проверки.` : 'Ассистент не выявил открытых сигналов.';
   if (actions.includes('claim')) return `<div class="review-next-copy"><i data-lucide="search"></i><div><strong>Начните ревью</strong><span>Запрос закрепится за вами. ${signalNote}</span></div></div><button class="btn btn-primary" id="btn-claim" data-request-version="${esc(request.version ?? 0)}">Взять на ревью</button>`;
-  if (actions.includes('approve')) return `<div class="review-next-copy"><i data-lucide="git-pull-request"></i><div><strong>Примите решение по редакции ${esc(latestRevision(request))}</strong><span>Передача создаст задачу, назначит бизнес-аналитика и отправит ему уведомление.</span></div></div><label class="review-working-note"><span>Рабочая заметка ревьюера</span><textarea id="review-working-note" class="input" rows="3" maxlength="2000" data-request-version="${esc(request.version ?? 0)}" placeholder="Наблюдения и вопросы — сохраняются в этом браузере"></textarea></label><button class="btn btn-success" id="btn-approve" data-request-version="${esc(request.version ?? 0)}">Передать в проработку</button><button class="btn btn-secondary" id="btn-return" data-request-version="${esc(request.version ?? 0)}">Вернуть на уточнение</button><button class="btn btn-ghost btn-sm review-reject-link" id="btn-reject" data-request-version="${esc(request.version ?? 0)}">Отклонить запрос</button><div class="review-owner-actions">${actions.includes('release') ? `<button class="btn btn-ghost btn-sm" id="btn-release" data-request-version="${esc(request.version ?? 0)}">Освободить ревью</button>` : ''}${actions.includes('reroute') ? `<button class="btn btn-ghost btn-sm" id="btn-reroute" data-request-version="${esc(request.version ?? 0)}">Перенаправить</button>` : ''}</div>`;
-  if (request.status === 'in_review' && request.reviewer_name) return `<div class="review-next-copy"><i data-lucide="lock-keyhole"></i><div><strong>Ревью ведёт ${esc(request.reviewer_name)}</strong><span>Решения доступны только закреплённому рецензенту. Обновите данные, если заявка была передана вам.</span></div></div><button type="button" class="btn btn-secondary" id="retry-review-detail"><i data-lucide="refresh-cw"></i>Обновить данные</button>`;
+  if (actions.includes('approve')) return `<div class="review-next-copy"><i data-lucide="git-pull-request"></i><div><strong>Примите решение по редакции ${esc(latestRevision(request))}</strong><span>Выберите размещение в новой или существующей работе либо примите потребность в бэклог.</span></div></div><label class="review-working-note"><span>Рабочая заметка ревьюера</span><textarea id="review-working-note" class="input" rows="3" maxlength="2000" data-request-version="${esc(request.version ?? 0)}" placeholder="Наблюдения и вопросы — сохраняются в этом браузере"></textarea></label><button class="btn btn-success" id="btn-approve" data-request-version="${esc(request.version ?? 0)}">Передать в проработку</button><button class="btn btn-secondary" id="btn-return" data-request-version="${esc(request.version ?? 0)}">Вернуть на уточнение</button><button class="btn btn-ghost btn-sm review-reject-link" id="btn-reject" data-request-version="${esc(request.version ?? 0)}">Отклонить запрос</button><div class="review-owner-actions">${actions.includes('release') ? `<button class="btn btn-ghost btn-sm" id="btn-release" data-request-version="${esc(request.version ?? 0)}">Освободить ревью</button>` : ''}${actions.includes('reroute') ? `<button class="btn btn-ghost btn-sm" id="btn-reroute" data-request-version="${esc(request.version ?? 0)}">Перенаправить</button>` : ''}</div>`;
+  if (request.status === 'in_review' && request.reviewer_name) return `<div class="review-next-copy"><i data-lucide="lock"></i><div><strong>Ревью ведёт ${esc(request.reviewer_name)}</strong><span>Решения доступны только закреплённому рецензенту. Обновите данные, если заявка была передана вам.</span></div></div><button type="button" class="btn btn-secondary" id="retry-review-detail"><i data-lucide="refresh-cw"></i>Обновить данные</button>`;
   if (request.status === 'in_progress') return `<div class="review-next-copy is-done"><i data-lucide="workflow"></i><div><strong>Передан в проработку</strong><span>Ответственный: ${esc(request.assignee_name || 'не назначен')}.${request.task_public_id ? ` Задача ${esc(request.task_public_id)} создана.` : ''}</span></div></div>${request.task_id ? `<a class="btn btn-secondary" href="#/backlog?task=${esc(request.task_id)}">Открыть задачу</a>` : ''}`;
   return `<div class="review-next-copy"><i data-lucide="clock"></i><div><strong>Ожидает следующего этапа</strong><span>${esc(getRequestStage(request).label)}</span></div></div>`;
 }
@@ -315,10 +354,10 @@ async function updateStatus(app, id, payload, message) {
   const result = await app.api.put(`/agent/requests/${id}/status`, payload);
   let freshRows = reviewRows;
   try {
-    const data = await app.api.get('/agent/requests/review?limit=250');
-    if (Array.isArray(data)) {
-      reviewRows = data;
-      freshRows = data;
+    const data = await app.api.get('/agent/requests/registry?mode=action&limit=250');
+    if (Array.isArray(data.items)) {
+      reviewRows = data.items;
+      freshRows = data.items;
     }
   } catch (_) { /* successful decision remains valid even if queue refresh failed */ }
   const nextId = findNextReviewId(id, freshRows);
@@ -339,7 +378,7 @@ async function assignModal(app, id, renderedVersion) {
       modal({ title: 'Запрос изменился', body: '<p>Обновите карточку и проверьте изменения перед решением.</p>', confirm: 'Обновить данные', klass: 'btn-primary', action: async () => { await app.router.refreshCurrentRoute(); return true; } });
       return;
     }
-    const module = await import('./workResolution.js?v=2');
+    const module = await import('./workResolution.js?v=3');
     await module.openWorkResolution(app, request, trigger);
   } catch (error) { window.toast?.(error.message, 'error'); }
   finally { reviewAssignPending = false; if (trigger?.isConnected) setBusy(trigger, false); }
@@ -349,10 +388,10 @@ function reasonModal(app, id, status, version) {
   const returned = status === 'returned';
   const fieldId = `review-reason-${status}`;
   const hintId = `${fieldId}-hint`;
-  const consequence = returned ? 'Запрос вернётся заказчику для новой редакции и снова появится в очереди после ответа.' : 'Решение окончательно закроет этот запрос. Для продолжения потребуется новый связанный запрос.';
+  const consequence = returned ? 'Запрос вернётся заказчику для новой редакции и снова появится в очереди после ответа.' : 'Запрос останется в истории с причиной отклонения. Команда сможет пересмотреть решение с сохранением номера и истории.';
   const actionDraftKey = `${REVIEW_DRAFT_KEY_PREFIX}:${id}:${status}:${version}`;
   seedActionDraft(actionDraftKey, readWorkingNote(id, version));
-  modal({ title: returned ? 'Вернуть на уточнение' : 'Отклонить запрос', body: `<p class="review-modal-consequence"><i data-lucide="${returned ? 'message-circle-warning' : 'circle-x'}"></i><span>${consequence}</span></p><label class="form-label" for="${fieldId}">${returned ? 'Что нужно уточнить' : 'Причина отклонения'} <span aria-hidden="true">*</span></label><textarea id="${fieldId}" class="input" rows="5" required aria-required="true" aria-describedby="${hintId}" data-review-required autofocus placeholder="${returned ? 'Укажите раздел, вопрос и ожидаемый ответ' : 'Укажите основание и, если возможно, альтернативный путь'}"></textarea><small id="${hintId}" class="review-field-hint">Комментарий сохранится в истории и будет отправлен заказчику.</small>`, confirm: returned ? 'Вернуть заказчику' : 'Отклонить запрос', klass: returned ? 'btn-primary' : 'btn-danger', draftKey: actionDraftKey, isDirty: dialog => Boolean(dialog.querySelector(`#${fieldId}`)?.value.trim()), action: async dialog => { const field = dialog.querySelector(`#${fieldId}`); const reason = field.value.trim(); if (!reason) return showFieldError(field, 'Добавьте комментарий'); await updateStatus(app, id, { status, reject_reason: reason, version }, returned ? 'Запрос возвращён на уточнение' : 'Запрос отклонён'); clearWorkingNote(id, version); return true; }, onRefresh: () => app.router.refreshCurrentRoute() });
+  modal({ title: returned ? 'Вернуть на уточнение' : 'Отклонить запрос', body: `<p class="review-modal-consequence"><i data-lucide="${returned ? 'message-circle' : 'x-circle'}"></i><span>${consequence}</span></p><label class="form-label" for="${fieldId}">${returned ? 'Что нужно уточнить' : 'Причина отклонения'} <span aria-hidden="true">*</span></label><textarea id="${fieldId}" class="input" rows="5" required aria-required="true" aria-describedby="${hintId}" data-review-required autofocus placeholder="${returned ? 'Укажите раздел, вопрос и ожидаемый ответ' : 'Укажите основание и, если возможно, альтернативный путь'}"></textarea><small id="${hintId}" class="review-field-hint">Комментарий сохранится в истории и будет отправлен заказчику.</small>`, confirm: returned ? 'Вернуть заказчику' : 'Отклонить запрос', klass: returned ? 'btn-primary' : 'btn-danger', draftKey: actionDraftKey, isDirty: dialog => Boolean(dialog.querySelector(`#${fieldId}`)?.value.trim()), action: async dialog => { const field = dialog.querySelector(`#${fieldId}`); const reason = field.value.trim(); if (!reason) return showFieldError(field, 'Добавьте комментарий'); await updateStatus(app, id, { status, reject_reason: reason, version }, returned ? 'Запрос возвращён на уточнение' : 'Запрос отклонён'); clearWorkingNote(id, version); return true; }, onRefresh: () => app.router.refreshCurrentRoute() });
 }
 
 function releaseModal(app, id, version) {
@@ -364,7 +403,7 @@ async function rerouteModal(app, id, version) {
   reviewAssignPending = true;
   try {
     const teams = await app.api.get('/agent/teams');
-    modal({ title: 'Перенаправить запрос', body: `<p class="review-modal-consequence"><i data-lucide="route"></i><span>Запрос освободится и появится в очереди выбранной команды. Состав команды не изменяется.</span></p><label class="form-label" for="review-team-select">Новая команда</label><select id="review-team-select" class="input" data-review-required autofocus><option value="">— Выберите —</option>${teams.map(team => `<option value="${team.id}">${esc(team.name)}</option>`).join('')}</select><label class="form-label" for="review-reroute-reason">Причина</label><textarea id="review-reroute-reason" class="input" rows="4" maxlength="2000" data-review-required placeholder="Почему запрос относится к другой команде"></textarea>`, confirm: 'Перенаправить', klass: 'btn-primary', draftKey: `${REVIEW_DRAFT_KEY_PREFIX}:${id}:reroute:${version}`, isDirty: dialog => Boolean(dialog.querySelector('#review-team-select')?.value || dialog.querySelector('#review-reroute-reason')?.value.trim()), action: async dialog => { await updateStatus(app, id, { status: 'submitted', version, team_id: Number(dialog.querySelector('#review-team-select').value), action_reason: dialog.querySelector('#review-reroute-reason').value.trim() }, 'Запрос перенаправлен'); return true; }, onRefresh: () => app.router.refreshCurrentRoute() });
+    modal({ title: 'Перенаправить запрос', body: `<p class="review-modal-consequence"><i data-lucide="milestone"></i><span>Запрос освободится и появится в очереди выбранной команды. Состав команды не изменяется.</span></p><label class="form-label" for="review-team-select">Новая команда</label><select id="review-team-select" class="input" data-review-required autofocus><option value="">— Выберите —</option>${teams.map(team => `<option value="${team.id}">${esc(team.name)}</option>`).join('')}</select><label class="form-label" for="review-reroute-reason">Причина</label><textarea id="review-reroute-reason" class="input" rows="4" maxlength="2000" data-review-required placeholder="Почему запрос относится к другой команде"></textarea>`, confirm: 'Перенаправить', klass: 'btn-primary', draftKey: `${REVIEW_DRAFT_KEY_PREFIX}:${id}:reroute:${version}`, isDirty: dialog => Boolean(dialog.querySelector('#review-team-select')?.value || dialog.querySelector('#review-reroute-reason')?.value.trim()), action: async dialog => { await updateStatus(app, id, { status: 'submitted', version, team_id: Number(dialog.querySelector('#review-team-select').value), action_reason: dialog.querySelector('#review-reroute-reason').value.trim() }, 'Запрос перенаправлен'); return true; }, onRefresh: () => app.router.refreshCurrentRoute() });
   } catch (error) { window.toast?.(errorMessage(error, 'Не удалось загрузить команды'), 'error'); }
   finally { reviewAssignPending = false; }
 }
@@ -429,7 +468,7 @@ function modal({ title, body, confirm, klass, action, isDirty = () => false, onR
   window.lucide?.createIcons();
 }
 
-function renderActionFeedback(feedback) { return `<section class="review-action-feedback" role="status"><i data-lucide="circle-check"></i><div><strong>${esc(feedback.message)}</strong><span>${feedback.taskPublicId ? `Создана задача ${esc(feedback.taskPublicId)}. ` : ''}Данные запроса обновлены.</span><div class="review-action-feedback-links"><a class="btn btn-secondary btn-sm" href="#/review">К очереди</a>${feedback.taskId ? `<a class="btn btn-secondary btn-sm" href="#/backlog?task=${esc(feedback.taskId)}">Открыть задачу</a>` : ''}${feedback.nextId ? `<a class="btn btn-primary btn-sm" href="#/review/${esc(feedback.nextId)}">Следующий запрос</a>` : ''}</div></div><button class="btn btn-secondary btn-sm ui-btn" type="button" id="dismiss-review-feedback" aria-label="Скрыть сообщение">&times;</button></section>`; }
+function renderActionFeedback(feedback) { return `<section class="review-action-feedback" role="status"><i data-lucide="check-circle"></i><div><strong>${esc(feedback.message)}</strong><span>${feedback.taskPublicId ? `Создана задача ${esc(feedback.taskPublicId)}. ` : ''}Данные запроса обновлены.</span><div class="review-action-feedback-links"><a class="btn btn-secondary btn-sm" href="#/review">К очереди</a>${feedback.taskId ? `<a class="btn btn-secondary btn-sm" href="#/backlog?task=${esc(feedback.taskId)}">Открыть задачу</a>` : ''}${feedback.nextId ? `<a class="btn btn-primary btn-sm" href="#/review/${esc(feedback.nextId)}">Следующий запрос</a>` : ''}</div></div><button class="btn btn-secondary btn-sm ui-btn" type="button" id="dismiss-review-feedback" aria-label="Скрыть сообщение">&times;</button></section>`; }
 
 function renderActionError(app, error) {
   const container = document.querySelector('.review-decision-card .card-body');
@@ -455,17 +494,17 @@ function readQueueState() {
     const mode = params.get('mode') || stored.mode;
     const status = params.get('status') || stored.status;
     const sort = params.get('sort') || stored.sort;
-    return { search: params.has('q') ? params.get('q') : typeof stored.search === 'string' ? stored.search : '', mode: MODES.has(mode) ? mode : DEFAULT_QUEUE_STATE.mode, status: STATUSES.has(status) ? status : DEFAULT_QUEUE_STATE.status, signals: params.has('signals') ? params.get('signals') === '1' : Boolean(stored.signals), aged: params.has('aged') ? params.get('aged') === '1' : Boolean(stored.aged), sort: SORTS.has(sort) ? sort : DEFAULT_QUEUE_STATE.sort, scrollTop: Number.isFinite(Number(stored.scrollTop)) ? Math.max(0, Number(stored.scrollTop)) : 0 };
+    return { team_ids:params.get('team_ids')||stored.team_ids||'',customer_ids:params.get('customer_ids')||stored.customer_ids||'',coordinator_ids:params.get('coordinator_ids')||stored.coordinator_ids||'',search: params.has('q') ? params.get('q') : typeof stored.search === 'string' ? stored.search : '', mode: filterValues(mode).length && filterValues(mode).every(value=>MODES.has(value)) ? mode : DEFAULT_QUEUE_STATE.mode, status: filterValues(status).length && filterValues(status).every(value=>STATUSES.has(value)) ? status : DEFAULT_QUEUE_STATE.status, signals: params.has('signals') ? params.get('signals') === '1' : Boolean(stored.signals), aged: params.has('aged') ? params.get('aged') === '1' : Boolean(stored.aged), sort: SORTS.has(sort) ? sort : DEFAULT_QUEUE_STATE.sort, scrollTop: Number.isFinite(Number(stored.scrollTop)) ? Math.max(0, Number(stored.scrollTop)) : 0 };
   }
   catch (_) { return { ...DEFAULT_QUEUE_STATE }; }
 }
 function saveQueueState(patch = {}) { const state = { ...queueStateFromControls(), ...patch }; try { sessionStorage.setItem(REVIEW_QUEUE_STATE_KEY, JSON.stringify(state)); } catch (_) { /* storage can be disabled */ } syncQueueUrl(state); return state; }
-function queueStateFromControls() { const fallback = readQueueState(); return { search: document.getElementById('review-search')?.value ?? fallback.search, mode: document.getElementById('review-mode-filter')?.value || fallback.mode, status: document.getElementById('review-status-filter')?.value || fallback.status, signals: document.getElementById('review-signals-only')?.checked ?? fallback.signals, aged: fallback.aged, sort: document.getElementById('review-sort')?.value || fallback.sort, scrollTop: currentQueueScroll() }; }
+function queueStateFromControls() { const fallback = readQueueState(); return { ...Object.fromEntries(['team_ids','customer_ids','coordinator_ids'].map(key=>[key,document.getElementById('review-'+key)?.value??fallback[key]??''])), search: document.getElementById('review-search')?.value ?? fallback.search, mode: document.getElementById('review-mode-filter')?.value || fallback.mode, status: document.getElementById('review-status-filter')?.value || fallback.status, signals: document.getElementById('review-signals-only')?.checked ?? fallback.signals, aged: fallback.aged, sort: document.getElementById('review-sort')?.value || fallback.sort, scrollTop: currentQueueScroll() }; }
 function restoreQueueControls() { setQueueControls(readQueueState()); }
-function setQueueControls(state) { const search = document.getElementById('review-search'); const mode = document.getElementById('review-mode-filter'); const status = document.getElementById('review-status-filter'); const signals = document.getElementById('review-signals-only'); const sort = document.getElementById('review-sort'); if (search) search.value = state.search || ''; if (mode) mode.value = state.mode || 'action'; if (status) status.value = state.status || 'any'; if (signals) signals.checked = Boolean(state.signals); if (sort) sort.value = state.sort || 'stage_oldest'; }
-function syncQueueUrl(state) { if (!window.location.hash.startsWith('#/review') || /^#\/review\/\d+/.test(window.location.hash)) return; const params = new URLSearchParams(); if (state.search) params.set('q', state.search); if (state.mode !== DEFAULT_QUEUE_STATE.mode) params.set('mode', state.mode); if (state.status !== 'any') params.set('status', state.status); if (state.signals) params.set('signals', '1'); if (state.aged) params.set('aged', '1'); if (state.sort !== DEFAULT_QUEUE_STATE.sort) params.set('sort', state.sort); history.replaceState(history.state, '', `#/review${params.size ? `?${params}` : ''}`); }
-function applyQuickFilter(kind, value) { const state = queueStateFromControls(); if (kind === 'mode') state.mode = value; if (kind === 'status') state.status = value; if (kind === 'signals') state.signals = !state.signals; if (kind === 'aged') state.aged = !state.aged; setQueueControls(state); try { sessionStorage.setItem(REVIEW_QUEUE_STATE_KEY, JSON.stringify(state)); } catch (_) { /* ignored */ } }
-function quickFilterActive(kind, value, state) { if (kind === 'mode') return state.mode === value; if (kind === 'status') return state.status === value; if (kind === 'signals') return state.signals; if (kind === 'aged') return state.aged; return false; }
+function setQueueControls(state) { for(const key of ['team_ids','customer_ids','coordinator_ids']){const el=document.getElementById('review-'+key);if(el){if(state[key])for(const id of filterValues(state[key]))if(![...el.options].some(x=>x.value===id)){const option=document.createElement('option');option.value=id;option.textContent=id;el.append(option);}setFilterValue(el,state[key]||'');}} const search = document.getElementById('review-search'); const mode = document.getElementById('review-mode-filter'); const status = document.getElementById('review-status-filter'); const signals = document.getElementById('review-signals-only'); const sort = document.getElementById('review-sort'); if (search) search.value = state.search || ''; if (mode) setFilterValue(mode,state.mode || 'all'); if (status) setFilterValue(status,state.status || 'any'); if (signals) signals.checked = Boolean(state.signals); if (sort) sort.value = state.sort || 'stage_oldest'; }
+function syncQueueUrl(state) { if (!window.location.hash.startsWith('#/review') || /^#\/review\/\d+/.test(window.location.hash)) return; const params = new URLSearchParams(); for(const key of ['team_ids','customer_ids','coordinator_ids'])if(state[key])params.set(key,state[key]); if (state.search) params.set('q', state.search); if (state.mode !== DEFAULT_QUEUE_STATE.mode) params.set('mode', state.mode); if (state.status !== 'any') params.set('status', state.status); if (state.signals) params.set('signals', '1'); if (state.aged) params.set('aged', '1'); if (state.sort !== DEFAULT_QUEUE_STATE.sort) params.set('sort', state.sort); history.replaceState(history.state, '', `#/review${params.size ? `?${params}` : ''}`); }
+function applyQuickFilter(kind, value) { const state = queueStateFromControls(); if (kind === 'mode' || kind === 'status') {const all=kind==='mode'?'all':'any', selected=new Set(filterValues(state[kind]).filter(v=>v!==all));if(value===all)selected.clear();else selected.has(value)?selected.delete(value):selected.add(value);state[kind]=encodeFilterValues([...selected])||all;} if (kind === 'signals') state.signals = !state.signals; if (kind === 'aged') state.aged = !state.aged; setQueueControls(state); try { sessionStorage.setItem(REVIEW_QUEUE_STATE_KEY, JSON.stringify(state)); } catch (_) { /* ignored */ } }
+function quickFilterActive(kind, value, state) { if (kind === 'mode') return filterValues(state.mode).includes(value); if (kind === 'status') return filterValues(state.status).includes(value); if (kind === 'signals') return state.signals; if (kind === 'aged') return state.aged; return false; }
 function currentQueueScroll() { return document.getElementById('review-list-content')?.scrollTop || 0; }
 
 function availableActions(request) {
@@ -476,7 +515,7 @@ function availableActions(request) {
   if (request.status === 'in_review' && Number(request.reviewer_id) === Number(reviewCurrentUser?.id)) return ['approve', 'return', 'reject', 'release', ...((reviewCurrentUser?.permissions?.review || 'none') === 'all' ? ['reroute'] : [])];
   return [];
 }
-function cardAction(request) { const actions = availableActions(request); const stage = getRequestStage(request); if (actions.includes('claim')) return request.status === 'returned' ? 'Проверить уточнения' : 'Взять на ревью'; if (actions.includes('approve')) return 'Принять решение'; if (request.status === 'in_review') return `Ревью ведёт ${request.reviewer_name || 'коллега'}`; if (stage.group === 'done') return 'Посмотреть результат'; if (stage.group === 'closed') return 'Посмотреть решение'; if (request.status === 'in_progress') return stage.label === 'Приостановлен' ? 'Уточнить статус проработки' : 'Контролировать проработку'; return 'Открыть запрос'; }
+function cardAction(request) { const actions = availableActions(request); const stage = getRequestStage(request); if (actions.includes('claim')) return request.status === 'returned' ? 'Проверить уточнения' : 'Взять на ревью'; if (actions.includes('approve')) return 'Принять решение'; if (request.status === 'in_review') return `Ревью ведёт ${request.reviewer_name || 'коллега'}`; if (stage.group === 'done') return 'Посмотреть результат'; if (stage.group === 'closed') return 'Посмотреть решение'; if(request.next_action)return request.next_action; if (request.status === 'in_progress') return stage.label === 'Приостановлен' ? 'Уточнить статус проработки' : 'Контролировать проработку'; return 'Открыть запрос'; }
 function isMine(request) { const userId = Number(reviewCurrentUser?.id); return Boolean(userId && (Number(request.reviewer_id) === userId || Number(request.assignee_id) === userId)); }
 function isUnassigned(request) { return ['submitted', 'in_review'].includes(request.status) && !request.reviewer_id; }
 export function isOverdue(request) { return request.review_deadline ? Boolean(request.is_overdue) : false; }

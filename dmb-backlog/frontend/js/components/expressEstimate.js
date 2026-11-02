@@ -1,6 +1,9 @@
+import {setButtonBusy} from '../ui/controls.js';
+import {loadMore as kitLoadMore} from '../ui/specialized.js';
 console.log('[DMB] expressEstimate.js v20260910.2 loaded');
 
 import { formatTaskPublicId } from '../taskPublicId.js';
+import { renderViewState } from './viewState.js';
 
 const COMPETENCIES = ['Designee', 'Аналитика', 'Разработка BE', 'Разработка python BE', 'Разработка FE', 'Tester', 'Tester Auto', 'Delivery'];
 const EFFORT_FIELDS = ['effort_designee', 'effort_analytics', 'effort_be', 'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery'];
@@ -124,6 +127,7 @@ function getQuickEstimateReadiness() {
 
 export function renderExpressEstimate(app) {
     const user = app.store.get('currentUser');
+    if (!user?.team_id) return `<div class="page-header"><h1>Экспресс-оценка</h1></div>${renderViewState({ kind: 'empty', title: 'Команда не назначена', message: 'Для экспресс-оценки нужна команда. Обратитесь к администратору.' })}`;
     const teamName = user?.team_name || '—';
     return `
     <div class="page-header animate-fade-in" style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:var(--space-3);">
@@ -157,6 +161,8 @@ export function renderExpressEstimate(app) {
 
 export async function initExpressEstimate(app) {
     expressCurrentApp = app;
+    expressData = null;
+    if (!app.store.get('currentUser')?.team_id) return;
     document.getElementById('express-refresh-btn')?.addEventListener('click', () => loadData(app));
     document.getElementById('express-export-btn')?.addEventListener('click', exportToExcel);
     document.getElementById('express-complete-btn')?.addEventListener('click', showCompleteEstimateModal);
@@ -723,7 +729,7 @@ function renderEpicBlock(epic, taskId) {
                 <i data-lucide="grip-vertical" style="width:14px;height:14px;color:var(--text-muted);cursor:grab;flex-shrink:0;" class="qe-drag-handle" data-drag-type="epic" title="Изменить порядок эпика"></i>
                 ${epicToggle}
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><title>Эпик</title><rect width="16" height="16" rx="2.5" fill="#904EE2"/><g transform="translate(5,4)" fill="#FFF"><path d="M5.92 3.76l-.004-.004c.046-.08.08-.162.08-.256 0-.276-.224-.5-.5-.5H3V.5C3 .224 2.776 0 2.5 0c-.172 0-.315.092-.405.223-.028.04-.051.083-.066.13L.08 4.24l.002.002C.035 4.32 0 4.4 0 4.5c0 .276.224.5.5.5H3v2.5c0 .276.224.5.5.5.18 0 .33-.1.418-.242l.003.002.013-.026c.011-.02.023-.04.031-.062l1.958-3.915z"/></g></svg>
-                <input type="text" class="input ui-control qe-inline-field-input" data-entity="epic" data-id="${epic.id}" data-field="title" data-original="${escHtml(epic.title)}" value="${escHtml(epic.title)}" style="min-width:40px;flex:1;overflow:hidden;text-overflow:ellipsis" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';">
+                <input type="text" class="input ui-control qe-inline-field-input" data-entity="epic" data-id="${epic.id}" data-field="title" data-original="${escHtml(epic.title)}" value="${escHtml(epic.title)}" style="min-width:40px;flex:1;overflow:hidden;text-overflow:ellipsis" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';" aria-label="Название эпика">
                 <select class="input ui-control qe-inline-field-select" data-entity="epic" data-id="${epic.id}" data-field="priority" data-original="${epic.priority || ''}" style="max-width:120px;flex-shrink:0">
                     <option value="">—</option>${priOptions}
                 </select>
@@ -768,7 +774,7 @@ function renderEpicEditPanel(epic, taskId) {
         </thead>
         <tbody>
         <tr>
-            <td style="flex:2"><input type="text" class="input ui-control qe-inline-title" data-entity="epic" data-id="${epic?.id || ''}" value="${escHtml(epic?.title || '')}" placeholder="Название эпика" style="width:100%"></td>
+            <td style="flex:2"><input type="text" class="input ui-control qe-inline-title" data-entity="epic" data-id="${epic?.id || ''}" value="${escHtml(epic?.title || '')}" placeholder="Название эпика" style="width:100%" aria-label="Название эпика"></td>
             <td style="flex:0 0 130px"><select class="input ui-control qe-inline-priority" data-entity="epic" data-id="${epic?.id || ''}" style="width:100%"><option value="">—</option>${priOptions}</select></td>
             ${effortCells}
             <td style="text-align:center;font-weight:700;min-width:40px" data-total-panel="${epic?.id || 'new-epic'}">${total.toFixed(1)}</td>
@@ -789,7 +795,7 @@ function renderStoryBlock(story, epicId) {
             <div class="qe-entity-title" style="display:flex;align-items:center;gap:6px;overflow:hidden;">
                 <i data-lucide="grip-vertical" style="width:14px;height:14px;color:var(--text-muted);cursor:grab;flex-shrink:0;" class="qe-drag-handle" data-drag-type="story" title="Изменить порядок истории"></i>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><title>История</title><rect width="16" height="16" rx="2.5" fill="#63BA3C"/><path d="M10 3H6a1 1 0 00-1 1v7a.5.5 0 00.91.269L7.84 9.04a.5.5 0 01.68 0l1.99 2.229A.5.5 0 0011 11V4a1 1 0 00-1-1z" fill="#FFF"/></svg>
-                <input type="text" class="input ui-control qe-inline-field-input" data-entity="story" data-id="${story.id}" data-field="title" data-original="${escHtml(story.title)}" value="${escHtml(story.title)}" style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';">
+                <input type="text" class="input ui-control qe-inline-field-input" data-entity="story" data-id="${story.id}" data-field="title" data-original="${escHtml(story.title)}" value="${escHtml(story.title)}" style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis" onfocus="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';" onblur="this.style.borderColor='transparent';this.style.background='transparent';" aria-label="Название истории">
                 ${renderUnestimatedLabel()}
             </div>
             ${renderEffortInline(story, 'story')}
@@ -819,7 +825,7 @@ function renderStoryEditPanel(story, epicId) {
         </thead>
         <tbody>
         <tr>
-            <td style="flex:2"><input type="text" class="input ui-control qe-inline-title" data-entity="story" data-id="${story?.id || ''}" value="${escHtml(story?.title || '')}" placeholder="Название истории" style="width:100%"></td>
+            <td style="flex:2"><input type="text" class="input ui-control qe-inline-title" data-entity="story" data-id="${story?.id || ''}" value="${escHtml(story?.title || '')}" placeholder="Название истории" style="width:100%" aria-label="Название истории"></td>
             ${effortInputs}
             <td style="text-align:center;font-weight:700;min-width:40px" data-total-panel="${story?.id || 'new-story'}">${total.toFixed(1)}</td>
             <td ><button class="btn btn-xs btn-secondary qe-inline-close" data-entity="story" data-id="${story?.id || ''}" title="Закрыть (Esc)">&times;</button></td>
@@ -916,18 +922,25 @@ function showImportModal() {
 }
 
 let importState = { q: '', offset: 0, total: 0 };
+let importRequest = 0;
 
 async function searchBacklogTasks(q, append = false) {
     const resultsEl = document.getElementById('import-results');
-    if (!resultsEl) return;
+    if (!resultsEl || (append && importState.loading)) return;
     if (!append) {
         importState = { q, offset: 0, total: 0 };
         resultsEl.innerHTML = '<span style="color:var(--text-muted);">Поиск...</span>';
     }
 
+    const state = importState, request = ++importRequest, offset = append ? state.offset + 20 : 0;
+    const more = resultsEl.querySelector('.qe-load-more'), restoreFocus = more === document.activeElement;
+    state.loading = true;setButtonBusy(more,true,'Загружаем…');resultsEl.setAttribute('aria-busy','true');
+    resultsEl.querySelector('.qe-import-error')?.remove();
     try {
         const app = expressCurrentApp;
-        const resp = await app.api.get(`/quick-estimate/backlog-tasks?q=${encodeURIComponent(importState.q)}&offset=${importState.offset}`);
+        const resp = await app.api.get('/quick-estimate/backlog-tasks?q='+encodeURIComponent(state.q)+'&offset='+offset);
+        if (state !== importState || request !== importRequest || !resultsEl.isConnected) return;
+        state.offset = offset;
         const tasks = resp.items || [];
         importState.total = resp.total || 0;
 
@@ -946,7 +959,7 @@ async function searchBacklogTasks(q, append = false) {
             const div = document.createElement('div');
             div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border-color);border-radius:6px;margin-bottom:6px;';
             div.innerHTML = `
-                <input type="checkbox" class="import-task-check" data-task-id="${t.id}" data-task-version="${t.version ?? 0}" style="flex-shrink:0;cursor:pointer;">
+                <input type="checkbox" class="import-task-check" aria-label="Выбрать ${escHtml(formatTaskPublicId(t))}: ${escHtml(t.title)}" data-task-id="${t.id}" data-task-version="${t.version ?? 0}" style="flex-shrink:0;cursor:pointer;">
                 <div style="min-width:0;flex:1;">
                     <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${formatTaskPublicId(t)} ${escHtml(t.title)}</div>
                     <div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-secondary);">${escHtml(t.status_name || '')} &middot; ${escHtml(t.priority_name || '')}</div>
@@ -957,16 +970,16 @@ async function searchBacklogTasks(q, append = false) {
             div.querySelector('.import-task-btn').addEventListener('click', () => importSingleTask(t.id, t.version ?? 0));
             fragment.appendChild(div);
         });
+        const firstNew = fragment.querySelector('.import-task-check');
         resultsEl.appendChild(fragment);
+        if (append && restoreFocus) firstNew?.focus();
 
         const shown = resultsEl.querySelectorAll('.import-task-check').length;
         if (shown < importState.total) {
-            const loadMore = document.createElement('button');
-            loadMore.className = 'btn btn-secondary btn-sm qe-load-more';
+            const holder = document.createElement('div');holder.innerHTML = kitLoadMore({loaded:shown,total:importState.total,attrs:{class:'qe-load-more'}});
+            const loadMore = holder.firstElementChild;loadMore.classList.add('qe-load-more');
             loadMore.style.cssText = 'width:100%;margin-top:4px;';
-            loadMore.textContent = `Показать ещё (показано ${shown} из ${importState.total})`;
             loadMore.addEventListener('click', () => {
-                importState.offset += 20;
                 searchBacklogTasks(importState.q, true);
             });
             resultsEl.appendChild(loadMore);
@@ -976,8 +989,10 @@ async function searchBacklogTasks(q, append = false) {
         document.getElementById('import-select-all').checked = false;
         updateImportSelection();
     } catch (e) {
-        resultsEl.innerHTML = `<span style="color:var(--danger);">Ошибка: ${escHtml(e.message)}</span>`;
-    }
+        if (state !== importState || request !== importRequest || !resultsEl.isConnected) return;
+        if (append) {const error=document.createElement('p');error.className='qe-import-error';error.setAttribute('role','alert');error.textContent='Не удалось загрузить следующую страницу. Повторите попытку.';resultsEl.append(error);}
+        else {resultsEl.innerHTML=renderViewState({kind:'error',message:'Не удалось найти задачи.',actionLabel:'Повторить'});resultsEl.querySelector('[data-view-state-action]')?.addEventListener('click',()=>searchBacklogTasks(state.q));}
+    } finally {if(state === importState && request === importRequest){state.loading=false;resultsEl.removeAttribute('aria-busy');if(more?.isConnected)setButtonBusy(more,false);}}
 }
 
 function updateImportSelection() {
@@ -1087,19 +1102,19 @@ function showConfirm({ title, message, confirmLabel, danger = false, errorMessag
         </div>
     </div>`;
     document.body.insertAdjacentHTML('beforeend', html);
-    const overlay = document.getElementById('qe-modal');
+    const overlay = document.getElementById('qe-modal');let pending=false;const cancelButton=overlay.querySelector('#qe-confirm-cancel');
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.remove();
+        if (e.target === overlay && !pending) overlay.remove();
     });
-    document.getElementById('qe-confirm-cancel').addEventListener('click', () => overlay.remove());
+    document.getElementById('qe-confirm-cancel').addEventListener('click', () => {if(!pending)overlay.remove();});
     document.getElementById('qe-confirm-action').addEventListener('click', async () => {
         const confirmButton = document.getElementById('qe-confirm-action');
-        confirmButton.disabled = true;
+        if(pending)return;pending=true;confirmButton.disabled = true;cancelButton.disabled=true;overlay.setAttribute('aria-busy','true');
         try {
             await onConfirm();
             overlay.remove();
         } catch (e) {
-            confirmButton.disabled = false;
+            pending=false;confirmButton.disabled = false;cancelButton.disabled=false;overlay.removeAttribute('aria-busy');
             window.toast('Ошибка: ' + (e?.message || errorMessage), 'error');
         }
     });
@@ -1870,7 +1885,7 @@ function showEstimateHandoffModal(taskCount, detail) {
     <div class="modal-overlay qe-complete-overlay" id="qe-handoff-modal">
         <div class="qe-complete-modal app-modal app-modal--medium qe-handoff-modal" role="dialog" aria-modal="true" aria-labelledby="qe-handoff-title">
             <div class="app-modal__header"><div class="qe-complete-heading">
-                <div class="qe-complete-icon is-success"><i data-lucide="route"></i></div>
+                <div class="qe-complete-icon is-success"><i data-lucide="milestone"></i></div>
                 <div><h3 id="qe-handoff-title">Экспресс-оценка завершена</h3><p>${escHtml(detail || `${formatRussianCount(taskCount, ['задача', 'задачи', 'задач'])} передано на принятие решения.`)}</p></div>
             </div></div>
             <div class="app-modal__body">

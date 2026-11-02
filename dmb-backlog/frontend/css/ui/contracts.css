@@ -1,0 +1,42 @@
+/* Complete standalone contracts. Page geometry must not redefine these roles. */
+:root [hidden]:not([hidden="until-found"]) { display:none !important; }
+:root :is(.ui-filter-chip,.ui-kpi-card,.ui-collapse-section,.view-state) { font-family:var(--font-family); box-sizing:border-box; }
+:root :is(.ui-filter-chip,.ui-tab,.ui-kpi-card,.ui-selection-option):is(:disabled,[aria-disabled="true"]),
+:root :is(.ui-checkbox,.ui-selection-option):has(input:disabled) { opacity:.5; cursor:not-allowed; }
+:root :is(.ui-filter-chip,.ui-tab,.ui-kpi-card):disabled:hover { background:var(--bg-secondary); transform:none; }
+:root .ui-filter-chip { min-width:0; flex-shrink:1; }
+:root .ui-filter-chip .quick-filter-info { min-width:0; flex:1 1 auto; }
+:root .ui-filter-chip .quick-filter-label { min-width:0; white-space:nowrap; overflow-wrap:normal; overflow:hidden; text-overflow:ellipsis; }
+:root .ui-filter-chip .quick-filter-count { flex:none; margin-left:auto; font-variant-numeric:tabular-nums; }
+:root .ui-filter-chip[aria-pressed=false] .quick-filter-count { background:var(--bg-tertiary); color:var(--text-secondary); }
+:root .ui-filter-chip[data-ui-tone=success]:not([aria-pressed=true]) .quick-filter-count { background:var(--success-light); color:var(--success-text); }
+:root .ui-counter { box-sizing:border-box; font-family:var(--font-family); font-weight:var(--font-medium); line-height:var(--type-meta-line); white-space:nowrap; display:inline-flex; flex:none; align-items:center; justify-content:center; min-width:1.5em; padding:0 5px; border-radius:var(--radius-full); background:var(--bg-tertiary); color:var(--text-secondary); font-size:var(--text-xs); font-variant-numeric:tabular-nums; }
+:root .ui-counter[data-ui-tone=selected] { background:var(--action-primary-bg); color:var(--action-primary-text); }
+:root .ui-counter[data-ui-tone=unread] { background:var(--danger-light); color:var(--danger-text); }
+:root .view-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:32px 16px; text-align:center; min-width:0; }
+:root .view-state p { margin:0; max-width:460px; overflow-wrap:anywhere; color:var(--text-secondary); }
+:root .view-state h3 { margin:0; }
+:root .view-state[data-ui-scope=partial] { padding:12px; }
+/* State content stays centered within its available surface. */
+:root .view-state { box-sizing:border-box; max-width:100%; }
+:root .ui-progress[data-ui-state=unknown] .ui-progress-track { background:repeating-linear-gradient(135deg,var(--bg-tertiary) 0 4px,var(--border-color) 4px 8px); }
+:root .ui-progress[data-ui-state=indeterminate] .ui-progress-fill { width:35% !important; animation:ui-progress-pulse 1.2s ease-in-out infinite alternate; }
+:root .ui-progress[data-ui-state=error] .ui-progress-fill { background:var(--danger-text); }
+@keyframes ui-progress-pulse { to { transform:translateX(185%); } }
+@media(prefers-reduced-motion:reduce) { :root .ui-progress[data-ui-state=indeterminate] .ui-progress-fill { animation:none; } }
+:root .ui-upload { display:grid; gap:8px; padding:16px; border:1px dashed var(--border-hover); border-radius:var(--radius-md); }
+:root .ui-upload[data-ui-state=dragover] { border-color:var(--accent); background:var(--accent-light); }
+:root .ui-upload[data-ui-state=error] { border-color:var(--danger-text); }
+:root .ui-upload:has(input:disabled) { opacity:.5; }
+:root input[type=file] { max-width:100%; font:inherit; color:inherit; }
+:root input[type=file]::file-selector-button { min-height:max(var(--control-height-sm),var(--control-target-min)); border:1px solid var(--border-hover); border-radius:var(--radius-md); padding:0 12px; background:var(--bg-secondary); color:var(--text-primary); font:inherit; cursor:pointer; }
+:root input[type=range] { accent-color:var(--accent-solid); min-height:var(--control-target-min); max-width:100%; }
+:root .ui-segmented { display:flex; flex-wrap:wrap; gap:4px; padding:4px; border:1px solid var(--border-color); border-radius:var(--radius-md); }
+:root .ui-progress { font-family:var(--font-family); font-size:var(--text-xs); line-height:var(--type-meta-line); font-weight:var(--font-normal); min-height:0; }
+:root .ui-avatar { min-height:0; }
+:root .ui-tab { font-weight:var(--font-semibold); }
+
+:root .ui-counter[data-ui-tone=warning] { background:var(--warning-light); color:var(--warning-text); }
+:root .ui-counter[data-ui-tone=danger] { background:var(--danger-light); color:var(--danger-text); }
+
+:root .ui-counter[hidden] { display:none; }

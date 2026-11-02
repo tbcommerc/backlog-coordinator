@@ -1,42 +1,62 @@
-import { button } from '../ui/primitives.js';
-import { escapeHtml as esc } from '../htmlUtils.js';
+import { entityPicker, bindEntityPicker } from '../ui/entityPicker.js';
 
-// Keep the selected ID in the existing form contract; names are always resolved by the server's ACL.
+// Domain adapter: keep the existing ID and events; the server owns ACL.
 export function mountWorkPicker(input, app, { kind = 'major', editable = false, label = 'Найти работу', selected = '' } = {}) {
     if (!input || input.dataset.pickerMounted) return;
     input.dataset.pickerMounted = 'true';
+    const originalType = input.type;
     input.type = 'hidden';
     const host = document.createElement('div');
     host.className = 'work-picker';
-    const searchId = input.id + '-search';
-    const formLabel = input.closest('.ui-field')?.querySelector('label');
-    if (formLabel) { formLabel.htmlFor = searchId; formLabel.textContent = label; }
-    host.innerHTML = `<div class="work-picker-search"><input id="${esc(searchId)}" class="input ui-control" type="search" autocomplete="off" aria-label="${esc(label)}" placeholder="Название или номер" value="${esc(selected)}">${button({label:'Найти',attrs:{'data-picker-search':''}})}${button({label:'Очистить',variant:'ghost',attrs:{'data-picker-clear':''}})}</div><div class="work-picker-results" role="status"></div><p class="work-muted" data-picker-selected>${selected ? esc(selected) : input.value ? `Выбрана работа № ${esc(input.value)}` : 'Работа не выбрана'}</p>`;
+    const choiceId = input.id + '-choice', searchId = input.id + '-search';
+    const formLabel = input.closest('.ui-field')?.querySelector(':scope > label');
+    if (formLabel) formLabel.hidden = true;
+    host.innerHTML = entityPicker({ id: choiceId, name: choiceId, label: `${label}: выбор`, searchLabel: label,
+        selected: input.value ? { value: input.value, label: selected || `Работа № ${input.value}` } : null,
+        disabled: input.disabled, hint: 'Название или номер. Выберите запись из результатов поиска.' });
     input.after(host);
-    const search = host.querySelector('input'), result = host.querySelector('[role=status]');
-    let generation = 0;
-    const reset = () => { generation++; input.value = ''; result.replaceChildren(); host.querySelector('[data-picker-selected]').textContent = 'Работа не выбрана'; input.dispatchEvent(new Event('input',{bubbles:true})); };
-    search.addEventListener('input', reset);
-    host.querySelector('[data-picker-clear]').onclick = () => { reset(); search.value=''; search.focus(); };
-    const find = async () => {
-        const run = ++generation;
-        const resolvedKind = typeof kind === 'function' ? kind() : kind;
-        result.textContent = 'Поиск…';
-        try {
-            const data = await app.api.get(`/work-targets?kind=${resolvedKind}&editable=${editable}&q=${encodeURIComponent(search.value.trim())}`);
-            if (!host.isConnected || generation !== run) return;
-            result.innerHTML = data.items.map(x=>button({label:`${x.public_id} · ${x.title}${x.team ? ' · '+x.team : ''}${x.context?.title ? ' · '+x.context.title : ''}`,variant:'ghost',attrs:{'data-pick':x.id}})).join('') || 'Доступных работ не найдено';
-            result.onclick = e => {
-                const target=e.target.closest('[data-pick]');
-                if(!target)return;
-                const row=data.items.find(x=>String(x.id)===target.dataset.pick);
-                input.value=String(row.id); search.value=`${row.public_id} · ${row.title}`;
-                host.querySelector('[data-picker-selected]').textContent=`Выбрано: ${search.value}`;
-                result.replaceChildren(); input.dispatchEvent(new Event('input',{bubbles:true})); search.focus();
-            };
-        } catch(e) { if(generation===run && host.isConnected)result.textContent=e.message; }
+    const root = host.querySelector('.ui-entity-picker');
+    const search = root.querySelector('[data-entity-query]'), choice = root.querySelector('[data-entity-value]');
+    root.querySelector(`label[for="${search.id}"]`).htmlFor = searchId;
+    search.id = searchId;
+    choice.removeAttribute('name'); // only the original ID belongs to FormData
+    search.value = selected;
+    const labels = new Map(input.value ? [[input.value, selected || `Работа № ${input.value}`]] : []);
+    const sync = item => {
+        input.value = item?.value || '';
+        if (item) { search.value = item.label; labels.set(item.value, item.label); }
+        input.dispatchEvent(new Event('input', { bubbles: true }));
     };
-    host.querySelector('[data-picker-search]').onclick=find;
-    search.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();find();}};
-    return { reset };
+    const picker = bindEntityPicker(root, {
+        load: async (query, { signal }) => {
+            const resolvedKind = typeof kind === 'function' ? kind() : kind;
+            const params = new URLSearchParams({ kind: resolvedKind, editable: String(editable), q: query });
+            const data = await app.api.get('/work-targets?' + params, { signal });
+            return data.items.map(row => ({ value: row.id, label: `${row.public_id} · ${row.title}${row.team ? ' · ' + row.team : ''}${row.context?.title ? ' · ' + row.context.title : ''}` }));
+        },
+        onChange: sync,
+    });
+    // Required/domain validation stays with callers and targets searchId.
+    let resetTimer;
+    const form = input.form;
+    const resetForm = event => {
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => { if (!event.defaultPrevented && host.isConnected) sync(picker.value); }, 0);
+    };
+    form?.addEventListener('reset', resetForm);
+    return {
+        reset() { sync(null); return picker.refresh({ reset: true }); },
+        syncFromInput() {
+            const value = input.value;
+            if (value && ![...choice.options].some(option => option.value === value)) choice.add(new Option(labels.get(value) || `Работа № ${value}`, value));
+            choice.value = value;
+            if (!value) search.value = '';
+            choice.dispatchEvent(new Event('change'));
+        },
+        destroy() {
+            clearTimeout(resetTimer); form?.removeEventListener('reset', resetForm); picker.destroy();
+            host.remove(); input.type = originalType; delete input.dataset.pickerMounted;
+            if (formLabel) formLabel.hidden = false;
+        },
+    };
 }

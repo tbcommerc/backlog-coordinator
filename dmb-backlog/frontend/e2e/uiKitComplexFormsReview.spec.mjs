@@ -1,15 +1,18 @@
 import { test, expect } from '@playwright/test';
 
 test('late search results cannot populate a different resolution mode',async({page})=>{
-  await open(page);await page.locator('#wr-decision').selectOption('link_work');
-  await page.evaluate(()=>{window.__holdSearch=true;});
-  const search=page.locator('[data-search]');await search.click();
-  await expect(search).toHaveAttribute('aria-busy','true');
+  await open(page);
+  await page.evaluate(()=>{window.__holdSearch=true;window.__searchRowsByKind={work:[{id:11,public_id:'WRK-11',title:'Old'}],major:[{id:22,public_id:'TASK-22',title:'Current'}]};});
+  await page.locator('#wr-decision').selectOption('link_work');
+  await expect(page.locator('#wr-target-picker')).toHaveAttribute('aria-busy','true');
+  await page.evaluate(()=>{window.__holdSearch=false;});
   await page.locator('#wr-decision').selectOption('link_major');
-  await expect(search).toBeEnabled();await expect(search).not.toHaveAttribute('aria-busy');
-  await page.evaluate(()=>{window.__holdSearch=false;window.__releaseSearch();});
-  await expect(page.locator('[data-results]')).toBeEmpty();await expect(page.locator('#wr-target')).toHaveValue('');
-  await search.click();await expect(page.locator('[data-results] [data-target="11"]')).toBeVisible();
+  await expect(page.locator('#wr-target option[value="22"]')).toHaveCount(1);
+  await page.evaluate(()=>window.__releaseSearch());
+  await expect(page.locator('#wr-target-picker')).toHaveAttribute('aria-busy','false');
+  await expect(page.locator('#wr-target option[value="11"]')).toHaveCount(0);
+  await expect(page.locator('#wr-target')).toHaveValue('');
+  await page.locator('#wr-target').selectOption('22');await expect(page.locator('#wr-target')).toHaveValue('22');
 });
 
 async function open(page, theme='light') {
@@ -31,6 +34,7 @@ test(`resolution modes remain usable on short screens: ${theme}/${width}x${heigh
     await expect(submit).toBeInViewport({ratio:1});
     await expect(page.locator('#wr-target')).toHaveJSProperty('required',decision.startsWith('link'));
     for(const field of await dialog.locator('input:visible,select:visible,textarea:visible').all()){
+      const requiredState=await field.evaluate(e=>({required:e.required,marker:Boolean(e.labels?.[0]?.querySelector('.required'))}));expect(requiredState.marker).toBe(requiredState.required);
       await field.scrollIntoViewIfNeeded();await expect(field).toBeInViewport();
       const r=await field.boundingBox();expect(r.x).toBeGreaterThanOrEqual(box.x);expect(r.x+r.width).toBeLessThanOrEqual(box.x+box.width);
       if(width<=640)expect(r.height).toBeGreaterThanOrEqual(44);
@@ -62,7 +66,7 @@ test('resolution validation, busy lock and failed save preserve the editable dra
   const submit=page.locator('dialog [type=submit]');
   await submit.click();expect(await page.evaluate(()=>window.__writes.length)).toBe(0);
   await expect(page.locator('#wr-target')).toBeFocused();
-  await page.locator('#wr-target').fill('11');await page.locator('#wr-scope').fill('Сохранённая потребность');
+  await page.locator('#wr-target').selectOption('11');await page.locator('#wr-scope').fill('Сохранённая потребность');
   await page.evaluate(()=>{window.__hold=true;window.__fail=true;});await submit.click();
   await expect(submit).toHaveAttribute('aria-busy','true');await expect(submit).toBeDisabled();
   await expect(page.locator('#wr-scope')).toBeDisabled();
@@ -106,8 +110,8 @@ test(`resolution sends only the selected mode: ${decision}`,async({page})=>{
   }else if(decision==='create_major'){
     await page.locator('#wr-type').selectOption('1');await page.locator('#wr-channel').selectOption('1');
   }else{
-    await page.getByRole('button',{name:'Найти',exact:true}).click();
-    const result=page.locator('[data-results] [data-target="11"]');await expect(result).toBeVisible();await result.click();
+    await expect(page.locator('#wr-target option[value="11"]')).toHaveCount(1);
+    await page.locator('#wr-target').selectOption('11');
     await expect(page.locator('#wr-target')).toHaveValue('11');
     expect(await page.getByRole('dialog').evaluate(e=>e.scrollWidth-e.clientWidth)).toBeLessThanOrEqual(1);
   }

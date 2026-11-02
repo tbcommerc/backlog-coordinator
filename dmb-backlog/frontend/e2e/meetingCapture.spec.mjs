@@ -40,11 +40,13 @@ test('review, manual correction, explicit task choice and confirmation', async (
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto('/e2e/fixtures/meetingCapture.html');
     await expect(page.getByRole('heading', { name: 'Поручения из встреч' })).toBeVisible();
+    await expect(page.locator('.ui-step-form [aria-current="step"]')).toHaveAttribute('data-step-id','0');
     await page.screenshot({ path: info.outputPath('meeting-empty.png'), fullPage: true });
     await page.getByLabel('Название встречи').fill('Еженедельная встреча команды');
     await page.getByLabel('Или вставьте текст').fill('Анна: подготовлю отчёт к пятнице.');
     await page.getByRole('button', { name: 'Найти поручения и договорённости' }).click();
     await expect(page.getByLabel('Что согласовано')).toBeVisible();
+    await expect(page.locator('.ui-step-form [aria-current="step"]')).toHaveAttribute('data-step-id','2');
     await expect(page.getByLabel('Проверено — включить в сохранение')).not.toBeChecked();
     expect(mock.confirmations()).toBe(0);
     await page.locator('.mc-link-box > summary').click();
@@ -71,6 +73,7 @@ test('review, manual correction, explicit task choice and confirmation', async (
     await expect(page.getByRole('heading', { name: 'Результат сохранён' })).toBeInViewport();
     await expect(page.getByRole('heading', { name: 'Результат сохранён' })).toBeFocused();
     expect(mock.confirmations()).toBe(1);
+    await expect(page.locator('.ui-step-form [aria-current="step"]')).toHaveAttribute('data-step-id','3');
     expect(mock.getState().items[0].task_id).toBe(42);
     await page.getByRole('button', { name: 'Новый разбор' }).click();
     await page.getByText('Мои разборы встреч', { exact: true }).click();

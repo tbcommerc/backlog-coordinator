@@ -14,7 +14,7 @@ from fastapi import HTTPException
 router = APIRouter()
 
 @router.get('/work-reports')
-def read_report(meeting_id: int | None = Query(None, gt=0), team_id: int | None = Query(None, gt=0),
+def read_report(meeting_id: int | None = Query(None, gt=0), team_id: str | None = Query(None),
                 db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return report(db, user, meeting_id, team_id)
 

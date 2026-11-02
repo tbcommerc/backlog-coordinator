@@ -1,3 +1,4 @@
+import './spaStyles.js';
 import {renderWorkTasks,initWorkTasks} from '/static/js/components/workTasks.js';
 import {renderSidebar} from '/static/js/components/sidebar.js';
 import {initModalAccessibility} from '/static/js/modalAccessibility.js';

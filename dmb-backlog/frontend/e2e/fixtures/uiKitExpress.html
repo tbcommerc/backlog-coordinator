@@ -28,12 +28,17 @@
         { id: 32, title: 'Настроить выгрузку', effort_be: 10, effort_fe: 20 },
       ] }] },
     ];
-    window.__writes = [];
+    window.__writes = [];let failedAppend=false;
     if (params.get('ready') === 'true') tasks[0].epics = [{ id: 22, title: 'Оценённый эпик', effort_be: 5, stories: [] }];
     window.toast = () => {};
     const user = { id: 1, team_id: 1, team_name: 'Команда витрины' };
     const app = { store: { get: key => key === 'currentUser' ? user : null }, api: {
       async get(path) {
+        if(params.get('reviewAppend')==='true'&&path.startsWith('/quick-estimate/backlog-tasks?')){
+          const offset=Number(new URL('http://fixture'+path).searchParams.get('offset'));
+          if(offset===20&&!failedAppend){failedAppend=true;throw Error('Synthetic append failure');}
+          return {total:40,items:Array.from({length:20},(_,i)=>({id:offset+i+1,title:'Синтетическая QA-задача '+(offset+i+1),version:1}))};
+        }
         if (path === '/quick-estimate') return { tasks: structuredClone(tasks) };
         if (path === '/teams/1/resources' || path === '/teams/competency-costs') return [];
         throw new Error(`Unexpected read: ${path}`);

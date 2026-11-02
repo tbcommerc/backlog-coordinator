@@ -1,3 +1,6 @@
+import { filterValues, filterMatches } from '../ui/filterValues.js';
+import { tabNavigationTarget } from '../ui/controls.js';
+import { loadMore } from '../ui/specialized.js';
 import { notificationReturnHref } from '../notificationUtils.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { confirmAction, formatErrorMessage } from '../uiFeedback.js';
@@ -83,7 +86,7 @@ export async function confirmReportingStatusNavigation() {
   const confirmed = await confirmAction({
     title: 'Есть несохранённые статусы',
     message: `Изменено задач: ${workspaceState.dirty.size}. Перейти и потерять черновики?`,
-    confirmText: 'Перейти',
+    confirmText: 'Не сохранять', cancelText: 'Продолжить редактирование', destructive: true,
   });
   if (confirmed) workspaceState.dirty.clear();
   return confirmed;
@@ -107,7 +110,7 @@ function renderMeetingTabs() {
     const meta = MEETING_META[meeting.kind] || { label: meeting.title, icon: 'calendar-days' };
     const active = meeting.id === workspaceState.selectedMeetingId;
     const timing = meeting.is_overdue ? 'Просрочена' : meeting.state === 'date_pending' ? 'Нужна дата' : '';
-    return `<button type="button" role="tab" id="reporting-meeting-tab-${meeting.id}" aria-controls="reporting-preparation-panel" aria-selected="${active}" tabindex="${active ? '0' : '-1'}" class="btn btn-secondary btn-sm ui-btn reporting-meeting-tab${active ? ' is-active' : ''}${meeting.is_overdue ? ' is-overdue' : ''}" data-reporting-meeting="${meeting.id}">
+    return `<button type="button" role="tab" id="reporting-meeting-tab-${meeting.id}" aria-controls="reporting-preparation-panel" aria-selected="${active}" tabindex="${active ? '0' : '-1'}" class="btn btn-secondary btn-sm ui-btn ui-tab reporting-meeting-tab${active ? ' is-active' : ''}${meeting.is_overdue ? ' is-overdue' : ''}" data-reporting-meeting="${meeting.id}">
       <i data-lucide="${meta.icon}"></i><span><strong>${escapeHtml(meta.label)}</strong><small>${escapeHtml(formatMeetingDate(meeting.scheduled_date))}</small></span>
       ${timing ? `<em>${timing}</em>` : ''}
     </button>`;
@@ -118,13 +121,13 @@ export function filterReportingStatusItems(items, { search = '', missingOnly = f
   const query = String(search || '').toLocaleLowerCase('ru-RU');
   return (items || []).filter(item => {
     if (missingOnly && item.filled && !recentlySavedIds.has(item.task_id)) return false;
-    if (teamId && String(item.team_id || '') !== String(teamId)) return false;
+    if (!filterMatches(teamId,item.team_id)) return false;
     const draft = dirty.get(item.task_id);
     const text = draft ? draft.text : item.text;
     const ready = draft ? Boolean(draft.is_ready) : Boolean(item.is_ready);
-    if (readiness === 'needs' && ready && !recentlySavedIds.has(item.task_id)) return false;
-    if (readiness === 'drafts' && (ready || !String(text || '').trim())) return false;
-    if (readiness === 'ready' && !ready) return false;
+    const states=filterValues(readiness);
+    const matches=states.some(value=>value==='all'||value==='needs'&&(!ready||recentlySavedIds.has(item.task_id))||value==='drafts'&&!ready&&Boolean(String(text||'').trim())||value==='ready'&&ready);
+    if (states.length&&!matches) return false;
     if (!query) return true;
     return [item.public_id, item.title, item.team_name].some(value => String(value || '').toLocaleLowerCase('ru-RU').includes(query));
   });
@@ -205,7 +208,7 @@ function renderTaskListContent(items, meeting) {
   if (!items.length) return renderViewState({ kind: 'empty', title: 'Задачи не найдены', message: 'Измените поиск или фильтры.' });
   const visibleItems = items.slice(0, workspaceState.visibleLimit);
   const more = visibleItems.length < items.length
-    ? `<button type="button" class="btn btn-secondary reporting-status-load-more" data-reporting-load-more>Показать ещё · ${Math.min(PAGE_SIZE, items.length - visibleItems.length)}<small>Отображено ${visibleItems.length} из ${items.length}</small></button>`
+    ? loadMore({loaded:visibleItems.length,total:items.length,attrs:{class:'reporting-status-load-more','data-reporting-load-more':''}})
     : '';
   return `${visibleItems.map(item => renderStatusCard(item, meeting)).join('')}${more}`;
 }
@@ -224,12 +227,12 @@ function renderPreparation() {
     <section class="reporting-preparation" id="reporting-preparation-panel" role="tabpanel" aria-labelledby="reporting-meeting-tab-${meeting?.id}" aria-busy="false">
       <h2 class="sr-only">${escapeHtml(meeting?.title || '')} · ${escapeHtml(formatMeetingDate(meeting?.scheduled_date))}</h2>
       ${meeting?.state === 'date_pending' ? `<div class="reporting-status-notice"><i data-lucide="calendar-clock"></i><span>Проектный офис ещё не назначил дату. Статусы можно будет изменять после планирования встречи.</span></div>` : ''}
-      ${meeting?.is_overdue ? `<div class="reporting-status-notice is-danger"><i data-lucide="triangle-alert"></i><span><strong>Встреча просрочена.</strong> Проектному офису нужно подтвердить факт проведения, перенести или отменить её.</span><a class="btn btn-secondary btn-sm" href="#/reporting-meetings">Управление встречами</a></div>` : ''}
+      ${meeting?.is_overdue ? `<div class="reporting-status-notice is-danger"><i data-lucide="alert-triangle"></i><span><strong>Встреча просрочена.</strong> Проектному офису нужно подтвердить факт проведения, перенести или отменить её.</span><a class="btn btn-secondary btn-sm" href="#/reporting-meetings">Управление встречами</a></div>` : ''}
       ${readOnly && meeting?.state !== 'date_pending' ? `<div class="reporting-status-notice"><i data-lucide="eye"></i><span>Для вашей роли доступен срез статусов без редактирования.</span></div>` : ''}
       <div class="reporting-status-toolbar">
         <label class="reporting-status-search"><i data-lucide="search"></i><span class="sr-only">Поиск задач</span><input class="input" type="search" data-reporting-search placeholder="Поиск по ID или названию" value="${escapeHtml(workspaceState.search)}"></label>
-        ${workspaceState.isAdmin ? `<label class="reporting-status-team"><span class="sr-only">Команда</span><select class="input" data-reporting-team><option value="">Все команды</option>${workspaceState.teams.map(team => `<option value="${team.id}" ${String(workspaceState.teamId) === String(team.id) ? 'selected' : ''}>${escapeHtml(team.name)}</option>`).join('')}</select></label>` : `<span class="reporting-status-team reporting-status-team-summary">${escapeHtml(data?.scope?.team_name || 'Ваша команда')}</span>`}
-        <label class="reporting-status-readiness-select"><span class="sr-only">Состояние статуса</span><select class="input" data-reporting-readiness><option value="needs" ${workspaceState.readiness === 'needs' ? 'selected' : ''}>Требуют подтверждения</option><option value="drafts" ${workspaceState.readiness === 'drafts' ? 'selected' : ''}>Черновики</option><option value="ready" ${workspaceState.readiness === 'ready' ? 'selected' : ''}>Готовы</option><option value="all" ${workspaceState.readiness === 'all' ? 'selected' : ''}>Все статусы</option></select></label>
+        ${workspaceState.isAdmin ? `<label class="reporting-status-team"><span class="sr-only">Команда</span><select class="input" data-reporting-team data-ui-filter-value="${escapeHtml(workspaceState.teamId)}"><option value="">Все команды</option>${workspaceState.teams.map(team => `<option value="${team.id}" ${String(workspaceState.teamId) === String(team.id) ? 'selected' : ''}>${escapeHtml(team.name)}</option>`).join('')}</select></label>` : `<span class="reporting-status-team reporting-status-team-summary">${escapeHtml(data?.scope?.team_name || 'Ваша команда')}</span>`}
+        <label class="reporting-status-readiness-select"><span class="sr-only">Состояние статуса</span><select class="input" data-reporting-readiness data-ui-filter-value="${escapeHtml(workspaceState.readiness)}"><option value="needs" ${workspaceState.readiness === 'needs' ? 'selected' : ''}>Требуют подтверждения</option><option value="drafts" ${workspaceState.readiness === 'drafts' ? 'selected' : ''}>Черновики</option><option value="ready" ${workspaceState.readiness === 'ready' ? 'selected' : ''}>Готовы</option><option value="all" ${workspaceState.readiness === 'all' ? 'selected' : ''}>Все статусы</option></select></label>
         <span class="reporting-status-result">${items.length} из ${summary.total_tasks} задач</span>
         <div class="reporting-readiness" style="--readiness:${percent}%" aria-label="Готовность статусов: ${percent}%"><strong>${percent}%</strong><span>${summary.filled_tasks} из ${summary.total_tasks} готово</span></div>
         ${readOnly ? '' : `<div class="reporting-status-bulk"><span data-reporting-dirty aria-live="polite">${workspaceState.dirty.size ? `Изменено: ${workspaceState.dirty.size}` : 'Все изменения сохранены'}</span><button type="button" class="btn btn-secondary btn-sm" data-save-reporting-all ${workspaceState.dirty.size ? '' : 'disabled'}><i data-lucide="save"></i>Сохранить черновики</button><button type="button" class="btn btn-primary btn-sm" data-confirm-reporting-all ${confirmableCount ? '' : 'disabled'}><i data-lucide="badge-check"></i>Сохранить и подтвердить${confirmableCount ? ` · ${confirmableCount}` : ''}</button></div>`}
@@ -525,9 +528,10 @@ export async function initReportingStatuses(app) {
       return;
     }
     if (event.target.closest('[data-reporting-load-more]')) {
+      const firstNewIndex=workspaceState.visibleLimit;
       workspaceState.visibleLimit += PAGE_SIZE;
       const cards = root.querySelector('.reporting-task-status-list');
-      if (cards) cards.innerHTML = renderTaskListContent(filteredItems(), selectedMeeting());
+      if (cards) {cards.innerHTML = renderTaskListContent(filteredItems(), selectedMeeting());const next=cards.querySelectorAll('[data-reporting-task]')[firstNewIndex];const focus=next?.querySelector('button,textarea,input')||cards.querySelector('[data-reporting-load-more]')||next;if(focus){if(!focus.matches('button,textarea,input'))focus.tabIndex=-1;focus.focus();}}
       window.lucide?.createIcons();
       return;
     }
@@ -611,16 +615,11 @@ export async function initReportingStatuses(app) {
     }
   }, { signal: listeners.signal });
   root.addEventListener('keydown', async event => {
-    const tab = event.target.closest('[data-reporting-meeting]');
-    if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    const tabs = [...root.querySelectorAll('[data-reporting-meeting]')];
-    const index = tabs.indexOf(tab);
-    const targetIndex = event.key === 'Home' ? 0
-      : event.key === 'End' ? tabs.length - 1
-        : event.key === 'ArrowLeft' ? (index - 1 + tabs.length) % tabs.length
-          : (index + 1) % tabs.length;
+    const tablist = event.target.closest('[role="tablist"]');
+    const next = tablist && tabNavigationTarget(tablist, event);
+    if (!next) return;
     event.preventDefault();
-    tabs[targetIndex]?.focus();
-    tabs[targetIndex]?.click();
+    tablist.querySelectorAll('[role="tab"]').forEach(tab => { tab.tabIndex = tab === next ? 0 : -1; });
+    next.focus();
   }, { signal: listeners.signal });
 }

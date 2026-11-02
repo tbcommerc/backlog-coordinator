@@ -43,5 +43,8 @@ test('каталог сохраняет читаемость на мобильн
   const geometry = await toast.evaluate(element => ({ clientWidth:element.clientWidth, scrollWidth:element.scrollWidth, right:element.getBoundingClientRect().right, viewport:innerWidth }));
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
   expect(geometry.right).toBeLessThanOrEqual(geometry.viewport);
+  // Real feedback now uses the top layer; close it before capturing static samples.
+  await toast.getByRole('button', {name:'Закрыть',exact:true}).click();
+  await expect(toast).toBeHidden();
   await expect(page.locator('[data-catalog="global-toasts"]')).toHaveScreenshot('notification-toasts-mobile.png', { animations:'disabled' });
 });

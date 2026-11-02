@@ -1,0 +1,1403 @@
+{
+  "scope": "Observed page states and specific interactions, not whole-surface acceptance",
+  "date": "2026-10-27",
+  "observations": [
+    {
+      "profile": "ba-a",
+      "requested": "/work-projects",
+      "actual": "http://127.0.0.1:8000/#/work-projects",
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Проекты"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "ba-a",
+      "requested": "/work-tasks",
+      "actual": "http://127.0.0.1:8000/#/work-tasks?display=list&status=active&view=mine&sort=attention&done_period=all",
+      "error": null,
+      "forms": 19,
+      "headings": [
+        "Рабочие задачи"
+      ],
+      "main": 0,
+      "rows": 25
+    },
+    {
+      "profile": "ba-a",
+      "requested": "/reporting-statuses",
+      "actual": "http://127.0.0.1:8000/#/reporting-statuses",
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Статусы к отчётным встречам",
+        "Задачи не найдены"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "ba-a",
+      "requested": "/express-estimate",
+      "actual": "http://127.0.0.1:8000/#/express-estimate",
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Экспресс-оценка",
+        "Ресурсы и потребности",
+        "Экспресс-оценка"
+      ],
+      "main": 0,
+      "rows": 8
+    },
+    {
+      "profile": "ba-a",
+      "requested": "/review",
+      "actual": "http://127.0.0.1:8000/#/review",
+      "error": null,
+      "forms": 5,
+      "headings": [
+        "Ревью запросов",
+        "инструкция проверки сроков поручений и контрольный пример отчёта приняты владельцем продукта"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/team-backlog",
+      "actual": "http://127.0.0.1:8000/#/team-backlog",
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Бэклог команды",
+        "Команда не назначена"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Администрирование"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "tribe-lead",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "tribe-lead",
+      "requested": "/team-backlog",
+      "actual": "http://127.0.0.1:8000/#/team-backlog",
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Бэклог команды",
+        "Команда не назначена"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "tribe-lead",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Администрирование"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "ba-a-peer",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "ba-a-peer",
+      "requested": "/team-backlog",
+      "actual": "http://127.0.0.1:8000/#/team-backlog",
+      "error": null,
+      "forms": 45,
+      "headings": [
+        "Бэклог команды QA Team A",
+        "Основные",
+        "Ответственные",
+        "Планирование",
+        "Трудозатраты",
+        "Ценность",
+        "Отчётность"
+      ],
+      "main": 0,
+      "rows": 1
+    },
+    {
+      "profile": "ba-a-peer",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "ba-b",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "ba-b",
+      "requested": "/team-backlog",
+      "actual": "http://127.0.0.1:8000/#/team-backlog",
+      "error": null,
+      "forms": 44,
+      "headings": [
+        "Бэклог команды QA Team B",
+        "Основные",
+        "Ответственные",
+        "Планирование",
+        "Трудозатраты",
+        "Ценность",
+        "Отчётность"
+      ],
+      "main": 0,
+      "rows": 1
+    },
+    {
+      "profile": "ba-b",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "ba-no-team",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "ba-no-team",
+      "requested": "/work-tasks",
+      "actual": "http://127.0.0.1:8000/#/work-tasks?display=list&status=active&view=mine&sort=attention&done_period=all",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Рабочие задачи",
+        "Вам пока не назначены задачи"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "ba-no-team",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "actions": [],
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "po-a",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "actions": [
+        "Внести замер",
+        "Редактировать",
+        "Новый период"
+      ],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "po-a",
+      "requested": "/work-tasks",
+      "actual": "http://127.0.0.1:8000/#/work-tasks?display=list&status=active&view=mine&sort=attention&done_period=all",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Рабочие задачи",
+        "Вам пока не назначены задачи"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "po-a",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "actions": [],
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "pl-a",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "actions": [
+        "Внести замер",
+        "Редактировать",
+        "Новый период"
+      ],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "pl-a",
+      "requested": "/work-tasks",
+      "actual": "http://127.0.0.1:8000/#/work-tasks?display=list&status=active&view=mine&sort=attention&done_period=all",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Рабочие задачи",
+        "Вам пока не назначены задачи"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "pl-a",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "actions": [],
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "cl-a",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "actions": [
+        "Внести замер",
+        "Редактировать",
+        "Новый период"
+      ],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "cl-a",
+      "requested": "/work-tasks",
+      "actual": "http://127.0.0.1:8000/#/work-tasks?display=list&status=active&view=mine&sort=attention&done_period=all",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Рабочие задачи",
+        "Вам пока не назначены задачи"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "cl-a",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "actions": [],
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "po-b",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "po-b",
+      "requested": "/team-backlog",
+      "actual": "http://127.0.0.1:8000/#/team-backlog",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Бэклог команды QA Team B",
+        "Задачи команды не найдены"
+      ],
+      "main": 0,
+      "rows": 1
+    },
+    {
+      "profile": "po-b",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "actions": [],
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "it-pl-a",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "actions": [
+        "Внести замер",
+        "Редактировать",
+        "Новый период"
+      ],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "it-pl-a",
+      "requested": "/team-backlog",
+      "actual": "http://127.0.0.1:8000/#/team-backlog",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Бэклог команды QA Team A",
+        "Задачи команды не найдены"
+      ],
+      "main": 0,
+      "rows": 1
+    },
+    {
+      "profile": "it-pl-a",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "actions": [],
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "it-pl-b",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "DEV-QA-UI-REVIEW-20261027"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "it-pl-b",
+      "requested": "/team-backlog",
+      "actual": "http://127.0.0.1:8000/#/team-backlog",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Бэклог команды QA Team B",
+        "Задачи команды не найдены"
+      ],
+      "main": 0,
+      "rows": 1
+    },
+    {
+      "profile": "it-pl-b",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "actions": [],
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "no-access",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/metrics/71?period_id=58",
+      "actions": [],
+      "error": "Не удалось загрузить данные\n      Метрика недоступна\n      Повторить",
+      "forms": 0,
+      "headings": [
+        "Метрики",
+        "Не удалось загрузить данные"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "no-access",
+      "requested": "/team-backlog",
+      "actual": "http://127.0.0.1:8000/#/team-backlog",
+      "actions": [],
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Бэклог команды",
+        "Команда не назначена"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "no-access",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "actions": [],
+      "error": "Недостаточно правРаздел доступен пользователям с административным доступом.Вернуться на главную",
+      "forms": 0,
+      "headings": [
+        "Недостаточно прав"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-a",
+      "requested": "/customer",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "инструкция проверки сроков поручений и контрольный пример отчёта приняты владельцем продукта"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-a",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "инструкция проверки сроков поручений и контрольный пример отчёта приняты владельцем продукта"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-a",
+      "requested": "/work-tasks",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "инструкция проверки сроков поручений и контрольный пример отчёта приняты владельцем продукта"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-a",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "инструкция проверки сроков поручений и контрольный пример отчёта приняты владельцем продукта"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-b",
+      "requested": "/customer",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "У вас пока нет запросов"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-b",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "У вас пока нет запросов"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-b",
+      "requested": "/work-tasks",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "У вас пока нет запросов"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-b",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "У вас пока нет запросов"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-unlinked",
+      "requested": "/customer",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "У вас пока нет запросов"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-unlinked",
+      "requested": "/metrics/71?period_id=58",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "У вас пока нет запросов"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-unlinked",
+      "requested": "/work-tasks",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "У вас пока нет запросов"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-unlinked",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "У вас пока нет запросов"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/dashboard",
+      "actual": "http://127.0.0.1:8000/#/dashboard",
+      "actions": [],
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Добрый вечер, QA"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/analytics/tribe",
+      "actual": "http://127.0.0.1:8000/#/analytics/tribe",
+      "actions": [],
+      "error": null,
+      "forms": 17,
+      "headings": [
+        "Аналитика ЛТ",
+        "Все группы · 13"
+      ],
+      "main": 0,
+      "rows": 44
+    },
+    {
+      "profile": "admin",
+      "requested": "/analytics/po-pl",
+      "actual": "http://127.0.0.1:8000/#/analytics/po-pl",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Аналитика PO/PL"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/analytics/it",
+      "actual": "http://127.0.0.1:8000/#/analytics/it",
+      "actions": [],
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Аналитика для ИТ"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/reports",
+      "actual": "http://127.0.0.1:8000/#/reports",
+      "actions": [],
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Статусы для встреч",
+        "Стандартные отчёты",
+        "Пользовательские отчёты"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/reporting-statuses",
+      "actual": "http://127.0.0.1:8000/#/reporting-statuses",
+      "actions": [],
+      "error": null,
+      "forms": 203,
+      "headings": [
+        "Статусы к отчётным встречам"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/quarterly-goals-update",
+      "actual": "http://127.0.0.1:8000/#/quarterly-goals-update",
+      "actions": [],
+      "error": null,
+      "forms": 23,
+      "headings": [
+        "Обновить прогресс и статусы"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/reporting-meetings",
+      "actual": "http://127.0.0.1:8000/#/reporting-meetings",
+      "actions": [],
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Управление отчётными встречами"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/audit-log",
+      "actual": "http://127.0.0.1:8000/#/audit-log",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Аудит действий"
+      ],
+      "main": 0,
+      "rows": 50
+    },
+    {
+      "profile": "admin",
+      "requested": "/outbox-dead-letters",
+      "actual": "http://127.0.0.1:8000/#/outbox-dead-letters",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Ошибки доставки событий",
+        "Ошибок доставки нет"
+      ],
+      "main": 0,
+      "rows": 1
+    },
+    {
+      "profile": "admin",
+      "requested": "/settings",
+      "actual": "http://127.0.0.1:8000/#/settings",
+      "actions": [],
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Персональные настройки",
+        "Тема",
+        "Цвет интерфейса",
+        "Плотность"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/account/security",
+      "actual": "http://127.0.0.1:8000/#/account/security",
+      "actions": [],
+      "error": null,
+      "forms": 3,
+      "headings": [
+        "Безопасность"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/notifications",
+      "actual": "http://127.0.0.1:8000/#/notifications",
+      "actions": [],
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Мои уведомления",
+        "У вас пока нет уведомлений"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/work-projects",
+      "actual": "http://127.0.0.1:8000/#/work-projects",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Проекты"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/work-tasks",
+      "actual": "http://127.0.0.1:8000/#/work-tasks?display=list&status=active&view=mine&sort=attention&done_period=all",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Рабочие задачи",
+        "Вам пока не назначены задачи"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/meeting-capture",
+      "actual": "http://127.0.0.1:8000/#/meeting-capture",
+      "actions": [],
+      "error": null,
+      "forms": 4,
+      "headings": [
+        "Поручения из встреч",
+        "Здесь появится план действий"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/agent-v2",
+      "actual": "http://127.0.0.1:8000/#/agent-v2",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Рабочее место требований",
+        "Расскажите о задаче своими словами"
+      ],
+      "main": 1,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/backlog-assistant",
+      "actual": "http://127.0.0.1:8000/#/backlog-assistant",
+      "actions": [],
+      "error": null,
+      "forms": 3,
+      "headings": [
+        "Помощник по бэклогу"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/admin",
+      "actual": "http://127.0.0.1:8000/#/admin",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [
+        "Администрирование"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab",
+      "name": "Команды",
+      "error": null,
+      "heading": [],
+      "tab": "teams"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab",
+      "name": "Проекты",
+      "error": null,
+      "heading": [],
+      "tab": "projects"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab",
+      "name": "Бизнес-заказчики",
+      "error": null,
+      "heading": [],
+      "tab": "businessCustomers"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab",
+      "name": "Пользователи",
+      "error": null,
+      "heading": [],
+      "tab": "users"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab",
+      "name": "Роли",
+      "error": null,
+      "heading": [],
+      "tab": "roles"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab",
+      "name": "Справочники",
+      "error": null,
+      "heading": [],
+      "tab": "dictionaries"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab",
+      "name": "Отображение",
+      "error": null,
+      "heading": [
+        "Колонки бэклогов"
+      ],
+      "tab": "display"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab",
+      "name": "Таймлайн",
+      "error": null,
+      "heading": [
+        "События таймлайна"
+      ],
+      "tab": "home"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab",
+      "name": "Журнал действий",
+      "error": null,
+      "heading": [],
+      "tab": "audit"
+    },
+    {
+      "profile": "admin",
+      "requested": "/reports",
+      "actual": "http://127.0.0.1:8000/#/reports",
+      "actions": [],
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Статусы для встреч",
+        "Стандартные отчёты",
+        "Пользовательские отчёты"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "surface": "report",
+      "name": "Еженедельная встреча команды",
+      "actual": "http://127.0.0.1:8000/#/reports/detail?r=team-weekly",
+      "error": null,
+      "headings": [
+        "Еженедельная встреча команды",
+        "В этой группе нет задач"
+      ],
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "surface": "report",
+      "name": "Статус для Директорской оперативки",
+      "actual": "http://127.0.0.1:8000/#/reports/detail?r=directorate",
+      "error": null,
+      "headings": [
+        "Статусы к Директорской оперативке",
+        "Требует показа лидеру трайба",
+        "АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ",
+        "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ"
+      ],
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "surface": "report",
+      "name": "Статус для оперативки ДИД",
+      "actual": "http://127.0.0.1:8000/#/reports/detail?r=did-operational",
+      "error": null,
+      "headings": [
+        "Статус для оперативки ДИД",
+        "Проектный Офис",
+        "Pre-trade"
+      ],
+      "rows": 4
+    },
+    {
+      "profile": "admin",
+      "surface": "report",
+      "name": "PI-планирование трайба",
+      "actual": "http://127.0.0.1:8000/#/reports/detail?r=pip",
+      "error": null,
+      "headings": [
+        "PI-планирование трайба",
+        "API для внешних консультантов",
+        "Автоматизация закрытия периода",
+        "Модуль стресс-тестирования портфеля",
+        "Обработка задержек поставки"
+      ],
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "surface": "report",
+      "name": "Бэклог для отправки на бизнес-заказчиков ДИД",
+      "actual": "http://127.0.0.1:8000/#/reports/detail?r=did-backlog",
+      "error": null,
+      "headings": [
+        "Бэклог для бизнес-заказчиков ДИД"
+      ],
+      "rows": 46
+    },
+    {
+      "profile": "admin",
+      "surface": "report",
+      "name": "Светофоры по квартальным целям",
+      "actual": "http://127.0.0.1:8000/#/reports/detail?r=quarterly-goals",
+      "error": null,
+      "headings": [
+        "Светофоры по квартальным целям"
+      ],
+      "rows": 28
+    },
+    {
+      "profile": "admin",
+      "surface": "report",
+      "name": "Сбор оценок для PD",
+      "actual": "http://127.0.0.1:8000/#/reports/detail?r=pd-estimates",
+      "error": null,
+      "headings": [
+        "Сбор оценок для PD",
+        "Сбор оценок для PD"
+      ],
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "surface": "report",
+      "name": "Отчет для Рег. директоров",
+      "actual": "http://127.0.0.1:8000/#/reports/detail?r=reg-directors",
+      "error": null,
+      "headings": [
+        "Отчет для Рег. директоров"
+      ],
+      "rows": 71
+    },
+    {
+      "profile": "admin",
+      "requested": "/customer/create",
+      "actual": "http://127.0.0.1:8000/#/customer/create",
+      "actions": [],
+      "error": null,
+      "forms": 1,
+      "headings": [],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/customer",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "У вас пока нет запросов"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/review",
+      "actual": "http://127.0.0.1:8000/#/review",
+      "actions": [],
+      "error": null,
+      "forms": 5,
+      "headings": [
+        "Ревью запросов",
+        "Журнал изменений карточки сделки",
+        "Проверка дубликатов при создании запроса",
+        "Дашборд загрузки аналитиков",
+        "Сохранённые наборы фильтров в бэклоге",
+        "Уведомления о расхождениях при сверке",
+        "Экспорт реестра сделок в Excel"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/review/11",
+      "actual": "http://127.0.0.1:8000/#/review/11",
+      "actions": [],
+      "error": null,
+      "forms": 0,
+      "headings": [
+        "Журнал изменений карточки сделки",
+        "Размещение и результат"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/work-tasks?view=all",
+      "actual": "http://127.0.0.1:8000/#/work-tasks?display=list&status=active&view=all&sort=attention&done_period=all",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Рабочие задачи"
+      ],
+      "main": 0,
+      "rows": 30
+    },
+    {
+      "profile": "admin",
+      "surface": "workTaskDrawer",
+      "tab": "Активность",
+      "invalid": 0,
+      "text": "Комментарий\nОтправить комментарий\nВсё\nКомментарии\nИзменения\nКомментарии · 0\n\nКомментариев пока нет.\n\nИстория изменений · 4\nИзменена\nQA ba-a\n17.10.2026, 11:20\nПодробности изменения\nИзменён статус\nQA ba-a\n17.10.2026, 11:20\nПодробности изменения\nИзменён статус\nQA ba-a\n17.10.2026, 11:20\nПодробности изменения\nСоздана\nQA ba-a\n17.10.2026, 11:20\nПодробности изменения"
+    },
+    {
+      "profile": "admin",
+      "surface": "workTaskDrawer",
+      "tab": "Материалы",
+      "invalid": 0,
+      "text": "Файлы\n\nФайлов пока нет.\n\nДобавить файл\nДо 50 МБ\nЗависимости"
+    },
+    {
+      "profile": "admin",
+      "surface": "workTaskDrawer",
+      "tab": "Задача",
+      "invalid": 0,
+      "text": "QA ba-a: Снять препятствие. Есть препятствие: Демонстрационная блокировка: ожидаются уточнения по ожидаемому результату.\nСнять препятствие\n\nИсполнитель\nQA ba-a\nСрок\nПросрочено на 13 д.\nПриёмщик\nНе требуется\nОжидаемый результат\n\nОжидаемый результат: Шаблон решений, действий, сроков и открытых вопросов.\n\nДемонстрационные данные DEV-QA-20261017-EXAMPLES. Фактическая работа не проводилась. Пересмотр/очистка: 17.11.2026.\n\nРедактировать\nДополнительные сведения\nИзменить препятствие"
+    },
+    {
+      "profile": "admin",
+      "requested": "/kanban",
+      "actual": "http://127.0.0.1:8000/#/work-tasks?display=board&status=active&view=all&sort=attention&done_period=all&column=new",
+      "actions": [],
+      "error": null,
+      "forms": 3,
+      "headings": [
+        "Рабочие задачи"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "admin",
+      "requested": "/backlog",
+      "actual": "http://127.0.0.1:8000/#/backlog",
+      "actions": [],
+      "error": null,
+      "forms": 102,
+      "headings": [
+        "Бэклог DMB"
+      ],
+      "main": 0,
+      "rows": 100
+    },
+    {
+      "profile": "admin",
+      "surface": "task-detail",
+      "task": 183,
+      "tab": "Отчётные статусы",
+      "panels": [
+        {
+          "error": null,
+          "label": null,
+          "text": "ОТЧЁТНЫЕ СТАТУСЫ ДЛЯ ВСТРЕЧ\nСтатус сохраняется отдельно от остальных полей карточки. После фиксации факта встречи он автоматически станет предыдущим.\nЕженедельная встреча команды\n26 октября 2026 г.\nСтатус прошлой встречи"
+        }
+      ]
+    },
+    {
+      "profile": "admin",
+      "surface": "task-detail",
+      "task": 183,
+      "tab": "Комментарии",
+      "panels": [
+        {
+          "error": null,
+          "label": null,
+          "text": "КОММЕНТАРИИ\nКомментариев пока нет\nОтправить"
+        }
+      ]
+    },
+    {
+      "profile": "admin",
+      "surface": "task-detail",
+      "task": 183,
+      "tab": "Ссылки и файлы",
+      "panels": [
+        {
+          "error": null,
+          "label": null,
+          "text": "ССЫЛКИ И АРТЕФАКТЫ\nСсылка на макеты\nhttps://www.figma.com/file/4f7abe6/draft\nСсылки на Jira\nhttps://jira.dmb.ru/browse/DMB-206\nСсылки на бизнес-требования\n—\nФАЙЛЫ\nПеретащите файлы сюда или выберите\nМакс. размер: 50 МиБ\nВ"
+        }
+      ]
+    },
+    {
+      "profile": "admin",
+      "surface": "task-detail",
+      "task": 183,
+      "tab": "Лог изменений",
+      "panels": [
+        {
+          "error": null,
+          "label": null,
+          "text": "ИСТОРИЯ ИЗМЕНЕНИЙ (ЛОГ) · 0\nДАТА\tПОЛЬЗОВАТЕЛЬ\tПОЛЕ\tСТАРОЕ ЗНАЧЕНИЕ\tНОВОЕ ЗНАЧЕНИЕ\nИстория изменений пуста"
+        }
+      ]
+    },
+    {
+      "profile": "admin",
+      "surface": "task-detail",
+      "task": 183,
+      "tab": "Рабочие задачи",
+      "panels": [
+        {
+          "error": null,
+          "label": null,
+          "text": "Создать задачу\nСтатус\nВсе статусы\nАктивные\nАктивные и выполненные\nНовая\nК исполнению\nВ работе\nНа приёмке\nВыполнена\nОтменена\nНазвание или номер\nНайти\nПоиск\nФильтры\nВыполненные\nАктивные\nВыполненные: 7 дней\nВыполненные: 30 "
+        }
+      ]
+    },
+    {
+      "profile": "admin",
+      "surface": "task-detail",
+      "task": 183,
+      "tab": "Основное",
+      "panels": [
+        {
+          "error": null,
+          "label": null,
+          "text": "Название\nСтратегия развития платформы DMB\nОписание\n\nРазработка стратегии развития платформы на 2026-2027\n\nВнутренний комментарий задачи\nИдёт сбор обратной связи от пилотной группы пользователей.\nОткрыть БТ в Агенте V2\nПА"
+        }
+      ]
+    },
+    {
+      "profile": "customer-a",
+      "requested": "/customer",
+      "actual": "http://127.0.0.1:8000/#/customer",
+      "actions": [],
+      "error": null,
+      "forms": 2,
+      "headings": [
+        "Мои запросы",
+        "инструкция проверки сроков поручений и контрольный пример отчёта приняты владельцем продукта"
+      ],
+      "main": 0,
+      "rows": 0
+    },
+    {
+      "profile": "customer-a",
+      "surface": "request",
+      "id": 16,
+      "states": [
+        "ready",
+        "split-result",
+        "history",
+        "readonly"
+      ],
+      "actual": "http://127.0.0.1:8000/#/customer/request/16"
+    }
+  ]
+}

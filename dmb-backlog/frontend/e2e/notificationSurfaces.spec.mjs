@@ -157,7 +157,7 @@ test('центр и колокольчик используют один сог�
 
   await page.locator('#mark-all-read').click();
   await expect(page.locator('#notif-stat-unread')).toHaveText('0');
-  await expect(page.locator('#notif-badge')).toHaveClass(/hidden/);
+  await expect(page.locator('#notif-badge')).toBeHidden();
 });
 
 test('главная показывает действия и ближайшие даты, сохраняя точный переход', async ({ page }) => {
@@ -304,11 +304,12 @@ test('панель фильтров не обрезает подписи и де
         return {
           heroHeight: hero.height,
           toolbarHeight: toolbar.height,
+          filterRows: Math.max(...[...center.querySelectorAll('.notification-filter-group')].map(group => new Set([...group.querySelectorAll('.notification-filter-chip')].map(chip => Math.round(chip.getBoundingClientRect().top))).size)),
           cardOffset: firstCard.top - top,
         };
       });
       expect(density.heroHeight, 'desktop notification header must stay compact').toBeLessThanOrEqual(72);
-      expect(density.toolbarHeight, 'desktop notification filters must fit in two rows').toBeLessThanOrEqual(92);
+      expect(density.filterRows, 'desktop notification filters must fit in two rows').toBeLessThanOrEqual(2);
       expect(density.cardOffset, 'the first notification must remain above the fold').toBeLessThanOrEqual(245);
     }
   }

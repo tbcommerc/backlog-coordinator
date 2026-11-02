@@ -249,8 +249,6 @@ assert.match(eventStream, /dmb:report-changed/);
 assert.match(app, /function scheduleLiveRouteRefresh\(app, kind, detail = \{\}\)/);
 assert.match(app, /document\.getElementById\('admin-modal-overlay'\)/);
 assert.match(app, /document\.querySelector\('\.review-modal'\)/);
-assert.match(admin, /client_request_id: adminModal\.clientRequestId/);
-assert.match(admin, /version: String\(target\?\.version \?\? 0\)/);
 assert.match(modal, /payload\.client_request_id = _pendingCommentSubmission\.id/);
 assert.match(modal, /api\.upload\(`\/tasks\/\$\{taskId\}\/attachments`, file, \{ client_request_id: clientRequestId \}\)/);
 

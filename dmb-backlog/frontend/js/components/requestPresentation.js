@@ -1,6 +1,14 @@
+import { descriptionList } from '../ui/detailComponents.js';
 import { escapeHtml } from '../htmlUtils.js';
 
 export const REQUEST_STATUS = Object.freeze({
+  accepted: {label:'Принят в бэклог',badge:'badge-info',group:'work'},
+  deferred: {label:'Отложен',badge:'badge-warning',group:'work'},
+  withdrawn: {label:'Отозван',badge:'badge-low',group:'closed'},
+  queued: {label:'Ожидает исполнения',badge:'badge-info',group:'work'},
+  awaiting_confirmation: {label:'Ожидает подтверждения',badge:'badge-warning',group:'work'},
+  needs_verification: {label:'Требует сверки',badge:'badge-warning',group:'work'},
+  fulfilled: {label:'Результат подтверждён',badge:'badge-status-done',group:'done'},
   completed: { label: 'Выполнен', badge: 'badge-status-done', group: 'done' },
   not_relevant: { label: 'Не актуален', badge: 'badge-low', group: 'closed' },
   task_rejected: { label: 'Задача отклонена', badge: 'badge-danger', group: 'closed' },
@@ -88,6 +96,7 @@ export function toList(value) {
 }
 
 export function getRequestStage(item = {}) {
+  if(item.effective_status && REQUEST_STATUS[item.effective_status]) return REQUEST_STATUS[item.effective_status];
   if (['completed', 'not_relevant', 'task_rejected', 'task_deleted', 'rejected'].includes(item.status)) return REQUEST_STATUS[item.status];
   if (item.task_status && TASK_STAGE[item.task_status]) return TASK_STAGE[item.task_status];
   return REQUEST_STATUS[item.status] || { label: 'В обработке', badge: 'badge-medium', group: 'work' };
@@ -99,11 +108,11 @@ export function renderRequestStatusBadge(item = {}) {
 }
 
 export function renderRequestJourney(item = {}) {
-  const status = item.status || 'draft';
+  const status = item.effective_status || item.status || 'draft';
   const taskDone = getRequestStage(item).group === 'done';
-  const current = status === 'draft' ? 0 : ['submitted', 'in_review', 'returned'].includes(status) ? 1 : status === 'in_progress' && !taskDone ? 2 : 3;
+  const current = status === 'draft' ? 0 : ['submitted', 'in_review', 'returned', 'deferred'].includes(status) ? 1 : ['in_progress','accepted','queued','awaiting_confirmation','needs_verification'].includes(status) && !taskDone ? 2 : 3;
   const completeThrough = status === 'rejected' ? 1 : current - 1;
-  const labels = ['Создан', status === 'returned' ? 'Уточнение' : 'Ревью', 'Проработка', status === 'rejected' ? 'Отклонён' : ['completed', 'not_relevant', 'task_rejected', 'task_deleted'].includes(status) ? getRequestStage(item).label : taskDone ? 'Завершён' : 'Результат'];
+  const labels = ['Создан', status === 'returned' ? 'Уточнение' : 'Ревью', (['accepted','queued'].includes(status) ? 'Бэклог' : 'Проработка'), status === 'rejected' ? 'Отклонён' : ['completed', 'not_relevant', 'task_rejected', 'task_deleted'].includes(status) ? getRequestStage(item).label : taskDone ? 'Завершён' : 'Результат'];
   return `<nav class="review-journey request-journey${status === 'rejected' ? ' is-rejected' : ''}" aria-label="Путь запроса"><span class="request-journey-mobile">Этап ${current + 1} из 4 · ${escapeHtml(labels[current])}</span>${labels.map((label, index) => {
     const classes = [index <= completeThrough ? 'is-complete' : '', index === current ? 'is-current' : '', index > completeThrough && index < current ? 'is-skipped' : '', index === current && status === 'rejected' ? 'is-terminal' : ''].filter(Boolean).join(' ');
     return `<div class="${classes}"${index === current ? ' aria-current="step"' : ''}><span>${index <= completeThrough ? '<i data-lucide="check"></i>' : index + 1}</span><strong>${label}</strong></div>`;
@@ -116,7 +125,7 @@ export function renderRequestSummary(item = {}) {
   const updatedAt = item.updated_at || item.created_at;
   const reviewDeadline = item.review_deadline || item.sla_deadline;
   const expectedResult = item.expected_at || item.expected_date || item.task_deadline || item.draft?.expected_date;
-  const dateSummary = reviewDeadline
+  const dateSummary = item.next_action_due ? summaryItem('Следующий шаг до',formatDate(item.next_action_due,false),'calendar') : reviewDeadline
     ? summaryItem('Срок ревью', formatDate(reviewDeadline, false), 'calendar')
     : expectedResult
       ? summaryItem(item.task_deadline ? 'Срок задачи' : 'Желаемый результат', formatDate(expectedResult, false), 'calendar')
@@ -155,7 +164,7 @@ export function renderRequestRevisionHistory(item = {}) {
     const draft = revision.draft || {};
     const previous = index ? revisions[index - 1].draft || {} : null;
     const changed = previous ? [...new Set([...Object.keys(previous), ...Object.keys(draft)])].filter(key => JSON.stringify(previous[key]) !== JSON.stringify(draft[key])) : [];
-    return `<details class="review-more"><summary>Редакция ${escapeHtml(revision.revision || index + 1)} · ${escapeHtml(formatDate(revision.created_at))}</summary><div class="card-body">${revision.legacy_snapshot ? '<p>Сохранённый снимок прежнего запроса. Более ранние редакции недоступны.</p>' : ''}<p>${escapeHtml(revision.author_name || '')}</p>${changed.length ? `<p><strong>Изменено:</strong> ${changed.map(key => escapeHtml(REQUIREMENT_FIELD_LABELS[key] || key)).join(', ')}</p>` : previous ? '<p>Формулировки отправлены повторно без изменений.</p>' : ''}<dl>${Object.entries(draft).filter(([, value]) => value !== null && value !== '' && JSON.stringify(value) !== '[]' && JSON.stringify(value) !== '{}').map(([key, value]) => `<dt><strong>${escapeHtml(REQUIREMENT_FIELD_LABELS[key] || key)}</strong></dt><dd style="white-space:pre-wrap">${escapeHtml(readableValue(value))}</dd>`).join('')}</dl></div></details>`;
+    return `<details class="review-more"><summary>Редакция ${escapeHtml(revision.revision || index + 1)} · ${escapeHtml(formatDate(revision.created_at))}</summary><div class="card-body">${revision.legacy_snapshot ? '<p>Сохранённый снимок прежнего запроса. Более ранние редакции недоступны.</p>' : ''}<p>${escapeHtml(revision.author_name || '')}</p>${changed.length ? `<p><strong>Изменено:</strong> ${changed.map(key => escapeHtml(REQUIREMENT_FIELD_LABELS[key] || key)).join(', ')}</p>` : previous ? '<p>Формулировки отправлены повторно без изменений.</p>' : ''}${descriptionList({ items: Object.entries(draft).filter(([, value]) => value !== null && value !== '' && JSON.stringify(value) !== '[]' && JSON.stringify(value) !== '{}').map(([key,value]) => ({ label: REQUIREMENT_FIELD_LABELS[key] || key, value: readableValue(value) })) })}</div></details>`;
   }).reverse().join('')}</div></section>`;
 }
 
@@ -323,6 +332,7 @@ function extraDetails(draft) {
 }
 
 function requestOwner(item, stage) {
+  if(item.coordinator_name)return item.coordinator_name;
   if (item.status === 'returned') return item.author_name || 'Заказчик';
   if (stage.group === 'review') return item.reviewer_name || item.team_name || 'Команда ревью';
   if (item.task_id || ['work', 'done', 'closed'].includes(stage.group)) return item.assignee_name || item.team_name || item.reviewer_name || 'Команда запроса';
@@ -330,6 +340,7 @@ function requestOwner(item, stage) {
 }
 
 function requestEventLabel(item, stage) {
+  if(item.status_history?.length)return item.status_history.at(-1).title||'Запрос обновлён';
   if (item.status === 'returned') return 'Запрошено уточнение';
   if (item.status === 'rejected') return 'Принято решение';
   if (stage.group === 'done') return 'Работа завершена';
@@ -351,7 +362,7 @@ function normalizeHistory(item) {
   })).filter(event => event.at || event.legacy);
   if (normalized.length) return normalized.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   const events = [];
-  if (item.status && item.status !== 'draft' && (item.updated_at || item.created_at)) events.push({ title: requestEventLabel(item, getRequestStage(item)), description: item.reject_reason || historyDescription(item), actor: historyActor(item), at: item.updated_at || item.created_at, icon: item.status === 'returned' ? 'message-circle-warning' : item.status === 'rejected' ? 'x-circle' : 'refresh-cw' });
+  if (item.status && item.status !== 'draft' && (item.updated_at || item.created_at)) events.push({ title: requestEventLabel(item, getRequestStage(item)), description: item.reject_reason || historyDescription(item), actor: historyActor(item), at: item.updated_at || item.created_at, icon: item.status === 'returned' ? 'message-circle' : item.status === 'rejected' ? 'x-circle' : 'refresh-cw' });
   events.push({ title: 'Запрос создан', description: 'Потребность сформулирована и сохранена в системе', actor: item.author_name || 'Заказчик', at: item.created_at || item.updated_at, icon: 'plus-circle' });
   return events.filter(event => event.at);
 }

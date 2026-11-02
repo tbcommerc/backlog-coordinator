@@ -31,8 +31,8 @@ test('каталог фиксирует единый визуальный кон
   await page.goto('/e2e/fixtures/modalCatalog.html');
 
   const close = page.locator('[data-catalog="form"] .modal-close');
-  await expect(close).toHaveCSS('width', '40px');
-  await expect(close).toHaveCSS('height', '40px');
+  await expect(close).toHaveCSS('width', '32px');
+  await expect(close).toHaveCSS('height', '32px');
   await expect(page.locator('[data-catalog="form"] .modal')).toHaveCSS('border-radius', '14px');
   const standardWidth = await page.locator('[data-catalog="form"] .modal').evaluate(element => element.getBoundingClientRect().width);
   const wideWidth = await page.locator('[data-catalog="result"] .modal').evaluate(element => element.getBoundingClientRect().width);

@@ -8,6 +8,7 @@ from models import WorkTask, WorkHistory, User, Team, Task, Project, EventOutbox
 from services import work_board, work_tasks
 from services.work_query import Filters, Selection
 from test_work_tasks import user, row as base_row
+from metric_models import Metric
 
 
 def row(**values):
@@ -19,7 +20,7 @@ def row(**values):
 @pytest.fixture
 def db(monkeypatch):
     engine=create_engine('sqlite://',connect_args={'check_same_thread':False},poolclass=StaticPool)
-    for model in (WorkTask,WorkHistory,User,Team,Task,Project,EventOutbox):model.__table__.create(engine)
+    for model in (WorkTask,WorkHistory,User,Team,Task,Project,EventOutbox,Metric):model.__table__.create(engine)
     monkeypatch.setattr(work_board.settings,'WORK_TASK_BOARD_ENABLED',True)
     with Session(engine) as session:yield session
     engine.dispose()

@@ -39,7 +39,9 @@ from routers import agent_router
 from routers.meeting_capture_router import router as meeting_capture_router
 from routers.work_reporting_router import router as work_reporting_router
 from routers.work_tasks_router import router as work_tasks_router
+from routers.projects_router import router as projects_router
 from routers.work_files_router import router as work_files_router
+from routers.metrics_router import router as metrics_router
 from routers.work_resolution_router import router as work_resolution_router
 from routers.work_relations_router import router as work_relations_router
 from routers import prioritiser_router
@@ -228,6 +230,8 @@ app.include_router(agent_router.router, prefix="/api/v1", tags=["AI Assistant"])
 app.include_router(meeting_capture_router, prefix="/api/v1/meeting-capture", tags=["Meeting capture"])
 app.include_router(work_reporting_router, prefix="/api/v1", tags=["Work reporting"])
 app.include_router(work_tasks_router, prefix="/api/v1", tags=["Work tasks"])
+app.include_router(projects_router, prefix="/api/v1", tags=["Projects"])
+app.include_router(metrics_router, prefix="/api/v1", tags=["Metrics"])
 app.include_router(work_files_router, prefix="/api/v1", tags=["Work files"])
 app.include_router(work_resolution_router, prefix="/api/v1", tags=["Work resolution"])
 app.include_router(work_relations_router, prefix="/api/v1", tags=["Work relations"])

@@ -1,8 +1,23 @@
 {
-  "reviewed": "2026-10-21",
-  "status": "verified",
-  "statesContract": "Матрица фиксирует 115 активных поверхностей. browser-verified означает проверку реального потребителя в перечисленных сценариях, а не наличие CSS-класса. Общие состояния компонентов дополнительно проверяются каталогом; темы, плотность, mobile и coarse pointer — вычисленными размерами, источник геометрии и запрет обходов — по коду. Список states перечисляет применимые состояния: полный перебор всех сочетаний бизнес-данных не заявляется. Предметные расчёты, таблицы и ограничения не заменяются UI kit; адресные исключения и неактивные поверхности перечислены ниже. Подключение общих классов не означает полного визуального соответствия всех сочетаний состояний. Проверка согласованности 17.10.2026 сравнивает вычисленные стили повторяющихся компонентов на 22 поверхностях; оформление таблиц принадлежит UI Kit, предметная геометрия — страницам. Дополнение 19.10.2026: размещение и подтверждение результата выделены из helper-модуля в самостоятельные поверхности. Сложные диалоги дополнительно проверены на 320×568. Изолированные проверки 19.10 не заменяют живой QA-проход 18.10. Дополнение 22.10.2026: унификация реестров проверена отдельно; подробности в docs/dev-testing/VISUAL_REFRESH_2026-10-22.md.",
+  "reviewed": "2026-10-26",
+  "status": "historical-snapshot",
+  "statesContract": "Матрица фиксирует 117 активных поверхностей. browser-verified означает проверку реального потребителя в перечисленных сценариях, а не наличие CSS-класса. Общие состояния компонентов дополнительно проверяются каталогом; темы, плотность, mobile и coarse pointer — вычисленными размерами, источник геометрии и запрет обходов — по коду. Список states перечисляет применимые состояния: полный перебор всех сочетаний бизнес-данных не заявляется. Предметные расчёты, таблицы и ограничения не заменяются UI kit; адресные исключения и неактивные поверхности перечислены ниже. Подключение общих классов не означает полного визуального соответствия всех сочетаний состояний. Проверка согласованности 17.10.2026 сравнивает вычисленные стили повторяющихся компонентов на 22 поверхностях; оформление таблиц принадлежит UI Kit, предметная геометрия — страницам. Дополнение 19.10.2026: размещение и подтверждение результата выделены из helper-модуля в самостоятельные поверхности. Сложные диалоги дополнительно проверены на 320×568. Изолированные проверки 19.10 не заменяют живой QA-проход 18.10. Дополнение 22.10.2026: унификация реестров проверена отдельно; подробности в docs/dev-testing/VISUAL_REFRESH_2026-10-22.md. 26.10.2026: редактор отчётов удалён из админки по решению пользователя.",
   "surfaces": [
+    {
+      "id": "request-lifecycle",
+      "title": "Сопровождение запроса",
+      "family": 2,
+      "source": "frontend/js/components/requestLifecycle.js",
+      "entry": "/review/:id",
+      "components": ["Button", "Control", "ViewState"],
+      "local": "Переходы запроса и причина решения",
+      "tests": ["reviewResponsive.spec.mjs"],
+      "states": ["loading", "error", "ready", "readonly"],
+      "status": "pending",
+      "verification": "Зарегистрирована поверхность; отдельная приёмка диалога не выполнена.",
+      "verifiedScope": "Инвентаризация исходного модуля; browser acceptance остаётся открытой.",
+      "contractEvidence": ["frontend/tests/uiMigrationMatrix.test.mjs"]
+    },
     {
       "id": "dashboard",
       "title": "Главная и таймлайн",
@@ -3131,42 +3146,6 @@
       ]
     },
     {
-      "id": "report-editor",
-      "title": "Конструктор отчёта: шаги 1–4 и предпросмотр",
-      "source": "frontend/js/components/adminReports.js",
-      "entry": "renderReportForm",
-      "family": 1,
-      "components": [
-        "Dialog",
-        "Tabs",
-        "Field",
-        "Button",
-        "Table"
-      ],
-      "states": [
-        "create",
-        "edit",
-        "readonly",
-        "filter-empty",
-        "filter-remove",
-        "invalid",
-        "saving",
-        "save-error"
-      ],
-      "local": "Предметные фильтры, сортировка и группировка.",
-      "tests": [
-        "uiKitAdminReports.spec.mjs",
-        "uiKitFamilyContract.spec.mjs"
-      ],
-      "status": "browser-verified",
-      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
-      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
-      "contractEvidence": [
-        "frontend/tests/uiSizingOwnership.test.mjs",
-        "frontend/tests/uiMigrationMatrix.test.mjs"
-      ]
-    },
-    {
       "id": "quick-edit-exit",
       "title": "Выход из массового редактирования",
       "source": "frontend/js/components/quickEdit.js",
@@ -3831,13 +3810,100 @@
       "contractEvidence": [
         "frontend/tests/uiMigrationMatrix.test.mjs"
       ]
+    },
+    {
+      "id": "metrics-registry",
+      "title": "Реестр метрик",
+      "entry": "/metrics",
+      "source": "frontend/js/components/metrics.js",
+      "family": 1,
+      "components": [
+        "Button",
+        "Control",
+        "FilterChip",
+        "Table",
+        "Link"
+      ],
+      "local": "Предметные данные метрик, график и мобильная компоновка",
+      "tests": [
+        "uiKitMetricsIntegration.spec.mjs"
+      ],
+      "states": [
+        "ready",
+        "disabled-pagination"
+      ],
+      "status": "browser-verified",
+      "verification": "Изолированная проверка реального модуля с read-only API fixture.",
+      "verifiedScope": "Реестр с одной строкой, недоступные переходы, открытие формы и Escape; readonly вкладки файлов и связей, keyboard focus, 390/1440, light/dark. Бизнес-команды и все остальные вкладки этим сценарием не приняты.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiStyleOwnership.test.mjs"
+      ]
+    },
+    {
+      "id": "metrics-card",
+      "title": "Карточка метрики: файлы и связи",
+      "entry": "/metrics/:id",
+      "source": "frontend/js/components/metrics.js",
+      "family": 1,
+      "components": [
+        "Button",
+        "Control",
+        "FilterChip",
+        "Table",
+        "Link"
+      ],
+      "local": "Предметные данные метрик, график и мобильная компоновка",
+      "tests": [
+        "uiKitMetricsIntegration.spec.mjs"
+      ],
+      "states": [
+        "ready",
+        "readonly"
+      ],
+      "status": "browser-verified",
+      "verification": "Изолированная проверка реального модуля с read-only API fixture.",
+      "verifiedScope": "Реестр с одной строкой, недоступные переходы, открытие формы и Escape; readonly вкладки файлов и связей, keyboard focus, 390/1440, light/dark. Бизнес-команды и все остальные вкладки этим сценарием не приняты.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiStyleOwnership.test.mjs"
+      ]
+    },
+    {
+      "id": "metrics-create-dialog",
+      "title": "Создание метрики: диалог",
+      "entry": "/metrics → create",
+      "source": "frontend/js/components/metrics.js",
+      "family": 1,
+      "components": [
+        "Button",
+        "Control",
+        "FilterChip",
+        "Table",
+        "Link"
+      ],
+      "local": "Предметные данные метрик, график и мобильная компоновка",
+      "tests": [
+        "uiKitMetricsIntegration.spec.mjs"
+      ],
+      "states": [
+        "ready",
+        "focus",
+        "escape"
+      ],
+      "status": "browser-verified",
+      "verification": "Изолированная проверка реального модуля с read-only API fixture.",
+      "verifiedScope": "Реестр с одной строкой, недоступные переходы, открытие формы и Escape; readonly вкладки файлов и связей, keyboard focus, 390/1440, light/dark. Бизнес-команды и все остальные вкладки этим сценарием не приняты.",
+      "contractEvidence": [
+        "frontend/tests/uiSizingOwnership.test.mjs",
+        "frontend/tests/uiStyleOwnership.test.mjs"
+      ]
     }
   ],
   "componentModules": [
     "frontend/js/components/accountSecurity.js",
     "frontend/js/components/admin.js",
     "frontend/js/components/adminDictionaries.js",
-    "frontend/js/components/adminReports.js",
     "frontend/js/components/agentChat.js",
     "frontend/js/components/analytics.js",
     "frontend/js/components/auditLog.js",
@@ -3853,15 +3919,18 @@
     "frontend/js/components/kanbanBoard.js",
     "frontend/js/components/login.js",
     "frontend/js/components/meetingCapture.js",
+    "frontend/js/components/metrics.js",
     "frontend/js/components/modal.js",
     "frontend/js/components/navbar.js",
     "frontend/js/components/notifications.js",
     "frontend/js/components/outboxDeadLetters.js",
+    "frontend/js/components/projectWorkspace.js",
     "frontend/js/components/quarterlyGoalsUpdate.js",
     "frontend/js/components/quickEdit.js",
     "frontend/js/components/quickFilters.js",
     "frontend/js/components/reportingStatuses.js",
     "frontend/js/components/reports.js",
+    "frontend/js/components/requestLifecycle.js",
     "frontend/js/components/requestPresentation.js",
     "frontend/js/components/requirementReviews.js",
     "frontend/js/components/reviewPage.js",
@@ -3937,7 +4006,6 @@
   "moduleDisposition": {
     "frontend/js/components/admin.js": "active-surface",
     "frontend/js/components/adminDictionaries.js": "shared-renderer-or-helper",
-    "frontend/js/components/adminReports.js": "active-surface",
     "frontend/js/components/agentChat.js": "active-surface",
     "frontend/js/components/analytics.js": "active-surface",
     "frontend/js/components/auditLog.js": "active-surface",
@@ -3957,11 +4025,13 @@
     "frontend/js/components/navbar.js": "inactive",
     "frontend/js/components/notifications.js": "active-surface",
     "frontend/js/components/outboxDeadLetters.js": "active-surface",
+    "frontend/js/components/projectWorkspace.js": "shared-renderer-or-helper",
     "frontend/js/components/quarterlyGoalsUpdate.js": "active-surface",
     "frontend/js/components/quickEdit.js": "active-surface",
     "frontend/js/components/quickFilters.js": "shared-renderer-or-helper",
     "frontend/js/components/reportingStatuses.js": "active-surface",
     "frontend/js/components/reports.js": "active-surface",
+    "frontend/js/components/requestLifecycle.js": "active-surface",
     "frontend/js/components/requestPresentation.js": "shared-renderer-or-helper",
     "frontend/js/components/requirementReviews.js": "active-surface",
     "frontend/js/components/reviewPage.js": "active-surface",
@@ -3987,7 +4057,8 @@
     "frontend/js/components/workBoard.js": "active-surface",
     "frontend/js/components/workPicker.js": "shared-renderer-or-helper",
     "frontend/js/components/workProductivity.js": "shared-renderer-or-helper",
-    "frontend/js/components/workQueue.js": "shared-renderer-or-helper"
+    "frontend/js/components/workQueue.js": "shared-renderer-or-helper",
+    "frontend/js/components/metrics.js": "active-surface"
   },
   "exceptions": [
     {
@@ -4066,5 +4137,6 @@
       "uiKitTypography.spec.mjs"
     ],
     "limitations": "API подменено фикстурами, рабочая БД не изменяется. Сравнение не охватывает каждый диалог и каждое сочетание данных; AI проверяется без модели. Standalone и legacy остаются исключениями."
-  }
+  },
+  "evidencePolicy": "Статусы строк отражают исторические сценарии. Текущее подтверждение требует verification-receipt.json с совпадающим SHA-256; проверка npm run check:ui-evidence."
 }

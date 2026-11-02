@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 const source = readFileSync(new URL('../js/components/agentChat.js', import.meta.url), 'utf8')
   .replace(/import \{ confirmAction \} from '\.\.\/uiFeedback\.js(?:\?v=\d+)?';/, 'const confirmAction = async () => false;')
   .replace(/import \{ enhanceDialogOverlay \} from '\.\.\/modalAccessibility\.js(?:\?v=\d+)?';/, 'const enhanceDialogOverlay = () => {};')
+  .replace("'../ui/detailComponents.js'", JSON.stringify(new URL('../js/ui/detailComponents.js', import.meta.url).href))
+  .replace("'../ui/controls.js'", JSON.stringify(new URL('../js/ui/controls.js', import.meta.url).href))
   .replace("'../ui/actionMenu.js'", JSON.stringify(new URL('../js/ui/actionMenu.js', import.meta.url).href));
 // Keep the real operations; replace rendering only for the persistence tests.
 const testHooks = `

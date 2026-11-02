@@ -1,0 +1,82 @@
+[
+  {
+    "state": "list-390",
+    "firstTop": 281.41204833984375,
+    "fullyVisible": 4,
+    "height": 844,
+    "scrollWidth": 383,
+    "width": 390
+  },
+  {
+    "state": "list-320",
+    "firstTop": 281.41204833984375,
+    "fullyVisible": 3,
+    "height": 711,
+    "scrollWidth": 312,
+    "width": 320
+  },
+  {
+    "state": "filters-320",
+    "scrollWidth": 312,
+    "width": 320
+  },
+  {
+    "state": "card-320",
+    "cardClientWidth": 311,
+    "cardScrollWidth": 311,
+    "scrollWidth": 312,
+    "width": 320
+  },
+  {
+    "state": "list-1440",
+    "firstTop": 349.22454833984375,
+    "fullyVisible": 8,
+    "height": 900,
+    "queueTop": 280.1273193359375,
+    "rows": [
+      68.70370483398438,
+      68.70370483398438,
+      60.70602035522461,
+      68.70370483398438,
+      60.70602035522461
+    ],
+    "width": 1440
+  },
+  {
+    "state": "filters-desktop",
+    "height": 900,
+    "queueTop": 280.1273193359375,
+    "width": 1440,
+    "delta": 0
+  },
+  {
+    "state": "inspector-desktop",
+    "date": "Срок\n    14 октября 2026 г.Просрочено на 16 д.",
+    "properties": [
+      {
+        "label": 511.79400634765625,
+        "value": 533.7847290039062
+      },
+      {
+        "label": 511.79400634765625,
+        "value": 533.7847290039062
+      }
+    ],
+    "rows": [
+      80.71759796142578,
+      80.71759796142578,
+      74.69908142089844,
+      80.71759796142578,
+      74.69908142089844
+    ],
+    "tabsY": 323.1250305175781,
+    "titleY": 233.14816284179688
+  },
+  {
+    "state": "menu-desktop",
+    "tabsY": 323.1250305175781,
+    "titleY": 233.14816284179688,
+    "titleDelta": 0,
+    "tabsDelta": 0
+  }
+]

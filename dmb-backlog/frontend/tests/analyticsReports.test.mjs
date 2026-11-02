@@ -20,7 +20,7 @@ test('LT analytics exposes the seven approved reports on one page', () => {
 test('LT analytics uses one report shell, numbered headings and local navigation', () => {
   const html = renderAnalytics('tribe', {});
   assert.match(html, /class="an-report-nav"/);
-  assert.match(html, /class="view-state view-state-loading content-loading-state" role="status" aria-busy="true"/);
+  assert.match(html, /class="view-state view-state-loading content-loading-state"[^>]*role="status" aria-busy="true"/);
   for (let index = 1; index <= 7; index += 1) {
     const number = String(index).padStart(2, '0');
     assert.match(html, new RegExp(`data-report-index="${number}"`));

@@ -1,0 +1,140 @@
+{
+  "date": "2026-10-27",
+  "scope": "Specific repeated interactions, not whole matrix acceptance",
+  "checks": [
+    {
+      "profile": "ba-a",
+      "surface": "metrics-card",
+      "result": "pass",
+      "scenario": "Invalid period dates retain values; linked error and focused end date; discard confirmation shown"
+    },
+    {
+      "profile": "ba-a",
+      "surface": "metrics-card",
+      "result": "pass",
+      "scenario": "Unsaved title retained when navigation to forbidden admin is cancelled; URL restored"
+    },
+    {
+      "profile": "ba-a",
+      "surface": "admin-forbidden",
+      "result": "pass",
+      "scenario": "Breadcrumb changes to insufficient rights; returning to metric renders its edit action"
+    },
+    {
+      "profile": "ba-a",
+      "surface": "notifications",
+      "viewport": 320,
+      "result": "pass",
+      "scenario": "13 FilterChip labels nowrap; action filter zero results; reset returns list"
+    },
+    {
+      "profile": "inactive",
+      "surface": "login",
+      "result": "pass",
+      "scenario": "Inactive QA login rejected by ordinary generic login error"
+    },
+    {
+      "profile": "admin",
+      "surface": "reporting-statuses",
+      "result": "pass",
+      "scenario": "Append50→100 preserves transient draft and focuses first new task52; draft reverted before navigation; no submission"
+    },
+    {
+      "profile": "admin",
+      "surface": "report-quarterly-goals",
+      "result": "pass",
+      "scenario": "Enter sorts ID ascending; focus retained on id button;28 rows"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-forms",
+      "result": "pass",
+      "scenario": "Existing user,role,team,project,QA customer forms opened and cancelled without modifying records; user focus restored; role mobile bounds checked"
+    },
+    {
+      "profile": "admin",
+      "surface": "customer-references",
+      "result": "pass",
+      "scenario": "Empty list and new form opened without typing or saving; reloaded implementation keeps stable title and focus inside"
+    },
+    {
+      "profile": "admin",
+      "surface": "admin-tab-loading",
+      "result": "pass",
+      "scenario": "After updated code reload, switching to teams clears old sticky toolbar during loading"
+    },
+    {
+      "profile": "admin",
+      "surface": "workTasks",
+      "viewport": 390,
+      "result": "pass",
+      "scenario": "Mobile header and title both362.542px wide; no positive page overflow"
+    },
+    {
+      "repeat28": true,
+      "profile": "customer-a",
+      "surface": "customer-task-327",
+      "result": "pass",
+      "scenario": "QA task327 visible in shared queue and opens safe read-only customer detail; progress0%, teamA, synthetic description; no overflow"
+    },
+    {
+      "repeat28": true,
+      "profile": "customer-b",
+      "surface": "customer-task-327-access",
+      "result": "pass",
+      "scenario": "Task327 absent from queue; direct route returns shared unavailable state without task contents or repeated message; return button opens queue"
+    },
+    {
+      "repeat28": true,
+      "profile": "po-a/customer-a/customer-b/ba-a",
+      "surface": "session-switch",
+      "result": "pass",
+      "scenario": "After code reload normal logout/login switches profiles and restores correct role-specific pages without resetting the new session; controlled late401, JSON, files, SSE and refresh-lock cases verified separately"
+    },
+    {
+      "repeat28": true,
+      "profile": "ba-a",
+      "surface": "workTasks-production-mobile",
+      "viewport": 394,
+      "result": "pass",
+      "scenario": "Measured live CSS viewport394; one compact select, segmented nav display:none, header69.992px, first row291.298px below real shell; no document overflow"
+    },
+    {
+      "repeat28": true,
+      "profile": "ba-a",
+      "surface": "meeting-capture-new",
+      "result": "pass",
+      "scenario": "Existing synthetic EMPTY-03 opened via observed capture ID; New clears capture query, title becomes Новая встреча, transcript empty, error hidden; no AI run or database write"
+    },
+    {
+      "followup36": true,
+      "profile": "ba-a",
+      "surface": "work-projects-context",
+      "viewport": 1454,
+      "result": "pass",
+      "scenario": "Project22 has four QA work rows; obligation94 shows its two rows; completed WRK48 tabs Task/Activity/Materials open, empty files and five history entries are readable, Close returns focus to WRK48; direct scope navigation works; no writes or document overflow"
+    },
+    {
+      "followup36": true,
+      "profile": "admin",
+      "surface": "meeting-date-close",
+      "result": "pass",
+      "scenario": "Actual report date form opened and closed without modifying values or saving. Close31.997x31.997 with desktop target0; mobile CSS viewport394 close43.992x43.992 target44, no document overflow; focus returns to Change date"
+    },
+    {
+      "followup36": true,
+      "profile": "ba-b",
+      "surface": "task327-relations-readonly",
+      "result": "pass",
+      "scenario": "Task327 of teamA opens in read-only mode; expanded dependencies and external links remain readable, zero relation forms, embedded child-create hidden. No writes"
+    },
+    {
+      "followup36": true,
+      "profile": "ba-a",
+      "surface": "task327-relations-editable",
+      "result": "pass",
+      "scenario": "Same task in own team preserves three relation forms and visible child-create. IDs unique. Empty dependency submit produces common one-field summary, focus Связанная работа and aria-invalid=true; closed without choosing or creating a dependency"
+    }
+  ],
+  "lastCheckedAt": "2026-10-28T07:35:07.982Z"
+}

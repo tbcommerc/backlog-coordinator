@@ -81,7 +81,10 @@ def can_make_pip_decision(user: User) -> bool:
 
 def can_access_task(action: TaskAction, task, user: User, target_team_id: Optional[int] = None) -> bool:
     """Единая policy-функция объектного доступа к задаче."""
-    task_team_id = _task_team_id(task)
+    if action != "read" and getattr(task, "metric_id", None) is not None:
+        return False
+    linked_metric = getattr(task, "metric", None) if getattr(task, "metric_id", None) is not None else None
+    task_team_id = _task_team_id(linked_metric if linked_metric is not None else task)
     if is_customer_portal_only(user):
         return False
     if action == "read":
@@ -97,7 +100,7 @@ def can_access_task(action: TaskAction, task, user: User, target_team_id: Option
     return False
 
 
-def task_read_scope_clause(user: User, task_model):
+def _task_read_scope_clause(user: User, task_model):
     """Return the SQL predicate implementing the same scope as task read policy.
 
     Every list, search, aggregate, report and export query must include this
@@ -110,6 +113,19 @@ def task_read_scope_clause(user: User, task_model):
     if user.team_id is not None:
         return task_model.team_id == user.team_id
     return false()
+
+
+def task_read_scope_clause(user: User, task_model, *, include_metrics: bool = False):
+    scope = _task_read_scope_clause(user, task_model)
+    # Legacy metric rows remain readable by ID for links, but leave task registers.
+    if getattr(task_model, "__tablename__", None) == "tasks":
+        ordinary = scope & task_model.metric_id.is_(None)
+        if include_metrics:
+            from sqlalchemy import select, or_
+            from metric_models import Metric
+            return or_(ordinary, task_model.metric_id.in_(select(Metric.id).where(_task_read_scope_clause(user, Metric))))
+        return ordinary
+    return scope
 
 
 def task_read_scope_team_id(user: User) -> Optional[int]:

@@ -1,3 +1,5 @@
+import { counter } from '../ui/dataDisplay.js';
+import { pagination } from '../ui/forms.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { confirmAction, formatErrorMessage, showToast } from '../uiFeedback.js';
 import { button, control, icon, pageHeader } from '../ui/primitives.js';
@@ -13,7 +15,13 @@ function formatDate(value) {
 }
 
 
+let outboxReadEpoch = 0;
+
 async function load(app) {
+  const root = document.getElementById('outbox-dead-letter-body');
+  if (!root) return;
+  const epoch = ++outboxReadEpoch;
+  const current = () => epoch === outboxReadEpoch && root.isConnected && document.getElementById('outbox-dead-letter-body') === root;
   state.loading = true;
   renderBody();
   const params = new URLSearchParams({
@@ -22,13 +30,18 @@ async function load(app) {
   });
   if (state.search) params.set('search', state.search);
   try {
-    state.data = await app.api.get(`/admin/outbox/dead-letters?${params}`);
+    const result = await app.api.get(`/admin/outbox/dead-letters?${params}`);
+    if (!current()) return;
+    state.data = result;
     state.lastUpdatedAt = new Date();
   } catch (error) {
+    if (!current()) return;
     state.data = { items: [], total: 0, pages: 0, error: formatErrorMessage(error) };
   } finally {
-    state.loading = false;
-    renderBody();
+    if (current()) {
+      state.loading = false;
+      renderBody();
+    }
   }
 }
 
@@ -40,9 +53,9 @@ function eventPayload(item) {
 
 function attemptTone(attempts) {
   const count = Number(attempts || 0);
-  if (count >= 10) return ' is-critical';
-  if (count >= 5) return ' is-warning';
-  return '';
+  if (count >= 10) return 'danger';
+  if (count >= 5) return 'warning';
+  return 'neutral';
 }
 
 
@@ -70,9 +83,9 @@ function renderRows() {
     <tr>
       <td data-label="Событие"><div class="outbox-event-cell"><span class="outbox-event-id">#${escapeHtml(item.id)}</span><strong>${escapeHtml(item.event_type)}</strong></div></td>
       <td data-label="Объект"><div class="outbox-aggregate"><strong>${escapeHtml(item.aggregate_type || '—')}</strong><span>${item.aggregate_id == null ? 'Без ID' : `ID ${escapeHtml(item.aggregate_id)}`} · версия ${escapeHtml(item.aggregate_version ?? '—')}</span></div></td>
-      <td data-label="Попыток"><span class="outbox-attempts${attemptTone(item.attempts)}">${escapeHtml(item.attempts)}</span></td>
+      <td data-label="Попыток">${counter({value:item.attempts,tone:attemptTone(item.attempts),label:'Попыток доставки',className:'outbox-attempts'})}</td>
       <td data-label="Дата сбоя"><time class="outbox-date" datetime="${escapeHtml(item.dead_lettered_at || '')}">${escapeHtml(formatDate(item.dead_lettered_at))}</time></td>
-      <td data-label="Причина"><div class="outbox-error-message" title="${escapeHtml(item.last_error || '')}">${icon('circle-alert')}<span>${escapeHtml(item.last_error || 'Причина не указана')}</span></div></td>
+      <td data-label="Причина"><div class="outbox-error-message" title="${escapeHtml(item.last_error || '')}">${icon('alert-circle')}<span>${escapeHtml(item.last_error || 'Причина не указана')}</span></div></td>
       <td data-label="Данные"><details class="outbox-details"><summary class="btn btn-secondary btn-sm"><i data-lucide="braces" aria-hidden="true"></i><span>JSON</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary><pre class="outbox-payload">${eventPayload(item)}</pre></details></td>
       <td data-label="Действие">${button({ label: 'Отправить снова', icon: 'rotate-ccw', variant: 'primary', size: 'small', className: 'outbox-requeue', attrs: { 'data-requeue-id': item.id, 'data-attempts': item.attempts } })}</td>
     </tr>`).join('');
@@ -82,11 +95,7 @@ function renderRows() {
 function renderPagination() {
   const pages = Number(state.data.pages || 0);
   if (pages <= 1) return '';
-  return `<nav class="admin-pagination" aria-label="Страницы ошибок доставки">
-    ${button({ label: 'Назад', icon: 'chevron-left', size: 'small', attrs: { 'data-outbox-page': state.page - 1, disabled: state.page <= 1 || state.loading } })}
-    <span>Страница ${state.page} из ${pages} · событий: ${state.data.total || 0}</span>
-    ${button({ label: 'Далее', icon: 'chevron-right', size: 'small', attrs: { 'data-outbox-page': state.page + 1, disabled: state.page >= pages || state.loading } })}
-  </nav>`;
+  return pagination({page:state.page,pages,total:state.data.total,disabled:state.loading,label:'Страницы ошибок доставки'}).replaceAll('data-page=', 'data-outbox-page=');
 }
 
 
@@ -108,9 +117,9 @@ function renderBody() {
 
 export function renderOutboxDeadLetters() {
   return `<header class="page-header animate-fade-in">${pageHeader({ title: 'Ошибки доставки событий', description: 'Контроль событий, которые не удалось передать во внешние сервисы', className: 'outbox-page-header', actions: button({ label: 'Обновить', icon: 'refresh-cw', size: 'small', attrs: { id: 'outbox-refresh-btn' } }) })}</header>
-  <main class="outbox-page">
+  <div class="outbox-page">
     <section class="outbox-overview" aria-label="Состояние очереди ошибок">
-      <div class="outbox-overview-copy"><span class="outbox-overview-icon">${icon('triangle-alert')}</span><div><strong>Контроль ошибок доставки</strong><p>Устраните причину сбоя во внешнем сервисе, затем верните событие в очередь кнопкой «Отправить снова».</p></div></div>
+      <div class="outbox-overview-copy"><span class="outbox-overview-icon">${icon('alert-triangle')}</span><div><strong>Контроль ошибок доставки</strong><p>Устраните причину сбоя во внешнем сервисе, затем верните событие в очередь кнопкой «Отправить снова».</p></div></div>
       <div id="outbox-overview-metrics">${renderOverview()}</div>
     </section>
     <div class="admin-action-row outbox-toolbar" role="search">
@@ -124,7 +133,7 @@ export function renderOutboxDeadLetters() {
       <tbody id="outbox-dead-letter-body">${renderRows()}</tbody></table>
       <div id="outbox-dead-letter-pagination">${renderPagination()}</div>
     </div>
-  </main>`;
+  </div>`;
 }
 
 

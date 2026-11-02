@@ -1,3 +1,8 @@
+import { descriptionList } from '../ui/detailComponents.js';
+import { tab as uiTab } from '../ui/primitives.js';
+import { filterMatches } from '../ui/filterValues.js';
+import { tabNavigationTarget } from '../ui/controls.js';
+let statusCardSequence = 0;
 import { escapeHtml } from '../htmlUtils.js';
 import { formatErrorMessage } from '../uiFeedback.js';
 import { button as uiButton, field as uiField } from '../ui/primitives.js';
@@ -67,8 +72,8 @@ function uniqueValues(tasks, key) {
 
 export function directorateVisibleTasks(tasks, { project = '', type = '' } = {}) {
   return (tasks || []).filter(task => (
-    (!project || task.project_name === project)
-    && (!type || task.task_type_name === type)
+    filterMatches(project,task.project_name)
+    && filterMatches(type,task.task_type_name)
   ));
 }
 
@@ -87,8 +92,9 @@ function renderTaskCard(task, { attentionSection = false } = {}) {
   const previousDate = formatDate(task.previous_meeting_date);
   const currentText = task.directorate_status || 'Статус не заполнен';
   const previousText = task.previous_directorate_status || 'На предыдущей встрече статус не предоставлялся';
-  const currentPanelId = `directorate-status-current-${task.id}`;
-  const previousPanelId = `directorate-status-previous-${task.id}`;
+  const instance = `${task.id}-${++statusCardSequence}`;
+  const currentPanelId = `directorate-status-current-${instance}`;
+  const previousPanelId = `directorate-status-previous-${instance}`;
   const attentionControl = task.can_edit_attention
     ? `<button type="button" class="btn btn-ghost btn-sm square-icon ui-btn directorate-star${task.directorate_attention ? ' is-active' : ''}" data-directorate-attention="${task.id}" aria-pressed="${Boolean(task.directorate_attention)}" title="${task.directorate_attention ? 'Убрать из показа лидеру трайба' : 'Показать лидеру трайба'}"><i data-lucide="star"></i></button>`
     : (task.directorate_attention ? '<span class="directorate-star is-active is-readonly" title="Требует показа лидеру трайба"><i data-lucide="star"></i></span>' : '');
@@ -104,23 +110,23 @@ function renderTaskCard(task, { attentionSection = false } = {}) {
           ${attentionControl}
         </header>
         ${task.task_type_name ? `<span class="directorate-type">${escapeHtml(task.task_type_name)}</span>` : ''}
-        <dl class="directorate-task-meta">
-          ${customer ? `<div><dt><i data-lucide="building-2"></i>Контур / заказчик</dt><dd>${escapeHtml(customer)}</dd></div>` : ''}
-          ${task.owner_name ? `<div><dt><i data-lucide="user"></i>Ответственный</dt><dd>${escapeHtml(task.owner_name)}</dd></div>` : ''}
-          ${task.directorate_status_updated_at ? `<div><dt><i data-lucide="clock-3"></i>Обновлено</dt><dd><time datetime="${escapeHtml(task.directorate_status_updated_at)}">${escapeHtml(formatUpdated(task.directorate_status_updated_at))}</time></dd></div>` : ''}
-        </dl>
+        ${descriptionList({ className: 'directorate-task-meta', items: [
+          ...(customer ? [{ label: 'Контур / заказчик', value: customer }] : []),
+          ...(task.owner_name ? [{ label: 'Ответственный', value: task.owner_name }] : []),
+          ...(task.directorate_status_updated_at ? [{ label: 'Обновлено', valueMarkup: `<time datetime="${escapeHtml(task.directorate_status_updated_at)}">${escapeHtml(formatUpdated(task.directorate_status_updated_at))}</time>` }] : []),
+        ] })}
       </aside>
       <div class="directorate-task-status">
         <div class="directorate-status-tabs" role="tablist" aria-label="Версия статуса">
-          <button type="button" role="tab" aria-selected="${!showPrevious}" aria-controls="${currentPanelId}" class="btn btn-secondary btn-sm ui-btn ${showPrevious ? '' : 'is-active'}" data-directorate-status-view="current" data-task-id="${task.id}">Текущий статус</button>
-          <button type="button" role="tab" aria-selected="${showPrevious}" aria-controls="${previousPanelId}" class="btn btn-secondary btn-sm ui-btn ${showPrevious ? 'is-active' : ''}" data-directorate-status-view="previous" data-task-id="${task.id}" ${task.previous_meeting_date ? '' : 'disabled'}>Предыдущий${previousDate ? ` · ${escapeHtml(previousDate)}` : ''}</button>
+          ${uiTab({id:currentPanelId+'-tab',label:'Текущий статус',panelId:currentPanelId,selected:!showPrevious,className:showPrevious?'':'is-active',attrs:{'data-directorate-status-view':'current','data-task-id':task.id}})}
+          ${uiTab({id:previousPanelId+'-tab',label:`Предыдущий${previousDate ? ` · ${previousDate}` : ''}`,panelId:previousPanelId,selected:showPrevious,disabled:!task.previous_meeting_date,className:showPrevious?'is-active':'',attrs:{'data-directorate-status-view':'previous','data-task-id':task.id}})}
         </div>
         <div class="directorate-status-stack">
-          <div id="${currentPanelId}" role="tabpanel" data-status-version="current" class="directorate-status-text${showPrevious ? '' : ' is-active'}" aria-hidden="${showPrevious}">
+          <div id="${currentPanelId}" role="tabpanel" aria-labelledby="${currentPanelId}-tab" ${showPrevious ? 'hidden' : ''} data-status-version="current" class="directorate-status-text${showPrevious ? '' : ' is-active'}" aria-hidden="${showPrevious}">
             <span class="directorate-status-caption">Текущий статус${currentDate ? ` · ${escapeHtml(currentDate)}` : ''}</span>
             <div class="directorate-status-copy">${escapeHtml(currentText)}</div>
           </div>
-          <div id="${previousPanelId}" role="tabpanel" data-status-version="previous" class="directorate-status-text${showPrevious ? ' is-active' : ''}${task.previous_directorate_status ? '' : ' is-empty'}" aria-hidden="${!showPrevious}">
+          <div id="${previousPanelId}" role="tabpanel" aria-labelledby="${previousPanelId}-tab" ${showPrevious ? '' : 'hidden'} data-status-version="previous" class="directorate-status-text${showPrevious ? ' is-active' : ''}${task.previous_directorate_status ? '' : ' is-empty'}" aria-hidden="${!showPrevious}">
             <span class="directorate-status-caption">Предыдущий статус${previousDate ? ` · ${escapeHtml(previousDate)}` : ''}</span>
             <div class="directorate-status-copy">${escapeHtml(previousText)}</div>
           </div>
@@ -236,7 +242,7 @@ async function load(app) {
       meeting.dataset.state = meetingMeta.state;
     }
   } catch (error) {
-    if (root) root.innerHTML = `<div class="directorate-empty"><i data-lucide="triangle-alert"></i><h2>Не удалось загрузить отчёт</h2><p>${escapeHtml(formatErrorMessage(error))}</p><button type="button" class="btn btn-secondary" data-directorate-retry>Повторить</button></div>`;
+    if (root) root.innerHTML = `<div class="directorate-empty"><i data-lucide="alert-triangle"></i><h2>Не удалось загрузить отчёт</h2><p>${escapeHtml(formatErrorMessage(error))}</p><button type="button" class="btn btn-secondary" data-directorate-retry>Повторить</button></div>`;
     window.lucide?.createIcons();
   }
 }
@@ -258,7 +264,7 @@ export function renderDirectorateReport(app) {
         ${uiButton({ label: 'Обновить', icon: 'refresh-cw', size: 'small', attrs: { 'data-directorate-refresh': '' } })}
       </div>
     </header>
-    <main id="directorate-report-content" class="directorate-report-content"><div class="directorate-loading content-loading-state"><span class="spinner"></span><p>Собираем готовые статусы…</p></div></main>
+    <div id="directorate-report-content" class="directorate-report-content"><div class="directorate-loading content-loading-state"><span class="spinner"></span><p>Собираем готовые статусы…</p></div></div>
   </div>`;
 }
 
@@ -294,9 +300,11 @@ export function initDirectorateReport(app) {
         const active = tab.dataset.directorateStatusView === selectedView;
         tab.classList.toggle('is-active', active);
         tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
       });
       card?.querySelectorAll('.directorate-status-text[role="tabpanel"]').forEach(panel => {
-        const active = panel.id === `directorate-status-${selectedView}-${taskId}`;
+        const active = panel.dataset.statusVersion === selectedView;
+        panel.hidden = !active;
         panel.classList.toggle('is-active', active);
         panel.setAttribute('aria-hidden', String(!active));
       });
@@ -329,6 +337,14 @@ export function initDirectorateReport(app) {
     renderContent();
   });
   page?.addEventListener('keydown', event => {
+    const tablist = event.target.closest('[role="tablist"]');
+    const next = tablist && tabNavigationTarget(tablist, event);
+    if (next) {
+      event.preventDefault();
+      tablist.querySelectorAll('[role="tab"]').forEach(tab => { tab.tabIndex = tab === next ? 0 : -1; });
+      next.focus();
+      return;
+    }
     const card = event.target.closest('[data-open-directorate-task]');
     if (card && event.target === card && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault();

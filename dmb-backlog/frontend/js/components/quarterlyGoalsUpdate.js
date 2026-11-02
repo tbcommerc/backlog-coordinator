@@ -17,7 +17,7 @@ export async function confirmQuarterlyGoalsNavigation() {
     window.toast?.('Дождитесь окончания сохранения', 'info');
     return false;
   }
-  return confirmAction({ title: 'Изменения не сохранены', message: 'Перейти и потерять изменения квартальных целей?', confirmText: 'Перейти' });
+  return confirmAction({ title: 'Изменения не сохранены', message: 'Перейти и потерять изменения квартальных целей?', confirmText: 'Не сохранять', cancelText: 'Продолжить редактирование', destructive: true });
 }
 
 function warnAboutQuarterlyChanges(event) {

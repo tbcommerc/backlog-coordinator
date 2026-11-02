@@ -1,3 +1,5 @@
+import { loadBacklogTaskPages } from '../backlogTaskLoader.js';
+import { pagination as kitPagination } from '../ui/forms.js';
 import { badge as uiBadge } from '../ui/primitives.js';
 import { taskStatusTone, taskPriorityTone } from '../taskDisplay.js';
 import { formatCreatedDate, supplementalTaskValue } from '../taskDisplay.js';
@@ -8,7 +10,7 @@ import { renderToolbar, initToolbar, initToolbarControls, getFilteredList as ftF
 import { renderTaskCard, openTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=118';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
 import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=92';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons, updateQuickFilterCounts } from './quickFilters.js?v=89';
+import { renderQuickFilters, initQuickFilterLayout, initQuickFilters, syncQuickFilterButtons, updateQuickFilterCounts } from './quickFilters.js?v=89';
 import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState, visibleTaskColumns, scrollTableToStart } from './tableUtils.js?v=52';
 import { safeExternalUrl } from '../urlUtils.js';
 import { escapeHtml } from '../htmlUtils.js';
@@ -130,11 +132,13 @@ async function applyDefaultDisplaySettings(app) {
 
 export async function initTasksPage(app) {
   backlogSelectedTaskIds.clear();
+  initQuickFilterLayout();
   COLUMN_LABELS = { ...buildColumnLabels(window.app?.fieldLabels || {}) };
   await applyDefaultDisplaySettings(app);
   loadBacklogColumnState();
   renderTasksTableState({ kind: 'loading', title: 'Загружаем задачи…' });
   await loadTasks(app);
+  if (!isBacklogRouteActive()) return;
 
   function onFilterChange() {
     paginationPage = 1;
@@ -303,6 +307,7 @@ async function loadTasks(app) {
     renderCurrentView();
   
   } catch (e) {
+    if (e?.name === 'AbortError') return;
     const container = document.getElementById('tasks-container');
     if (container) {
       renderTasksTableState({
@@ -358,19 +363,7 @@ function applyBacklogSavedViewState(state = {}) {
 }
 
 async function loadAllTaskPages(app, extraQuery) {
-  const perPage = 1000;
-  const suffix = extraQuery ? `&${extraQuery}` : '';
-  const first = await app.api.get(`/tasks/?page=1&per_page=${perPage}${suffix}`);
-  const pages = Math.max(1, Number(first.pages) || 1);
-  if (pages === 1) return first;
-
-  const requests = [];
-  for (let page = 2; page <= pages; page++) {
-    requests.push(app.api.get(`/tasks/?page=${page}&per_page=${perPage}${suffix}`));
-  }
-  const rest = await Promise.all(requests);
-  const items = [first, ...rest].flatMap(part => part.items || []);
-  return { ...first, items, total: Number(first.total) || items.length, page: 1, per_page: items.length, pages: 1 };
+  return loadBacklogTaskPages(app, extraQuery, '/backlog');
 }
 
 function getFilteredList() {
@@ -402,18 +395,7 @@ function renderPagination(totalPages) {
   const container = document.getElementById('pagination');
   if (!container) return;
   if (totalPages <= 1) { container.innerHTML = ''; return; }
-  const pages = [];
-  for (let p = 1; p <= totalPages; p++) {
-    if (p === 1 || p === totalPages || Math.abs(p - paginationPage) <= 1) pages.push(p);
-  }
-  let html = '';
-  let prev = 0;
-  pages.forEach(p => {
-    if (p - prev > 1) html += '<button class="btn btn-sm btn-ghost" disabled style="opacity:.4;min-width:34px;">…</button>';
-    html += `<button class="btn btn-sm ${p === paginationPage ? 'btn-primary' : 'btn-secondary'}" data-page="${p}" style="min-width:34px;">${p}</button>`;
-    prev = p;
-  });
-  container.innerHTML = html;
+  container.innerHTML = kitPagination({page:paginationPage,pages:totalPages,label:'Страницы бэклога DMB'});
   container.querySelectorAll('[data-page]').forEach(btn => {
     btn.addEventListener('click', () => {
       paginationPage = parseInt(btn.dataset.page);
@@ -844,7 +826,7 @@ function renderStatus(status) {
 }
 
 function renderProgress(progress) {
-  const p = progress || 0;
+  const p = progress;
   return uiProgress({ value: p, tone: p >= 100 ? 'success' : p > 0 ? 'warning' : 'accent', showValue: true });
 }
 

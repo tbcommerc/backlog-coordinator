@@ -1,3 +1,5 @@
+import { dataTable, tableCell } from '../ui/dataTable.js';
+import { setFilterValue } from '../ui/filterValues.js';
 import { field, pageHeader, badge } from '../ui/primitives.js';
 import { escapeHtml as esc } from '../htmlUtils.js';
 import { WORK_STATUSES } from './workUi.js?v=2';
@@ -23,15 +25,24 @@ export async function initWorkReports(app) {
         const items = rows.slice((pages[kind] - 1) * pageSize, pages[kind] * pageSize);
         const target = root.querySelector(`[data-report-list="${kind}"]`);
         if (!items.length) {
-            target.innerHTML = renderViewState({title:query ? 'Ничего не найдено' : major ? 'Крупных обязательств нет' : 'Рабочих задач нет',message:query ? 'Измените название или идентификатор в поиске.' : 'В выбранном периоде и команде нет доступных записей.'});
+            target.innerHTML = renderViewState({title:query ? 'Ничего не найдено' : major ? 'Задач бэклога нет' : 'Рабочих задач нет',message:query ? 'Измените название или идентификатор в поиске.' : 'В выбранном периоде и команде нет доступных записей.'});
             return;
         }
-        target.innerHTML = `<div class="work-table-wrap"><table data-ui-density="compact" class="ui-table ui-table-data work-table work-report-table"><caption class="sr-only">${major?'Крупные обязательства':'Рабочие задачи'}</caption><thead><tr>${(major?['Обязательство','Рабочих задач','Выполнено','Просрочено','Блокеры','На приёмке','Внешние ссылки']:['Рабочая задача','Статус','Срок','Результат и блокеры']).map(x=>`<th scope="col">${x}</th>`).join('')}</tr></thead><tbody>${items.map(x=>major?`<tr><td data-label="Обязательство"><a class="ui-link work-task-link" href="#/work-reports?task=${x.id}">${esc(x.public_id)} · ${esc(x.title)}</a></td>${[['Рабочих задач',x.work.total],['Выполнено',x.work.done],['Просрочено',x.work.overdue],['Блокеры',x.work.blocked],['На приёмке',x.work.in_acceptance],['Внешние ссылки',x.external_links]].map(([label,n])=>`<td data-label="${label}" class="work-numeric">${n && ['Просрочено','Блокеры'].includes(label)?badge({label:n,tone:'danger'}):esc(n??0)}</td>`).join('')}</tr>`:`<tr><td data-label="Рабочая задача"><a class="ui-link work-task-link" href="#/work-tasks/${x.id}">WRK-${x.id} · ${esc(x.title)}</a></td><td data-label="Статус">${workStatus(x.status,WORK_STATUSES)}</td><td data-label="Срок">${esc(workDate(x.due_date))}</td><td data-label="Результат и блокеры"><div class="work-result-text">${x.blocked_reason?`<p class="work-warning">Блокер: ${esc(x.blocked_reason)}</p>`:''}${x.result_text?`<p>${esc(x.result_text)}</p>`:x.blocked_reason?'':'<span class="work-muted">Не указан</span>'}</div></td></tr>`).join('')}</tbody></table></div>${workPager(pages[kind],rows.length,pageSize,kind)}`;
+        const columns = major ? [
+            { key: 'task', label: 'Задача бэклога', render: x => `<a class="ui-link work-task-link" href="#/work-reports?task=${x.id}">${esc(x.public_id)} · ${esc(x.title)}</a>` },
+            ...[['total','Рабочих задач'],['done','Выполнено'],['overdue','Просрочено'],['blocked','Блокеры'],['in_acceptance','На приёмке'],['external_links','Внешние ссылки']].map(([key,label])=>({ key, label, render: x => { const n=key==='external_links'?x.external_links:x.work[key]; return n && ['overdue','blocked'].includes(key)?badge({label:n,tone:'danger'}):tableCell({value:n??0,type:'number'}); } })),
+        ] : [
+            { key: 'task', label: 'Рабочая задача', render: x => `<a class="ui-link work-task-link" href="#/work-tasks/${x.id}">WRK-${x.id} · ${esc(x.title)}</a>` },
+            { key: 'status', label: 'Статус', render: x => workStatus(x.status,WORK_STATUSES) },
+            { key: 'due_date', label: 'Срок', render: x => tableCell({value:workDate(x.due_date)}) },
+            { key: 'result', label: 'Результат и блокеры', render: x => `<div class="work-result-text">${x.blocked_reason?`<p class="work-warning">Блокер: ${esc(x.blocked_reason)}</p>`:''}${x.result_text?`<p>${esc(x.result_text)}</p>`:x.blocked_reason?'':'<span class="work-muted">Не указан</span>'}</div>` },
+        ];
+        target.innerHTML = dataTable({ label: major?'Задачи бэклога':'Рабочие задачи', rows: items, columns, responsive: 'cards', density: 'compact', tableClassName: 'work-report-table' }) + workPager(pages[kind],rows.length,pageSize,kind);
     }
     function lists() { collection('tasks'); if (report.major_summary) collection('obligations'); }
     function render() {
         document.getElementById('work-report-date').textContent = `${report.mode==='snapshot'?'Неизменяемый снимок':'Текущее состояние'} · ${workDate(report.as_of)}`;
-        root.innerHTML = `${workMetrics(report.summary,true)}<section class="work-section"><header class="work-section-head"><h2>Рабочие задачи ${badge({label:report.summary.total})}</h2></header><div class="work-panel" data-report-list="tasks"></div></section>${report.major_summary?`<section class="work-section"><header class="work-section-head"><div><h2>Крупные обязательства ${badge({label:report.major_summary.obligations})}</h2><p>С внешними ссылками: ${esc(report.major_summary.with_external_links)}. Статусы внешних задач не загружаются.</p></div></header><div class="work-panel" data-report-list="obligations"></div></section>`:''}<p class="work-report-footnote">Только доступные вам работы. Рабочие задачи и крупные обязательства учитываются отдельно. Финансовые показатели не суммируются.</p>`;
+        root.innerHTML = `${workMetrics(report.summary,true)}<section class="work-section"><header class="work-section-head"><h2>Рабочие задачи ${badge({label:report.summary.total})}</h2></header><div class="work-panel" data-report-list="tasks"></div></section>${report.major_summary?`<section class="work-section"><header class="work-section-head"><div><h2>Задачи бэклога ${badge({label:report.major_summary.obligations})}</h2><p>С внешними ссылками: ${esc(report.major_summary.with_external_links)}. Статусы внешних задач не загружаются.</p></div></header><div class="work-panel" data-report-list="obligations"></div></section>`:''}<p class="work-report-footnote">Только доступные вам работы. Рабочие задачи и задачи бэклога учитываются отдельно. Финансовые показатели не суммируются.</p>`;
         lists();
     }
     async function load() {
@@ -68,7 +79,7 @@ export async function initWorkReports(app) {
                 controls.querySelector('#work-report-meeting').value = initial.get('meeting_id');
                 controls.querySelector('#work-report-meeting option[value=""]')?.remove();
             }
-            if (initial.has('team_id')) controls.querySelector('#work-report-team').value = initial.get('team_id');
+            if (initial.has('team_id')) setFilterValue(controls.querySelector('#work-report-team'),initial.get('team_id'));
             controls.insertAdjacentHTML('beforeend', field({id:'work-report-search',label:'Поиск в отчёте',type:'search',attrs:{placeholder:'Название или идентификатор',title:'Поиск уточняет списки, не изменяя сводные показатели'}}));
             controls.querySelector('#work-report-search').oninput=()=>{if(report && root.querySelector('[data-report-list]')){pages.tasks=pages.obligations=1;lists();}};
             controls.onchange=e=>{if(e.target.matches('select'))load();}; await load();
@@ -80,7 +91,7 @@ export async function initWorkReports(app) {
     root.onclick=e=>{
         if(e.target.closest('[data-retry-report]'))load();
         const pager=e.target.closest('[data-page-scope]');
-        if(pager){const kind=pager.dataset.pageScope;pages[kind]+=Number(pager.dataset.page);collection(kind);focusWorkPager(root,kind,pager.dataset.page);}
+        if(pager){const kind=pager.dataset.pageScope;pages[kind]+=Number(pager.dataset.page);collection(kind);focusWorkPager(root,kind,pager.dataset.page,pager.dataset.pageAction);}
     };
     await init();
 }

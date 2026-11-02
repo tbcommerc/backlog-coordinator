@@ -1,13 +1,13 @@
 from test_work_tasks import db, row, user
 import pytest
 from fastapi import HTTPException
-from models import WorkResolution, RequestWorkLink, RequirementRequest, IdempotencyRecord, WorkTask
+from models import WorkResolution, RequestWorkLink, RequirementRequest, IdempotencyRecord, WorkTask, Notification
 from routers import work_resolution_router as api
 
 
 @pytest.fixture
 def request_context(db, monkeypatch):
-    for cls in (RequirementRequest, WorkResolution, RequestWorkLink, IdempotencyRecord): cls.__table__.create(db.bind)
+    for cls in (RequirementRequest, WorkResolution, RequestWorkLink, IdempotencyRecord, Notification): cls.__table__.create(db.bind)
     task = row(acceptance_required=True)
     req = RequirementRequest(id=1, title='Потребность', description='Исходное описание', user_id=50,
         team_id=10, reviewer_id=1, version=0, status='in_review', is_deleted=False, draft={'problem_statement':'Проблема'},
@@ -28,6 +28,7 @@ def test_resolution_retry_and_snapshot(db, request_context):
     assert first == second
     assert db.query(RequestWorkLink).count() == 1
     assert db.query(WorkResolution).count() == 1
+    assert db.query(Notification).filter_by(type='request.review.in_progress').count() == 1
     assert req.version == 1 and req.task_id is None
     assert task.version == 1  # Linking never mutates the work or a parent.
     assert first['legacy_supported'] is False
@@ -50,6 +51,7 @@ def test_fulfilled_requires_accepted_work(db, request_context):
     request_context[1].status = 'done'; db.commit()
     result = api.confirm_fulfillment(1, decision, db, user())
     assert result['fulfillment'] == 'fulfilled'
+    assert db.query(Notification).filter_by(type='request.review.fulfilled').count() == 1
 
 
 def test_customer_projection_has_no_internal_fields(db, request_context):

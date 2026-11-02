@@ -1,3 +1,6 @@
+import { escapeHtml } from '../htmlUtils.js';
+import { progress as kitProgress } from '../ui/dataDisplay.js';
+import { pagination as kitPagination } from '../ui/forms.js';
 console.log('[DMB] customerPortal.js loaded');
 
 import {
@@ -34,7 +37,7 @@ export function renderCustomerPortal() {
   return `
     <section class="review-queue-card customer-request-list request-list-panel animate-fade-in" aria-labelledby="customer-requests-title">
       <div class="customer-request-toolbar">
-        ${pageHeader({ title: 'Мои запросы', id: 'customer-requests-title', description: 'Ваши личные запросы и черновики, а также общие задачи вашего бизнес-заказчика', className: 'request-list-title-row', actions: `<div class="toolbar-actions customer-request-toolbar-actions">${button({ label: 'Новый запрос', icon: 'file-plus-2', size: 'small', attrs: { id: 'customer-new-request-btn', hidden: true } })}${button({ label: 'Создать запрос', icon: 'bot', variant: 'primary', size: 'small', attrs: { id: 'customer-primary-action' } })}</div>` })}
+        ${pageHeader({ title: 'Мои запросы', id: 'customer-requests-title', description: 'Ваши личные запросы и черновики, а также общие задачи вашего бизнес-заказчика', className: 'request-list-title-row', actions: `<div class="toolbar-actions customer-request-toolbar-actions">${button({ label: 'Новый запрос', variant: 'ai', size: 'small', attrs: { id: 'customer-new-request-btn', hidden: true } })}${button({ label: 'Создать запрос', variant: 'ai-primary', size: 'small', attrs: { id: 'customer-primary-action' } })}</div>` })}
         <div class="filter-panel customer-request-filter-panel">
           <div class="filter-toolbar-row customer-request-controls">
             <label class="relative filter-search-wrap customer-request-search"><span class="sr-only">Поиск</span><i data-lucide="search"></i><input class="input ui-control" id="customer-request-search" type="search" maxlength="200" placeholder="Название или номер запроса" aria-label="Поиск по названию или номеру"></label>
@@ -43,12 +46,12 @@ export function renderCustomerPortal() {
           </div>
         </div>
         <div class="customer-request-quick-filters" aria-label="Быстрые фильтры">
-          ${statCard('', 'layout-list', 'Все')}${statCard('action', 'circle-alert', 'Нужно мне')}${statCard('draft', 'file-pen-line', 'Черновики')}${statCard('review', 'search-check', 'На ревью')}${statCard('work', 'workflow', 'В работе')}${statCard('complete', 'circle-check-big', 'Завершены')}
+          ${statCard('', 'layout-list', 'Все')}${statCard('action', 'alert-circle', 'Нужно мне')}${statCard('draft', 'file-pen-line', 'Черновики')}${statCard('review', 'search-check', 'На ревью')}${statCard('work', 'workflow', 'В работе')}${statCard('complete', 'check-circle-2', 'Завершены')}
         </div>
       </div>
       <p class="sr-only" id="customer-results-status" role="status" aria-live="polite">Загружаем запросы…</p>
       <div class="review-table-body" id="customer-requests-content" role="region" aria-label="Список моих запросов" aria-busy="true">${renderViewState({ kind: 'loading', title: 'Загружаем запросы…' })}</div>
-      <nav id="customer-pagination" class="toolbar-actions" aria-label="Страницы моих запросов" hidden></nav>
+      <div id="customer-pagination" class="toolbar-actions" aria-label="Страницы моих запросов" hidden></div>
     </section>`;
 }
 
@@ -88,9 +91,9 @@ function bindPortalControls(app) {
     reload();
   }));
   document.getElementById('customer-pagination')?.addEventListener('click', event => {
-    const control = event.target.closest('[data-customer-page]');
+    const control = event.target.closest('[data-page]');
     if (!control || control.disabled) return;
-    portalPage = Number(control.dataset.customerPage);
+    portalPage = Number(control.dataset.page);
     resetPortalScroll();
     savePortalState({ scrollTop: 0 });
     loadRequests(app);
@@ -190,8 +193,8 @@ function updatePrimaryActions(drafts) {
   const preferred = drafts.find(item => item.active) || drafts[0];
   primary.dataset.sessionId = preferred?.session_id || '';
   primary.innerHTML = preferred
-    ? '<i data-lucide="message-square-text"></i><span>Продолжить черновик</span>'
-    : '<i data-lucide="bot"></i><span>Создать запрос</span>';
+    ? '<i data-lucide="sparkles"></i><span>Продолжить черновик</span>'
+    : '<i data-lucide="sparkles"></i><span>Создать запрос</span>';
   create.hidden = !preferred;
   window.lucide?.createIcons();
 }
@@ -211,7 +214,7 @@ function renderRequestList(app) {
   const filter = document.querySelector('[data-stat-filter].active')?.dataset.statFilter || '';
   const filtered = requestsCache;
   document.querySelectorAll('[data-stat-filter]').forEach(button => { const active = button.dataset.statFilter === filter; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); });
-  const warning = portalWarnings.length ? `<div class="customer-partial-warning" role="status"><i data-lucide="circle-alert"></i><span>${portalWarnings.map(escapeHtml).join(' ')}</span><button type="button" class="btn btn-ghost btn-sm" id="retry-partial-requests">Повторить</button></div>` : '';
+  const warning = portalWarnings.length ? renderViewState({kind:'stale',scope:'partial',message:portalWarnings.join(' '),actionLabel:'Повторить',actionId:'retry-partial-requests'}) : '';
   if (!portalMeta.counts.all && !portalWarnings.length) {
     content.innerHTML = warning + renderViewState({ kind: 'empty', title: 'У вас пока нет запросов', message: 'ИИ-ассистент поможет сформулировать потребность и передать её на рассмотрение.', actionLabel: 'Создать первый запрос', actionVariant: 'primary', actionAttrs: { 'data-create-request': true }, hint: 'Далее запрос пройдёт ревью, проработку и реализацию — все этапы будут видны здесь.' });
   } else if (!filtered.length) {
@@ -230,7 +233,7 @@ function renderRequestList(app) {
   document.getElementById('customer-results-status').textContent = `Показано ${filtered.length} из ${portalMeta.total}, страница ${portalPage} из ${Math.max(1, portalMeta.pages)}`;
   const pagination = document.getElementById('customer-pagination');
   pagination.hidden = portalMeta.pages <= 1;
-  pagination.innerHTML = `${button({ label: 'Предыдущая', variant: 'secondary', size: 'small', attrs: { 'data-customer-page': portalPage - 1, disabled: portalPage <= 1 } })}<span>Страница ${portalPage} из ${Math.max(1, portalMeta.pages)}</span>${button({ label: 'Следующая', variant: 'secondary', size: 'small', attrs: { 'data-customer-page': portalPage + 1, disabled: portalPage >= portalMeta.pages } })}`;
+  pagination.innerHTML = kitPagination({page:portalPage,pages:portalMeta.pages,label:'Страницы моих запросов'});
   document.getElementById('retry-partial-requests')?.addEventListener('click', () => document.getElementById('refresh-requests-btn')?.click());
   if (window.lucide) window.lucide.createIcons();
 }
@@ -250,7 +253,7 @@ function renderRequestCard(item) {
 
 function renderCardContext(item, stage) {
   if (['returned', 'rejected'].includes(item.status) && item.reject_reason) {
-    return `<div class="customer-request-card-context request-card-decision${item.status === 'rejected' ? ' is-danger' : ''}" title="${escapeHtml(item.reject_reason)}"><i data-lucide="${item.status === 'rejected' ? 'circle-x' : 'message-circle-warning'}"></i><span>${escapeHtml(item.reject_reason)}</span></div>`;
+    return `<div class="customer-request-card-context request-card-decision${item.status === 'rejected' ? ' is-danger' : ''}" title="${escapeHtml(item.reject_reason)}"><i data-lucide="${item.status === 'rejected' ? 'x-circle' : 'message-circle'}"></i><span>${escapeHtml(item.reject_reason)}</span></div>`;
   }
   const progress = taskProgress(item);
   if (progress) return progress;
@@ -259,16 +262,17 @@ function renderCardContext(item, stage) {
     : stage.group === 'review'
       ? ['clock-3', 'Ожидает решения продуктовой команды']
       : stage.group === 'done'
-        ? ['circle-check', 'Результат по запросу зафиксирован']
+        ? ['check-circle', 'Результат по запросу зафиксирован']
         : stage.group === 'closed'
           ? ['circle-minus', 'Рассмотрение запроса завершено']
           : stage.group === 'action'
-            ? ['circle-alert', 'Ожидается действие по запросу']
+            ? ['alert-circle', 'Ожидается действие по запросу']
             : ['workflow', 'Запрос принят в проработку'];
   return `<div class="customer-request-card-context customer-request-card-note"><i data-lucide="${fallback[0]}"></i><span>${fallback[1]}</span></div>`;
 }
 
 function customerCardOwner(item, stage) {
+  if(item.coordinator_name)return item.coordinator_name;
   if (item.draft_session) return 'Вы';
   if (item.status === 'returned') return 'Вы';
   if (stage.group === 'review') return item.reviewer_name || item.team_name || 'Продуктовая команда';
@@ -289,6 +293,7 @@ function customerEventLabel(item, stage) {
 
 function reliableDate(item) {
   const options = [
+    ['Следующий шаг до', item.next_action_due],
     ['Срок ревью', item.review_deadline || item.sla_deadline],
     ['Срок задачи', item.task_deadline],
     ['Желаемый результат', item.expected_at || item.expected_date],
@@ -298,12 +303,19 @@ function reliableDate(item) {
 }
 
 function taskProgress(item) {
-  if (!item.task_id || !Number.isFinite(Number(item.task_progress))) return '';
-  const progress = Math.max(0, Math.min(100, Number(item.task_progress)));
-  return `<div class="customer-request-card-context request-card-progress" aria-label="Прогресс связанной задачи: ${progress}%"><span><i data-lucide="workflow"></i>${escapeHtml(formatTaskPublicId({ id: item.task_id, public_id: item.task_public_id }))}</span><div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i style="width:${progress}%"></i></div><strong>${progress}%</strong></div>`;
+  if (!item.task_id) return '';
+  return `<div class="customer-request-card-context request-card-progress"><span><i data-lucide="workflow"></i>${escapeHtml(formatTaskPublicId({ id: item.task_id, public_id: item.task_public_id }))}</span>${kitProgress({value:item.task_progress,label:'Прогресс связанной задачи',showValue:true})}</div>`;
 }
 
 function nextStepText(item, stage) {
+  if(item.next_action)return item.next_action;
+  const state=item.effective_status||item.status;
+  if(state==='accepted')return 'Команда согласует приоритет и план исполнения';
+  if(state==='deferred')return 'Ожидается повторное рассмотрение';
+  if(state==='queued')return 'Работы определены; исполнение ещё не начато';
+  if(state==='awaiting_confirmation')return 'Команда проверяет итог выполнения потребности';
+  if(state==='needs_verification')return 'Команда должна сверить результат с потребностью';
+  if(state==='withdrawn')return 'Запрос отозван; история сохранена';
   if (item.draft_session) return item.active ? 'Продолжите подготовку запроса' : 'Откройте сохранённый диалог';
   if (item.status === 'returned') return 'Ознакомьтесь с замечанием и уточните запрос';
   if (item.status === 'rejected') return 'Рассмотрение запроса завершено';
@@ -392,10 +404,10 @@ export async function renderRequestPage(app, requestId) {
     return `<div class="page-header customer-request-detail-header review-detail-header animate-fade-in"><a href="#/customer" class="customer-back-link"><i data-lucide="arrow-left"></i>Мои запросы</a><div class="review-title-line"><h1>${escapeHtml(req.title || 'Без названия')}</h1>${renderRequestStatusBadge(req)}</div><p>Личный запрос #${req.id} · обновлён ${escapeHtml(formatDate(req.updated_at || req.created_at))}</p></div>
     ${renderRequestJourney(req)}
     ${renderRequestSummary(req)}
-    ${req.reject_reason ? `<section class="customer-request-decision customer-specialist-message ${req.status === 'returned' ? 'is-returned' : 'is-rejected'}"><i data-lucide="${req.status === 'returned' ? 'message-circle-warning' : 'x-circle'}"></i><div><span class="customer-specialist-meta">${escapeHtml(req.reviewer_name || 'Специалист команды')} · ${escapeHtml(formatDate(req.updated_at))}</span><strong>${req.status === 'returned' ? 'Что нужно уточнить' : 'Решение по запросу'}</strong><p>${escapeHtml(req.reject_reason)}</p>${req.status === 'returned' ? `<button class="btn btn-primary btn-sm" id="resume-request" data-agent-version="${String(req.agent_session_id || '').startsWith('v2:') ? 'v2' : 'v1'}"><i data-lucide="bot"></i>Уточнить с ИИ-ассистентом</button>` : ''}</div></section>` : ''}
-    <div class="customer-request-detail-layout"><main class="customer-request-detail-main">${structuredContent}</main><aside class="customer-request-detail-aside"><section class="card customer-next-step-card"><div class="card-header"><h2 class="card-title">Следующий шаг</h2></div><div class="card-body customer-request-stage"><p>${escapeHtml(customerStageDescription(req, stage))}</p>${req.status === 'returned' && !req.reject_reason ? `<button class="btn btn-primary" id="resume-request" data-agent-version="${String(req.agent_session_id || '').startsWith('v2:') ? 'v2' : 'v1'}"><i data-lucide="bot"></i>Уточнить с ИИ-ассистентом</button>` : ''}</div></section>${renderLinkedTask(req)}${renderRequestParticipants(req)}</aside></div>`;
+    ${['returned','rejected'].includes(req.status) && req.reject_reason ? `<section class="customer-request-decision customer-specialist-message ${req.status === 'returned' ? 'is-returned' : 'is-rejected'}"><i data-lucide="${req.status === 'returned' ? 'message-circle' : 'x-circle'}"></i><div><span class="customer-specialist-meta">${escapeHtml(req.reviewer_name || 'Специалист команды')} · ${escapeHtml(formatDate(req.updated_at))}</span><strong>${req.status === 'returned' ? 'Что нужно уточнить' : 'Решение по запросу'}</strong><p>${escapeHtml(req.reject_reason)}</p>${req.status === 'returned' ? `<button class="ui-btn btn btn-ai btn-sm" id="resume-request" data-agent-version="${String(req.agent_session_id || '').startsWith('v2:') ? 'v2' : 'v1'}"><i data-lucide="sparkles"></i>Уточнить с ИИ-ассистентом</button>` : ''}</div></section>` : ''}
+    <div class="customer-request-detail-layout"><div class="customer-request-detail-main">${structuredContent}</div><aside class="customer-request-detail-aside"><section class="card customer-next-step-card"><div class="card-header"><h2 class="card-title">Следующий шаг</h2></div><div class="card-body customer-request-stage"><p>${escapeHtml(customerStageDescription(req, stage))}</p>${req.status === 'returned' && !req.reject_reason ? `<button class="ui-btn btn btn-ai" id="resume-request" data-agent-version="${String(req.agent_session_id || '').startsWith('v2:') ? 'v2' : 'v1'}"><i data-lucide="sparkles"></i>Уточнить с ИИ-ассистентом</button>` : ''}</div></section>${renderLinkedTask(req)}${renderRequestParticipants(req)}</aside></div>`;
   } catch (error) {
-    return `<div class="customer-request-state is-error" role="alert"><i data-lucide="circle-alert"></i><strong>Запрос не найден</strong><span>${escapeHtml(error.message)}</span><a href="#/customer" class="btn btn-secondary">Вернуться к запросам</a></div>`;
+    return renderCustomerFailure(error,'request');
   }
 }
 
@@ -428,11 +440,12 @@ function customerStageDescription(req, stage) {
 
 function renderLinkedTask(req) {
   if (!req.task_id) return '';
-  const progress = Number.isFinite(Number(req.task_progress)) ? `${Math.max(0, Math.min(100, Number(req.task_progress)))}%` : '—';
+  const progress = req.task_progress !== null && req.task_progress !== '' && Number.isFinite(Number(req.task_progress)) ? `${Math.max(0, Math.min(100, Number(req.task_progress)))}%` : '—';
   return `<section class="card customer-linked-task"><div class="card-header"><div><h2 class="card-title">Реализация</h2><p class="review-card-subtitle">Связанная задача команды</p></div></div><div class="card-body"><div><span>Задача</span><strong>${escapeHtml(formatTaskPublicId({ id: req.task_id, public_id: req.task_public_id }))}</strong></div><div><span>Статус</span><strong>${escapeHtml(req.task_status || 'В работе')}</strong></div><div><span>Прогресс</span><strong>${escapeHtml(progress)}</strong></div>${req.task_deadline ? `<div><span>Срок задачи</span><strong>${escapeHtml(req.task_deadline)}</strong></div>` : ''}<a class="btn btn-secondary btn-sm" href="#/customer/task/${escapeHtml(req.task_id)}">Открыть задачу</a></div></section>`;
 }
 
 export function initRequestPage(app, requestId) {
+  if(bindCustomerFailureReturn())return;
   const eventsRoot = document.createElement('section');
   eventsRoot.className = 'card customer-new-events';
   eventsRoot.setAttribute('aria-label', 'Новые события запроса');
@@ -464,10 +477,12 @@ export function initRequestPage(app, requestId) {
     }
   }
   loadEvents();
+  const lifecycleRoot=document.createElement('section');lifecycleRoot.className='card';document.querySelector('.customer-request-detail-aside')?.append(lifecycleRoot);
+  import('./requestLifecycle.js?v=1').then(m=>m.mountRequestLifecycle(lifecycleRoot,app,requestId));
   const fulfillmentRoot = document.createElement('section');
   fulfillmentRoot.className = 'card';
   document.querySelector('.customer-request-detail-aside')?.append(fulfillmentRoot);
-  import('./workResolution.js?v=2').then(m => m.mountFulfillment(fulfillmentRoot, app, requestId));
+  import('./workResolution.js?v=3').then(m => m.mountFulfillment(fulfillmentRoot, app, requestId));
 
   resetCustomerDetailScroll();
   document.querySelectorAll('[data-customer-request-target]').forEach(control => control.addEventListener('click', () => focusCustomerRequestSection(control.dataset.customerRequestTarget)));
@@ -504,7 +519,7 @@ function focusCustomerRequestSection(id) {
 export async function renderCustomerTaskPage(app, taskId) {
   try {
     const task = await app.api.get(`/customer/tasks/${taskId}`);
-    const progress = Number.isFinite(Number(task.progress)) ? Math.max(0, Math.min(100, Number(task.progress))) : null;
+    const progress = task.progress !== null && task.progress !== '' && Number.isFinite(Number(task.progress)) ? Math.max(0, Math.min(100, Number(task.progress))) : null;
     const status = task.status_name || task.status || 'В работе';
     const stage = getRequestStage({ status: 'in_progress', task_status: status, task_id: task.id, task_progress: progress });
     const deadline = task.deadline_name || task.deadline || '';
@@ -515,13 +530,25 @@ export async function renderCustomerTaskPage(app, taskId) {
         ${taskSummaryItem('Прогресс', progress === null ? 'Не указан' : `${progress}%`, 'bar-chart-3')}
         ${deadline ? taskSummaryItem('Срок задачи', deadline, 'calendar-clock') : ''}
       </section>
-      <div class="customer-task-detail-layout"><main class="customer-request-detail-main"><section class="card"><div class="card-header"><div><h2 class="card-title">Содержание задачи</h2><p class="review-card-subtitle">Доступное заказчику описание реализации</p></div></div><div class="card-body"><div class="request-detail">${renderRequestDescription(task.description)}</div></div></section></main><aside class="customer-request-detail-aside"><section class="card customer-next-step-card"><div class="card-header"><h2 class="card-title">Текущее состояние</h2></div><div class="card-body customer-request-stage"><p>${escapeHtml(customerTaskStateText(stage, progress))}</p></div></section></aside></div>`;
+      <div class="customer-task-detail-layout"><div class="customer-request-detail-main"><section class="card"><div class="card-header"><div><h2 class="card-title">Содержание задачи</h2><p class="review-card-subtitle">Доступное заказчику описание реализации</p></div></div><div class="card-body"><div class="request-detail">${renderRequestDescription(task.description)}</div></div></section></div><aside class="customer-request-detail-aside"><section class="card customer-next-step-card"><div class="card-header"><h2 class="card-title">Текущее состояние</h2></div><div class="card-body customer-request-stage"><p>${escapeHtml(customerTaskStateText(stage, progress))}</p></div></section></aside></div>`;
   } catch (error) {
-    return `<div class="customer-request-state is-error" role="alert"><i data-lucide="circle-alert"></i><strong>Задача не найдена</strong><span>${escapeHtml(error.message)}</span><a href="#/customer" class="btn btn-secondary">Вернуться к запросам</a></div>`;
+    return renderCustomerFailure(error,'task');
   }
 }
 
+function renderCustomerFailure(error,entity) {
+  const unavailable=[403,404].includes(error.status);
+  const title=entity==='task'?(unavailable?'Задача недоступна':'Не удалось загрузить задачу'):(unavailable?'Запрос недоступен':'Не удалось загрузить запрос');
+  return renderViewState({kind:unavailable?'unavailable':'error',title,message:unavailable?'Объект не существует или недоступен вашей учётной записи.':error.message,actionLabel:'Вернуться к запросам',actionAttrs:{'data-customer-return':true}});
+}
+function bindCustomerFailureReturn() {
+  const control=document.querySelector('[data-customer-return]');
+  control?.addEventListener('click',()=>{window.location.hash='/customer';});
+  return Boolean(control);
+}
+
 export function initCustomerTaskPage() {
+  bindCustomerFailureReturn();
   resetCustomerDetailScroll();
   window.lucide?.createIcons();
 }
@@ -543,6 +570,6 @@ function taskSummaryItem(label, value, icon) {
 }
 
 function renderRequestDescription(description) { if (!description) return '<span class="text-muted">Описание пока не заполнено</span>'; return String(description).split('\n').filter(Boolean).map(line => { const match = line.trim().match(/^\*\*(.+?):\*\*(.*)$/); if (match) return `<div class="request-detail-row"><span class="request-detail-key">${escapeHtml(match[1].trim())}</span><span class="request-detail-val">${escapeHtml(match[2].trim())}</span></div>`; if (line.trim().startsWith('- ')) return `<div class="request-detail-list"><span>•</span><span>${escapeHtml(line.trim().slice(2))}</span></div>`; return `<div class="request-detail-text">${escapeHtml(line.trim())}</div>`; }).join(''); }
-function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value == null ? '' : String(value); return div.innerHTML; }
+
 function formatDate(iso, includeTime = true) { if (!iso) return '—'; const date = new Date(iso); return Number.isNaN(date.getTime()) ? iso : date.toLocaleString('ru-RU', includeTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' }); }
 function formatRelativeDate(iso) { if (!iso) return 'недавно'; const diff = Date.now() - new Date(iso).getTime(), minutes = Math.max(0, Math.round(diff / 60000)); if (minutes < 1) return 'только что'; if (minutes < 60) return `${minutes} мин. назад`; const hours = Math.round(minutes / 60); if (hours < 24) return `${hours} ч. назад`; const days = Math.round(hours / 24); return days < 14 ? `${days} дн. назад` : formatDate(iso); }

@@ -110,6 +110,8 @@ def normalize_notification_action_url(category: str, task_id: int | None, value:
             return "#/quarterly-goals-update?source=notification"
     elif category == "request" and not keys:
         parts = parsed.path.strip("/").split("/")
+        if len(parts) == 2 and parts[0] == 'review' and _positive_int(parts[1]):
+            return f'#/review/{int(parts[1])}'
         if len(parts) == 3 and parts[:2] == ["customer", "request"] and _positive_int(parts[2]):
             return f"#/customer/request/{int(parts[2])}"
     elif parsed.path.rstrip("/") == "/notifications" and not params:
@@ -135,13 +137,14 @@ def notification_target(notification: Notification) -> dict:
     meeting_id = _positive_int((params.get("meeting_id") or [None])[0])
     request_parts = parsed.path.strip("/").split("/")
     request_id = _positive_int(request_parts[2]) if len(request_parts) == 3 and request_parts[:2] == ["customer", "request"] else None
+    if len(request_parts)==2 and request_parts[0]=='review': request_id=_positive_int(request_parts[1])
     if parsed.path == "/meeting-capture":
         kind = "meeting_capture"
     elif parsed.path == "/reporting-statuses":
         kind = "reporting_statuses"
     elif parsed.path == "/quarterly-goals-update":
         kind = "quarterly_goals_update"
-    elif parsed.path.startswith("/customer/request/"):
+    elif parsed.path.startswith("/customer/request/") or (parsed.path.startswith('/review/') and request_id):
         kind = "request"
     elif parsed.path == "/backlog" and tab == "com":
         kind = "task_discussion"
@@ -302,12 +305,22 @@ def _send_to_users(
 def notify_request_decision(db: Session, request, status: str, actor_id: int | None = None):
     """Persist the customer's next action after a human review decision."""
     recipient_id = getattr(request, "user_id", None)
+    if status == 'withdraw':
+        recipient_id = getattr(request, 'coordinator_id', None) or getattr(request, 'reviewer_id', None) or recipient_id
     if not recipient_id or recipient_id == actor_id:
         return None
     labels = {
         "returned": ("Запрос требует уточнения", getattr(request, "reject_reason", None) or "Откройте запрос и уточните отмеченные сведения."),
         "rejected": ("Запрос отклонён", getattr(request, "reject_reason", None) or "Откройте запрос, чтобы посмотреть решение."),
-        "in_progress": ("Запрос передан в проработку", "По запросу создана задача и назначен ответственный аналитик."),
+        "in_progress": ("Запрос размещён в работе", "С запросом связаны работы. Их состояние и следующий шаг доступны в карточке запроса."),
+        "accept": ("Запрос принят в бэклог", "Потребность принята. Срок исполнения будет согласован отдельно."),
+        "defer": ("Рассмотрение запроса отложено", "В карточке указаны причина, ответственный и дата следующего шага."),
+        "reconsider": ("Запрос направлен на повторное рассмотрение", "Команда пересматривает решение. Предыдущие решения сохранены в истории."),
+        "withdraw": ("Запрос отозван", "Отзыв и его причина сохранены в истории. Связанные работы не отменяются автоматически."),
+        "follow_up": ("Обновлён следующий шаг по запросу", "В карточке запроса обновлены ответственный, следующий шаг и срок."),
+        "fulfilled": ("Результат запроса подтверждён", "Команда подтвердила полное выполнение потребности. Итог доступен в карточке запроса."),
+        "work_completed": ("Принята работа по запросу", "Одна из связанных работ выполнена. Команда проверит полноту результата по запросу."),
+        "needs_verification": ("Результат запроса требует сверки", "Связанные работы изменились. Команда должна повторно проверить результат."),
         "approved": ("Проработка запроса завершена", "Откройте запрос, чтобы посмотреть результат."),
     }
     if status not in labels:
@@ -322,7 +335,7 @@ def notify_request_decision(db: Session, request, status: str, actor_id: int | N
         title,
         body=body,
         importance="high" if status in {"returned", "rejected"} else "medium",
-        action_url=f"#/customer/request/{request_id}",
+        action_url=f"#/review/{request_id}" if status=='withdraw' and recipient_id != getattr(request,'user_id',None) else f"#/customer/request/{request_id}",
         group_key=f"request-review:{request_id}:{getattr(request, 'version', 0)}:{status}",
         event_type=f"request.review.{status}",
     )
@@ -603,14 +616,16 @@ def get_notifications(
     page: int = 1,
     per_page: int = 20,
     current_user: User | None = None,
+    views: str | None = None,
 ):
     q = _visible_notifications_query(db, user_id, current_user)
+    from services.filter_values import filter_values
     if category:
-        q = q.filter(Notification.category == category)
+        q = q.filter(Notification.category.in_(filter_values(category)))
     if unread_only:
         q = q.filter(Notification.is_read == False, Notification.is_resolved == False)
     if importance:
-        q = q.filter(Notification.importance == importance)
+        q = q.filter(Notification.importance.in_(filter_values(importance)))
     if resolved is not None:
         q = q.filter(Notification.is_resolved == resolved)
     if requires_action:
@@ -619,6 +634,13 @@ def get_notifications(
             Notification.is_resolved == False,
             or_(Notification.category == "reporting", Notification.type.in_(WORK_ACTION_TYPES)),
         )
+    selected_views=filter_values(views,allowed={'all','unread','action','resolved','open'})
+    if selected_views and 'all' not in selected_views:
+        from services.work_tasks import WORK_ACTION_TYPES
+        clauses={'unread':(Notification.is_read == False)&(Notification.is_resolved == False),
+            'action':(Notification.is_resolved == False)&or_(Notification.category=='reporting',Notification.type.in_(WORK_ACTION_TYPES)),
+            'resolved':Notification.is_resolved == True,'open':Notification.is_resolved == False}
+        q=q.filter(or_(*(clauses[value] for value in selected_views)))
     if search:
         escaped = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         pattern = f"%{escaped}%"

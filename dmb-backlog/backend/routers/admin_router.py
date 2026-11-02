@@ -206,7 +206,7 @@ def _protect_admin_identity_change(db: Session, actor: User, target: User, *, ne
 def get_audit_log(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
-    user_id: Optional[int] = Query(None),
+    user_id: Optional[str] = Query(None),
     action: Optional[str] = Query(None),
     entity_type: Optional[str] = Query(None),
     date_from: Optional[date] = Query(None),
@@ -217,12 +217,10 @@ def get_audit_log(
 ):
     query = db.query(AuditLog).outerjoin(User, AuditLog.user_id == User.id)
 
-    if user_id is not None:
-        query = query.filter(AuditLog.user_id == user_id)
-    if action:
-        query = query.filter(AuditLog.action == action)
-    if entity_type:
-        query = query.filter(AuditLog.entity_type == entity_type)
+    from services.filter_values import filter_values
+    for key,value in [('user_id',user_id),('action',action),('entity_type',entity_type)]:
+        selected=filter_values(value,numeric=key=='user_id')
+        if selected:query=query.filter(getattr(AuditLog,key).in_(selected))
     if date_from:
         query = query.filter(AuditLog.created_at >= date_from)
     if date_to:

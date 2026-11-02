@@ -1,6 +1,8 @@
+import { setUploadState } from '../ui/specialized.js';
 import { escapeHtml as esc } from '../htmlUtils.js';
 import { button, badge, field, checkbox, pageHeader, icon } from '../ui/primitives.js';
 import { confirmAction } from '../uiFeedback.js';
+import { stepForm, setStepForm } from '../ui/stepForm.js';
 
 const BASE = '/meeting-capture';
 const activeAnalysis = state => ['queued', 'running'].includes(state.analysis_status);
@@ -46,7 +48,7 @@ export async function readTranscriptFile(file) {
 export function renderMeetingCapture() {
     return `<section id="meeting-capture" class="mc-page">
         ${pageHeader({ title: 'Поручения из встреч', description: 'Превратите разговор в согласованный план действий.', actions: action('Новый разбор', 'new', { icon: 'plus' }) })}
-        <ol class="mc-steps" aria-label="Этапы разбора">${['Расшифровка', 'Анализ', 'Проверка результатов', 'Сохранение'].map((label, index) => `<li data-step="${index}"><span>${index + 1}</span> ${label}</li>`).join('')}</ol>
+        ${stepForm({id:'mc-step-form',label:'Этапы разбора',steps:['Расшифровка','Анализ','Проверка результатов','Сохранение'].map((label,index)=>({id:String(index),label}))})}
         <div id="mc-notice" class="mc-notice" role="status" aria-live="polite"></div>
         <div id="mc-error" class="mc-error" role="alert" hidden></div>
         <div id="mc-workspace"></div>
@@ -73,7 +75,7 @@ function renderItem(item, index, links, suggestions, expanded) {
         <details class="mc-link-box" ${item.link_choice === 'task' || suggestions !== undefined ? 'open' : ''}><summary>Связь с крупной задачей${item.link_choice === 'none' ? ' · без привязки' : item.task_id ? ' · выбрана' : ' · требуется решение'}</summary><p class="mc-hint">Предложение становится связью только после вашего выбора.</p>
             ${field({ id: `${prefix}-link`, label: 'Решение о привязке', kind: 'select', value: item.link_choice || '', options: [{ value: '', label: 'Ещё не выбрано' }, { value: 'task', label: 'Выбрать крупную задачу ниже' }, { value: 'none', label: 'Без привязки' }], attrs: { 'data-field': 'link_choice' } })}
             ${linked ? `<p class="mc-chosen">${icon('link')} ${esc(linked.public_id || '#' + linked.id)} · ${esc(linked.title)}</p>` : item.task_id ? '<p class="mc-error">Ранее выбранная задача недоступна. Измените привязку.</p>' : ''}
-            <div class="mc-actions">${action('Предложить соответствия', 'suggest', { icon: 'sparkles', size: 'small' })}</div>
+            <div class="mc-actions">${action('Предложить соответствия', 'suggest', { variant: 'ai', size: 'small' })}</div>
             <div class="mc-two-fields mc-search">${field({ id: `${prefix}-search`, label: 'Поиск по названию или номеру', type: 'search', attrs: { 'data-search': true, maxlength: 255, placeholder: 'Не менее 2 символов' } })}${action('Найти', 'search', { icon: 'search' })}</div>
             <div class="mc-suggestions" aria-live="polite">${suggestions === undefined ? '' : suggestions.length ? suggestions.map(task => `<div class="mc-suggestion">${button({ label: `${task.public_id || '#' + task.id} · ${task.title}`, className: 'mc-task-choice', attrs: { 'data-action': 'link', 'data-task': task.id } })}${task.reason ? `<small>${esc(task.reason)}</small>` : ''}</div>`).join('') : '<p class="mc-hint">Соответствий не найдено. Попробуйте другое название или выберите «Без привязки».</p>'}</div>
         </details>
@@ -123,11 +125,11 @@ function renderWorkspace(state) {
         <section class="mc-panel mc-source"><div class="mc-section-title">${icon('file-text')}<h2>Расшифровка</h2></div>
             ${field({ id: 'mc-title', label: 'Название встречи', required: true, value: state.title, attrs: { 'data-meta': 'title', maxlength: 255 } })}
             ${field({ id: 'mc-date', label: 'Дата встречи', type: 'date', value: state.meeting_date || '', attrs: { 'data-meta': 'meeting_date' } })}
-            <label class="mc-upload" for="mc-file">${icon('upload')}<strong>Загрузить текстовый файл</strong><span>TXT, MD, SRT или VTT · UTF-8 · до 240 КБ</span><input type="file" id="mc-file" accept=".txt,.md,.srt,.vtt,text/plain,text/markdown,text/vtt" ${state.items.length ? 'disabled' : ''}></label>
+            <label class="ui-upload mc-upload" for="mc-file">${icon('upload')}<strong>Загрузить текстовый файл</strong><span>TXT, MD, SRT или VTT · UTF-8 · до 240 КБ</span><input type="file" id="mc-file" accept=".txt,.md,.srt,.vtt,text/plain,text/markdown,text/vtt" ${state.items.length ? 'disabled' : ''}></label>
             ${field({ id: 'mc-transcript', label: 'Или вставьте текст', kind: 'textarea', value: state.transcript, readonly: state.items.length > 0 || analyzing,
                 hint: analyzing ? 'Расшифровка сохранена для фонового анализа. Можно читать и копировать текст.' : state.items.length ? 'Источник зафиксирован для сохранения оснований. Для другого текста создайте новый разбор.' : 'До 60 000 символов. Аудио и видео нужно предварительно расшифровать.',
                 attrs: { 'data-meta': 'transcript', rows: 12, maxlength: TRANSCRIPT_LIMIT, placeholder: 'Вставьте расшифровку разговора с именами участников…' } })}
-            <div class="mc-actions">${action(analyzing ? 'Анализируем…' : state.analysis === 'configuration' ? 'Повторить после настройки AI' : ['failed', 'uncertain'].includes(state.analysis) ? 'Повторить анализ' : 'Найти поручения и договорённости', 'analyze', { variant: 'primary', icon: 'sparkles', attrs: { disabled: state.items.length > 0 || analyzing || state.analysis_status === 'completed' } })}</div>
+            <div class="mc-actions">${action(analyzing ? 'Анализируем…' : state.analysis === 'configuration' ? 'Повторить после настройки AI' : ['failed', 'uncertain'].includes(state.analysis) ? 'Повторить анализ' : 'Найти поручения и договорённости', 'analyze', { variant: 'ai-primary', attrs: { 'aria-busy': analyzing, disabled: state.items.length > 0 || analyzing || state.analysis_status === 'completed' } })}</div>
             <p class="mc-hint">AI отделит поручения от решений и приложит цитаты. Все результаты требуют вашей проверки.</p>
         </section>
         <section class="mc-results" aria-busy="${analyzing}"><div class="mc-section-title"><h2>Поручения и договорённости</h2>${analyzing ? '' : `<span>${state.items.length}</span>`}</div>
@@ -150,7 +152,7 @@ export async function initMeetingCapture(app) {
         if (query.has('capture')) {
             if (id) query.set('capture', id); else query.delete('capture');
             const route = `/meeting-capture${query.size ? `?${query}` : ''}`;
-            history.replaceState(null, '', `#${route}`);
+            window.history.replaceState(null, '', `#${route}`);
             if (app.router.lastHash !== undefined) app.router.lastHash = route;
         }
     };
@@ -167,7 +169,7 @@ export async function initMeetingCapture(app) {
         if (!root.isConnected) return;
         workspace.innerHTML = renderWorkspace(state);
         const current = state.preview || state.status === 'saved' ? 3 : ['saving', 'queued', 'running', 'failed', 'uncertain', 'configuration'].includes(state.analysis) ? 1 : state.items.length || state.analysis === 'empty' ? 2 : 0;
-        root.querySelectorAll('[data-step]').forEach(el => { if (Number(el.dataset.step) === current) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current'); });
+        setStepForm(root.querySelector('#mc-step-form'), String(current));
         if (busy) root.querySelectorAll('button,input,textarea,select').forEach(el => {
             if (el.id === 'mc-transcript') el.readOnly = true;
             else el.disabled = true;
@@ -279,7 +281,7 @@ export async function initMeetingCapture(app) {
     };
     const canLeave = async () => {
         if (busy) { showError(new Error('Дождитесь завершения текущего действия.')); return false; }
-        return !state.dirty || confirmAction({ title: 'Оставить несохранённые изменения?', message: 'Изменения после последнего сохранения черновика будут потеряны.', confirmText: 'Оставить изменения', cancelText: 'Продолжить редактирование' });
+        return !state.dirty || confirmAction({ title: 'Несохранённые изменения', message: 'Изменения после последнего сохранения черновика будут потеряны.', confirmText: 'Не сохранять', cancelText: 'Продолжить редактирование', destructive: true });
     };
     const beforeUnload = event => { if (state.dirty || busy) { event.preventDefault(); event.returnValue = ''; } };
     window.addEventListener('beforeunload', beforeUnload);
@@ -303,8 +305,7 @@ export async function initMeetingCapture(app) {
                 const panel = root.querySelector('.mc-results > .mc-panel'); if (panel) panel.outerHTML = renderAnalysis(state);
                 root.querySelector('[data-action="analyze"]').textContent = 'Найти поручения и договорённости';
                 root.querySelector('[data-action="analyze"]').disabled = false;
-                root.querySelector('[aria-current="step"]')?.removeAttribute('aria-current');
-                root.querySelector('[data-step="0"]').setAttribute('aria-current', 'step');
+                setStepForm(root.querySelector('#mc-step-form'), '0');
             }
             state[el.dataset.meta] = el.value || (el.dataset.meta === 'meeting_date' ? null : ''); markDirty();
         }
@@ -337,14 +338,19 @@ export async function initMeetingCapture(app) {
         if (!file) return;
         const fileState = state;
         try {
+            const upload = event.target.closest('.ui-upload'); setUploadState(upload,'uploading','Чтение файла…');
             const text = await readTranscriptFile(file);
+            setUploadState(upload,'selected','Файл прочитан');
             if (!root.isConnected || state !== fileState || state.items.length || busy) return;
-            if (state.transcript.trim() && !await confirmAction({ title: 'Заменить текст расшифровки?', message: 'Текущий текст будет заменён содержимым файла.', confirmText: 'Заменить' })) return;
+            if (state.transcript.trim() && !await confirmAction({ title: 'Заменить текст расшифровки?', message: 'Текущий текст будет заменён содержимым файла.', confirmText: 'Заменить' })) {
+                setUploadState(upload, 'cancelled', 'Замена текста отменена');
+                return;
+            }
             state.transcript = text; state.analysis = 'idle'; state.analysis_status = 'idle';
             if (state.title === 'Новая встреча') state.title = file.name.replace(/\.[^.]+$/, '').slice(0, 255);
             markDirty(); draw();
-        } catch (error) { showError(error); }
-        finally { event.target.value = ''; }
+        } catch (error) { setUploadState(event.target.closest('.ui-upload'),'error',error.message); showError(error); }
+        finally { event.target.value = ''; event.target.disabled = state.items.length > 0; }
     });
     root.addEventListener('click', async event => {
         const target = event.target.closest('[data-action]');

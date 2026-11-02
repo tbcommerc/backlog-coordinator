@@ -1,0 +1,32 @@
+/* Filter controls share geometry; page code owns values and filtering. */
+:root { --filter-control-width: 240px; }
+:root .ui-filter-select {
+  width:var(--filter-control-width); min-width:0; max-width:100%;
+  text-overflow:ellipsis; white-space:nowrap; cursor:pointer;
+}
+:root .ui-filter-slot {
+  box-sizing:border-box; width:var(--filter-control-width); max-width:100%; min-width:0;
+  flex:0 1 var(--filter-control-width);
+}
+:root .ui-filter-slot .ui-filter-select { width:100%; min-width:0; }
+:root .filter-toolbar-row .filter-btn,
+:root .pinned-filters-row .filter-btn { width:var(--filter-control-width); min-width:0; max-width:100%; }
+:root .ui-filter-popover { display:flex; flex-direction:column; overflow:hidden; }
+:root .ui-filter-popover .ui-filter-options,
+:root .ui-filter-popover .fd-options { min-height:0; max-height: min(360px, 50dvh); overflow:auto; overscroll-behavior:contain; }
+:root .ui-filter-popover .ui-selection-option {
+  width:100%; min-height:max(36px,var(--control-target-min)); margin:0;
+  border:0; background:transparent; color:var(--text-primary); font:inherit;
+  text-align:left; box-shadow:none;
+}
+:root .ui-filter-popover .ui-selection-option:hover { background:var(--bg-hover); }
+:root .ui-filter-popover .ui-filter-option { justify-content:space-between; }
+:root .ui-filter-popover .ui-filter-option[aria-pressed=true] { background:var(--accent-light); color:var(--accent-text); }
+:root .ui-filter-popover .ui-filter-option:focus-visible { outline:2px solid var(--focus-color); outline-offset:-2px; }
+:root .ui-filter-popover .ui-popover-header,
+:root .ui-filter-popover .ui-popover-field,
+:root .ui-filter-popover .ui-popover-actions { flex:none; }
+@media(max-width:640px) {
+ :root .ui-filter-slot, :root .ui-filter-select { width:100%; flex-basis:100%; }
+ :root .filter-toolbar-row .filter-btn, :root .pinned-filters-row .filter-btn { width:100%; }
+}

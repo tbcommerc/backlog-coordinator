@@ -52,9 +52,11 @@ def report(db, user, meeting_id=None, team_id=None):
         as_of = snapshot.payload['as_of']
     else:
         items, as_of = [serialize(x) for x in visible], date.today().isoformat()
-    if team_id is not None: items = [x for x in items if x['execution_team_id'] == team_id]
+    from services.filter_values import filter_values
+    team_ids=filter_values(team_id,numeric=True)
+    if team_ids: items = [x for x in items if x['execution_team_id'] in team_ids]
     majors = db.query(Task).filter(Task.is_deleted.is_(False), task_read_scope_clause(user, Task))
-    if team_id is not None: majors = majors.filter(Task.team_id == team_id)
+    if team_ids: majors = majors.filter(Task.team_id.in_(team_ids))
     major_rows = majors.all()
     major_ids = {x.id for x in major_rows}
     external = db.query(MajorExternalLink).filter(MajorExternalLink.major_task_id.in_(major_ids)).all() if major_ids else []

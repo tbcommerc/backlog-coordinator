@@ -2,16 +2,12 @@ import {test,expect} from '@playwright/test';
 
 test('focus selection persists across list and board',async({page})=>{
  const {queries}=await setup(page);
- await page.getByRole('button',{name:'Дополнительные фильтры'}).click();
- await page.locator('#work-focus').selectOption('today');
- await page.getByRole('button',{name:'Применить',exact:true}).click();
+ await page.locator('[data-work-focus=today]').click();
  await expect.poll(()=>queries.at(-1).get('focus')).toBe('today');
  await page.getByRole('button',{name:'Доска',exact:true}).click();
  await expect(page.locator('[data-board-column]')).toHaveCount(4);
  expect(queries.at(-1).get('focus')).toBe('today');
- await page.getByRole('button',{name:'Дополнительные фильтры'}).click();
- await page.locator('#work-focus').selectOption('');
- await page.getByRole('button',{name:'Применить',exact:true}).click();
+ await page.locator('[data-work-focus=today]').click();
  await expect.poll(()=>queries.at(-1).has('focus')).toBe(false);
 });
 
@@ -32,7 +28,7 @@ test('personal queue hides own assignee but keeps acceptance actor and mobile co
  await expect(page.locator('[data-work-row="2"] .work-queue-person small')).toHaveText('Анна');
  await expect(page.locator('[data-work-row="1"] .work-personal-next')).not.toBeEmpty();
  const next=await page.locator('[data-work-row="1"] .work-personal-next').boundingBox();
- const status=await page.locator('[data-work-row="1"] .work-list-status').boundingBox();
+ const status=await page.locator('[data-work-row="1"] .work-queue-status').boundingBox();
  expect(status.y).toBeGreaterThanOrEqual(next.y+next.height);
  await expect(page.locator('#work-view option[value=all]')).toHaveText('Все доступные · 2');
  await page.locator('#work-view').selectOption('team');await expect(page.locator('[data-work-row="1"] .work-queue-person-line')).toBeVisible();
@@ -42,14 +38,16 @@ test('mobile filters pin apply last, cancel edits and contain keyboard focus',as
  const {queries}=await setup(page,{width:390});
  await page.getByRole('button',{name:'Дополнительные фильтры',exact:true}).click();
  const panel=page.getByRole('dialog',{name:'Фильтры рабочих задач'});await expect(panel).toBeVisible();const count=queries.length;
- await page.locator('#work-completed').selectOption('7d');expect(queries.length).toBe(count);
+ await page.locator('#work-status').selectOption('active_done');
+ await page.locator('#work-done-period').selectOption('7d');expect(queries.length).toBe(count);
  const apply=page.getByRole('button',{name:'Показать задачи',exact:true});
  const rect=await apply.boundingBox();expect(rect.y+rect.height).toBeGreaterThan(820);
  await page.getByRole('button',{name:'Закрыть фильтры',exact:true}).press('Shift+Tab');
  await expect(page.getByRole('button',{name:'Отмена',exact:true})).toBeFocused();
  await page.keyboard.press('Escape');await expect(panel).toBeHidden();expect(page.url()).not.toContain('done_period=7d');
  await page.getByRole('button',{name:'Дополнительные фильтры',exact:true}).click();
- await page.locator('#work-completed').selectOption('7d');await apply.click();
+ await page.locator('#work-status').selectOption('active_done');
+ await page.locator('#work-done-period').selectOption('7d');await apply.click();
  await expect.poll(()=>queries.at(-1).get('done_period')).toBe('7d');expect(queries.at(-1).get('status')).toBe('active_done');
 });
 
@@ -110,13 +108,13 @@ test('approved list keeps filtered totals, optional grouping and unclipped row m
  const menu=await page.locator('[data-queue-menu]').first().boundingBox();
  const panel=await page.locator('.work-queue-panel').boundingBox();
  expect(menu.x+menu.width).toBeLessThanOrEqual(panel.x+panel.width);
- await expect(page.locator('.work-queue-attention[data-work-quick=blocked]')).toHaveAttribute('aria-pressed','false');
- await page.locator('.work-queue-attention[data-work-quick=blocked]').click();
- await expect(page.locator('.work-queue-attention[data-work-quick=blocked]')).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('[data-work-focus=blocked]')).toHaveAttribute('aria-pressed','false');
+ await page.locator('[data-work-focus=blocked]').click();
+ await expect(page.locator('[data-work-focus=blocked]')).toHaveAttribute('aria-pressed','true');
 });
 
 test('filters apply atomically, cancel, preserve collection and expose chips',async({page})=>{
- const {queries}=await setup(page);
+ const {queries}=await setup(page,{width:390});
  await page.getByRole('button',{name:'Дополнительные фильтры',exact:true}).click();
  const count=queries.length;
  await page.locator('#work-priority').selectOption('high');
@@ -127,9 +125,9 @@ test('filters apply atomically, cancel, preserve collection and expose chips',as
  await page.getByRole('button',{name:'Дополнительные фильтры',exact:true}).click();
  await expect(page.locator('#work-priority')).toHaveValue('');
  await page.locator('#work-priority').selectOption('high');
- await page.getByRole('button',{name:'Применить',exact:true}).click();
+ await page.getByRole('button',{name:'Показать задачи',exact:true}).click();
  await expect(page.locator('[data-remove-filter=work-priority]')).toBeVisible();
- await page.getByRole('button',{name:'Сбросить',exact:true}).click();
+ await page.locator('[data-work-action=reset]').click();
  expect(page.url()).toContain('view=all');expect(page.url()).not.toContain('priority=');
 });
 
@@ -137,7 +135,8 @@ test('summary distinguishes filtered, unknown and zero metrics',async({page})=>{
  await setup(page,{display:'summary'});
  await expect(page.locator('[data-work-metric=done]')).toHaveText('Выполнены · Не включены');
  await expect(page.locator('[data-work-metric=blocked]')).toHaveText('Есть препятствие · —');
- await page.locator('#work-completed').selectOption('7d');
+ await page.locator('#work-status').selectOption('active_done');
+ await page.locator('#work-done-period').selectOption('7d');
  await expect(page.locator('[data-work-metric=done]')).toHaveText('Выполнены · 0');
 });
 
@@ -147,7 +146,8 @@ test('single-page board has four columns, no disabled pager, explicit completed 
  await expect(page.locator('[data-board-page]')).toHaveCount(0);
  await expect(page.locator('[data-board-menu="1"]')).toHaveText('⋯');
  await expect(page.locator('.work-board-context')).toHaveCount(0);
- await page.locator('#work-completed').selectOption('30d');
+ await page.locator('#work-status').selectOption('active_done');
+ await page.locator('#work-done-period').selectOption('30d');
  await expect(page.locator('[data-board-column]')).toHaveCount(5);
  expect(page.url()).toContain('done_period=30d');
 });
@@ -199,7 +199,8 @@ test('background update retains an open list menu',async({page})=>{
 for(const width of [320,390,768,1024,1280,1440,1920])for(const theme of ['light','dark'])test(`layout ${width} ${theme}`,async({page},testInfo)=>{
  await setup(page,{width,theme,display:'board'});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);
- if(width<640){await page.locator('#work-board-column').selectOption('ready');await page.screenshot({path:testInfo.outputPath('board.png')});const card=await page.locator('[data-board-card="1"]').boundingBox();expect(card.y).toBeLessThanOrEqual(width===320?340:300);}
+ // The toolbar keeps search and quick filters visible on narrow screens.
+ if(width<640){await page.locator('#work-board-column').selectOption('ready');await page.screenshot({path:testInfo.outputPath('board.png')});const card=await page.locator('[data-board-card="1"]').boundingBox();expect(card.y).toBeLessThanOrEqual(420);}
  await page.locator('[data-work-id="1"]').click();
  await expect(page.locator('.work-dialog')).toBeVisible();
  expect(await page.locator('.work-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);

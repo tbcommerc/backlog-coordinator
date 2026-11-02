@@ -53,7 +53,8 @@ test('priority and checklist structure save together; completion uses current ve
  await priority.selectOption('urgent');
  await page.getByRole('button',{name:'Применить',exact:true}).click();
  await expect.poll(()=>page.url()).toContain('priority=urgent');
- await expect(page.locator('[data-work-row]')).toContainText('Чек-лист 1/2');
+ await expect(page.locator('[data-work-row] .work-checklist-summary')).toHaveAttribute('aria-label','Чек-лист 1/2');
+ await expect(page.locator('[data-work-row] .work-checklist-summary')).toHaveText('1 из 2');
 });
 
 test('executor can mark checklist without editing structure; conflict does not fake success',async({page})=>{

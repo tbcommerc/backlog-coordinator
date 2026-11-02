@@ -1,0 +1,1246 @@
+[
+  {
+    "label": "BA: главная",
+    "count": 0,
+    "groups": [],
+    "url": "#/dashboard"
+  },
+  {
+    "label": "BA: DMB таблица",
+    "count": 345,
+    "groups": [
+      {
+        "bg": "rgb(241, 245, 249)",
+        "border": "0px",
+        "cls": "badge ui-badge",
+        "font": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "НОВАЯ ЗАДАЧА",
+        "weight": "500"
+      },
+      {
+        "bg": "rgba(59, 130, 246, 0.12)",
+        "border": "0px",
+        "cls": "badge badge-info",
+        "font": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Проектный офис",
+        "weight": "500"
+      },
+      {
+        "bg": "rgba(16, 185, 129, 0.12)",
+        "border": "0px",
+        "cls": "badge badge-status-done",
+        "font": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "0.18",
+        "weight": "500"
+      },
+      {
+        "bg": "rgba(245, 158, 11, 0.12)",
+        "border": "0px",
+        "cls": "badge badge-warning",
+        "font": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "0.48",
+        "weight": "500"
+      },
+      {
+        "bg": "rgba(239, 68, 68, 0.12)",
+        "border": "0px",
+        "cls": "badge badge-danger",
+        "font": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "h": 59.98843002319336,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Нет данных",
+        "weight": "500"
+      }
+    ],
+    "url": "#/backlog"
+  },
+  {
+    "label": "BA: карточка основное",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "BA: карточка основное",
+    "count": 24,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "badge ui-badge task-head-chip",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "ВЫСОКИЙ",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "sic",
+        "h": 21.990741729736328,
+        "interactive": false,
+        "line": "15px",
+        "padding": "0px",
+        "radius": "8px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "",
+        "weight": "700"
+      },
+      {
+        "border": "0px",
+        "cls": "badge ui-badge",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "ВЫСОКИЙ",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "vchip",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "ui-progress-track",
+        "h": 5.995370864868164,
+        "interactive": false,
+        "line": "21px",
+        "padding": "0px",
+        "radius": "9999px",
+        "shadow": "none",
+        "size": "14px",
+        "text": "",
+        "weight": "600"
+      },
+      {
+        "border": "0px",
+        "cls": "chip static",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "IB",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "ttype",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "КВАРТАЛЬНАЯ/ГОДОВАЯ ЦЕЛЬ",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "cv-good",
+        "h": 18.51852035522461,
+        "interactive": false,
+        "line": "22.5px",
+        "padding": "0px",
+        "radius": "0px",
+        "shadow": "none",
+        "size": "15px",
+        "text": "0,05",
+        "weight": "700"
+      },
+      {
+        "border": "0px",
+        "cls": "diff d-good",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "-81%",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "BA: отчётные статусы карточки",
+    "count": 9,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "badge ui-badge task-head-chip",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "ВЫСОКИЙ",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "sic",
+        "h": 21.990741729736328,
+        "interactive": false,
+        "line": "15px",
+        "padding": "0px",
+        "radius": "8px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "",
+        "weight": "700"
+      },
+      {
+        "border": "0px",
+        "cls": "ric",
+        "h": 29.988428115844727,
+        "interactive": false,
+        "line": "21px",
+        "padding": "0px",
+        "radius": "9px",
+        "shadow": "none",
+        "size": "14px",
+        "text": "",
+        "weight": "400"
+      },
+      {
+        "border": "0px",
+        "cls": "sl",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "21px",
+        "padding": "0px",
+        "radius": "99px",
+        "shadow": "none",
+        "size": "14px",
+        "text": "",
+        "weight": "700"
+      }
+    ]
+  },
+  {
+    "label": "BA: командный бэклог",
+    "count": 7,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "th-label",
+        "h": 15.000000953674316,
+        "interactive": true,
+        "line": "15px",
+        "padding": "0px",
+        "radius": "0px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Прогресс",
+        "weight": "600"
+      }
+    ]
+  },
+  {
+    "label": "BA: рабочие задачи список",
+    "count": 29,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "work-queue-note",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Есть препятствие",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "work-list-status",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "К исполнению",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "BA: рабочая задача",
+    "count": 30,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "work-queue-note",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Есть препятствие",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "work-list-status",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "К исполнению",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "badge ui-badge",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "В работе",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "BA: уведомления",
+    "count": 45,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "notification-new-label",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Новое",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "notification-topic",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Рабочая задача",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "notification-priority notification-title-priority",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Высокий",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "notification-resolved-label",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Закрыто",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "BA: уведомления тёмная тема 390px",
+    "count": 45,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "notification-new-label",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Новое",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "notification-topic",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Рабочая задача",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "notification-priority notification-title-priority",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Высокий",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "notification-resolved-label",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Закрыто",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "BA: статусы для встреч",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "BA: директорская оперативка",
+    "count": 11,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "directorate-meeting-badge",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Встреча не завершена · 7 сентября",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "directorate-task-info-label",
+        "h": 17.9976863861084,
+        "interactive": false,
+        "line": "18px",
+        "padding": "0px",
+        "radius": "0px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Информация о задаче",
+        "weight": "700"
+      },
+      {
+        "border": "0.740741px",
+        "cls": "directorate-star is-active is-readonly",
+        "h": 17.476852416992188,
+        "interactive": false,
+        "line": "21px",
+        "padding": "0px",
+        "radius": "10px",
+        "shadow": "none",
+        "size": "14px",
+        "text": "",
+        "weight": "400"
+      },
+      {
+        "border": "0px",
+        "cls": "directorate-type",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "ТЕХДОЛГ",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "BA: квартальные светофоры",
+    "count": 102,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "badge badge-info",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Methodology",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "ui-progress-track",
+        "h": 5.995370864868164,
+        "interactive": false,
+        "line": "16.8px",
+        "padding": "0px",
+        "radius": "9999px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "",
+        "weight": "400"
+      },
+      {
+        "border": "0px",
+        "cls": "quarterly-light quarterly-light--yellow",
+        "h": 61.97916793823242,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "ЖёлтыйДанные требуют обновления",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "badge badge-warning",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Не подтверждён",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "quarterly-light quarterly-light--red",
+        "h": 43.981483459472656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "КрасныйНет факта",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "badge badge-danger",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Факт не заполнен",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "ui-progress-fill",
+        "h": 5.995370864868164,
+        "interactive": false,
+        "line": "16.8px",
+        "padding": "0px",
+        "radius": "9999px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "",
+        "weight": "400"
+      },
+      {
+        "border": "0px",
+        "cls": "quarterly-light quarterly-light--green",
+        "h": 61.97916793823242,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "ЗелёныйДанные требуют обновления",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "BA: проекты",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "BA: командный бэклог повторно",
+    "count": 7,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "th-label",
+        "h": 15.000000953674316,
+        "interactive": true,
+        "line": "15px",
+        "padding": "0px",
+        "radius": "0px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Прогресс",
+        "weight": "600"
+      }
+    ]
+  },
+  {
+    "label": "BA: ревью запросов",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "BA: все доступные ревью",
+    "count": 1,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "badge badge-warning",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "В проработке",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "Admin: аудит действий",
+    "count": 1,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "audit-total-badge",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Загрузка",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "Admin: администрирование",
+    "count": 5,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "admin-tab-group-label",
+        "h": 17.9976863861084,
+        "interactive": false,
+        "line": "18px",
+        "padding": "0px 0px 0px 4px",
+        "radius": "0px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Контроль",
+        "weight": "600"
+      }
+    ]
+  },
+  {
+    "label": "Admin: роли",
+    "count": 5,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "admin-tab-group-label",
+        "h": 17.9976863861084,
+        "interactive": false,
+        "line": "18px",
+        "padding": "0px 0px 0px 4px",
+        "radius": "0px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Контроль",
+        "weight": "600"
+      }
+    ]
+  },
+  {
+    "label": "Admin: аудит повторно",
+    "count": 1,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "audit-total-badge",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Загрузка",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "Admin: аудит после reload",
+    "count": 101,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "audit-total-badge",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "6159 событий",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "audit-action-badge audit-action-update",
+        "h": 41.99074172973633,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Изменение",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "audit-entity-badge",
+        "h": 41.99074172973633,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Другой объект",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "audit-action-badge audit-action-create",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Создание",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "Admin: матрица ролей загружена",
+    "count": 65,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "admin-tab-group-label",
+        "h": 17.9976863861084,
+        "interactive": false,
+        "line": "18px",
+        "padding": "0px 0px 0px 4px",
+        "radius": "0px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Контроль",
+        "weight": "600"
+      },
+      {
+        "border": "0px",
+        "cls": "role-access-badge role-access-none",
+        "h": 59.98843002319336,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Нет доступа",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "role-access-badge role-access-read",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Доступно",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "role-access-badge role-access-write",
+        "h": 41.99074172973633,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Частичный",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "role-access-badge role-access-full",
+        "h": 41.99074172973633,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Редакт. все",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "badge badge-success",
+        "h": 41.99074172973633,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Активна",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "Admin: отчётные встречи",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "Admin: ошибки доставки",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "Admin: аналитика ЛТ",
+    "count": 34,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "p360-band-label",
+        "h": 17.9976863861084,
+        "interactive": true,
+        "line": "18px",
+        "padding": "0px",
+        "radius": "0px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Вовлечённые",
+        "weight": "400"
+      },
+      {
+        "border": "0px",
+        "cls": "p360-band",
+        "h": 7.997685432434082,
+        "interactive": true,
+        "line": "normal",
+        "padding": "0px",
+        "radius": "3px",
+        "shadow": "none",
+        "size": "13px",
+        "text": "",
+        "weight": "400"
+      },
+      {
+        "border": "0px",
+        "cls": "p360-band p360-band-involved",
+        "h": 5.995370864868164,
+        "interactive": true,
+        "line": "normal",
+        "padding": "0px",
+        "radius": "3px",
+        "shadow": "none",
+        "size": "13px",
+        "text": "",
+        "weight": "400"
+      },
+      {
+        "border": "0.740741px",
+        "cls": "p360-toggle",
+        "h": 35.47453689575195,
+        "interactive": false,
+        "line": "21px",
+        "padding": "3px",
+        "radius": "8px",
+        "shadow": "none",
+        "size": "14px",
+        "text": "ЗадачиТрудозатраты",
+        "weight": "400"
+      },
+      {
+        "border": "0px",
+        "cls": "roi-level-label",
+        "h": 17.9976863861084,
+        "interactive": true,
+        "line": "18px",
+        "padding": "0px",
+        "radius": "0px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Проект",
+        "weight": "600"
+      }
+    ]
+  },
+  {
+    "label": "Admin: ДИД оперативка",
+    "count": 21,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "badge badge-info",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Pre-Trade",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "ui-progress-track",
+        "h": 5.995370864868164,
+        "interactive": false,
+        "line": "16.8px",
+        "padding": "0px",
+        "radius": "9999px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "",
+        "weight": "400"
+      },
+      {
+        "border": "0px",
+        "cls": "ui-progress-fill",
+        "h": 5.995370864868164,
+        "interactive": false,
+        "line": "16.8px",
+        "padding": "0px",
+        "radius": "9999px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "",
+        "weight": "400"
+      },
+      {
+        "border": "0px",
+        "cls": "badge badge-low",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Нет",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "badge badge-status-backlog",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Новый статус",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "Admin: PI-планирование",
+    "count": 12,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "badge badge-info",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Очередь решений",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "pip-context-badge has-gaps",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "1 пробел",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "Admin: бэклог команды",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "BA: главная повторно",
+    "count": 3,
+    "groups": [
+      {
+        "border": "0.740741px",
+        "cls": "dashboard-date-tile",
+        "h": 47.99768829345703,
+        "interactive": false,
+        "line": "14px",
+        "padding": "0px",
+        "radius": "10px",
+        "shadow": "none",
+        "size": "14px",
+        "text": "27окт",
+        "weight": "400"
+      }
+    ]
+  },
+  {
+    "label": "BA: канбан",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "BA: уведомления после обновления",
+    "count": 45,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "notification-new-label",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Новое",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "notification-topic",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Рабочая задача",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "notification-priority notification-title-priority",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Высокий",
+        "weight": "500"
+      },
+      {
+        "border": "0px",
+        "cls": "notification-resolved-label",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Закрыто",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "BA: мои запросы",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "BA: ассистент V2",
+    "count": 0,
+    "groups": []
+  },
+  {
+    "label": "BA: еженедельная встреча",
+    "count": 1,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "badge badge-info",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "Статус-отчёт",
+        "weight": "500"
+      }
+    ]
+  },
+  {
+    "label": "BA: состав проекта",
+    "count": 1,
+    "groups": [
+      {
+        "border": "0px",
+        "cls": "badge ui-badge",
+        "h": 23.99305725097656,
+        "interactive": false,
+        "line": "18px",
+        "padding": "3px 8px",
+        "radius": "6px",
+        "shadow": "none",
+        "size": "12px",
+        "text": "3",
+        "weight": "500"
+      }
+    ]
+  }
+]

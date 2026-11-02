@@ -21,7 +21,7 @@ const app={store:{get:()=>({name:'Тестовый актор',role_name:'PO/PL/
     if(params.has('loading'))await loadGate;
     if(params.has('error'))throw new Error('Проверочная ошибка загрузки');
     if(path.startsWith('/reporting-meetings?'))return {items:params.has('empty')?[]:meetings};
-    const items=params.has('empty')?[]:[structuredClone(item)];
+    const items=params.has('empty')?[]:Array.from({length:Number(params.get('many'))||1},(_,i)=>({...structuredClone(item),task_id:i+1,public_id:params.has('many')?'TASK-'+(i+1):item.public_id,title:params.has('many')?'QA-задача '+(i+1):item.title}));
     if(path.startsWith('/reporting-meetings/'))return {scope:{read_only:readonly,team_name:'Команда продукта'},items,summary:{total_tasks:items.length,filled_tasks:0,missing_tasks:items.length}};
     return {quarter:'IV квартал 2026',base_planned_progress:50,start_shifts:[1,2,3].map(n=>({id:n,month_number:n,name:`Месяц ${n}`})),items,summary:{total_tasks:items.length,missing_fact:0,stale_fact:items.length}};
   },

@@ -1,0 +1,7 @@
+.ui-entity-picker { display: grid; gap: var(--space-2); min-width: 0; }
+.ui-entity-picker .ui-field { min-width: 0; margin: 0; }
+.ui-entity-picker .ui-control { width: 100%; min-width: 0; max-width: 100%; }
+.ui-entity-hint, .ui-entity-status, .ui-entity-selected { margin: 0; overflow-wrap: anywhere; font-size: var(--text-control-sm); }
+.ui-entity-hint, .ui-entity-status { color: var(--text-secondary); }
+.ui-entity-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ui-entity-picker[hidden], .ui-entity-picker [hidden] { display: none; }

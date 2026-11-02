@@ -84,7 +84,7 @@ assert.doesNotMatch(workspace, /aria-modal="true"/);
 assert.match(workspace, /data-modal-close/);
 assert.match(workspace, /reporting-status-editor-label">\$\{isWeekly \? 'Результат недели' : 'Статус к выбранной встрече'\}/);
 assert.match(workspace, /reporting-status-toolbar[\s\S]*reporting-readiness[\s\S]*data-save-reporting-all/);
-assert.match(workspace, /data-lucide="triangle-alert"/);
+assert.match(workspace, /data-lucide="alert-triangle"/);
 assert.doesNotMatch(workspace, /data-lucide="circle-check"/);
 assert.doesNotMatch(workspace, /reporting-preparation-head|reporting-status-savebar/);
 assert.match(workspace, /previous_status/);

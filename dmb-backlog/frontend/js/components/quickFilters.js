@@ -109,7 +109,7 @@ function updateQuickFilterLayout() {
   panel.classList.toggle('quick-filters-single-row', fitsWithoutClipping);
 }
 
-function bindQuickFilterLayout() {
+export function initQuickFilterLayout() {
   quickFilterLayoutObserver?.disconnect();
   const shell = document.querySelector('.quick-filters-shell');
   if (!shell) return;
@@ -118,7 +118,7 @@ function bindQuickFilterLayout() {
     quickFilterLayoutObserver = new ResizeObserver(scheduleUpdate);
     quickFilterLayoutObserver.observe(shell);
   }
-  scheduleUpdate();
+  updateQuickFilterLayout();
 }
 
 function setMobilePanelOpen(open) {
@@ -190,7 +190,7 @@ export function initQuickFilters(scope, getTasks) {
 
   updateQuickFilterCounts(scope, getTasks ? getTasks() : []);
   syncQuickFilterButtons(scope);
-  bindQuickFilterLayout();
+  initQuickFilterLayout();
 }
 
 export function syncQuickFilterButtons(scope) {

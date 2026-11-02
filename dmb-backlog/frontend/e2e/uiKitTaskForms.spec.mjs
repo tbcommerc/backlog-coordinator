@@ -154,9 +154,31 @@ for (const theme of ['light', 'dark']) {
   });
 }
 
-test('подсказка расчёта использует общую панель и Escape не закрывает карточку',async({page})=>{
-  await open(page);
+for (const width of [320, 390, 1280]) for (const theme of ['light', 'dark']) test(`подсказка расчёта: отступы и границы ${width} ${theme}`,async({page}, testInfo)=>{
+  await page.setViewportSize({ width, height: 900 });
+  await open(page, 'card', theme);
   const trigger=page.locator('.agent-check-wrap button').first();await expect(trigger).toBeEnabled();await trigger.focus();
   const tooltip=page.getByRole('tooltip');await expect(tooltip).toBeVisible();await expect(tooltip).toContainText('Для расчёта нужны поля');
+  const geometry = await tooltip.evaluate(panel => {
+    const box = panel.getBoundingClientRect();
+    return {
+      left: box.left, right: box.right, overflow: panel.scrollWidth - panel.clientWidth,
+      padding: parseFloat(getComputedStyle(panel).paddingLeft),
+      rows: [...panel.querySelectorAll('.agent-check-item')].map(row => {
+        const [mark, label, state] = [...row.children].map(el => el.getBoundingClientRect());
+        return { left: mark.left - box.left, gap: state.left - label.right, right: box.right - state.right };
+      }),
+    };
+  });
+  expect(geometry.left).toBeGreaterThanOrEqual(8);
+  expect(geometry.right).toBeLessThanOrEqual(width - 8);
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+  expect(geometry.padding).toBeGreaterThanOrEqual(16);
+  for (const row of geometry.rows) {
+    expect(row.left).toBeGreaterThanOrEqual(16);
+    expect(row.gap).toBeGreaterThanOrEqual(9);
+    expect(row.right).toBeGreaterThanOrEqual(16);
+  }
+  await page.screenshot({ path: testInfo.outputPath('ai-check-tooltip.png') });
   await page.keyboard.press('Escape');await expect(tooltip).toBeHidden();await expect(page.locator('#task-detail-overlay')).toBeVisible();await expect(trigger).toBeFocused();
 });

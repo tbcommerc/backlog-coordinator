@@ -1,7 +1,7 @@
 /* Existing SPA consumers only. New reusable components belong in core.css.
    ID specificity bridges legacy task-dialog styles. */
 @import url("./login.css?v=4");
-@import url("./dialog-bridges.css?v=1");
+@import url("./dialog-bridges.css?v=2");
 /* Typography ownership: page, dialog and document headings are distinct roles. */
 :root :is(.page-header h1, .toolbar-title, .notification-hero h1, .agent-v2-header h1,
   .an-page h1, .ba-header h1, .mc-page h1, .work-page h1, .directorate-page-heading h1,
@@ -17,7 +17,7 @@
   font-size:var(--type-dialog-size); font-weight:var(--font-semibold); line-height:var(--type-dialog-line);
   overflow-wrap:anywhere; white-space:normal;
 }
-:root :is(#feedback-confirm-title, #confirm-modal-title, #qe-confirm-title,
+:root :is(#feedback-confirm-title, .feedback-confirm-title, #confirm-modal-title, #qe-confirm-title,
   #admin-confirm-title, #edit-exit-title, #create-duplicate-title) {
   font-size:var(--type-confirm-size); font-weight:var(--font-semibold); line-height:var(--type-confirm-line);
 }
@@ -171,3 +171,11 @@
 #create-task-overlay .task-network-status { grid-column: 1 / -1; order: 5; }
 }
 .bc-field-option { white-space: normal; text-align: left; justify-content: flex-start; }
+
+:root .request-card-progress { grid-template-columns:auto minmax(80px,190px); }
+:root .request-card-progress > .ui-progress { display:flex; width:100%; min-width:0; }
+/* Page composition stays outside the independent filter component. */
+:root .metric-filter-control.ui-filter-slot { width:100%; }
+:root .work-extra-filters .ui-filter-slot,
+:root .audit-filter-grid .ui-filter-slot { width:100%; }
+:root .metric-filter-control.ui-filter-slot select { flex:1 1 0; width:0; }

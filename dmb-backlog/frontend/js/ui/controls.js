@@ -63,3 +63,17 @@ export function mountTabs(root, onSelect = () => {}) {
   root.addEventListener('keydown', keydown);
   return () => { root.removeEventListener('click', click); root.removeEventListener('keydown', keydown); };
 }
+
+// Keep the visual required marker aligned with native validity in dynamic forms.
+export function setFieldRequired(control, required) {
+  if (!control) return;
+  control.required = Boolean(required);
+  const label = control.labels?.[0];
+  if (!label) return;
+  let marker = label.querySelector('.required');
+  if (required && !marker) {
+    marker = document.createElement('span');
+    marker.className = 'required'; marker.setAttribute('aria-hidden', 'true'); marker.textContent = ' *';
+    label.append(marker);
+  } else if (!required) marker?.remove();
+}

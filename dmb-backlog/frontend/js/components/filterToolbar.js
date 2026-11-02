@@ -1,10 +1,11 @@
+import { dateRange, numberRange, validateRanges } from '../ui/intervals.js';
 import { createPopover, bindPopover } from '../ui/popover.js';
 import { selectionList, filterSelectionList } from '../ui/selectionList.js';
 import { confirmAction } from '../uiFeedback.js';
 import { calculateTaskCv } from '../taskMetrics.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
 import { TASK_COLUMNS } from './taskColumns.js';
-import { pageHeader, button } from '../ui/primitives.js';
+import { pageHeader } from '../ui/primitives.js';
 import { setReferenceSortOrders } from './tableUtils.js?v=52';
 
 console.log('[DMB] filterToolbar.js v20260918.1 loaded');
@@ -805,7 +806,7 @@ export function renderToolbar(scope, opts = {}) {
       ${savedViewsHtml}
       ${opts.columnSettings ? columnSettingsHtml : ''}
       ${opts.viewToggle !== false ? viewToggleHtml : ''}
-      ${scope === 'backlog' ? button({label:'Ещё',icon:'more-horizontal',attrs:{id:'backlog-more-tools','aria-haspopup':'dialog'}}) + `<div id="backlog-more-tools-panel" hidden>${quickEditBtn}${bulkOpsBtn}${transferActionsHtml}${refreshBtn}</div>` : quickEditBtn + bulkOpsBtn + transferActionsHtml + refreshBtn}
+      ${quickEditBtn}${bulkOpsBtn}${transferActionsHtml}${refreshBtn}
     </div>` : '';
 
   return `
@@ -883,11 +884,6 @@ export function initToolbarControls(scope, opts = {}) {
   defaultColumnSettingsRefs[scope] = defaultColumnSettings || null;
 
   const getLabel = (k) => columnLabels[k] || k;
-  if (scope === 'backlog') {
-    const trigger = document.getElementById('backlog-more-tools');
-    const panel = document.getElementById('backlog-more-tools-panel');
-    if (trigger && panel) bindPopover({trigger,panel,label:'Действия бэклога',align:'end'});
-  }
   initSavedViews(scope, getSavedViewState, applySavedViewState, {
     showRevertAction: showSavedViewRevert,
     beforeApply: beforeApplySavedView,
@@ -1478,20 +1474,15 @@ function toggleDropdown(event, scope, key, allTasks) {
       ${emptyToggle}`;
   } else if (column.type === 'number') {
     controls = `
-      <div class="fd-range-fields">
-        <label><span>От</span><input type="number" class="input ui-control fd-min" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.min))}" ${column.min != null ? `min="${column.min}"` : ''} ${column.max != null ? `max="${column.max}"` : ''} step="${column.step || 'any'}"></label>
-        <label><span>До</span><input type="number" class="input ui-control fd-max" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.max))}" ${column.min != null ? `min="${column.min}"` : ''} ${column.max != null ? `max="${column.max}"` : ''} step="${column.step || 'any'}"></label>
-      </div>
+      ${numberRange({ id: `fd-range-${scope}-${key}`, label, from: { value: tokenValue(currentSelected, FILTER_TOKEN_PREFIX.min), controlClassName: 'fd-min', min: column.min, max: column.max, step: column.step || 'any' }, to: { value: tokenValue(currentSelected, FILTER_TOKEN_PREFIX.max), controlClassName: 'fd-max', min: column.min, max: column.max, step: column.step || 'any' } })}
       ${emptyToggle}`;
   } else if (column.type === 'date') {
     controls = `
-      <div class="fd-range-fields">
-        <label><span>С даты</span><input type="date" class="input ui-control fd-from" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.from))}"></label>
-        <label><span>По дату</span><input type="date" class="input ui-control fd-to" value="${escapeAttr(tokenValue(currentSelected, FILTER_TOKEN_PREFIX.to))}"></label>
-      </div>
+      ${dateRange({ id: `fd-range-${scope}-${key}`, label, from: { label: 'С даты', value: tokenValue(currentSelected, FILTER_TOKEN_PREFIX.from), controlClassName: 'fd-from' }, to: { label: 'По дату', value: tokenValue(currentSelected, FILTER_TOKEN_PREFIX.to), controlClassName: 'fd-to' } })}
       ${emptyToggle}`;
   }
 
+  dd.classList.add('ui-filter-popover');
   dd.innerHTML = `<div class="ui-popover-header ui-popover-title fd-title">${escapeAttr(label)}</div>${controls}
     <p class="fd-error" id="fd-error-${scope}-${key}" role="alert" hidden></p>
     <div class="ui-popover-actions fd-actions">
@@ -1530,16 +1521,21 @@ function toggleDropdown(event, scope, key, allTasks) {
 
   dd.querySelector('.fd-clear')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    delete columnFilters[scope][key];
-    popover.close({ restoreFocus: false });
-    renderFilterButtons(scope, allTasks);
-    notifyChange();
-    popover.restoreFocus();
+    dd.querySelectorAll('input:not(:disabled)').forEach(input => {
+      if (input.type === 'checkbox') input.checked = false;
+      else input.value = '';
+    });
+    const options = dd.querySelector('.fd-options');
+    if (options) filterSelectionList(options, '');
+    dd.querySelector('.fd-error').hidden = true;
   });
 
   dd.querySelector('.fd-apply')?.addEventListener('click', (e) => {
     e.stopPropagation();
     const vals = new Set();
+    const invalidEndpoint = [...dd.querySelectorAll('.ui-interval input')].find(input => !input.validity.valid);
+    if (invalidEndpoint) { invalidEndpoint.reportValidity(); return; }
+    const invalidOrder = Object.keys(validateRanges(dd)).length > 0;
     if (['select', 'boolean'].includes(column.type)) {
       dd.querySelectorAll('.fd-options input[type="checkbox"]:checked').forEach(checkbox => vals.add(checkbox.dataset.val));
     } else if (column.type === 'text') {
@@ -1549,7 +1545,7 @@ function toggleDropdown(event, scope, key, allTasks) {
     } else if (column.type === 'number') {
       const min = dd.querySelector('.fd-min')?.value;
       const max = dd.querySelector('.fd-max')?.value;
-      if (min !== '' && max !== '' && Number(min) > Number(max)) {
+      if (invalidOrder) {
         showRangeError('.fd-min', 'Значение «От» не может быть больше значения «До»');
         return;
       }
@@ -1559,7 +1555,7 @@ function toggleDropdown(event, scope, key, allTasks) {
     } else if (column.type === 'date') {
       const from = dd.querySelector('.fd-from')?.value;
       const to = dd.querySelector('.fd-to')?.value;
-      if (from && to && from > to) {
+      if (invalidOrder) {
         showRangeError('.fd-from', 'Начальная дата не может быть позже конечной');
         return;
       }

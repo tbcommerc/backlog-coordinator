@@ -78,8 +78,8 @@ export function renderCustomerChat(app) {
               ></textarea>
               <div class="chat-input-actions">
                 <span class="chat-hint">Ctrl+Enter</span>
-                <button aria-label="Отправить сообщение" class="square-icon btn btn-primary chat-send-btn" id="chat-send-btn" disabled>
-                  <i data-lucide="send"></i>
+                <button aria-label="Отправить сообщение" class="ui-btn square-icon btn btn-ai-primary chat-send-btn" id="chat-send-btn" disabled>
+                  <i data-lucide="sparkles"></i>
                 </button>
               </div>
             </div>

@@ -1,0 +1,654 @@
+[
+  {
+    "name": "real-checkbox-and-avatars",
+    "checkboxes": [
+      {
+        "class": "",
+        "tag": "INPUT",
+        "width": 18,
+        "height": 18,
+        "font": "14px",
+        "weight": "400",
+        "color": "rgb(71, 85, 105)",
+        "bg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "class": "ui-checkbox",
+        "tag": "INPUT",
+        "width": 13,
+        "height": 44,
+        "font": "14px",
+        "weight": "400",
+        "color": "rgb(71, 85, 105)",
+        "bg": "rgba(0, 0, 0, 0)"
+      }
+    ],
+    "avatars": [
+      {
+        "class": "ui-avatar ",
+        "tag": "SPAN",
+        "width": 24,
+        "height": 24,
+        "font": "9px",
+        "weight": "600",
+        "color": "rgb(22, 101, 52)",
+        "bg": "rgba(16, 185, 129, 0.12)"
+      },
+      {
+        "class": "work-person-avatar",
+        "tag": "SPAN",
+        "width": 24,
+        "height": 24,
+        "font": "12px",
+        "weight": "400",
+        "color": "rgb(71, 85, 105)",
+        "bg": "rgb(241, 245, 249)"
+      }
+    ]
+  },
+  {
+    "name": "missing-token-live-effect",
+    "primary": "",
+    "primaryColor": "",
+    "items": [
+      {
+        "class": "work-board-card",
+        "border": "rgb(226, 232, 240)",
+        "shadow": "none",
+        "outline": "rgb(30, 41, 59) none 3px"
+      },
+      {
+        "class": "work-board-card is-selected",
+        "border": "rgb(30, 41, 59)",
+        "shadow": "none",
+        "outline": "rgb(30, 41, 59) none 3px"
+      },
+      {
+        "class": "work-board-column is-drop-target is-drop-active",
+        "border": "rgb(226, 232, 240)",
+        "shadow": "none",
+        "outline": "rgb(30, 41, 59) none 3px"
+      }
+    ]
+  },
+  {
+    "name": "status-semantic-parity",
+    "items": [
+      {
+        "class": "badge ui-badge",
+        "tone": "accent",
+        "color": "rgb(79, 70, 229)",
+        "bg": "rgba(99, 102, 241, 0.12)"
+      },
+      {
+        "class": "work-list-status",
+        "color": "rgb(30, 64, 175)",
+        "bg": "rgba(59, 130, 246, 0.12)"
+      }
+    ]
+  },
+  {
+    "name": "disabled-contract",
+    "items": [
+      {
+        "class": "btn btn-secondary ui-btn",
+        "cursor": "not-allowed",
+        "opacity": "0.5",
+        "color": "rgb(30, 41, 59)",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "class": "quick-filter-btn ui-filter-chip ",
+        "cursor": "pointer",
+        "opacity": "1",
+        "color": "rgb(71, 85, 105)",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "class": "ui-tab ",
+        "cursor": "pointer",
+        "opacity": "1",
+        "color": "rgb(71, 85, 105)",
+        "bg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "class": "ui-selection-option",
+        "cursor": "pointer",
+        "opacity": "1",
+        "color": "rgb(30, 41, 59)",
+        "bg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "class": "ui-kpi-card ",
+        "cursor": "pointer",
+        "opacity": "1",
+        "color": "rgb(30, 41, 59)",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ]
+  },
+  {
+    "name": "kpi-formatted-number",
+    "items": [
+      {
+        "text": "0",
+        "font": "24px"
+      },
+      {
+        "text": "1000",
+        "font": "24px"
+      },
+      {
+        "text": "1 000",
+        "font": "14px"
+      }
+    ]
+  },
+  {
+    "name": "tooltip-description-ownership",
+    "afterDestroy": "original",
+    "lostLaterDescription": true
+  },
+  {
+    "name": "field-error-composition",
+    "before": {
+      "describedby": "mixed-field-error field-error-59d0ac49-12b2-4371-b196-ff178e2ed9bb",
+      "errors": [
+        "Новая ошибка",
+        "Старая ошибка"
+      ]
+    },
+    "after": {
+      "invalid": "true",
+      "errors": [
+        "Старая ошибка"
+      ]
+    }
+  },
+  {
+    "name": "filter-tones",
+    "items": [
+      {
+        "tone": "neutral",
+        "countBg": "rgb(241, 245, 249)",
+        "iconColor": "rgb(71, 85, 105)"
+      },
+      {
+        "tone": "success",
+        "countBg": "rgb(241, 245, 249)",
+        "iconColor": "rgb(71, 85, 105)"
+      },
+      {
+        "tone": "info",
+        "countBg": "rgba(59, 130, 246, 0.12)",
+        "iconColor": "rgb(30, 64, 175)"
+      },
+      {
+        "tone": "warning",
+        "countBg": "rgba(245, 158, 11, 0.12)",
+        "iconColor": "rgb(146, 64, 14)"
+      },
+      {
+        "tone": "danger",
+        "countBg": "rgba(239, 68, 68, 0.12)",
+        "iconColor": "rgb(185, 28, 28)"
+      },
+      {
+        "tone": "accent",
+        "countBg": "rgba(99, 102, 241, 0.12)",
+        "iconColor": "rgb(79, 70, 229)"
+      }
+    ]
+  },
+  {
+    "name": "filter-long-content",
+    "viewport": 320,
+    "documentOverflow": 1137,
+    "buttonWidth": 272,
+    "buttonScroll": 1432,
+    "buttonClient": 270,
+    "whiteSpace": "nowrap"
+  },
+  {
+    "name": "express-accessible-fields",
+    "snapshot": "- textbox: Сводный отчёт",
+    "markup": "<input type=\"text\" class=\"input ui-control qe-inline-field-input\" data-entity=\"epic\" data-id=\"21\" data-field=\"title\" data-original=\"Сводный отчёт\" value=\"Сводный отчёт\" style=\"min-width:40px;flex:1;overflow:hidden;text-overflow:ellipsis\" onfocus=\"this.style.borderColor='var(--border-color)';this.style.background='var(--bg-primary)';\" onblur=\"this.style.borderColor='transparent';this.style.background='transparent';\">"
+  },
+  {
+    "name": "static-icon-vocabulary",
+    "known": 1215,
+    "missing": [
+      [
+        "scan-search",
+        [
+          "dmb-backlog/frontend/js/agent-v2/workspace.js:584"
+        ]
+      ],
+      [
+        "triangle-alert",
+        [
+          "dmb-backlog/frontend/js/components/admin.js:1058",
+          "dmb-backlog/frontend/js/components/admin.js:1087",
+          "dmb-backlog/frontend/js/components/admin.js:1852",
+          "dmb-backlog/frontend/js/components/directorateReport.js:239",
+          "dmb-backlog/frontend/js/components/reportingStatuses.js:227",
+          "dmb-backlog/frontend/js/components/reports.js:463",
+          "dmb-backlog/frontend/js/components/reports.js:1165",
+          "dmb-backlog/frontend/js/components/reports.js:1550"
+        ]
+      ],
+      [
+        "circle-check",
+        [
+          "dmb-backlog/frontend/js/components/admin.js:1058",
+          "dmb-backlog/frontend/js/components/admin.js:1852",
+          "dmb-backlog/frontend/js/components/reports.js:1106",
+          "dmb-backlog/frontend/js/components/reports.js:2235",
+          "dmb-backlog/frontend/js/components/reviewPage.js:275",
+          "dmb-backlog/frontend/js/components/reviewPage.js:278",
+          "dmb-backlog/frontend/js/components/reviewPage.js:432"
+        ]
+      ],
+      [
+        "scan-eye",
+        [
+          "dmb-backlog/frontend/js/components/admin.js:1061",
+          "dmb-backlog/frontend/js/components/admin.js:1103"
+        ]
+      ],
+      [
+        "git-compare-arrows",
+        [
+          "dmb-backlog/frontend/js/components/agentChat.js:2156"
+        ]
+      ],
+      [
+        "message-square-text",
+        [
+          "dmb-backlog/frontend/js/components/customerPortal.js:193"
+        ]
+      ],
+      [
+        "circle-alert",
+        [
+          "dmb-backlog/frontend/js/components/customerPortal.js:214",
+          "dmb-backlog/frontend/js/components/customerPortal.js:398",
+          "dmb-backlog/frontend/js/components/customerPortal.js:520"
+        ]
+      ],
+      [
+        "circle-check-big",
+        [
+          "dmb-backlog/frontend/js/components/dashboard.js:639",
+          "dmb-backlog/frontend/js/components/reports.js:1548"
+        ]
+      ],
+      [
+        "clipboard-pen-line",
+        [
+          "dmb-backlog/frontend/js/components/didBacklog.js:48",
+          "dmb-backlog/frontend/js/components/reports.js:1568",
+          "dmb-backlog/frontend/js/components/reports.js:2195"
+        ]
+      ],
+      [
+        "route",
+        [
+          "dmb-backlog/frontend/js/components/expressEstimate.js:1873",
+          "dmb-backlog/frontend/js/components/reviewPage.js:367"
+        ]
+      ],
+      [
+        "lock-keyhole",
+        [
+          "dmb-backlog/frontend/js/components/reports.js:1109",
+          "dmb-backlog/frontend/js/components/reviewPage.js:284"
+        ]
+      ],
+      [
+        "database-zap",
+        [
+          "dmb-backlog/frontend/js/components/reports.js:1373"
+        ]
+      ],
+      [
+        "chart-no-axes-column-decreasing",
+        [
+          "dmb-backlog/frontend/js/components/reports.js:1374"
+        ]
+      ],
+      [
+        "message-square-warning",
+        [
+          "dmb-backlog/frontend/js/components/reports.js:1503"
+        ]
+      ],
+      [
+        "user-round",
+        [
+          "dmb-backlog/frontend/js/components/reports.js:1506"
+        ]
+      ],
+      [
+        "clock-alert",
+        [
+          "dmb-backlog/frontend/js/components/reports.js:1551"
+        ]
+      ],
+      [
+        "message-circle-warning",
+        [
+          "dmb-backlog/frontend/js/components/reviewPage.js:274"
+        ]
+      ],
+      [
+        "circle-x",
+        [
+          "dmb-backlog/frontend/js/components/reviewPage.js:276",
+          "dmb-backlog/frontend/js/components/reviewPage.js:279"
+        ]
+      ]
+    ]
+  },
+  {
+    "name": "hidden-contract",
+    "items": [
+      {
+        "class": "btn btn-secondary ui-btn",
+        "hidden": true,
+        "display": "none",
+        "rendered": false
+      },
+      {
+        "class": "quick-filter-btn ui-filter-chip ",
+        "hidden": true,
+        "display": "inline-flex",
+        "rendered": true
+      },
+      {
+        "class": "ui-kpi-card ",
+        "hidden": true,
+        "display": "flex",
+        "rendered": true
+      },
+      {
+        "class": "badge ui-badge",
+        "hidden": true,
+        "display": "none",
+        "rendered": false
+      }
+    ]
+  },
+  {
+    "name": "fixture-spa-styles",
+    "fixture": {
+      "styles": [
+        "/static/css/fonts.css",
+        "/static/css/tokens.css",
+        "/static/css/base.css",
+        "/static/css/components.css",
+        "/static/css/pages.css",
+        "/static/css/analytics-lt.css",
+        "/static/css/responsive.css",
+        "/static/css/did-backlog.css",
+        "/static/css/directorate-report.css",
+        "/static/css/feedback.css",
+        "/static/css/modal-system.css",
+        "/static/css/agent-v2.css",
+        "/static/css/agent-v2-details.css",
+        "/static/css/meeting-capture.css",
+        "/static/css/backlog-assistant.css",
+        "/static/css/account-security.css",
+        "/static/css/work-tasks.css",
+        "/static/css/ui/kit.css"
+      ],
+      "buttons": [
+        {
+          "id": "",
+          "text": "Список",
+          "class": "btn btn-secondary ui-btn",
+          "radius": "5px",
+          "height": 30,
+          "width": 68.3125,
+          "font": "13px"
+        },
+        {
+          "id": "",
+          "text": "Сводка",
+          "class": "btn btn-secondary ui-btn",
+          "radius": "5px",
+          "height": 30,
+          "width": 68.03125,
+          "font": "13px"
+        },
+        {
+          "id": "",
+          "text": "Создать задачу",
+          "class": "btn btn-primary ui-btn",
+          "radius": "8px",
+          "height": 44,
+          "width": 141.328125,
+          "font": "13px"
+        },
+        {
+          "id": "",
+          "text": "Фильтры",
+          "class": "btn btn-ghost ui-btn",
+          "radius": "7px",
+          "height": 44,
+          "width": 102.875,
+          "font": "13px"
+        },
+        {
+          "id": "",
+          "text": "Обновить",
+          "class": "btn btn-ghost ui-btn",
+          "radius": "8px",
+          "height": 44,
+          "width": 86.46875,
+          "font": "13px"
+        },
+        {
+          "id": "",
+          "text": "⋯",
+          "class": "btn btn-ghost ui-btn",
+          "radius": "8px",
+          "height": 44,
+          "width": 32,
+          "font": "20px"
+        }
+      ],
+      "filter": [
+        {
+          "class": "quick-filter-btn ui-filter-chip  active",
+          "height": 46,
+          "radius": "0px",
+          "padding": "10px 12px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 46,
+          "radius": "0px",
+          "padding": "10px 12px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 46,
+          "radius": "0px",
+          "padding": "10px 12px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 46,
+          "radius": "0px",
+          "padding": "10px 12px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 46,
+          "radius": "0px",
+          "padding": "10px 12px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 32,
+          "radius": "9999px",
+          "padding": "5px 10px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 32,
+          "radius": "9999px",
+          "padding": "5px 10px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 32,
+          "radius": "9999px",
+          "padding": "5px 10px"
+        }
+      ]
+    },
+    "spaStyles": {
+      "styles": [
+        "/static/css/fonts.css",
+        "/static/css/tokens.css",
+        "/static/css/base.css",
+        "/static/css/components.css",
+        "/static/css/pages.css",
+        "/static/css/analytics-lt.css",
+        "/static/css/responsive.css",
+        "/static/css/did-backlog.css",
+        "/static/css/directorate-report.css",
+        "/static/css/feedback.css",
+        "/static/css/modal-system.css",
+        "/static/css/agent-v2.css",
+        "/static/css/agent-v2-details.css",
+        "/static/css/meeting-capture.css",
+        "/static/css/backlog-assistant.css",
+        "/static/css/account-security.css",
+        "/static/css/work-tasks.css",
+        "/static/css/work-workplace.css",
+        "/static/css/work-board.css",
+        "/static/css/ui/kit.css"
+      ],
+      "buttons": [
+        {
+          "id": "",
+          "text": "Список",
+          "class": "btn btn-secondary ui-btn",
+          "radius": "4px",
+          "height": 44,
+          "width": 68.3125,
+          "font": "13px"
+        },
+        {
+          "id": "",
+          "text": "Сводка",
+          "class": "btn btn-secondary ui-btn",
+          "radius": "4px",
+          "height": 44,
+          "width": 68.03125,
+          "font": "13px"
+        },
+        {
+          "id": "",
+          "text": "Создать задачу",
+          "class": "btn btn-primary ui-btn",
+          "radius": "6px",
+          "height": 44,
+          "width": 141.328125,
+          "font": "13px"
+        },
+        {
+          "id": "",
+          "text": "Фильтры",
+          "class": "btn btn-ghost ui-btn",
+          "radius": "7px",
+          "height": 44,
+          "width": 102.875,
+          "font": "13px"
+        },
+        {
+          "id": "",
+          "text": "⋯",
+          "class": "btn btn-ghost ui-btn",
+          "radius": "8px",
+          "height": 44,
+          "width": 28,
+          "font": "20px"
+        }
+      ],
+      "filter": [
+        {
+          "class": "quick-filter-btn ui-filter-chip  active",
+          "height": 44,
+          "radius": "0px",
+          "padding": "5px 2px 7px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 44,
+          "radius": "0px",
+          "padding": "5px 2px 7px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 44,
+          "radius": "0px",
+          "padding": "5px 2px 7px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 44,
+          "radius": "0px",
+          "padding": "5px 2px 7px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 44,
+          "radius": "0px",
+          "padding": "5px 2px 7px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 0,
+          "radius": "9999px",
+          "padding": "5px 10px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 0,
+          "radius": "9999px",
+          "padding": "5px 10px"
+        },
+        {
+          "class": "quick-filter-btn ui-filter-chip ",
+          "height": 0,
+          "radius": "9999px",
+          "padding": "5px 10px"
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing-icons-render",
+    "items": [
+      {
+        "name": "triangle-alert",
+        "tag": "I",
+        "width": 0
+      },
+      {
+        "name": "alert-triangle",
+        "tag": "svg",
+        "width": 24
+      },
+      {
+        "name": "scan-search",
+        "tag": "I",
+        "width": 0
+      }
+    ]
+  }
+]

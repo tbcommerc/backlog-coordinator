@@ -5,6 +5,8 @@ const ERROR_FALLBACK = 'Не удалось выполнить операцию.
 const fieldErrors = globalThis[Symbol.for('ui-kit.field-errors')] ||= new WeakMap();
 
 export function formatErrorMessage(error, fallback = ERROR_FALLBACK) {
+  const issues=Array.isArray(error?.data)?error.data:Array.isArray(error?.data?.detail)?error.data.detail:[];
+  if(issues.length){const messages=[...new Set(issues.map(issue=>String(issue.msg||'').replace(/^Value error,\s*/,'' )).filter(message=>/[а-яё]/i.test(message)))];return messages.length?messages.slice(0,3).join('. '):'Проверьте заполнение полей формы.';}
   const raw = typeof error === 'string' ? error : error?.message;
   const message = String(raw || '').trim();
   if (!message) return fallback;
@@ -79,28 +81,39 @@ export function showToast(message, type = 'success', options = {}) {
   });
 }
 
-export function showFieldError(field, message) {
+export function showFieldError(field, message, {focus = true} = {}) {
   if (!field) return;
   clearFieldError(field);
-  const error = document.createElement('div');
-  error.className = 'field-error-message';
+  const frameError = field.id && field.closest?.('.ui-field')?.querySelector(`[id="${CSS.escape(field.id)}-error"]`);
+  const error = frameError || document.createElement('div');
+  error.classList.add('field-error-message', 'ui-field-error');
   error.textContent = message;
-  error.id = `field-error-${crypto.randomUUID()}`;
-  fieldErrors.set(field, { error, invalid: field.getAttribute('aria-invalid') });
+  if (!error.id) error.id = `field-error-${crypto.randomUUID()}`;
+  error.hidden = false;
+  fieldErrors.set(field, { error, frame: Boolean(frameError), invalid: field.getAttribute('aria-invalid') });
   field.setAttribute('aria-invalid', 'true');
   const descriptions = new Set((field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
   descriptions.add(error.id);
   field.setAttribute('aria-describedby', [...descriptions].join(' '));
-  field.insertAdjacentElement('afterend', error);
-  field.focus();
+  if (!frameError) field.insertAdjacentElement('afterend', error);
+  if (focus) field.focus();
 }
 
 export function clearFieldError(field) {
   if (!field) return;
   const owned = fieldErrors.get(field);
-  if (!owned) return;
+  if (!owned) {
+    const error = field.id && field.closest?.('.ui-field')?.querySelector(`[id="${CSS.escape(field.id)}-error"]`);
+    if (error && !error.hidden) {
+      error.hidden = true; field.removeAttribute('aria-invalid');
+      const descriptions = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => id && id !== error.id);
+      if (descriptions.length) field.setAttribute('aria-describedby', descriptions.join(' '));
+      else field.removeAttribute('aria-describedby');
+    }
+    return;
+  }
   const descriptions = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => id && id !== owned.error.id);
-  owned.error.remove();
+  if (owned.frame) { owned.error.hidden = true; owned.error.textContent = ''; } else owned.error.remove();
   if (owned.invalid == null) field.removeAttribute('aria-invalid');
   else field.setAttribute('aria-invalid', owned.invalid);
   if (descriptions.length) field.setAttribute('aria-describedby', descriptions.join(' '));
@@ -108,9 +121,34 @@ export function clearFieldError(field) {
   fieldErrors.delete(field);
 }
 
+// Reference counts preserve lower layers even when confirmations finish out of order.
+const confirmationInert = globalThis[Symbol.for('ui-kit.confirmation-inert')] ||= new WeakMap();
+function isolateConfirmation(overlay, modalOwner) {
+  const held = [];
+  let branch = overlay;
+  while (branch.parentElement) {
+    const parent = branch.parentElement;
+    for (const sibling of parent.children) {
+      if (sibling === branch) continue;
+      const state = confirmationInert.get(sibling) || { count: 0, initial: sibling.inert };
+      state.count++; confirmationInert.set(sibling, state); sibling.inert = true; held.push(sibling);
+    }
+    if (parent === modalOwner || parent === document.body) break;
+    branch = parent;
+  }
+  return () => held.forEach(node => {
+    const state = confirmationInert.get(node);
+    if (!state || --state.count > 0) return;
+    node.inert = state.initial; confirmationInert.delete(node);
+  });
+}
+
 export function confirmAction({ title = 'Подтвердите действие', message = '', confirmText = 'Подтвердить', cancelText = 'Отмена', destructive = false } = {}) {
   return new Promise((resolve) => {
     const focusOrigin = document.activeElement;
+    let titleId = 'feedback-confirm-title', suffix = 0;
+    while (document.getElementById(titleId)) titleId = 'feedback-confirm-title-' + (++suffix);
+    const messageId = titleId.replace('-title', '-message');
     // A native modal makes siblings inert and paints above every z-index.
     // Keep its confirmation inside the same top-layer dialog.
     // Focus may temporarily be on body after the previous confirmation closes.
@@ -121,12 +159,12 @@ export function confirmAction({ title = 'Подтвердите действие
     const overlay = document.createElement('div');
     overlay.className = 'feedback-confirm-overlay';
     overlay.innerHTML = `
-      <div class="feedback-confirm app-modal app-modal--small" role="alertdialog" aria-modal="true" aria-labelledby="feedback-confirm-title" aria-describedby="feedback-confirm-message">
+      <div class="feedback-confirm app-modal app-modal--small" role="alertdialog" aria-modal="true" aria-labelledby="${titleId}" aria-describedby="${messageId}">
         <div class="feedback-confirm-header">
-          <h3 id="feedback-confirm-title">${escapeHtml(title)}</h3>
+          <h3 class="feedback-confirm-title" id="${titleId}">${escapeHtml(title)}</h3>
         </div>
         <div class="feedback-confirm-body">
-          <p id="feedback-confirm-message">${escapeHtml(message)}</p>
+          <p id="${messageId}">${escapeHtml(message)}</p>
         </div>
         <div class="feedback-confirm-actions">
           <button type="button" class="btn btn-secondary" data-feedback-cancel>${escapeHtml(cancelText)}</button>
@@ -134,6 +172,7 @@ export function confirmAction({ title = 'Подтвердите действие
         </div>
       </div>`;
     host.appendChild(overlay);
+    const releaseBackground = isolateConfirmation(overlay, modalOwner);
     const cancel = overlay.querySelector('[data-feedback-cancel]');
     const confirm = overlay.querySelector('[data-feedback-confirm]');
     let settled = false;
@@ -141,6 +180,7 @@ export function confirmAction({ title = 'Подтвердите действие
       if (settled) return;
       settled = true;
       overlay.remove();
+      releaseBackground();
       if (focusOrigin?.isConnected && typeof focusOrigin.focus === 'function') {
         focusOrigin.focus();
       }
@@ -149,7 +189,7 @@ export function confirmAction({ title = 'Подтвердите действие
     cancel.addEventListener('click', () => finish(false));
     confirm.addEventListener('click', () => finish(true));
     overlay.addEventListener('click', (event) => { if (event.target === overlay) finish(false); });
-    overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') finish(false); });
+    overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); finish(false); } });
     cancel.focus();
   });
 }

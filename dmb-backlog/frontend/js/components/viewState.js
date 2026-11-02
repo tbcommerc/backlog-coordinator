@@ -4,16 +4,17 @@ import { button, icon } from '../ui/primitives.js';
 const META = {
   loading: { icon: 'loader-circle', defaultTitle: 'Загрузка…' },
   empty: { icon: 'inbox', defaultTitle: 'Данных пока нет' },
-  error: { icon: 'triangle-alert', defaultTitle: 'Не удалось загрузить данные' },
-  forbidden: { icon: 'lock-keyhole', defaultTitle: 'Недостаточно прав' },
+  error: { icon: 'alert-triangle', defaultTitle: 'Не удалось загрузить данные' },
+  forbidden: { icon: 'lock', defaultTitle: 'Недостаточно прав' },
   unavailable: { icon: 'cloud-off', defaultTitle: 'Сервис временно недоступен' },
+  stale: { icon: 'refresh-cw', defaultTitle: 'Данные не обновлены' },
 };
 
-export function renderViewState({ kind = 'empty', title, message = '', actionLabel = '', actionId, actionAttrs = {}, actionVariant = 'secondary', hint = '' } = {}) {
+export function renderViewState({ kind = 'empty', title, message = '', actionLabel = '', actionId, actionAttrs = {}, actionVariant = 'secondary', hint = '', scope = 'page' } = {}) {
   const meta = META[kind] || META.empty;
   const loadingClass = kind === 'loading' ? ' content-loading-state' : '';
   return `
-    <div class="view-state view-state-${escapeHtml(kind)}${loadingClass}" role="${kind === 'error' ? 'alert' : 'status'}" ${kind === 'loading' ? 'aria-busy="true"' : ''}>
+    <div class="view-state view-state-${escapeHtml(kind)}${loadingClass}" data-ui-scope="${scope === 'partial' ? 'partial' : 'page'}" role="${kind === 'error' ? 'alert' : 'status'}" ${kind === 'loading' ? 'aria-busy="true"' : ''}>
       ${icon(meta.icon, 'view-state-icon')}
       <h3>${escapeHtml(title || meta.defaultTitle)}</h3>
       ${message ? `<p>${escapeHtml(message)}</p>` : ''}

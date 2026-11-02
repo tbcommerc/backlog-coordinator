@@ -29,7 +29,10 @@ for (const width of [1440,1280,390,320]) for(const theme of ['light','dark']) te
  await expect(page.locator('#tasks-table tbody tr[data-task-id]')).toHaveCount(2);
  await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
  await expect(page.getByRole('heading',{name:'Бэклог DMB',exact:true})).toBeVisible();
- await expect(page.locator('#breadcrumb-nav')).toBeHidden();
+ await expect(page.locator('#breadcrumb-nav')).toBeVisible();
+ await expect(page.locator('#breadcrumb-nav a[href="#/dashboard"]')).toBeVisible();
+ await expect(page.locator('#breadcrumb-nav [aria-current="page"]')).toHaveText('Бэклог DMB');
+ expect(await page.locator('#breadcrumb-nav').evaluate(el => el.clientWidth > 0)).toBe(true);
  expect((await page.locator('#f-backlog-search').boundingBox()).width).toBeGreaterThan(200);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.screenshot({path:info.outputPath('dmb.png'),fullPage:true});

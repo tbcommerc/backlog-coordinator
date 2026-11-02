@@ -34,6 +34,8 @@ def row(**values):
 @pytest.fixture
 def db(monkeypatch):
     monkeypatch.setattr(work, 'notify_work', lambda *args: None)
+    from services import request_followup
+    monkeypatch.setattr(request_followup, 'work_changed', lambda *args: None)
     engine = create_engine('sqlite://')
     # Deliberately no protected tables; FK references are tested through DDL, not fixture inserts.
     for cls in (WorkTask, WorkHistory, EventOutbox): cls.__table__.create(engine)

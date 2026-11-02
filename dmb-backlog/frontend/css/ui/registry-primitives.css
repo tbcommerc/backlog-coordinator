@@ -1,0 +1,31 @@
+/* Shared registry geometry, checked 2026-10-22. */
+:root { --registry-gap:12px; --registry-padding:16px; --registry-radius:10px; }
+:root .ui-filter-chip {
+ display:inline-flex; align-items:center; flex:0 0 auto; gap:6px; width:auto; max-width:100%; height:auto;
+ min-height:max(32px,var(--control-target-min)); padding:5px 10px; border:1px solid var(--border-color);
+ border-radius:var(--radius-full); background:var(--bg-secondary); color:var(--text-secondary);
+ font:inherit; font-size:var(--text-xs); box-shadow:none; cursor:pointer;
+}
+:root .ui-filter-chip[aria-pressed=true] { background:var(--accent-light); border-color:var(--accent); color:var(--accent-text); }
+:root .ui-filter-chip:hover { background:var(--bg-hover); }
+:root .ui-filter-chip:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+:root .ui-filter-chip .quick-filter-info { display:flex; flex-direction:row; align-items:center; justify-content:flex-start; flex:none; gap:6px; }
+:root .ui-filter-chip .quick-filter-label { color:inherit; }
+:root .ui-filter-chip .quick-filter-count { margin-left:auto; }
+:root .ui-filter-chip[data-ui-tone=accent] .quick-filter-icon { color:var(--accent-text); }
+:root .ui-filter-chip[data-ui-tone=danger]:not([aria-pressed=true]) .quick-filter-count { color:var(--danger-text); background:var(--danger-light); }
+:root .ui-filter-chip[data-ui-tone=warning]:not([aria-pressed=true]) .quick-filter-count { color:var(--warning-text); background:var(--warning-light); }
+:root .ui-filter-chip[data-ui-tone=info]:not([aria-pressed=true]) .quick-filter-count { color:var(--info-text); background:var(--info-light); }
+:root .ui-filter-chip[data-ui-tone=accent]:not([aria-pressed=true]) .quick-filter-count { color:var(--accent-text); background:var(--accent-light); }
+:root .ui-filter-chip .quick-filter-icon { display:inline-flex; width:auto; height:auto; background:transparent; }
+:root .ui-filter-chip .quick-filter-count { color:inherit; background:var(--bg-tertiary); border-radius:var(--radius-full); padding:0 5px; font-size:inherit; }
+:root .ui-filter-chip[aria-pressed=true] .quick-filter-count { background:var(--action-primary-bg); color:var(--action-primary-text); }
+:root .ui-kpi-card { display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; gap:8px; padding:16px; border:1px solid var(--border-color); border-radius:var(--registry-radius); background:var(--bg-secondary); color:var(--text-primary); font:inherit; text-align:left; }
+:root .ui-kpi-card strong { font-size:24px; line-height:1.25; max-width:100%; overflow-wrap:anywhere; }
+:root .ui-kpi-card .ui-kpi-text { font-size:var(--text-sm); line-height:1.4; }
+:root .ui-kpi-card:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+:root :is(.ui-collapse-section) > summary { display:flex; align-items:center; gap:8px; list-style:none; cursor:pointer; min-height:max(36px,var(--control-target-min)); }
+:root :is(.ui-collapse-section) > summary::-webkit-details-marker { display:none; }
+:root :is(.ui-collapse-section) > summary::before { content:''; width:7px; height:7px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); transition:transform .15s; flex:none; }
+:root :is(.ui-collapse-section)[open] > summary::before { transform:rotate(45deg); }
+:root :is(.ui-collapse-section) > summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }

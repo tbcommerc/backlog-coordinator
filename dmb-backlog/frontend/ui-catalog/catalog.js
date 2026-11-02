@@ -4,6 +4,11 @@ import { button, control, checkbox, toggleSwitch, field, badge, avatar, tag, pro
 import { renderAgentV2 } from '../js/agent-v2/workspace.js?v=10';
 import { renderComments } from '../js/components/taskComments.js?v=4';
 import { renderAttachments } from '../js/components/taskAttachments.js?v=3';
+import { readOnlyField, descriptionList, bindReadOnlyFields, sectionCard, detailPanel, bindDetailPanel } from '../js/ui/index.js';
+import { dataTable, tableCell, bindDataTable } from '../js/ui/index.js';
+import { entityPicker, bindEntityPicker } from '../js/ui/index.js';
+import { dateRange, numberRange, validateRanges, showFormErrors, clearFormErrors } from '../js/ui/index.js';
+import { stepForm, bindStepForm, splitPane, bindSplitPane } from '../js/ui/index.js';
 
 const section = (id, title, hint, content, wide = false) => `<section class="catalog-section${wide ? ' catalog-section--wide' : ''}" id="${id}"><header><h2>${title}</h2><span>${hint}</span></header>${content}</section>`;
 const accents = [['indigo','Индиго'],['emerald','Изумрудный'],['amber','Янтарный'],['rose','Розовый'],['sky','Голубой'],['violet','Фиолетовый'],['cyan','Бирюзовый'],['orange','Оранжевый'],['teal','Морская волна'],['purple','Пурпурный']];
@@ -13,15 +18,28 @@ document.getElementById('catalog-controls').innerHTML =
   field({ id:'kit-accent', label:'Акцент', kind:'select', value:'indigo', options:accents.map(([value,label])=>({value,label})) });
 
 document.getElementById('catalog-main').innerHTML = [
+  section('workflow-components','Шаги и разделённая область','StepForm · SplitPane',`<form id="demo-step-form">${stepForm({id:'demo-steps',navigation:true,steps:[{id:'details',label:'Описание',content:field({id:'demo-step-name',label:'Название',required:true,attrs:{name:'title'}})+button({label:'Далее',attrs:{'data-step-next':true}})},{id:'review',label:'Проверка',content:'<p>Данные первого шага сохраняются при возврате.</p>'+button({label:'Назад',attrs:{'data-step-back':true}})+button({label:'Завершить пример',attrs:{type:'submit'}})}]})}<p id="demo-step-result" role="status"></p></form>${splitPane({id:'demo-split',label:'Ширина области деталей',primary:'<p>Список записей</p>',secondary:'<p>Детали выбранной записи</p><p>Разделитель работает мышью и стрелками. Home/End задают границы.</p>'})}`,true),
+  section('intervals','Диапазоны','DateRange · NumberRange',`<form id="demo-intervals" class="catalog-stack">${dateRange({id:'demo-dates',label:'Период',required:true,from:{name:'from',value:'2026-10-01'},to:{name:'to',value:'2026-12-31'}})}${numberRange({id:'demo-numbers',label:'Допустимые значения',from:{name:'min',value:0},to:{name:'max',value:100},hint:'Ноль и равные границы допустимы.'})}${button({label:'Проверить диапазоны',attrs:{type:'submit'}})}<span id="demo-interval-result" role="status"></span></form>`),
+  section('entity-pickers','Выбор сущности','EntityPicker · серверный или локальный поиск',entityPicker({id:'demo-entity',name:'task_id',label:'Задача',searchLabel:'Поиск задачи',required:true,hint:'Найдите задачу по коду или названию и выберите её из списка.'})),
+  section('data-tables','Таблицы данных','DataTable · TableCell', '<div id="demo-data-table"></div>', true),
+  section('detail-components','Карточки сущностей','ReadOnlyField · SectionCard · DetailPanel',
+    '<div class="catalog-stack">' + sectionCard({title:'Паспорт',content:descriptionList({items:[{label:'Название',value:'Подготовить запуск продукта'},{label:'Код',value:'WRK-42',copy:true},{label:'Оценка',value:0},{label:'Владелец',value:null},{label:'Связанный проект',value:'Запуск продукта',href:'https://example.org/project'}]})}) +
+    sectionCard({title:'Дополнительные сведения',collapsible:true,open:false,content:'Подробности доступны по Enter или Space.'}) +
+    readOnlyField({label:'Расчёт',state:'loading'}) + readOnlyField({label:'Последнее обновление',state:'error'}) +
+    button({label:'Открыть панель деталей',attrs:{id:'demo-detail-panel'}}) + '</div>'),
   section('registry-composition','Реестры','KpiCard · CollapseSection · FilterChip', kpiCard({label:'Активные задачи',value:12}) + collapseSection({label:'Дополнительные условия',content:filterChip({label:'В работе',count:12,selected:true})+filterChip({label:'Все категории',count:null})})),
   section('alerts','Сообщения','Alert · все тона', ['neutral','info','success','warning','danger'].map(tone=>alert({title:tone,message:'Сообщение с безопасным текстовым содержимым.',tone})).join('')),
   section('choices','Выбор и страницы','RadioGroup · Pagination', radioGroup({id:'demo-radio',label:'Плотность списка',value:'normal',options:[{value:'normal',label:'Обычная'},{value:'compact',label:'Компактная'}]}) + pagination({page:2,pages:5})),
   section('vertical-tabs','Вертикальные вкладки','Стрелки вверх/вниз, Home/End', tabs({id:'vertical',label:'Вертикальные вкладки',orientation:'vertical',items:[{id:'one',label:'Первая'},{id:'two',label:'Вторая'}]})+'<div id="vertical-one-panel" role="tabpanel" aria-labelledby="vertical-one-tab">Первая панель</div><div id="vertical-two-panel" role="tabpanel" aria-labelledby="vertical-two-tab" hidden>Вторая панель</div>'),
   section('popover-widths','Ширина панелей','Small · Default · Wide', ['small','default','wide'].map(width=>button({label:width,attrs:{'data-width-demo':width}})+`<div id="width-${width}" hidden>Панель ${width}; ширина ограничивается окном.</div>`).join('')),
+  section('ai-actions','Вызов агентов','Button · ai / ai-primary',
+    `<div class="catalog-row">${button({label:'AI-расчёт',variant:'ai'})}${button({label:'AI-анализ',variant:'ai-primary'})}${button({label:'AI-расчёт недоступен',variant:'ai',attrs:{disabled:true,title:'Заполните обязательные поля'}})}</div><div class="catalog-row">${button({label:'Анализируем…',variant:'ai',attrs:{'aria-busy':true,disabled:true}})}${button({label:'Проверить черновик',variant:'ai',size:'small'})}</div><p class="catalog-caption">Мягкий фиолетовый акцент — стандарт вызова агента; сплошная заливка — главное AI-действие экрана. Иконка искр обязательна. Сохранение и отправка на согласование используют обычные кнопки.</p>`),
   section('actions','Действия','Button · IconButton',
     `<div class="catalog-row">${button({label:'Создать задачу',icon:'plus',variant:'primary',attrs:{id:'sample-primary'}})}${button({label:'Сохранить',icon:'check'})}${button({label:'Отмена',variant:'ghost'})}</div><div class="catalog-row">${button({label:'Удалить',variant:'danger',size:'small'})}${button({label:'Готово',variant:'success',size:'small'})}${button({label:'Обновить',icon:'refresh-cw',iconOnly:true,size:'small'})}${button({label:'Недоступно',attrs:{disabled:true}})}</div><p class="catalog-caption">Одна иерархия действий. Предсказуемые размеры и видимый фокус.</p><div class="catalog-row">${button({label:'Проверить ожидание',attrs:{id:'demo-busy'}})}<span class="catalog-inline-status" id="busy-result" role="status"></span></div>`),
   section('forms','Поля формы','Field · Validation',
     `<form class="catalog-form" id="demo-form">${field({id:'sample-name',label:'Название задачи',value:'Обновление клиентского пути',required:true,hint:'Кратко опишите ожидаемый результат.'})}${field({id:'sample-owner',label:'Исполнитель',kind:'select',options:[{value:'',label:'Не выбран'},{value:'analyst',label:'Аналитик команды'}],error:'Выберите исполнителя перед сохранением.'})}${checkbox({id:'sample-visible',label:'Показывать в реестре',checked:true})}${button({label:'Проверить форму',variant:'primary',attrs:{type:'submit'}})}<span class="catalog-inline-status" id="form-result" role="status"></span></form>`),
+  section('info-chips','Информационные чипсы','Единый стиль · проверено 26.10.2026',
+    `<div class="catalog-row">${badge({label:'Бэклог'})}${badge({label:'В работе',tone:'info'})}${badge({label:'Готово',tone:'success',icon:'check'})}${badge({label:'На проверке',tone:'warning'})}${badge({label:'Высокий',tone:'danger',icon:'arrow-up'})}${badge({label:'Приостановлено',tone:'accent'})}</div><div class="catalog-row">${tag({label:'Платформа',color:'#6366f1'})}${tag({label:'Внутренняя задача'})}${badge({label:'27 окт. · завтра',tone:'warning',icon:'calendar-clock'})}<span class="notification-deadline-badge is-danger"><i data-lucide="calendar-clock" aria-hidden="true"></i><span>Срок 25 окт.</span><strong>Просрочено на 1 день</strong></span></div><p class="catalog-caption">24 px минимум · Inter 12/18, 500 · скругление 6 px · отступы 3×8 px · без рамок и теней. Текст всегда в одну строку; контейнер прокручивается или показывает полную подпись отдельно. Цвет справочника — точка; смысловые иконки — 14 px.</p>`),
   section('statuses','Статусы и фильтры','Badge · FilterChip',
     `<div class="catalog-row">${badge({label:'На ревью',tone:'info'})}${badge({label:'Требует внимания',tone:'warning'})}${badge({label:'Завершено',tone:'success'})}${badge({label:'Ошибка',tone:'danger'})}</div><p class="catalog-caption">Статус выражается текстом и цветом. Фильтр показывает выбор и количество.</p><div class="catalog-filters">${filterChip({label:'Все задачи',icon:'layout-list',count:24,selected:true,attrs:{'data-demo-filter':'all'}})}${filterChip({label:'Требуют внимания',icon:'circle-alert',tone:'warning',count:3,attrs:{'data-demo-filter':'attention'}})}</div>`),
   section('navigation','Вкладки и диалоги','Tabs · Dialog',
@@ -51,6 +69,40 @@ document.getElementById('catalog-main').innerHTML = [
     '<div class="ui-table-scroll ui-table-surface"><table class="ui-table ui-table-editor"><thead><tr><th>Компетенция</th><th>Оценка, ч/д</th></tr></thead><tbody><tr><td>Аналитика</td><td>' + control({id:'catalog-table-estimate',type:'number',value:5,size:'extra-small',attrs:{'aria-label':'Оценка аналитики',min:0},className:'ui-number-cell'}) + '</td></tr></tbody></table></div><p class="catalog-caption">Редактор использует компактные отступы; заголовки совпадают с реестрами.</p><div class="ui-table-scroll"><table class="ui-table ui-table-prose"><thead><tr><th>Вопрос</th><th>Ответ</th></tr></thead><tbody><tr><td>Что изменилось?</td><td>Таблица в тексте сохраняет обычный регистр заголовков.</td></tr></tbody></table></div>'),
   section('assistant','Рабочая область ассистента','Общая тема · Реальный компонент',renderAgentV2({}),true),
 ].join('');
+
+const demoSteps=bindStepForm(document.getElementById('demo-steps'));
+document.getElementById('demo-step-form').addEventListener('submit',event=>{event.preventDefault();document.getElementById('demo-step-result').textContent='Пример завершён. Данные не отправлены.';});
+const demoSplit=bindSplitPane(document.getElementById('demo-split'),{size:300,min:180,max:500,minPrimary:200,breakpoint:600});
+window.addEventListener('pagehide',()=>{demoSteps.destroy();demoSplit.destroy();},{once:true});
+
+document.getElementById('demo-intervals').addEventListener('submit',event=>{
+  event.preventDefault();clearFormErrors(event.target);
+  const errors=validateRanges(event.target);
+  document.getElementById('demo-interval-result').textContent=Object.keys(errors).length?'':'Диапазоны корректны';
+  if(Object.keys(errors).length)showFormErrors(event.target,errors);
+});
+
+const demoEntityPicker = bindEntityPicker(document.getElementById('demo-entity-picker'),{load:async query=>[
+  {value:'1',label:'WRK-1 · Проверить расчёт показателя'},
+  {value:'2',label:'WRK-2 · Согласовать критерии приёмки'},
+].filter(item=>item.label.toLocaleLowerCase('ru').includes(query.toLocaleLowerCase('ru')))});
+demoEntityPicker.refresh();
+window.addEventListener('pagehide',()=>demoEntityPicker.destroy(),{once:true});
+
+const tableDemo = document.getElementById('demo-data-table');
+const demoRows = [{title:'Качество данных',value:0,date:'2026-10-29',state:'В работе'}, {title:'Скорость обработки',value:1250.5,date:null,state:'Черновик'}];
+function renderTableDemo(sort = {key:'title',direction:'asc'}) {
+  const rows = [...demoRows].sort((a,b)=>(sort.key==='value' ? a.value-b.value : a.title.localeCompare(b.title,'ru'))*(sort.direction==='desc'?-1:1));
+  tableDemo.innerHTML = dataTable({label:'Пример показателей',rows,sort,responsive:'cards',className:'ui-table-surface',columns:[
+    {key:'title',label:'Показатель',sortable:true},
+    {key:'value',label:'Значение',type:'number',sortable:true},
+    {key:'date',label:'Дата',type:'date'},
+    {key:'state',label:'Состояние',render:row=>tableCell({value:row.state,type:'badge',tone:row.state==='В работе'?'info':'neutral'})},
+  ]});
+}
+renderTableDemo();
+const disposeTableDemo = bindDataTable(tableDemo, {onSort:(sort)=>{renderTableDemo(sort);tableDemo.querySelector(`[data-ui-sort="${sort.key}"]`)?.focus();}});
+window.addEventListener('pagehide',disposeTableDemo,{once:true});
 
 renderComments(document.getElementById('catalog-comments'), [{id:1,user_name:'Анна Смирнова',text:'Проверим расчёт и приложенную схему.',created_at:'2026-09-01T10:00:00Z',replies:[]}], []);
 renderAttachments(document.getElementById('catalog-attachments'), [{id:1,task_id:1,original_name:'Схема клиентского пути.pdf',mime_type:'application/pdf',file_size:2048}]);
@@ -101,6 +153,12 @@ document.querySelectorAll('[data-demo-toggle]').forEach(control=>control.addEven
 }));
 window.lucide?.createIcons();
 document.documentElement.dataset.ready='true';
+bindReadOnlyFields(document.getElementById('detail-components'));
+document.getElementById('demo-detail-panel').addEventListener('click', () => {
+  const host = document.createElement('div');
+  host.innerHTML = detailPanel({id:'catalog-detail',title:'Рабочая задача',body:sectionCard({title:'Ожидаемый результат',content:readOnlyField({label:'Описание',value:'Согласовать сценарии и подготовить запуск.'})}),footer:'Пример общей панели деталей'});
+  bindDetailPanel(host.firstElementChild).present();
+});
 
 bindPopover({trigger:document.getElementById('demo-selection-trigger'),panel:document.getElementById('demo-selection-panel'),label:'Фильтр'});
 bindActionMenu({trigger:document.getElementById('demo-menu-trigger'),panel:document.getElementById('demo-menu-panel')});

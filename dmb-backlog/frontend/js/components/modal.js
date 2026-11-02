@@ -1,3 +1,4 @@
+import { pagination as kitPagination } from '../ui/forms.js';
 import { taskStatusTone, taskPriorityTone } from '../taskDisplay.js';
 import { badge as uiBadge } from '../ui/primitives.js';
 import { mountRelations } from './workRelations.js?v=2';
@@ -1624,7 +1625,7 @@ async function renderHistoryTab(taskId, app) {
 
         html += `<div class="history-item">
           <div class="history-item-header">
-            ${item.changed_by_name ? avatarEl(item.changed_by_name, 20) : '<div class="task-detail-avatar" style="width:20px;height:20px;background:#94a3b8;font-size:var(--type-meta-size);line-height:var(--type-meta-line);">?</div>'}
+            ${item.changed_by_name ? avatarEl(item.changed_by_name, 20) : uiAvatar({ name: '', size: 20, className: 'task-detail-avatar' })}
             <span class="history-user">${escapeHtml(item.changed_by_name || 'Система')}</span>
             <span class="history-time">${time}</span>
           </div>
@@ -2342,7 +2343,7 @@ function renderEditForm(task) {
     <div class="b-edit-row-2" style="margin-top:10px">
       ${field('Дата поступления', binput('edit-date-received', 'date', t.date_received || ''))}
       ${field('Прогресс', `
-        <input type="range" min="0" max="100" step="5" value="${Math.round((t.progress || 0) / 5) * 5}" class="b-edit-range" id="edit-progress">
+        <input type="range" min="0" max="100" step="5" value="${Math.round((t.progress || 0) / 5) * 5}" class="b-edit-range" id="edit-progress" aria-label="Прогресс, процентов">
         <div class="b-edit-range-label"><span>0%</span><b id="progress-label">${t.progress || 0}%</b><span>100%</span></div>
       `)}
     </div>
@@ -2755,7 +2756,7 @@ export function renderTaskCard(task, searchQuery = '') {
   // Мини-карточка для канбан/карточек
   const prio = task.priority_name || task.priority || '';
   const prioClass = prio === 'ВЫСОКИЙ' ? 'badge-high' : prio === 'СРЕДНИЙ' ? 'badge-medium' : 'badge-low';
-  const p = task.progress || 0;
+  const p = task.progress;
   const statusName = task.status_name || task.status;
   const teamName = task.team_name || '—';
   const deadlineName = task.deadline_name || task.deadline || '—';
@@ -2777,10 +2778,9 @@ export function renderTaskCard(task, searchQuery = '') {
         <span class="badge badge-info" style="">${escapeHtml(teamName)}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
-        ${uiProgress({ value: p, tone: p >= 100 ? 'success' : 'accent' })}
-        <span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);min-width:28px;text-align:right;">${escapeHtml(String(p))}%</span>
+        ${uiProgress({ value: p, tone: p >= 100 ? 'success' : 'accent', showValue:true })}
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border);font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border-color);font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted);">
         <span>${escapeHtml(deadlineName)}</span>
         <span>${escapeHtml(ownerName)}</span>
       </div>
@@ -3802,7 +3802,8 @@ export function openConfirmModal(message, onConfirm) { /* not needed in new vers
 export function showConfirmModal(message, title = 'Подтверждение', okText = 'ОК', cancelText = 'Отмена', danger = false) {
   return new Promise((resolve) => {
     const existing = document.getElementById('confirm-modal-overlay');
-    if (existing) existing.remove();
+    if (existing) {existing.querySelector('#confirm-cancel')?.click();existing.remove();}
+    const focusOrigin=document.activeElement;let settled=false;
 
     const overlay = document.createElement('div');
     overlay.id = 'confirm-modal-overlay';
@@ -3828,15 +3829,9 @@ export function showConfirmModal(message, title = 'Подтверждение', 
     if (danger) cancelBtn?.focus();
     else okBtn?.focus();
 
-    function handleOk() {
-      overlay.remove();
-      resolve(true);
-    }
-
-    function handleCancel() {
-      overlay.remove();
-      resolve(false);
-    }
+    function finish(answer){if(settled)return;settled=true;document.removeEventListener('keydown',handleKeydown);overlay.remove();if(focusOrigin?.isConnected)focusOrigin.focus();resolve(answer);}
+    function handleOk(){finish(true);}
+    function handleCancel(){finish(false);}
 
     okBtn?.addEventListener('click', handleOk);
     cancelBtn?.addEventListener('click', handleCancel);
@@ -4264,13 +4259,7 @@ export function showBulkOpsModal(app, scope, tasks) {
           `;
         }
 
-        const paginationHtml = `
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;flex-shrink:0;background:var(--bg-tertiary);">
-            <button id="bc-page-prev" class="btn btn-secondary btn-sm ui-btn bc-link-btn" ${currentPage === 1 ? 'disabled style="opacity:.4"' : ''}>←</button>
-            <span style="font-size:12px;color:var(--text-secondary);">Страница <strong>${currentPage}</strong> из <strong>${totalPages}</strong></span>
-            <button id="bc-page-next" class="btn btn-secondary btn-sm ui-btn bc-link-btn" ${currentPage === totalPages ? 'disabled style="opacity:.4"' : ''}>→</button>
-          </div>
-        `;
+        const paginationHtml = kitPagination({page:currentPage,pages:totalPages,label:'Страницы выбранных задач',previousAttrs:{id:'bc-page-prev'},nextAttrs:{id:'bc-page-next'}});
 
         const emptyMsg = totalTasks === 0 ? `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">В текущем фильтре нет задач. Закройте окно и измените фильтр в реестре.</div>` : '';
 
@@ -4441,6 +4430,7 @@ export function showBulkOpsModal(app, scope, tasks) {
         const selectAllBtn = overlay.querySelector('#bc-select-all');
         const clearAllBtn = overlay.querySelector('#bc-clear-all');
         const countEl = overlay.querySelector('#bc-count');
+        overlay.querySelectorAll('.ui-pagination-pages [data-page]').forEach(btn => btn.addEventListener('click', () => { currentPage = Number(btn.dataset.page); renderStep(); }));
         const prevBtn = overlay.querySelector('#bc-page-prev');
         const nextPageBtn = overlay.querySelector('#bc-page-next');
 
@@ -6089,7 +6079,7 @@ function cardPrioritiserButton(kind) {
   const tooltipBody = permission.allowed
     ? '<span class="agent-check-title">Для расчёта нужны поля</span>' + cardPrioritiserChecklist(requirements)
     : '<span class="agent-check-title">Расчёт недоступен</span><span>' + escapeHtml(permission.reason) + '</span>';
-  return '<span class="agent-check-wrap">' + uiButton({ label: running ? 'Расчёт…' : 'AI-расчет', iconMarkup: cardIcon('spark'), attrs: { 'data-action': action, 'aria-describedby': tooltipId, 'aria-busy': running, disabled } })
+  return '<span class="agent-check-wrap">' + uiButton({ label: running ? 'Расчёт…' : 'AI-расчёт', variant: 'ai', iconMarkup: cardIcon('spark'), attrs: { 'data-action': action, 'aria-describedby': tooltipId, 'aria-busy': running, disabled } })
     + '<span class="agent-check-tooltip" id="' + tooltipId + '" role="tooltip">' + tooltipBody + '</span></span>';
 }
 function cardKpiBlock(t, e) {
@@ -6227,7 +6217,7 @@ function cardBodyMainV30(t, e) {
   h += '<div class="task-desc task-comment"><div class="desc-label">Внутренний комментарий задачи</div><div class="desc-val' + commentEditAttrs + '>' + (edit('comment') ? taskFormEditControl('comment', t.comment) : '<span class="txt">' + (t.comment ? cardNl2br(t.comment) : '—') + '</span>') + '</div></div></div>';
   if (!e) h += cardPipDecisionBanner(true);
   const requirementWorkspace = window.app?.features?.agent_v2;
-  if (!e && requirementWorkspace?.enabled && requirementWorkspace?.pilot_allowed && requirementWorkspace?.operator_role) h += '<div class="task-requirement-entry">' + uiButton({ label: 'Открыть БТ в Агенте V2', attrs: { 'data-action': 'open-requirement-workspace' } }) + '</div>';
+  if (!e && requirementWorkspace?.enabled && requirementWorkspace?.pilot_allowed && requirementWorkspace?.operator_role) h += '<div class="task-requirement-entry">' + uiButton({ label: 'Открыть БТ в Агенте V2', variant: 'ai', attrs: { 'data-action': 'open-requirement-workspace' } }) + '</div>';
   h += cardSec('Паспорт задачи', 'file') + '<div class="bento">';
   h += '<div class="cl sp3" id="clExec" style="border-left:3px solid ' + cardStatusHex(t.status) + '"><div class="cl-h">' + cardIcon('trend') + '<span>Исполнение</span></div><div class="cl-grid exec">'
     + cardIcell('Статус задачи', edit('status') ? cardSel('status', statuses, t.status) : uiBadge({ label: t.status, tone: taskStatusTone(t.status) }), { editKey: e ? '' : 'status' })
@@ -6579,7 +6569,7 @@ function cardRenderBody() {
   el.setAttribute('aria-labelledby', 'task-tab-' + cardState.tab);
   el.setAttribute('tabindex', '0');
   el.innerHTML = '<div id="td-lock-banner" style="display:none;"></div><div id="td-viewer-banner" style="display:none;"></div><div class="form-error-summary" id="card-form-error-summary" role="alert" hidden></div>' + h;
-  if (cardState.tab === 'work') { mountWorkList(el.querySelector('#task-work-list'), window.app, currentTask.id); mountRelations(el.querySelector('#task-work-relations'), window.app, 'major', currentTask.id, currentTask.version); }
+  if (cardState.tab === 'work') { mountWorkList(el.querySelector('#task-work-list'), window.app, currentTask.id, null, false, false, {canCreate:cardEditPermission().allowed}); mountRelations(el.querySelector('#task-work-relations'), window.app, 'major', currentTask.id, () => currentTask.version, {canEdit:cardEditPermission().allowed}); }
   cardSyncDescriptionDisclosure();
   cardRefreshDynamic();
   cardRenderPrioritiserValueProposal();
@@ -8061,10 +8051,16 @@ export function initTaskDetailModal(app) {
   document.getElementById('tabs')?.addEventListener('scroll', cardSyncTabsOverflow, { passive: true });
   overlay.addEventListener('keydown', async e => {
     const currentTab = e.target.closest?.('[role="tab"][data-tab]');
-    if (currentTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
-      const nextTab = tabNavigationTarget(document.getElementById('tabs'), e);
+    if (currentTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', ' '].includes(e.key)) {
+      const activation = e.key === 'Enter' || e.key === ' ';
+      const nextTab = activation ? currentTab : tabNavigationTarget(document.getElementById('tabs'), e);
       if (!nextTab) return;
       e.preventDefault();
+      if (!activation) {
+        document.querySelectorAll('#tabs [role="tab"]').forEach(tab => { tab.tabIndex = tab === nextTab ? 0 : -1; });
+        nextTab.focus({ preventScroll: true });
+        return;
+      }
       if (!(await cardConfirmTabChange(nextTab.dataset.tab))) {
         currentTab.focus({ preventScroll: true });
         return;

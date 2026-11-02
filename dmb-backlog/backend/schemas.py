@@ -488,6 +488,7 @@ class PipDecisionContext(BaseModel):
 
 
 class TaskResponse(TaskBase):
+    metric_id: Optional[int] = None
     did_client_group_name: Optional[str] = None
     id: int
     public_id: str = Field(pattern=r'^TASK-\d{3}-\d{3}$')

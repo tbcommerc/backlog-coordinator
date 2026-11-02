@@ -1,7 +1,4 @@
 .mc-page { max-width: 1520px; margin: 0 auto; display: grid; gap: 20px; }
-.mc-steps { display: flex; flex-wrap: wrap; gap: 12px 28px; list-style: none; padding: 0; margin: 0; color: var(--text-secondary); }
-.mc-steps li { display: flex; align-items: center; gap: 9px; }
-.mc-steps li span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-tertiary); color: var(--accent); font-weight: 600; }
 .mc-columns { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(360px, 1.2fr); align-items: start; gap: 24px; }
 .mc-editor { border: 0; min-width: 0; padding: 0; margin: 0; }
 .mc-panel, .mc-item { border: 1px solid var(--border-color); background: var(--bg-secondary); border-radius: 14px; padding: 24px; min-width: 0; }
@@ -38,8 +35,6 @@
 .mc-footer > span { font-size: 12px; color: var(--text-muted); }
 .mc-notice:empty { display: none; }
 .mc-notice { color: var(--text-secondary); }
-.mc-steps [aria-current="step"] { color: var(--text-primary); font-weight: 600; }
-.mc-steps [aria-current="step"] span { background: var(--accent); color: var(--text-on-accent, #fff); }
 .mc-analysis { border-left: 4px solid var(--accent); }
 .mc-analysis h3 { display: flex; align-items: center; gap: 12px; margin-top: 0; }
 .mc-results[aria-busy="true"] .mc-analysis h3::before { content: ''; width: 18px; height: 18px; flex: 0 0 18px; border: 2px solid var(--border-color); border-top-color: var(--accent); border-radius: 50%; animation: mc-spin 1s linear infinite; }
@@ -64,4 +59,4 @@
 .mc-preserve { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; }
 .mc-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 @media (max-width: 1000px) { .mc-columns { grid-template-columns: 1fr; } }
-@media (max-width: 540px) { .mc-panel, .mc-item { padding: 16px; } .mc-two-fields { grid-template-columns: 1fr; } .mc-review-list dl { grid-template-columns: 1fr; } .mc-steps { gap: 10px; } }
+@media (max-width: 540px) { .mc-panel, .mc-item { padding: 16px; } .mc-two-fields { grid-template-columns: 1fr; } .mc-review-list dl { grid-template-columns: 1fr; } }

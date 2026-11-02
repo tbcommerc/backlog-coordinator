@@ -1,5 +1,6 @@
+import {cursorPagination} from '../ui/specialized.js';
 import {escapeHtml as esc} from '../htmlUtils.js';
-import {button,field} from '../ui/primitives.js';
+import {button,field,icon} from '../ui/primitives.js';
 import {bindActionMenu} from '../ui/actionMenu.js';
 import {formatErrorMessage} from '../uiFeedback.js';
 import {priorityBadge} from './workProductivity.js';
@@ -7,15 +8,22 @@ import {workDueLabel} from './workQueue.js?v=9';
 import {transitionWork} from './workActions.js';
 
 const btn=(label,attrs={},variant='ghost')=>button({label,variant,attrs});
-export function boardCard(row,selected) {
+export function boardCard(row,selected,{personal=false,userId=null}={}) {
  const closed=['done','cancelled'].includes(row.status),progress=row.checklist_progress;
  const date=row.status==='done' ? `Выполнена ${row.completed_at?new Date(row.completed_at).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit'}):'— дата неизвестна'}` : workDueLabel(row);
+ const overdue=date.match(/^Просрочено на (\d+) д\./);
+ const compactDate=overdue ? `${overdue[1]} д. проср.` : date;
+ const actor=row.next_step?.actor_name||row.next_actor_label|| (row.status==='in_acceptance'?row.acceptor_name:row.assignee_name)||'Не назначен';
+ const actorTitle=(row.status==='in_acceptance'?'Принимает результат: ':'Исполнитель: ')+actor.replace(/^Принимает:\s*/, '');
  return `<li class="work-board-card${selected===row.id?' is-selected':''}" data-board-card="${row.id}">
- <div class="work-board-card-head"><span class="work-public-id">${esc(row.public_id)}</span>${['high','urgent'].includes(row.priority)?priorityBadge(row.priority):''}${btn('⋯',{'data-board-menu':row.id,'aria-label':`Действия ${row.public_id}`})}</div>
+ <div class="work-board-card-head"><span class="work-public-id">${esc(row.public_id)}</span>${['high','urgent'].includes(row.priority)?priorityBadge(row.priority):''}${button({label:`Действия ${row.public_id}`,icon:'more-horizontal',iconOnly:true,size:'small',variant:'ghost',attrs:{'data-board-menu':row.id}})}</div>
  <button class="ui-link work-board-title" data-work-id="${row.id}" title="${esc(row.title)}">${esc(row.title)}</button>
- ${row.context?.title ? `<p class="work-board-context" title="${esc(row.context.title)}">${esc(row.context.title)}</p>` : ''}
- <p>${row.status==='in_acceptance'?'Принимает: ':''}${esc(row.next_step?.actor_name||row.next_actor_label|| (row.status==='in_acceptance'?row.acceptor_name:row.assignee_name)||'Не назначен')}</p>
- <div class="work-board-meta"><span class="${row.is_overdue?'work-warning':''}">${esc(date)}</span>${progress?.total?`<span>Чек-лист ${progress.done}/${progress.total}</span>`:''}</div>
+ ${row.context?.title ? `<p class="work-board-context" title="${esc(row.context.title)}">${icon('folder')}<span>${esc(row.context.title)}</span></p>` : ''}
+ <div class="work-board-meta">
+ ${personal && Number(row.assignee_id)===Number(userId) && row.status!=='in_acceptance' ? '' : `<span class="work-board-person" title="${esc(actorTitle)}">${icon(row.status==='in_acceptance'?'user-check':'user')}<span>${esc(actor.replace(/^Принимает:\s*/, ''))}</span></span>`}
+ ${progress?.total?`<span class="work-board-checklist" aria-label="Чек-лист: ${progress.done} из ${progress.total}" title="Чек-лист: ${progress.done} из ${progress.total}">${icon('list-checks')}<span>${progress.done}/${progress.total}</span></span>`:''}
+ <span class="work-board-due${row.is_overdue?' work-warning':''}" title="${esc(date)}${row.due_date?' · '+esc(row.due_date):''}" aria-label="${esc(date)}">${icon(row.status==='done'?'check':'calendar-days')}<span>${esc(compactDate)}</span></span>
+ </div>
  ${!closed&&row.blocked?`<details class="work-board-blocker"><summary>Есть препятствие</summary><p>${esc(row.blocked_reason_preview)}${row.blocked_reason_truncated?'…':''}</p>${row.blocked_reason_truncated?'<span class="work-muted">Полностью — в карточке задачи</span>':''}</details>`:''}
  ${!closed&&row.assignment_state==='proposed'?'<p class="work-board-signal">Ожидает принятия командой</p>':''}
  ${!closed&&row.assignment_state==='declined'?'<p class="work-board-signal">Назначение отклонено</p>':''}
@@ -47,8 +55,8 @@ export function mountWorkBoard(host,app,{open,counts,showDone,selected=()=>null,
  const renderColumn=d=>`<section class="work-board-column ${d.state==='filtered'?'is-filtered':''}" data-board-column="${d.status}" aria-label="${esc(d.title)}" ${d.state==='included'?'':'data-filtered'}>
  <header><h2 tabindex="-1">${esc(d.title)}${d.total===null?'':` · ${d.total}`}</h2>${d.status==='done'?`<span class="work-muted">${({'7d':'За 7 дней','30d':'За 30 дней',all:'За всё время'})[new URLSearchParams(params).get('done_period')||'all']||'За всё время'}</span>`:''}</header>
  ${d.state==='filtered'?`<p>Скрыта фильтром</p>${d.status==='done'&&data.filters.view!=='acceptance'?btn('Показать за 7 дней',{'data-board-done':''}):''}`:
- `<ul data-board-items="${d.status}">${d.items.map(x=>boardCard(x,selected())).join('')||'<li class="work-board-empty">Задач нет</li>'}</ul>
- ${d.previous_cursor || d.next_cursor ? `<footer aria-label="Страницы: ${esc(d.title)}"><span>${d.range_start}–${d.range_end} из ${d.total}</span><div>${btn('Назад',{'data-board-page':d.status,'data-direction':'previous',disabled:!d.previous_cursor,'aria-label':`Предыдущие: ${d.title}`})}${btn('Далее',{'data-board-page':d.status,'data-direction':'next',disabled:!d.next_cursor,'aria-label':`Следующие: ${d.title}`})}</div><p data-column-error="${d.status}" role="status"></p></footer>` : ''}`}</section>`;
+ `<ul data-board-items="${d.status}">${d.items.map(x=>boardCard(x,selected(),{personal:new URLSearchParams(params).get('view')==='mine',userId:app.store.get('currentUser')?.id})).join('')||'<li class="work-board-empty">Задач нет</li>'}</ul>
+ ${d.previous_cursor || d.next_cursor ? `<footer aria-label="Страницы: ${esc(d.title)}"><span>${d.range_start}–${d.range_end} из ${d.total}</span>${cursorPagination({hasPrevious:!!d.previous_cursor,hasNext:!!d.next_cursor,label:`Страницы: ${d.title}`,previousAttrs:{'data-board-page':d.status,'data-direction':'previous','aria-label':`Предыдущие: ${d.title}`},nextAttrs:{'data-board-page':d.status,'data-direction':'next','aria-label':`Следующие: ${d.title}`}})}<p data-column-error="${d.status}" role="status"></p></footer>` : ''}`}</section>`;
  const chooseColumn=value=>{
   column=value;onColumn(column);
   root.querySelectorAll('[data-board-column]').forEach(el=>el.classList.toggle('is-mobile-column',el.dataset.boardColumn===column));
@@ -74,6 +82,7 @@ export function mountWorkBoard(host,app,{open,counts,showDone,selected=()=>null,
   root.querySelector('[data-board-mobile]').innerHTML=field({id:'work-board-column',label:'Этап',kind:'select',value:column,options:included.map(x=>({value:x.status,label:`${x.title} · ${x.total}`}))});
   if(!included.some(x=>x.status===column))column=included[0]?.status||'';
   chooseColumn(column);
+  window.lucide?.createIcons();
   root.querySelectorAll('[data-board-menu]').forEach(trigger=>{
    const row=find(trigger.dataset.boardMenu),panel=document.createElement('div');
    panel.innerHTML=btn('Открыть задачу',{'data-board-operation':'open'})+
@@ -167,9 +176,10 @@ export function mountWorkBoard(host,app,{open,counts,showDone,selected=()=>null,
   root.querySelectorAll('[data-drop-label]').forEach(x=>x.remove());drag=null;if(message)say(message);
  };
  listen(root,'pointerdown',event=>{
-  if(event.pointerType==='touch'||event.button!==0||event.target.closest('button,a,input,select,textarea')||getSelection()?.toString())return;
-  // Only the card padding is a handle; title and metadata remain selectable.
-  const card=event.target.closest('[data-board-card]');if(!card||event.target!==card)return;
+  if(event.pointerType==='touch'||event.button!==0||event.target.closest('button:not([data-work-id]),a,input,select,textarea,summary,.work-board-blocker'))return;
+  // A title click opens the task; moving past the threshold drags the card.
+  // Menu controls and expandable blocker content retain their own gestures.
+  const card=event.target.closest('[data-board-card]');if(!card)return;
   const row=find(card.dataset.boardCard);if(!row||busy.has(row.id)||!canAct(row.id))return;
   event.preventDefault();
   pointer={id:event.pointerId,x:event.clientX,y:event.clientY,row,card,moved:false};
@@ -179,6 +189,7 @@ export function mountWorkBoard(host,app,{open,counts,showDone,selected=()=>null,
   if(!drag&&Math.hypot(event.clientX-pointer.x,event.clientY-pointer.y)<6)return;
   event.preventDefault();pointer.moved=true;
   if(!drag){drag=pointer;pointer.card.classList.add('is-dragging');
+   getSelection()?.removeAllRanges();
    for(const option of pointer.row.transition_options||[]){if(!option.enabled||option.target==='cancelled')continue;
     const col=root.querySelector(`[data-board-column="${option.target}"]:not([data-filtered])`);if(!col)continue;col.classList.add('is-drop-target');
     const label=document.createElement('p');label.dataset.dropLabel='';label.textContent=option.requires_input.includes('reason')?'Указать причину':option.requires_input.length?'Указать результат':option.label;col.prepend(label);

@@ -3,15 +3,15 @@ import { badge, button } from '../ui/primitives.js';
 import { escapeHtml as esc } from '../htmlUtils.js';
 
 export const WORK_STATUSES = { new: 'Новая', ready: 'К исполнению', in_progress: 'В работе', in_acceptance: 'На приёмке', done: 'Выполнена', cancelled: 'Отменена' };
+export const WORK_STATUS_TONES = { new:'neutral', ready:'info', in_progress:'info', in_acceptance:'warning', done:'success', cancelled:'neutral' };
 
 export function workDate(value) {
     const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
     return match ? `${match[3]}.${match[2]}.${match[1]}` : value || 'Не указан';
 }
 
-export function workStatus(status, labels) {
-    const tones = { done: 'success', in_progress: 'info', in_acceptance: 'warning', cancelled: 'neutral', ready: 'accent' };
-    return badge({ label: labels[status] || status, tone: tones[status] || 'neutral' });
+export function workStatus(status, labels = WORK_STATUSES) {
+    return badge({ label: labels[status] || status, tone: WORK_STATUS_TONES[status] || 'neutral', attrs:{'data-status':status} });
 }
 
 export function workMetrics(summary, extended = false) {
@@ -24,8 +24,9 @@ export function workPager(page, total, size = 30, scope = 'work') {
     return pagination({page,pages:Math.ceil(total/size),total,stepMode:true,scope,className:'work-pagination',label:'Страницы списка'});
 }
 
-export function focusWorkPager(root, scope, step) {
+export function focusWorkPager(root, scope, step, intent) {
     const selector = `[data-page-scope="${scope}"]`;
-    const same = root.querySelector(`${selector}[data-page="${step}"]:not(:disabled)`);
+    const action = intent || (Number(step) < 0 ? 'previous' : 'next');
+    const same = root.querySelector(`${selector}[data-page-action="${action}"]:not(:disabled)`);
     (same || root.querySelector(`${selector}:not(:disabled)`))?.focus();
 }

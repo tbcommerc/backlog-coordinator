@@ -1,3 +1,4 @@
+const json = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 import { expect, test } from '@playwright/test';
 import { getRequestStage } from '../js/components/requestPresentation.js';
 
@@ -40,7 +41,7 @@ async function mockCustomerPortal(page, { large = false } = {}) {
   let failQueue = false;
   let activations = 0;
   let newDialogs = 0;
-  const json = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+
   await page.route('**/api/v1/**', async route => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace('/api/v1', '');
@@ -175,7 +176,7 @@ test('server queue reaches records beyond 200, persists page, searches and recov
   await page.goto('/#/customer?page=10');
   await expect(page.locator('.customer-request-card')).toHaveCount(25);
   await expect(page.getByText('Страница 10 из 11', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Следующая', exact: true }).click();
+  await page.getByRole('button', { name: 'Далее', exact: true }).click();
   await expect(page.locator('.customer-request-card')).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Уникальная сверка 251' })).toBeVisible();
   await expect(page).toHaveURL(/page=11/);
@@ -284,4 +285,18 @@ test('customer queue explains personal and shared scope and uses safe task detai
   await shared.click();
   await expect(page.getByRole('heading',{name:legacyTask.title})).toBeVisible();
   await expect(page.getByText(/Изменение задачи здесь недоступно/)).toBeVisible();
+});
+
+for(const value of [null,0,100])test('customer queue progress distinguishes '+value,async({page})=>{
+ await mockCustomerPortal(page);await page.route('**/api/v1/customer/queue?**',route=>json(route,{items:[{...legacyTask,id:'task-901',kind:'task',legacy_task:true,task_id:901,task_public_id:legacyTask.public_id,task_progress:value,status:'in_progress'}],total:1,page:1,per_page:20,pages:1,counts:{all:1,work:1}}));
+ await page.goto('/#/customer');const card=page.locator('.customer-request-card');const progress=card.getByRole('progressbar',{name:'Прогресс связанной задачи',exact:true});await expect(progress).toBeVisible();
+ if(value===null){await expect(progress).not.toHaveAttribute('aria-valuenow');await expect(progress).toHaveAttribute('aria-valuetext','Нет данных');}else{await expect(progress).toHaveAttribute('aria-valuenow',String(value));await expect(progress).toHaveAttribute('aria-valuetext',value+'%');}
+});
+for(const status of [403,404,503])test('customer task shared failure and return '+status,async({page})=>{
+ await mockCustomerPortal(page);await page.route('**/api/v1/customer/tasks/901',route=>json(route,{detail:'Задача не найдена'},status));await page.goto('/#/customer/task/901');await expect(page.getByRole('heading',{name:status===503?'Не удалось загрузить задачу':'Задача недоступна',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Вернуться к запросам',exact:true}).click();await expect(page).toHaveURL(/#\/customer$/);await expect(page.getByRole('heading',{name:'Мои запросы',exact:true})).toBeVisible();
+});
+
+for(const status of [403,404,503])test('customer request shared failure and return '+status,async({page})=>{
+ await mockCustomerPortal(page);await page.route('**/api/v1/agent/requests/100',route=>json(route,{detail:'Запрос не найден'},status));await page.goto('/#/customer/request/100');await expect(page.getByRole('heading',{name:status===503?'Не удалось загрузить запрос':'Запрос недоступен',exact:true})).toBeVisible();await page.getByRole('button',{name:'Вернуться к запросам',exact:true}).click();await expect(page).toHaveURL(/#\/customer$/);
 });

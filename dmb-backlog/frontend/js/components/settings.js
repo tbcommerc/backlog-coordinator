@@ -1,3 +1,5 @@
+import { avatar } from '../ui/dataDisplay.js';
+import { descriptionList } from '../ui/detailComponents.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { applyThemePreference } from '../theme.js';
 import { button, badge, icon, pageHeader, tab } from '../ui/primitives.js';
@@ -46,8 +48,6 @@ export function renderSettings(app) {
   const userEmail = user.email || '—';
   const userRole = user.role_name || '—';
   const userTeam = user.team_name || '';
-  const initials = window.getUserInitials(userName);
-  const avatarColor = window.getAvatarColor(userName);
   const savedTheme = localStorage.getItem('dmb_theme') || 'light';
   const savedAccent = localStorage.getItem('dmb_accent') || 'indigo';
   const isCompact = localStorage.getItem('dmb_compact') === 'true';
@@ -96,12 +96,12 @@ export function renderSettings(app) {
           </section>
           <section class="settings-view" id="settings-view-account" role="tabpanel" aria-labelledby="settings-tab-account" tabindex="0" data-settings-view="account"${selectedSection === 'account' ? '' : ' hidden'}>
             <div class="settings-view-header"><div class="settings-view-icon"><i data-lucide="user"></i></div><div><h2>Учётная запись</h2><p>Информация о профиле и доступе</p></div></div>
-            <div class="settings-profile-hero"><div class="settings-avatar" style="--avatar-color:${avatarColor}">${escapeHtml(initials)}</div><div><h3>${escapeHtml(userName)}</h3><p>${escapeHtml(userEmail)}</p>${userTeam ? `<span>${escapeHtml(userTeam)}</span>` : ''}</div></div>
-            <dl class="settings-profile-list">
-              <div><dt>Роль в системе</dt><dd>${badge({ label: userRole, tone: 'accent' })}</dd></div>
-              <div><dt>Команда</dt><dd>${escapeHtml(userTeam || 'Не указана')}</dd></div>
-              <div><dt>Электронная почта</dt><dd>${escapeHtml(userEmail)}</dd></div>
-            </dl>
+            <div class="settings-profile-hero">${avatar({ name: userName, size: 48, className: 'settings-avatar' })}<div><h3>${escapeHtml(userName)}</h3><p>${escapeHtml(userEmail)}</p>${userTeam ? `<span>${escapeHtml(userTeam)}</span>` : ''}</div></div>
+            ${descriptionList({ className: 'settings-profile-list', items: [
+              { label: 'Роль в системе', valueMarkup: badge({ label: userRole, tone: 'accent' }) },
+              { label: 'Команда', value: userTeam || 'Не указана' },
+              { label: 'Электронная почта', value: userEmail },
+            ] })}
             <div class="settings-info-callout"><i data-lucide="info"></i><div><strong>Данные профиля управляются администратором</strong><p>Если информация устарела, обратитесь к администратору системы.</p></div></div>
           </section>
         </div>
@@ -229,7 +229,7 @@ function queueNotificationSave(app, explicitPreferences = null) {
     applyNotificationPrefs(savedNotificationPrefs);
     if (!status) return;
     status.className = 'settings-save-status error';
-    status.innerHTML = `${icon('circle-alert')} Изменения не сохранены ${button({ label: 'Повторить', variant: 'ghost', size: 'small', attrs: { 'data-retry-notification-save': true } })}`;
+    status.innerHTML = `${icon('alert-circle')} Изменения не сохранены ${button({ label: 'Повторить', variant: 'ghost', size: 'small', attrs: { 'data-retry-notification-save': true } })}`;
     status.querySelector('[data-retry-notification-save]')?.addEventListener('click',event=>{
       if (!failedNotificationPrefs) return;
       setButtonBusy(event.currentTarget, true, 'Сохраняем…');

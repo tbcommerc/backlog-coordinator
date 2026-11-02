@@ -86,23 +86,29 @@ test('вкладки имеют ARIA-семантику и управляютс�
   const main = page.locator('#task-tab-main');
   await main.focus();
   await main.press('ArrowRight');
+  await expect(main).toHaveAttribute('aria-selected', 'true');
+  await page.locator('#task-tab-rep').press('Enter');
   await expect(page.locator('#task-tab-rep')).toBeFocused();
   await expect(page.locator('#task-tab-rep')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#mbody')).toHaveAttribute('aria-labelledby', 'task-tab-rep');
 
   await page.locator('#task-tab-rep').press('End');
+  await page.locator('#task-tab-work').press('Enter');
   await expect(page.locator('#task-tab-work')).toBeFocused();
   await expect(page.locator('#task-tab-work')).toHaveAttribute('tabindex', '0');
   await expect(page.locator('#mbody')).toHaveAttribute('aria-labelledby', 'task-tab-work');
 
   await page.locator('#task-tab-work').press('Home');
+  await page.locator('#task-tab-main').press('Enter');
   await expect(page.locator('#task-tab-main')).toBeFocused();
   await expect(page.locator('#task-tab-main')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#tabs [role="tab"][tabindex="0"]')).toHaveCount(1);
   await main.press('ArrowLeft');
+  await page.locator('#task-tab-work').press('Enter');
   await expect(page.locator('#task-tab-work')).toBeFocused();
   await expect(page.locator('#task-tab-work')).toHaveAttribute('aria-selected', 'true');
   await page.locator('#task-tab-work').press('ArrowRight');
+  await page.locator('#task-tab-main').press('Enter');
   await expect(main).toBeFocused();
   await expect(main).toHaveAttribute('aria-selected', 'true');
 });

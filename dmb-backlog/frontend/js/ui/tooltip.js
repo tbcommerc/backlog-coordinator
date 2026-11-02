@@ -22,6 +22,7 @@ export function bindTooltip({ trigger, panel }) {
       node.removeEventListener('pointerenter', open); node.removeEventListener('pointerleave', scheduleClose);
     }
     trigger.removeEventListener('focus', open); trigger.removeEventListener('blur', scheduleClose);
-    if (previous) trigger.setAttribute('aria-describedby', previous); else trigger.removeAttribute('aria-describedby');
+    const remaining = (trigger.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => id && id !== panel.id);
+    if (remaining.length) trigger.setAttribute('aria-describedby', remaining.join(' ')); else trigger.removeAttribute('aria-describedby');
   } });
 }

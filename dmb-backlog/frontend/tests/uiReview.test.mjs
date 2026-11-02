@@ -9,7 +9,7 @@ test('pagination clamps invalid pages and disables unavailable transitions', () 
   assert.equal((empty.match(/ disabled/g) || []).length, 2);
   assert.match(empty, /<strong>1<\/strong> из 1/);
   assert.match(pagination({ page: 99, pages: 3 }), /<strong>3<\/strong>/);
-  assert.equal((pagination({ page: 2, pages: 4, disabled: true }).match(/ disabled/g) || []).length, 2);
+  assert.equal((pagination({ page: 2, pages: 4, disabled: true }).match(/ disabled/g) || []).length, 6);
   assert.doesNotMatch(pagination({ page: NaN, pages: Infinity }), /NaN|Infinity/);
 });
 test('radio group has native form semantics and escapes untrusted content', () => {

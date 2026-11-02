@@ -2,7 +2,7 @@
 title: API Backlog coordinator
 scope: as-is
 status: verified-index
-last_verified: 2026-10-21
+last_verified: 2026-10-29
 source_of_truth:
   - FastAPI app.routes
   - /openapi.json
@@ -18,6 +18,64 @@ evidence:
 ---
 
 # API Backlog coordinator
+
+## Запросы заказчиков — проверено 29.10.2026
+
+- `GET /api/v1/agent/requests/registry` — полный серверный поиск, фильтры,
+  счётчики и пагинация в разрешённой области.
+- `POST /api/v1/agent/requests/{id}/lifecycle` — принятие в бэклог, откладывание,
+  пересмотр, отзыв и изменение сопровождения; обязательные версия и причина.
+- `GET /api/v1/agent/requests/{id}/coordinators` — допустимые ответственные.
+- DTO запроса включает `effective_status`, сопровождение и `lifecycle_actions`.
+  Удаление отправленного запроса возвращает 409; используется отзыв.
+- Размещение допускает `accepted`; подтверждение полного результата проверяет
+  завершение всех связанных рабочих и текущих задач.
+
+Параметры, ограничения доступа и проверки: [REQUESTS.md](REQUESTS.md).
+
+## Проекты — проверено 29.10.2026
+
+Все маршруты ниже имеют префикс /api/v1, требуют внутреннего пользователя;
+business customer получает 403. Паспорт сохраняет справочную видимость,
+производные данные ограничены Task/WorkTask/Metric read ACL.
+
+| GET | Параметры | Ответ |
+|---|---|---|
+| /projects | q (до 200 символов), page ≥ 1 | items, total, page; по 24, паспорт и backlog_count |
+| /projects/{id}/workspace | year 2000..2099 | project, years, plan, teams, backlog_total, work, metrics_total |
+| /projects/{id}/backlog | year, bucket=all/1/2/3/4/annual/unplanned, q, state=all/active/closed, page | items, total, page; по 30 |
+| /projects/{id}/results | year, quarter=0..4, kind=work/backlog/moves/metrics, page | items, total, page, start, end_exclusive, kind; по 30 |
+
+Несуществующий проект: 404. Некорректные параметры: 422. Операции только читают
+данные. План формируется из deadline_id; причины переноса не реконструируются.
+[Семантика результатов](WORK_TASKS.md#проекты--проверено-29102026).
+
+## Наборы значений фильтров — проверено 29.10.2026
+
+Перечисленные query-параметры принимают прежнее одиночное значение или
+JSON-массив в строке, например `team_id=["1","2"]` (с обычным URL-кодированием).
+Внутри поля действует ИЛИ, между полями — И. Пустая строка снимает ограничение.
+Сервер валидирует положительные ID, enum и максимум 100 элементов; ACL не меняются.
+
+| GET endpoint | Параметры с несколькими значениями |
+|---|---|
+| `/api/v1/metrics` | `team_id`, `owner_id`, `project_id`, `state`, `attention` |
+| `/api/v1/work-tasks`, `/api/v1/work-tasks/board`, `/api/v1/work-tasks/board/columns/{column_status}` | `status`, `priority`, `work_direction`, `execution_team_id`, `assignee_id`, `effective_project_id`, `focus` |
+| `/api/v1/work-reports` | `team_id`; `meeting_id` остаётся одним снимком |
+| `/api/v1/admin/audit-log` | `user_id`, `action`, `entity_type` |
+| `/api/v1/notifications` | `category`, `importance`; новый `views` объединяет `unread`, `action`, `resolved`, `open` через ИЛИ; `all` снимает ограничение |
+
+Прежние флаги уведомлений `unread_only`, `requires_action`, `resolved` сохраняют
+свою семантику. Новый UI передаёт `views` для нескольких состояний без этих
+одиночных флагов. Все списки и агрегаты используют общий отбор без дублирования
+строк. [Решение по каждому фильтру](FILTER_CARDINALITY.md).
+
+## Метрики — проверено 26.10.2026
+
+/api/v1/metrics предоставляет реестр, паспорт, периоды, переходы, замеры,
+комментарии, файлы, связи и статусы встреч. Изменения защищены версией и
+блокировкой паспорта. Старый TaskResponse содержит metric_id для перенаправления.
+[Полный контракт и права](METRICS.md#api-и-права).
 
 ## Быстрые выборки рабочих задач — проверено 21.10.2026
 

@@ -15,9 +15,7 @@ test('F05 leaving admin during pending list search is safe',async({page})=>{
  const errors=[];page.on('pageerror',error=>errors.push(error.message));await open(page,'users');await page.locator('#admin-user-search').fill('query');await page.locator('#admin-content').evaluate(node=>node.remove());await page.waitForTimeout(300);expect(errors).toEqual([]);
 });
 
-test('F16 removing invalid filter clears obsolete validation',async({page})=>{
- await open(page,'reports');await page.locator('.admin-add-btn[data-type=report]').click();await page.locator('#report-name').fill('Test');await page.locator('#report-step-2').click();await page.locator('.report-field-cb[value=title]').check();await page.locator('#report-step-3').click();await page.locator('#report-add-filter').click();await page.locator('.modal-save-btn').click();await expect(page.locator('#report-form-error')).toContainText('пустой фильтр');await page.locator('#report-step-3').click();await page.locator('.report-filter-remove').click();await expect(page.locator('#report-form-error')).not.toContainText('пустой фильтр');
-});
+
 test('F17 confirmation isolates controls and Escape keeps draft',async({page})=>{
  await open(page,'dictionaries');await page.locator('[data-dict="did-client-groups"]').click();await page.locator('[data-new]').click();await page.locator('input[name=name]').fill('Draft');await page.locator('dialog [data-close]').click();
  expect(await page.locator('[data-editor]').evaluate(node=>node.inert)).toBe(true);

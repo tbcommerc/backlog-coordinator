@@ -1,0 +1,1939 @@
+{
+  "schema": 1,
+  "method": "Static candidates by exported symbol; browser state evidence is separate. A hash mismatch invalidates the receipt.",
+  "surfaces": 118,
+  "families": [
+    {
+      "name": "Button",
+      "exports": [
+        "button",
+        "setButtonBusy"
+      ],
+      "selectors": ".ui-btn",
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "busy",
+        "hidden",
+        "iconOnly"
+      ],
+      "test": "uiKitCore.spec.mjs",
+      "consumers": [
+        "js/agent-v2/documentReview.js",
+        "js/agent-v2/journey.js",
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/backlog-assistant/answer.js",
+        "js/backlog-assistant/context-help.js",
+        "js/backlog-assistant/page.js",
+        "js/backlog-assistant/panel.js",
+        "js/backlog-assistant/presentation.js",
+        "js/components/accountSecurity.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerChat.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/customerReport.js",
+        "js/components/dashboard.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/kanbanBoard.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/navbar.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/quickFilters.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestLifecycle.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/sidebar.js",
+        "js/components/tableUtils.js",
+        "js/components/taskAttachments.js",
+        "js/components/taskComments.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/viewState.js",
+        "js/components/workBoard.js",
+        "js/components/workProductivity.js",
+        "js/components/workQueue.js",
+        "js/components/workRelations.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/components/workUi.js",
+        "js/modalAccessibility.js",
+        "js/uiFeedback.js"
+      ]
+    },
+    {
+      "name": "FilterChip",
+      "exports": [
+        "filterChip"
+      ],
+      "selectors": ".ui-filter-chip",
+      "states": [
+        "neutral",
+        "info",
+        "success",
+        "warning",
+        "danger",
+        "accent",
+        "selected",
+        "disabled",
+        "hidden",
+        "long",
+        "touch"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/components/customerPortal.js",
+        "js/components/metrics.js",
+        "js/components/notifications.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quickFilters.js",
+        "js/components/reviewPage.js",
+        "js/components/workTasks.js"
+      ]
+    },
+    {
+      "name": "KpiCard",
+      "exports": [
+        "kpiCard"
+      ],
+      "selectors": ".ui-kpi-card",
+      "states": [
+        "metric",
+        "formatted",
+        "text",
+        "static",
+        "interactive",
+        "disabled",
+        "hidden"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/components/workTasks.js"
+      ]
+    },
+    {
+      "name": "CollapseSection",
+      "exports": [
+        "collapseSection"
+      ],
+      "selectors": ".ui-collapse-section",
+      "states": [
+        "open",
+        "closed",
+        "keyboard",
+        "touch",
+        "hidden"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/components/workTaskDrawer.js"
+      ]
+    },
+    {
+      "name": "Field",
+      "exports": [
+        "control",
+        "fieldFrame",
+        "field",
+        "showFieldError",
+        "clearFieldError",
+        "showFormErrors",
+        "clearFormErrors"
+      ],
+      "selectors": ".ui-field .ui-control",
+      "states": [
+        "default",
+        "hint",
+        "invalid",
+        "external-error",
+        "server-error",
+        "disabled",
+        "readonly"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/adminLabels.js",
+        "js/agent-v2/documentReview.js",
+        "js/agent-v2/generation.js",
+        "js/agent-v2/journey.js",
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/backlog-assistant/answer.js",
+        "js/backlog-assistant/page.js",
+        "js/components/accountSecurity.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerChat.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/customerReport.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestLifecycle.js",
+        "js/components/requestPresentation.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workPicker.js",
+        "js/components/workProductivity.js",
+        "js/components/workProjects.js",
+        "js/components/workRelations.js",
+        "js/components/workReports.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/localSpellcheck.js",
+        "js/uiFeedback.js"
+      ]
+    },
+    {
+      "name": "Checkbox",
+      "exports": [
+        "checkbox"
+      ],
+      "selectors": ".ui-checkbox",
+      "states": [
+        "checked",
+        "unchecked",
+        "disabled",
+        "touch"
+      ],
+      "test": "uiKitComposites.spec.mjs",
+      "consumers": [
+        "js/agent-v2/documentReview.js",
+        "js/agent-v2/journey.js",
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/customerReferences.js",
+        "js/components/didBacklog.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/reviewPage.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workProductivity.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js"
+      ]
+    },
+    {
+      "name": "Switch",
+      "exports": [
+        "toggleSwitch"
+      ],
+      "selectors": ".ui-switch",
+      "states": [
+        "checked",
+        "unchecked",
+        "disabled",
+        "keyboard"
+      ],
+      "test": "uiKitComposites.spec.mjs",
+      "consumers": [
+        "js/components/settings.js"
+      ]
+    },
+    {
+      "name": "RadioGroup",
+      "exports": [
+        "radioGroup"
+      ],
+      "selectors": ".ui-choice-group",
+      "states": [
+        "selected",
+        "disabled",
+        "required",
+        "keyboard"
+      ],
+      "test": "uiKitComposites.spec.mjs",
+      "consumers": []
+    },
+    {
+      "name": "Tabs",
+      "exports": [
+        "tab",
+        "tabs",
+        "mountTabs",
+        "tabNavigationTarget"
+      ],
+      "selectors": ".ui-tab",
+      "states": [
+        "selected",
+        "disabled",
+        "keyboard",
+        "horizontal",
+        "vertical"
+      ],
+      "test": "uiKitCore.spec.mjs",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/backlog-assistant/answer.js",
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/directorateReport.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/projectWorkspace.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/workTaskDrawer.js",
+        "js/notificationUtils.js",
+        "js/router.js"
+      ]
+    },
+    {
+      "name": "InfoChip",
+      "exports": [
+        "badge",
+        "tag"
+      ],
+      "selectors": ".ui-badge .ui-tag .ui-info-chip",
+      "states": [
+        "neutral",
+        "info",
+        "success",
+        "warning",
+        "danger",
+        "accent",
+        "hidden",
+        "long"
+      ],
+      "test": "infoChips.spec.mjs",
+      "consumers": [
+        "js/adminLabels.js",
+        "js/app.js",
+        "js/backlog-assistant/presentation.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReport.js",
+        "js/components/dashboard.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/kanbanBoard.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/notifications.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quickEdit.js",
+        "js/components/quickFilters.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestPresentation.js",
+        "js/components/settings.js",
+        "js/components/sidebar.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workProjects.js",
+        "js/components/workReports.js",
+        "js/components/workUi.js",
+        "js/localSpellcheck.js",
+        "js/taskCardMarkdown.js"
+      ]
+    },
+    {
+      "name": "Counter",
+      "exports": [
+        "counter"
+      ],
+      "selectors": ".ui-counter .quick-filter-count",
+      "states": [
+        "zero",
+        "unknown",
+        "loading",
+        "capped",
+        "selected",
+        "unread",
+        "warning",
+        "danger",
+        "hidden"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/app.js",
+        "js/components/auditLog.js",
+        "js/components/modal.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/reportingStatuses.js",
+        "js/components/sidebar.js"
+      ]
+    },
+    {
+      "name": "Avatar",
+      "exports": [
+        "avatar"
+      ],
+      "selectors": ".ui-avatar",
+      "states": [
+        "initials",
+        "fallback",
+        "color",
+        "size"
+      ],
+      "test": "uiKitDataDisplay.spec.mjs",
+      "consumers": [
+        "js/app.js",
+        "js/backlog-assistant/presentation.js",
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/customerChat.js",
+        "js/components/modal.js",
+        "js/components/settings.js",
+        "js/components/taskComments.js",
+        "js/components/workQueue.js"
+      ]
+    },
+    {
+      "name": "Progress",
+      "exports": [
+        "progress"
+      ],
+      "selectors": ".ui-progress",
+      "states": [
+        "determinate",
+        "unknown",
+        "indeterminate",
+        "complete",
+        "error"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/app.js",
+        "js/backlog-assistant/answer.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/reports.js",
+        "js/components/tableUtils.js",
+        "js/components/taskColumns.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workProductivity.js",
+        "js/components/workTaskDrawer.js"
+      ]
+    },
+    {
+      "name": "ViewState",
+      "exports": [
+        "renderViewState",
+        "bindViewStateAction"
+      ],
+      "selectors": ".view-state",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "forbidden",
+        "unavailable",
+        "stale",
+        "partial",
+        "retry"
+      ],
+      "test": "uiKitFamilyContract.spec.mjs",
+      "consumers": [
+        "js/components/admin.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/didBacklog.js",
+        "js/components/expressEstimate.js",
+        "js/components/kanbanBoard.js",
+        "js/components/metrics.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestLifecycle.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/viewState.js",
+        "js/components/workProjects.js",
+        "js/components/workReports.js",
+        "js/components/workResolution.js",
+        "js/components/workTasks.js",
+        "js/router.js"
+      ]
+    },
+    {
+      "name": "Feedback",
+      "exports": [
+        "confirmAction",
+        "showToast"
+      ],
+      "selectors": ".toast .feedback-confirm",
+      "states": [
+        "success",
+        "error",
+        "warning",
+        "info",
+        "persistent",
+        "action",
+        "keyboard"
+      ],
+      "test": "uiKitDialogAcceptance.spec.mjs",
+      "consumers": [
+        "js/app.js",
+        "js/components/agentChat.js",
+        "js/components/auditLog.js",
+        "js/components/customerReferences.js",
+        "js/components/filterToolbar.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/reportingStatuses.js",
+        "js/components/workResolution.js",
+        "js/uiFeedback.js"
+      ]
+    },
+    {
+      "name": "Alert",
+      "exports": [
+        "alert"
+      ],
+      "selectors": ".ui-alert",
+      "states": [
+        "neutral",
+        "info",
+        "success",
+        "warning",
+        "danger",
+        "live",
+        "static"
+      ],
+      "test": "uiKitComposites.spec.mjs",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/backlog-assistant/page.js",
+        "js/components/accountSecurity.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/customerReport.js",
+        "js/components/dashboard.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/quickEdit.js",
+        "js/components/quickFilters.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestLifecycle.js",
+        "js/components/requestPresentation.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/sidebar.js",
+        "js/components/viewState.js",
+        "js/components/workRelations.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/uiFeedback.js"
+      ]
+    },
+    {
+      "name": "Pagination",
+      "exports": [
+        "pagination",
+        "cursorPagination",
+        "loadMore"
+      ],
+      "selectors": ".ui-pagination",
+      "states": [
+        "first",
+        "middle",
+        "last",
+        "empty",
+        "busy",
+        "reset",
+        "focus",
+        "page",
+        "cursor",
+        "append"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/backlog-assistant/answer.js",
+        "js/components/admin.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/expressEstimate.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reviewPage.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workUi.js"
+      ]
+    },
+    {
+      "name": "Popover",
+      "exports": [
+        "createPopover",
+        "bindPopover"
+      ],
+      "selectors": ".ui-popover",
+      "states": [
+        "open",
+        "closed",
+        "escape",
+        "outside",
+        "focus",
+        "modal"
+      ],
+      "test": "uiKitComposites.spec.mjs",
+      "consumers": [
+        "js/app.js",
+        "js/components/didBacklog.js",
+        "js/components/filterToolbar.js",
+        "js/components/modal.js",
+        "js/components/reports.js"
+      ]
+    },
+    {
+      "name": "SelectionList",
+      "exports": [
+        "selectionList",
+        "filterSelectionList"
+      ],
+      "selectors": ".ui-selection-list",
+      "states": [
+        "selected",
+        "disabled",
+        "empty",
+        "search"
+      ],
+      "test": "uiKitComposites.spec.mjs",
+      "consumers": [
+        "js/components/didBacklog.js",
+        "js/components/filterToolbar.js",
+        "js/components/reports.js"
+      ]
+    },
+    {
+      "name": "ActionMenu",
+      "exports": [
+        "bindActionMenu"
+      ],
+      "selectors": ".ui-action-menu",
+      "states": [
+        "open",
+        "closed",
+        "keyboard",
+        "disabled",
+        "aria-disabled"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/app.js",
+        "js/components/agentChat.js",
+        "js/components/kanbanBoard.js",
+        "js/components/workBoard.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js"
+      ]
+    },
+    {
+      "name": "Tooltip",
+      "exports": [
+        "bindTooltip"
+      ],
+      "selectors": ".ui-tooltip",
+      "states": [
+        "hover",
+        "focus",
+        "close",
+        "destroy",
+        "descriptions"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/components/modal.js"
+      ]
+    },
+    {
+      "name": "Upload",
+      "exports": [
+        "fileUpload",
+        "setUploadState"
+      ],
+      "selectors": ".ui-upload",
+      "states": [
+        "idle",
+        "dragover",
+        "selected",
+        "uploading",
+        "cancelled",
+        "error",
+        "disabled"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": [
+        "js/components/meetingCapture.js",
+        "js/components/workTaskDrawer.js"
+      ]
+    },
+    {
+      "name": "Range",
+      "exports": [
+        "rangeControl"
+      ],
+      "selectors": ".ui-range input[type=range]",
+      "states": [
+        "min",
+        "max",
+        "step",
+        "disabled",
+        "keyboard"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": []
+    },
+    {
+      "name": "SegmentedControl",
+      "exports": [
+        "segmentedControl"
+      ],
+      "selectors": ".ui-segmented",
+      "states": [
+        "selected",
+        "disabled",
+        "keyboard",
+        "group"
+      ],
+      "test": "uiKitDeepContracts.spec.mjs",
+      "consumers": []
+    },
+    {
+      "name": "PageHeader",
+      "exports": [
+        "pageHeader"
+      ],
+      "selectors": ".ui-page-header",
+      "states": [
+        "title",
+        "description",
+        "actions",
+        "wrapping"
+      ],
+      "test": "uiKitFamilyContract.spec.mjs",
+      "consumers": [
+        "js/components/admin.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReport.js",
+        "js/components/filterToolbar.js",
+        "js/components/kanbanBoard.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/reports.js",
+        "js/components/settings.js",
+        "js/components/teamBacklog.js",
+        "js/components/workProjects.js",
+        "js/components/workReports.js",
+        "js/components/workTasks.js",
+        "js/router.js"
+      ]
+    },
+    {
+      "name": "ReadOnlyField",
+      "exports": [
+        "readOnlyField",
+        "descriptionList",
+        "bindReadOnlyFields"
+      ],
+      "selectors": ".ui-readonly-field .ui-description-list",
+      "states": [
+        "default",
+        "zero",
+        "empty",
+        "loading",
+        "error",
+        "link",
+        "copy",
+        "long",
+        "hidden"
+      ],
+      "test": "uiKitDetailComponents.spec.mjs",
+      "consumers": [
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/directorateReport.js",
+        "js/components/metrics.js",
+        "js/components/projectWorkspace.js",
+        "js/components/reports.js",
+        "js/components/requestPresentation.js",
+        "js/components/settings.js",
+        "js/components/workTaskDrawer.js"
+      ]
+    },
+    {
+      "name": "SectionCard",
+      "exports": [
+        "sectionCard"
+      ],
+      "selectors": ".ui-section-card",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "open",
+        "closed",
+        "actions",
+        "footer",
+        "hidden"
+      ],
+      "test": "uiKitDetailComponents.spec.mjs",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/projectWorkspace.js",
+        "js/components/workTaskDrawer.js"
+      ]
+    },
+    {
+      "name": "DetailPanel",
+      "exports": [
+        "detailPanel",
+        "bindDetailPanel"
+      ],
+      "selectors": ".ui-detail-panel",
+      "states": [
+        "modal",
+        "inline",
+        "fullscreen",
+        "busy",
+        "guarded",
+        "escape",
+        "focus",
+        "dispose",
+        "mobile"
+      ],
+      "test": "uiKitDetailComponents.spec.mjs",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/workTaskDrawer.js",
+        "js/modalAccessibility.js"
+      ]
+    },
+    {
+      "name": "DataTable",
+      "exports": [
+        "dataTable",
+        "bindDataTable"
+      ],
+      "selectors": ".ui-data-table",
+      "states": [
+        "default",
+        "empty",
+        "loading",
+        "error",
+        "sort",
+        "controlled",
+        "keyboard",
+        "dispose",
+        "scroll",
+        "cards",
+        "hidden"
+      ],
+      "test": "uiKitDataTable.spec.mjs",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/projectWorkspace.js",
+        "js/components/workReports.js"
+      ]
+    },
+    {
+      "name": "TableCell",
+      "exports": [
+        "tableCell"
+      ],
+      "selectors": ".ui-table-cell",
+      "states": [
+        "text",
+        "number",
+        "date",
+        "link",
+        "badge",
+        "markup",
+        "zero",
+        "empty",
+        "long",
+        "escaping"
+      ],
+      "test": "uiKitDataTable.spec.mjs",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/projectWorkspace.js",
+        "js/components/workReports.js"
+      ]
+    },
+    {
+      "name": "EntityPicker",
+      "exports": [
+        "entityPicker",
+        "bindEntityPicker"
+      ],
+      "selectors": ".ui-entity-picker",
+      "states": [
+        "idle",
+        "loading",
+        "ready",
+        "empty",
+        "error",
+        "retry",
+        "selected",
+        "clear",
+        "required",
+        "disabled",
+        "reset",
+        "stale",
+        "abort",
+        "dispose",
+        "keyboard",
+        "long"
+      ],
+      "test": "uiKitEntityPicker.spec.mjs",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/workPicker.js",
+        "js/components/workResolution.js"
+      ]
+    },
+    {
+      "name": "Intervals",
+      "exports": [
+        "dateRange",
+        "numberRange",
+        "validateRanges"
+      ],
+      "selectors": ".ui-interval",
+      "states": [
+        "empty",
+        "partial",
+        "zero",
+        "equal",
+        "reversed",
+        "required",
+        "disabled",
+        "readonly",
+        "min",
+        "max",
+        "step",
+        "hidden",
+        "mobile"
+      ],
+      "test": "uiKitIntervals.spec.mjs",
+      "consumers": [
+        "js/components/admin.js",
+        "js/components/auditLog.js",
+        "js/components/filterToolbar.js",
+        "js/components/metrics.js",
+        "js/components/reports.js"
+      ]
+    },
+    {
+      "name": "StepForm",
+      "exports": [
+        "stepForm",
+        "setStepForm",
+        "bindStepForm"
+      ],
+      "selectors": ".ui-step-form",
+      "states": [
+        "current",
+        "complete",
+        "pending",
+        "guarded",
+        "invalid",
+        "focus",
+        "preserve",
+        "controlled",
+        "dispose"
+      ],
+      "test": "uiKitWorkflows.spec.mjs",
+      "consumers": [
+        "js/components/meetingCapture.js"
+      ]
+    },
+    {
+      "name": "SplitPane",
+      "exports": [
+        "splitPane",
+        "bindSplitPane"
+      ],
+      "selectors": ".ui-split-pane",
+      "states": [
+        "pointer",
+        "keyboard",
+        "bounds",
+        "responsive",
+        "active",
+        "inactive",
+        "dispose"
+      ],
+      "test": "uiKitWorkflows.spec.mjs",
+      "consumers": [
+        "js/components/workTasks.js"
+      ]
+    },
+    {
+      "name": "Charts",
+      "exports": [
+        "chartPalette",
+        "chartTheme",
+        "applyChartTheme",
+        "chartJsTheme",
+        "applyChartJsTheme",
+        "loadChartFont"
+      ],
+      "selectors": "canvas .ui-chart",
+      "states": [
+        "theme",
+        "data",
+        "formatters",
+        "font"
+      ],
+      "test": "uiKitCharts.spec.mjs",
+      "consumers": [
+        "js/components/analytics.js",
+        "js/components/reports.js"
+      ]
+    },
+    {
+      "name": "Infrastructure",
+      "exports": [
+        "attributes",
+        "icon",
+        "initModalAccessibility"
+      ],
+      "selectors": "",
+      "states": [
+        "escaping",
+        "vocabulary",
+        "focus",
+        "lifecycle"
+      ],
+      "test": "uiKitDialogAcceptance.spec.mjs",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/backlog-assistant/presentation.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerChat.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/customerReport.js",
+        "js/components/dashboard.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/kanbanBoard.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/navbar.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickFilters.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestPresentation.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/sidebar.js",
+        "js/components/tableUtils.js",
+        "js/components/taskAttachments.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/viewState.js",
+        "js/components/workBoard.js",
+        "js/components/workProjects.js",
+        "js/components/workQueue.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/modalAccessibility.js",
+        "js/notificationUtils.js",
+        "js/uiFeedback.js"
+      ]
+    },
+    {
+      "name": "Filters",
+      "exports": [
+        "installFilterSelects",
+        "FILTER_SELECT_SELECTOR",
+        "FILTER_POLICIES",
+        "filterPolicy",
+        "filterValues",
+        "filterMatches",
+        "encodeFilterValues",
+        "setFilterValue",
+        "toggleFilterValues"
+      ],
+      "selectors": ".ui-filter-slot .ui-filter-select",
+      "states": [
+        "single",
+        "multiple",
+        "empty",
+        "disabled",
+        "keyboard",
+        "mobile"
+      ],
+      "test": "filterSelect.spec.mjs",
+      "consumers": [
+        "js/app.js",
+        "js/components/admin.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerReport.js",
+        "js/components/directorateReport.js",
+        "js/components/metrics.js",
+        "js/components/notifications.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/reviewPage.js",
+        "js/components/workReports.js",
+        "js/components/workTasks.js"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "path": "css/account-security.css",
+      "sha256": "df43799ebc9f4deb5c70ea5d5f2230951651b18a00e43c6889b914f9d325712c"
+    },
+    {
+      "path": "css/agent-v2-details.css",
+      "sha256": "e9e97feca7b866d3c9cf6c42e89177e9b35d43e04f340290f9412b9588272ec0"
+    },
+    {
+      "path": "css/agent-v2.css",
+      "sha256": "7bc5f64597a43117ef54956e5309a384f74546a1315899843a5b78ae2bcd7904"
+    },
+    {
+      "path": "css/analytics-lt.css",
+      "sha256": "3950346428abec1c311849b4bde3e71b5facc4451755b8c59db13615ac3a2066"
+    },
+    {
+      "path": "css/backlog-assistant.css",
+      "sha256": "58595e58edd37458bda0fc1906205294dc1cd1bd2cb67d1b20391553e162535c"
+    },
+    {
+      "path": "css/base.css",
+      "sha256": "61718e85a4b0f10e37b02df5a40ba6266ca4e8fcd154b324483a63d6a27a8a01"
+    },
+    {
+      "path": "css/components.css",
+      "sha256": "4f78068569ac8a90f95113d2cf59327462ba388ecd62e0ccc1a5f9d16786bc69"
+    },
+    {
+      "path": "css/did-backlog.css",
+      "sha256": "99c198102f44777e7286a44ffc32c41652c9207bdeb7103f8cb080407d73f8a4"
+    },
+    {
+      "path": "css/directorate-report.css",
+      "sha256": "7b76fbbbc84fc64d80e3c28b6561e41e2167a8d9b669067ea0ccb4d83b5c37f1"
+    },
+    {
+      "path": "css/feedback.css",
+      "sha256": "825c7e4872ac94fa5b8d7979661b67adc5a3d6f5f5d72c21ddecca17eaba45e9"
+    },
+    {
+      "path": "css/fonts.css",
+      "sha256": "622bfe150547fd9c926b052c85c67555812f8584efca22bf95150caa3ee181b6"
+    },
+    {
+      "path": "css/meeting-capture.css",
+      "sha256": "ec8c05d2a4d2967eab64a276f996b437b7faee49c6cc5bde99a8be7c276efe0d"
+    },
+    {
+      "path": "css/metrics.css",
+      "sha256": "cf5b796f639e542f083d1780899dfa73371d4fbe5fdc66ad0f1a408bbc9215c5"
+    },
+    {
+      "path": "css/modal-system.css",
+      "sha256": "213ee17aa9439772ab17b8e5e9fc70f572f641345c577c08236a02d7ed82e200"
+    },
+    {
+      "path": "css/pages.css",
+      "sha256": "490554e693763383f8815d9f343385e9eeb33149dbd0e892e24a8cbdb43f0965"
+    },
+    {
+      "path": "css/responsive.css",
+      "sha256": "6ee8013012663e183a31a9a68afc3e73e184fcd46a610d58dbc9a17f78028e3d"
+    },
+    {
+      "path": "css/tokens.css",
+      "sha256": "5cd4a496dc6fc97cedeca5a24def3afb01a34294ec2bdbf52fd2995f555b157b"
+    },
+    {
+      "path": "css/ui/adapters.css",
+      "sha256": "abc6e79fc2b4ae410a7d09a397caac319e6abe2ba01966e7efc244211b0fd55c"
+    },
+    {
+      "path": "css/ui/contracts.css",
+      "sha256": "ce50b1ff4ed7491ded43905b8142249f03878d073ebae27d5519b0c787e7eb51"
+    },
+    {
+      "path": "css/ui/core.css",
+      "sha256": "7e29be7d546e014c04f7b100b151fce68f86e2558c546e38419bf9ea4e600fc3"
+    },
+    {
+      "path": "css/ui/data-display.css",
+      "sha256": "84296b19b3a0d09b2c2714602f88f1d689c6316993832eab3e70be636b41b43e"
+    },
+    {
+      "path": "css/ui/data-table.css",
+      "sha256": "f745122f432502fa4d5c46420b44712b6cd1ccd841fc24ad9fdb5f2618f3cbf0"
+    },
+    {
+      "path": "css/ui/detail-components.css",
+      "sha256": "51b5fd00d820e0f8cbe0c8bbe7a213b744d2183c7d76e60710eb63463a3809fd"
+    },
+    {
+      "path": "css/ui/dialog-bridges.css",
+      "sha256": "63e7b1467789a30ce1a439834b3740f7144a59abcb69213aeb65e2733fa20ed0"
+    },
+    {
+      "path": "css/ui/entity-picker.css",
+      "sha256": "3c93536496b79842a1524469f37bf25e93367ea8fc166225defc6d8c758ce2be"
+    },
+    {
+      "path": "css/ui/filter-select.css",
+      "sha256": "b66d982ae8e3f46b4e5347284ccd21be2d4b01492efbdcd454bda86013fb348b"
+    },
+    {
+      "path": "css/ui/foundations.css",
+      "sha256": "d7bbb968d36c6a2ded6a13ff2557baa89a2f346684f1525527898b6d6f513d5b"
+    },
+    {
+      "path": "css/ui/info-chips-core.css",
+      "sha256": "5345d6f29052a2d11cfab6e2f32099f58adc5e550cb443a87dfb5d51d612dca3"
+    },
+    {
+      "path": "css/ui/info-chips.css",
+      "sha256": "cf9627f29bca7612ac1709ef4f35838fd8d90301c1a491a60b9178be5849023a"
+    },
+    {
+      "path": "css/ui/interactions.css",
+      "sha256": "5bd98e3b3791599e1cd5cb14b7dbf6d30da19fbd05af38c4e3df2529faf7a5b5"
+    },
+    {
+      "path": "css/ui/intervals.css",
+      "sha256": "d878a938c088d8344dd8b4219790486a077877fd584bb372231ed9bc39ff67e4"
+    },
+    {
+      "path": "css/ui/kit.css",
+      "sha256": "b6c683c25f02af780bb133257f71549b0ac2b3ed536296f2e5faf85ce85cad1e"
+    },
+    {
+      "path": "css/ui/login.css",
+      "sha256": "cce6984fba57c7c37988fe1b4b5c0ee1b0714b425c32fc34b83172109e0c42a9"
+    },
+    {
+      "path": "css/ui/popover.css",
+      "sha256": "8211d7692cb00e9cc459188dc91acaa0fd2f8fd12323ac103745a01094955dd6"
+    },
+    {
+      "path": "css/ui/registry-primitives.css",
+      "sha256": "1735e9aa37ca2d43b14566779f6db0dee46e116307d89207ad346f1df9ab5886"
+    },
+    {
+      "path": "css/ui/registry.css",
+      "sha256": "e67bd96a3bdb2b42529b48b5840d411313080b451f5c3c28c9b2b117564aa12e"
+    },
+    {
+      "path": "css/ui/sizing.css",
+      "sha256": "5b6c1a5f85734c93442a109b848097c14f73d91dc12c78475a630aaa97dee743"
+    },
+    {
+      "path": "css/ui/tables.css",
+      "sha256": "fbb7d19d5994e8d6a9ed5ee9620cb0e7278ee443f957f5c5968d68931c971aaf"
+    },
+    {
+      "path": "css/ui/typography.css",
+      "sha256": "fa63ebea03f461cff1eae6675fc87e0589126d188fe370674c105c35a40e1bdf"
+    },
+    {
+      "path": "css/ui/workflows.css",
+      "sha256": "241d52c30fe85823636e281a01b0459f0612d98dbbbea10911062904eacc22b5"
+    },
+    {
+      "path": "css/work-board.css",
+      "sha256": "977307e49ff01e6d042afb15dc6db6f18fbddd3eaf2beac38055cf29866eea7c"
+    },
+    {
+      "path": "css/work-tasks.css",
+      "sha256": "1d9bfa8ee90dcd54ba0dd8e1555ce4d9987c54ee5fd62262a59c423fe5cae2a1"
+    },
+    {
+      "path": "css/work-workplace.css",
+      "sha256": "f3589d0b344e06749a516b5e47eec1bc4e962b44b2ebb2bd7e41d2925c2d12bb"
+    },
+    {
+      "path": "e2e/fixtures/accountSecurity.html",
+      "sha256": "b95887ffbc5920b9daa32e4273a19ad4221a453133b1dd3fb9f1c1e274c3c073"
+    },
+    {
+      "path": "e2e/fixtures/backlogAssistant.html",
+      "sha256": "ba54759f1f1ab3be97877b11894346dcde21c1c4db7b5ccd0f89864b15f65c2d"
+    },
+    {
+      "path": "e2e/fixtures/localSpellcheck.html",
+      "sha256": "2ab43332472a9bff7b0596183730956d40d10c937512cc10b3d179d1f29d5aea"
+    },
+    {
+      "path": "e2e/fixtures/meetingCapture.html",
+      "sha256": "4ea993e528a775effb0388a69d53549484bb59e98058f87691eeeb57261886d2"
+    },
+    {
+      "path": "e2e/fixtures/modalCatalog.html",
+      "sha256": "f06555fc62ae52b5f0b814123009d5d277e9d36e688dea3ba0e5b8a22988cc29"
+    },
+    {
+      "path": "e2e/fixtures/notificationAudit.html",
+      "sha256": "bd92c0477bad78fdb726a66f03d86f4c41d7ebcb9ba900da6ce6dd3a1e6988d0"
+    },
+    {
+      "path": "e2e/fixtures/notificationCatalog.html",
+      "sha256": "e0d770f7b3e01243b4a0d11bf4d16ae94a1a108457c8d08d971563bce9f0d1c9"
+    },
+    {
+      "path": "e2e/fixtures/projectData.js",
+      "sha256": "c78f2b9889c5e0cb7eb8bb8cdc8dfd191a5b4c0a7ec6faa8633d84678c15dd8e"
+    },
+    {
+      "path": "e2e/fixtures/requirementWorkspace.html",
+      "sha256": "61b19c2a5c6ca57446c20a319037fa6b6634d88ef32f946cd4020e49a746a9e7"
+    },
+    {
+      "path": "e2e/fixtures/spaStyles.js",
+      "sha256": "bb8c794f74ed8be2feddd8a998417378ccc817bf7386fc8df6173bf187eab410"
+    },
+    {
+      "path": "e2e/fixtures/taskCardIncrement.html",
+      "sha256": "2e3caeb0d817d4715171cf71ced06f86866b277af51f0ef21fe581e399514a27"
+    },
+    {
+      "path": "e2e/fixtures/teamWeeklyReport.html",
+      "sha256": "f69ce62cc0f2a6ca7452f227d559b4f8533738603443d34dd9ef953b4923718d"
+    },
+    {
+      "path": "e2e/fixtures/uiKitAdminReports.html",
+      "sha256": "48415990c52542661d09f1cbf75987bda30bac496d33a1f8debdaf08e91d4430"
+    },
+    {
+      "path": "e2e/fixtures/uiKitComposites.html",
+      "sha256": "30836c6e55d1ecc277f4a946f36f13a8a0f6823f6874bc43feeb9693c30e1bc0"
+    },
+    {
+      "path": "e2e/fixtures/uiKitConsistency.html",
+      "sha256": "d35bbe00c3ef6dd016c13950151793397fd68f1eeb2593079d90b799e3caa1bd"
+    },
+    {
+      "path": "e2e/fixtures/uiKitExpress.html",
+      "sha256": "cad4971403b2d2ff86e58f89137050afc6758a882ff695766c9d2206825aa90e"
+    },
+    {
+      "path": "e2e/fixtures/uiKitLogin.html",
+      "sha256": "db5fda4dff96684d43b4a0f0f108cd7dcadea054d2d5a1f1ab88c85182f85c81"
+    },
+    {
+      "path": "e2e/fixtures/uiKitRegistries.html",
+      "sha256": "c84305cb53d17645143e3e91bb9e06fc2881c89c9a01003e5e2b8884ca72896f"
+    },
+    {
+      "path": "e2e/fixtures/uiKitReportingWorkspaces.html",
+      "sha256": "c76f6546d0eafccc815244c60de6a45a45b617a33c74f36f257567785a5996e6"
+    },
+    {
+      "path": "e2e/fixtures/uiKitSettings.html",
+      "sha256": "6206adea12c7880cf2287b75380fb34cbd0851bd831b19bdf0f17acc7a2e851d"
+    },
+    {
+      "path": "e2e/fixtures/uiKitSizing.html",
+      "sha256": "ead100bfca8ad14f243701a2be3291c225e5f6044d33fc85861b749e34ef594b"
+    },
+    {
+      "path": "e2e/fixtures/workListVisual.html",
+      "sha256": "c2a22b9bf6797663281960a873170d49e344bb879e797fa8170a358b129a1699"
+    },
+    {
+      "path": "e2e/fixtures/workListVisual.js",
+      "sha256": "30154405335da5ad2d5d04079417d0f1f97826e73524f48a24b9550959e78d7f"
+    },
+    {
+      "path": "e2e/fixtures/workResolution.html",
+      "sha256": "6e7ed6e693d01de9de0d315157ab20da1a6a371814c02d6fab18ee4ecfb06543"
+    },
+    {
+      "path": "e2e/fixtures/workTasks.html",
+      "sha256": "c99bd1da0cb462b7c08909ca104081cdcd741cb2c59681bd6c4907b5019db507"
+    },
+    {
+      "path": "e2e/fixtures/workViewport.html",
+      "sha256": "1288a9afec800d39887b39c7b59a34c54f7b86b7120d58f930b5e66de0ae3ee8"
+    },
+    {
+      "path": "e2e/fixtures/workWorkspaceRouter.html",
+      "sha256": "50cde1ade83f95018a088b66559ec39c785004e8f8ddb4f857e222f205c5fdc1"
+    },
+    {
+      "path": "js/adminLabels.js",
+      "sha256": "f26974b096d7b4310c0224a414ea71858fa43965e61034cadd71dae065a34596"
+    },
+    {
+      "path": "js/agent-v2/api.js",
+      "sha256": "e728b4158e5e539d9f270311e7abeaf3ea4db27ef8fab2f8528ca29a96986b93"
+    },
+    {
+      "path": "js/agent-v2/documentReview.js",
+      "sha256": "0418e6dd78fa65516f94b36f7e8486331fdaed838f99eceb69d80f5e8c510e74"
+    },
+    {
+      "path": "js/agent-v2/generation.js",
+      "sha256": "8710181629b7fb26b2e9dcf06c60cf90e7105a074e4af432ce79ab0375fe9e1e"
+    },
+    {
+      "path": "js/agent-v2/journey.js",
+      "sha256": "b9906d8f38f0f8ac4816790e60f381a5ba1e30e70d47361d6a4454ab5cad4024"
+    },
+    {
+      "path": "js/agent-v2/routes.js",
+      "sha256": "ce9f1fe2b0c31d96929999a8cc5ce3dca3e10fd20e2671f82e5f3a4b7ed763d5"
+    },
+    {
+      "path": "js/agent-v2/workspace.js",
+      "sha256": "4a3118d1b552bbaa9294b7f4befbbcdebef87a71d8f86e3421f38d565ecb63e1"
+    },
+    {
+      "path": "js/api.js",
+      "sha256": "bdc89df068928ec36c84504c999d59fb38ceb0ba4fa294669a9a379d023217df"
+    },
+    {
+      "path": "js/app.js",
+      "sha256": "8a5e794b9b789b848b68ffa0963cf9bd3cff1c4489b08b18b32979a6912e8353"
+    },
+    {
+      "path": "js/auth.js",
+      "sha256": "584c19ea44952dc97c621f7dec491d5bf59772f30f1bdc86bb8114d9135824f2"
+    },
+    {
+      "path": "js/backlog-assistant/answer.js",
+      "sha256": "3e930e295eb0c0318af3f43b7d7ebecad2d2eaba229f93d268aabb9f49ce998b"
+    },
+    {
+      "path": "js/backlog-assistant/api.js",
+      "sha256": "b6043d728c0086d2d12c809cbad62a0275e938705e96f8574d9ca454267a3da7"
+    },
+    {
+      "path": "js/backlog-assistant/context-help.js",
+      "sha256": "41c1af7bb66e8cd3120bdc655bbcdafdd3ea1b6fabb9c008aa338cbeaa34a12e"
+    },
+    {
+      "path": "js/backlog-assistant/page.js",
+      "sha256": "adb0612ab405172ec6034530fc6fe5225dc8d962518dc561859114006bfcc551"
+    },
+    {
+      "path": "js/backlog-assistant/panel.js",
+      "sha256": "4d08bec53c742478654e7f6a7f78f5dcfe9c055deb5d49460dc9f0c738a6a3a7"
+    },
+    {
+      "path": "js/backlog-assistant/presentation.js",
+      "sha256": "e9430dc969adf61f145704e3eba10fb10f05e76d7eeaa388799c0172af8626ab"
+    },
+    {
+      "path": "js/backlog-assistant/state.js",
+      "sha256": "48de68c41b2ffb5cca798d6101e15e38fb32bcf261125631b57e18d9f488ef8d"
+    },
+    {
+      "path": "js/backlogTaskLoader.js",
+      "sha256": "c37527e6c06e0d1e10cd2d8a2d88db60686cd37a2391e13e05cadd4f0a607ecc"
+    },
+    {
+      "path": "js/components/accountSecurity.js",
+      "sha256": "5ee0c66ed63626c71de476de2316f6ccce6e86c02c7d4049b72dbee13c8cb5e8"
+    },
+    {
+      "path": "js/components/admin.js",
+      "sha256": "fde9efda454a2e485f6e41340ce5a136da5a140f59447c061754ce509d61bf27"
+    },
+    {
+      "path": "js/components/adminDictionaries.js",
+      "sha256": "eccb15af04b062ce8e921829ca080940c5c7dfa81ebb079e520e576f75235d84"
+    },
+    {
+      "path": "js/components/agentChat.js",
+      "sha256": "146ecc6f3ec148d4154e3ce822da06083381bdabbe7da1c4447f0973834338e1"
+    },
+    {
+      "path": "js/components/analytics.js",
+      "sha256": "c72b7a3c40353b45f10d8b7301150f3c35d7827b9677cf413d4d0ecd007ae94c"
+    },
+    {
+      "path": "js/components/auditLog.js",
+      "sha256": "9c2c7efdd90b6bb0e8271d990f7ae5e5c346f0e85b51f5a1fcf65001a1d9013b"
+    },
+    {
+      "path": "js/components/customerChat.js",
+      "sha256": "bb1f861d67444126b7b55a8305ca35ce878ea9649a9b77ea266241512b5b6484"
+    },
+    {
+      "path": "js/components/customerPortal.js",
+      "sha256": "caa0360aedc2d98590f316262769c0923cd995e36b2a09072a6eccd5fc9476c6"
+    },
+    {
+      "path": "js/components/customerReferences.js",
+      "sha256": "abfe3202d824dabbca0176023434833eefd34b46f0b43af5acecdb00a5f9eb1d"
+    },
+    {
+      "path": "js/components/customerReport.js",
+      "sha256": "ea580966fd16bbf9c2c587341b109f74279a2a8aecc255468b3e55cc433df330"
+    },
+    {
+      "path": "js/components/dashboard.js",
+      "sha256": "c54ee55d8a670abf2e9be4e062046b1a26d6b8de061c2f9694ffa2d98bc25848"
+    },
+    {
+      "path": "js/components/didBacklog.js",
+      "sha256": "35a931e7ebb27973c9834d556eb8ad8c94b47b82db81c62f08fac7fdbc2196cd"
+    },
+    {
+      "path": "js/components/directorateReport.js",
+      "sha256": "709ca7449f01c7feab3ba49d7d863143a17ef6b317130a4ac80ae34d6e951769"
+    },
+    {
+      "path": "js/components/expressEstimate.js",
+      "sha256": "107ff0642f15fab0af6e68a44add198436f4e5a097952390e7edd89dfdd7e157"
+    },
+    {
+      "path": "js/components/filterToolbar.js",
+      "sha256": "404ab035f0d67b5b0e7fb43f0100bed5bd16bb2a112b4c994b03599d520c0ca3"
+    },
+    {
+      "path": "js/components/kanbanBoard.js",
+      "sha256": "288b74b5185d59954412f029f6d1733abeb74d3335158e705de426688e0f392d"
+    },
+    {
+      "path": "js/components/login.js",
+      "sha256": "384473a160e6e9c66ffac764b0e0359786a4c8444d1e846b71a4cf9ff415ba8c"
+    },
+    {
+      "path": "js/components/meetingCapture.js",
+      "sha256": "9c82b7a5359a9e405eeacd11ecaf1541bebd00c4ba4670bf6471df86a596c4cb"
+    },
+    {
+      "path": "js/components/metrics.js",
+      "sha256": "9911b70f7b43e93c31104eacbe25e0026ce402a10bb30665b80f959f5f2ec334"
+    },
+    {
+      "path": "js/components/modal.js",
+      "sha256": "ac7413fb320fa2e785eac65593cc6cad56abf004cd5d8690096f49696d44461d"
+    },
+    {
+      "path": "js/components/navbar.js",
+      "sha256": "4cf8f51df58c93cd4cab0c8765c042fc0cc331eb118c3f3b8032d36c45165bdd"
+    },
+    {
+      "path": "js/components/notifications.js",
+      "sha256": "1b56703421644c799c4b8380857ae26205544f4b8dbe093905be2ea2d68ad38f"
+    },
+    {
+      "path": "js/components/outboxDeadLetters.js",
+      "sha256": "9d9a24e7c39f209a588a1e88e257229a9c38c5f09edfdec5fda739aca1c8591f"
+    },
+    {
+      "path": "js/components/projectWorkspace.js",
+      "sha256": "752d49ec38250af029d04a0108b8902564e29e43bb63e26a1bb4865d80b14768"
+    },
+    {
+      "path": "js/components/quarterlyGoalsUpdate.js",
+      "sha256": "fabe26398c17bf2020d72d7e52a736e032bfafdb4c7ac5d1e03481a91ceffd11"
+    },
+    {
+      "path": "js/components/quickEdit.js",
+      "sha256": "811152270656e7d08bf0dc300ddc7311e96c5caaeb0019cb42cfb2979da6b37e"
+    },
+    {
+      "path": "js/components/quickFilters.js",
+      "sha256": "566d537e33e0f0fd8bd1030763045c34b270e4dadca3213fc86b0f5ff84baf59"
+    },
+    {
+      "path": "js/components/reportingStatuses.js",
+      "sha256": "cdb2f7d35fae0546d1eaab4a252723095543b1a4ff56cf264b4bae46fb1dc5b2"
+    },
+    {
+      "path": "js/components/reports.js",
+      "sha256": "ff7488667603f169567014bf3ccbe0c1a3ddcf04021c5c6e13496607a12ee32e"
+    },
+    {
+      "path": "js/components/requestLifecycle.js",
+      "sha256": "8c3d6ace40fc5b18f65461c64dffde7dcc1ec0c47e716b863f7a1424210b98c6"
+    },
+    {
+      "path": "js/components/requestPresentation.js",
+      "sha256": "e1b4d3f4507d7ab4e71c324add9aa9576f976404098910dcffac6ff46ce03fa4"
+    },
+    {
+      "path": "js/components/requirementReviews.js",
+      "sha256": "d19a3fe54c1752c0d7c88754f7c4ece8a116747459e56f4d9991040664ad7dbf"
+    },
+    {
+      "path": "js/components/reviewPage.js",
+      "sha256": "6109e0756487ec3fc896b16ef63a454719aa2c36d058ad374e854455a81c9fa8"
+    },
+    {
+      "path": "js/components/settings.js",
+      "sha256": "d1c9dbfe2e157866550b065a977db8d5f5f137a8eb5cc02117528cc886e65e57"
+    },
+    {
+      "path": "js/components/sidebar.js",
+      "sha256": "dbde364ea2b8c9288dfba2080d42207b3f059a629c338f6029d3d1c610d52cba"
+    },
+    {
+      "path": "js/components/tableSelection.js",
+      "sha256": "111c680ec8c34c47b20b52b8eef47e9ebd9a78427e37f876487d08df21d8f8b9"
+    },
+    {
+      "path": "js/components/tableUtils.js",
+      "sha256": "e7b4fd0360e34c7812f409aca5fa70d38f578215e9757304528e7c4d1c14b3a4"
+    },
+    {
+      "path": "js/components/taskAttachments.js",
+      "sha256": "8bb678f7d5006dc88ab75ddf57b51aaee27535b9b7206c871ecda6022d18ad8b"
+    },
+    {
+      "path": "js/components/taskColumns.js",
+      "sha256": "d64195a7bf5c3ba0c9132b78d568c21f7aac8d2cd93856b61ff45f34e9bc843b"
+    },
+    {
+      "path": "js/components/taskComments.js",
+      "sha256": "e3281d5f9ea75a4128ebbce4b781c4be55f87f5563e49c789d672d48eaf3cdd4"
+    },
+    {
+      "path": "js/components/taskTable.js",
+      "sha256": "674e23d3b9039a18da16cc7add8017566ac6e1f9bf94c79eaf246a3c61811000"
+    },
+    {
+      "path": "js/components/teamBacklog.js",
+      "sha256": "60230a7748b49cf6df570aa27650f5c0028d86eee3a93727dab1186297d58236"
+    },
+    {
+      "path": "js/components/viewState.js",
+      "sha256": "27e5d41ac754c90ca944794c10cf9debc721d7151ce32d01d687809bca9cd789"
+    },
+    {
+      "path": "js/components/workActions.js",
+      "sha256": "f0654937158ab3f96b4ad8fc8516daeaeebecb056a81abe77e9c6edba697e95f"
+    },
+    {
+      "path": "js/components/workBoard.js",
+      "sha256": "db8f0887fae721a6439def500aee987a68df3184611ff2a6fcb1e1f73b680a22"
+    },
+    {
+      "path": "js/components/workPicker.js",
+      "sha256": "c0c038277c6bc9c7826b49a41eefc8fca024470e9fe502bd6d07ef5e4f4ab1d8"
+    },
+    {
+      "path": "js/components/workProductivity.js",
+      "sha256": "f3f8d63e174a58101b67ea20c94b9472b9de11fdd53b1149d18c3bae4caab263"
+    },
+    {
+      "path": "js/components/workProjects.js",
+      "sha256": "22510421c4d47f04a3bf10a00ffcfa5599ad05b3c2c801610b5985cd8afd18c6"
+    },
+    {
+      "path": "js/components/workQueue.js",
+      "sha256": "5b8027f4198c875b9af02d9a22dcb468ff9286900210e78b4bebab6d4bf851fe"
+    },
+    {
+      "path": "js/components/workRelations.js",
+      "sha256": "78f3161ee3f5c7f4667a0f49fd52b8aad70ef6724b2ccf98c7b50eaa5d8cc299"
+    },
+    {
+      "path": "js/components/workReports.js",
+      "sha256": "5de077b0a19fc11bbe59de451dbd2030c58a4509aa7f1fd9fcbfd9e4c1ef01a9"
+    },
+    {
+      "path": "js/components/workResolution.js",
+      "sha256": "ba6e876a251e9767496d144d7c39498e902d51e72b6cffe0a73670250e68426d"
+    },
+    {
+      "path": "js/components/workTaskDrawer.js",
+      "sha256": "b2c199e068fe0c23cecd2537f035db399b050924bfb4015d1ad10f9d770fb92d"
+    },
+    {
+      "path": "js/components/workTasks.js",
+      "sha256": "4499dcb5ddd8875d8a63cdede666591015b44e1255d09d3958c7f554824b3639"
+    },
+    {
+      "path": "js/components/workUi.js",
+      "sha256": "23f3d8b600d9023aa12ec89a3b2888cea06f8c2b5c6dad838ae2d9a0b3e179d2"
+    },
+    {
+      "path": "js/eventStream.js",
+      "sha256": "74093e4034b1a0ea798d37ea6ac457a81725447ac5cfe28594cf8f357e7dc1c4"
+    },
+    {
+      "path": "js/htmlUtils.js",
+      "sha256": "8ca9595a84434934b830f40f9a205357eb528136890a35649c842c52a0fb2e84"
+    },
+    {
+      "path": "js/localSpellcheck.js",
+      "sha256": "e7162fad54914961f9bf283bb3f918af3ff8ae6453ad31527d8178b8c52cfa1c"
+    },
+    {
+      "path": "js/modalAccessibility.js",
+      "sha256": "a8c23c06ccea752210e50bf5ba473ee9d0226a75c407d676935715b3c253a187"
+    },
+    {
+      "path": "js/notificationStore.js",
+      "sha256": "5697ad98ced36c363273b3ec618268107e907b8a05005f50f9f1e8ab19a9d5a3"
+    },
+    {
+      "path": "js/notificationUtils.js",
+      "sha256": "2ee9173f1da6d018f67a1fc58815292b841cb9bc54bac208b4488c02a0d765af"
+    },
+    {
+      "path": "js/router.js",
+      "sha256": "c7c69efd193a893b0d3b0e7b01553b235aeb5db64465f79988c24da6a2890ae2"
+    },
+    {
+      "path": "js/store.js",
+      "sha256": "c63ace11a06cb1e0ead49fc6859aeb1dcf909838b44db6a5e2e1f23d415d6841"
+    },
+    {
+      "path": "js/taskCardMarkdown.js",
+      "sha256": "61e5616eb5dbd1305dbea06c18f286beaf50e93774046dd5f1e31a94e47bd347"
+    },
+    {
+      "path": "js/taskCardPermissions.js",
+      "sha256": "89a0849179e365e1111653002296db4e141e620098d996a2a8c3b4d34fc1396e"
+    },
+    {
+      "path": "js/taskCardRates.js",
+      "sha256": "11ee14127ba9cce3ee646f00842207acc536539d0be76820a05d343f994d77d8"
+    },
+    {
+      "path": "js/taskCardRequestGate.js",
+      "sha256": "11cecafeb4260c0412e7b0db4ac417ccd46b8bff1f8316cd4c06c0c5e43d9254"
+    },
+    {
+      "path": "js/taskCommentDraft.js",
+      "sha256": "cf1a8f5063ddb09b12f20e6a22696d647aa5e78a208d17a49961c9b28c9b9bb4"
+    },
+    {
+      "path": "js/taskCsv.js",
+      "sha256": "57ad4f240ac15f622f30818b0f2d5aa3ea7063c5d7ca7648a6071aee84ecbab4"
+    },
+    {
+      "path": "js/taskDisplay.js",
+      "sha256": "6baa43ce29da358580e2969e9ba398f98fb8649faf67e44c307c09429f516068"
+    },
+    {
+      "path": "js/taskMetrics.js",
+      "sha256": "67abde0dd6b956079b7712e3a5c9cae8199bb2e3ea5a87a594957f0b09282806"
+    },
+    {
+      "path": "js/taskPublicId.js",
+      "sha256": "68b3fdb57e1f057e17abdf1908e4763595c62809a5f234c97b7e31fa329001da"
+    },
+    {
+      "path": "js/theme.js",
+      "sha256": "3a8342322c7aa5b0ecc2cb988d4e4e3068a82e5b75be7c1e2c7adc208cad6760"
+    },
+    {
+      "path": "js/ui/actionMenu.js",
+      "sha256": "0981e7cca7b38dc109efe45811fc28d67ac3b965fbbc275158a695b33a746bd4"
+    },
+    {
+      "path": "js/ui/charts.js",
+      "sha256": "456e61cab19d1b02d5579ecbd77431cd8648f69e84125f45aa2cbfc0fbfa165d"
+    },
+    {
+      "path": "js/ui/controls.js",
+      "sha256": "68a3ad1795f52165a998c1d284395c43c8a140aadaa4f428f46d8d83c9eb2904"
+    },
+    {
+      "path": "js/ui/dataDisplay.js",
+      "sha256": "8d8153798b6ffe81e2b61b7ecef1148e0078584b1a9e5f93ea54d70835219824"
+    },
+    {
+      "path": "js/ui/dataTable.js",
+      "sha256": "8531d10e7b6dbb0b949d0cb6c870fc3a5b370434249beb510cd39d30b4d79dec"
+    },
+    {
+      "path": "js/ui/detailComponents.js",
+      "sha256": "dcc1d57b755b057ff2e2359cfb9e17dcd8110183db88f9b400e2a230fe68843c"
+    },
+    {
+      "path": "js/ui/detailPanel.js",
+      "sha256": "be12f5178399d4e34f181971569b790cc5079085db56270df01a2ad9884248cc"
+    },
+    {
+      "path": "js/ui/entityPicker.js",
+      "sha256": "d8d4dff9df4802f5e70a3731602041254dd439998e7ef99aa1bd9b9a15349a64"
+    },
+    {
+      "path": "js/ui/filterPolicy.js",
+      "sha256": "33874c175a71aa5c452853b994792a6399001f5e05fc77dc22cca5769ef303a1"
+    },
+    {
+      "path": "js/ui/filterSelect.js",
+      "sha256": "f96a116a8a60d285d47be9a76e873c9a0b1519c22ed6b3cd9f169960d0e4e6d1"
+    },
+    {
+      "path": "js/ui/filterValues.js",
+      "sha256": "3b84893fff54b36c9d68288e3d45000bcc5296481eb228893d8ed374aa83421c"
+    },
+    {
+      "path": "js/ui/forms.js",
+      "sha256": "e0ce2a28a6d9efde09db8cb2474bba101e2372a34533035e07a7578d0bbf176a"
+    },
+    {
+      "path": "js/ui/index.js",
+      "sha256": "0bf26170b68cac4e146c306026bd33dfad1eaf7b8f7d51417b3de12fc2cf120e"
+    },
+    {
+      "path": "js/ui/intervals.js",
+      "sha256": "e949e152fd4540915aa5842ee0c41b9d54c7ed12afc388b7b2298b2b495e76a9"
+    },
+    {
+      "path": "js/ui/popover.js",
+      "sha256": "a8bbc95eafaed3e3a9c18f4a09b4ea72e46e46ac629bc549657130d31a298a75"
+    },
+    {
+      "path": "js/ui/primitives.js",
+      "sha256": "08262a6ee187681c6b3fa613fa1e1951a1cc62763dc957963f526334ca6ad509"
+    },
+    {
+      "path": "js/ui/selectionList.js",
+      "sha256": "c169f610d0b83a97c6f3eabdb02b8df18d4a4638221279dcfe3db7483b3af481"
+    },
+    {
+      "path": "js/ui/specialized.js",
+      "sha256": "66234a5f4c3041c8f54f5cdf2dea079ec9a063787d36552e4c9ac29bcd558f4a"
+    },
+    {
+      "path": "js/ui/splitPane.js",
+      "sha256": "8c5090ec7291138be8459b9a91a0fd8cf8a1f6a730ae8f0fd116d6394aa67566"
+    },
+    {
+      "path": "js/ui/stepForm.js",
+      "sha256": "58f42ccd83bd8bad25e7357c4e22354acdf6934e96f1d0076895ea95f1eaf76b"
+    },
+    {
+      "path": "js/ui/switch.js",
+      "sha256": "ea340ad63b8b1ee1f040140f1b2dc0f15840d74d1d67449b979a4e30117d0ea1"
+    },
+    {
+      "path": "js/ui/tooltip.js",
+      "sha256": "b5f2aa7ce5a7bbef6cf662059202b1f0b99187dd42ad47f465b5131ba182c716"
+    },
+    {
+      "path": "js/ui/validation.js",
+      "sha256": "b9a8d54fbe32d5df03ca64eae14153e7867b26d15846197e75602daf26d5ceb6"
+    },
+    {
+      "path": "js/uiFeedback.js",
+      "sha256": "1939283341bbfbd34ca28106695550596c6207b7014f56f2bde38c6b1afa6941"
+    },
+    {
+      "path": "js/urlUtils.js",
+      "sha256": "b2d0640f3f83ffe55fb7b10217568ab26fc274ff22e7d59d5d4c216e5991855b"
+    }
+  ]
+}

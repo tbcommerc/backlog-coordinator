@@ -23,6 +23,29 @@ function makeRouter() {
   });
 }
 
+test('reinitializing after login invalidates the old shell and binds hashchange once', () => {
+  const previousWindow = globalThis.window;
+  const listeners = [];
+  globalThis.window = { addEventListener: (event, handler) => listeners.push({ event, handler }) };
+  try {
+    const router = makeRouter();
+    const renders = [];
+    router.handleRoute = () => renders.push({ lastHash: router.lastHash, renderedPath: router.renderedPath });
+    for (let session = 0; session < 3; session += 1) {
+      router.lastHash = '/customer';
+      router.renderedPath = '/customer';
+      router.init();
+    }
+    assert.equal(listeners.length, 1);
+    assert.equal(listeners[0].event, 'hashchange');
+    assert.deepEqual(renders, Array.from({ length: 3 }, () => ({ lastHash: null, renderedPath: null })));
+    listeners[0].handler();
+    assert.equal(renders.length, 4);
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});
+
 test('requirement review subject tab is preserved independently of task modal tabs', async () => {
   await withBrowser('#/review?tab=requirements&requirement_review=45', async ({ calls, events }) => {
     const router = makeRouter();

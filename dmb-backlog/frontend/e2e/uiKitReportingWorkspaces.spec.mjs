@@ -7,10 +7,10 @@ test('quarterly: navigation waits for saving and preserves failed draft on cance
  await page.evaluate(()=>window.__releaseSave(409));
  await expect(page.locator('[data-quarterly-save-state="1"]')).toContainText('уже изменились');
  await page.evaluate(async()=>{const m=await import('/js/components/quarterlyGoalsUpdate.js');window.__navigationResult=m.confirmQuarterlyGoalsNavigation();});
- await page.getByRole('alertdialog').getByRole('button',{name:'Отмена',exact:true}).click();
+ await page.getByRole('alertdialog').getByRole('button',{name:'Продолжить редактирование',exact:true}).click();
  expect(await page.evaluate(()=>window.__navigationResult)).toBe(false);await expect(range).toHaveValue('30');
  await page.evaluate(async()=>{const m=await import('/js/components/quarterlyGoalsUpdate.js');window.__navigationResult=m.confirmQuarterlyGoalsNavigation();});
- await page.getByRole('alertdialog').getByRole('button',{name:'Перейти',exact:true}).click();
+ await page.getByRole('alertdialog').getByRole('button',{name:'Не сохранять',exact:true}).click();
  expect(await page.evaluate(()=>window.__navigationResult)).toBe(true);
 });
 
@@ -87,10 +87,10 @@ test('statuses: dirty navigation traps focus, cancels with Escape and restores s
   await expect(dialog).toBeVisible();
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await page.keyboard.press('Shift+Tab');
-  await expect(dialog.getByRole('button',{name:'Перейти',exact:true})).toBeFocused();
+  await expect(dialog.getByRole('button',{name:'Не сохранять',exact:true})).toBeFocused();
   await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
   await expect(next).toBeFocused();await expect(text).toHaveValue('Черновик перед переключением');
-  await next.click();await dialog.getByRole('button',{name:'Перейти',exact:true}).click();
+  await next.click();await dialog.getByRole('button',{name:'Не сохранять',exact:true}).click();
   await expect(next).toHaveAttribute('aria-selected','true');await expect(next).toBeFocused();
   await expect(text).toHaveValue('Исходный статус');
   expect(await page.evaluate(()=>window.__writes)).toEqual([]);

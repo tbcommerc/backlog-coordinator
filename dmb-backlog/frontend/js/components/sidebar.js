@@ -1,3 +1,4 @@
+import { counter } from '../ui/dataDisplay.js';
 /**
  * Backlog Coordinator - Sidebar Component
  */
@@ -72,7 +73,8 @@ export function renderSidebar() {
                     <i data-lucide="users"></i>
                     <span>Бэклог команды</span>
                 </a>
-                <a href="#/work-projects" class="sidebar-item" aria-label="Структура работ проекта"><i data-lucide="folder"></i><span>Структура работ проекта</span></a>
+                <a href="#/metrics" class="sidebar-item" aria-label="Метрики"><i data-lucide="trending-up"></i><span>Метрики</span></a>
+                <a href="#/work-projects" class="sidebar-item" aria-label="Проекты"><i data-lucide="folder"></i><span>Проекты</span></a>
                 <a href="#/work-tasks" class="sidebar-item" aria-label="Рабочие задачи"><i data-lucide="list-checks"></i><span>Рабочие задачи</span></a>
                 <a href="#/express-estimate" class="sidebar-item" aria-label="Экспресс-оценка">
                     <i data-lucide="zap"></i>
@@ -119,9 +121,9 @@ export function renderSidebar() {
                 ${agentV2Link}
                 <a href="#/backlog-assistant" class="sidebar-item" aria-label="Помощник по бэклогу"><i data-lucide="messages-square"></i><span>Помощник по бэклогу</span></a>
                 ${meetingCaptureLink}
-                <a href="#/review" class="sidebar-item" aria-label="Ревью запросов">
+                <a href="#/review" class="sidebar-item" aria-label="Запросы заказчиков">
                     <i data-lucide="clipboard-check"></i>
-                    <span>Ревью запросов</span>
+                    <span>Запросы заказчиков</span>
                 </a>
             </div>
 
@@ -130,7 +132,7 @@ export function renderSidebar() {
                 <a href="#/notifications" class="sidebar-item" aria-label="Мои уведомления">
                     <i data-lucide="bell"></i>
                     <span>Мои уведомления</span>
-                    <span class="item-badge" id="notification-count">0</span>
+                    ${counter({loading:true,cap:99,tone:'unread',label:'Непрочитанных уведомлений',id:'notification-count',className:'item-badge'})}
                 </a>
                 <a href="#/settings" class="sidebar-item" aria-label="Настройки">
                     <i data-lucide="settings"></i>
@@ -212,7 +214,7 @@ export function initSidebar() {
             if (perm && (perms[perm] || 'none') === 'none' && !hasFullAdminAssistantAccess) {
                 el.style.display = 'none';
             }
-            if (label === 'Ревью запросов') {
+            if (label === 'Запросы заказчиков') {
                 const canReview = (perms.review || 'none') !== 'none';
                 if (!canReview) {
                     el.style.display = 'none';

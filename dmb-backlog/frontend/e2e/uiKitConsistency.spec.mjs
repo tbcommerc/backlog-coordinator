@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import {writeFile} from 'node:fs/promises';
 
 const surfaces = [
  ...['review','workTasks','workReports','workProjects','agentV1','agentV2','assistant'].map(surface=>[surface,`uiKitConsistency.html?surface=${surface}`]),
@@ -80,12 +81,28 @@ for (const [theme,compact,width] of [['light',false,1440],['dark',false,1440],['
      const keys=['fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','textTransform','backgroundColor','color'];const a=read(header,keys),b=read(ref.querySelector('th'),keys);
      const delta=Object.fromEntries(keys.filter(k=>a[k]!==b[k]).map(k=>[k,[a[k],b[k]]]));if(Object.keys(delta).length)failures.push({type:'grid-header',label:header.className,delta});ref.remove();
     }
+    // Whole semantic families and their visible subparts, not only .btn/.badge.
+    for(const selector of ['.ui-filter-chip','.ui-kpi-card','.ui-avatar','.ui-progress','.ui-checkbox','.ui-tab','.ui-collapse-section']){
+     for(const actual of document.querySelectorAll(selector)){
+      if(root.contains(actual)||!actual.getClientRects().length)continue;
+      const ref=actual.cloneNode(true);ref.removeAttribute('id');
+      ref.className=[...actual.classList].filter(c=>c.startsWith('ui-')||c==='quick-filter-btn'||c==='active').join(' ');
+      const host=document.createElement('div');
+      if(actual.matches('.ui-tab')){host.className='ui-tabs';host.setAttribute('aria-orientation',actual.closest('[aria-orientation]')?.getAttribute('aria-orientation')||'horizontal');}
+      root.append(host);host.append(ref);
+      const parts=[actual,...actual.querySelectorAll('.quick-filter-label,.quick-filter-count,.quick-filter-icon,strong,summary,input,.ui-progress-track,.ui-progress-value')];
+      const refs=[ref,...ref.querySelectorAll('.quick-filter-label,.quick-filter-count,.quick-filter-icon,strong,summary,input,.ui-progress-track,.ui-progress-value')];
+      const keys=['fontFamily','fontSize','fontWeight','lineHeight','borderRadius','paddingTop','paddingBottom','minHeight','backgroundColor','color','opacity'];
+      parts.forEach((part,i)=>{if(!part.getClientRects().length)return;const a=read(part,keys),b=read(refs[i],keys),delta=Object.fromEntries(keys.filter(k=>a[k]!==b[k]).map(k=>[k,[a[k],b[k]]]));if(Object.keys(delta).length)failures.push({type:selector,label:part.className||part.tagName,delta});});host.remove();
+     }
+    }
     root.remove();return failures;
    });
    for(const difference of differences)violations.push({surface:name,...difference});
    if(!compact&&width===1440&&['analytics','outbox','task-card','review','workTasks'].includes(name))await page.screenshot({path:info.outputPath(`${name}-${theme}.png`),fullPage:true});
   }
   await info.attach('computed-style-differences',{body:JSON.stringify(violations,null,2),contentType:'application/json'});
+  await writeFile(info.outputPath('differences.json'),JSON.stringify(violations,null,2));
   expect(violations).toEqual([]);
  });
 }

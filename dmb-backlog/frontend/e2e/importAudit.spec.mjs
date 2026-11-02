@@ -1,10 +1,8 @@
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const evidenceDir = path.resolve('../docs/dev-testing/evidence/import-testing-2026-09-20');
-const inputDir = path.join(evidenceDir, 'inputs');
-const screenshotDir = path.join(evidenceDir, 'ui-screenshots');
+const inputDir = path.resolve('../docs/dev-testing/evidence/import-testing-2026-09-20/inputs');
 
 async function mockApplication(page) {
   let importResponse = { total: 1, created: 1, skipped: 0, errors: [], task_ids: [900001] };
@@ -56,14 +54,12 @@ async function openImport(page) {
 }
 
 async function closeImport(page) {
-  const overlay = page.locator('#import-tasks-overlay');
-  if (await overlay.count()) {
-    // Escape starts a closing animation; do not click a disappearing control.
-    if (!(await overlay.evaluate(node => node.classList.contains('modal-closing')))) {
-      await overlay.getByRole('button', { name: 'Закрыть' }).click({timeout:5000});
-    }
-    await overlay.waitFor({ state: 'detached' });
+  const overlay=page.locator('#import-tasks-overlay');
+  if(await overlay.count() && !(await page.locator('#import-tasks-overlay.modal-closing').count())) {
+    try {await overlay.locator('#import-close-btn').click({timeout:5000});}
+    catch(error) {if(await overlay.count())throw error;}
   }
+  await overlay.waitFor({state:'detached',timeout:5000});
 }
 
 async function uploadAndSnapshot(page, file) {
@@ -93,18 +89,7 @@ async function uploadAndSnapshot(page, file) {
   return snapshot;
 }
 
-test('evidence-based import UX/UI audit', async ({ page }) => {
-  test.setTimeout(300_000);
-  await fs.mkdir(screenshotDir, { recursive: true });
-  const mock = await mockApplication(page);
-  const results = { generatedAt: new Date().toISOString(), preflight: {}, layout: {}, accessibility: {}, resultStates: {}, consoleErrors: [] };
-  page.on('console', msg => { if (msg.type() === 'error') results.consoleErrors.push(msg.text()); });
-  page.on('pageerror', error => results.consoleErrors.push(`pageerror: ${error.message}`));
-
-  await page.goto('/#/team-backlog');
-  await page.getByRole('heading', { name: /Бэклог команды/ }).waitFor({ state: 'visible' });
-
-  const smallFixtures = [
+const smallFixtures = [
     '01_valid_utf8_bom_semicolon.csv',
     '03_valid_cp1251_semicolon.csv',
     '09_empty_zero_bytes.csv',
@@ -123,15 +108,24 @@ test('evidence-based import UX/UI audit', async ({ page }) => {
     '55_many_preview_errors.csv',
   ];
 
-  for (const file of smallFixtures) {
-    console.log(`import-audit fixture: ${file}`);
-    try {
-      results.preflight[file] = await uploadAndSnapshot(page, file);
-    } catch (error) {
-      results.preflight[file] = { harnessError: error.message };
-      await closeImport(page).catch(() => {});
-    }
-  }
+
+for(const file of smallFixtures)test('import preflight '+file,async({page},testInfo)=>{
+ await mockApplication(page);await page.goto('/#/team-backlog');await expect(page.getByRole('heading',{name:/Бэклог команды/})).toBeVisible();
+ const snapshot=await uploadAndSnapshot(page,file);await fs.mkdir(testInfo.outputPath('evidence'),{recursive:true});await fs.writeFile(testInfo.outputPath('evidence/preflight.json'),JSON.stringify({file,snapshot},null,2));
+});
+
+test('evidence-based import UX/UI audit', async ({ page }, testInfo) => {
+  const evidenceDir = testInfo.outputPath('evidence');
+  const screenshotDir = path.join(evidenceDir, 'ui-screenshots');
+  test.setTimeout(300_000);
+  await fs.mkdir(screenshotDir, { recursive: true });
+  const mock = await mockApplication(page);
+  const results = { generatedAt: new Date().toISOString(), preflight: {}, layout: {}, accessibility: {}, resultStates: {}, consoleErrors: [] };
+  page.on('console', msg => { if (msg.type() === 'error') results.consoleErrors.push(msg.text()); });
+  page.on('pageerror', error => results.consoleErrors.push(`pageerror: ${error.message}`));
+
+  await page.goto('/#/team-backlog');
+  await page.getByRole('heading', { name: /Бэклог команды/ }).waitFor({ state: 'visible' });
 
   for (const viewport of [
     { name: 'desktop-1440x900', width: 1440, height: 900 },
@@ -182,7 +176,8 @@ test('evidence-based import UX/UI audit', async ({ page }) => {
   }
   results.accessibility.tabSequence = tabSequence;
   await page.keyboard.press('Escape');
-  results.accessibility.escapeCloses = (await page.locator('#import-tasks-overlay').count()) === 0;
+  await expect(page.locator('#import-tasks-overlay')).toHaveCount(0);
+  results.accessibility.escapeCloses = true;
   await closeImport(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -209,6 +204,8 @@ test('evidence-based import UX/UI audit', async ({ page }) => {
   await page.screenshot({ path: path.join(screenshotDir, 'desktop-success-result.png'), fullPage: true });
   await page.waitForTimeout(1600);
   results.resultStates.successAutoClosed = (await page.locator('#import-tasks-overlay').count()) === 0;
+  expect(results.resultStates.successAutoClosed).toBe(false);
+  await closeImport(page);
 
   await openImport(page);
   await page.locator('#import-file-input').setInputFiles(path.join(inputDir, '56_long_server_messages.csv'));

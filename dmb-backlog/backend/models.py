@@ -497,6 +497,8 @@ class Task(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
+    metric_id = Column(Integer, ForeignKey('kr_metrics.id'), nullable=True, index=True)
+    metric = relationship('Metric', foreign_keys=[metric_id])
     did_client_group_id = Column(Integer, ForeignKey("did_client_groups.id"), nullable=True)
     did_client_group = relationship("DidClientGroup")
     public_id = Column(String(12), nullable=True)
@@ -1028,6 +1030,9 @@ class RequirementRequest(Base):
     assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True, unique=True, index=True)
     reject_reason = Column(Text, nullable=True)
+    coordinator_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    next_action = Column(String(500), nullable=True)
+    next_action_due = Column(Date, nullable=True, index=True)
     revision_history = Column(JSON, nullable=False, default=list)
     status_history = Column(JSON, nullable=False, default=list)
     version = Column(Integer, nullable=False, default=0)
@@ -1042,6 +1047,7 @@ class RequirementRequest(Base):
     user = relationship("User", foreign_keys=[user_id])
     team = relationship("Team", foreign_keys=[team_id])
     reviewer = relationship("User", foreign_keys=[reviewer_id])
+    coordinator = relationship("User", foreign_keys=[coordinator_id])
     assignee = relationship("User", foreign_keys=[assignee_id])
     task = relationship("Task", foreign_keys=[task_id])
 
@@ -1539,3 +1545,7 @@ class WorkMeetingSnapshot(Base):
 from sqlalchemy.orm import Session as _ResultSession
 from services.customer_result import synchronize as _synchronize_customer_result
 event.listen(_ResultSession, "before_flush", _synchronize_customer_result)
+
+
+# Separate metric domain shares the same metadata and migration lifecycle.
+from metric_models import Metric, MetricPeriod, MetricMeasurement, MetricHistory, MetricComment, MetricLink, MetricFile, MetricReportingStatus  # noqa: E402,F401

@@ -1,3 +1,6 @@
+import {filterValues,toggleFilterValues as toggleChoice} from '../ui/filterValues.js';
+import { counter } from '../ui/dataDisplay.js';
+import { loadMore } from '../ui/specialized.js';
 import { escapeHtml } from '../htmlUtils.js';
 import {
   formatNotificationTime,
@@ -61,7 +64,7 @@ function renderItem(n) {
     <div class="notification-card-icon" style="background:${color}15;color:${color}"><i data-lucide="${icon}" aria-hidden="true"></i></div>
     <div class="notification-card-content"><div class="notification-card-title-row">${isUnread ? '<span class="notification-unread-dot" aria-hidden="true"></span>' : ''}<h3>${escapeHtml(n.title)}</h3>${unreadBadge}${priorityBadge}</div>
       <div class="notification-card-meta"><span class="notification-topic">${topic}</span>${n.is_resolved ? '<span class="notification-resolved-label">Закрыто</span>' : ''}${deadlineBadge}<time datetime="${escapeHtml(n.created_at || '')}">${formatNotificationTime(n.created_at)}</time>${n.group_count > 1 ? `<span class="notification-group-count">${n.group_count} ${plural(n.group_count,'событие','события','событий')}</span>` : ''}</div>${n.body ? `<p>${escapeHtml(n.body)}</p>` : ''}</div>
-    <div class="notification-card-actions">${hasTarget ? button({ label: actionLabel(n), icon: 'arrow-right', variant: 'ghost', className: 'ui-link', size: 'small', attrs: { 'data-open-notification': true, 'data-task-id': n.task_id || '', 'data-action-url': encodeURIComponent(n.target?.url || n.action_url || ''), 'aria-label': `${actionLabel(n)}: ${n.title}` } }) : ''}${readAction}</div>
+    <div class="notification-card-actions">${hasTarget ? button({ label: actionLabel(n), icon: 'arrow-right', variant: !isUnread && !n.is_resolved ? 'secondary' : 'primary', size: 'small', attrs: { 'data-open-notification': true, 'data-task-id': n.task_id || '', 'data-action-url': encodeURIComponent(n.target?.url || n.action_url || ''), 'aria-label': `${actionLabel(n)}: ${n.title}` } }) : ''}${readAction}</div>
   </article>`;
 }
 
@@ -82,8 +85,8 @@ function setCardReadState(card, isRead) {
   card.classList.toggle('is-read', isRead);
   card.classList.toggle('is-unread', !isRead);
   const targetAction = card.querySelector('[data-open-notification]');
-  targetAction?.classList.remove('btn-primary', 'btn-secondary');
-  targetAction?.classList.add('btn-ghost', 'ui-link');
+  targetAction?.classList.toggle('btn-primary', !isRead);
+  targetAction?.classList.toggle('btn-secondary', isRead);
   titleRow?.querySelector('.notification-unread-dot')?.remove();
   titleRow?.querySelector('.notification-new-label')?.remove();
   if (!isRead && titleRow) {
@@ -120,6 +123,7 @@ function params() {
   const p = new URLSearchParams({ page:String(page), per_page:'20' });
   if (category) p.set('category', category);
   if (importance) p.set('importance', importance);
+  if(filterValues(view).length>1){p.set('views',view);return p;}
   if (view === 'unread') p.set('unread_only','true'); if (view === 'action') p.set('requires_action','true'); if (view === 'resolved') p.set('resolved','true'); if (view === 'open') p.set('resolved','false');
   return p;
 }
@@ -128,7 +132,7 @@ function readRouteState() {
   const [, raw = ''] = window.location.hash.slice(1).split('?');
   const route = new URLSearchParams(raw);
   const allowedViews = new Set(['all', 'action', 'unread', 'resolved']);
-  view = allowedViews.has(route.get('view')) ? route.get('view') : 'all';
+  view = filterValues(route.get('view')).length && filterValues(route.get('view')).every(value=>allowedViews.has(value)) ? route.get('view') : 'all';
   category = route.get('category') || '';
   importance = route.get('importance') || '';
 }
@@ -155,17 +159,17 @@ function resetControls() {
 
 function syncControlState() {
   document.querySelectorAll('[data-view]').forEach(el => {
-    const active = el.dataset.view === view;
+    const active = filterValues(view).includes(el.dataset.view);
     el.classList.toggle('active', active);
     el.setAttribute('aria-pressed', String(active));
   });
   document.querySelectorAll('[data-filter-category]').forEach(el => {
-    const active = el.dataset.filterCategory === category;
+    const active = el.dataset.filterCategory ? filterValues(category).includes(el.dataset.filterCategory) : !category;
     el.classList.toggle('active', active);
     el.setAttribute('aria-pressed', String(active));
   });
   document.querySelectorAll('[data-filter-importance]').forEach(el => {
-    const active = el.dataset.filterImportance === importance;
+    const active = el.dataset.filterImportance ? filterValues(importance).includes(el.dataset.filterImportance) : !importance;
     el.classList.toggle('active', active);
     el.setAttribute('aria-pressed', String(active));
   });
@@ -195,8 +199,8 @@ async function summary(app) {
 
 async function badge(app) {
   if (app.refreshNotifications) return app.refreshNotifications();
-  const {count}=await app.api.get('/notifications/unread-count'), value=count>99?'99+':count, top=document.getElementById('notif-badge'), side=document.getElementById('notification-count');
-  if(top){top.textContent=value;top.classList.toggle('hidden',count===0);} if(side)side.textContent=value;
+  const {count}=await app.api.get('/notifications/unread-count'), top=document.getElementById('notif-badge'), side=document.getElementById('notification-count');
+  if(top)top.outerHTML=counter({value:count,cap:99,tone:'unread',label:'Непрочитанных уведомлений',id:'notif-badge',className:'notif-badge',hidden:count===0});if(side)side.outerHTML=counter({value:count,cap:99,tone:'unread',label:'Непрочитанных уведомлений',id:'notification-count',className:'item-badge'});
 }
 
 async function load(app, append=false, silent=false) {
@@ -217,7 +221,7 @@ async function load(app, append=false, silent=false) {
 }
 
 export function renderNotifications() {
-  const filter = (label, attrs, selected = false, iconName) => filterChip({ label, icon: iconName, count: null, selected, className: 'notification-filter-chip', attrs });
+  const filter = (label, attrs, selected = false, iconName) => filterChip({label,icon:iconName,count:null,selected,className:'notification-filter-chip',attrs});
   const categoryFilters = CATEGORY_FILTERS.map(([key,label,iconName]) => filter(label, { 'data-filter-category': key }, false, iconName)).join('');
   const importanceFilters = IMPORTANCE_FILTERS.map(([key,label]) => filter(label, { 'data-filter-importance': key })).join('');
   const stateFilters = [['all','Все'],['action','Требуют действия'],['unread','Непрочитанные'],['resolved','Закрытые']].map(([key,label]) => filter(label, { 'data-view': key }, key === 'all')).join('');
@@ -225,7 +229,7 @@ export function renderNotifications() {
   const actions = `<div class="notification-header-actions"><a class="btn btn-secondary btn-sm" href="#/settings?section=notifications">${icon('settings')} Настроить</a>${button({ label: 'Прочитать все', icon: 'check-check', size: 'small', attrs: { id: 'mark-all-read', title: 'Во всех категориях, независимо от фильтров. Обязательные действия остаются до выполнения.' } })}</div>`;
   return `<section class="notification-center animate-fade-in"><header class="page-header">${pageHeader({ title: 'Мои уведомления', description: 'Назначения, отчётные статусы и обсуждения команды', className: 'notification-hero', actions: stats + actions })}</header>
   <div class="notification-workspace"><div class="notification-toolbar" aria-label="Фильтры уведомлений"><div class="notification-filter-group notification-state-filter" role="group" aria-labelledby="notification-state-label"><span class="notification-filter-group-label" id="notification-state-label">Состояние</span><div class="notification-filter-options">${stateFilters}</div></div>${button({ label: 'Сбросить', size: 'small', attrs: { id: 'notification-reset', disabled: true } })}<div class="notification-quick-filters"><div class="notification-filter-group" role="group" aria-labelledby="notification-category-label"><span class="notification-filter-group-label" id="notification-category-label">Категория</span><div class="notification-filter-options">${categoryFilters}</div></div><div class="notification-filter-group" role="group" aria-labelledby="notification-importance-label"><span class="notification-filter-group-label" id="notification-importance-label">Приоритет</span><div class="notification-filter-options">${importanceFilters}</div></div></div></div>
-  <section class="notification-feed" aria-labelledby="notifications-heading"><div class="notification-feed-header"><div><h2 id="notifications-heading">Уведомления</h2><p id="notification-results-count" role="status" aria-live="polite">Загрузка…</p></div>${button({ label: 'Появились новые — показать', size: 'small', attrs: { id: 'notifications-newer', hidden: true } })}</div><div id="notifications-list" role="list">${renderViewState({kind:'loading',title:'Загружаем уведомления…'})}</div><div class="notification-load-more">${button({ label: 'Загрузить ещё', attrs: { id: 'notifications-load-more', hidden: true } })}</div></section></div></section>`;
+  <section class="notification-feed" aria-labelledby="notifications-heading"><div class="notification-feed-header"><div><h2 id="notifications-heading">Уведомления</h2><p id="notification-results-count" role="status" aria-live="polite">Загрузка…</p></div>${button({ label: 'Появились новые — показать', size: 'small', attrs: { id: 'notifications-newer', hidden: true } })}</div><div id="notifications-list" role="list">${renderViewState({kind:'loading',title:'Загружаем уведомления…'})}</div><div class="notification-load-more">${loadMore({ attrs: { id: 'notifications-load-more', hidden: true } })}</div></section></div></section>`;
 }
 
 export async function initNotifications(app) {
@@ -236,9 +240,9 @@ export async function initNotifications(app) {
   const reload=(silent=false)=>{page=1;hasMore=true;return load(app,false,silent);};
   const applyFilters=()=>{syncRouteState();syncControlState();updateFilterState();reload();};
 
-  document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{view=btn.dataset.view;applyFilters();}));
-  document.querySelectorAll('[data-filter-category]').forEach(btn=>btn.addEventListener('click',()=>{category=category===btn.dataset.filterCategory?'':btn.dataset.filterCategory;applyFilters();}));
-  document.querySelectorAll('[data-filter-importance]').forEach(btn=>btn.addEventListener('click',()=>{importance=importance===btn.dataset.filterImportance?'':btn.dataset.filterImportance;applyFilters();}));
+  document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{view=toggleChoice(view,btn.dataset.view,'all');applyFilters();}));
+  document.querySelectorAll('[data-filter-category]').forEach(btn=>btn.addEventListener('click',()=>{category=toggleChoice(category,btn.dataset.filterCategory);applyFilters();}));
+  document.querySelectorAll('[data-filter-importance]').forEach(btn=>btn.addEventListener('click',()=>{importance=toggleChoice(importance,btn.dataset.filterImportance);applyFilters();}));
   document.getElementById('notification-reset')?.addEventListener('click',()=>{resetControls();syncRouteState();reload();});
   document.getElementById('notifications-load-more')?.addEventListener('click',()=>load(app,true));
   document.getElementById('notifications-newer')?.addEventListener('click',async e=>{e.currentTarget.hidden=true;await reload(true);});
@@ -255,7 +259,7 @@ export async function initNotifications(app) {
   });
 
   document.getElementById('notifications-list')?.addEventListener('click',async e=>{
-    const btn=e.target.closest('[data-open-notification],[data-mark-read],[data-mark-unread]') || (!e.target.closest('button,a,input') && !window.getSelection()?.toString() ? e.target.closest('.notification-card')?.querySelector('[data-open-notification]') : null);
+    const btn=e.target.closest('[data-open-notification],[data-mark-read],[data-mark-unread]');
     if(!btn || btn.disabled)return;
     const card=btn.closest('.notification-card'),id=Number(card?.dataset.notifId);
     btn.disabled=true;btn.setAttribute('aria-busy','true');

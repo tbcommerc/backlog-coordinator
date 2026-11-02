@@ -1,20 +1,21 @@
 import { showSetup } from './components/accountSecurity.js';
-import { avatar } from './ui/dataDisplay.js';
+import { avatar, counter } from './ui/dataDisplay.js';
 import { createPopover } from './ui/popover.js';
 import { bindActionMenu } from './ui/actionMenu.js';
+import { installFilterSelects } from './ui/filterSelect.js';
 /**
  * DMB Backlog - Main Application
  * Entry point, initializes router and store
  */
 console.log('[DMB] app.js v20260910 pip-flow-v5.1 loaded');
 
-import { Router, createTaskOpenHandler } from './router.js?v=213';
+import { Router, createTaskOpenHandler } from './router.js?v=230';
 import { applyThemePreference } from './theme.js';
 import { renderLogin, initLogin } from './components/login.js?v=3';
 import { Store } from './store.js';
 import { API } from './api.js?v=4';
 import { Auth } from './auth.js';
-import { renderSidebar, initSidebar } from './components/sidebar.js?v=68';
+import { renderSidebar, initSidebar } from './components/sidebar.js?v=70';
 import { safeExternalUrl } from './urlUtils.js';
 import { confirmAction, formatErrorMessage, showFieldError, showToast } from './uiFeedback.js';
 import { initModalAccessibility } from './modalAccessibility.js';
@@ -31,33 +32,11 @@ import {
   recordNotificationUxEvent,
 } from './notificationUtils.js?v=12';
 
-const AVATAR_COLORS = [
-  '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e',
-  '#f97316', '#f59e0b', '#10b981', '#06b6d4', '#0ea5e9',
-];
 
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_MIN_LENGTH = 2;
 const SEARCH_MAX_RESULTS = 10;
 const SEARCH_PAGE_SIZE = 1000;
-
-window.getUserInitials = function(name) {
-  if (!name) return '?';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return name[0].toUpperCase();
-};
-
-window.getAvatarColor = function(name) {
-  if (!name) return AVATAR_COLORS[0];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-};
 
 let lastKnownUnreadCount = null;
 
@@ -75,12 +54,8 @@ function renderNotificationShell(snapshot, error = null) {
   const sideBadge = document.getElementById('notification-count');
   const bellButton = document.getElementById('notif-bell-btn');
   if (Number.isFinite(count)) {
-    const val = count > 99 ? '99+' : count;
-    if (badge) {
-      if (count > 0) { badge.textContent = val; badge.classList.remove('hidden'); }
-      else { badge.classList.add('hidden'); }
-    }
-    if (sideBadge) sideBadge.textContent = val;
+    if (badge) badge.outerHTML = counter({value:count,cap:99,tone:'unread',label:'Непрочитанных уведомлений',id:'notif-badge',className:'notif-badge',hidden:count===0});
+    if (sideBadge) sideBadge.outerHTML = counter({value:count,cap:99,tone:'unread',label:'Непрочитанных уведомлений',id:'notification-count',className:'item-badge'});
     if (bellButton) {
       bellButton.dataset.state = error ? 'stale' : 'ready';
       bellButton.setAttribute('aria-label', count ? `Уведомления: ${count} ${unreadLabel(count)}` : 'Уведомления: нет непрочитанных');
@@ -88,7 +63,7 @@ function renderNotificationShell(snapshot, error = null) {
     lastKnownUnreadCount = count;
     return;
   }
-  if (badge && lastKnownUnreadCount === null) { badge.textContent = '!'; badge.classList.remove('hidden'); }
+  if (badge && lastKnownUnreadCount === null) badge.outerHTML = counter({value:null,tone:'unread',label:'Непрочитанных уведомлений',id:'notif-badge',className:'notif-badge'});
   if (bellButton) {
     bellButton.dataset.state = 'stale';
     bellButton.setAttribute('aria-label', 'Уведомления: не удалось обновить данные');
@@ -348,53 +323,25 @@ async function handleSearch(query, app) {
   container.innerHTML = '<div class="ui-popover-empty" role="status">Ищем задачи…</div>';
   searchPopover?.open();
   try {
-    if (!searchTasksCache) {
-      const res = await app.api.get(`/tasks/?per_page=${SEARCH_PAGE_SIZE}`);
-      searchTasksCache = res.items || res.tasks || [];
-    }
+    const res = await app.api.get(`/workspace-search?q=${encodeURIComponent(query)}&per_page=${SEARCH_MAX_RESULTS}`);
     if (generation !== searchGeneration || document.activeElement !== document.getElementById('global-search')) return;
-    const tasks = searchTasksCache;
-
-    const scored = tasks
-      .map(t => ({ task: t, ...scoreTask(t, query) }))
-      .filter(r => r.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, SEARCH_MAX_RESULTS);
-
-    container.innerHTML = scored.map(({ task, score, matchedFields }) => {
-      const titleHtml = highlightText(task.title, query);
-      const nonTitleMatches = matchedFields.filter(f => f !== 'title' && f !== 'id');
-      const extraHtml = nonTitleMatches.length > 0
-        ? ' · ' + nonTitleMatches.map(f => {
-            const val = highlightText(String(task[f] || ''), query);
-            return `<span class="search-match-field">${fieldLabel(f)}: ${val}</span>`;
-          }).join(' · ')
-        : '';
-
-      return `
-        <button type="button" class="ui-surface-action search-result-item" id="search-result-${task.id}" role="option" aria-selected="false" data-id="${task.id}" tabindex="-1">
-          <div class="search-result-main">
-            <span class="search-result-id">${formatTaskPublicId(task)}</span>
-            <span class="search-result-title">${titleHtml}</span>
-          </div>
-          <div class="search-result-meta">
-            <span class="search-result-status">${escapeHtml(task.status || '')}</span>
-            <span class="search-result-extra">${extraHtml}</span>
-          </div>
-        </button>`;
-    }).join('');
-
-    if (scored.length === 0) {
-      container.innerHTML = `<div class="search-result-empty">Ничего не найдено</div>`;
-    }
+    const items = res.items || [];
+    container.innerHTML = items.map(item => `
+      <button type="button" class="ui-surface-action search-result-item" id="search-result-${item.kind}-${item.id}" role="option" aria-selected="false" data-id="${item.id}" data-kind="${item.kind}" tabindex="-1">
+        <div class="search-result-main"><span class="search-result-id">${escapeHtml(item.public_id || String(item.id))}</span><span class="search-result-title">${highlightText(item.title, query)}</span></div>
+        <div class="search-result-meta">${({work:'Рабочая задача',task:'Задача бэклога',project:'Проект',request:'Запрос заказчика'})[item.kind] || ''}</div>
+      </button>`).join('') || '<div class="search-result-empty">Ничего не найдено</div>';
+    if (res.total > items.length) container.insertAdjacentHTML('beforeend', '<div class="ui-popover-empty">Уточните запрос: показаны первые ' + items.length + ' из ' + res.total + '</div>');
 
     searchPopover?.open();
     searchPopover?.position();
 
     container.querySelectorAll('.search-result-item').forEach(el => {
       el.addEventListener('click', () => {
-        const event = new CustomEvent('open-task', { detail: { taskId: parseInt(el.dataset.id) } });
-        document.dispatchEvent(event);
+        if (el.dataset.kind === 'work') location.hash = '#/work-tasks/' + el.dataset.id;
+        else if (el.dataset.kind === 'project') location.hash = '#/work-projects?project=' + el.dataset.id;
+        else if (el.dataset.kind === 'request') location.hash = '#/review/' + el.dataset.id;
+        else document.dispatchEvent(new CustomEvent('open-task', { detail: { taskId: parseInt(el.dataset.id) } }));
         searchPopover?.close({ restoreFocus: false });
         document.getElementById('global-search').value = '';
         searchTasksCache = null;
@@ -410,7 +357,7 @@ async function handleSearch(query, app) {
 
 async function handleLogout() {
   const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=92');
-  const { clearAgentChatTransientStorage } = await import('./components/agentChat.js?v=94');
+  const { clearAgentChatTransientStorage } = await import('./components/agentChat.js?v=96');
   const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
   if (!ok) return;
   clearQuickEditState();
@@ -447,7 +394,7 @@ export function renderAppShell(content) {
         </div>
         <div class="search-wrap navbar-search">
           <i data-lucide="search" class="navbar-search-icon"></i>
-          <input type="text" id="global-search" role="combobox" aria-label="Поиск задач" aria-autocomplete="list" aria-controls="search-results" aria-expanded="false" placeholder="Поиск…" class="input ui-control search-input navbar-search-input">
+          <input type="text" id="global-search" role="combobox" aria-label="Поиск задач" aria-autocomplete="list" aria-controls="search-results" aria-expanded="false" placeholder="Поиск по системе" class="input ui-control search-input navbar-search-input">
           <div id="search-results" class="ui-search-popover" hidden></div>
         </div>
         <div class="navbar-right">
@@ -460,7 +407,7 @@ export function renderAppShell(content) {
           <div style="position:relative;" id="notif-bell-wrap">
             <button class="btn btn-ghost btn-sm square-icon ui-btn" id="notif-bell-btn" type="button" aria-label="Уведомления" aria-expanded="false" aria-controls="notif-dropdown" style="position: relative">
               <i data-lucide="bell" aria-hidden="true" style=" display: block; color: var(--text-primary);"></i>
-              <span id="notif-badge" class="notif-badge hidden">0</span>
+              ${counter({loading:true,cap:99,tone:'unread',label:'Непрочитанных уведомлений',id:'notif-badge',className:'notif-badge'})}
             </button>
             <div id="notif-dropdown" class="ui-notification-popover" aria-labelledby="notif-dropdown-title" hidden>
               <div id="notif-dropdown-title" class="ui-popover-header ui-popover-title">Уведомления</div>
@@ -744,6 +691,7 @@ class App {
   }
 
   async init() {
+    this.disposeFilterSelects ||= installFilterSelects();
     this.applyTheme();
     if (location.hash.startsWith('#/activate')) { showSetup(this); return; }
 
@@ -759,7 +707,7 @@ class App {
       this.renderAppLayout();
       this.router.onBeforeNavigate = async (toPath, fromHash) => {
         if (this.assistantV2NavigationGuard && !(await this.assistantV2NavigationGuard(toPath, fromHash))) return false;
-        const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=118');
+        const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=120');
         const taskCardOk = await confirmAndCloseTaskFormsForNavigation();
         if (!taskCardOk) return false;
         const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=92');

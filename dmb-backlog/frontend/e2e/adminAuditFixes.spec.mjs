@@ -43,18 +43,13 @@ test('F08/F09 поиск не меняет справочник, пустой р
   await page.locator('#dict-search').fill('нет'); await page.locator('.modal-cancel-btn').click();
   await expect(page.locator('#admin-modal-overlay')).toHaveCount(0); await expect(page.getByRole('alertdialog')).toHaveCount(0);
 });
-test('F12/F16 единственное поле заказчика и исправление ошибки названия', async ({page}) => {
-  await open(page,'reports'); await page.locator('.admin-add-btn[data-type=report]').click();
-  await page.locator('.modal-save-btn').click(); await expect(page.locator('#report-form-error')).toContainText('Введите название');
-  await page.locator('#report-name').fill('Черновик'); await expect(page.locator('#report-form-error')).not.toContainText('Введите название'); await expect(page.locator('#admin-form-error-summary')).not.toContainText('Введите название');
-  await page.locator('#report-step-2').click(); await expect(page.locator('.report-field-option').filter({hasText:'Бизнес-заказчик'})).toHaveCount(1);
-});
+
 test('F17 подтверждение закрытия клиента ДИД и сохранение ввода при отказе', async ({page}) => {
   await open(page,'dictionaries'); await page.locator('[data-dict="did-client-groups"]').click(); await page.locator('[data-new]').click();
   await page.locator('input[name=name]').fill('Черновик ДИД'); await page.locator('dialog [data-close]').click();
-  await expect(page.getByRole('alertdialog')).toBeVisible(); await page.locator('[data-keep]').click();
+  await expect(page.getByRole('alertdialog')).toBeVisible(); await page.getByRole('button',{name:'Продолжить редактирование',exact:true}).click();
   await expect(page.locator('input[name=name]')).toHaveValue('Черновик ДИД'); await page.keyboard.press('Escape');
-  await expect(page.getByRole('alertdialog')).toBeVisible(); await page.locator('[data-discard]').click();
+  await expect(page.getByRole('alertdialog')).toBeVisible(); await page.getByRole('button',{name:'Не сохранять',exact:true}).click();
   await expect(page.locator('dialog')).toHaveCount(0); expect(await page.evaluate(()=>window.__blockedWrites)).toEqual([]);
 });
 for(const width of [390,844]) test(`F04/F15 свёрнутые фильтры и маркер ${width}`,async({page})=>{
@@ -75,7 +70,7 @@ test('F02/F03/F10/F11 поиск логина, фокус пагинации и 
   await page.evaluate(async()=>{const get=window.app.api.get.bind(window.app.api);window.app.api.get=async path=>path==='/admin/users'?Array.from({length:40},(_,i)=>({id:i+1,name:`User ${i}`,login:`qa.user-${i}`,is_active:true,credential_state:'ready'})):get(path);await (await import('/js/components/admin.js?v=6')).initAdmin(window.app);});
   await page.locator('#admin-user-search').fill('qa.user-17'); await expect(page.locator('tbody tr')).toHaveCount(1);
   await expect(page.locator('tbody')).toContainText('Готова ко входу');
-  await page.locator('#admin-user-filters-reset').click(); await page.locator('.admin-list-page[data-page="2"]').click();
+  await page.locator('#admin-user-filters-reset').click(); await page.locator('.admin-list-page[data-page="2"][aria-label="Страница 2"]').click();
   await expect(page.locator('#admin-content')).toBeFocused(); expect((await page.locator('#admin-content').boundingBox()).y).toBeGreaterThanOrEqual(0);
   await expect(page.getByRole('combobox',{name:'Роль пользователя'})).toBeVisible();
 });

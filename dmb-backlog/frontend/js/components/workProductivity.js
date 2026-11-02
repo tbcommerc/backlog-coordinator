@@ -1,3 +1,4 @@
+import { progress } from '../ui/dataDisplay.js';
 import {escapeHtml as esc} from '../htmlUtils.js';
 import {button, field} from '../ui/primitives.js';
 import {formatErrorMessage} from '../uiFeedback.js';
@@ -12,7 +13,7 @@ export const checklistCount = items => `${items.filter(x=>x.completed).length} �
 export function checklistView(row) {
     const items = row.checklist || [];
     if (!items.length) return '';
-    return `<section class="work-checklist-view" aria-label="Чек-лист"><h3>Чек-лист · <span data-checklist-count>${checklistCount(items)}</span></h3><progress max="${items.length}" value="${items.filter(x=>x.completed).length}" aria-label="Прогресс чек-листа"></progress><ul>${items.map(item=>`<li><label><input class="ui-checkbox" type="checkbox" data-check-item="${esc(item.id)}" ${item.completed?'checked':''} ${row.can_check?'':'disabled'}><span>${esc(item.title)}</span></label></li>`).join('')}</ul><p class="work-muted">Пункты помогают отслеживать работу; завершение подтверждается отдельно.</p></section>`;
+    return `<section class="work-checklist-view" aria-label="Чек-лист"><h3>Чек-лист · <span data-checklist-count>${checklistCount(items)}</span></h3>${progress({value:100*items.filter(x=>x.completed).length/items.length,label:'Прогресс чек-листа'})}<ul>${items.map(item=>`<li><label class="ui-checkbox"><input type="checkbox" data-check-item="${esc(item.id)}" ${item.completed?'checked':''} ${row.can_check?'':'disabled'}><span>${esc(item.title)}</span></label></li>`).join('')}</ul><p class="work-muted">Пункты помогают отслеживать работу; завершение подтверждается отдельно.</p></section>`;
 }
 
 export function mountChecklistEditor(host, input, editable) {

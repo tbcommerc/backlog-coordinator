@@ -32,7 +32,9 @@ test('each stage has one main action and preview does not imply approval', () =>
   const state = ready();
   for (const [view, action] of [['document', 'review'], ['review', 'preview'], ['approval', 'submit']]) {
     const html = renderNextStep(state, view);
-    assert.equal((html.match(/class="btn btn-primary"/g) || []).length, 1);
+    assert.equal((html.match(/<button\b[^>]*data-journey-action=/g) || []).length, 1);
+    assert.match(html, action === 'review' ? /btn-ai-primary/ : /btn-primary/);
+    if (action !== 'review') assert.doesNotMatch(html, /btn-ai/);
     assert.match(html, new RegExp(`data-journey-action="${action}"`));
   }
   const preview = renderApprovalPreview(state);

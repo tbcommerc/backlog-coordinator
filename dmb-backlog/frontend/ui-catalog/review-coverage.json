@@ -1,0 +1,3661 @@
+{
+  "schema": 1,
+  "reviewedAt": "2026-10-28",
+  "status": "in-progress",
+  "scope": "SPA including lazy routes and embedded surfaces; protected entities are read-only in live tests",
+  "requiredAxes": [
+    "surface",
+    "function",
+    "role",
+    "state",
+    "theme",
+    "viewport",
+    "input"
+  ],
+  "routeReview": {
+    "status": "pending",
+    "reason": "Router changed after the recorded review. Historical route evidence retained; new dynamic routes require separate code/live review. Component completion does not certify route coverage.",
+    "routes": [
+      "/dashboard",
+      "/backlog",
+      "/team-backlog",
+      "/express-estimate",
+      "/kanban",
+      "/reports",
+      "/reporting-statuses",
+      "/quarterly-goals-update",
+      "/reporting-meetings",
+      "/reports/detail",
+      "/analytics/tribe",
+      "/analytics/po-pl",
+      "/analytics/it",
+      "/notifications",
+      "/account/security",
+      "/settings",
+      "/admin",
+      "/audit-log",
+      "/outbox-dead-letters",
+      "/customer",
+      "/customer/create",
+      "/review"
+    ],
+    "dynamicEvidence": [
+      {
+        "line": 258,
+        "text": "if (path === '/review' && !params.has('task')) return false;",
+        "reason": "Review detail and embedded task route; canonical task/tab/comment handling."
+      },
+      {
+        "line": 357,
+        "text": "const isAssistantV2Route = path === '/assistant-v2' || path.startsWith('/assistant-v2/');",
+        "reason": "Compatibility alias to agent-v2; same unsaved guard precedes replacement."
+      },
+      {
+        "line": 362,
+        "text": "const isAgentV2Route = path === '/agent-v2' || path.startsWith('/agent-v2/');",
+        "reason": "Inspected route selection, breadcrumb or focus-mode branch against the surrounding code."
+      },
+      {
+        "line": 364,
+        "text": "const isCustomerRequestDetail = /^\\/customer\\/request\\/\\d+$/.test(path);",
+        "reason": "Customer portal isolation and request/task detail dispatch; no permission widening."
+      },
+      {
+        "line": 365,
+        "text": "const isCustomerTaskDetail = /^\\/customer\\/task\\/\\d+$/.test(path);",
+        "reason": "Customer portal isolation and request/task detail dispatch; no permission widening."
+      },
+      {
+        "line": 372,
+        "text": "if (path === '/kanban') {",
+        "reason": "Capability-gated compatibility route to the work board."
+      },
+      {
+        "line": 384,
+        "text": "const requiresAdmin = path === '/admin' || path === '/audit-log';",
+        "reason": "Access refusal follows unsaved guard; updates route state and breadcrumb."
+      },
+      {
+        "line": 385,
+        "text": "const requiresFullAdmin = path === '/audit-log' || path === '/outbox-dead-letters' || path === '/reporting-meetings';",
+        "reason": "Access refusal follows unsaved guard; updates route state and breadcrumb."
+      },
+      {
+        "line": 409,
+        "text": "const projectChanged = path === '/work-projects' && ['project','scope','major','mp'].some(key => new URLSearchParams(query).get(key) !== new URLSearchParams(from?.split('?')[1] || '').get(key));",
+        "reason": "Project registry/detail identified by query; scope/major changes rerender."
+      },
+      {
+        "line": 410,
+        "text": "const queryDrivenWorkPage = /^\\/metrics(?:\\/\\d+)?$/.test(path) || projectChanged || path === '/work-reports' || /^\\/work-tasks(?:\\/\\d+)?$/.test(path);",
+        "reason": "Legacy URL redirects to work-task summary unless meeting_id requests the retained snapshot."
+      },
+      {
+        "line": 411,
+        "text": "if (from !== null && path === fromPath && this.renderedPath === path && path !== '/meeting-capture' && !queryDrivenWorkPage) {",
+        "reason": "Meeting capture reloads query and uses lazy page."
+      },
+      {
+        "line": 421,
+        "text": "const requestMatch = path.match(/^\\/customer\\/request\\/(\\d+)$/);",
+        "reason": "Customer portal isolation and request/task detail dispatch; no permission widening."
+      },
+      {
+        "line": 422,
+        "text": "const customerTaskMatch = path.match(/^\\/customer\\/task\\/(\\d+)$/);",
+        "reason": "Customer portal isolation and request/task detail dispatch; no permission widening."
+      },
+      {
+        "line": 423,
+        "text": "const reviewMatch = path.match(/^\\/review\\/(\\d+)$/);",
+        "reason": "Review detail and embedded task route; canonical task/tab/comment handling."
+      },
+      {
+        "line": 447,
+        "text": "} else if (path === '/backlog-assistant') {",
+        "reason": "Lazy assistant page dispatch."
+      },
+      {
+        "line": 451,
+        "text": "} else if (path === '/work-reports') {",
+        "reason": "Legacy URL redirects to work-task summary unless meeting_id requests the retained snapshot."
+      },
+      {
+        "line": 463,
+        "text": "} else if (/^\\/metrics(?:\\/\\d+)?$/.test(path)) {",
+        "reason": "Lazy metric registry/detail and query-driven section/period rerender."
+      },
+      {
+        "line": 467,
+        "text": "} else if (path === '/work-projects') {",
+        "reason": "Project registry/detail identified by query; scope/major changes rerender."
+      },
+      {
+        "line": 471,
+        "text": "} else if (/^\\/work-tasks(?:\\/\\d+)?$/.test(path)) {",
+        "reason": "Lazy work-task list/detail and query-driven views."
+      },
+      {
+        "line": 475,
+        "text": "} else if (path === '/meeting-capture') {",
+        "reason": "Meeting capture reloads query and uses lazy page."
+      },
+      {
+        "line": 530,
+        "text": "const pageName = names[path] || (/^\\/metrics\\/\\d+$/.test(path) ? 'Карточка метрики' : '') || (/^\\/work-tasks\\/\\d+$/.test(path) ? 'Рабочая задача' : '') || (requestMatch ? 'Запрос' : '') || (customerTaskMatch ? 'Задача по запросу' : '') || (reviewMatch ? 'Ревью запроса' : path);",
+        "reason": "Customer portal isolation and request/task detail dispatch; no permission widening."
+      },
+      {
+        "line": 540,
+        "text": "if (path === '/work-projects' && projectId) {",
+        "reason": "Project registry/detail identified by query; scope/major changes rerender."
+      },
+      {
+        "line": 543,
+        "text": "const currentName = path === '/work-projects' && projectId ? 'Обзор проекта' : pageName;",
+        "reason": "Project registry/detail identified by query; scope/major changes rerender."
+      },
+      {
+        "line": 549,
+        "text": "if (resolved.init && /^\\/metrics(?:\\/\\d+)?$/.test(path)) {",
+        "reason": "Lazy metric registry/detail and query-driven section/period rerender."
+      },
+      {
+        "line": 579,
+        "text": "const enteringFocus = path === '/customer/create';",
+        "reason": "Customer portal isolation and request/task detail dispatch; no permission widening."
+      }
+    ],
+    "sourceSha256": "be92907da96a6527c1a56f69698cacfda027d83d7a0f67eb0d557696eb254ab1"
+  },
+  "familyReview": {
+    "pagination": {
+      "status": "pending",
+      "consumers": [
+        "js/backlog-assistant/answer.js",
+        "js/components/admin.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/expressEstimate.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reviewPage.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workProjects.js",
+        "js/components/workQueue.js",
+        "js/components/workReports.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/components/workUi.js"
+      ],
+      "codeEvidence": [
+        {
+          "source": "js/backlog-assistant/answer.js",
+          "sha256": "3e930e295eb0c0318af3f43b7d7ebecad2d2eaba229f93d268aabb9f49ce998b",
+          "disposition": "shared",
+          "reason": "Добавляет следующий блок в ответ; общий LoadMore, а не фиктивная нумерация страниц."
+        },
+        {
+          "source": "js/components/admin.js",
+          "sha256": "04e135af1499498a2f8dabbae44aea72b94583a3c43a7f1318cff1d3af5ab3b7",
+          "disposition": "shared",
+          "reason": "Общий Pagination и обработчики номеров/направлений; прежняя частная разметка заменена."
+        },
+        {
+          "source": "js/components/auditLog.js",
+          "sha256": "ce11e74b1e8c4c194e48e177c087005b60a39bd500a41dcb137bf47981f651dd",
+          "disposition": "shared",
+          "reason": "Общий Pagination; отдельный выбор размера и диапазон принадлежат контексту реестра."
+        },
+        {
+          "source": "js/components/customerPortal.js",
+          "sha256": "e71c0fa71da2c65f2b82a6ebd3a94f0ccbed4817e7a2d40385fded7b0f73ff1d",
+          "disposition": "shared",
+          "reason": "Общий Pagination через kitPagination для серверной очереди."
+        },
+        {
+          "source": "js/components/expressEstimate.js",
+          "sha256": "107ff0642f15fab0af6e68a44add198436f4e5a097952390e7edd89dfdd7e157",
+          "disposition": "shared",
+          "reason": "Общий LoadMore через kitLoadMore, loaded/total формирует компонент; транспорт и выбор сохраняются."
+        },
+        {
+          "source": "js/components/metrics.js",
+          "sha256": "d2f87401945260bf26ec4de34b173588bd7ad124f2865cce8247ebb9c594532a",
+          "disposition": "shared",
+          "reason": "Общий Pagination с атрибутом data-act для делегирования."
+        },
+        {
+          "source": "js/components/modal.js",
+          "sha256": "ac7413fb320fa2e785eac65593cc6cad56abf004cd5d8690096f49696d44461d",
+          "disposition": "shared",
+          "reason": "Общий Pagination выбранных задач; «Назад к выбору задач» относится к шагу мастера и не является пагинацией."
+        },
+        {
+          "source": "js/components/notifications.js",
+          "sha256": "8ca3d9b52d9c8e41ae35057d39689478eb894398ba1d46175bb01b98861e192d",
+          "disposition": "shared",
+          "reason": "Общий LoadMore; контейнер скрывается вместе с кнопкой."
+        },
+        {
+          "source": "js/components/outboxDeadLetters.js",
+          "sha256": "9d9a24e7c39f209a588a1e88e257229a9c38c5f09edfdec5fda739aca1c8591f",
+          "disposition": "shared",
+          "reason": "Общий Pagination; data-page переименован для делегирования без изменения геометрии."
+        },
+        {
+          "source": "js/components/reportingStatuses.js",
+          "sha256": "5847a4a9880ec046838083c885305d3e64be4e19d9d05c0ad265bef6e1dcbae5",
+          "disposition": "shared",
+          "reason": "Общий LoadMore с loaded/total, без частной высоты и второй строки внутри кнопки."
+        },
+        {
+          "source": "js/components/reviewPage.js",
+          "sha256": "78b83401934c2fb33937a4981fdd11475e9fea34dc80497e3984808731a27f70",
+          "disposition": "shared",
+          "reason": "Общий LoadMore; пагинация добавляющая, не требует номеров."
+        },
+        {
+          "source": "js/components/taskTable.js",
+          "sha256": "04078498cff2bdeb1be6b9ae2990db36a3c951c1af4c622a610dc625840b4abc",
+          "disposition": "shared",
+          "reason": "Общий Pagination для локальной страницы DMB."
+        },
+        {
+          "source": "js/components/teamBacklog.js",
+          "sha256": "b1697ae6457cccd551e4d913de0b8939504a279e7dd57fdf3cddd80ff76fa92c",
+          "disposition": "shared",
+          "reason": "Общий Pagination для локальной страницы командного бэклога."
+        },
+        {
+          "source": "js/components/workBoard.js",
+          "sha256": "6f03b3205f5d8636cc46f243c6929f0d25abf04717e79bf0a3b5e5dcf9857784",
+          "disposition": "shared",
+          "reason": "Общий CursorPagination; контекст колонки передаётся атрибутами направлений."
+        },
+        {
+          "source": "js/components/workProjects.js",
+          "sha256": "af0ae405c8439db2d7f016ca98c359ff826756249148c6e2f1df80b48c7fde58",
+          "disposition": "shared",
+          "reason": "Использует workPager, который вызывает общий Pagination; фокус по намерению."
+        },
+        {
+          "source": "js/components/workQueue.js",
+          "sha256": "9bdb7ed5fce2bed004c0209eb598fe4d330743848ca9041b7ef9aa65e2e41db8",
+          "disposition": "shared",
+          "reason": "Футер очереди использует workPager; отдельный диапазон не является новым контролом."
+        },
+        {
+          "source": "js/components/workReports.js",
+          "sha256": "96b1e6e0fbffc76f069e04a54efa6b70c9503e220d4f9ed60d50e28b4b129154",
+          "disposition": "shared",
+          "reason": "Использует workPager для двух коллекций, общий Pagination."
+        },
+        {
+          "source": "js/components/workTasks.js",
+          "sha256": "dd419f721dc3cffb21646bf4cc2e7a029e3abe63689cc451d0623c6e5b76d474",
+          "disposition": "shared",
+          "reason": "Использует workPager и общие обработчики страницы; после перехода фокус новых результатов."
+        },
+        {
+          "source": "js/components/workUi.js",
+          "sha256": "23f3d8b600d9023aa12ec89a3b2888cea06f8c2b5c6dad838ae2d9a0b3e179d2",
+          "disposition": "shared",
+          "reason": "Обёртка workPager над общим Pagination с stepMode; не частная разметка."
+        }
+      ],
+      "openQuestions": [
+        "Code-reviewed does not equal acceptance of every role, state and responsive combination.",
+        "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история.",
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+      ]
+    },
+    "search": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/didBacklog.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/reviewPage.js",
+        "js/components/workProjects.js",
+        "js/components/workReports.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/reports.js",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "filter": {
+      "status": "pending",
+      "consumers": [
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/didBacklog.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/metrics.js",
+        "js/components/notifications.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quickFilters.js",
+        "js/components/reports.js",
+        "js/components/reviewPage.js",
+        "js/components/workBoard.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+      ]
+    },
+    "sorting": {
+      "status": "pending",
+      "consumers": [
+        "js/components/admin.js",
+        "js/components/didBacklog.js",
+        "js/components/reports.js",
+        "js/components/tableUtils.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": []
+    },
+    "selection": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/documentReview.js",
+        "js/agent-v2/journey.js",
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/customerReferences.js",
+        "js/components/didBacklog.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/reviewPage.js",
+        "js/components/tableSelection.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workProductivity.js",
+        "js/components/workProjects.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": []
+    },
+    "bulk": {
+      "status": "pending",
+      "consumers": [
+        "js/adminLabels.js",
+        "js/app.js",
+        "js/components/didBacklog.js",
+        "js/components/filterToolbar.js",
+        "js/components/meetingCapture.js",
+        "js/components/modal.js",
+        "js/components/reportingStatuses.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workProjects.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/workProjects.js"
+      ]
+    },
+    "status": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReport.js",
+        "js/components/dashboard.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/kanbanBoard.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/notifications.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickFilters.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestPresentation.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/sidebar.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workProductivity.js",
+        "js/components/workProjects.js",
+        "js/components/workQueue.js",
+        "js/components/workReports.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/components/workUi.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+      ]
+    },
+    "counter": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/components/admin.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quickFilters.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reviewPage.js",
+        "js/components/sidebar.js",
+        "js/components/workProductivity.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [
+        {
+          "source": "js/app.js",
+          "sha256": "4d99735acad489b0b2b80e8d09d3ad01636d340a134ed3a9418bcdb521d743cc",
+          "disposition": "shared",
+          "reason": "Шапка использует общий Counter cap99/hidden/unknown/loading; Counter хранит полное доступное число."
+        },
+        {
+          "source": "js/components/admin.js",
+          "sha256": "04e135af1499498a2f8dabbae44aea72b94583a3c43a7f1318cff1d3af5ab3b7",
+          "disposition": "exception",
+          "reason": "Найдено/Записей — текст результата поиска с role=status, не отдельная числовая плашка. Не вводится обёртка InfoChip."
+        },
+        {
+          "source": "js/components/auditLog.js",
+          "sha256": "ce11e74b1e8c4c194e48e177c087005b60a39bd500a41dcb137bf47981f651dd",
+          "disposition": "shared",
+          "reason": "Общее число событий формирует Counter, включая loading/unknown; InfoChip alias удалён."
+        },
+        {
+          "source": "js/components/customerPortal.js",
+          "sha256": "e71c0fa71da2c65f2b82a6ebd3a94f0ccbed4817e7a2d40385fded7b0f73ff1d",
+          "disposition": "shared",
+          "reason": "Количество внутри FilterChip принадлежит общей композиции; отдельный Counter не дублируется."
+        },
+        {
+          "source": "js/components/metrics.js",
+          "sha256": "d2f87401945260bf26ec4de34b173588bd7ad124f2865cce8247ebb9c594532a",
+          "disposition": "shared",
+          "reason": "Фильтры используют общую композицию FilterChip со счётчиком; число не получает частный InfoChip."
+        },
+        {
+          "source": "js/components/modal.js",
+          "sha256": "ac7413fb320fa2e785eac65593cc6cad56abf004cd5d8690096f49696d44461d",
+          "disposition": "exception",
+          "reason": "Бюджет поля N/max связан с maxlength и конкретным контролом; это текстовый лимит, а не индикатор количества объектов."
+        },
+        {
+          "source": "js/components/notifications.js",
+          "sha256": "8ca3d9b52d9c8e41ae35057d39689478eb894398ba1d46175bb01b98861e192d",
+          "disposition": "shared",
+          "reason": "Количество внутри FilterChip и fallback обновления шапки/меню используют общий Counter."
+        },
+        {
+          "source": "js/components/outboxDeadLetters.js",
+          "sha256": "9d9a24e7c39f209a588a1e88e257229a9c38c5f09edfdec5fda739aca1c8591f",
+          "disposition": "shared",
+          "reason": "Число попыток использует Counter с warning/danger; частная геометрия и InfoChip aliases удалены."
+        },
+        {
+          "source": "js/components/quickFilters.js",
+          "sha256": "5944e1fe10aaf688787312081906742f8031544b126f9882d9c44d7d55faa65c",
+          "disposition": "shared",
+          "reason": "FilterChip формирует ui-counter, обновление меняет только значение составного счётчика."
+        },
+        {
+          "source": "js/components/reportingStatuses.js",
+          "sha256": "5847a4a9880ec046838083c885305d3e64be4e19d9d05c0ad265bef6e1dcbae5",
+          "disposition": "exception",
+          "reason": "Количество символов N/5000 — бюджет textarea; остаётся рядом с полем и его лимитом."
+        },
+        {
+          "source": "js/components/reviewPage.js",
+          "sha256": "78b83401934c2fb33937a4981fdd11475e9fea34dc80497e3984808731a27f70",
+          "disposition": "shared",
+          "reason": "Частный quickFilter заменён FilterChip, его внутренний Counter принадлежит UI Kit."
+        },
+        {
+          "source": "js/components/sidebar.js",
+          "sha256": "858e68d85424f6f6e0e2e6ffb1276ce17a6581c2f79a0366d767bae9b26c26ad",
+          "disposition": "shared",
+          "reason": "Общий Counter непрочитанных с cap99 и исходным loading, локальные размеры/цвет удалены."
+        },
+        {
+          "source": "js/components/workProductivity.js",
+          "sha256": "f3f8d63e174a58101b67ea20c94b9472b9de11fdd53b1149d18c3bae4caab263",
+          "disposition": "exception",
+          "reason": "Чек-лист отображает точное отношение done/total и отдельный Progress; это предметная дробь, не округлённый Counter."
+        },
+        {
+          "source": "js/components/workTaskDrawer.js",
+          "sha256": "a50c2643e56234009cb6bf19a209d65425714ef7283c85c612f944af522f319b",
+          "disposition": "exception",
+          "reason": "Обновляет текст отношения чек-листа из общего checklistCount; собственной числовой плашки нет."
+        },
+        {
+          "source": "js/components/workTasks.js",
+          "sha256": "dd419f721dc3cffb21646bf4cc2e7a029e3abe63689cc451d0623c6e5b76d474",
+          "disposition": "shared",
+          "reason": "Коллекции используют FilterChip с ui-counter, обновляют число внутри общей композиции."
+        }
+      ],
+      "openQuestions": [
+        "Code review is scoped to Counter identity/composition, not all operational scenarios.",
+        "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история.",
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+      ]
+    },
+    "tabs": {
+      "status": "pending",
+      "consumers": [
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/directorateReport.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/projectWorkspace.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/workTaskDrawer.js"
+      ],
+      "codeEvidence": [
+        {
+          "source": "js/components/admin.js",
+          "sha256": "04e135af1499498a2f8dabbae44aea72b94583a3c43a7f1318cff1d3af5ab3b7",
+          "disposition": "shared",
+          "reason": "Общий tab-renderer и tabNavigationTarget; стрелки только перемещают фокус, штатный клик/Enter активирует."
+        },
+        {
+          "source": "js/components/agentChat.js",
+          "sha256": "1d16c366c1d87bf6965daf11aa846a4034a9ad71a872031cbdb4cf19e7a8f687",
+          "disposition": "shared",
+          "reason": "Мобильные панели и история используют общий tabNavigationTarget; предметный renderer сохраняет счётчик и inert панелей."
+        },
+        {
+          "source": "js/components/directorateReport.js",
+          "sha256": "7bf9be7666c9332a23017203082d91cb9efacec7580dd74d00070c99fa192872",
+          "disposition": "shared",
+          "reason": "Общий uiTab и tabNavigationTarget; именованные панели, disabled-навигация, ручная активация."
+        },
+        {
+          "source": "js/components/metrics.js",
+          "sha256": "d2f87401945260bf26ec4de34b173588bd7ad124f2865cce8247ebb9c594532a",
+          "disposition": "exception",
+          "reason": "Адресные секции карточки — ссылки с aria-current, URL/Back; не ARIA tablist."
+        },
+        {
+          "source": "js/components/modal.js",
+          "sha256": "ac7413fb320fa2e785eac65593cc6cad56abf004cd5d8690096f49696d44461d",
+          "disposition": "shared",
+          "reason": "Общий tab-renderer и tabNavigationTarget; Enter/Space и клик сохраняют cardConfirmTabChange перед активацией."
+        },
+        {
+          "source": "js/components/reportingStatuses.js",
+          "sha256": "5847a4a9880ec046838083c885305d3e64be4e19d9d05c0ad265bef6e1dcbae5",
+          "disposition": "shared",
+          "reason": "Одна динамическая панель встреч: общий tabNavigationTarget, ручная активация и guard черновиков."
+        },
+        {
+          "source": "js/components/reviewPage.js",
+          "sha256": "78b83401934c2fb33937a4981fdd11475e9fea34dc80497e3984808731a27f70",
+          "disposition": "exception",
+          "reason": "Предмет ревью переключается ссылками между URL, aria-current; это навигация, не tabpanel."
+        },
+        {
+          "source": "js/components/settings.js",
+          "sha256": "6b25a86634d0d1dac659380f22f66560e289e4fafc4124412a11da59829174bc",
+          "disposition": "shared",
+          "reason": "Общий tab-renderer и mountTabs; ориентация учитывает ширину окна."
+        },
+        {
+          "source": "js/components/workTaskDrawer.js",
+          "sha256": "a50c2643e56234009cb6bf19a209d65425714ef7283c85c612f944af522f319b",
+          "disposition": "shared",
+          "reason": "Общий tabs-renderer и tabNavigationTarget; ручная активация разделов карточки."
+        }
+      ],
+      "openQuestions": [
+        "Code-reviewed does not equal acceptance of every role, state and responsive combination.",
+        "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история.",
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+      ]
+    },
+    "dialog": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/backlog-assistant/panel.js",
+        "js/components/accountSecurity.js",
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/customerReferences.js",
+        "js/components/expressEstimate.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestLifecycle.js",
+        "js/components/reviewPage.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/modalAccessibility.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/requestLifecycle.js"
+      ]
+    },
+    "confirmation": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/customerReferences.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/uiFeedback.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": []
+    },
+    "field": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/documentReview.js",
+        "js/agent-v2/journey.js",
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/backlog-assistant/page.js",
+        "js/components/accountSecurity.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerChat.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/customerReport.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestLifecycle.js",
+        "js/components/requestPresentation.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workProductivity.js",
+        "js/components/workProjects.js",
+        "js/components/workRelations.js",
+        "js/components/workReports.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/requestLifecycle.js",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "validation": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/auditLog.js",
+        "js/components/filterToolbar.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/quickEdit.js",
+        "js/components/reports.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/workRelations.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/uiFeedback.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "feedback": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/backlog-assistant/page.js",
+        "js/components/accountSecurity.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/dashboard.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/kanbanBoard.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestLifecycle.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workProductivity.js",
+        "js/components/workProjects.js",
+        "js/components/workRelations.js",
+        "js/components/workReports.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/modalAccessibility.js",
+        "js/uiFeedback.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/requestLifecycle.js"
+      ]
+    },
+    "viewState": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/api.js",
+        "js/app.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/dashboard.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/kanbanBoard.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestLifecycle.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/sidebar.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/viewState.js",
+        "js/components/workBoard.js",
+        "js/components/workProjects.js",
+        "js/components/workReports.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/router.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/requestLifecycle.js"
+      ]
+    },
+    "upload": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/api.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/reports.js",
+        "js/components/requirementReviews.js",
+        "js/components/workPicker.js",
+        "js/components/workTaskDrawer.js"
+      ],
+      "codeEvidence": [
+        {
+          "source": "js/agent-v2/workspace.js",
+          "sha256": "4a3118d1b552bbaa9294b7f4befbbcdebef87a71d8f86e3421f38d565ecb63e1",
+          "disposition": "not-applicable",
+          "reason": "FormData обычных текстовых форм БТ; file-input и загрузки файла в найденных местах нет."
+        },
+        {
+          "source": "js/api.js",
+          "sha256": "bdc89df068928ec36c84504c999d59fb38ceb0ba4fa294669a9a379d023217df",
+          "disposition": "not-applicable",
+          "reason": "Транспорт multipart/FormData, не renderer Upload. Семантика сессии не относится к унификации вида поля."
+        },
+        {
+          "source": "js/components/meetingCapture.js",
+          "sha256": "b0f851179c8eb89c4828ed9b9ac342e9e1114df5c28b5a286dbeeced2c3c30c8",
+          "disposition": "shared",
+          "reason": "Нативный input с ID/label в ui-upload, общий setUploadState; дополнительная предметная подсказка форматов и лимита240КБ."
+        },
+        {
+          "source": "js/components/metrics.js",
+          "sha256": "d2f87401945260bf26ec4de34b173588bd7ad124f2865cce8247ebb9c594532a",
+          "disposition": "exception",
+          "reason": "Нативный file-input внутри обычной формы с Field/ui-control; загрузка отправляется общей командой формы. Не отдельная зона Upload."
+        },
+        {
+          "source": "js/components/modal.js",
+          "sha256": "ac7413fb320fa2e785eac65593cc6cad56abf004cd5d8690096f49696d44461d",
+          "disposition": "exception",
+          "reason": "Именованные кнопки открывают скрытые нативные picker для нескольких вложений/импорта; преобразование в видимую dropzone меняло бы тип взаимодействия."
+        },
+        {
+          "source": "js/components/reports.js",
+          "sha256": "d033b5dee13e121fb0768aa6fdc5601dcb56393be437adb4554c5fea4e162bbd",
+          "disposition": "not-applicable",
+          "reason": "FormData собирает параметры фильтра отчёта; файлового поля в найденном месте нет."
+        },
+        {
+          "source": "js/components/requirementReviews.js",
+          "sha256": "d19a3fe54c1752c0d7c88754f7c4ece8a116747459e56f4d9991040664ad7dbf",
+          "disposition": "not-applicable",
+          "reason": "FormData собирает комментарий ревью; это не загрузка файла."
+        },
+        {
+          "source": "js/components/workTaskDrawer.js",
+          "sha256": "a50c2643e56234009cb6bf19a209d65425714ef7283c85c612f944af522f319b",
+          "disposition": "shared",
+          "reason": "Общий fileUpload с идентичностью input/label/status и setUploadState. Ограничение50МБ и транспорт принадлежат вызывающему коду."
+        }
+      ],
+      "openQuestions": [
+        "Native-picker exceptions preserve their existing interaction; full functional transport testing is outside this unification disposition.",
+        "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история.",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "progress": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/backlog-assistant/answer.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/reports.js",
+        "js/components/tableUtils.js",
+        "js/components/taskColumns.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workProductivity.js",
+        "js/components/workTaskDrawer.js"
+      ],
+      "codeEvidence": [
+        {
+          "source": "js/app.js",
+          "sha256": "4d99735acad489b0b2b80e8d09d3ad01636d340a134ed3a9418bcdb521d743cc",
+          "disposition": "not-applicable",
+          "reason": "A comment says in-progress form; no numerical progress renderer in this module."
+        },
+        {
+          "source": "js/backlog-assistant/answer.js",
+          "sha256": "3e930e295eb0c0318af3f43b7d7ebecad2d2eaba229f93d268aabb9f49ce998b",
+          "disposition": "not-applicable",
+          "reason": "Metadata label for an answer field; not a progressbar implementation."
+        },
+        {
+          "source": "js/components/agentChat.js",
+          "sha256": "1d16c366c1d87bf6965daf11aa846a4034a9ad71a872031cbdb4cf19e7a8f687",
+          "disposition": "exception",
+          "reason": "Requirement completeness tracks resolved/reviewable/skipped named fields and four interactive segments, not task percent. Preserve accessible per-field states and exact count."
+        },
+        {
+          "source": "js/components/analytics.js",
+          "sha256": "d79b3b27e8163540543805d928c891d99b31ef1f2f6926f69ae4135896475458",
+          "disposition": "not-applicable",
+          "reason": "Progress participates in quality-rule predicates and field completeness; it is data analysis rather than a progressbar consumer."
+        },
+        {
+          "source": "js/components/customerPortal.js",
+          "sha256": "e71c0fa71da2c65f2b82a6ebd3a94f0ccbed4817e7a2d40385fded7b0f73ff1d",
+          "disposition": "shared",
+          "reason": "Queue uses kitProgress; task detail and linked request preserve null/empty before numeric text formatting. Task/request failures share ViewState."
+        },
+        {
+          "source": "js/components/customerReport.js",
+          "sha256": "089aa27f5a2efaad7005f8c7f82ccc01a1705a111287bb42c10e371786effde6",
+          "disposition": "shared",
+          "reason": "renderProgress delegates the raw value to kitProgress with showValue."
+        },
+        {
+          "source": "js/components/expressEstimate.js",
+          "sha256": "107ff0642f15fab0af6e68a44add198436f4e5a097952390e7edd89dfdd7e157",
+          "disposition": "exception",
+          "reason": "qe-import-progress is transient import feedback text; no numerical completion amount is claimed."
+        },
+        {
+          "source": "js/components/filterToolbar.js",
+          "sha256": "ff5ad0a165e1f74713e059cd786e76aada8713fa4d7e31a5206914392ef67687",
+          "disposition": "not-applicable",
+          "reason": "Progress is a numeric sorting key; no progress component is rendered here."
+        },
+        {
+          "source": "js/components/metrics.js",
+          "sha256": "d2f87401945260bf26ec4de34b173588bd7ad124f2865cce8247ebb9c594532a",
+          "disposition": "shared",
+          "reason": "Period summary delegates to kitProgress, passing absent summary as null."
+        },
+        {
+          "source": "js/components/modal.js",
+          "sha256": "ac7413fb320fa2e785eac65593cc6cad56abf004cd5d8690096f49696d44461d",
+          "disposition": "shared",
+          "reason": "Active task-detail and mini-card use uiProgress. Removed mini-card null-to-zero and duplicate value. renderTaskDetailModalLegacy/renderBKpiRow are explicitly retired code, not current AS-IS evidence."
+        },
+        {
+          "source": "js/components/quarterlyGoalsUpdate.js",
+          "sha256": "fabe26398c17bf2020d72d7e52a736e032bfafdb4c7ac5d1e03481a91ceffd11",
+          "disposition": "not-applicable",
+          "reason": "Editable integer progress fields and input events use field/control semantics; they are not a readonly progressbar."
+        },
+        {
+          "source": "js/components/quickEdit.js",
+          "sha256": "811152270656e7d08bf0dc300ddc7311e96c5caaeb0019cb42cfb2979da6b37e",
+          "disposition": "not-applicable",
+          "reason": "Progress is an editable field key validated as integer0..100."
+        },
+        {
+          "source": "js/components/reports.js",
+          "sha256": "d033b5dee13e121fb0768aa6fdc5601dcb56393be437adb4554c5fea4e162bbd",
+          "disposition": "shared",
+          "reason": "Quarterly fact checks null before uiProgress; other occurrences are domain aggregations and displayed history deltas."
+        },
+        {
+          "source": "js/components/tableUtils.js",
+          "sha256": "e7b4fd0360e34c7812f409aca5fa70d38f578215e9757304528e7c4d1c14b3a4",
+          "disposition": "not-applicable",
+          "reason": "Column widths and sorting-key extraction; no progress renderer."
+        },
+        {
+          "source": "js/components/taskColumns.js",
+          "sha256": "d64195a7bf5c3ba0c9132b78d568c21f7aac8d2cd93856b61ff45f34e9bc843b",
+          "disposition": "not-applicable",
+          "reason": "Column metadata only; actual rendering belongs to taskTable/teamBacklog."
+        },
+        {
+          "source": "js/components/taskTable.js",
+          "sha256": "04078498cff2bdeb1be6b9ae2990db36a3c951c1af4c622a610dc625840b4abc",
+          "disposition": "shared",
+          "reason": "renderProgress passes raw value to uiProgress after removal of value||0. Boundary/unknown cases reproduced in the actual SPA."
+        },
+        {
+          "source": "js/components/teamBacklog.js",
+          "sha256": "b1697ae6457cccd551e4d913de0b8939504a279e7dd57fdf3cddd80ff76fa92c",
+          "disposition": "shared",
+          "reason": "renderProgress passes raw value to kitProgress; shared task-card renderer covers card mode."
+        },
+        {
+          "source": "js/components/workBoard.js",
+          "sha256": "6f03b3205f5d8636cc46f243c6929f0d25abf04717e79bf0a3b5e5dcf9857784",
+          "disposition": "exception",
+          "reason": "Checklist done/total is an exact textual ratio, not task completion percent. Empty checklist has no invented percentage."
+        },
+        {
+          "source": "js/components/workProductivity.js",
+          "sha256": "f3f8d63e174a58101b67ea20c94b9472b9de11fdd53b1149d18c3bae4caab263",
+          "disposition": "exception",
+          "reason": "Native progress max=checklist total and value=completed count; exact done/total semantics and screen-reader label retained."
+        },
+        {
+          "source": "js/components/workTaskDrawer.js",
+          "sha256": "a50c2643e56234009cb6bf19a209d65425714ef7283c85c612f944af522f319b",
+          "disposition": "not-applicable",
+          "reason": "Updates the native checklist progress owned/rendered by workProductivity; not an independent progress implementation."
+        }
+      ],
+      "openQuestions": [
+        "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история."
+      ]
+    },
+    "menu": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/components/agentChat.js",
+        "js/components/kanbanBoard.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "tooltip": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/dashboard.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/modal.js",
+        "js/components/navbar.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/reviewPage.js",
+        "js/components/sidebar.js",
+        "js/components/tableUtils.js",
+        "js/components/taskAttachments.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workProductivity.js",
+        "js/components/workQueue.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/workTasks.js"
+      ]
+    },
+    "popover": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/components/agentChat.js",
+        "js/components/didBacklog.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/modal.js",
+        "js/components/reports.js",
+        "js/components/taskComments.js",
+        "js/uiFeedback.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": []
+    },
+    "navigation": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/backlog-assistant/context-help.js",
+        "js/backlog-assistant/state.js",
+        "js/backlogTaskLoader.js",
+        "js/components/accountSecurity.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/customerChat.js",
+        "js/components/customerPortal.js",
+        "js/components/dashboard.js",
+        "js/components/didBacklog.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/navbar.js",
+        "js/components/notifications.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/sidebar.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workProjects.js",
+        "js/components/workReports.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/notificationUtils.js",
+        "js/router.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/backlogTaskLoader.js, js/components/projectWorkspace.js"
+      ]
+    },
+    "table": {
+      "status": "pending",
+      "consumers": [
+        "js/backlog-assistant/answer.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/customerReport.js",
+        "js/components/didBacklog.js",
+        "js/components/expressEstimate.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/reports.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workQueue.js",
+        "js/components/workReports.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+      ]
+    },
+    "date": {
+      "status": "pending",
+      "consumers": [
+        "js/components/modal.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quickEdit.js",
+        "js/components/reportingStatuses.js",
+        "js/components/workQueue.js",
+        "js/components/workReports.js",
+        "js/components/workTasks.js",
+        "js/components/workUi.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "chart": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/backlog-assistant/presentation.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/reports.js",
+        "js/components/settings.js",
+        "js/components/sidebar.js",
+        "js/components/taskAttachments.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workProjects.js",
+        "js/components/workQueue.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": []
+    },
+    "avatar": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/components/admin.js",
+        "js/components/modal.js",
+        "js/components/settings.js",
+        "js/components/taskComments.js",
+        "js/components/workQueue.js"
+      ],
+      "codeEvidence": [
+        {
+          "source": "js/app.js",
+          "sha256": "4d99735acad489b0b2b80e8d09d3ad01636d340a134ed3a9418bcdb521d743cc",
+          "disposition": "shared",
+          "reason": "Общий Avatar шапки28px; старые глобальные алгоритмы удалены."
+        },
+        {
+          "source": "js/components/admin.js",
+          "sha256": "04e135af1499498a2f8dabbae44aea72b94583a3c43a7f1318cff1d3af5ab3b7",
+          "disposition": "shared",
+          "reason": "Список32px и живой предпросмотр48px формируются Avatar; inline-фон/форма удалены."
+        },
+        {
+          "source": "js/components/modal.js",
+          "sha256": "ac7413fb320fa2e785eac65593cc6cad56abf004cd5d8690096f49696d44461d",
+          "disposition": "shared",
+          "reason": "Обёртка avatarEl и неизвестный автор истории используют uiAvatar20/24px."
+        },
+        {
+          "source": "js/components/settings.js",
+          "sha256": "6b25a86634d0d1dac659380f22f66560e289e4fafc4124412a11da59829174bc",
+          "disposition": "shared",
+          "reason": "Профиль48px использует Avatar; частная форма/цвет/размер58px удалены из pages.css."
+        },
+        {
+          "source": "js/components/taskComments.js",
+          "sha256": "e3281d5f9ea75a4128ebbce4b781c4be55f87f5563e49c789d672d48eaf3cdd4",
+          "disposition": "shared",
+          "reason": "Автор и комментарии используют Avatar с доступным именем рядом."
+        },
+        {
+          "source": "js/components/workQueue.js",
+          "sha256": "9bdb7ed5fce2bed004c0209eb598fe4d330743848ca9041b7ef9aa65e2e41db8",
+          "disposition": "shared",
+          "reason": "Исполнитель использует Avatar24px и отдельное текстовое имя."
+        },
+        {
+          "source": "js/app.js",
+          "sha256": "b4a96fb3c4dfdd5918179812bbffae108775d1cdee2d7bb037d8f8763e2adeb4",
+          "disposition": "shared",
+          "reason": "Reviewed 2026-10-29: navbar calls shared Avatar with user.name and size 28; the adjacent text labels the menu button. No local initials/colour implementation. Scope: Avatar code only, not live acceptance."
+        },
+        {
+          "source": "js/components/admin.js",
+          "sha256": "418930e56dab974875444e521dcaf3f1159bbc1334a30736fb9ef800bf0f95dc",
+          "disposition": "shared",
+          "reason": "Reviewed 2026-10-29: user list calls shared Avatar size 32; initial and updated previews call size 48 with stable user-avatar-preview ID. No local initials/colour implementation. Scope: Avatar code only, not user mutations or live acceptance."
+        }
+      ],
+      "openQuestions": [
+        "Code-reviewed does not equal acceptance of every role, state and responsive combination.",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "collapse": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/documentReview.js",
+        "js/agent-v2/generation.js",
+        "js/agent-v2/journey.js",
+        "js/agent-v2/workspace.js",
+        "js/app.js",
+        "js/backlog-assistant/answer.js",
+        "js/backlog-assistant/page.js",
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/auditLog.js",
+        "js/components/didBacklog.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/projectWorkspace.js",
+        "js/components/quickFilters.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requestPresentation.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/workBoard.js",
+        "js/components/workProductivity.js",
+        "js/components/workProjects.js",
+        "js/components/workQueue.js",
+        "js/components/workRelations.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+      ]
+    },
+    "download": {
+      "status": "pending",
+      "consumers": [
+        "js/api.js",
+        "js/components/didBacklog.js",
+        "js/components/modal.js",
+        "js/components/reports.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/taskCsv.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": []
+    },
+    "drag": {
+      "status": "pending",
+      "consumers": [
+        "js/components/admin.js",
+        "js/components/adminDictionaries.js",
+        "js/components/analytics.js",
+        "js/components/expressEstimate.js",
+        "js/components/kanbanBoard.js",
+        "js/components/modal.js",
+        "js/components/workBoard.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": []
+    },
+    "busy": {
+      "status": "pending",
+      "consumers": [
+        "js/agent-v2/workspace.js",
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/auditLog.js",
+        "js/components/customerPortal.js",
+        "js/components/customerReferences.js",
+        "js/components/didBacklog.js",
+        "js/components/expressEstimate.js",
+        "js/components/kanbanBoard.js",
+        "js/components/login.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/notifications.js",
+        "js/components/outboxDeadLetters.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/viewState.js",
+        "js/components/workBoard.js",
+        "js/components/workRelations.js",
+        "js/components/workResolution.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": []
+    },
+    "permissions": {
+      "status": "pending",
+      "consumers": [
+        "js/app.js",
+        "js/backlog-assistant/page.js",
+        "js/components/accountSecurity.js",
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/analytics.js",
+        "js/components/directorateReport.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/kanbanBoard.js",
+        "js/components/meetingCapture.js",
+        "js/components/metrics.js",
+        "js/components/modal.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/reportingStatuses.js",
+        "js/components/reports.js",
+        "js/components/requirementReviews.js",
+        "js/components/reviewPage.js",
+        "js/components/settings.js",
+        "js/components/sidebar.js",
+        "js/components/taskTable.js",
+        "js/components/teamBacklog.js",
+        "js/components/viewState.js",
+        "js/components/workProjects.js",
+        "js/components/workRelations.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js",
+        "js/localSpellcheck.js",
+        "js/router.js",
+        "js/taskCardPermissions.js",
+        "js/uiFeedback.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": []
+    },
+    "readOnlyField": {
+      "status": "pending",
+      "consumers": [
+        "js/components/admin.js",
+        "js/components/agentChat.js",
+        "js/components/directorateReport.js",
+        "js/components/metrics.js",
+        "js/components/projectWorkspace.js",
+        "js/components/reports.js",
+        "js/components/requestPresentation.js",
+        "js/components/settings.js",
+        "js/components/workTaskDrawer.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Новые компоненты карточек: изолированные проверки описаны в UI_KIT_DETAIL_COMPONENTS_2026-10-29.md; живая приёмка ещё не проведена.",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "sectionCard": {
+      "status": "pending",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/projectWorkspace.js",
+        "js/components/workTaskDrawer.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Новые компоненты карточек: изолированные проверки описаны в UI_KIT_DETAIL_COMPONENTS_2026-10-29.md; живая приёмка ещё не проведена.",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "detailPanel": {
+      "status": "pending",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/workTaskDrawer.js",
+        "js/modalAccessibility.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Новые компоненты карточек: изолированные проверки описаны в UI_KIT_DETAIL_COMPONENTS_2026-10-29.md; живая приёмка ещё не проведена."
+      ]
+    },
+    "dataTable": {
+      "status": "pending",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/projectWorkspace.js",
+        "js/components/workReports.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "DataTable/TableCell: fixture verification is recorded in UI_KIT_TABLES_2026-10-29.md; live role acceptance remains open.",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "tableCell": {
+      "status": "pending",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/projectWorkspace.js",
+        "js/components/workReports.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "DataTable/TableCell: fixture verification is recorded in UI_KIT_TABLES_2026-10-29.md; live role acceptance remains open.",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "entityPicker": {
+      "status": "pending",
+      "consumers": [
+        "js/components/metrics.js",
+        "js/components/workPicker.js",
+        "js/components/workResolution.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "EntityPicker fixture verification: UI_KIT_ENTITY_PICKER_2026-10-29.md; live role acceptance remains open.",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "intervals": {
+      "status": "pending",
+      "consumers": [
+        "js/components/admin.js",
+        "js/components/auditLog.js",
+        "js/components/filterToolbar.js",
+        "js/components/metrics.js",
+        "js/components/reports.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "Intervals fixture verification: UI_KIT_INTERVALS_2026-10-29.md; live role acceptance remains open.",
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+      ]
+    },
+    "stepForm": {
+      "status": "pending",
+      "consumers": [
+        "js/components/meetingCapture.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "New UI family; component/fixture checks are recorded in UI_KIT_PLAN_COMPLETION_2026-10-29.md. Live acceptance remains open."
+      ]
+    },
+    "splitPane": {
+      "status": "pending",
+      "consumers": [
+        "js/components/workTasks.js"
+      ],
+      "codeEvidence": [],
+      "openQuestions": [
+        "New UI family; component/fixture checks are recorded in UI_KIT_PLAN_COMPLETION_2026-10-29.md. Live acceptance remains open."
+      ]
+    }
+  },
+  "evidence": [
+    {
+      "id": "live-pagination-dmb-20261027",
+      "kind": "live",
+      "surface": "backlog",
+      "function": "pagination",
+      "role": "admin",
+      "states": [
+        "first",
+        "middle",
+        "number-jump"
+      ],
+      "theme": "light",
+      "viewport": 1440,
+      "input": "pointer",
+      "result": "pass",
+      "artifact": "../../../docs/dev-testing/UI_KIT_REVIEW_2026-10-27.md"
+    },
+    {
+      "id": "live-pagination-admin-20261027",
+      "kind": "live",
+      "surface": "admin-users",
+      "function": "pagination",
+      "role": "admin",
+      "states": [
+        "first",
+        "last",
+        "number-jump"
+      ],
+      "theme": "light",
+      "viewport": 1440,
+      "input": "pointer",
+      "result": "pass",
+      "artifact": "../../../docs/dev-testing/UI_KIT_REVIEW_2026-10-27.md"
+    },
+    {
+      "id": "repeat-observed-001",
+      "kind": "live",
+      "surface": "/work-projects",
+      "function": "observed-page-state",
+      "role": "ba-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 0,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-002",
+      "kind": "live",
+      "surface": "/work-tasks",
+      "function": "observed-page-state",
+      "role": "ba-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 1,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-003",
+      "kind": "live",
+      "surface": "/reporting-statuses",
+      "function": "observed-page-state",
+      "role": "ba-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 2,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-004",
+      "kind": "live",
+      "surface": "/express-estimate",
+      "function": "observed-page-state",
+      "role": "ba-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 3,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-005",
+      "kind": "live",
+      "surface": "/review",
+      "function": "observed-page-state",
+      "role": "ba-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 4,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-006",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 5,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-007",
+      "kind": "live",
+      "surface": "/team-backlog",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 6,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-008",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 7,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-009",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "tribe-lead",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 8,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-010",
+      "kind": "live",
+      "surface": "/team-backlog",
+      "function": "observed-page-state",
+      "role": "tribe-lead",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 9,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-011",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "tribe-lead",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 10,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-012",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "ba-a-peer",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 11,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-013",
+      "kind": "live",
+      "surface": "/team-backlog",
+      "function": "observed-page-state",
+      "role": "ba-a-peer",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 12,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-014",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "ba-a-peer",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 13,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-015",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "ba-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 14,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-016",
+      "kind": "live",
+      "surface": "/team-backlog",
+      "function": "observed-page-state",
+      "role": "ba-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 15,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-017",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "ba-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 16,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-018",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "ba-no-team",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 17,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-019",
+      "kind": "live",
+      "surface": "/work-tasks",
+      "function": "observed-page-state",
+      "role": "ba-no-team",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 18,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-020",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "ba-no-team",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 19,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-021",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "po-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 20,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-022",
+      "kind": "live",
+      "surface": "/work-tasks",
+      "function": "observed-page-state",
+      "role": "po-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 21,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-023",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "po-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 22,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-024",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "pl-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 23,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-025",
+      "kind": "live",
+      "surface": "/work-tasks",
+      "function": "observed-page-state",
+      "role": "pl-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 24,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-026",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "pl-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 25,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-027",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "cl-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 26,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-028",
+      "kind": "live",
+      "surface": "/work-tasks",
+      "function": "observed-page-state",
+      "role": "cl-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 27,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-029",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "cl-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 28,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-030",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "po-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 29,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-031",
+      "kind": "live",
+      "surface": "/team-backlog",
+      "function": "observed-page-state",
+      "role": "po-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 30,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-032",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "po-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 31,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-033",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "it-pl-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 32,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-034",
+      "kind": "live",
+      "surface": "/team-backlog",
+      "function": "observed-page-state",
+      "role": "it-pl-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 33,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-035",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "it-pl-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 34,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-036",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "it-pl-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 35,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-037",
+      "kind": "live",
+      "surface": "/team-backlog",
+      "function": "observed-page-state",
+      "role": "it-pl-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 36,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-038",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "it-pl-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 37,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-039",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "no-access",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 38,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-040",
+      "kind": "live",
+      "surface": "/team-backlog",
+      "function": "observed-page-state",
+      "role": "no-access",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 39,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-041",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "no-access",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 40,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-042",
+      "kind": "live",
+      "surface": "/customer",
+      "function": "observed-page-state",
+      "role": "customer-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 41,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-043",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "customer-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 42,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-044",
+      "kind": "live",
+      "surface": "/work-tasks",
+      "function": "observed-page-state",
+      "role": "customer-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 43,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-045",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "customer-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 44,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-046",
+      "kind": "live",
+      "surface": "/customer",
+      "function": "observed-page-state",
+      "role": "customer-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 45,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-047",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "customer-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 46,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-048",
+      "kind": "live",
+      "surface": "/work-tasks",
+      "function": "observed-page-state",
+      "role": "customer-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 47,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-049",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "customer-b",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 48,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-050",
+      "kind": "live",
+      "surface": "/customer",
+      "function": "observed-page-state",
+      "role": "customer-unlinked",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 49,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-051",
+      "kind": "live",
+      "surface": "/metrics/71?period_id=58",
+      "function": "observed-page-state",
+      "role": "customer-unlinked",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 50,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-052",
+      "kind": "live",
+      "surface": "/work-tasks",
+      "function": "observed-page-state",
+      "role": "customer-unlinked",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 51,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-053",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "customer-unlinked",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 52,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-054",
+      "kind": "live",
+      "surface": "/dashboard",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 53,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-055",
+      "kind": "live",
+      "surface": "/analytics/tribe",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 54,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-056",
+      "kind": "live",
+      "surface": "/analytics/po-pl",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 55,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-057",
+      "kind": "live",
+      "surface": "/analytics/it",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 56,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-058",
+      "kind": "live",
+      "surface": "/reports",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 57,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-059",
+      "kind": "live",
+      "surface": "/reporting-statuses",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 58,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-060",
+      "kind": "live",
+      "surface": "/quarterly-goals-update",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 59,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-061",
+      "kind": "live",
+      "surface": "/reporting-meetings",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 60,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-062",
+      "kind": "live",
+      "surface": "/audit-log",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 61,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-063",
+      "kind": "live",
+      "surface": "/outbox-dead-letters",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 62,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-064",
+      "kind": "live",
+      "surface": "/settings",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 63,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-065",
+      "kind": "live",
+      "surface": "/account/security",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 64,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-066",
+      "kind": "live",
+      "surface": "/notifications",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 65,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-067",
+      "kind": "live",
+      "surface": "/work-projects",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 66,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-068",
+      "kind": "live",
+      "surface": "/work-tasks",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 67,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-069",
+      "kind": "live",
+      "surface": "/meeting-capture",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 68,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-070",
+      "kind": "live",
+      "surface": "/agent-v2",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 69,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-071",
+      "kind": "live",
+      "surface": "/backlog-assistant",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 70,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-072",
+      "kind": "live",
+      "surface": "/admin",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 71,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-073",
+      "kind": "live",
+      "surface": "admin-tab",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 72,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-074",
+      "kind": "live",
+      "surface": "admin-tab",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 73,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-075",
+      "kind": "live",
+      "surface": "admin-tab",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 74,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-076",
+      "kind": "live",
+      "surface": "admin-tab",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 75,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-077",
+      "kind": "live",
+      "surface": "admin-tab",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 76,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-078",
+      "kind": "live",
+      "surface": "admin-tab",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 77,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-079",
+      "kind": "live",
+      "surface": "admin-tab",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 78,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-080",
+      "kind": "live",
+      "surface": "admin-tab",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 79,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-081",
+      "kind": "live",
+      "surface": "admin-tab",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 80,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-082",
+      "kind": "live",
+      "surface": "/reports",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 81,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-083",
+      "kind": "live",
+      "surface": "report",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 82,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-084",
+      "kind": "live",
+      "surface": "report",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 83,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-085",
+      "kind": "live",
+      "surface": "report",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 84,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-086",
+      "kind": "live",
+      "surface": "report",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 85,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-087",
+      "kind": "live",
+      "surface": "report",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 86,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-088",
+      "kind": "live",
+      "surface": "report",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 87,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-089",
+      "kind": "live",
+      "surface": "report",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 88,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-090",
+      "kind": "live",
+      "surface": "report",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 89,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-091",
+      "kind": "live",
+      "surface": "/customer/create",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 90,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-092",
+      "kind": "live",
+      "surface": "/customer",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 91,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-093",
+      "kind": "live",
+      "surface": "/review",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 92,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-094",
+      "kind": "live",
+      "surface": "/review/11",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 93,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-095",
+      "kind": "live",
+      "surface": "/work-tasks?view=all",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 94,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-096",
+      "kind": "live",
+      "surface": "workTaskDrawer",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 95,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-097",
+      "kind": "live",
+      "surface": "workTaskDrawer",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 96,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-098",
+      "kind": "live",
+      "surface": "workTaskDrawer",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 97,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-099",
+      "kind": "live",
+      "surface": "/kanban",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 98,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-100",
+      "kind": "live",
+      "surface": "/backlog",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 99,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-101",
+      "kind": "live",
+      "surface": "task-detail",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 100,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-102",
+      "kind": "live",
+      "surface": "task-detail",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 101,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-103",
+      "kind": "live",
+      "surface": "task-detail",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 102,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-104",
+      "kind": "live",
+      "surface": "task-detail",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 103,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-105",
+      "kind": "live",
+      "surface": "task-detail",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 104,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-106",
+      "kind": "live",
+      "surface": "task-detail",
+      "function": "observed-page-state",
+      "role": "admin",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 105,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-107",
+      "kind": "live",
+      "surface": "/customer",
+      "function": "observed-page-state",
+      "role": "customer-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 106,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-observed-108",
+      "kind": "live",
+      "surface": "request",
+      "function": "observed-page-state",
+      "role": "customer-a",
+      "states": [
+        "observed"
+      ],
+      "theme": "not-recorded-per-observation",
+      "viewport": "not-recorded-per-observation",
+      "input": "pointer-or-direct-route",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-observations.json",
+      "observationIndex": 107,
+      "notes": "Only the stored observation is evidence; no all-state or all-role acceptance inferred."
+    },
+    {
+      "id": "repeat-final-live-checks",
+      "kind": "live",
+      "surface": "multiple-specific-interactions",
+      "function": "repeat-after-fixes",
+      "role": "ba-a/admin/inactive/po-a/customer-a/customer-b",
+      "states": [
+        "validation",
+        "draft",
+        "forbidden",
+        "empty",
+        "append",
+        "sorting",
+        "loading",
+        "mobile",
+        "session-switch",
+        "cross-customer-access",
+        "new-draft-link"
+      ],
+      "theme": "light",
+      "viewport": "320/390/394/desktop",
+      "input": "pointer/keyboard",
+      "result": "pass-scoped",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-final-checks.json"
+    },
+    {
+      "id": "repeat-route-role-sweep",
+      "kind": "live",
+      "surface": "route-access-matrix",
+      "function": "navigate-and-observe",
+      "role": "ready-QA-profiles-recorded-per-observation",
+      "states": [
+        "ready",
+        "loading",
+        "forbidden",
+        "redirect",
+        "empty"
+      ],
+      "theme": "recorded-per-observation",
+      "viewport": "recorded-per-observation",
+      "input": "direct-route-and-pointer",
+      "result": "observed-not-accepted",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-route-sweep-2026-10-28.json"
+    },
+    {
+      "id": "repeat-unification-20261028",
+      "kind": "live",
+      "surface": "avatar-and-tabs-consumers",
+      "function": "compare-family-implementations",
+      "role": "ba-a-and-admin",
+      "states": [
+        "visible",
+        "fallback",
+        "focus-only",
+        "activated"
+      ],
+      "theme": "light",
+      "viewport": "actual-recorded-in-screenshot",
+      "input": "pointer-and-keyboard",
+      "result": "observed-not-full-acceptance",
+      "artifact": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/unification-live-2026-10-28.json"
+    }
+  ],
+  "acceptance": [],
+  "currentRepeat": {
+    "date": "2026-10-28",
+    "observations": 108,
+    "readyProfiles": [
+      "ba-a",
+      "admin",
+      "tribe-lead",
+      "ba-a-peer",
+      "ba-b",
+      "ba-no-team",
+      "po-a",
+      "pl-a",
+      "cl-a",
+      "po-b",
+      "it-pl-a",
+      "it-pl-b",
+      "no-access",
+      "customer-a",
+      "customer-b",
+      "customer-unlinked"
+    ],
+    "fixedCases": [
+      "R01",
+      "R02",
+      "R03",
+      "R04",
+      "R05",
+      "R06",
+      "R07",
+      "R08",
+      "R09",
+      "R10",
+      "R11",
+      "R12",
+      "R13",
+      "R14",
+      "R15",
+      "R16",
+      "R17",
+      "R18",
+      "R19",
+      "R20",
+      "R21",
+      "R22",
+      "R23",
+      "R24",
+      "R25",
+      "R26",
+      "R27",
+      "R28",
+      "R29",
+      "R30",
+      "R31",
+      "R32",
+      "R33",
+      "R34",
+      "R35",
+      "R36",
+      "R39",
+      "R40",
+      "R41",
+      "R42",
+      "R43"
+    ],
+    "report": "../../../docs/dev-testing/UI_KIT_REVIEW_2026-10-27.md",
+    "lastLiveChecks": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-final-checks.json",
+    "routeSweep": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/live-route-sweep-2026-10-28.json",
+    "focus": "component-unification",
+    "ancillaryFunctionalChanges": [
+      "R37",
+      "R38"
+    ],
+    "unificationEvidence": "../../../docs/dev-testing/evidence/ui-kit-repeat-2026-10-27/unification-live-2026-10-28.json",
+    "unificationFamilies": [
+      "progress",
+      "avatar",
+      "pagination",
+      "tabs",
+      "counter",
+      "upload"
+    ]
+  }
+}

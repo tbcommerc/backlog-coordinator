@@ -317,7 +317,7 @@ def get_quick_estimate(
 
     # Get tasks
     tasks = db.query(Task).filter(
-        Task.is_deleted == False,
+        Task.is_deleted == False, Task.metric_id.is_(None),
         Task.team_id == team_id,
         Task.status_id == status_obj.id
     ).order_by(Task.id.desc()).all()
@@ -546,7 +546,7 @@ def complete_quick_estimate(
         raise HTTPException(status_code=409, detail="Required workflow statuses are not configured")
 
     tasks = db.query(Task).filter(
-        Task.is_deleted == False,
+        Task.is_deleted == False, Task.metric_id.is_(None),
         Task.team_id == current_user.team_id,
         Task.status_id == qe_status.id,
     ).order_by(Task.id).all()
@@ -776,7 +776,7 @@ def get_backlog_tasks(
         return {"items": [], "total": 0}
 
     query = db.query(Task).filter(
-        Task.is_deleted == False,
+        Task.is_deleted == False, Task.metric_id.is_(None),
         Task.team_id == team_id,
         Task.status_id.in_(eligible_status_ids),
     )
@@ -803,7 +803,7 @@ def import_task_to_estimate(
 
     task = db.query(Task).filter(
         Task.id == task_id,
-        Task.is_deleted == False,
+        Task.is_deleted == False, Task.metric_id.is_(None),
         Task.team_id == team_id,
     ).first()
     if not task:

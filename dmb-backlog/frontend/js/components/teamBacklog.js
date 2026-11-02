@@ -1,3 +1,6 @@
+import { loadBacklogTaskPages } from '../backlogTaskLoader.js';
+import { pagination as kitPagination } from '../ui/forms.js';
+import { progress as kitProgress } from '../ui/dataDisplay.js';
 import { badge as uiBadge } from '../ui/primitives.js';
 import { taskStatusTone, taskPriorityTone } from '../taskDisplay.js';
 import { tag as uiTag } from '../ui/dataDisplay.js';
@@ -8,7 +11,7 @@ import { hasWritePermission, renderToolbar, initToolbar, initToolbarControls, ge
 import { renderTaskCard, openTaskModal, openCreateTaskModal, setOnTaskSaved, importTasksFromExcel, showBulkOpsModal } from './modal.js?v=118';
 import { buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
 import { renderQuickEditToolbar, initQuickEdit, enterQuickEdit, requestExitQuickEdit, isQuickEdit, getQuickEditChanges, getQuickEditError, getQuickEditField, isEditableField, renderQuickEditCell } from './quickEdit.js?v=92';
-import { renderQuickFilters, initQuickFilters, syncQuickFilterButtons, updateQuickFilterCounts } from './quickFilters.js?v=89';
+import { renderQuickFilters, initQuickFilterLayout, initQuickFilters, syncQuickFilterButtons, updateQuickFilterCounts } from './quickFilters.js?v=89';
 import { autoSizeColumns, applyColumnWidths, applyColumnSort, toggleSortState, headerCellHtml, registerTableInteractions, persistColumnState, readColumnState, visibleTaskColumns, scrollTableToStart } from './tableUtils.js?v=52';
 import { safeExternalUrl } from '../urlUtils.js';
 import { bindViewStateAction, fitTableViewState, renderViewState } from './viewState.js';
@@ -142,6 +145,7 @@ async function applyTeamDefaultDisplaySettings(app) {
 
 export async function initTeamBacklog(app) {
     teamSelectedTaskIds.clear();
+    initQuickFilterLayout();
     teamCurrentApp = app;
     const user = app.store.get('currentUser');
     if (!user?.team_id) {
@@ -160,6 +164,7 @@ export async function initTeamBacklog(app) {
     loadTeamColumnState();
     renderTeamTableState({ kind: 'loading', title: 'Загружаем задачи команды…' });
     await loadTeamTasks(app);
+  if (!isTeamBacklogRouteActive()) return;
 
   function onFilterChange() {
     teamPaginationPage = 1;
@@ -311,6 +316,7 @@ async function loadTeamTasks(app) {
         renderTeamCurrentView();
     
     } catch (e) {
+    if (e?.name === 'AbortError') return;
         const container = document.getElementById('team-tasks-container');
         if (container) {
             renderTeamTableState({
@@ -334,19 +340,7 @@ async function loadTeamTasks(app) {
 }
 
 async function loadAllTeamTaskPages(app, teamId) {
-    const perPage = 1000;
-    const teamQuery = teamId ? `&team_id=${encodeURIComponent(teamId)}` : '';
-    const first = await app.api.get(`/tasks/?page=1&per_page=${perPage}${teamQuery}`);
-    const pages = Math.max(1, Number(first.pages) || 1);
-    if (pages === 1) return first;
-
-    const requests = [];
-    for (let page = 2; page <= pages; page++) {
-        requests.push(app.api.get(`/tasks/?page=${page}&per_page=${perPage}${teamQuery}`));
-    }
-    const rest = await Promise.all(requests);
-    const items = [first, ...rest].flatMap(part => part.items || []);
-    return { ...first, items, total: Number(first.total) || items.length, page: 1, per_page: items.length, pages: 1 };
+  return loadBacklogTaskPages(app, teamId ? `team_id=${encodeURIComponent(teamId)}` : '', '/team-backlog');
 }
 
 function getTeamFilteredList() {
@@ -378,18 +372,7 @@ function renderTeamPagination(totalPages) {
     const container = document.getElementById('team-pagination');
     if (!container) return;
     if (totalPages <= 1) { container.innerHTML = ''; return; }
-    const pages = [];
-    for (let p = 1; p <= totalPages; p++) {
-        if (p === 1 || p === totalPages || Math.abs(p - teamPaginationPage) <= 1) pages.push(p);
-    }
-    let html = '';
-    let prev = 0;
-    pages.forEach(p => {
-        if (p - prev > 1) html += '<button class="btn btn-sm btn-ghost" disabled style="opacity:.4;min-width:34px;">…</button>';
-        html += `<button class="btn btn-sm ${p === teamPaginationPage ? 'btn-primary' : 'btn-secondary'}" data-page="${p}" style="min-width:34px;">${p}</button>`;
-        prev = p;
-    });
-    container.innerHTML = html;
+    container.innerHTML = kitPagination({page:teamPaginationPage,pages:totalPages,label:'Страницы бэклога команды'});
     container.querySelectorAll('[data-page]').forEach(btn => {
         btn.addEventListener('click', () => {
             teamPaginationPage = parseInt(btn.dataset.page);
@@ -952,19 +935,7 @@ function renderStatus(status) {
   return uiBadge({ label: status, tone: taskStatusTone(status) });
 }
 
-function renderProgress(progress) {
-    const p = progress || 0;
-    let colorClass = '';
-    if (p >= 100) colorClass = 'success';
-    return `
-        <div style="display:flex;align-items:center;gap:8px;min-width:100px;">
-            <div class="progress-bar" style="flex:1;">
-                <div class="progress-fill ${colorClass}" style="width:${p}%"></div>
-            </div>
-            <span style="font-size:var(--text-xs);color:var(--text-secondary);min-width:30px;text-align:right;">${p}%</span>
-        </div>
-    `;
-}
+function renderProgress(value) { return kitProgress({value,showValue:true,tone:Number(value)>=100?'success':'accent'}); }
 
 function teamExportExcel(list) {
   if (!list?.length) return;

@@ -16,9 +16,12 @@ test('create and preserve conflict draft', async ({page}) => {
  await page.getByRole('button',{name:'Создать задачу'}).click();
  await page.locator('#wf-title').fill('Новое поручение');
  await page.getByRole('button',{name:'Создать',exact:true}).click();
+ await expect(page.locator('#work-drawer-title')).toHaveText('WRK-1');
+ await page.getByRole('button',{name:'Закрыть',exact:true}).click();
  await expect(page.locator('dialog')).toHaveCount(0);
  expect(created.title).toBe('Новое поручение'); expect(created.execution_team_id).toBe(10);
  await page.getByRole('button',{name:'WRK-1 · Проверка'}).click();
+ await page.getByRole('button',{name:'Редактировать',exact:true}).click();
  await page.locator('#wf-title').fill('Мой черновик');
  await page.getByRole('button',{name:'Сохранить изменения'}).click();
  await expect(page.getByRole('alert')).toContainText('Черновик сохранён');
@@ -31,8 +34,8 @@ test('create and preserve conflict draft', async ({page}) => {
 });
 test('mobile empty list fits viewport', async ({page}) => {
  await page.setViewportSize({width:390,height:844});
- await page.route('**/api/v1/work-tasks**',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({items:[],total:0,summary:{total:0,done:0,overdue:0,in_acceptance:0}})}));
+ await page.route('**/api/v1/work-tasks**',route=>route.fulfill({json:new URL(route.request().url()).pathname.endsWith('/options')?{can_create:false,teams:[],users:[],projects:[]}:{items:[],total:0,summary:{total:0,done:0,overdue:0,in_acceptance:0}}}));
  await page.goto('/e2e/fixtures/workTasks.html');
- await expect(page.getByText('Задачи не найдены')).toBeVisible();
+ await expect(page.getByText('Вам пока не назначены задачи')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

@@ -45,7 +45,8 @@ test('board uses independent pages and retains shared conditions when changing d
  await expect(page.locator('.work-queue')).toBeVisible();
  await page.getByRole('button',{name:'Доска',exact:true}).click();
  await expect(page.locator('[data-board-column="ready"]')).toContainText('21–24 из 24');
- await page.locator('#work-completed').selectOption('7d');
+ await page.locator('#work-status').selectOption('active_done');
+ await page.locator('#work-done-period').selectOption('7d');
  await expect.poll(()=>page.url()).toContain('status=active_done');
  await expect(page.locator('[data-board-column="done"]')).toContainText('1–20 из 24');
 });
@@ -111,6 +112,43 @@ test('drag and drop invokes same command only after a valid drop; Escape cancels
  await expect(page.locator('.is-drop-active')).toHaveAttribute('data-board-column','in_progress');
  await page.mouse.up();
  await expect.poll(()=>writes.length).toBe(1);expect(writes[0].status).toBe('in_progress');
+});
+
+for(const start of ['.work-board-title','.work-board-context','.work-board-person'])test(`drag starts on card content ${start}`,async({page})=>{
+ await page.setViewportSize({width:1440,height:900});const {writes}=await setup(page);
+ const source=page.locator('[data-board-card="101"]'),handle=source.locator(start);
+ const from=await handle.boundingBox(),to=await page.locator('[data-board-column="in_progress"] header').boundingBox();
+ await page.mouse.move(from.x+Math.min(30,from.width/2),from.y+from.height/2);
+ await page.mouse.down();await page.mouse.move(to.x+30,to.y+22,{steps:12});
+ await expect(page.locator('.is-dragging')).toHaveCount(1);
+ await page.mouse.up();
+ await expect.poll(()=>writes.length).toBe(1);
+ expect(writes[0]).toEqual({version:1,status:'in_progress'});
+ await expect(page.locator('[data-board-column="in_progress"] [data-work-id="101"]')).toBeVisible();
+ await expect(page.locator('dialog')).toHaveCount(0);
+});
+
+test('title click still opens detail without a transition',async({page})=>{
+ const {writes}=await setup(page);
+ await page.locator('[data-board-card="101"] .work-board-title').click();
+ await expect(page.locator('.work-board-detail')).toBeVisible();
+ expect(writes).toHaveLength(0);
+});
+
+test('content drag rejects forbidden drops and asks for a required result',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});const {writes}=await setup(page);
+ const move=async(id,status)=>{
+  const from=await page.locator(`[data-board-card="${id}"] .work-board-title`).boundingBox();
+  const to=await page.locator(`[data-board-column="${status}"] header`).boundingBox();
+  await page.mouse.move(from.x+20,from.y+10);await page.mouse.down();
+  await page.mouse.move(to.x+30,to.y+22,{steps:12});await page.mouse.up();
+ };
+ await move(101,'new');expect(writes).toHaveLength(0);
+ await expect(page.locator('.is-dragging')).toHaveCount(0);
+ await move(201,'in_acceptance');
+ await expect(page.locator('.work-transition-form')).toBeVisible();
+ await expect(page.locator('#wf-result_text')).toBeVisible();
+ expect(writes).toHaveLength(0);
 });
 
 test('conflict retains entered result, background updates do not overwrite it',async({page})=>{

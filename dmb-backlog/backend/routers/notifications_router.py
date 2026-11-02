@@ -64,6 +64,7 @@ def _notification_responses(db: Session, notifications) -> list[NotificationResp
 @router.get("/notifications", response_model=NotificationListResponse)
 def list_notifications(
     category: Optional[str] = None,
+    views: Optional[str] = None,
     unread_only: bool = False,
     importance: Optional[str] = None,
     resolved: Optional[bool] = None,
@@ -77,6 +78,7 @@ def list_notifications(
     items, total = get_notifications(
         db, current_user.id,
         category=category,
+        views=views,
         unread_only=unread_only,
         importance=importance,
         resolved=resolved,

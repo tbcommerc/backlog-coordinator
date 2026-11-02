@@ -186,3 +186,24 @@ test('review blocks transfer when the rendered version is stale', async ({ page 
   await expect(page.getByText('проверьте изменения перед решением')).toBeVisible();
   expect(baCalls()).toBe(0);
 });
+
+test('review append error retains rows, retries the same offset once and focuses new content',async({page})=>{
+ const items=Array.from({length:250},(_,i)=>({...requestItem,id:i+1,title:`Запрос ${i+1}`}));
+ await mockReview(page,{queueItems:items});const offsets=[];let failed=false;
+ await page.route('**/api/v1/agent/requests/review?*',async route=>{const offset=Number(new URL(route.request().url()).searchParams.get('offset'));offsets.push(offset);if(offset===250&&!failed){failed=true;return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Синтетический сбой догрузки'})});}return route.fulfill({contentType:'application/json',body:JSON.stringify(offset===0?items:[{...requestItem,id:251,title:'Новая строка'}])});});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/#/review');await expect(page.locator('.review-request-card')).toHaveCount(250);
+ await page.locator('#load-more-review').evaluate(b=>{b.click();b.click();});await expect(page.locator('#retry-review-list')).toBeVisible();await expect(page.locator('#retry-review-list')).toBeFocused();await expect(page.locator('.review-request-card')).toHaveCount(250);
+ await page.locator('#retry-review-list').click();await expect(page.locator('.review-request-card')).toHaveCount(251);await expect(page.locator('[data-review-id="251"]')).toBeFocused();expect(offsets).toEqual([0,250,250]);expect(errors).toEqual([]);
+});
+
+test('review filtered empty batch retains continuation and finds a match beyond the loaded page',async({page})=>{
+ const items=Array.from({length:250},(_,i)=>({...requestItem,id:i+1,title:`Запрос ${i+1}`}));await mockReview(page,{queueItems:items});
+ await page.route('**/api/v1/agent/requests/review?*',route=>route.fulfill({contentType:'application/json',body:JSON.stringify(Number(new URL(route.request().url()).searchParams.get('offset'))===0?items:[{...requestItem,id:251,title:'Нужное совпадение'}])}));
+ await page.goto('/#/review');await expect(page.locator('.review-request-card')).toHaveCount(250);await page.locator('#review-search').fill('Нужное совпадение');await expect(page.getByText('Ничего не найдено',{exact:true})).toBeVisible();await expect(page.locator('#load-more-review')).toBeVisible();await page.locator('#load-more-review').click();await expect(page.locator('.review-request-card')).toHaveCount(1);await expect(page.locator('[data-review-id="251"]')).toBeFocused();
+});
+
+test('review ignores an old response after leaving and reopening the queue',async({page})=>{
+ await mockReview(page);let releaseOld;let calls=0;
+ await page.route('**/api/v1/agent/requests/review?*',async route=>{calls++;if(calls===1){await new Promise(resolve=>releaseOld=resolve);await route.fulfill({contentType:'application/json',body:JSON.stringify([{...requestItem,title:'Устаревший ответ'}])}).catch(()=>{});return;}return route.fulfill({contentType:'application/json',body:JSON.stringify([{...requestItem,title:'Актуальный ответ'}])});});
+ await page.goto('/#/review');await expect.poll(()=>calls).toBe(1);await page.evaluate(()=>{window.location.hash='#/settings';});await expect(page.getByRole('heading',{name:'Персональные настройки',exact:true})).toBeVisible();await page.evaluate(()=>{window.location.hash='#/review';});await expect(page.locator('.review-request-card')).toContainText('Актуальный ответ');releaseOld();await expect(page.locator('.review-request-card')).toContainText('Актуальный ответ');await expect(page.getByText('Устаревший ответ',{exact:true})).toHaveCount(0);
+});

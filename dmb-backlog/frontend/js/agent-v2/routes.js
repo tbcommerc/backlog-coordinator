@@ -1,7 +1,7 @@
-import { renderAgentV2, initAgentV2 } from './workspace.js?v=13';
+import { renderAgentV2, initAgentV2 } from './workspace.js?v=14';
 
 const unavailable = {
-  render: () => '<main class="agent-v2-page"><div class="agent-v2-error">Экран Assistant V2 не найден.</div></main>',
+  render: () => '<section class="agent-v2-page"><div class="agent-v2-error">Экран Assistant V2 не найден.</div></section>',
 };
 
 export function resolveAgentV2Route(path, app) {

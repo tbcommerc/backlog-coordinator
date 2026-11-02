@@ -1,0 +1,211 @@
+[
+  {
+    "tab": "Команды",
+    "checkedAt": "2026-10-28T08:46:25.686Z",
+    "headings": [
+      "Администрирование"
+    ],
+    "loading": false,
+    "loadingLabels": [],
+    "login": false,
+    "main": true,
+    "overflow": false,
+    "profileLabel": "QA",
+    "theme": "light",
+    "viewport": {
+      "height": 747,
+      "width": 323
+    },
+    "ui": {
+      "chips": 0,
+      "multilineChips": [],
+      "unlabelledControls": []
+    }
+  },
+  {
+    "tab": "Проекты",
+    "checkedAt": "2026-10-28T08:46:26.611Z",
+    "headings": [
+      "Администрирование"
+    ],
+    "loading": false,
+    "loadingLabels": [],
+    "login": false,
+    "main": true,
+    "overflow": false,
+    "profileLabel": "QA",
+    "theme": "light",
+    "viewport": {
+      "height": 747,
+      "width": 323
+    },
+    "ui": {
+      "chips": 0,
+      "multilineChips": [],
+      "unlabelledControls": []
+    }
+  },
+  {
+    "tab": "Бизнес-заказчики",
+    "checkedAt": "2026-10-28T08:46:27.469Z",
+    "headings": [
+      "Администрирование"
+    ],
+    "loading": false,
+    "loadingLabels": [],
+    "login": false,
+    "main": true,
+    "overflow": false,
+    "profileLabel": "QA",
+    "theme": "light",
+    "viewport": {
+      "height": 747,
+      "width": 323
+    },
+    "ui": {
+      "chips": 0,
+      "multilineChips": [],
+      "unlabelledControls": []
+    }
+  },
+  {
+    "tab": "Пользователи",
+    "checkedAt": "2026-10-28T08:46:28.997Z",
+    "headings": [
+      "Администрирование"
+    ],
+    "loading": false,
+    "loadingLabels": [],
+    "login": false,
+    "main": true,
+    "overflow": false,
+    "profileLabel": "QA",
+    "theme": "light",
+    "viewport": {
+      "height": 747,
+      "width": 323
+    },
+    "ui": {
+      "chips": 40,
+      "multilineChips": [],
+      "unlabelledControls": []
+    }
+  },
+  {
+    "tab": "Роли",
+    "checkedAt": "2026-10-28T08:46:30.195Z",
+    "headings": [
+      "Администрирование"
+    ],
+    "loading": false,
+    "loadingLabels": [],
+    "login": false,
+    "main": true,
+    "overflow": false,
+    "profileLabel": "QA",
+    "theme": "light",
+    "viewport": {
+      "height": 747,
+      "width": 323
+    },
+    "ui": {
+      "chips": 7,
+      "multilineChips": [],
+      "unlabelledControls": []
+    }
+  },
+  {
+    "tab": "Таймлайн",
+    "checkedAt": "2026-10-28T08:46:30.882Z",
+    "headings": [
+      "Администрирование",
+      "События таймлайна"
+    ],
+    "loading": false,
+    "loadingLabels": [],
+    "login": false,
+    "main": true,
+    "overflow": false,
+    "profileLabel": "QA",
+    "theme": "light",
+    "viewport": {
+      "height": 747,
+      "width": 323
+    },
+    "ui": {
+      "chips": 0,
+      "multilineChips": [],
+      "unlabelledControls": []
+    }
+  },
+  {
+    "tab": "Справочники",
+    "checkedAt": "2026-10-28T08:46:31.818Z",
+    "headings": [
+      "Администрирование"
+    ],
+    "loading": false,
+    "loadingLabels": [],
+    "login": false,
+    "main": true,
+    "overflow": false,
+    "profileLabel": "QA",
+    "theme": "light",
+    "viewport": {
+      "height": 747,
+      "width": 323
+    },
+    "ui": {
+      "chips": 0,
+      "multilineChips": [],
+      "unlabelledControls": []
+    }
+  },
+  {
+    "tab": "Отображение",
+    "checkedAt": "2026-10-28T08:46:34.109Z",
+    "headings": [
+      "Администрирование",
+      "Колонки бэклогов"
+    ],
+    "loading": false,
+    "loadingLabels": [],
+    "login": false,
+    "main": true,
+    "overflow": false,
+    "profileLabel": "QA",
+    "theme": "light",
+    "viewport": {
+      "height": 747,
+      "width": 323
+    },
+    "ui": {
+      "chips": 0,
+      "multilineChips": [],
+      "unlabelledControls": []
+    }
+  },
+  {
+    "tab": "Журнал действий",
+    "checkedAt": "2026-10-28T08:46:36.217Z",
+    "headings": [
+      "Администрирование"
+    ],
+    "loading": false,
+    "loadingLabels": [],
+    "login": false,
+    "main": true,
+    "overflow": false,
+    "profileLabel": "QA",
+    "theme": "light",
+    "viewport": {
+      "height": 747,
+      "width": 323
+    },
+    "ui": {
+      "chips": 50,
+      "multilineChips": [],
+      "unlabelledControls": []
+    }
+  }
+]

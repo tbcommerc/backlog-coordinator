@@ -1,19 +1,22 @@
+import { pageHeader } from './ui/primitives.js';
+import { renderViewState } from './components/viewState.js';
+import { escapeHtml } from './htmlUtils.js';
 import { renderSecurity, initSecurity } from './components/accountSecurity.js';
 import { renderDashboard, initDashboard } from './components/dashboard.js?v=20';
 import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=132';
 import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=134';
 import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js?v=41';
 import { renderKanban, initKanban } from './components/kanbanBoard.js?v=14';
-import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=44';
+import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=45';
 import { renderAnalytics, initAnalytics } from './components/analytics.js?v=24';
 import { renderNotifications, initNotifications } from './components/notifications.js?v=23';
 import { renderSettings, initSettings } from './components/settings.js?v=7';
 import { renderAdmin, initAdmin } from './components/admin.js?v=15';
-import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage, renderCustomerTaskPage, initCustomerTaskPage } from './components/customerPortal.js?v=8';
-import { renderAgentChat, initAgentChat } from './components/agentChat.js?v=94';
+import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage, renderCustomerTaskPage, initCustomerTaskPage } from './components/customerPortal.js?v=12';
+import { renderAgentChat, initAgentChat } from './components/agentChat.js?v=96';
 import { renderAuditLog, initAuditLog } from './components/auditLog.js?v=6';
 import { renderOutboxDeadLetters, initOutboxDeadLetters } from './components/outboxDeadLetters.js?v=7';
-import { renderReviewPage, initReviewPage, renderReviewDetailPage, initReviewDetailPage } from './components/reviewPage.js?v=7';
+import { renderReviewPage, initReviewPage, renderReviewDetailPage, initReviewDetailPage } from './components/reviewPage.js?v=11';
 import { renderReportingStatuses, initReportingStatuses } from './components/reportingStatuses.js?v=21';
 import { renderQuarterlyGoalsUpdate, initQuarterlyGoalsUpdate } from './components/quarterlyGoalsUpdate.js?v=11';
 
@@ -38,7 +41,7 @@ export function shouldClearFailedTaskRoute(error) {
 }
 
 export function createTaskOpenHandler(app, options = {}) {
-    const loadTaskModal = options.loadTaskModal || (() => import('./components/modal.js?v=118'));
+    const loadTaskModal = options.loadTaskModal || (() => import('./components/modal.js?v=120'));
     const getTaskOverlay = options.getTaskOverlay || (() => document.getElementById('task-detail-overlay'));
     const dispatchTaskTabChange = options.dispatchTaskTabChange || ((taskId, tab) => {
         document.dispatchEvent(new CustomEvent('task-tab-change', { detail: { taskId, tab } }));
@@ -77,6 +80,10 @@ export function createTaskOpenHandler(app, options = {}) {
         request.promise = (async () => {
             try {
                 const task = await app.api.get(`/tasks/${taskId}`);
+                if (task.metric_id) {
+                    location.hash = '/metrics/' + task.metric_id;
+                    return null;
+                }
                 if (pendingRequest !== request) return null;
                 if (parsePositiveTaskId(task?.id) !== taskId) {
                     const invalidResponse = new Error('Task response does not match the requested task');
@@ -144,7 +151,14 @@ export class Router {
     }
 
     init() {
-        window.addEventListener('hashchange', () => this.handleRoute());
+        // A new authenticated shell has no rendered page, even at the same URL.
+        this.lastHash = null;
+        this.renderedPath = null;
+        this.cancelPendingTaskOpen();
+        if (!this.hashChangeHandler) {
+            this.hashChangeHandler = () => this.handleRoute();
+            window.addEventListener('hashchange', this.hashChangeHandler);
+        }
         this.handleRoute();
     }
 
@@ -327,6 +341,18 @@ export class Router {
         const [path, query = ''] = hash.split('?');
         const from = this.lastHash;
 
+        if (this.onBeforeNavigate && from !== null && hash !== from) {
+            const ok = await this.onBeforeNavigate(path, from);
+            if (generation !== this.navigationGeneration) return;
+            if (!ok) {
+                if (from !== hash && from !== null) {
+                    history.replaceState(null, '', '#' + from);
+                }
+                return;
+            }
+        }
+
+
         const user = this.app?.store?.get('currentUser');
         const isAssistantV2Route = path === '/assistant-v2' || path.startsWith('/assistant-v2/');
         if (isAssistantV2Route) {
@@ -360,25 +386,28 @@ export class Router {
         if ((requiresAdmin && adminAccess === 'none') || (requiresFullAdmin && adminAccess !== 'full')) {
             const container = document.getElementById('page-content');
             if (container) {
-                container.innerHTML = `<div class="state-page state-forbidden"><h1>Недостаточно прав</h1><p>Раздел доступен пользователям с административным доступом.</p><a class="btn btn-primary" href="#/dashboard">Вернуться на главную</a></div>`;
+                container.innerHTML = pageHeader({title:'Недостаточно прав'}) + renderViewState({kind:'forbidden',title:'Раздел недоступен',message:'Раздел доступен пользователям с административным доступом.',actionLabel:'Вернуться на главную',actionAttrs:{'data-route-home':true}});
+                container.querySelector('[data-route-home]')?.addEventListener('click',()=>this.navigate('/dashboard'));
+                window.lucide?.createIcons();
+            }
+            this.lastHash = hash;
+            this.renderedPath = path;
+            this.onBeforeNavigate = null;
+            this.syncAssistantFocusMode(path);
+            const breadcrumb = document.getElementById('breadcrumb-nav');
+            if (breadcrumb) {
+                breadcrumb.hidden = false;
+                breadcrumb.innerHTML = '<a href="#/dashboard" class="breadcrumb-parent">Главная</a><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Недостаточно прав</span>';
             }
             this.updateSidebarActive(path);
             return;
         }
 
-        if (this.onBeforeNavigate && from !== null && hash !== from) {
-            const ok = await this.onBeforeNavigate(path, from);
-            if (!ok) {
-                if (from !== hash && from !== null) {
-                    history.replaceState(null, '', '#' + from);
-                }
-                return;
-            }
-        }
         this.lastHash = hash;
         this.syncAssistantFocusMode(path);
         const fromPath = from?.split('?')[0];
-        const queryDrivenWorkPage = path === '/work-reports' || /^\/work-tasks(?:\/\d+)?$/.test(path);
+        const projectChanged = path === '/work-projects' && ['project','scope','major','mp','section','year','bucket','bq','bstate','bp','quarter','result','rp','cq','cp'].some(key => new URLSearchParams(query).get(key) !== new URLSearchParams(from?.split('?')[1] || '').get(key));
+        const queryDrivenWorkPage = /^\/metrics(?:\/\d+)?$/.test(path) || projectChanged || path === '/work-reports' || /^\/work-tasks(?:\/\d+)?$/.test(path);
         if (from !== null && path === fromPath && this.renderedPath === path && path !== '/meeting-capture' && !queryDrivenWorkPage) {
             this.openDeepLinkedTask(path, query);
             this.updateSidebarActive(path);
@@ -428,19 +457,23 @@ export class Router {
             location.replace('#/work-tasks?'+next);
             return;
           }
-          const module = await import('./components/workReports.js?v=7');
+          const module = await import('./components/workReports.js?v=8');
           if (generation !== this.navigationGeneration) return;
           dynamicHandler = { render: module.renderWorkReports, init: module.initWorkReports };
+        } else if (/^\/metrics(?:\/\d+)?$/.test(path)) {
+          const module = await import('./components/metrics.js?v=1');
+          if (generation !== this.navigationGeneration) return;
+          dynamicHandler = { render: module.renderMetrics, init: module.initMetrics };
         } else if (path === '/work-projects') {
-          const module = await import('./components/workProjects.js?v=13');
+          const module = await import('./components/workProjects.js?v=27');
           if (generation !== this.navigationGeneration) return;
           dynamicHandler = { render: module.renderWorkProjects, init: module.initWorkProjects };
         } else if (/^\/work-tasks(?:\/\d+)?$/.test(path)) {
-          const module = await import('./components/workTasks.js?v=26');
+          const module = await import('./components/workTasks.js?v=31');
           if (generation !== this.navigationGeneration) return;
           dynamicHandler = { render: module.renderWorkTasks, init: module.initWorkTasks };
         } else if (path === '/meeting-capture') {
-          const module = await import('./components/meetingCapture.js?v=6');
+          const module = await import('./components/meetingCapture.js?v=8');
           if (generation !== this.navigationGeneration) return;
           dynamicHandler = { render: module.renderMeetingCapture, init: module.initMeetingCapture };
         }
@@ -462,11 +495,12 @@ export class Router {
                 // Update breadcrumb
                 const bc = document.getElementById('breadcrumb-nav');
                 if (bc) {
-                    bc.hidden = Boolean(container.querySelector('h1'));
+                    bc.hidden = false;
                     const names = {
                         '/dashboard': 'Главная',
                         '/work-tasks': 'Рабочие задачи',
-                        '/work-projects': 'Структура работ проекта',
+                        '/work-projects': 'Проекты',
+                        '/metrics': 'Метрики',
                         '/work-reports': 'Снимок задач встречи',
                         '/meeting-capture': 'Поручения из встреч',
                         '/backlog-assistant': 'Помощник по бэклогу',
@@ -484,39 +518,37 @@ export class Router {
                         '/analytics/it': 'Аналитика для ИТ',
                         '/notifications': 'Мои уведомления',
                         '/settings': 'Настройки',
+                        '/account/security': 'Безопасность аккаунта',
                         '/admin': 'Администрирование',
                         '/audit-log': 'Аудит действий',
                         '/outbox-dead-letters': 'Ошибки доставки событий',
                         '/customer': 'Мои запросы',
                         '/customer/create': 'ИИ-ассистент',
                         '/agent-v2': 'ИИ-ассистент V2',
-                        '/review': 'Ревью запросов',
+                        '/review': 'Запросы заказчиков',
                     };
-                    const pageName = names[path] || (/^\/work-tasks\/\d+$/.test(path) ? 'Рабочая задача' : '') || (requestMatch ? 'Запрос' : '') || (customerTaskMatch ? 'Задача по запросу' : '') || (reviewMatch ? 'Ревью запроса' : path);
-                    // For multi-segment paths like /analytics/tribe, only show the final name
+                    const pageName = names[path] || (/^\/metrics\/\d+$/.test(path) ? 'Карточка метрики' : '') || (/^\/work-tasks\/\d+$/.test(path) ? 'Рабочая задача' : '') || (requestMatch ? 'Запрос' : '') || (customerTaskMatch ? 'Задача по запросу' : '') || (reviewMatch ? 'Запрос заказчика' : path);
+                    const links = [];
+                    if (path !== '/dashboard') links.push('<a href="#/dashboard" class="breadcrumb-parent">Главная</a>');
                     const segments = path.split('/').filter(Boolean);
-                    if (segments.length <= 1 || !names[path]) {
-                        bc.innerHTML = `
-                            <span class="breadcrumb-current">${pageName}</span>`;
-                    } else {
-                        // Build intermediate links only for named parent paths
-                        let path = '';
-                        const links = [];
-                        for (let i = 0; i < segments.length; i++) {
-                            path += '/' + segments[i];
-                            if (i === segments.length - 1) {
-                                links.push(`<span class="breadcrumb-current">${pageName}</span>`);
-                            } else if (names[path]) {
-                                links.push(`<a href="#${path}" class="breadcrumb-parent">${names[path]}</a>`);
-                            }
-                        }
-                        bc.innerHTML = `
-                            ${links.join('<span class="breadcrumb-separator">/</span>')}`;
+                    let parentPath = '';
+                    for (let i = 0; i < segments.length - 1; i++) {
+                        parentPath += '/' + segments[i];
+                        if (names[parentPath]) links.push(`<a href="#${parentPath}" class="breadcrumb-parent">${names[parentPath]}</a>`);
                     }
+                    const projectId = parsePositiveTaskId(new URLSearchParams(query).get('project'));
+                    if (path === '/work-projects' && projectId) {
+                        links.push('<a href="#/work-projects" class="breadcrumb-parent">Проекты</a>');
+                    }
+                    const currentName = path === '/work-projects' && projectId ? 'Обзор проекта' : pageName;
+                    links.push(`<span class="breadcrumb-current" aria-current="page">${escapeHtml(currentName)}</span>`);
+                    bc.innerHTML = links.join('<span class="breadcrumb-separator" aria-hidden="true">/</span>');
                 }
 
                 // Call page-specific init
-                if (resolved.init) {
+                if (resolved.init && /^\/metrics(?:\/\d+)?$/.test(path)) {
+                    resolved.init(this.app);
+                } else if (resolved.init) {
                     setTimeout(() => {
                         if (generation === this.navigationGeneration && (window.location.hash.slice(1) || this.defaultRoute) === hash) resolved.init(this.app);
                     }, 50);

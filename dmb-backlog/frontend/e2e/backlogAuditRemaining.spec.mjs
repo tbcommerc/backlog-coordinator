@@ -16,7 +16,7 @@ for (const scope of ['backlog', 'team']) {
   test(`UX-01 ${scope}: mobile pagination reveals the first row below the toolbar`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page, scope, { count: 205 });
-    await page.locator(`${pagination} [data-page="2"]`).click();
+    await page.locator(`${pagination} [data-page="2"][aria-label="Страница 2"]`).click();
     await expect.poll(() => page.locator(`${table} tbody tr[data-task-id]`).first().evaluate(row => {
       const r = row.getBoundingClientRect();
       const toolbar = document.querySelector('.sticky-toolbar').getBoundingClientRect();
@@ -24,10 +24,10 @@ for (const scope of ['backlog', 'team']) {
     })).toBe(true);
   });
 
-  test(`UX-01/02/13/15 ${scope}: page starts at the first row, ID stays visible, keyboard sort/resize`, async ({ page }) => {
+  test(`UX-01/02/13/15 ${scope}: page starts at the first row and ID stays visible`, async ({ page }) => {
     await open(page, scope, { count: 205 });
-    await page.locator(`${pagination} [data-page="2"]`).click();
-    await expect(page.locator(`${pagination} [data-page="2"]`)).toHaveClass(/btn-primary/);
+    await page.locator(`${pagination} [data-page="2"][aria-label="Страница 2"]`).click();
+    await expect(page.locator(`${pagination} [data-page="2"][aria-label="Страница 2"]`)).toHaveClass(/btn-primary/);
     await expect.poll(async () => page.locator(`${table} tbody tr[data-task-id]`).first().evaluate(row => {
       const y = row.getBoundingClientRect().top;
       return y >= 0 && y < innerHeight - 100;
@@ -55,7 +55,13 @@ for (const scope of ['backlog', 'team']) {
     await expect(page.locator(`${table} tbody input[type="checkbox"]`).first()).toBeChecked();
     await page.locator('.main-content').evaluate(el => { el.scrollTop = 0; });
     await expect(page.locator(`${table} tbody .task-id-cell > span`).first()).toHaveAttribute('title', id);
-    await page.locator(`${container} .table-container`).evaluate(el => { el.scrollLeft = 0; });
+  });
+
+  test(`UX-13/15 ${scope}: keyboard sort and resize`,async({page})=>{
+    await open(page,scope,{count:205});
+    await page.locator(`#${scope}-btn-column-settings`).click();
+    await page.locator(`#${scope}-col-select-all`).click();
+    await page.getByRole('button',{name:'Закрыть настройки колонок'}).click();
     const sort = page.locator(`${table} th[data-sort="title"] .table-sort-button`);
     await sort.focus();
     await sort.press('Enter');
@@ -107,6 +113,7 @@ for (const scope of ['backlog', 'team']) {
   });
 
   test(`C02/UX-19 ${scope}: pending quick edits guard view switching and expose field errors`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 }); // Progress is hidden by the DMB default layout at <=1280px.
     const { writes } = await open(page, scope);
     await page.locator(`#${scope}-inline-edit`).click();
     const progress = page.locator(`${table} input[data-field="progress"]`).first();

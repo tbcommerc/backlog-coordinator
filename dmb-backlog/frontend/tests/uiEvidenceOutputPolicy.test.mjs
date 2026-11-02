@@ -1,0 +1,4 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync,readdirSync} from 'node:fs';
+test('E2E may read historical fixture inputs but must not target documentation for generated evidence',()=>{const dir=new URL('../e2e/',import.meta.url);for(const file of readdirSync(dir).filter(f=>f.endsWith('.spec.mjs'))){const lines=readFileSync(new URL(file,dir),'utf8').split(/\r?\n/);for(const [i,line] of lines.entries())if(/\.\.\/docs\//.test(line))assert.match(line,/(?:inputDir|setInputFiles|readFile)/,`${file}:${i+1}: generated evidence belongs in testInfo.outputPath, not historical docs`);}});
+
+test('work consumer fixtures load the production stylesheet order before mounting',()=>{for(const file of ['workListVisual.js','workTasks.html'])assert.match(readFileSync(new URL('../e2e/fixtures/'+file,import.meta.url),'utf8'),/import '\.\/spaStyles\.js';/);});

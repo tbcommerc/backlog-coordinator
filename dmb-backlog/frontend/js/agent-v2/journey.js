@@ -51,7 +51,7 @@ export function renderNextStep(state, view, humanReview) {
     title = 'Исправьте документ по замечаниям'; text = humanReview.comment || 'Откройте замечания согласующего и внесите правки в документ.';
     label = 'Проверить исправления';
   }
-  return `<section class="agent-v2-next-step" aria-label="Следующий шаг"><div><h2>${esc(title)}</h2><p>${esc(text)}</p>${readiness.missing.length ? `<p>Нужно уточнить: ${readiness.missing.map(field => esc(DOCUMENT_LABELS[field])).join(', ')}.</p>` : ''}</div><button type="button" class="btn btn-primary" data-journey-action="${action}">${label}</button></section>`;
+  return `<section class="agent-v2-next-step" aria-label="Следующий шаг"><div><h2>${esc(title)}</h2><p>${esc(text)}</p>${readiness.missing.length ? `<p>Нужно уточнить: ${readiness.missing.map(field => esc(DOCUMENT_LABELS[field])).join(', ')}.</p>` : ''}</div><button type="button" class="btn ui-btn ${['create_draft', 'review'].includes(action) ? 'btn-ai-primary' : 'btn-primary'}" data-journey-action="${action}">${['create_draft', 'review'].includes(action) ? '<i data-lucide="sparkles" aria-hidden="true"></i>' : ''}${label}</button></section>`;
 }
 
 export function renderApprovalPreview(state) {

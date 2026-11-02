@@ -1,3 +1,9 @@
+import { showFormErrors, clearFormErrors } from '../ui/validation.js';
+import { dateRange, validateRanges } from '../ui/intervals.js';
+import { descriptionList } from '../ui/detailComponents.js';
+import { filterValues, filterMatches } from '../ui/filterValues.js';
+import { avatar } from '../ui/dataDisplay.js';
+import { pagination as kitPagination } from '../ui/forms.js';
 import { auditActionLabel, auditEntityLabel, credentialLabel } from '../adminLabels.js';
 import { confirmCredentials, manageAccount } from './accountSecurity.js';
 import { showFieldError, clearFieldError } from '../uiFeedback.js';
@@ -8,7 +14,6 @@ import { renderViewState } from './viewState.js';
 import { TASK_COLUMNS, buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
 import { renderDictionariesTab } from './adminDictionaries.js?v=3';
 import { acquireDictionaryLock, DICTIONARY_CONFIG, getDictionaryChanges, persistDictionaryItems, releaseDictionaryLock, renderDictionaryForm, renderDictionaryRow, renderDictionaryRowAction, renderCompetencyRateControl } from './adminDictionaries.js?v=3';
-import { executeAdminReport, getReportFields, getReportPayload, parseReportJson, renderFilterRow, renderReportForm, REPORT_GROUP_OPTIONS, scriptManagedReportKeys, updateReportFilterRow, validateReportForm } from './adminReports.js?v=9';
 
 function escapeHtml(str) {
     const div = document.createElement('div');
@@ -29,14 +34,8 @@ function getAdminAccess(app) {
 }
 
 let adminTab = 'teams';
-let adminData = { teams: [], users: [], roles: [], priorities: [], statuses: [], taskTypes: [], businessCustomers: [], channels: [], deadlines: [], departments: [], teamTypes: [], projectStatuses: [], competencyCosts: [], projects: [], reports: [], teamTypeRefs: [], tags: [], auditLog: { items: [], total: 0, pages: 0 }, auditFilters: { actions: [], entity_types: [], users: [] } };
+let adminData = { teams: [], users: [], roles: [], priorities: [], statuses: [], taskTypes: [], businessCustomers: [], channels: [], deadlines: [], departments: [], teamTypes: [], projectStatuses: [], competencyCosts: [], projects: [], teamTypeRefs: [], tags: [], auditLog: { items: [], total: 0, pages: 0 }, auditFilters: { actions: [], entity_types: [], users: [] } };
 let adminModal = { show: false, mode: 'add', type: 'team', data: {} };
-const adminDeleteRequestIds = new Map();
-
-function newAdminRequestId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-}
 let currentAdminUser = null;
 let userSort = { field: 'role', dir: 'asc' };
 let userSearch = '';
@@ -123,8 +122,7 @@ function renderAdminListTools(tab, total, filterOptions = [], filterLabel = 'В�
 
 function renderAdminPagination(tab, page, pages, total, pageSize = ADMIN_PAGE_SIZE) {
   if (pages <= 1) return '';
-  const action = (label, nextPage, disabled) => uiButton({ label, variant: 'ghost', size: 'small', className: 'admin-list-page', attrs: { 'data-list-tab': tab, 'data-page': nextPage, disabled } });
-  return `<nav class="admin-pagination" aria-label="Страницы списка"><span>${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} из ${total}</span><div>${action('Назад', page - 1, page === 1)}<span>${page} / ${pages}</span>${action('Далее', page + 1, page === pages)}</div></nav>`;
+  return kitPagination({page,pages,total,pageSize,label:'Страницы списка',buttonClassName:'admin-list-page',previousAttrs:{'data-list-tab':tab},nextAttrs:{'data-list-tab':tab},pageAttrs:{'data-list-tab':tab}});
 }
 
 function adminFormSnapshot() {
@@ -224,7 +222,7 @@ function validateRolePolicy(payload) {
 function prepareAdminFormValidation(type) {
   const requiredIds = {
     team: ['modal-name'], user: ['modal-name', 'modal-email'], role: ['modal-name'],
-    project: ['project-code', 'project-name'], bc: ['bc-name'], report: ['report-name'],
+    project: ['project-code', 'project-name'], bc: ['bc-name'],
   }[type] || [];
   requiredIds.forEach(id => { const field = document.getElementById(id); if (field) { field.required = true; field.setAttribute('aria-required', 'true'); } });
 }
@@ -340,8 +338,7 @@ function getColorGradient(color) {
 window.updateUserAvatarPreview = function(name) {
   const el = document.getElementById('user-avatar-preview');
   if (!el) return;
-  el.textContent = window.getUserInitials(name);
-  el.style.background = window.getAvatarColor(name);
+  el.outerHTML = avatar({ name, size: 48, id: 'user-avatar-preview' });
   const emailInput = document.getElementById('modal-email');
   if (emailInput) {
     // Логин назначается администратором явно.
@@ -488,15 +485,15 @@ export function renderAdmin(app) {
   if (adminAccess === 'none') {
     return '<div class="state-page state-forbidden"><h1>Недостаточно прав</h1><p>Раздел администрирования недоступен для вашей роли.</p></div>';
   }
-  const tabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'home', 'dictionaries', 'display', 'reports', ...(adminAccess === 'full' ? ['audit'] : [])];
+  const tabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'home', 'dictionaries', 'display', ...(adminAccess === 'full' ? ['audit'] : [])];
   adminTab = tabs.includes(requestedTab) ? requestedTab : (tabs.includes(adminTab) ? adminTab : 'teams');
-  const tabLabels = { teams: 'Команды', projects: 'Проекты', businessCustomers: 'Бизнес-заказчики', users: 'Пользователи', roles: 'Роли', home: 'Таймлайн', dictionaries: 'Справочники', display: 'Отображение', reports: 'Отчёты', audit: 'Журнал действий' };
-  const tabIcons = { teams: 'users', projects: 'briefcase', businessCustomers: 'user-cog', users: 'user', roles: 'shield', home: 'calendar', dictionaries: 'book-open', display: 'eye', reports: 'bar-chart-3', audit: 'scroll-text' };
+  const tabLabels = { teams: 'Команды', projects: 'Проекты', businessCustomers: 'Бизнес-заказчики', users: 'Пользователи', roles: 'Роли', home: 'Таймлайн', dictionaries: 'Справочники', display: 'Отображение', audit: 'Журнал действий' };
+  const tabIcons = { teams: 'users', projects: 'briefcase', businessCustomers: 'user-cog', users: 'user', roles: 'shield', home: 'calendar', dictionaries: 'book-open', display: 'eye', audit: 'scroll-text' };
 
   const tabButton = t => uiTab({ id: 'admin-tab-' + t, label: tabLabels[t], panelId: 'admin-content', selected: adminTab === t, iconMarkup: uiIcon(tabIcons[t]), className: 'admin-tab' + (adminTab === t ? ' active' : ''), attrs: { 'data-tab': t } });
   const groups = [
     ['Структура', ['teams', 'projects', 'businessCustomers']], ['Доступы', ['users', 'roles']],
-    ['Настройки', ['dictionaries', 'display']], ['Инструменты', ['home', 'reports']], ['Контроль', ['audit']],
+    ['Настройки', ['dictionaries', 'display']], ['Инструменты', ['home']], ['Контроль', ['audit']],
   ];
   const tabBar = `<div class="admin-tab-groups">${groups.map(([label, groupTabs]) => {
     const visible = groupTabs.filter(tab => tabs.includes(tab));
@@ -663,7 +660,6 @@ function renderTabContent(tab, app) {
     case 'dictionaries': return renderDictionariesTab(adminData, dictLocks, escapeHtml);
     case 'display': return renderDisplayTab(app);
     case 'notifications': return renderNotificationTemplatesTab(app);
-    case 'reports': return renderReportsTab(app);
     case 'audit': return renderAuditTab();
     default: return '<p class="text-muted">Выберите вкладку</p>';
   }
@@ -732,7 +728,7 @@ function renderProjectsTab(app) {
   const filtered = (adminData.projects || []).filter(project => {
     const status = statuses.find(item => item.id === project.status_id);
     const responsible = users.find(item => item.id === project.responsible_pl);
-    return (!state.filter || String(project.status_id || '') === state.filter) && (!query || [project.code, project.name, project.description, status?.name, responsible?.name].some(value => String(value || '').toLocaleLowerCase().includes(query)));
+    return filterMatches(state.filter,project.status_id) && (!query || [project.code, project.name, project.description, status?.name, responsible?.name].some(value => String(value || '').toLocaleLowerCase().includes(query)));
   });
   const pageData = paginateAdminItems(filtered, 'projects');
   const projects = pageData.items;
@@ -798,7 +794,7 @@ function renderBusinessCustomersTab(app) {
   departments.forEach(d => { deptMap[d.id] = d.name; });
   const state = adminListState.businessCustomers;
   const query = state.search.trim().toLocaleLowerCase();
-  const filtered = (adminData.businessCustomers || []).filter(customer => (!state.filter || String(customer.department_id || '') === state.filter) && (!query || [customer.name, customer.department_name, deptMap[customer.department_id]].some(value => String(value || '').toLocaleLowerCase().includes(query))));
+  const filtered = (adminData.businessCustomers || []).filter(customer => filterMatches(state.filter,customer.department_id) && (!query || [customer.name, customer.department_name, deptMap[customer.department_id]].some(value => String(value || '').toLocaleLowerCase().includes(query))));
   const pageData = paginateAdminItems(filtered, 'businessCustomers');
   const customers = pageData.items;
 
@@ -879,16 +875,16 @@ function renderUsersTab(app) {
 
   // Column filters
   if (userFilters.role) {
-    const rid = parseInt(userFilters.role);
-    users = users.filter(u => u.role_id === rid);
+    const rid = filterValues(userFilters.role).map(Number);
+    users = users.filter(u => rid.includes(u.role_id));
   }
   if (userFilters.team) {
-    const tid = parseInt(userFilters.team);
-    users = users.filter(u => u.team_id === tid);
+    const tid = filterValues(userFilters.team).map(Number);
+    users = users.filter(u => tid.includes(u.team_id));
   }
   if (userFilters.status) {
-    const active = userFilters.status === '1';
-    users = users.filter(u => u.is_active === active);
+    const active = filterValues(userFilters.status).map(value=>value==='1');
+    users = users.filter(u => active.includes(u.is_active));
   }
 
   // Sort
@@ -929,28 +925,24 @@ function renderUsersTab(app) {
   };
 
   const th = (field, label) => `
-    <th style="text-align:left;white-space:nowrap" class="admin-sort-th" data-sort="${field}">
-      ${label}${sortArrow(field)}
-    </th>`;
+    <th scope="col" aria-sort="${userSort.field===field?(userSort.dir==='asc'?'ascending':'descending'):'none'}">${uiButton({label:label+sortArrow(field),variant:'ghost',size:'small',className:'admin-sort-th',attrs:{'data-sort':field,'aria-label':'Сортировать: '+label}})}</th>`;
 
   const selStyle = 'font-size:12px;padding:6px 8px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-primary);color:var(--text-primary)';
   const fOpt = (val, label) => `<option value="${val}"${userFilters[label] === val ? ' selected' : ''}>`;
-  const roleFilter = `<select class="input admin-user-filter" id="admin-filter-role" style="${selStyle}"><option value="">Все роли</option>${roles.map(r => `<option value="${r.id}"${userFilters.role == r.id ? ' selected' : ''}>${getRoleDisplayName(r)}</option>`).join('')}</select>`;
-  const teamFilter = `<select class="input admin-user-filter" id="admin-filter-team" style="${selStyle}"><option value="">Все команды</option>${teams.map(t => `<option value="${t.id}"${userFilters.team == t.id ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}</select>`;
-  const statusFilter = `<select class="input admin-user-filter" id="admin-filter-status" style="${selStyle}"><option value="">Все статусы</option><option value="1"${userFilters.status == '1' ? ' selected' : ''}>Активен</option><option value="0"${userFilters.status == '0' ? ' selected' : ''}>Неактивен</option></select>`;
+  const roleFilter = `<select class="input admin-user-filter" id="admin-filter-role" data-ui-filter-value="${escapeHtml(userFilters.role)}" style="${selStyle}"><option value="">Все роли</option>${roles.map(r => `<option value="${r.id}"${userFilters.role == r.id ? ' selected' : ''}>${getRoleDisplayName(r)}</option>`).join('')}</select>`;
+  const teamFilter = `<select class="input admin-user-filter" id="admin-filter-team" data-ui-filter-value="${escapeHtml(userFilters.team)}" style="${selStyle}"><option value="">Все команды</option>${teams.map(t => `<option value="${t.id}"${userFilters.team == t.id ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}</select>`;
+  const statusFilter = `<select class="input admin-user-filter" id="admin-filter-status" data-ui-filter-value="${escapeHtml(userFilters.status)}" style="${selStyle}"><option value="">Все статусы</option><option value="1"${userFilters.status == '1' ? ' selected' : ''}>Активен</option><option value="0"${userFilters.status == '0' ? ' selected' : ''}>Неактивен</option></select>`;
 
   const rows = users.length
     ? users.map(u => {
         const team = teams.find(t => t.id === u.team_id || t.name === u.team);
         const role = roles.find(r => r.id === u.role_id);
         const teamName = team ? team.name : (u.team || '—');
-        const initials = window.getUserInitials(u.name);
-        const avatarColor = window.getAvatarColor(u.name);
         return `
           <tr>
             <td >
               <div style="display:flex;align-items:center;gap:10px">
-                <div style="width:32px;height:32px;border-radius:50%;background:${safeHexColor(avatarColor)};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:white;flex-shrink:0">${escapeHtml(initials)}</div>
+                ${avatar({ name: u.name, size: 32 })}
                 <div>
                   <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${escapeHtml(u.name)}</div>
                 </div>
@@ -961,7 +953,7 @@ function renderUsersTab(app) {
             </td>
             <td style="color:var(--text-secondary)">${escapeHtml(teamName)}</td>
             <td style="color:var(--text-muted)">${escapeHtml(u.login || '—')}</td>
-            <td ><div>${getStatusBadge(u.is_active)} <span title="${escapeHtmlAttribute(u.credential_state || 'invited')}">${credentialLabel(u.credential_state)}</span></div></td>
+            <td ><div class="admin-user-status">${getStatusBadge(u.is_active)} <span title="${escapeHtmlAttribute(u.credential_state || 'invited')}">${credentialLabel(u.credential_state)}</span></div></td>
             <td style="text-align:right">
               <div style="display:flex;gap:4px;justify-content:flex-end">
                 <button class="btn btn-ghost btn-sm" data-account-security="${u.id}">Доступ</button>
@@ -979,11 +971,11 @@ function renderUsersTab(app) {
     : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">По заданным условиям ничего не найдено</td></tr>';
 
   return `
-    <div class="admin-action-row admin-list-action-row">
+    <div class="admin-action-row admin-list-action-row admin-users-toolbar">
       <div class="admin-list-tools">
         <div class="admin-list-search">
           <i data-lucide="search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted)"></i>
-          <input class="input ui-control ui-search-clearable" id="admin-user-search" value="${escapeHtmlAttribute(userSearch)}" placeholder="Поиск пользователей">
+          <input class="input ui-control ui-search-clearable" id="admin-user-search" aria-label="Поиск пользователей" value="${escapeHtmlAttribute(userSearch)}" placeholder="Поиск пользователей">
           ${userSearch ? `<button class="square-icon btn btn-secondary btn-sm ui-btn" id="admin-user-search-clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%)" title="Очистить"><i data-lucide="x" style=""></i></button>` : ''}
         </div>
         <details class="admin-user-filter-group"${window.innerWidth > 900 && window.innerHeight > 600 ? ' open' : ''}><summary>Фильтры${Object.values(userFilters).some(Boolean) ? ' · применены' : ''}</summary><div class="admin-user-filter-fields">${roleFilter}${teamFilter}${statusFilter}</div></details>
@@ -993,7 +985,7 @@ function renderUsersTab(app) {
       <button class="btn btn-primary btn-sm admin-add-btn" data-type="user"><i data-lucide="plus"></i> Новый пользователь</button>
     </div>
     <div class="admin-section" style="padding:0;overflow-x:auto">
-      <table class="ui-table ui-table-admin" style="width:100%;border-collapse:collapse;font-size:13px">
+      <table class="ui-table ui-table-admin admin-users-table" style="width:100%;border-collapse:collapse;font-size:13px">
         <thead>
           <tr style="background:var(--bg-tertiary)">
             ${th('name', 'Пользователь')}
@@ -1063,17 +1055,17 @@ function getRolePreview(role) {
 function renderRolePreview(role) {
   const preview = getRolePreview(role); const visible = preview.items.filter(item => item.visible).length;
   const menu = preview.items.map(item => `<div class="role-preview-item ${item.visible ? 'is-visible' : 'is-hidden'}"><i data-lucide="${item.visible ? 'eye' : 'eye-off'}"></i><div><strong>${escapeHtml(item.label)}</strong><span>${item.visible ? 'Виден' : 'Скрыт'} · ${escapeHtml(item.detail)}</span></div></div>`).join('');
-  const warnings = preview.warnings.length ? `<section class="role-preview-warnings"><h4><i data-lucide="triangle-alert"></i> Нужно проверить</h4><ul>${preview.warnings.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section>` : `<div class="role-preview-ok"><i data-lucide="circle-check"></i> Явных противоречий не найдено</div>`;
+  const warnings = preview.warnings.length ? `<section class="role-preview-warnings"><h4><i data-lucide="alert-triangle"></i> Нужно проверить</h4><ul>${preview.warnings.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section>` : `<div class="role-preview-ok"><i data-lucide="check-circle"></i> Явных противоречий не найдено</div>`;
   const scopeLabel = value => ({ none: 'Запрещено', team: 'Своя команда', all: 'Все команды' }[value]);
   const actions = `<h4 class="role-preview-heading">Операции с задачами</h4><div class="role-preview-actions">${[['Редактирование', scopeLabel(preview.taskScopes.edit)], ['Комментирование', scopeLabel(preview.taskScopes.comment)], ['Удаление', scopeLabel(preview.taskScopes.delete)], ['PIP-решения', preview.taskScopes.pip ? 'Разрешены' : 'Запрещены']].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join('')}</div>`;
-  return `<div class="role-preview"><div class="role-preview-banner" role="status"><i data-lucide="scan-eye"></i><div><strong>Симуляция интерфейса</strong><span>Права не применены, токены и текущая сессия не изменены.</span></div></div><div class="role-preview-summary"><div><span>Видимо разделов</span><strong>${visible} из ${preview.items.length}</strong></div><div><span>Разделы с записью</span><strong>${preview.writable}</strong></div><div><span>Админ-доступ</span>${renderAccessBadge(role.admin_access || 'none')}</div></div>${actions}<h4 class="role-preview-heading">Как будет выглядеть меню</h4><div class="role-preview-menu">${menu}</div>${warnings}<p class="role-preview-note">Доступ к отдельным записям может также зависеть от команды и назначений пользователя.</p></div>`;
+  return `<div class="role-preview"><div class="role-preview-banner" role="status"><i data-lucide="scan"></i><div><strong>Симуляция интерфейса</strong><span>Права не применены, токены и текущая сессия не изменены.</span></div></div><div class="role-preview-summary"><div><span>Видимо разделов</span><strong>${visible} из ${preview.items.length}</strong></div><div><span>Разделы с записью</span><strong>${preview.writable}</strong></div><div><span>Админ-доступ</span>${renderAccessBadge(role.admin_access || 'none')}</div></div>${actions}<h4 class="role-preview-heading">Как будет выглядеть меню</h4><div class="role-preview-menu">${menu}</div>${warnings}<p class="role-preview-note">Доступ к отдельным записям может также зависеть от команды и назначений пользователя.</p></div>`;
 }
 
 function renderRolesTab(app) {
   const state = adminListState.roles;
   const query = state.search.trim().toLocaleLowerCase();
   const allRoles = adminData.roles || [];
-  const filtered = allRoles.filter(role => (!state.filter || String(role.status || 'active') === state.filter) && (!query || [role.name, role.description].some(value => String(value || '').toLocaleLowerCase().includes(query))));
+  const filtered = allRoles.filter(role => filterMatches(state.filter,role.status || 'active') && (!query || [role.name, role.description].some(value => String(value || '').toLocaleLowerCase().includes(query))));
   const pageData = paginateAdminItems(filtered, 'roles');
   const roles = pageData.items;
   const permLevels = [
@@ -1092,7 +1084,7 @@ function renderRolesTab(app) {
           `<td style="text-align:center">${renderAccessBadge(r[p.key] || 'none')}</td>`
         ).join('');
         const powerful = permLevels.filter(permission => getAccessTone(r[permission.key] || 'none') === 'full').length;
-        const warning = (r.admin_access === 'full' || powerful >= 3) ? '<span class="role-risk-warning" title="Роль имеет расширенные или административные права"><i data-lucide="triangle-alert"></i> Повышенные права</span>' : '';
+        const warning = (r.admin_access === 'full' || powerful >= 3) ? '<span class="role-risk-warning" title="Роль имеет расширенные или административные права"><i data-lucide="alert-triangle"></i> Повышенные права</span>' : '';
         const compared = [roleCompare.left, roleCompare.right].includes(String(r.id));
         return `
           <tr class="${compared ? 'role-is-compared' : ''}" data-role-id="${r.id}">
@@ -1108,7 +1100,7 @@ function renderRolesTab(app) {
                 <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="role" data-id="${r.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
                   <i data-lucide="pen-line" width="18" height="18" style="color:var(--text-muted)"></i>
                 </button>
-                <button class="square-icon btn btn-secondary btn-sm ui-btn role-preview-btn" data-id="${r.id}" title="Предпросмотреть интерфейс роли" aria-label="Предпросмотреть интерфейс роли"><i data-lucide="scan-eye"></i></button>
+                <button class="square-icon btn btn-secondary btn-sm ui-btn role-preview-btn" data-id="${r.id}" title="Предпросмотреть интерфейс роли" aria-label="Предпросмотреть интерфейс роли"><i data-lucide="scan"></i></button>
                 <button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="role" data-id="${r.id}" style="border:none;background:transparent;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
                   <i data-lucide="trash-2" width="18" height="18" style="color:#f43f5e"></i>
                 </button>
@@ -1172,11 +1164,10 @@ function renderAuditTab() {
   const option = (value, label, selected) => `<option value="${escapeHtmlAttribute(value)}"${String(value) === String(selected) ? ' selected' : ''}>${escapeHtml(label)}</option>`;
   return `<div class="admin-action-row audit-toolbar">
     <input class="input" id="audit-search" value="${escapeHtmlAttribute(auditState.search)}" placeholder="Поиск по журналу" aria-label="Поиск по журналу">
-    <select class="input audit-filter" id="audit-action"><option value="">Все действия</option>${filters.actions.map(value => option(value, auditActionLabel(value), auditState.action)).join('')}</select>
-    <select class="input audit-filter" id="audit-entity"><option value="">Все сущности</option>${filters.entity_types.map(value => option(value, auditEntityLabel(value), auditState.entityType)).join('')}</select>
-    <select class="input audit-filter" id="audit-user"><option value="">Все пользователи</option>${filters.users.map(user => option(user.id, user.name, auditState.userId)).join('')}</select>
-    <input class="input audit-filter" type="date" id="audit-date-from" value="${escapeHtmlAttribute(auditState.dateFrom)}" aria-label="Дата с">
-    <input class="input audit-filter" type="date" id="audit-date-to" value="${escapeHtmlAttribute(auditState.dateTo)}" aria-label="Дата по">
+    <select class="input audit-filter" id="audit-action" data-ui-filter-value="${escapeHtml(auditState.action)}"><option value="">Все действия</option>${filters.actions.map(value => option(value, auditActionLabel(value), auditState.action)).join('')}</select>
+    <select class="input audit-filter" id="audit-entity" data-ui-filter-value="${escapeHtml(auditState.entityType)}"><option value="">Все сущности</option>${filters.entity_types.map(value => option(value, auditEntityLabel(value), auditState.entityType)).join('')}</select>
+    <select class="input audit-filter" id="audit-user" data-ui-filter-value="${escapeHtml(auditState.userId)}"><option value="">Все пользователи</option>${filters.users.map(user => option(user.id, user.name, auditState.userId)).join('')}</select>
+    ${dateRange({ id: 'admin-audit-period', label: 'Период', from: { id: 'audit-date-from', label: 'Дата с', value: auditState.dateFrom, controlClassName: 'audit-filter' }, to: { id: 'audit-date-to', label: 'Дата по', value: auditState.dateTo, controlClassName: 'audit-filter' } })}
     <span class="admin-list-count" role="status" aria-live="polite">Записей: ${data.total || 0}</span>
     <button type="button" class="btn btn-ghost btn-sm" id="audit-reset">Сбросить</button>
   </div><div class="admin-section audit-table-wrap"><table class="ui-table ui-table-admin admin-table audit-table"><thead><tr><th>Дата</th><th>Пользователь</th><th>Результат</th><th>Действие</th><th>Сущность</th><th>Изменённые поля</th><th>Trace / Request ID</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -1247,14 +1238,14 @@ function renderTimelineEventList(app) {
           <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.description ? escapeHtml(ev.description.substring(0, 60)) : '—'}</td>
           <td>${escapeHtml(recurLabel)}</td>
           <td>${escapeHtml(visLabel)}</td>
-          <td>
+          <td><div class="tl-admin-actions">
             ${getAdminAccess(app) !== 'read' ? uiButton({ label: 'Редактировать событие', icon: 'pencil', iconOnly: true, variant: 'ghost', size: 'small', attrs: { 'data-action': 'edit-tl-event', 'data-id': ev.id } }) + uiButton({ label: 'Удалить событие', icon: 'trash-2', iconOnly: true, variant: 'ghost', size: 'small', attrs: { 'data-action': 'delete-tl-event', 'data-id': ev.id } }) : '—'}
-          </td>
+          </div></td>
         </tr>`;
       }).join('');
 
   return `
-    <table class="ui-table ui-table-admin admin-table">
+    <table class="ui-table ui-table-admin admin-table" data-ui-density="compact">
       <thead>
         <tr>
           <th>Дата</th>
@@ -1432,152 +1423,6 @@ async function deleteTimelineEvent(id, app) {
     }
   });
 }
-
-let adminReportView = null;
-
-
-function renderReportsTab(app) {
-  const dbReports = adminData.reports || [];
-  const standardOrder = ['directorate', 'did-operational', 'projects', 'reg-directors', 'pip', 'did-backlog', 'progress'];
-  const standardReports = dbReports
-    .filter(r => r.type === 'standard')
-    .sort((a, b) => {
-      const ia = a.key ? standardOrder.indexOf(a.key) : -1;
-      const ib = b.key ? standardOrder.indexOf(b.key) : -1;
-      return ia - ib;
-    });
-
-  if (adminReportView) {
-    return renderReportView(app);
-  }
-
-  const standardCards = standardReports.map(r => `
-    <div class="card rounded-xl admin-hover-card" style="padding:20px;min-height:150px;display:flex;flex-direction:column;background:linear-gradient(135deg,#64748b,#475569);color:white;cursor:pointer;transition:box-shadow 0.15s" data-admin-report-id="${r.id}">
-      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;min-height:40px">
-        <i data-lucide="file-text" style="width:18px;height:18px;opacity:0.8;flex-shrink:0;margin-top:1px"></i>
-        <h4 style="margin:0;font-size:13px;font-weight:600;color:white;line-height:1.3;flex:1;min-height:34px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escapeHtml(r.name)}</h4>
-        <div style="display:flex;gap:2px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="report" data-id="${r.id}" style="border:none;background:rgba(255,255,255,0.15);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Настроить отчёт">
-            <i data-lucide="settings" style="color:white"></i>
-          </button>
-        </div>
-      </div>
-      <div style="font-size:12px;opacity:0.8;flex:1">${escapeHtml(r.description || '')}</div>
-      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-        <span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;flex-shrink:0">Стандартный</span>
-        ${r.key ? `<span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px">${escapeHtml(r.key)}</span>` : ''}
-      </div>
-    </div>
-  `).join('');
-
-  const customCards = dbReports.filter(r => r.type === 'custom').map(r => {
-    const filters = parseReportJson(r.filters);
-    const fields = parseReportJson(r.fields);
-    const filterCount = filters ? (Array.isArray(filters) ? filters.length : 0) : 0;
-    const fieldCount = fields ? (Array.isArray(fields) ? fields.length : 0) : 0;
-    const isOwn = r.created_by === (currentAdminUser ? currentAdminUser.id : null);
-
-    return `
-      <div class="card rounded-xl admin-hover-card" style="padding:20px;min-height:140px;display:flex;flex-direction:column;border:1px solid var(--border-color);cursor:pointer;transition:box-shadow 0.15s"
-        data-admin-report-id="${r.id}">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <i data-lucide="bar-chart-3" style="width:18px;height:18px;color:var(--accent)"></i>
-            <h4 style="margin:0;font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(r.name)}</h4>
-            ${r.is_public ? '<span style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);background:var(--success-light);color:var(--success);padding:2px 6px;border-radius:4px">Публичный</span>' : ''}
-          </div>
-          <div style="display:flex;gap:2px">
-            <button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="report" data-id="${r.id}" style="border:none;background:transparent;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Редактировать">
-              <i data-lucide="pen-line" style="color:var(--text-muted)"></i>
-            </button>
-            <button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="report" data-id="${r.id}" style="border:none;background:transparent;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="Удалить">
-              <i data-lucide="trash-2" style="color:#f43f5e"></i>
-            </button>
-          </div>
-        </div>
-        <div style="font-size:12px;color:var(--text-muted);flex:1">${escapeHtml(r.description || 'Без описания')}</div>
-        <div style="display:flex;gap:12px;margin-top:10px;font-size:var(--type-meta-size);line-height:var(--type-meta-line);color:var(--text-muted)">
-          <span>Фильтров: ${filterCount}</span>
-          <span>Полей: ${fieldCount || 'все'}</span>
-          ${r.group_by ? `<span>Группировка: ${escapeHtml(r.group_by)}</span>` : ''}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <div class="admin-action-row" style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-      <button class="btn btn-primary btn-sm admin-add-btn" data-type="report">
-        <i data-lucide="plus"></i> Добавить новый отчёт
-      </button>
-    </div>
-    ${standardReports.length ? `
-    <div style="margin-bottom:24px">
-      <h4 style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Стандартные отчёты</h4>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">${standardCards}</div>
-    </div>` : ''}
-    <div>
-      <h4 style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Пользовательские отчёты</h4>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-        ${customCards || '<div style="text-align:center;padding:40px;color:var(--text-muted);grid-column:1/-1">Нет пользовательских отчётов. Нажмите «Добавить новый отчёт».</div>'}
-      </div>
-    </div>
-  `;
-}
-
-function renderReportView(app) {
-  const report = adminReportView;
-  const filters = parseReportJson(report.filters);
-  const fields = parseReportJson(report.fields);
-  const groupOptions = REPORT_GROUP_OPTIONS.map(g =>
-    `<option value="${g.value}"${report.group_by === g.value ? ' selected' : ''}>${g.label}</option>`
-  ).join('');
-  const opLabels = { equals: '=', not_equals: '≠', contains: 'содержит', in: 'в списке', gt: '>', lt: '<' };
-
-  return `
-    <div class="admin-action-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <button class="btn btn-ghost btn-sm" id="report-view-back" title="Назад к списку">
-          <i data-lucide="arrow-left"></i> Назад
-        </button>
-        <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--text-primary)">${escapeHtml(report.name)}</h3>
-      </div>
-      <div style="display:flex;gap:8px">
-        ${scriptManagedReportKeys.includes(report.key) ? `
-          <span class="badge badge-info" style="padding:6px 10px;line-height:1.4;white-space:normal;text-align:left">Управляется сценарием страницы «Статусы для встреч»</span>
-        ` : `
-          <button class="btn btn-primary btn-sm" id="report-execute-btn" data-report-id="${report.id}">
-            <i data-lucide="play"></i> Выполнить
-          </button>
-        `}
-      </div>
-    </div>
-    ${report.description ? `<p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0">${escapeHtml(report.description)}</p>` : ''}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-      <div class="card" style="padding:12px">
-        <div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Фильтры</div>
-        <div style="font-size:13px;color:var(--text-primary)">${filters && filters.length ? filters.map(f => `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;background:var(--bg-tertiary);font-size:12px">${escapeHtml(f.field)} ${escapeHtml(opLabels[f.operator] || f.operator || '=')} ${escapeHtml(Array.isArray(f.value) ? f.value.join(', ') : f.value)}</span>`).join('') : '<span style="color:var(--text-muted)">Нет фильтров</span>'}</div>
-      </div>
-      <div class="card" style="padding:12px">
-        <div style="font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Группировка / Сортировка</div>
-        <div style="font-size:13px;color:var(--text-primary)">
-          Группировка: ${escapeHtml(report.group_by || 'нет')} · Сортировка: ${escapeHtml(report.sort_by || 'нет')} ${report.sort_by ? `(${escapeHtml(report.sort_order || 'asc')})` : ''}
-        </div>
-      </div>
-    </div>
-    <div id="report-execution-result">
-      <div style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px">
-        <i data-lucide="play-circle" style="width:32px;height:32px;color:var(--text-muted);margin-bottom:8px;display:block;margin-left:auto;margin-right:auto"></i>
-        Нажмите «Выполнить» для запуска отчёта
-      </div>
-    </div>
-  `;
-}
-
-
-
-
-
 
 // ==================== NOTIFICATIONS TAB ====================
 
@@ -1859,9 +1704,9 @@ function renderModal() {
   const { mode, type, data } = adminModal;
   const isEdit = mode === 'edit';
   const isView = mode === 'view';
-  const titleLabels = { team: 'команды', user: 'пользователя', role: 'роли', dict: 'справочника', project: 'проекта', bc: 'бизнес-заказчика', report: 'отчёта', notificationTemplate: 'шаблона уведомления' };
+  const titleLabels = { team: 'команды', user: 'пользователя', role: 'роли', dict: 'справочника', project: 'проекта', bc: 'бизнес-заказчика', notificationTemplate: 'шаблона уведомления' };
   const title = type === 'rolePreview' ? `Интерфейс роли «${getRoleDisplayName(data)}»` : type === 'dict' ? `Редактирование ${titleLabels[type]}` : isEdit ? `Редактирование ${titleLabels[type] || type}` : (isView ? `Просмотр ${titleLabels[type] || type}` : `Добавление ${titleLabels[type] || type}`);
-  const sizeClass = (type === 'rolePreview' || type === 'role' || type === 'report' || type === 'dict') ? 'app-modal--large' : (type === 'project' || type === 'bc' || type === 'notificationTemplate') ? 'app-modal--medium' : '';
+  const sizeClass = (type === 'rolePreview' || type === 'role' || type === 'dict') ? 'app-modal--large' : (type === 'project' || type === 'bc' || type === 'notificationTemplate') ? 'app-modal--medium' : '';
 
   let body = '';
   if (type === 'team') body = renderTeamForm(data);
@@ -1871,7 +1716,6 @@ function renderModal() {
   else if (type === 'dict') body = renderDictionaryForm(data, { escapeHtml, safeHexColor, autoDictColor, dictCodePlaceholder });
   else if (type === 'project') body = renderProjectForm(data);
   else if (type === 'bc') body = renderBusinessCustomerForm(data);
-  else if (type === 'report') body = renderReportForm(data, adminModal.mode, escapeHtml);
   else if (type === 'notificationTemplate') body = renderNotificationTemplateForm(data);
 
   return `
@@ -1939,11 +1783,9 @@ function renderTeamForm(data) {
 }
 
 function renderUserForm(data) {
-  const initials = window.getUserInitials(data.name);
-  const avatarColor = window.getAvatarColor(data.name);
   return `
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
-      <div id="user-avatar-preview" style="width:56px;height:56px;border-radius:50%;background:${safeHexColor(avatarColor)};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:white;flex-shrink:0">${escapeHtml(initials)}</div>
+      ${avatar({ name: data.name, size: 48, id: 'user-avatar-preview' })}
       <div style="font-size:13px;color:var(--text-muted)">Аватар формируется автоматически по первой букве имени и фамилии</div>
     </div>
     ${adminField('modal-name', 'ФИО', data.name, { required: true, attrs: { placeholder: 'ФИО пользователя' } })}
@@ -2004,7 +1846,7 @@ function updateRoleFormSummary() {
   const sectionFields = ['backlog_dmb', 'backlog_team', 'reports', 'analytics', 'customer', 'settings', 'admin'];
   const visible = sectionFields.filter(key => getFieldVal(`modal-${key}_access`) !== 'none').length;
   const risks = validateRolePolicy(policy);
-  summary.innerHTML = `<div class="role-live-head"><span>Сводка роли</span><strong>${risks.length ? `Ошибок: ${risks.length}` : 'Готово к сохранению'}</strong></div><dl><div><dt>Доступно разделов</dt><dd>${visible} из ${sectionFields.length}</dd></div><div><dt>Редактирование</dt><dd>${scopes[policy.task_edit_scope]}</dd></div><div><dt>Комментарии</dt><dd>${scopes[policy.task_comment_scope]}</dd></div><div><dt>Удаление</dt><dd>${scopes[policy.task_delete_scope]}</dd></div><div><dt>PIP-решения</dt><dd>${policy.pip_decision_access ? 'разрешены' : 'запрещены'}</dd></div></dl>${risks.length ? `<div class="role-live-risk"><i data-lucide="triangle-alert"></i><span>${escapeHtml(risks[0].message)}${risks.length > 1 ? ` И ещё ${risks.length - 1}.` : ''}</span></div>` : '<div class="role-live-ok"><i data-lucide="circle-check"></i> Конфликтов нет</div>'}`;
+  summary.innerHTML = `<div class="role-live-head"><span>Сводка роли</span><strong>${risks.length ? `Ошибок: ${risks.length}` : 'Готово к сохранению'}</strong></div>${descriptionList({ items: [{ label: 'Доступно разделов', value: `${visible} из ${sectionFields.length}` }, { label: 'Редактирование', value: scopes[policy.task_edit_scope] }, { label: 'Комментарии', value: scopes[policy.task_comment_scope] }, { label: 'Удаление', value: scopes[policy.task_delete_scope] }, { label: 'PIP-решения', value: policy.pip_decision_access ? 'разрешены' : 'запрещены' }] })}${risks.length ? `<div class="role-live-risk"><i data-lucide="alert-triangle"></i><span>${escapeHtml(risks[0].message)}${risks.length > 1 ? ` И ещё ${risks.length - 1}.` : ''}</span></div>` : '<div class="role-live-ok"><i data-lucide="check-circle"></i> Конфликтов нет</div>'}`;
   if (window.lucide) lucide.createIcons({ attrs: { 'aria-hidden': 'true' } });
 }
 
@@ -2211,7 +2053,7 @@ window.openDictColorPalette = function(swatch) {
 // ==================== EVENT HANDLERS ====================
 
 async function handleAdminClick(e, app) {
-  const target = e.target.closest('button, .modal-close-x, .admin-dict-card, [data-report], [data-admin-report-id], .color-swatch, .admin-sort-th');
+  const target = e.target.closest('button, .modal-close-x, .admin-dict-card, .color-swatch, .admin-sort-th');
   if (!target) return;
 
   if (target.id === 'dict-search-reset') { const input = document.getElementById('dict-search'); input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); return; }
@@ -2273,29 +2115,6 @@ async function handleAdminClick(e, app) {
     return;
   }
 
-  if (target.matches('[data-report-step], #report-step-prev, #report-step-next')) {
-    const wizard = target.closest('.report-wizard');
-    if (!wizard) return;
-    const current = Number(wizard.dataset.step || 1);
-    const requested = target.dataset.reportStep ? Number(target.dataset.reportStep) : target.id === 'report-step-prev' ? current - 1 : current + 1;
-    setReportWizardStep(wizard, Math.max(1, Math.min(4, requested)));
-    return;
-  }
-
-  if (target.id === 'report-fields-all' || target.id === 'report-fields-clear') {
-    document.querySelectorAll('.report-field-cb').forEach(box => { box.checked = target.id === 'report-fields-all'; });
-    syncReportSelectedFields();
-    return;
-  }
-
-  if (target.matches('.report-field-up, .report-field-down')) {
-    const row = target.closest('.report-selected-field');
-    if (target.classList.contains('report-field-up') && row.previousElementSibling) row.parentElement.insertBefore(row, row.previousElementSibling);
-    if (target.classList.contains('report-field-down') && row.nextElementSibling) row.parentElement.insertBefore(row.nextElementSibling, row);
-    updateReportPreview();
-    return;
-  }
-
   if (target.id === 'admin-retry-btn') {
     adminLoadState[adminTab] = { status: 'loading' };
     const content = document.getElementById('admin-content');
@@ -2316,10 +2135,12 @@ async function handleAdminClick(e, app) {
       userSort.field = field;
       userSort.dir = 'asc';
     }
+    adminListState.users.page = 1;updateAdminUrl('push');
     document.getElementById('admin-content').innerHTML = renderTabContent(adminTab, app);
     pullStickyBars();
     if (window.lucide) lucide.createIcons();
     bindAdminEvents(app);
+    document.querySelector('#admin-content .admin-sort-th[data-sort="'+CSS.escape(field)+'"]')?.focus({preventScroll:true});
     return;
   }
 
@@ -2403,7 +2224,7 @@ async function handleAdminClick(e, app) {
   if (target.classList.contains('admin-edit-btn')) {
     const type = target.dataset.type;
     const id = parseInt(target.dataset.id);
-    const keyMap = { team: 'teams', user: 'users', role: 'roles', project: 'projects', bc: 'businessCustomers', report: 'reports', notificationTemplate: 'notificationTemplates' };
+    const keyMap = { team: 'teams', user: 'users', role: 'roles', project: 'projects', bc: 'businessCustomers', notificationTemplate: 'notificationTemplates' };
     const item = (adminData[keyMap[type]] || []).find(d => d.id === id);
     if (!item) return;
     adminModal = { show: true, mode: 'edit', type, data: { ...item } };
@@ -2448,58 +2269,7 @@ async function handleAdminClick(e, app) {
     return;
   }
 
-  if (target.id === 'report-view-back') {
-    adminReportView = null;
-    const content = document.getElementById('admin-content');
-    if (content) {
-      content.innerHTML = renderTabContent(adminTab, app);
-      pullStickyBars();
-      if (window.lucide) lucide.createIcons();
-      bindAdminEvents(app);
-    }
-    return;
-  }
 
-  if (target.id === 'report-execute-btn' || target.closest('#report-execute-btn')) {
-    const btn = target.closest('#report-execute-btn') || target;
-    const reportId = btn.dataset.reportId;
-    if (reportId) executeAdminReport(parseInt(reportId), app, adminReportView, escapeHtml);
-    return;
-  }
-
-  if (target.id === 'report-add-filter' || target.closest('#report-add-filter')) {
-    const container = document.getElementById('report-filters-container');
-    if (container) {
-      const index = container.querySelectorAll('.report-filter-row').length;
-      container.insertAdjacentHTML('beforeend', renderFilterRow({}, index));
-      if (window.lucide) lucide.createIcons();
-    }
-    return;
-  }
-
-  if (target.classList.contains('report-filter-remove') || target.closest('.report-filter-remove')) {
-    const row = target.closest('.report-filter-row');
-    if (row) row.remove();
-    updateReportPreview(); updateReportValidationNotice();
-    return;
-  }
-
-  const reportCard = target.closest('[data-admin-report-id]');
-  if (reportCard) {
-    const id = parseInt(reportCard.dataset.adminReportId);
-    const report = (adminData.reports || []).find(r => r.id === id);
-    if (report) {
-      adminReportView = report;
-      const content = document.getElementById('admin-content');
-      if (content) {
-        content.innerHTML = renderTabContent(adminTab, app);
-        pullStickyBars();
-        if (window.lucide) lucide.createIcons();
-        bindAdminEvents(app);
-      }
-    }
-    return;
-  }
 }
 
 function updateDictionaryEditorState() {
@@ -2628,13 +2398,14 @@ async function handleAdminTabClick(e, app) {
   const mobileSelect = document.getElementById('admin-tab-mobile-select');
   if (mobileSelect) mobileSelect.value = selectedTab;
   updateAdminUrl('push');
-  adminReportView = null;
   const content = document.getElementById('admin-content');
   if (content) {
+    content.dataset.adminTab=selectedTab;content.setAttribute('aria-labelledby','admin-tab-'+selectedTab);
     if (adminLoadState[adminTab]?.status !== 'success') {
       adminLoadState[adminTab] = { status: 'loading' };
       content.innerHTML = renderTabContent(adminTab, app);
     }
+    pullStickyBars();
     await loadAdminTab(app, selectedTab);
     if (adminTab !== selectedTab || !content.isConnected) return;
     content.innerHTML = renderTabContent(adminTab, app);
@@ -2647,7 +2418,7 @@ async function handleAdminTabClick(e, app) {
 async function applyAdminHistoryState(app) {
   captureDisplayDraft();
   const desired = hydrateAdminUrlState();
-  const allowedTabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'home', 'dictionaries', 'display', 'reports', ...(getAdminAccess(app) === 'full' ? ['audit'] : [])];
+  const allowedTabs = ['teams', 'projects', 'businessCustomers', 'users', 'roles', 'home', 'dictionaries', 'display', ...(getAdminAccess(app) === 'full' ? ['audit'] : [])];
   const nextTab = allowedTabs.includes(desired.tab) ? desired.tab : 'teams';
   if (adminModal.show && adminModal.type === 'dict' && desired.dictKey !== adminModal.data?.dictKey) {
     if (isAdminFormDirty()) {
@@ -2662,6 +2433,9 @@ async function applyAdminHistoryState(app) {
   const mobileSelect = document.getElementById('admin-tab-mobile-select'); if (mobileSelect) mobileSelect.value = adminTab;
   const content = document.getElementById('admin-content');
   if (!content) return;
+  content.dataset.adminTab=nextTab;content.setAttribute('aria-labelledby','admin-tab-'+nextTab);
+  if(adminLoadState[nextTab]?.status!=='success'){adminLoadState[nextTab]={status:'loading'};content.innerHTML=renderTabContent(nextTab,app);}
+  pullStickyBars();
   await loadAdminTab(app, nextTab);
   if (adminTab !== nextTab || !content.isConnected) return;
   content.innerHTML = renderTabContent(adminTab, app); pullStickyBars(); bindAdminEvents(app); if (window.lucide) lucide.createIcons();
@@ -2707,7 +2481,7 @@ function requestCloseAdminModal(app) {
 function saveModalData(app) {
   const { type, mode, data } = adminModal;
   clearAdminFormErrors();
-  if (type !== 'dict' && type !== 'report' && showAdminFormErrors(validateAdminEntityForm(type, data))) return;
+  if (type !== 'dict' && showAdminFormErrors(validateAdminEntityForm(type, data))) return;
   if (type === 'team') {
     if (adminLoadState.teams?.status !== 'success') { toast('Данные команды загружены не полностью. Откройте форму повторно.', 'error'); return; }
     const payload = {
@@ -2764,22 +2538,6 @@ function saveModalData(app) {
   } else if (type === 'bc') {
     const payload = getBusinessCustomerPayload();
     saveEntity('bc', { ...data, ...payload }, app);
-  } else if (type === 'report') {
-    const errors = validateReportForm(adminModal.data);
-    if (errors.length) {
-      const error = errors[0];
-      const wizard = document.querySelector('.report-wizard');
-      if (wizard) setReportWizardStep(wizard, error.step);
-      const box = document.getElementById('report-form-error');
-      if (box) { box.hidden = false; box.textContent = error.message; }
-      const summary = document.getElementById('admin-form-error-summary');
-      if (summary) { summary.hidden = false; summary.innerHTML = `<strong>Исправьте ошибку</strong><p>${escapeHtml(error.message)}</p>`; summary.focus(); }
-      toast(error.message, 'error');
-      return;
-    }
-    const payload = getReportPayload(adminModal.data);
-    if (!payload.name) { toast('Введите название отчёта', 'error'); return; }
-    saveEntity('report', { ...data, ...payload }, app);
   } else if (type === 'notificationTemplate') {
     const payload = getNotificationTemplatePayload();
     if (showAdminFormErrors(validateNotificationTemplate(payload))) return;
@@ -2849,16 +2607,10 @@ async function saveEntity(type, data, app) {
     role: '/admin/roles',
     project: '/admin/projects',
     bc: '/admin/business-customers',
-    report: '/reports/',
     notificationTemplate: '/admin/notification-templates',
   };
   const endpoint = endpointMap[type];
   if (!endpoint) return;
-  if (type === 'report') {
-    adminModal.clientRequestId ||= newAdminRequestId();
-    data = { ...data, client_request_id: adminModal.clientRequestId };
-  }
-
   const saveButton = document.querySelector('#admin-modal-overlay .modal-save-btn');
   if (adminFormSaving || saveButton?.disabled) return;
   setAdminFormSaving(true);
@@ -2897,7 +2649,7 @@ async function saveEntity(type, data, app) {
     if (!e) { setAdminFormSaving(false); return; }
     const status = Number(e.status || e.statusCode || 0);
     const prefix = status === 409 ? 'Данные уже изменены другим пользователем. Обновите список и повторите.' : status === 0 || status >= 500 ? 'Не удалось связаться с сервером. Введённые данные сохранены в форме.' : (e.message || 'Не удалось сохранить данные');
-    const fieldAliases = { name: type === 'notificationTemplate' ? 'notification-template-name' : type === 'bc' ? 'bc-name' : type === 'project' ? 'project-name' : type === 'report' ? 'report-name' : 'modal-name', text: 'notification-template-text', recipients: null, repeat_day: 'notification-template-repeat-day', event_type: 'notification-template-event', email: 'modal-email', code: 'project-code', project_name: 'project-name', customer_access: 'modal-customer_access', admin_access: 'modal-admin_access', review_access: 'modal-review-access', task_edit_scope: 'modal-task-edit-scope', task_comment_scope: 'modal-task-comment-scope', task_delete_scope: 'modal-task-delete-scope', pip_decision_access: 'modal-pip-decision-access' };
+    const fieldAliases = { name: type === 'notificationTemplate' ? 'notification-template-name' : type === 'bc' ? 'bc-name' : type === 'project' ? 'project-name' : 'modal-name', text: 'notification-template-text', recipients: null, repeat_day: 'notification-template-repeat-day', event_type: 'notification-template-event', email: 'modal-email', code: 'project-code', project_name: 'project-name', customer_access: 'modal-customer_access', admin_access: 'modal-admin_access', review_access: 'modal-review-access', task_edit_scope: 'modal-task-edit-scope', task_comment_scope: 'modal-task-comment-scope', task_delete_scope: 'modal-task-delete-scope', pip_decision_access: 'modal-pip-decision-access' };
     const details = Array.isArray(e.detail) ? e.detail : Array.isArray(e.details) ? e.details : [];
     const serverErrors = details.map(detail => ({ field: fieldAliases[String(detail.loc?.at(-1) || detail.field || '')], message: detail.msg || detail.message || prefix })).filter(error => error.field);
     if (serverErrors.length) showAdminFormErrors(serverErrors);
@@ -2912,11 +2664,11 @@ async function saveEntity(type, data, app) {
 
 async function confirmDelete(type, id, app) {
   if (type === 'user') { await manageAccount(app, adminData.users.find(u => u.id === id), () => initAdmin(app)); return; }
-  const typeLabel = { team: 'команда', user: 'пользователь', role: 'роль', project: 'проект', bc: 'бизнес-заказчик', report: 'отчёт', notificationTemplate: 'шаблон уведомления' };
-  const keyMap = { team: 'teams', user: 'users', role: 'roles', project: 'projects', bc: 'businessCustomers', report: 'reports', notificationTemplate: 'notificationTemplates' };
+  const typeLabel = { team: 'команда', user: 'пользователь', role: 'роль', project: 'проект', bc: 'бизнес-заказчик', notificationTemplate: 'шаблон уведомления' };
+  const keyMap = { team: 'teams', user: 'users', role: 'roles', project: 'projects', bc: 'businessCustomers', notificationTemplate: 'notificationTemplates' };
   const target = (adminData[keyMap[type]] || []).find(item => item.id === id);
   let impact = null;
-  if (!['report', 'notificationTemplate'].includes(type)) {
+  if (type !== 'notificationTemplate') {
     try {
       impact = await app.api.get(`/admin/deletion-impact/${type}/${id}`);
     } catch (error) {
@@ -2946,7 +2698,6 @@ async function confirmDelete(type, id, app) {
       role: '/admin/roles',
       project: '/admin/projects',
       bc: '/admin/business-customers',
-      report: '/reports/',
       notificationTemplate: '/admin/notification-templates',
     };
     const endpoint = endpointMap[type];
@@ -2954,18 +2705,7 @@ async function confirmDelete(type, id, app) {
 
     try {
       let deleteUrl = `${endpoint.replace(/\/$/, '')}/${id}`;
-      if (type === 'report') {
-        const requestKey = `report:${id}`;
-        const requestId = adminDeleteRequestIds.get(requestKey) || newAdminRequestId();
-        adminDeleteRequestIds.set(requestKey, requestId);
-        const params = new URLSearchParams({
-          version: String(target?.version ?? 0),
-          client_request_id: requestId,
-        });
-        deleteUrl += `?${params.toString()}`;
-      }
       await app.api.delete(deleteUrl);
-      if (type === 'report') adminDeleteRequestIds.delete(`report:${id}`);
       toast(type === 'user' ? 'Пользователь деактивирован' : 'Удалено', 'success');
       await initAdmin(app);
     } catch (e) {
@@ -3041,7 +2781,6 @@ function refreshModal() {
     if (window.lucide) lucide.createIcons();
     enhanceAdminAccessibility(root);
     activateAdminModalFocus();
-    updateReportPreview();
     prepareAdminFormValidation(adminModal.type);
     enhanceRoleFormWorkspace();
     adminFormInitialSnapshot = adminFormSnapshot();
@@ -3079,64 +2818,6 @@ function getProjectPayload() {
 
 // ==================== BIND EVENTS ====================
 
-function setReportWizardStep(wizard, step) {
-  if (!wizard) return;
-  if (wizard.dataset.scriptManaged === 'true') step = 1;
-  wizard.dataset.step = String(step);
-  wizard.querySelectorAll('.report-step').forEach(button => { const active = Number(button.dataset.reportStep) === step; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); button.tabIndex = active ? 0 : -1; });
-  wizard.querySelectorAll('.report-step-panel').forEach(panel => {
-    const active = Number(panel.dataset.reportPanel) === step;
-    panel.classList.toggle('active', active);
-    panel.hidden = !active;
-  });
-  const prev = wizard.querySelector('#report-step-prev');
-  const next = wizard.querySelector('#report-step-next');
-  if (prev) prev.disabled = step === 1;
-  if (next) { next.hidden = step === 4; next.textContent = step === 3 ? 'К сортировке' : 'Далее'; }
-  updateReportPreview();
-}
-
-function syncReportSelectedFields() {
-  const container = document.getElementById('report-selected-fields');
-  if (!container) return;
-  const definitions = new Map(getReportFields().map(field => [field.key, field]));
-  const checked = new Set(Array.from(document.querySelectorAll('.report-field-cb:checked')).map(box => box.value));
-  const current = Array.from(container.querySelectorAll('.report-selected-field')).map(row => row.dataset.field).filter(key => checked.has(key));
-  document.querySelectorAll('.report-field-cb:checked').forEach(box => { if (!current.includes(box.value)) current.push(box.value); });
-  container.innerHTML = '';
-  current.forEach(key => {
-    const row = document.createElement('div');
-    row.className = 'report-selected-field'; row.dataset.field = key;
-    const label = document.createElement('span'); label.textContent = definitions.get(key)?.label || `Неизвестное поле: ${key}`;
-    const drag = document.createElement('span'); drag.className = 'report-selected-drag'; drag.textContent = '⋮⋮';
-    const actions = document.createElement('span'); actions.className = 'report-selected-actions';
-    actions.innerHTML = '<button type="button" class="btn btn-ghost btn-sm square-icon ui-btn report-field-up" aria-label="Переместить вверх">↑</button><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn report-field-down" aria-label="Переместить вниз">↓</button>';
-    row.append(drag, label, actions); container.appendChild(row);
-  });
-  if (!current.length) container.innerHTML = '<p class="text-muted report-no-fields">Поля не выбраны</p>';
-  updateReportPreview();
-}
-
-function updateReportPreview() {
-  const target = document.getElementById('report-preview-summary');
-  if (!target) return;
-  const name = document.getElementById('report-name')?.value.trim() || 'Без названия';
-  const fieldCount = document.querySelectorAll('.report-selected-field').length;
-  const filterCount = document.querySelectorAll('.report-filter-row').length;
-  const group = document.getElementById('report-group-by')?.selectedOptions?.[0]?.textContent || 'Без группировки';
-  target.textContent = `${name} · ${fieldCount} полей · ${filterCount} фильтров · ${group}`;
-}
-
-function updateReportValidationNotice() {
-  const box = document.getElementById('report-form-error');
-  if (!box || box.hidden) return;
-  const errors = validateReportForm(adminModal.data);
-  box.hidden = errors.length === 0;
-  box.textContent = errors.map(error => error.message).join('. ');
-  const summary = document.getElementById('admin-form-error-summary');
-  if (summary) { summary.hidden = !errors.length; summary.textContent = box.textContent; }
-}
-
 function bindAdminEvents(app) {
   const page = document.getElementById('page-content');
   if (!page) return;
@@ -3152,7 +2833,6 @@ function bindAdminEvents(app) {
 
   page.removeEventListener('input', window._adminDelegatedInput);
   window._adminDelegatedInput = (event) => {
-    if (event.target.closest('.report-wizard')) updateReportValidationNotice();
     if (event.target.closest('.role-form-workspace')) updateRoleFormSummary();
     clearAdminFieldError(event.target);
     if (event.target.id === 'dict-search') {
@@ -3194,10 +2874,6 @@ function bindAdminEvents(app) {
     else if (event.target.matches('.dict-code-input')) { window.markDictEdited(event.target); validateDictionaryEditor(); }
     else if (event.target.matches('.comp-cost-input')) window.markDictEdited(event.target);
     else if (event.target.id === 'modal-name' && adminModal.type === 'user') window.updateUserAvatarPreview(event.target.value);
-    else if (event.target.id === 'report-field-search') {
-      const query = event.target.value.trim().toLowerCase();
-      document.querySelectorAll('.report-field-option').forEach(option => { option.hidden = !option.dataset.search.includes(query); });
-    } else if (event.target.closest('.report-wizard')) { updateReportPreview(); updateReportValidationNotice(); }
     else if (event.target.closest('.notification-template-form')) updateNotificationTemplatePreview();
   };
   page.addEventListener('input', window._adminDelegatedInput);
@@ -3214,7 +2890,12 @@ function bindAdminEvents(app) {
     }
     if (event.target.classList.contains('audit-filter')) {
       const stateKeys = { 'audit-action': 'action', 'audit-entity': 'entityType', 'audit-user': 'userId', 'audit-date-from': 'dateFrom', 'audit-date-to': 'dateTo' };
-      auditState[stateKeys[event.target.id]] = event.target.value; auditState.page = 1;
+      const filters = event.target.closest('.audit-toolbar');
+      clearFormErrors(filters);
+      const errors = validateRanges(filters);
+      if (Object.keys(errors).length) { showFormErrors(filters, errors); return; }
+      filters.querySelectorAll('.audit-filter').forEach(field => { if (stateKeys[field.id]) auditState[stateKeys[field.id]] = field.value; });
+      auditState.page = 1;
       updateAdminUrl('push'); refreshAuditTab(app);
       return;
     }
@@ -3230,13 +2911,6 @@ function bindAdminEvents(app) {
     if (['admin-filter-role', 'admin-filter-team', 'admin-filter-status'].includes(event.target.id)) {
       window._adminFilterChange(event.target);
     }
-    if (event.target.classList.contains('report-field-cb')) syncReportSelectedFields();
-    if (event.target.classList.contains('report-filter-field')) updateReportFilterRow(event.target.closest('.report-filter-row'));
-    if (event.target.id === 'report-sort-by') {
-      const sortGroup = document.getElementById('report-sort-order-group');
-      if (sortGroup) sortGroup.style.display = event.target.value ? '' : 'none';
-    }
-    if (event.target.closest('.report-wizard')) { updateReportPreview(); updateReportValidationNotice(); }
     if (event.target.closest('.notification-template-form')) updateNotificationTemplatePreview();
   };
   page.addEventListener('change', window._adminDelegatedChange);
@@ -3245,10 +2919,10 @@ function bindAdminEvents(app) {
   window._adminDelegatedKeydown = event => {
     const card = event.target.closest('.admin-dict-card');
     if (card && event.target === card && ['Enter', ' '].includes(event.key)) { event.preventDefault(); if (card.getAttribute('aria-disabled') !== 'true') card.click(); return; }
-    const tabRoot = event.target.closest('#admin-tab-bar, .report-wizard-steps');
+    const tabRoot = event.target.closest('#admin-tab-bar');
     if (tabRoot) {
       const next = tabNavigationTarget(tabRoot, event);
-      if (next) { event.preventDefault(); next.focus(); next.click(); return; }
+      if (next) { event.preventDefault(); tabRoot.querySelectorAll('[role="tab"]').forEach(tab => { tab.tabIndex = tab === next ? 0 : -1; }); next.focus(); return; }
     }
     if (event.target.classList.contains('dict-drag-handle') && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
       const row = event.target.closest('.dict-editor-row'); const sibling = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
@@ -3427,7 +3101,6 @@ async function loadAdminTab(app, tab, force = false) {
       asItems(settings).forEach(ds => { displaySettingsData[ds.page] = ds.settings; });
       columnLabelsData = labels || {};
     },
-    reports: async () => { adminData.reports = asItems(await app.api.get('/reports/')); },
     notifications: async () => {
       const [templates, roles] = await Promise.all([app.api.get('/admin/notification-templates'), app.api.get('/admin/roles')]);
       adminData.notificationTemplates = asItems(templates); adminData.notificationRoles = asItems(roles);
@@ -3457,9 +3130,15 @@ export async function initAdmin(app) {
   syncDisplayDraftOwner(app);
   currentAdminUser = app.store.get('currentUser');
   if (getAdminAccess(app) === 'none') return;
-  await loadAdminTab(app, adminTab, true);
   const content = document.getElementById('admin-content');
   if (!content) return;
+  const initialTab = adminTab;
+  bindAdminEvents(app);
+  window.removeEventListener('popstate', window._adminPopState);
+  window._adminPopState = () => applyAdminHistoryState(app);
+  window.addEventListener('popstate', window._adminPopState);
+  await loadAdminTab(app, initialTab, true);
+  if (!content.isConnected || adminTab !== initialTab) return;
   content.innerHTML = renderTabContent(adminTab, app);
   pullStickyBars();
   if (window.lucide) lucide.createIcons();

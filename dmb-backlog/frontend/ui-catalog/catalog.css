@@ -16,6 +16,8 @@
 .catalog-section--wide { grid-column: 1 / -1; }
 .catalog-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .catalog-row:last-child { margin-bottom: 0; }
+.catalog-stack { display:grid; gap:var(--space-3); min-width:0; }
+.catalog-stack > .btn { justify-self:start; }
 .catalog-caption { font-size: var(--text-xs); line-height: 1.5; margin: 8px 0 18px; }
 .catalog-form { display: grid; gap: 16px; }
 .catalog-filters { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; width: 100%; }

@@ -1,0 +1,425 @@
+[
+  {
+    "screen": "list-desktop",
+    "data": {
+      "cols": [
+        {
+          "r": {
+            "bottom": 359.21297454833984,
+            "height": 39.988426208496094,
+            "left": 280.72918701171875,
+            "right": 731.898193359375,
+            "top": 319.22454833984375,
+            "width": 451.16900634765625,
+            "x": 280.72918701171875,
+            "y": 319.22454833984375
+          },
+          "text": "ЗАДАЧА"
+        },
+        {
+          "r": {
+            "bottom": 359.21297454833984,
+            "height": 39.988426208496094,
+            "left": 731.898193359375,
+            "right": 987.5926513671876,
+            "top": 319.22454833984375,
+            "width": 255.6944580078125,
+            "x": 731.898193359375,
+            "y": 319.22454833984375
+          },
+          "text": "СЛЕДУЮЩИЙ ШАГ"
+        },
+        {
+          "r": {
+            "bottom": 359.21297454833984,
+            "height": 39.988426208496094,
+            "left": 987.5926513671876,
+            "right": 1165.4630279541016,
+            "top": 319.22454833984375,
+            "width": 177.87037658691406,
+            "x": 987.5926513671876,
+            "y": 319.22454833984375
+          },
+          "text": "СРОК"
+        },
+        {
+          "r": {
+            "bottom": 359.21297454833984,
+            "height": 39.988426208496094,
+            "left": 1165.4630126953125,
+            "right": 1354.456069946289,
+            "top": 319.22454833984375,
+            "width": 188.99305725097656,
+            "x": 1165.4630126953125,
+            "y": 319.22454833984375
+          },
+          "text": "СТАТУС"
+        },
+        {
+          "r": {
+            "bottom": 359.21297454833984,
+            "height": 39.988426208496094,
+            "left": 1354.4560546875,
+            "right": 1392.453742980957,
+            "top": 319.22454833984375,
+            "width": 37.99768829345703,
+            "x": 1354.4560546875,
+            "y": 319.22454833984375
+          },
+          "text": "МЕНЮ"
+        }
+      ],
+      "font": [
+        {
+          "cls": "work-queue-title",
+          "color": "rgb(30, 41, 59)",
+          "font": "500 13px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "cls": "work-public-id",
+          "color": "rgb(71, 85, 105)",
+          "font": ""
+        },
+        {
+          "cls": "work-personal-next has-obstacle",
+          "color": "rgb(71, 85, 105)",
+          "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "cls": "work-queue-due work-warning",
+          "color": "rgb(239, 68, 68)",
+          "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "cls": "work-queue-title",
+          "color": "rgb(30, 41, 59)",
+          "font": "500 13px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "cls": "work-public-id",
+          "color": "rgb(71, 85, 105)",
+          "font": ""
+        },
+        {
+          "cls": "work-personal-next has-obstacle",
+          "color": "rgb(71, 85, 105)",
+          "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "cls": "work-queue-due work-warning",
+          "color": "rgb(239, 68, 68)",
+          "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "rows": [
+        {
+          "bottom": 425.9143753051758,
+          "height": 66.7013931274414,
+          "left": 280.72918701171875,
+          "right": 1392.4537963867188,
+          "top": 359.2129821777344,
+          "width": 1111.724609375,
+          "x": 280.72918701171875,
+          "y": 359.2129821777344
+        },
+        {
+          "bottom": 492.61576080322266,
+          "height": 66.7013931274414,
+          "left": 280.72918701171875,
+          "right": 1392.4537963867188,
+          "top": 425.9143676757813,
+          "width": 1111.724609375,
+          "x": 280.72918701171875,
+          "y": 425.9143676757813
+        },
+        {
+          "bottom": 551.3194580078125,
+          "height": 58.703704833984375,
+          "left": 280.72918701171875,
+          "right": 1392.4537963867188,
+          "top": 492.6157531738281,
+          "width": 1111.724609375,
+          "x": 280.72918701171875,
+          "y": 492.6157531738281
+        },
+        {
+          "bottom": 618.0208511352539,
+          "height": 66.7013931274414,
+          "left": 280.72918701171875,
+          "right": 1392.4537963867188,
+          "top": 551.3194580078125,
+          "width": 1111.724609375,
+          "x": 280.72918701171875,
+          "y": 551.3194580078125
+        }
+      ],
+      "v": [
+        1440,
+        900
+      ]
+    }
+  },
+  {
+    "screen": "dark",
+    "colors": [
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgb(22, 33, 62)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-queue-title",
+        "color": "rgb(255, 255, 255)",
+        "font": "500 13px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "text": "[Пример] Подготовить шаблон протокола встречи"
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgb(22, 33, 62)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-public-id",
+        "color": "rgb(160, 160, 176)",
+        "font": "",
+        "text": "WRK-27"
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgb(22, 33, 62)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-queue-due work-warning",
+        "color": "rgb(239, 68, 68)",
+        "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "text": "14 окт.\nПросрочено на 15 д."
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(255, 255, 255, 0.05)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-queue-title",
+        "color": "rgb(255, 255, 255)",
+        "font": "500 13px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "text": "[Пример] Проверить историю изменений карточки"
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(255, 255, 255, 0.05)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-public-id",
+        "color": "rgb(160, 160, 176)",
+        "font": "",
+        "text": "WRK-18"
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(255, 255, 255, 0.05)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-queue-due work-warning",
+        "color": "rgb(239, 68, 68)",
+        "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "text": "14 окт.\nПросрочено на 15 д."
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-queue-title",
+        "color": "rgb(255, 255, 255)",
+        "font": "500 13px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "text": "[Пример] Проверить сортировку задач по сроку"
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-public-id",
+        "color": "rgb(160, 160, 176)",
+        "font": "",
+        "text": "WRK-15"
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-queue-due work-warning",
+        "color": "rgb(239, 68, 68)",
+        "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "text": "14 окт.\nПросрочено на 15 д."
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-queue-title",
+        "color": "rgb(255, 255, 255)",
+        "font": "500 13px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "text": "[Пример] Согласовать критерии готовности требований"
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-public-id",
+        "color": "rgb(160, 160, 176)",
+        "font": "",
+        "text": "WRK-10"
+      },
+      {
+        "backgrounds": [
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)"
+        ],
+        "cls": "work-queue-due work-warning",
+        "color": "rgb(239, 68, 68)",
+        "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "text": "15 окт.\nПросрочено на 14 д."
+      }
+    ]
+  },
+  {
+    "screen": "inspector-light",
+    "data": {
+      "queue": [
+        {
+          "bottom": 320.8333435058594,
+          "height": 110.68287658691406,
+          "left": 280.72918701171875,
+          "right": 820.474609375,
+          "top": 210.1504669189453,
+          "width": 539.7454223632812,
+          "x": 280.72918701171875,
+          "y": 210.1504669189453
+        },
+        {
+          "bottom": 431.51622009277344,
+          "height": 110.68287658691406,
+          "left": 280.72918701171875,
+          "right": 820.474609375,
+          "top": 320.8333435058594,
+          "width": 539.7454223632812,
+          "x": 280.72918701171875,
+          "y": 320.8333435058594
+        },
+        {
+          "bottom": 534.2014236450195,
+          "height": 102.68518829345705,
+          "left": 280.72918701171875,
+          "right": 820.474609375,
+          "top": 431.5162353515625,
+          "width": 539.7454223632812,
+          "x": 280.72918701171875,
+          "y": 431.5162353515625
+        },
+        {
+          "bottom": 644.8842926025391,
+          "height": 110.68287658691406,
+          "left": 280.72918701171875,
+          "right": 820.474609375,
+          "top": 534.201416015625,
+          "width": 539.7454223632812,
+          "x": 280.72918701171875,
+          "y": 534.201416015625
+        }
+      ],
+      "samples": [
+        {
+          "color": "rgb(239, 68, 68)",
+          "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "text": "14 окт.\nПросрочено на 15 д."
+        },
+        {
+          "color": "rgb(239, 68, 68)",
+          "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "text": "14 окт.\nПросрочено на 15 д."
+        },
+        {
+          "color": "rgb(239, 68, 68)",
+          "font": "12px / 18px Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "text": "14 окт.\nПросрочено на 15 д."
+        }
+      ]
+    }
+  },
+  {
+    "screen": "filters-desktop",
+    "data": {
+      "form": {
+        "bottom": 724.4907684326172,
+        "height": 556.3194580078125,
+        "left": 279.9884338378906,
+        "right": 1393.1944885253906,
+        "top": 168.1713104248047,
+        "width": 1113.2060546875,
+        "x": 279.9884338378906,
+        "y": 168.1713104248047
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "tableY": 781.2037353515625
+    }
+  },
+  {
+    "screen": "list-320-repeat",
+    "data": {
+      "doc": [
+        312,
+        347
+      ],
+      "main": [
+        287,
+        287
+      ],
+      "v": [
+        320,
+        711
+      ],
+      "wide": []
+    }
+  }
+]

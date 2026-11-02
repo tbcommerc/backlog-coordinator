@@ -1,3 +1,4 @@
+import { filterValues, filterMatches, setFilterValue, filterSummaryOption, encodeFilterValues } from '../ui/filterValues.js';
 import { button as uiButton, control as uiControl, field as uiField, fieldFrame as uiFieldFrame, pageHeader as uiPageHeader } from '../ui/primitives.js';
 import { renderViewState } from './viewState.js';
 import { escapeHtml } from '../htmlUtils.js';
@@ -28,7 +29,7 @@ const uniq = values => [...new Set(values.filter(Boolean))].sort((a, b) => a.loc
 const by = (items, key) => items.reduce((r, x) => ((r[key(x)] ||= []).push(x), r), {});
 const taskName = t => t.public_id || formatTaskPublicId(t) || `#${t.id}`;
 const allTeams = t => uniq([t.team_name, ...(t.involved_team_names || [])]);
-const inPeriod = (t, id) => !id || (t.period_ids || []).includes(id);
+const inPeriod = (t, id) => !id || filterValues(id).some(value=>(t.period_ids || []).includes(value));
 const chartTextColor = () => chartTheme().textStyle.color;
 const median = values => {
   const sorted = values.slice().sort((a, b) => a - b);
@@ -87,7 +88,7 @@ function resizeCharts() {
 }
 
 function options(values, selected = '', all = 'Все') {
-  return `<option value="">${escapeHtml(all)}</option>` + values.map(v => `<option value="${escapeHtml(v)}" ${v === selected ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return filterSummaryOption(selected,values.map(v=>({value:v,label:v}))) + `<option value="">${escapeHtml(all)}</option>` + values.map(v => `<option value="${escapeHtml(v)}" ${v === selected ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
 }
 
 function periodOption(period, selected = '', activePeriod = ltData?.active_period) {
@@ -96,7 +97,7 @@ function periodOption(period, selected = '', activePeriod = ltData?.active_perio
 }
 
 function periodOptions(selected, data = ltData) {
-  return (data?.periods || []).map(period => periodOption(period, selected, data?.active_period)).join('');
+  return filterSummaryOption(selected,(data?.periods||[]).map(p=>({value:p.id,label:p.label})))+(data?.periods || []).map(period => periodOption(period, selected, data?.active_period)).join('');
 }
 
 function taskRows(tasks, empty = 'Нет задач', { showProject = true } = {}) {
@@ -293,7 +294,7 @@ export function renderAnalytics(type, app) {
   return type === 'tribe' ? ltTemplate() : poTemplate();
 }
 
-function effortTasks() { return ltData.tasks.filter(t => inPeriod(t, state.effort.period) && (!state.effort.team || t.team_name === state.effort.team)); }
+function effortTasks() { return ltData.tasks.filter(t => inPeriod(t, state.effort.period) && filterMatches(state.effort.team,t.team_name)); }
 function effortPlural(value) { const x = Math.abs(Math.round(value)) % 100, y = x % 10; return x > 10 && x < 20 ? 'задач' : y === 1 ? 'задача' : y > 1 && y < 5 ? 'задачи' : 'задач'; }
 function focusEffort(index) {
   state.effort.arcs.forEach((arc, i) => { arc.style.opacity = index == null || i === index ? '1' : '.2'; arc.style.strokeWidth = i === index ? '30' : '25'; });
@@ -313,7 +314,7 @@ function renderEffort() {
   const totalDays = evaluated.reduce((sum, task) => sum + n(task.effort_days), 0);
   const items = Object.entries(grouped).map(([name, typeTasks], index) => ({ name, typeTasks, tasks: typeTasks.length, days: typeTasks.reduce((sum, task) => sum + n(task.effort_days), 0), color: LT_TYPE_COLORS[index % LT_TYPE_COLORS.length] }));
   items.forEach(item => item.share = totalDays ? item.days / totalDays * 100 : 0);
-  document.getElementById('repSub').textContent = `${state.effort.team || 'Весь трайб'} · ${ltData.periods.find(p => p.id === state.effort.period)?.label || state.effort.period}`;
+  document.getElementById('repSub').textContent = `${filterValues(state.effort.team).join(' · ') || 'Весь трайб'} · ${filterValues(state.effort.period).map(value=>ltData.periods.find(p=>p.id===value)?.label || value).join(' · ')}`;
   document.getElementById('dcNum').textContent = fmt(totalDays, 1);
   document.getElementById('dcSub').textContent = `${tasks.length} ${effortPlural(tasks.length)}`;
   document.getElementById('tTasks').textContent = fmt(tasks.length);
@@ -321,16 +322,16 @@ function renderEffort() {
 
   const svgGroup = document.getElementById('effortSegGroup'); svgGroup.innerHTML = '';
   let offset = 0;
-  state.effort.arcs = items.map((item, index) => { const arc = document.createElementNS(SVG_NS, 'circle'); arc.setAttribute('cx', '100'); arc.setAttribute('cy', '100'); arc.setAttribute('r', '78'); arc.setAttribute('pathLength', '100'); arc.setAttribute('class', 'arc'); arc.setAttribute('stroke', item.color); arc.setAttribute('tabindex', '0'); arc.setAttribute('role', 'button'); arc.setAttribute('aria-label', `Показать задачи типа ${item.name}`); arc.dataset.detailTarget = 'effort-detail'; arc.dataset.detailKey = String(index); const dash = item.share > .5 ? Math.max(item.share - 1.3, .4) : 0; arc.setAttribute('stroke-dasharray', `${dash} ${100 - dash}`); arc.setAttribute('stroke-dashoffset', String(-(offset + .65))); offset += item.share; const open = () => showDetail('effort-detail', item.name, item.typeTasks, { subtitle: `${state.effort.team || 'Весь трайб'} · ${ltData.periods.find(p => p.id === state.effort.period)?.label || state.effort.period}`, breadcrumbs: ['Трудозатраты', item.name], source: arc, sourceKey: String(index) }); arc.addEventListener('mouseenter', () => focusEffort(index)); arc.addEventListener('mouseleave', () => focusEffort(null)); arc.addEventListener('click', open); arc.addEventListener('keydown', event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); open(); } }); svgGroup.appendChild(arc); return arc; });
+  state.effort.arcs = items.map((item, index) => { const arc = document.createElementNS(SVG_NS, 'circle'); arc.setAttribute('cx', '100'); arc.setAttribute('cy', '100'); arc.setAttribute('r', '78'); arc.setAttribute('pathLength', '100'); arc.setAttribute('class', 'arc'); arc.setAttribute('stroke', item.color); arc.setAttribute('tabindex', '0'); arc.setAttribute('role', 'button'); arc.setAttribute('aria-label', `Показать задачи типа ${item.name}`); arc.dataset.detailTarget = 'effort-detail'; arc.dataset.detailKey = String(index); const dash = item.share > .5 ? Math.max(item.share - 1.3, .4) : 0; arc.setAttribute('stroke-dasharray', `${dash} ${100 - dash}`); arc.setAttribute('stroke-dashoffset', String(-(offset + .65))); offset += item.share; const open = () => showDetail('effort-detail', item.name, item.typeTasks, { subtitle: `${filterValues(state.effort.team).join(' · ') || 'Весь трайб'} · ${filterValues(state.effort.period).map(value=>ltData.periods.find(p=>p.id===value)?.label || value).join(' · ')}`, breadcrumbs: ['Трудозатраты', item.name], source: arc, sourceKey: String(index) }); arc.addEventListener('mouseenter', () => focusEffort(index)); arc.addEventListener('mouseleave', () => focusEffort(null)); arc.addEventListener('click', open); arc.addEventListener('keydown', event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); open(); } }); svgGroup.appendChild(arc); return arc; });
 
   const tbody = document.getElementById('repTbody'); tbody.innerHTML = '';
-  state.effort.rows = items.map((item, index) => { const tr = document.createElement('tr'); if (!item.days) tr.classList.add('zero'); tr.innerHTML = `<td><div class="t-name"><span class="dot" style="--c:${item.color};--ring:${item.color}26"></span><span class="lbl">${escapeHtml(item.name)}</span>${item.tasks > 0 && item.days === 0 ? '<span class="no-eff">нет оценки</span>' : ''}</div></td><td>${item.tasks}</td><td>${fmt(item.days, 1)}</td><td><div class="t-share"><div class="bar"><i style="--c:${item.color};width:${Math.max(0, item.share)}%"></i></div><span class="pct">${fmt(item.share, 1)}%</span></div></td>`; tr.style.animation = `rowIn .45s ${.05 + index * .05}s both`; tr.dataset.detailKey = String(index); tr.addEventListener('mouseenter', () => focusEffort(index)); tr.addEventListener('mouseleave', () => focusEffort(null)); bindDetailCell(tr, 'effort-detail', source => showDetail('effort-detail', item.name, item.typeTasks, { subtitle: `${state.effort.team || 'Весь трайб'} · ${ltData.periods.find(p => p.id === state.effort.period)?.label || state.effort.period}`, breadcrumbs: ['Трудозатраты', item.name], source, sourceKey: String(index) })); tbody.appendChild(tr); return { el: tr, name: item.name, tasks: item.tasks, days: item.days, share: item.share }; });
+  state.effort.rows = items.map((item, index) => { const tr = document.createElement('tr'); if (!item.days) tr.classList.add('zero'); tr.innerHTML = `<td><div class="t-name"><span class="dot" style="--c:${item.color};--ring:${item.color}26"></span><span class="lbl">${escapeHtml(item.name)}</span>${item.tasks > 0 && item.days === 0 ? '<span class="no-eff">нет оценки</span>' : ''}</div></td><td>${item.tasks}</td><td>${fmt(item.days, 1)}</td><td><div class="t-share"><div class="bar"><i style="--c:${item.color};width:${Math.max(0, item.share)}%"></i></div><span class="pct">${fmt(item.share, 1)}%</span></div></td>`; tr.style.animation = `rowIn .45s ${.05 + index * .05}s both`; tr.dataset.detailKey = String(index); tr.addEventListener('mouseenter', () => focusEffort(index)); tr.addEventListener('mouseleave', () => focusEffort(null)); bindDetailCell(tr, 'effort-detail', source => showDetail('effort-detail', item.name, item.typeTasks, { subtitle: `${filterValues(state.effort.team).join(' · ') || 'Весь трайб'} · ${filterValues(state.effort.period).map(value=>ltData.periods.find(p=>p.id===value)?.label || value).join(' · ')}`, breadcrumbs: ['Трудозатраты', item.name], source, sourceKey: String(index) })); tbody.appendChild(tr); return { el: tr, name: item.name, tasks: item.tasks, days: item.days, share: item.share }; });
   sortEffortRows();
 }
 
 function renderProfile() {
   clearDetail('profile-detail');
-  const tasks = ltData.tasks.filter(t => inPeriod(t, state.profile.period) && (!state.profile.channel || t.channel_name === state.profile.channel));
+  const tasks = ltData.tasks.filter(t => inPeriod(t, state.profile.period) && filterMatches(state.profile.channel,t.channel_name));
   const teams = uniq(tasks.map(t => t.team_name)), types = uniq(tasks.map(t => t.task_type_name || 'Без типа'));
   const max = Math.max(1, ...teams.flatMap(team => types.map(type => tasks.filter(t => t.team_name === team && (t.task_type_name || 'Без типа') === type).length)));
   const rows = teams.map(team => {
@@ -346,7 +347,7 @@ function renderProfile() {
 }
 
 function dependencyEdges() {
-  const tasks = ltData.tasks.filter(t => inPeriod(t, state.dep.period) && (!state.dep.type || t.task_type_name === state.dep.type));
+  const tasks = ltData.tasks.filter(t => inPeriod(t, state.dep.period) && filterMatches(state.dep.type,t.task_type_name));
   const map = {};
   tasks.forEach(t => (t.involved_team_names || []).forEach(target => {
     if (!t.team_name || target === t.team_name) return;
@@ -432,7 +433,7 @@ function renderDep() {
 
 function renderSankey() {
   clearDetail('sankey-detail');
-  const tasks = ltData.tasks.filter(t => inPeriod(t, state.sankey.period) && (!state.sankey.channel || t.channel_name === state.sankey.channel));
+  const tasks = ltData.tasks.filter(t => inPeriod(t, state.sankey.period) && filterMatches(state.sankey.channel,t.channel_name));
   const links = {}, nodes = {}, value = t => state.sankey.mode === 'days' ? n(t.effort_days) : 1;
   tasks.forEach(t => {
     const d = `d:${t.department_name || 'Без подразделения'}`, tm = `t:${t.team_name || 'Без команды'}`, ty = `y:${t.task_type_name || 'Без типа'}`;
@@ -604,18 +605,17 @@ function project360() {
   const renderFlow = () => {
     clearDetail('p360-flow-detail');
     state.projectFlowSelection = null;
-    for (let pass = 0; pass < 2; pass += 1) {
-      const periods = visibleQuarters.filter(period => tasks.some(task => inPeriod(task, period.id) && (!state.projectFlowChannel || p360ChannelKey(task) === state.projectFlowChannel)));
-      if (state.projectFlowPeriod && !periods.some(period => period.id === state.projectFlowPeriod)) state.projectFlowPeriod = '';
-      const channels = P360_CHANNELS.filter(channel => tasks.some(task => p360ChannelKey(task) === channel.value && (!state.projectFlowPeriod || inPeriod(task, state.projectFlowPeriod))));
-      if (state.projectFlowChannel && !channels.some(channel => channel.value === state.projectFlowChannel)) state.projectFlowChannel = '';
-    }
-    const periodOptions = visibleQuarters.filter(period => tasks.some(task => inPeriod(task, period.id) && (!state.projectFlowChannel || p360ChannelKey(task) === state.projectFlowChannel)));
+    // Validate against the project, not the other filter: a zero intersection
+    // must not silently clear a valid selection and broaden the result.
+    state.projectFlowPeriod=encodeFilterValues(filterValues(state.projectFlowPeriod).filter(value=>visibleQuarters.some(period=>period.id===value)));
+    state.projectFlowChannel=encodeFilterValues(filterValues(state.projectFlowChannel).filter(value=>tasks.some(task=>p360ChannelKey(task)===value)));
+    const periodOptions = visibleQuarters.filter(period => tasks.some(task => inPeriod(task, period.id) && filterMatches(state.projectFlowChannel,p360ChannelKey(task))));
     const channelOptions = P360_CHANNELS.filter(channel => tasks.some(task => p360ChannelKey(task) === channel.value && (!state.projectFlowPeriod || inPeriod(task, state.projectFlowPeriod))));
     const periodSelect = document.getElementById('p360-flow-period'), channelSelect = document.getElementById('p360-flow-channel');
     periodSelect.innerHTML = '<option value="">Все сроки</option>' + periodOptions.map(period => periodOption(period, state.projectFlowPeriod)).join('');
     channelSelect.innerHTML = '<option value="">Весь спрос</option>' + channelOptions.map(channel => `<option value="${channel.value}" ${channel.value === state.projectFlowChannel ? 'selected' : ''}>${channel.label}</option>`).join('');
-    const flowTasks = tasks.filter(task => (!state.projectFlowPeriod || inPeriod(task, state.projectFlowPeriod)) && (!state.projectFlowChannel || p360ChannelKey(task) === state.projectFlowChannel));
+    setFilterValue(periodSelect,state.projectFlowPeriod);setFilterValue(channelSelect,state.projectFlowChannel);
+    const flowTasks = tasks.filter(task => (!state.projectFlowPeriod || inPeriod(task, state.projectFlowPeriod)) && filterMatches(state.projectFlowChannel,p360ChannelKey(task)));
     document.getElementById('p360-flow-filter-state').textContent = `${flowTasks.length} ${effortPlural(flowTasks.length)}`;
     const stats = (rows, value) => Object.entries(by(rows, value)).map(([name, statTasks]) => ({ name, tasks: statTasks, value: statTasks.length, effort: statTasks.reduce((sum, task) => sum + n(task.effort_days), 0) })).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, 'ru'));
     const rawCustomers = stats(flowTasks, task => task.department_name || 'Заказчик не указан');
@@ -652,7 +652,7 @@ function project360() {
 }
 
 function renderRoi() {
-  const tasks = (ltData.tasks || []).filter(task => (!state.roi.period || inPeriod(task, state.roi.period)) && (!state.roi.team || task.team_name === state.roi.team) && (!state.roi.type || task.task_type_name === state.roi.type)), groups = {};
+  const tasks = (ltData.tasks || []).filter(task => (!state.roi.period || inPeriod(task, state.roi.period)) && filterMatches(state.roi.team,task.team_name) && filterMatches(state.roi.type,task.task_type_name)), groups = {};
   tasks.forEach(task => {
     const effort = n(task.effort_days), effect = n(task.financial_effect);
     if (!effort || !effect) return;
@@ -771,7 +771,7 @@ function renderRoi() {
   });
 }
 
-function bindSelect(id, value, handler) { const el = document.getElementById(id); if (!el) return; el.value = value; el.addEventListener('change', () => handler(el.value)); }
+function bindSelect(id, value, handler) { const el = document.getElementById(id); if (!el) return; setFilterValue(el,value); el.addEventListener('change', () => handler(el.value)); }
 
 function bindAnalyticsNavigation() {
   const nav = document.querySelector('.an-report-nav');

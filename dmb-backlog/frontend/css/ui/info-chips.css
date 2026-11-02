@@ -1,0 +1,111 @@
+/* Informational chips, verified 2026-10-26.
+   Explicit compatibility aliases only: never target *chip*, buttons or counters.
+   Dialog IDs in :is supply the same specificity as legacy dialog styles. */
+:root {
+  --info-chip-height: 24px;
+  --info-chip-radius: 6px;
+  --info-chip-padding: 3px 8px;
+  --info-chip-gap: 6px;
+  --info-chip-icon: 14px;
+}
+:root :where(.badge) { background: var(--bg-tertiary); color: var(--text-secondary); }
+:is(:root, #task-detail-overlay, #create-task-overlay) :is(
+  .ui-info-chip, .badge, .ui-tag, .notification-deadline-badge,
+  .notification-topic, .notification-priority, .notification-new-label,
+  .notification-resolved-label, .pip-context-badge, .pip-context-gaps > span,
+  .role-access-badge, .audit-action-badge, .audit-entity-badge,
+  .did-badge, .directorate-meeting-badge, .meeting-date-chip:not(.is-editable),
+  .review-card-tags > span, .review-signal-chip, .task-detail-report-badge,
+  .task-detail-chip, .task-detail-tag, .task-detail-badge, .vchip, .editbadge,
+  span.pill, span.ttype, .chip.static, .chat-session-state, .work-priority, .work-list-status,
+  .work-queue-note, .no-eff, .b-head-channel, .b-delta, span.diff, .dirty,
+  .qe-unestimated-label, .directorate-type, .quarterly-light,
+  .team-weekly-signal, .team-weekly-delta
+) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--info-chip-gap);
+  min-width: 0;
+  max-width: 100%;
+  height: auto;
+  min-height: var(--info-chip-height);
+  padding: var(--info-chip-padding);
+  border: 0;
+  border-radius: var(--info-chip-radius);
+  box-shadow: none;
+  font-family: var(--font-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line);
+  font-weight: var(--font-medium);
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  vertical-align: middle;
+  &:where(:not(.ui-tag):not(:has(> span, > strong, > b, > small, svg, i, .ui-avatar))) { display: inline-block; }
+  &[hidden] { display: none; }
+  &.dirty, &.qe-unestimated-label { display: none; }
+
+  /* Existing deadline markup uses strong; it must not introduce a second weight. */
+  & > :is(span, strong, b, small):not(.ui-avatar) {
+    min-width: 0;
+    font: inherit;
+    color: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  & svg { width: var(--info-chip-icon); height: var(--info-chip-icon); flex: none; color: inherit; }
+  & > .ui-avatar { width: 18px; height: 18px; font-size: var(--type-meta-size); }
+}
+:is(:root, #task-detail-overlay, #create-task-overlay) :is(
+  .ui-info-chip, .ui-tag, .notification-deadline-badge, .notification-topic,
+  .notification-priority, .audit-entity-badge, .did-badge,
+  .directorate-meeting-badge, .meeting-date-chip:not(.is-editable),
+  .review-card-tags > span, .review-signal-chip, .vchip, .chip.static,
+  .task-detail-chip, .task-detail-tag, .role-access-none, .work-priority, .work-list-status,
+  .no-eff, .b-head-channel, .chat-session-state
+) { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+:root :is(.ui-tag[style], .ui-info-chip[data-ui-tone="neutral"]) { border: 0; }
+:root .ui-tag[style]::before {
+  content: ''; width: 6px; height: 6px; flex: 0 0 6px;
+  border-radius: var(--radius-full); background: var(--ui-tag-color);
+}
+
+:is(:root, #task-detail-overlay, #create-task-overlay) :is(
+  .ui-info-chip[data-ui-tone="info"], .role-access-read, .notification-new-label,
+  .work-list-status[data-status="in_progress"], .work-list-status[data-status="ready"],
+  .chat-session-state.is-progress
+) { background: var(--info-light); color: var(--info-text); }
+:is(:root, #task-detail-overlay, #create-task-overlay) :is(
+  .ui-info-chip[data-ui-tone="success"], .notification-resolved-label, .pip-context-badge.is-ready,
+  .work-list-status[data-status="done"], .quarterly-light-success,
+  .team-weekly-delta.is-positive, .b-delta.good, .chat-session-state.is-complete, .chat-session-state.is-sent
+) { background: var(--success-light); color: var(--success-text); }
+:is(:root, #task-detail-overlay, #create-task-overlay) :is(
+  .ui-info-chip[data-ui-tone="warning"], .notification-deadline-badge.is-warning,
+  .importance-high .notification-priority, .role-access-write, .editbadge,
+  .pip-context-badge.has-gaps, .pip-context-gaps > span, .review-signal-chip.has-value,
+  .work-priority[data-priority="high"], .work-list-status[data-status="in_acceptance"],
+  .work-queue-note, .quarterly-light-warning,
+  .dirty, .qe-unestimated-label, .chat-session-state.is-action
+) { background: var(--warning-light); color: var(--warning-text); }
+:is(:root, #task-detail-overlay, #create-task-overlay) :is(
+  .ui-info-chip[data-ui-tone="danger"], .notification-deadline-badge.is-danger,
+  .importance-critical .notification-priority, .role-access-full, .review-card-tags .is-regulated,
+  .work-priority[data-priority="urgent"], .quarterly-light-danger,
+  .team-weekly-delta.is-negative, .b-delta.bad
+) { background: var(--danger-light); color: var(--danger-text); }
+:is(:root, #task-detail-overlay, #create-task-overlay) :is(
+  .ui-info-chip[data-ui-tone="accent"], .directorate-type, .chat-session-state.is-draft
+) { background: var(--accent-light); color: var(--accent-text); }
+
+/* These legacy labels reveal themselves conditionally (or by inline display).
+   Styling must not turn an inactive state into a visible warning. */
+:is(:root, #task-detail-overlay, #create-task-overlay) .qe-unestimated > div:first-child .qe-unestimated-label:not([hidden]) { display: inline-flex; }
+

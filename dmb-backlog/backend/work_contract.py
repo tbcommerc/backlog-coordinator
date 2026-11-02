@@ -110,7 +110,7 @@ class Move(Placement, Version):
 
 
 class Transition(Version):
-    status: Literal["ready", "in_progress", "in_acceptance", "done", "cancelled"]
+    status: Literal["new", "ready", "in_progress", "in_acceptance", "done", "cancelled"]
     reason: str = Field("", max_length=5000)
     result_text: str = Field("", max_length=30000)
 

@@ -1,0 +1,16 @@
+/* Canonical informational chip; compatibility selectors live in info-chips.css. */
+:root :is(.ui-badge,.ui-tag,.ui-info-chip) {
+ display:inline-flex; box-sizing:border-box; align-items:center; gap:6px;
+ min-width:0; max-width:100%; height:auto; min-height:24px; padding:3px 8px;
+ border:0; border-radius:6px; box-shadow:none; background:var(--bg-tertiary); color:var(--text-secondary);
+ font-family:var(--font-family); font-size:var(--type-meta-size); line-height:var(--type-meta-line); font-weight:var(--font-medium);
+ white-space:nowrap; overflow-wrap:normal; overflow:hidden; text-overflow:ellipsis;
+}
+:root :is(.ui-badge,.ui-tag,.ui-info-chip) > :is(span,strong,b,small) { font:inherit; color:inherit; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+:root :is(.ui-badge,.ui-info-chip) svg { width:14px; height:14px; flex:none; }
+:root :is(.ui-badge,.ui-info-chip)[data-ui-tone=info] { background:var(--info-light); color:var(--info-text); }
+:root :is(.ui-badge,.ui-info-chip)[data-ui-tone=success] { background:var(--success-light); color:var(--success-text); }
+:root :is(.ui-badge,.ui-info-chip)[data-ui-tone=warning] { background:var(--warning-light); color:var(--warning-text); }
+:root :is(.ui-badge,.ui-info-chip)[data-ui-tone=danger] { background:var(--danger-light); color:var(--danger-text); }
+:root :is(.ui-badge,.ui-info-chip)[data-ui-tone=accent] { background:var(--accent-light); color:var(--accent-text); }
+:root .ui-tag[style]::before { content:''; width:6px; height:6px; flex:none; border-radius:var(--radius-full); background:var(--ui-tag-color); }

@@ -1,13 +1,18 @@
+import { showFormErrors, clearFormErrors } from '../ui/validation.js';
+import { dateRange, validateRanges } from '../ui/intervals.js';
+import { descriptionList } from '../ui/detailComponents.js';
+import { filterValues, filterMatches, setFilterValue, encodeFilterValues } from '../ui/filterValues.js';
+import { applyColumnSort } from './tableUtils.js';
 import { chartPalette, chartJsTheme, applyChartJsTheme, loadChartFont } from '../ui/charts.js';
 import { createPopover } from '../ui/popover.js';
-import { selectionList } from '../ui/selectionList.js';
+import { selectionList, filterSelectionList } from '../ui/selectionList.js';
 import { button as uiButton, control as uiControl, field as uiField, pageHeader as uiPageHeader } from '../ui/primitives.js';
 import { setButtonBusy } from '../ui/controls.js';
 import { progress as uiProgress } from '../ui/dataDisplay.js';
 /**
  * DMB Backlog - Reports Page
  */
-import { renderDidBacklog, initDidBacklog } from './didBacklog.js?v=14';
+import { renderDidBacklog, initDidBacklog } from './didBacklog.js?v=15';
 import { renderDirectorateReport, initDirectorateReport } from './directorateReport.js?v=20';
 import { escapeHtml } from '../htmlUtils.js';
 import { bindViewStateAction, renderViewState } from './viewState.js';
@@ -131,7 +136,7 @@ let teamWeeklyTeamId = '';
 const PIP_DECISION_META = {
   accept: {
     label: 'Принять в работу',
-    icon: 'circle-check-big',
+    icon: 'check-circle-2',
     tone: 'success',
     consequence: 'Задача перейдёт в статус «Принята в работу» и покинет очередь PI.',
     reasonLabel: 'Комментарий к решению',
@@ -147,7 +152,7 @@ const PIP_DECISION_META = {
   },
   reject: {
     label: 'Отклонить',
-    icon: 'circle-x',
+    icon: 'x-circle',
     tone: 'danger',
     consequence: 'Задача перейдёт в статус «Отклонена» и покинет рабочую очередь.',
     reasonLabel: 'Основание отклонения',
@@ -203,9 +208,9 @@ const meetingKindMeta = {
 
 function meetingMatchesFilters(meeting) {
   const open = meeting.state === 'planned' || meeting.state === 'date_pending';
-  if (meetingFilters.kind !== 'all' && meeting.kind !== meetingFilters.kind) return false;
-  if (meetingFilters.state === 'open' && !open) return false;
-  if (meetingFilters.state !== 'all' && meetingFilters.state !== 'open' && meeting.state !== meetingFilters.state) return false;
+  if (!filterMatches(meetingFilters.kind,meeting.kind,'all')) return false;
+  if (filterValues(meetingFilters.state).every(value=>value==='open') && !open) return false;
+  if (!filterMatches(meetingFilters.state,meeting.state,'all') && !(filterValues(meetingFilters.state).includes('open') && open)) return false;
   if (meetingFilters.from && (!meeting.scheduled_date || meeting.scheduled_date < meetingFilters.from)) return false;
   if (meetingFilters.to && (!meeting.scheduled_date || meeting.scheduled_date > meetingFilters.to)) return false;
   return true;
@@ -224,8 +229,7 @@ function renderMeetingToolbar() {
         <option value="open">Предстоящие</option><option value="all">Все</option><option value="planned">Запланированные</option>
         <option value="date_pending">Без даты</option><option value="held">Состоявшиеся</option><option value="cancelled">Отменённые</option>
       </select></label>
-      <label>Дата с<input class="input" type="date" data-meeting-filter="from" value="${escapeHtml(meetingFilters.from)}"></label>
-      <label>Дата по<input class="input" type="date" data-meeting-filter="to" value="${escapeHtml(meetingFilters.to)}"></label>
+      ${dateRange({ id: 'meeting-period', label: 'Период встреч', from: { label: 'Дата с', value: meetingFilters.from, attrs: { 'data-meeting-filter': 'from' } }, to: { label: 'Дата по', value: meetingFilters.to, attrs: { 'data-meeting-filter': 'to' } } })}
     </div>
     <div class="meeting-toolbar-actions">
       <div class="meeting-view-switch" role="group" aria-label="Представление календаря">
@@ -407,7 +411,7 @@ function renderReportingMeetingsPanel() {
       ? renderMeetingTimeline(filtered)
       : `<div class="reporting-meetings-grid">${cards.map(item => renderReportingMeetingCard(item, false)).join('')}</div>`}`;
   panel.querySelectorAll('[data-meeting-filter]').forEach(input => {
-    input.value = meetingFilters[input.dataset.meetingFilter];
+    if(input.tagName==='SELECT')setFilterValue(input,meetingFilters[input.dataset.meetingFilter]);else input.value = meetingFilters[input.dataset.meetingFilter];
   });
   window.lucide?.createIcons();
   if (requested) setTimeout(() => {
@@ -460,7 +464,7 @@ function showReportingMeetingForm(meeting, mode) {
               ${uiField({ id: 'meeting-scheduled-date', label: 'Дата встречи', type: 'date', value: meeting.scheduled_date || '', required: true, attrs: { name: 'scheduled_date', min: localDateIso() }, hint: !hasDate && meeting.kind === 'did' ? 'Новая оперативка ДИД должна приходиться на вторник.' : !hasDate && meeting.kind === 'directorate' ? 'Новая директорская оперативка должна приходиться на понедельник.' : '' })}
               ${hasDate ? uiField({ id: 'meeting-change-reason', label: 'Причина изменения даты', kind: 'textarea', attrs: { name: 'reason', rows: 3, placeholder: 'Укажите причину, если дата изменяется' }, hint: 'Обязательна при выборе даты, отличной от текущей.' }) : ''}` : isComplete ? `
               <div class="meeting-dialog-warning is-success"><i data-lucide="check-circle"></i><span>Текущие отчётные статусы будут зафиксированы и станут статусами предыдущей встречи. Заполнено ${meeting.filled_tasks || 0} из ${meeting.total_tasks || 0} задач.</span></div>` : `
-              <div class="meeting-dialog-warning"><i data-lucide="triangle-alert"></i><span>Встреча будет отменена. Заполненные статусы перенесутся в следующую встречу, не заменяя уже подготовленные данные.</span></div>
+              <div class="meeting-dialog-warning"><i data-lucide="alert-triangle"></i><span>Встреча будет отменена. Заполненные статусы перенесутся в следующую встречу, не заменяя уже подготовленные данные.</span></div>
               ${uiField({ id: 'meeting-cancel-reason', label: 'Причина отмены', kind: 'textarea', required: true, attrs: { name: 'reason', rows: 3, placeholder: 'Укажите причину отмены' } })}`}
             <div class="form-error meeting-dialog-error" role="alert" hidden></div>
           </div>
@@ -998,11 +1002,13 @@ function renderFilterDropdown(field, triggerEl) {
   const values = [...new Set(tasksCache.map(t => String(t[field] ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const activeVals = reportColumnFilters[field] || [];
   const dd = document.createElement('div');
-  dd.className = 'report-filter-panel';
-  dd.innerHTML = `<div class="ui-popover-header"><strong class="ui-popover-title">Фильтр</strong>
-    <button type="button" class="btn btn-ghost btn-sm" data-clear-field="${escapeHtml(field)}">Сбросить</button></div>
+  dd.className = 'report-filter-panel ui-filter-popover';
+  dd.innerHTML = `<div class="ui-popover-header"><strong class="ui-popover-title">Фильтр</strong></div>
+    ${values.length > 7 ? '<div class="ui-popover-field"><input class="input ui-control" type="search" aria-label="Поиск значения" placeholder="Поиск значения…"></div>' : ''}
     <label class="ui-selection-option"><input type="checkbox" data-select-all><span>Выбрать все</span><span class="ui-selection-count" data-selection-count></span></label>
-    ${selectionList({ items: values.map(value => ({ value, label: value })), selected: activeVals })}`;
+    <div class="ui-filter-options">${selectionList({ items: values.map(value => ({ value, label: value })), selected: activeVals })}</div>
+    <div class="ui-popover-actions"><button type="button" class="btn btn-secondary btn-sm ui-btn" data-clear-field="${escapeHtml(field)}">Очистить</button><button type="button" class="btn btn-primary btn-sm ui-btn" data-apply-field>Применить</button></div>`;
+  dd.querySelector('input[type=search]')?.addEventListener('input', event => filterSelectionList(dd.querySelector('.ui-selection-list'),event.target.value));
   const syncSelection = () => {
     const checked = dd.querySelectorAll('input[value]:checked').length;
     const all = dd.querySelector('[data-select-all]');
@@ -1013,12 +1019,18 @@ function renderFilterDropdown(field, triggerEl) {
   syncSelection();
   dd.addEventListener('change', event => {
     if (event.target.matches('[data-select-all]')) dd.querySelectorAll('input[value]').forEach(input => { input.checked = event.target.checked; });
-    syncSelection(); applyFilterFromDropdown(field, dd); reportFilterPopover?.position();
+    syncSelection(); reportFilterPopover?.position();
   });
   dd.addEventListener('click', event => {
+    if (event.target.closest('[data-apply-field]')) {
+      const popover = reportFilterPopover;
+      applyFilterFromDropdown(field, dd);
+      popover?.close();
+      return;
+    }
     if (!event.target.closest('[data-clear-field]')) return;
     dd.querySelectorAll('input[type=checkbox]').forEach(input => { input.checked = false; });
-    syncSelection(); applyFilterFromDropdown(field, dd); reportFilterPopover?.position();
+    syncSelection(); reportFilterPopover?.position();
   });
   reportFilterDropdown = dd;
   reportFilterDropdownField = field;
@@ -1088,7 +1100,7 @@ function renderPipDecisionWorkspace(tasks) {
         <div class="pip-task-main">
           <div class="pip-task-heading">
             <a href="#/backlog?task=${task.id}&source=pip" class="pip-task-id">${escapeHtml(formatTaskPublicId(task))}</a>
-            <span class="pip-context-badge ${contextReady ? 'is-ready' : 'has-gaps'}"><i data-lucide="${contextReady ? 'badge-check' : 'triangle-alert'}"></i>${contextReady ? 'Контекст заполнен' : `${gaps.length} ${gaps.length === 1 ? 'пробел' : 'пробела'}`}</span>
+            <span class="pip-context-badge ${contextReady ? 'is-ready' : 'has-gaps'}"><i data-lucide="${contextReady ? 'badge-check' : 'alert-triangle'}"></i>${contextReady ? 'Контекст заполнен' : `${gaps.length} ${gaps.length === 1 ? 'пробел' : 'пробела'}`}</span>
           </div>
           <h3>${escapeHtml(task.title || 'Без названия')}</h3>
           <div class="pip-task-meta">
@@ -1097,16 +1109,16 @@ function renderPipDecisionWorkspace(tasks) {
             <span><i data-lucide="tag"></i>${escapeHtml(task.task_type_name || 'Тип не указан')}</span>
           </div>
         </div>
-        <dl class="pip-task-metrics">
-          <div><dt>Трудозатраты</dt><dd>${task.effort_days != null ? `${escapeHtml(String(task.effort_days))} ч/д` : '—'}</dd></div>
-          <div><dt>Фин. эффект</dt><dd>${task.financial_effect != null ? `${Number(task.financial_effect).toLocaleString('ru-RU')} млн ₽` : '—'}</dd></div>
-          <div><dt>Priority Score</dt><dd>${task.priority_score != null ? escapeHtml(String(task.priority_score)) : '—'}</dd></div>
-        </dl>
+        ${descriptionList({ className: 'pip-task-metrics', items: [
+          { label: 'Трудозатраты', value: task.effort_days != null ? `${task.effort_days} ч/д` : null },
+          { label: 'Фин. эффект', value: task.financial_effect != null ? `${Number(task.financial_effect).toLocaleString('ru-RU')} млн ₽` : null },
+          { label: 'Priority Score', value: task.priority_score },
+        ] })}
         <div class="pip-task-decision">
-          ${gaps.length ? `<div class="pip-context-gaps" aria-label="Недостающие данные">${gaps.map(gap => `<span>${escapeHtml(gap.label)}</span>`).join('')}</div>` : '<p class="pip-context-ok"><i data-lucide="circle-check"></i>Данных достаточно для обсуждения</p>'}
+          ${gaps.length ? `<div class="pip-context-gaps" aria-label="Недостающие данные">${gaps.map(gap => `<span>${escapeHtml(gap.label)}</span>`).join('')}</div>` : '<p class="pip-context-ok"><i data-lucide="check-circle"></i>Данных достаточно для обсуждения</p>'}
           ${canDecide
             ? `<button type="button" class="btn btn-primary btn-sm pip-open-decision" data-task-id="${task.id}"><i data-lucide="scale"></i>Принять решение</button>`
-            : '<p class="pip-view-only"><i data-lucide="lock-keyhole"></i>Решение фиксирует лидер трайба или проектный офис</p>'}
+            : '<p class="pip-view-only"><i data-lucide="lock"></i>Решение фиксирует лидер трайба или проектный офис</p>'}
         </div>
       </article>`;
   }).join('');
@@ -1162,7 +1174,7 @@ function showPipDecisionModal(task, app) {
           <div><span>Фин. эффект</span><strong>${task.financial_effect != null ? `${Number(task.financial_effect).toLocaleString('ru-RU')} млн ₽` : '—'}</strong></div>
           <div><span>Priority Score</span><strong>${task.priority_score ?? '—'}</strong></div>
         </div>
-        ${gaps.length ? `<div class="pip-modal-gaps"><i data-lucide="triangle-alert"></i><div><strong>Контекст неполный</strong><span>${escapeHtml(gaps.map(gap => gap.label).join(' · '))}. Решение доступно, но эти пробелы стоит учесть.</span></div></div>` : ''}
+        ${gaps.length ? `<div class="pip-modal-gaps"><i data-lucide="alert-triangle"></i><div><strong>Контекст неполный</strong><span>${escapeHtml(gaps.map(gap => gap.label).join(' · '))}. Решение доступно, но эти пробелы стоит учесть.</span></div></div>` : ''}
         <fieldset class="pip-decision-options"><legend>Выберите результат PI-планирования</legend>
           ${Object.entries(PIP_DECISION_META).map(([value, meta]) => `<label class="pip-decision-option is-${meta.tone}"><input type="radio" name="pip-decision" value="${value}"><span class="pip-decision-option-icon"><i data-lucide="${meta.icon}"></i></span><span><strong>${escapeHtml(meta.label)}</strong><small>${escapeHtml(meta.consequence)}</small></span></label>`).join('')}
         </fieldset>
@@ -1244,18 +1256,7 @@ function filteredAndSortedReportRows(list, ignoredFilterFields = []) {
     );
   }
 
-  if (reportSortField) {
-    filtered = [...filtered].sort((a, b) => {
-      if (['progress', 'planned_progress', 'progress_deviation_percent'].includes(reportSortField)) {
-        const left = a[reportSortField] == null ? Number.NEGATIVE_INFINITY : Number(a[reportSortField]);
-        const right = b[reportSortField] == null ? Number.NEGATIVE_INFINITY : Number(b[reportSortField]);
-        return reportSortDir === 'asc' ? left - right : right - left;
-      }
-      const va = String(a[reportSortField] ?? '').toLowerCase();
-      const vb = String(b[reportSortField] ?? '').toLowerCase();
-      return reportSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-    });
-  }
+  if (reportSortField) return applyColumnSort(filtered,reportSortField,reportSortDir);
 
   return filtered;
 }
@@ -1274,9 +1275,10 @@ function renderReportTable(list, fields) {
     const hasActive = activeVals.length > 0;
     const count = activeVals.length;
 
-    return `<th data-sort="${f}" style="cursor:pointer;user-select:none;white-space:nowrap;text-align:left;border-bottom:1px solid var(--border-color);position:relative">
+    const config=reportConfig[currentReport]||{},sortable=!(config.isCustom||(config.isDb&&currentReport!=='quarterly-goals'));
+    return `<th scope="col"${sortable?` data-sort="${f}" aria-sort="${sorted?(reportSortDir==='asc'?'ascending':'descending'):'none'}"`:''} style="user-select:none;white-space:nowrap;text-align:left;border-bottom:1px solid var(--border-color);position:relative">
       <div style="display:flex;align-items:center;gap:4px;justify-content:space-between">
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${label}${arrow}</span>
+        ${sortable?uiButton({label:label+arrow,variant:'ghost',size:'small',className:'report-sort-btn',attrs:{'data-sort-field':f,'aria-label':'Сортировать: '+label}}):`<span>${escapeHtml(label)}</span>`}
         ${uiButton({ label: `Фильтр: ${label}${count ? `, выбрано ${count}` : ''}`, icon: 'filter', iconOnly: true, size: 'small', variant: 'ghost', className: 'filter-trigger', attrs: { 'data-field': f, 'aria-pressed': hasActive } })}
       </div>
     </th>`;
@@ -1342,11 +1344,11 @@ export function summarizeQuarterlyTeams(tasks) {
 
 export function renderQuarterlyTeamSummary(tasks) {
   const colorFiltered = filteredAndSortedReportRows(tasks, ['team_name']);
-  const activeTeam = (reportColumnFilters.team_name || [])[0] || '';
+  const activeTeams = reportColumnFilters.team_name || [], activeTeam = activeTeams.join(' · ');
   const teams = summarizeQuarterlyTeams(colorFiltered);
 
   const rows = teams.map(team => `
-    <tr class="${activeTeam === team.name ? 'is-selected' : ''}">
+    <tr class="${activeTeams.includes(team.name) ? 'is-selected' : ''}">
       <td><button type="button" class="ui-surface-action quarterly-team-select" data-quarterly-team="${escapeHtml(team.name)}">${escapeHtml(team.name)}</button></td>
       <td><strong>${team.items.length}</strong></td><td>${team.green}</td><td>${team.yellow}</td><td>${team.red}</td>
       <td>${quarterlyAverage(team.items, 'planned_progress')}</td><td>${quarterlyAverage(team.items, 'progress')}</td>
@@ -1365,13 +1367,13 @@ export function renderQuarterlyTeamSummary(tasks) {
 
 function renderQuarterlyGoalsBody(tasks, fields) {
   const visible = filteredAndSortedReportRows(tasks);
-  const activeTeam = (reportColumnFilters.team_name || [])[0];
+  const activeTeam = (reportColumnFilters.team_name || []).join(' · ');
   const missing = visible.filter(item => item.progress_freshness === 'missing').length;
   const needsRefresh = visible.filter(item => ['unconfirmed', 'stale'].includes(item.progress_freshness)).length;
   const confirmedGap = visible.filter(item => item.progress_freshness === 'current' && ['yellow', 'red'].includes(item.progress_indicator)).length;
   return `<section class="quarterly-data-quality" aria-label="Качество данных отчёта">
-      <div><i data-lucide="database-zap" aria-hidden="true"></i><span><strong>${missing + needsRefresh} требуют обновления</strong><small>${missing} без факта · ${needsRefresh} устарели или не подтверждены</small></span></div>
-      <div><i data-lucide="chart-no-axes-column-decreasing" aria-hidden="true"></i><span><strong>${confirmedGap} с подтверждённым отставанием</strong><small>По актуальному факту</small></span></div>
+      <div><i data-lucide="database" aria-hidden="true"></i><span><strong>${missing + needsRefresh} требуют обновления</strong><small>${missing} без факта · ${needsRefresh} устарели или не подтверждены</small></span></div>
+      <div><i data-lucide="bar-chart-3" aria-hidden="true"></i><span><strong>${confirmedGap} с подтверждённым отставанием</strong><small>По актуальному факту</small></span></div>
     </section>${renderQuarterlyTeamSummary(tasks)}
     <section class="quarterly-goals-detail" aria-labelledby="quarterly-goals-detail-title">
       <div class="quarterly-goals-detail__header"><div><h2 id="quarterly-goals-detail-title">Детализация целей и AD-HOC</h2><p>${activeTeam ? `Команда: ${escapeHtml(activeTeam)}` : 'Все команды текущего квартала'}</p></div><span>${visible.length} из ${tasks.length} задач</span></div>
@@ -1458,10 +1460,10 @@ async function loadReportData(app) {
 }
 
 const WEEKLY_SIGNAL_META = {
-  decision: { label: 'Нужно решение', icon: 'message-square-warning' },
+  decision: { label: 'Нужно решение', icon: 'message-square' },
   blocker: { label: 'Блокер', icon: 'octagon-alert' },
-  risk: { label: 'Риск', icon: 'triangle-alert' },
-  on_track: { label: 'По плану', icon: 'circle-check' },
+  risk: { label: 'Риск', icon: 'alert-triangle' },
+  on_track: { label: 'По плану', icon: 'check-circle' },
 };
 
 function formatWeeklyDate(value, options = { day: 'numeric', month: 'short' }) {
@@ -1500,10 +1502,10 @@ function weeklyTaskCard(item) {
       <section><span>Результат недели</span><p>${escapeHtml(item.result || 'Ещё не заполнен')}</p></section>
       <section><span>Следующий шаг</span><p>${escapeHtml(item.next_step || 'Не указан')}${item.next_step_due ? `<small>До ${escapeHtml(formatWeeklyDate(item.next_step_due, { day: 'numeric', month: 'long' }))}</small>` : ''}</p></section>
     </div>
-    ${item.decision_request ? `<div class="team-weekly-decision"><i data-lucide="message-square-warning"></i><div><span>Вопрос на встречу</span><strong>${escapeHtml(item.decision_request)}</strong></div></div>` : ''}
+    ${item.decision_request ? `<div class="team-weekly-decision"><i data-lucide="message-square"></i><div><span>Вопрос на встречу</span><strong>${escapeHtml(item.decision_request)}</strong></div></div>` : ''}
     <footer class="team-weekly-task-meta">
       <span><i data-lucide="folder-kanban"></i>${escapeHtml(item.project_name || 'Без проекта')}</span>
-      <span><i data-lucide="user-round"></i>${escapeHtml(item.owner_name || 'Не назначен')}</span>
+      <span><i data-lucide="user"></i>${escapeHtml(item.owner_name || 'Не назначен')}</span>
       <span><i data-lucide="activity"></i>${Number(item.progress || 0)}% ${delta}</span>
       <span><i data-lucide="circle-dot"></i>${escapeHtml(item.status_name || 'Без статуса')}</span>
     </footer>
@@ -1513,24 +1515,21 @@ function weeklyTaskCard(item) {
 export function renderTeamWeeklyReport(data) {
   const allItems = Array.isArray(data.items) ? data.items : [];
   const teams = Array.isArray(data.teams) ? data.teams : [];
-  if (teamWeeklyTeamId && !teams.some(team => String(team.id) === String(teamWeeklyTeamId))) teamWeeklyTeamId = '';
+  if (teamWeeklyTeamId && !filterValues(teamWeeklyTeamId).every(value=>teams.some(team=>String(team.id)===value))) teamWeeklyTeamId = '';
   if (!teamWeeklyTeamId && teams.length === 1) teamWeeklyTeamId = String(teams[0].id);
   const teamItems = teamWeeklyTeamId
-    ? allItems.filter(item => String(item.team_id) === String(teamWeeklyTeamId))
+    ? allItems.filter(item => filterMatches(teamWeeklyTeamId,item.team_id))
     : allItems;
   const summary = weeklySummary(teamItems);
   const visible = teamItems.filter(item => {
-    if (teamWeeklyFilter === 'attention') return ['decision', 'blocker', 'risk'].includes(item.signal);
-    if (teamWeeklyFilter === 'completed') return item.is_completed_this_week;
-    if (teamWeeklyFilter === 'stale') return !item.is_ready;
-    return true;
+    return filterValues(teamWeeklyFilter).some(value=>value==='all'||value==='attention'&&['decision','blocker','risk'].includes(item.signal)||value==='completed'&&item.is_completed_this_week||value==='stale'&&!item.is_ready);
   });
   const meeting = data.meeting || {};
   const range = meeting.scheduled_date && meeting.week_end
     ? `${formatWeeklyDate(meeting.scheduled_date)}–${formatWeeklyDate(meeting.week_end, { day: 'numeric', month: 'long' })}`
     : 'Текущая неделя';
   const activeTeam = teams.find(team => String(team.id) === String(teamWeeklyTeamId));
-  const teamLabel = activeTeam?.name || (teams.length > 1 ? 'Все команды' : teams[0]?.name || 'Команда');
+  const teamLabel = teamWeeklyTeamId ? filterValues(teamWeeklyTeamId).map(value=>teams.find(team=>String(team.id)===value)?.name || value).join(' · ') : (teams.length > 1 ? 'Все команды' : teams[0]?.name || 'Команда');
   const nextDue = teamItems.map(item => item.next_step_due).filter(Boolean).sort()[0];
   const filters = [
     ['attention', 'Требуют внимания', summary.attention],
@@ -1541,31 +1540,31 @@ export function renderTeamWeeklyReport(data) {
   return `<section class="team-weekly-report" aria-labelledby="team-weekly-focus-title">
     <div class="team-weekly-context">
       <div><span>Пульс команды</span><strong>${escapeHtml(teamLabel)}</strong><small>${escapeHtml(range)}</small></div>
-      ${teams.length > 1 ? `<label><span class="sr-only">Команда</span><select class="input" data-team-weekly-team><option value="">Все команды</option>${teams.map(team => `<option value="${team.id}" ${String(team.id) === String(teamWeeklyTeamId) ? 'selected' : ''}>${escapeHtml(team.name)}</option>`).join('')}</select></label>` : ''}
+      ${teams.length > 1 ? `<label><span class="sr-only">Команда</span><select class="input" data-team-weekly-team data-ui-filter-value="${escapeHtml(teamWeeklyTeamId)}"><option value="">Все команды</option>${teams.map(team => `<option value="${team.id}" ${String(team.id) === String(teamWeeklyTeamId) ? 'selected' : ''}>${escapeHtml(team.name)}</option>`).join('')}</select></label>` : ''}
     </div>
     <div class="team-weekly-kpis" aria-label="Сводка недели">
       <button class="ui-surface-action" type="button" data-weekly-filter="all"><i data-lucide="badge-check"></i><span><small>Готовность</small><strong>${summary.readiness}%</strong><em>${summary.ready} из ${summary.total}</em></span></button>
-      <button class="ui-surface-action" type="button" data-weekly-filter="completed"><i data-lucide="circle-check-big"></i><span><small>Завершено</small><strong>${summary.completed}</strong><em>за неделю</em></span></button>
+      <button class="ui-surface-action" type="button" data-weekly-filter="completed"><i data-lucide="check-circle-2"></i><span><small>Завершено</small><strong>${summary.completed}</strong><em>за неделю</em></span></button>
       <button class="ui-surface-action" type="button" data-weekly-filter="all"><i data-lucide="workflow"></i><span><small>В работе</small><strong>${summary.active}</strong><em>активных</em></span></button>
-      <button class="ui-surface-action" type="button" data-weekly-filter="attention"><i data-lucide="triangle-alert"></i><span><small>Внимание</small><strong>${summary.attention}</strong><em>риск/решение</em></span></button>
-      <button class="ui-surface-action" type="button" data-weekly-filter="stale"><i data-lucide="clock-alert"></i><span><small>Без обновления</small><strong>${summary.stale}</strong><em>нужен статус</em></span></button>
+      <button class="ui-surface-action" type="button" data-weekly-filter="attention"><i data-lucide="alert-triangle"></i><span><small>Внимание</small><strong>${summary.attention}</strong><em>риск/решение</em></span></button>
+      <button class="ui-surface-action" type="button" data-weekly-filter="stale"><i data-lucide="clock"></i><span><small>Без обновления</small><strong>${summary.stale}</strong><em>нужен статус</em></span></button>
     </div>
     <div class="team-weekly-layout">
-      <main class="team-weekly-main">
+      <div class="team-weekly-main">
         <div class="team-weekly-section-head"><div><span>Повестка</span><h2 id="team-weekly-focus-title">Фокус встречи</h2></div><strong>${visible.length}</strong></div>
-        <div class="team-weekly-filterbar" role="group" aria-label="Фильтр задач">${filters.map(([key, label, count]) => `<button type="button" class="btn btn-secondary btn-sm ui-btn ${teamWeeklyFilter === key ? 'is-active' : ''}" data-weekly-filter="${key}" aria-pressed="${teamWeeklyFilter === key}">${label}<span>${count}</span></button>`).join('')}</div>
+        <div class="team-weekly-filterbar" role="group" aria-label="Фильтр задач">${filters.map(([key, label, count]) => `<button type="button" class="btn btn-secondary btn-sm ui-btn ${filterValues(teamWeeklyFilter).includes(key) ? 'is-active' : ''}" data-weekly-filter="${key}" aria-pressed="${filterValues(teamWeeklyFilter).includes(key)}">${label}<span>${count}</span></button>`).join('')}</div>
         <div class="team-weekly-list">${visible.length ? visible.map(weeklyTaskCard).join('') : renderViewState({ kind: 'empty', title: 'В этой группе нет задач', message: 'Выберите другой фильтр или обновите статусы.' })}</div>
-      </main>
+      </div>
       <aside class="team-weekly-rhythm">
         <div class="team-weekly-rhythm-head"><span><i data-lucide="activity"></i></span><div><small>Динамика</small><h2>Ритм команды</h2></div></div>
         <div class="team-weekly-readiness-ring" style="--weekly-readiness:${summary.readiness}%"><strong>${summary.readiness}%</strong><span>статусов готово</span></div>
-        <dl>
-          <div><dt>Средний сдвиг прогресса</dt><dd>${summary.delta == null ? '—' : `${summary.delta >= 0 ? '+' : ''}${summary.delta} п.п.`}</dd></div>
-          <div><dt>Ближайший следующий шаг</dt><dd>${nextDue ? escapeHtml(formatWeeklyDate(nextDue, { day: 'numeric', month: 'long' })) : '—'}</dd></div>
-          <div><dt>Решений требуется</dt><dd>${teamItems.filter(item => item.signal === 'decision').length}</dd></div>
-          <div><dt>Блокеров</dt><dd>${teamItems.filter(item => item.signal === 'blocker').length}</dd></div>
-        </dl>
-        <a class="btn btn-primary" href="${reportingStatusHref({ source: 'report', kind: 'team_weekly', meetingId: meeting.id || '' })}"><i data-lucide="clipboard-pen-line"></i>Обновить пульс</a>
+        ${descriptionList({ items: [
+          { label: 'Средний сдвиг прогресса', value: summary.delta == null ? null : `${summary.delta >= 0 ? '+' : ''}${summary.delta} п.п.` },
+          { label: 'Ближайший следующий шаг', value: nextDue ? formatWeeklyDate(nextDue, { day: 'numeric', month: 'long' }) : null },
+          { label: 'Решений требуется', value: teamItems.filter(item => item.signal === 'decision').length },
+          { label: 'Блокеров', value: teamItems.filter(item => item.signal === 'blocker').length },
+        ] })}
+        <a class="btn btn-primary" href="${reportingStatusHref({ source: 'report', kind: 'team_weekly', meetingId: meeting.id || '' })}"><i data-lucide="clipboard-edit"></i>Обновить пульс</a>
       </aside>
     </div>
   </section>`;
@@ -1889,7 +1888,11 @@ export async function initReportingMeetingsManagement(app) {
   panel?.addEventListener('change', event => {
       const input = event.target.closest('[data-meeting-filter]');
       if (!input) return;
-      meetingFilters[input.dataset.meetingFilter] = input.value;
+      const toolbar = input.closest('.meeting-toolbar');
+      clearFormErrors(toolbar);
+      const errors = validateRanges(toolbar);
+      if (Object.keys(errors).length) { showFormErrors(toolbar, errors); return; }
+      toolbar.querySelectorAll('[data-meeting-filter]').forEach(field => { meetingFilters[field.dataset.meetingFilter] = field.value; });
       renderReportingMeetingsPanel();
   });
   panel?.addEventListener('keydown', event => {
@@ -2192,7 +2195,7 @@ export function renderReportPage(app) {
 
   const reportingKind = currentReport === 'team-weekly' ? 'team_weekly' : currentReport === 'directorate' ? 'directorate' : currentReport === 'did-operational' ? 'did' : '';
   const reportActions = `
-    ${currentReport === 'pip' ? '<a class="btn btn-secondary btn-sm" href="#/express-estimate"><i data-lucide="calculator"></i>Экспресс-оценка</a>' : currentReport === 'quarterly-goals' ? `<a class="btn btn-primary btn-sm" href="${quarterlyGoalsUpdateHref({ source: 'report-detail' })}"><i data-lucide="gauge"></i>Обновить данные</a>` : (canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary btn-sm" href="${reportingStatusHref({ source: 'report', kind: reportingKind })}"><i data-lucide="clipboard-pen-line"></i>${currentReport === 'team-weekly' ? 'Подготовить встречу' : 'Заполнить статусы'}</a>` : '')}
+    ${currentReport === 'pip' ? '<a class="btn btn-secondary btn-sm" href="#/express-estimate"><i data-lucide="calculator"></i>Экспресс-оценка</a>' : currentReport === 'quarterly-goals' ? `<a class="btn btn-primary btn-sm" href="${quarterlyGoalsUpdateHref({ source: 'report-detail' })}"><i data-lucide="gauge"></i>Обновить данные</a>` : (canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary btn-sm" href="${reportingStatusHref({ source: 'report', kind: reportingKind })}"><i data-lucide="clipboard-edit"></i>${currentReport === 'team-weekly' ? 'Подготовить встречу' : 'Заполнить статусы'}</a>` : '')}
     ${!config.isPlaceholder ? `${uiButton({ label: 'Excel', icon: 'file-spreadsheet', size: 'small', attrs: { id: 'report-excel' } })}` : ''}
     ${uiButton({ label: 'Обновить', icon: 'refresh-cw', size: 'small', attrs: { id: 'report-refresh' } })}`;
 
@@ -2232,7 +2235,7 @@ export function renderReportPage(app) {
           <div class="stat-label">Всего</div>
         </button>
         <button type="button" class="ui-surface-action quarterly-kpi progress-widget" data-progress-filter="green">
-          <div class="stat-icon" style="background:var(--success-light);color:var(--success);"><i data-lucide="circle-check"></i></div>
+          <div class="stat-icon" style="background:var(--success-light);color:var(--success);"><i data-lucide="check-circle"></i></div>
           <div class="stat-value" id="progress-green">0</div>
           <div class="stat-label">Зелёные</div>
         </button>
@@ -2315,9 +2318,10 @@ export function initReportPage(app) {
       const parentHref = currentReport === 'pip' ? '#/express-estimate' : '#/reports';
       const parentLabel = currentReport === 'pip' ? 'Экспресс-оценка' : 'Статусы для встреч';
       bc.innerHTML = `
+        <a href="#/dashboard" class="breadcrumb-parent">Главная</a><span class="breadcrumb-separator" aria-hidden="true">/</span>
         <a href="${parentHref}" class="breadcrumb-parent">${parentLabel}</a>
         <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-current">${config.name}</span>`;
+        <span class="breadcrumb-current" aria-current="page">${config.name}</span>`;
     }
   }
 
@@ -2364,7 +2368,7 @@ export function initReportPage(app) {
 
     const weeklyFilter = e.target.closest('[data-weekly-filter]');
     if (weeklyFilter && currentReport === 'team-weekly' && cachedReportData) {
-      teamWeeklyFilter = weeklyFilter.dataset.weeklyFilter || 'attention';
+      const key=weeklyFilter.dataset.weeklyFilter || 'all', selected=new Set(filterValues(teamWeeklyFilter).filter(value=>value!=='all'));if(key==='all')selected.clear();else selected.has(key)?selected.delete(key):selected.add(key);teamWeeklyFilter=encodeFilterValues([...selected])||'all';
       renderReportContent(config, currentReport, cachedReportData);
       return;
     }
@@ -2418,12 +2422,13 @@ export function initReportPage(app) {
       return;
     }
 
-    const th = e.target.closest('th[data-sort]');
-    if (!th) return;
+    const sortButton=e.target.closest('[data-sort-field]');
+    if (!sortButton) return;
+    const buttonIndex=[...document.querySelectorAll('#report-body [data-sort-field="'+CSS.escape(sortButton.dataset.sortField)+'"]')].indexOf(sortButton);
 
     if (config.isCustom || (config.isDb && currentReport !== 'quarterly-goals')) return;
 
-    const field = th.dataset.sort;
+    const field = sortButton.dataset.sortField;
     if (reportSortField === field) {
       reportSortDir = reportSortDir === 'asc' ? 'desc' : 'asc';
     } else {
@@ -2436,6 +2441,7 @@ export function initReportPage(app) {
       const filtered = applyReportFilters(currentReport, tasksCache);
       renderReportContent(config, currentReport, filtered);
     }
+    const buttons=document.querySelectorAll('#report-body [data-sort-field="'+CSS.escape(field)+'"]');(buttons[buttonIndex]||buttons[0])?.focus({preventScroll:true});
   });
   document.getElementById('report-body')?.addEventListener('change', event => {
     if (!event.target.matches('[data-team-weekly-team]') || currentReport !== 'team-weekly' || !cachedReportData) return;

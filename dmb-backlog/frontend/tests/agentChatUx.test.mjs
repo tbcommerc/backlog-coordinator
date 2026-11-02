@@ -17,6 +17,8 @@ const historyModeMarkup = source.slice(
 const importableSource = source
   .replace(/import \{ confirmAction \} from '\.\.\/uiFeedback\.js(?:\?v=\d+)?';/, 'const confirmAction = async () => false;')
   .replace(/import \{ enhanceDialogOverlay \} from '\.\.\/modalAccessibility\.js(?:\?v=\d+)?';/, 'const enhanceDialogOverlay = () => {};')
+  .replace("'../ui/detailComponents.js'", JSON.stringify(new URL('../js/ui/detailComponents.js', import.meta.url).href))
+  .replace("'../ui/controls.js'", JSON.stringify(new URL('../js/ui/controls.js', import.meta.url).href))
   .replace("'../ui/actionMenu.js'", JSON.stringify(new URL('../js/ui/actionMenu.js', import.meta.url).href));
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(importableSource).toString('base64')}`;
 const { classifyRequirementValue, clearAgentChatTransientStorage, composerDraftStorageKey, formatContent, formatProcessingElapsed, getChatActivity, getDraftIssueSummary, getSessionLifecycle, isNearChatBottom, renderSessionEmptyState } = await import(moduleUrl);
@@ -120,7 +122,7 @@ assert.match(css, /\.chat-skip-to-composer\s*\{[^}]*box-shadow:\s*none;[^}]*visi
 assert.match(css, /\.chat-skip-to-composer:focus\s*\{[^}]*box-shadow:\s*var\(--shadow-lg\);[^}]*visibility:\s*visible/, 'the skip link must restore its elevation when keyboard focus reveals it');
 assert.match(source, /aria-controls="chat-dialog-pane"/, 'mobile tabs must identify the controlled dialog panel');
 assert.match(source, /role="tabpanel" aria-labelledby="chat-requirement-tab"/, 'the requirement workspace must be exposed as a tab panel');
-assert.match(source, /\['ArrowLeft', 'ArrowRight', 'Home', 'End'\]/, 'mobile tabs must support keyboard navigation');
+assert.match(source, /tabNavigationTarget\(root, event\)/, 'mobile and history tabs must share UI Kit navigation');
 assert.match(source, /data-chat-view="requirement"\]\'\)\?\.click\(\)[\s\S]*?editRequirementField\(target\)/, 'a blocker must reveal its requirement panel before focusing the field');
 assert.match(source, /closeHistoryPopover\(\);\s*closeHistoryDrawer\(\);[\s\S]*?loadSessions\(app\);/, 'choosing a session must close compact history navigation');
 assert.match(source, /event\.key !== 'Escape'/, 'inline requirement editing must support Escape cancellation');

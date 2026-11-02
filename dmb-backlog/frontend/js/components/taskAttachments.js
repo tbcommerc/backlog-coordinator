@@ -1,11 +1,6 @@
 import { escapeHtml } from '../htmlUtils.js';
 
-function formatFileSize(bytes) {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} Б`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
-}
+import { formatFileSize } from '../ui/dataDisplay.js';
 
 function getFileIcon(mimeType) {
   const type = String(mimeType || '');

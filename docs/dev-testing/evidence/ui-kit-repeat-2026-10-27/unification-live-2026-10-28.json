@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-28",
+  "scope": "Component unification checks; not full functional acceptance",
+  "checks": [
+    {
+      "family": "avatar",
+      "surface": "settings-and-shell",
+      "profile": "ba-a",
+      "initials": "QB",
+      "colour": "amber",
+      "sizes": [
+        28,
+        48
+      ],
+      "sameIdentity": true
+    },
+    {
+      "family": "avatar",
+      "surface": "admin-users-and-empty-preview",
+      "profile": "admin",
+      "listCount": 20,
+      "preview": "?",
+      "previewSize": 48,
+      "inlineAvatars": 0,
+      "writePerformed": false
+    },
+    {
+      "family": "tabs",
+      "surface": "directorate-report",
+      "profile": "admin",
+      "arrows": "focus-only",
+      "activation": "Enter",
+      "namedPanel": true,
+      "duplicateIds": 0
+    },
+    {
+      "family": "tabs",
+      "surface": "reporting-statuses",
+      "profile": "ba-a",
+      "arrows": "focus-only",
+      "activeUnchanged": true
+    },
+    {
+      "family": "tabs",
+      "surface": "task-327",
+      "profile": "ba-a",
+      "afterArrow": {
+        "focus": "task-tab-rep",
+        "selected": "task-tab-main"
+      },
+      "afterEnter": {
+        "selected": "task-tab-rep",
+        "panel": "task-tab-rep"
+      },
+      "writePerformed": false
+    },
+    {
+      "family": "counter",
+      "surface": "notification-shell-and-sidebar",
+      "profile": "ba-a",
+      "checkedAt": "2026-10-28T09:38:03.908Z",
+      "result": [
+        {
+          "counter": true,
+          "fontWeight": "500",
+          "height": 17.9976863861084,
+          "id": "notif-badge",
+          "label": "Непрочитанных уведомлений: 61",
+          "lineHeight": "18px",
+          "text": "61"
+        },
+        {
+          "counter": true,
+          "fontWeight": "500",
+          "height": 17.9976863861084,
+          "id": "notification-count",
+          "label": "Непрочитанных уведомлений: 61",
+          "lineHeight": "18px",
+          "text": "61"
+        }
+      ]
+    },
+    {
+      "family": "counter",
+      "surface": "audit-total",
+      "profile": "admin",
+      "value": 6403,
+      "label": "Всего событий: 6403",
+      "shape": "common-counter",
+      "height": 17.99242401123047
+    },
+    {
+      "family": "upload",
+      "surface": "WRK-48-resources",
+      "profile": "ba-a",
+      "checkedAt": "2026-10-28T09:48:34.709Z",
+      "result": {
+        "describedBy": "work-attachment-file-48-status",
+        "id": "work-attachment-file-48",
+        "labelledBy": "work-attachment-file-48-label",
+        "name": "Добавить файл",
+        "present": true,
+        "status": "До 50 МБ"
+      },
+      "fileSelected": false,
+      "writePerformed": false
+    }
+  ],
+  "limits": [
+    "Cursor pages and load-more beyond the live data thresholds are fixture-verified; no artificial bulk records created.",
+    "Other families remain separately unreviewed in the ledger."
+  ]
+}

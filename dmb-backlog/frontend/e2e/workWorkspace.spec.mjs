@@ -9,6 +9,7 @@ async function setup(page, hash = '') {
   return route.fulfill({json:{items:[{id:1,public_id:'WRK-1',title:'Подготовить результат',status:'in_progress',assignee_name:'Иван'}],total:1,collection_counts:{mine:3,acceptance:2,requested:4,team:6,all:9},summary:{total:9,overdue:2,blocked:1,unassigned:1,in_acceptance:2,active:7,done:2}}});
  });
  await page.goto('/e2e/fixtures/workTasks.html'+hash);
+ await expect(page.locator('html')).toHaveAttribute('data-work-fixture-ready','true');
  await expect(page.getByRole('heading',{name:'Рабочие задачи',exact:true})).toBeVisible();
  return queries;
 }
@@ -29,8 +30,28 @@ test('collections, shared team/search, summary drilldown and reload retain scope
  expect(queries.at(-1).get('q')).toBe('результат');expect(queries.at(-1).get('view')).toBe('requested');expect(queries.at(-1).get('overdue')).toBe('true');
  await page.reload();await expect(page.locator('.work-table')).toBeVisible();
  expect(queries.at(-1).get('execution_team_id')).toBe('20');expect(queries.at(-1).get('overdue')).toBe('true');
- await page.getByRole('button',{name:'Сбросить',exact:true}).click();
+ await page.locator('[data-work-action=reset]').click();
  expect(queries.at(-1).get('execution_team_id')).toBeNull();expect(queries.at(-1).get('overdue')).toBeNull();
+});
+
+test('reset clears multiple filters restored from the URL and keeps the collection',async({page})=>{
+ const queries=await setup(page,'#/work-tasks?view=requested&status='+encodeURIComponent('["new","ready"]')+'&team='+encodeURIComponent('["10","20"]')+'&q=WRK&sort=due&priority='+encodeURIComponent('["high","normal"]')+'&attention=blocked&focus='+encodeURIComponent('["today","overdue"]'));
+ await page.locator('[data-work-action=reset]').click();
+ await expect(page.locator('#work-status')).toHaveValue('active');
+ await expect(page.locator('#work-team')).toHaveValue('');
+ await expect(page.locator('#work-priority')).toHaveValue('');
+ await expect(page.locator('#work-focus')).toHaveValue('');
+ await expect(page.locator('#work-search')).toHaveValue('');
+ await expect(page.locator('#work-sort')).toHaveValue('attention');
+ await expect.poll(()=>queries.at(-1)?.get('status')).toBe('active');
+ expect(queries.at(-1).get('view')).toBe('requested');
+ for(const key of ['execution_team_id','priority','focus','blocked','q']) expect(queries.at(-1).get(key) || '').toBe('');
+ await expect(page.locator('[data-ui-filter-summary]')).toHaveCount(0);
+ await expect(page.locator('[data-work-action=reset]')).toBeHidden();
+ await page.reload();
+ await expect(page.locator('#work-status')).toHaveValue('active');
+ await expect(page.locator('#work-team')).toHaveValue('');
+ expect(queries.at(-1).get('view')).toBe('requested');
 });
 
 test('review defaults, deadline sorting and compact mobile collection persist',async({page})=>{
@@ -46,8 +67,8 @@ test('review defaults, deadline sorting and compact mobile collection persist',a
  await page.setViewportSize({width:390,height:844});
  await expect(page.locator('#work-view')).toBeVisible();
  await expect(page.locator('#work-status')).toBeHidden();
- expect((await page.locator('tbody tr').first().boundingBox()).y).toBeLessThan(400);
- await page.getByRole('button',{name:'Сводка',exact:true}).click();
+ expect((await page.locator('tbody tr').first().boundingBox()).y).toBeLessThan(450);
+ await page.getByRole('combobox',{name:'Представление задач',exact:true}).selectOption('summary');
  await expect(page.getByRole('heading',{name:'Ближайшие действия'})).toBeVisible();
  await expect(page.locator('.work-priority-list')).toContainText('Подготовить результат');
 });
@@ -174,7 +195,7 @@ for(const width of [390,1440])for(const theme of ['light','dark'])test(`workspac
  await page.setViewportSize({width,height:800});await setup(page);
  await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
  for(const mode of ['Список','Сводка']){
-  await page.getByRole('button',{name:mode,exact:true}).click();
+  if(width<=400) await page.getByRole('combobox',{name:'Представление задач',exact:true}).selectOption(mode==='Список'?'list':'summary'); else await page.getByRole('button',{name:mode,exact:true}).click();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:info.outputPath(`${theme}-${width}-${mode}.png`),fullPage:true});
  }

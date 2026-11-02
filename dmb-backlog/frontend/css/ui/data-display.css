@@ -12,8 +12,7 @@
 .ui-avatar[data-ui-color="amber"] { background: var(--warning-light); color: var(--warning-text); }
 .ui-avatar[data-ui-color="emerald"] { background: var(--success-light); color: var(--success-text); }
 .ui-avatar[data-ui-color="sky"] { background: var(--info-light); color: var(--info-text); }
-:root .ui-tag { display: inline-flex; align-items: center; max-width: 100%; gap: var(--space-1); padding: 2px 6px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-tertiary); color: var(--text-secondary); font-size: var(--text-xs); line-height: 1.4; overflow-wrap: anywhere; }
-:root .ui-tag[style] { border-inline-start: 3px solid var(--ui-tag-color, var(--border-color)); }
+/* Tag geometry and dictionary colour markers are owned by info-chips.css. */
 .ui-progress { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; width: 100%; --progress-color: var(--accent-solid); }
 .ui-progress[data-ui-tone="success"] { --progress-color: var(--success); }
 .ui-progress[data-ui-tone="warning"] { --progress-color: var(--warning); }

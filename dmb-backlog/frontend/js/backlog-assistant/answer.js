@@ -1,3 +1,4 @@
+import { loadMore } from '../ui/specialized.js';
 import { escapeHtml as esc } from '../htmlUtils.js';
 import { button } from '../ui/primitives.js';
 import { assistantHeading } from './presentation.js';
@@ -33,7 +34,7 @@ export function renderAnswer(answer) {
             <thead><tr>${columns.map(c => `<th scope="col">${esc(labels[c] || c)}</th>`).join('')}</tr></thead>
             <tbody>${rows.map(row => `<tr>${columns.map(c => `<td>${c === 'title' && safeNavigator(row.navigator) ? `<a href="${esc(row.navigator)}">${esc(text(row[c]))}</a>` : esc(text(row[c]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
             ${supplemental}
-            ${block.next_cursor != null && block.result_ref ? button({ label: 'Следующая страница', attrs: { 'data-ba-result': block.result_ref, 'data-ba-cursor': block.next_cursor } }) : ''}`;
+            ${block.next_cursor != null && block.result_ref ? loadMore({ attrs: { 'data-ba-result': block.result_ref, 'data-ba-cursor': block.next_cursor } }) : ''}`;
     }).join('');
     return `<article class="ba-answer">
         ${assistantHeading()}

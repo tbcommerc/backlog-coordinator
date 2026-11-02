@@ -636,7 +636,7 @@ async function renderNotifications(snapshot = null) {
             notifCount.hidden = items.length === 0;
         }
         if (items.length === 0) {
-            notifBody.innerHTML = '<div class="dashboard-empty"><i data-lucide="circle-check-big"></i><div><strong>Обязательных действий сейчас нет</strong><span>Можно продолжать работу по текущему плану.</span></div></div>';
+            notifBody.innerHTML = '<div class="dashboard-empty"><i data-lucide="check-circle-2"></i><div><strong>Обязательных действий сейчас нет</strong><span>Можно продолжать работу по текущему плану.</span></div></div>';
             try { window.lucide?.createIcons({ attrs: { 'data-lucide': '' }, nameAttr: 'data-lucide' }); } catch (_) {}
             return;
         }

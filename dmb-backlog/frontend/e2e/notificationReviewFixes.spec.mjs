@@ -1,5 +1,25 @@
 import { test, expect } from '@playwright/test';
 const audit='/e2e/fixtures/notificationAudit.html';
+
+test('notification categories, priorities and states support independent unions',async({page})=>{
+ await page.goto(audit);
+ await expect(page.locator('.notification-card')).toHaveCount(20);
+ await page.locator('[data-filter-category=assignment]').click();
+ await page.locator('[data-filter-category=reporting]').click();
+ await expect.poll(()=>page.evaluate(()=>new URLSearchParams(location.hash.split('?')[1]).get('category'))).toBe('["assignment","reporting"]');
+ await expect(page.locator('[data-filter-category=assignment]')).toHaveAttribute('aria-pressed','true');
+ await page.locator('[data-filter-importance=high]').click();
+ await page.locator('[data-filter-importance=medium]').click();
+ await expect.poll(()=>page.evaluate(()=>new URLSearchParams(location.hash.split('?')[1]).get('importance'))).toBe('["high","medium"]');
+ await page.locator('[data-view=unread]').click();
+ await page.locator('[data-view=resolved]').click();
+ await expect.poll(()=>page.evaluate(()=>new URLSearchParams(location.hash.split('?')[1]).get('view'))).toBe('["unread","resolved"]');
+ await page.reload();
+ await expect(page.locator('[data-view=unread]')).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('[data-view=resolved]')).toHaveAttribute('aria-pressed','true');
+ await page.locator('[data-view=all]').click();
+ await expect(page.locator('[data-view=unread]')).toHaveAttribute('aria-pressed','false');
+});
 test('external read recalculates unread results and pagination',async({page})=>{
  await page.goto(audit+'#/notifications?view=unread');await expect(page.locator('#notification-results-count')).toHaveText('36 уведомлений');
  await page.locator('#audit-external-read').click();await expect(page.locator('[data-notif-id="2"]')).toHaveCount(0);await expect(page.locator('#notification-results-count')).toHaveText('35 уведомлений');

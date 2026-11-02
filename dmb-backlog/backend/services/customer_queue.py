@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, union_all, literal, cast, String, case, func, and_, or_, exists
 from models import Task, RequirementRequest, Team, User, TaskStatus, Deadline
 from services.backlog_assistant_integration.policy import customer_tasks_clause
+from services.request_state import state_expression
 
 GROUPS = ("action", "draft", "review", "work", "complete")
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
@@ -17,6 +18,11 @@ class QueueItem(BaseModel):
     title: str
     description: str | None = None
     status: str
+    effective_status: str | None = None
+    lifecycle_status: str | None = None
+    coordinator_name: str | None = None
+    next_action: str | None = None
+    next_action_due: str | None = None
     group: str
     task_id: int | None = None
     task_public_id: str | None = None
@@ -52,7 +58,7 @@ def projection(user):
     task, req = Task.__table__, RequirementRequest.__table__
     team, people = Team.__table__, User.__table__
     status, deadline = TaskStatus.__table__, Deadline.__table__
-    reviewer, assignee = people.alias("queue_reviewer"), people.alias("queue_assignee")
+    reviewer, assignee, coordinator = people.alias("queue_reviewer"), people.alias("queue_assignee"), people.alias("queue_coordinator")
 
     def columns(kind, identifier, title, description, state, created, updated, **extra):
         values = dict(kind=literal(kind), id=cast(identifier, String), title=title,
@@ -61,10 +67,13 @@ def projection(user):
             task_public_id=task.c.public_id, task_status=status.c.name,
             task_progress=task.c.progress, task_deadline=deadline.c.name,
             team_name=team.c.name, reviewer_name=cast(literal(None), String),
-            assignee_name=cast(literal(None), String), reject_reason=cast(literal(None), String))
+            assignee_name=cast(literal(None), String), reject_reason=cast(literal(None), String),
+            effective_status=cast(literal(None), String), lifecycle_status=cast(literal(None), String),
+            coordinator_name=cast(literal(None), String), next_action=cast(literal(None), String), next_action_due=cast(literal(None), String))
         values.update(extra)
         group = case(
-            (state.in_(["completed", "not_relevant", "task_rejected", "task_deleted", "rejected"]), "complete"),
+            (state.in_(["completed", "fulfilled", "withdrawn", "not_relevant", "task_rejected", "task_deleted", "rejected"]), "complete"),
+            (state.in_(['accepted', 'deferred', 'queued', 'awaiting_confirmation', 'needs_verification']), 'work'),
             (status.c.name.in_(["ВЫПОЛНЕНА", "ОТКЛОНЕНА", "НЕ АКТУАЛЬНА"]), "complete"),
             (status.c.name == "ХОЛД", "action"),
             (status.c.name == "ПРИНЯТА В РАБОТУ", "work"),
@@ -75,13 +84,16 @@ def projection(user):
         return [value.label(key) for key, value in values.items()]
 
     request_rows = select(*columns("request", req.c.id, req.c.title, req.c.description,
-        req.c.status, req.c.created_at, req.c.updated_at,
+        state_expression(req), req.c.created_at, req.c.updated_at,
+        effective_status=state_expression(req), lifecycle_status=req.c.status,
+        coordinator_name=coordinator.c.name, next_action=req.c.next_action, next_action_due=cast(req.c.next_action_due, String),
         reviewer_name=reviewer.c.name, assignee_name=assignee.c.name,
         reject_reason=req.c.reject_reason)).select_from(
         req.outerjoin(task, and_(task.c.id == req.c.task_id, task.c.is_deleted.is_(False)))
         .outerjoin(team, team.c.id == req.c.team_id)
         .outerjoin(reviewer, reviewer.c.id == req.c.reviewer_id)
         .outerjoin(assignee, assignee.c.id == req.c.assignee_id)
+        .outerjoin(coordinator, coordinator.c.id == req.c.coordinator_id)
         .outerjoin(status, status.c.id == task.c.status_id)
         .outerjoin(deadline, deadline.c.id == task.c.deadline_id)
     ).where(req.c.user_id == user.id, req.c.is_deleted.is_(False))

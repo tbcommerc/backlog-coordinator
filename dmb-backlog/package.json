@@ -5,7 +5,18 @@
   "scripts": {
     "test:unit": "node --test frontend/tests/*.test.mjs",
     "test:e2e": "playwright test",
-    "test:typography": "playwright test --config=playwright.typography.config.mjs"
+    "test:ui-details": "playwright test --config=playwright.ui-details.config.mjs",
+    "test:ui-tables": "playwright test --config=playwright.ui-tables.config.mjs",
+    "test:ui-picker": "playwright test --config=playwright.ui-picker.config.mjs",
+    "test:ui-intervals": "playwright test --config=playwright.ui-intervals.config.mjs",
+    "test:ui-completion": "playwright test --config=playwright.ui-completion.config.mjs",
+    "test:ui-adoption": "playwright test --config=playwright.ui-adoption.config.mjs",
+    "test:ui-adoption": "playwright test --config=playwright.ui-adoption.config.mjs",
+    "test:typography": "playwright test --config=playwright.typography.config.mjs",
+    "verify:ui-kit": "node frontend/ui-catalog/verify-ui-kit.mjs",
+    "check:ui-evidence": "node frontend/ui-catalog/verify-ui-kit.mjs --check",
+    "check:ui-review": "node frontend/ui-catalog/build-review-inventory.mjs --check && node frontend/ui-catalog/check-review-coverage.mjs",
+    "check:ui-acceptance": "node frontend/ui-catalog/check-review-coverage.mjs --acceptance"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

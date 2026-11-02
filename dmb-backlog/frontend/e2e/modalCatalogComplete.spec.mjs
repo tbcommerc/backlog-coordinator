@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test.describe.configure({ mode: 'serial' });
+// Each catalog composition owns its page; a failed snapshot must not skip other families.
 test.setTimeout(90_000);
 
 const expectedScenarios = [
@@ -37,6 +37,7 @@ test('полный каталог содержит каждый выявленн
       insideHorizontally: surfaceRect.left >= stageRect.left - 1 && surfaceRect.right <= stageRect.right + 1,
       closeWidth: close ? close.getBoundingClientRect().width : null,
       closeHeight: close ? close.getBoundingClientRect().height : null,
+      closeMinimum: close ? Math.max(parseFloat(getComputedStyle(close).getPropertyValue('--ui-size')) || 32, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--control-target-min')) || 0) : null,
       secondaryBorder: secondary ? getComputedStyle(secondary).borderTopStyle : null,
       secondaryBorderWidth: secondary ? getComputedStyle(secondary).borderTopWidth : null,
       footerLeft: footer ? getComputedStyle(footer).paddingLeft : null,
@@ -49,8 +50,9 @@ test('полный каталог содержит каждый выявленн
     expect(item.surfaceOverflow, `${item.id}: surface overflow`).toBeLessThanOrEqual(1);
     expect(item.insideHorizontally, `${item.id}: surface outside stage`).toBe(true);
     if (item.closeWidth !== null) {
-      expect(item.closeWidth, `${item.id}: close width`).toBeGreaterThanOrEqual(40);
-      expect(item.closeHeight, `${item.id}: close height`).toBeGreaterThanOrEqual(40);
+      expect(item.closeWidth, `${item.id}: close width`).toBeGreaterThanOrEqual(item.closeMinimum);
+      expect(item.closeHeight, `${item.id}: close height`).toBeGreaterThanOrEqual(item.closeMinimum);
+      expect(item.closeHeight, `${item.id}: square close`).toBeCloseTo(item.closeWidth,0);
     }
     if (item.secondaryBorder !== null && !['task-detail', 'task-create', 'customer-reference'].includes(item.id)) {
       expect(item.secondaryBorder, `${item.id}: secondary border`).toBe('solid');

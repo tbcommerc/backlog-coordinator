@@ -60,6 +60,8 @@ test('notification link overrides remembered capture and new draft clears the li
     const reads = [];
     page.on('request', request => { if (request.method() === 'GET' && /\/sessions\/[^/]+$/.test(new URL(request.url()).pathname)) reads.push(request.url()); });
     await page.goto(`${fixture}#/meeting-capture?capture=${id}`);
+    // This component fixture has no SPA router; reload to exercise deep-link restoration.
+    await page.reload();
     await expect(page.getByLabel('Что согласовано')).toHaveValue('Подготовить отчёт');
     expect(reads.some(url => url.endsWith(`/sessions/${id}`))).toBe(true);
     expect(reads.some(url => url.endsWith('/sessions/11111111-1111-1111-1111-111111111111'))).toBe(false);

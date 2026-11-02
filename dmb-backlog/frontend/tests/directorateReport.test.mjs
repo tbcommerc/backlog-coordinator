@@ -59,7 +59,8 @@ assert.match(source, /class="directorate-project-count">Задач: <strong>\$\{
 assert.match(source, /class="directorate-task-layout"/);
 assert.match(source, /class="directorate-task-info" aria-label="Информация о задаче"/);
 assert.match(source, /class="directorate-task-status"/);
-assert.match(source, /data-lucide="user"><\/i>Ответственный/);
+assert.match(source, /label: 'Ответственный', value: task.owner_name/);
+assert.match(source, /descriptionList\(\{ className: 'directorate-task-meta'/);
 assert.doesNotMatch(source, /data-lucide="user-round"/);
 assert.doesNotMatch(source, /Выбранная команда/);
 assert.match(source, /class="directorate-filter-summary"/);
@@ -70,7 +71,7 @@ assert.match(source, /'data-directorate-reset': '', disabled: !active/);
 assert.match(css, /\.directorate-task-layout\s*\{[^}]*grid-template-columns:\s*minmax\(260px, \.52fr\) minmax\(0, 1fr\)/s);
 assert.match(css, /\.directorate-task-status\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column/s);
 assert.match(css, /\.directorate-status-stack\s*\{[^}]*flex:\s*1/s);
-assert.match(css, /\.directorate-task-meta dd\s*\{[^}]*font-size:\s*12px/s);
+assert.doesNotMatch(css, /\.directorate-task-meta dd\s*\{[^}]*font-size:/s, 'readonly typography belongs to UI Kit');
 assert.match(css, /\.directorate-page-header\s*\{[^}]*background:\s*var\(--bg-primary\)/s);
 assert.match(css, /\.directorate-team-picker\s*\{[^}]*grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)/s);
 assert.match(css, /\.directorate-team\s*\{[^}]*min-height:\s*39px/s);

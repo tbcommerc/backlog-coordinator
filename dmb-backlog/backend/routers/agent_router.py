@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.exc import IntegrityError
 
@@ -352,7 +352,11 @@ def _request_available_actions(req: RequirementRequest, current_user: User | Non
     return []
 
 
-def _request_to_dict(req: RequirementRequest, current_user: User | None = None) -> dict:
+def _request_to_dict(req: RequirementRequest, current_user: User | None = None, *, effective_status=None) -> dict:
+    from services.request_state import effective_state, lifecycle_actions, follow_up_due, FOLLOW_UP
+    session = object_session(req)
+    effective = effective_status or (effective_state(session, req) if session else req.status)
+    reviewer = bool(current_user and not is_customer_portal_only(current_user) and can_review_request(current_user, req.team_id))
     review_deadline = _request_deadline(req)
     stage_started_at = _request_stage_started_at(req)
     return {
@@ -361,6 +365,14 @@ def _request_to_dict(req: RequirementRequest, current_user: User | None = None) 
         "description": req.description,
         "draft": req.draft,
         "status": req.status,
+        "effective_status": effective,
+        "coordinator_id": req.coordinator_id,
+        "coordinator_name": req.coordinator.name if req.coordinator else None,
+        "next_action": req.next_action,
+        "next_action_due": req.next_action_due.isoformat() if req.next_action_due else None,
+        "follow_up_due": follow_up_due(req),
+        "lifecycle_actions": lifecycle_actions(req, current_user, reviewer, effective) if current_user else [],
+        "needs_follow_up": effective in FOLLOW_UP or follow_up_due(req),
         "agent_session_id": req.agent_session_id,
         "user_id": req.user_id,
         "team_id": req.team_id,
@@ -807,13 +819,41 @@ def agent_requests_review(
 
     query = db.query(RequirementRequest).filter(
         RequirementRequest.is_deleted.is_(False),
-        RequirementRequest.status.in_(["submitted", "in_review", "in_progress", "returned", "approved", "rejected", "completed", "not_relevant", "task_rejected", "task_deleted"]),
+        RequirementRequest.status.in_(["submitted", "in_review", "in_progress", "returned", "approved", "rejected", "completed", "not_relevant", "task_rejected", "task_deleted", "accepted", "deferred", "withdrawn"]),
     )
     if review_access != "all":
         query = query.filter(RequirementRequest.team_id == current_user.team_id)
 
     rows = query.order_by(RequirementRequest.created_at.desc()).offset(offset).limit(limit).all()
     return [_request_to_dict(r, current_user) for r in rows]
+
+
+@router.get("/agent/requests/registry")
+def request_registry(q: str = Query('', max_length=200), mode: str = 'all', status: str = 'any',
+                     sort: str = 'stage_oldest', signals: bool = False, aged: bool = False,
+                     team_ids: str = '', customer_ids: str = '', coordinator_ids: str = '',
+                     limit: int = Query(50, ge=1, le=250), offset: int = Query(0, ge=0),
+                     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from services.request_registry import registry
+    return registry(db, current_user, q=q, mode=mode, status=status, sort=sort, signals=signals, aged=aged,
+                    team_ids=team_ids, customer_ids=customer_ids, coordinator_ids=coordinator_ids, limit=limit, offset=offset)
+
+
+from services.request_lifecycle import LifecycleCommand
+
+
+@router.post('/agent/requests/{request_id}/lifecycle')
+def request_lifecycle(request_id: int, body: LifecycleCommand, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from services.request_lifecycle import execute
+    return _request_to_dict(execute(db, current_user, request_id, body), current_user)
+
+
+@router.get('/agent/requests/{request_id}/coordinators')
+def request_coordinators(request_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    req = db.query(RequirementRequest).filter_by(id=request_id, is_deleted=False).first()
+    if not req or is_customer_portal_only(current_user) or not can_review_request(current_user, req.team_id): raise HTTPException(404, 'Запрос недоступен')
+    return [{'id': u.id, 'name': u.name} for u in db.query(User).filter(User.is_active.is_(True)).order_by(User.name)
+            if not is_customer_portal_only(u) and can_review_request(u, req.team_id)]
 
 
 @router.get("/agent/requests/{request_id}")
@@ -965,9 +1005,14 @@ def agent_request_status(
         req.reject_reason = body.reject_reason.strip()
     if body.status == "in_review":
         req.reviewer_id = current_user.id
+        req.coordinator_id = req.coordinator_id or current_user.id
         req.reject_reason = None
     if body.status == "submitted":
         if requested_team_id is not None:
+            if requested_team_id != req.team_id:
+                req.coordinator_id = None
+                req.next_action = None
+                req.next_action_due = None
             req.team_id = requested_team_id
         req.reviewer_id = None
     if body.status == "in_progress" and body.assignee_id:
@@ -1028,6 +1073,8 @@ def agent_request_delete(
         raise HTTPException(status_code=404, detail="Запрос не найден")
     if req.user_id != current_user.id and get_request_review_access(current_user) != "all":
         raise HTTPException(status_code=403, detail="Доступ запрещён")
+    if req.status != 'draft':
+        raise HTTPException(409, detail='Поступившие запросы сохраняются в истории. Используйте действие «Отозвать запрос» с причиной.')
     req.is_deleted = True
     db.commit()
     return {"success": True}

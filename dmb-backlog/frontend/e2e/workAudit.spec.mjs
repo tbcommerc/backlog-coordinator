@@ -72,7 +72,7 @@ test('compact mobile display preserves context below a 64px application header',
  await expect(page).toHaveURL(/view=mine/);
 });
 test('pagination focuses top and return restores row',async({page})=>{
- await setup(page);await page.locator('[data-page-scope="work"][data-page="1"]').click();
+ await setup(page);await page.locator('.work-pagination').getByRole('button',{name:'Далее',exact:true}).click();
  await expect(page.locator('.work-results')).toBeFocused();await expect(page.locator('[data-work-id="31"]')).toBeInViewport();await expect(page.locator('caption')).toContainText('31–60 из 61');
  await page.locator('[data-work-id="31"]').click();await page.keyboard.press('Escape');await expect(page.locator('[data-work-id="31"]')).toBeFocused();expect(page.url()).toContain('page=2');
 });

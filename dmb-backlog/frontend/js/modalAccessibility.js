@@ -71,6 +71,8 @@ function activeOverlay() {
 }
 
 function restoreFocus(overlay) {
+  // Перемещение той же панели между контейнерами не является закрытием.
+  if (overlay.isConnected) return;
   const origin = overlay[previousFocus];
   if (origin?.isConnected) window.requestAnimationFrame(() => origin.focus());
   delete overlay[previousFocus];
@@ -84,6 +86,8 @@ function handleKeydown(event) {
 
   if (event.key === 'Escape') {
     event.preventDefault();
+    const detailPanel = overlay[Symbol.for('ui-kit.detail-panel')];
+    if (detailPanel) { detailPanel.requestClose('escape'); return; }
     const close = dialog.querySelector(CLOSE_SELECTOR);
     if (close) close.click();
     else if (dialog.matches('dialog')) dialog.close();

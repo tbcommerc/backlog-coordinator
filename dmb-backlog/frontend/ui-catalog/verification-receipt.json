@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "verifiedAt": "2026-10-27T15:34:16.916Z",
+  "sha256": "f928ffdd695be76751be527e04144d8f10d5037d59d46e6ce23b421b9040838f",
+  "suites": [
+    "uiKitDeepContracts",
+    "uiKitCore",
+    "uiKitConsistency",
+    "uiKitFamilyContract",
+    "uiKitReview20261021",
+    "uiKitDataDisplay",
+    "uiKitComposites",
+    "uiKitComplexFormsReview",
+    "uiKitCharts",
+    "uiKitDialogAcceptance",
+    "infoChips",
+    "uiKitMetricsIntegration",
+    "uiKitCrossSurface"
+  ],
+  "scope": "UI contracts and isolated real consumers; live checks are documented separately."
+}

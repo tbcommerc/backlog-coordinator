@@ -16,7 +16,7 @@ assert.match(markup, /data-filter-importance=/, 'importance filter must use dire
 assert.doesNotMatch(source, /id="notification-category"|id="notification-importance"/, 'category and importance selects must not return');
 assert.match(markup, /aria-pressed=/, 'state filters must expose their selected state');
 assert.match(source, /class="notification-filter-group notification-state-filter" role="group"/, 'state filter must use the same labeled group pattern as category and importance');
-assert.match(markup, /class="quick-filter-btn ui-filter-chip notification-filter-chip active"[^>]*data-view="all"[^>]*aria-pressed="true"/, 'state filter must reuse filterChip with selected state');
+assert.match(markup, /class="quick-filter-btn ui-filter-chip notification-filter-chip active"[^>]*data-view="all"[^>]*aria-pressed="true"/, 'state filter must reuse FilterChip with selected state');
 assert.doesNotMatch(source, /notification-view-switch|class="toggle-btn/, 'notification filters must not mix segmented and chip patterns');
 assert.match(markup, /class="btn btn-secondary btn-sm ui-btn" id="notification-reset"/, 'filter reset must use the same secondary action style as backlog and reports');
 assert.match(markup, /id="notification-reset" disabled/, 'filter reset must keep its place while no filters are active');
@@ -46,8 +46,8 @@ assert.match(source, /window\.lucide\?\.createIcons\(\);await Promise\.allSettle
 assert.doesNotMatch(source, /notification-more|more-horizontal/, 'ambiguous secondary actions menu must stay out of notification cards');
 assert.doesNotMatch(source, /Больше не требует внимания/, 'manual resolve wording must not return');
 assert.deepEqual([...markup.matchAll(/data-filter-category="([^"]+)"/g)].map(match => match[1]), ['assignment','reporting','meeting_capture','mention','comment','request'], 'rendered category chips expose all current scenarios in order');
-assert.match(source, /category=category===btn\.dataset\.filterCategory\?'':btn\.dataset\.filterCategory/, 'clicking an active category chip must clear it');
-assert.match(source, /importance=importance===btn\.dataset\.filterImportance\?'':btn\.dataset\.filterImportance/, 'clicking an active importance chip must clear it');
+assert.match(source, /category=toggleChoice\(category,btn\.dataset\.filterCategory\)/, 'category selection must toggle one value without discarding the others');
+assert.match(source, /importance=toggleChoice\(importance,btn\.dataset\.filterImportance\)/, 'importance selection must toggle one value without discarding the others');
 assert.doesNotMatch(source, /\['(?:risk|deadline|stale|attrs|status_change|system)'/, 'legacy categories must stay out of the center');
 assert.match(source, /openNotificationTarget/, 'exact notification deep links must use the shared target resolver');
 assert.match(source, /dmb:notification-changed/, 'the open feed must react to live invalidation');

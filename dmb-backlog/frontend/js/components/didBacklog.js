@@ -1,3 +1,5 @@
+import { createPopover } from '../ui/popover.js';
+import { selectionList, filterSelectionList } from '../ui/selectionList.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { renderViewState, bindViewStateAction } from './viewState.js';
 import { formatErrorMessage } from '../uiFeedback.js';
@@ -45,7 +47,7 @@ export function didVisibleRows(rows, prefs, referenceOrders = {}) {
 export function renderDidBacklog(app) {
   return `<section class="did-report animate-fade-in" id="did-report">
     <header class="did-heading toolbar-title-row"><div class="toolbar-title-wrap"><h1 class="toolbar-title">Бэклог для бизнес-заказчиков ДИД</h1><p class="toolbar-subtitle">Квартальный портфель задач для отправки бизнес-заказчикам</p></div><div class="toolbar-actions did-actions">
-      ${canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary btn-sm" href="${reportingStatusHref({ source: 'report', kind: 'did' })}"><i data-lucide="clipboard-pen-line"></i>Заполнить статусы</a>` : ''}
+      ${canUseReportingStatusWorkspace(app) ? `<a class="btn btn-primary btn-sm" href="${reportingStatusHref({ source: 'report', kind: 'did' })}"><i data-lucide="clipboard-edit"></i>Заполнить статусы</a>` : ''}
       <button class="btn btn-secondary btn-sm" data-did-export="xlsx" disabled><i data-lucide="file-spreadsheet"></i>Excel</button>
       <button class="btn btn-secondary btn-sm" data-did-export="pdf" disabled><i data-lucide="printer"></i>PDF</button>
       <span class="toolbar-actions-divider" aria-hidden="true"></span><button class="btn btn-secondary btn-sm square-icon" data-did-refresh aria-label="Обновить отчёт" title="Обновить отчёт"><i data-lucide="refresh-cw"></i></button></div></header>
@@ -57,10 +59,10 @@ export async function initDidBacklog(app) {
   const root = document.getElementById('did-report');
   if (!root) return;
   const breadcrumb = document.getElementById('breadcrumb-nav');
-  if (breadcrumb) breadcrumb.innerHTML = '<a href="#/reports" class="breadcrumb-parent">Статусы для встреч</a><span class="breadcrumb-separator">/</span><span class="breadcrumb-current">Бэклог для бизнес-заказчиков ДИД</span>';
+  if (breadcrumb) breadcrumb.innerHTML = '<a href="#/dashboard" class="breadcrumb-parent">Главная</a><span class="breadcrumb-separator" aria-hidden="true">/</span><a href="#/reports" class="breadcrumb-parent">Статусы для встреч</a><span class="breadcrumb-separator">/</span><span class="breadcrumb-current" aria-current="page">Бэклог для бизнес-заказчиков ДИД</span>';
   const content = root.querySelector('#did-content');
   let prefs, calendar, rows = [], sortOrders = {}, total = 0, saved = false, saveError = false, loading = true, canExport = false;
-  let requestVersion = 0, saveVersion = 0, saveQueue = Promise.resolve(), openFilter = null;
+  let requestVersion = 0, saveVersion = 0, saveQueue = Promise.resolve(), openFilter = null, filterPopover = null;
   const alive = () => root.isConnected;
   const visible = () => didVisibleRows(rows, prefs, sortOrders);
   const iconRefresh = () => window.lucide?.createIcons();
@@ -113,7 +115,10 @@ export async function initDidBacklog(app) {
       loading = true; controls();
     }
   }
-  function closeFilter() { root.querySelector('.did-filter-panel')?.remove(); root.querySelectorAll('[data-did-filter]').forEach(b => b.setAttribute('aria-expanded', 'false')); openFilter = null; }
+  function closeFilter() {
+    filterPopover?.close({restoreFocus:false}); filterPopover = null;
+    openFilter = null;
+  }
   function filterPanel(key, button) {
     if (openFilter === key) { closeFilter(); return; }
     closeFilter(); openFilter = key;
@@ -126,23 +131,20 @@ export async function initDidBacklog(app) {
       if (key === 'financial_effect') return Number(a) - Number(b);
       return a.localeCompare(b, 'ru');
     });
-    const panel = document.createElement('div'); panel.className = 'did-filter-panel';
-    panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', `Фильтр: ${DID_COLUMNS.find(c => c[0] === key)[1]}`);
-    panel.innerHTML = `<div class="did-filter-panel-head"><strong>${escapeHtml(DID_COLUMNS.find(c => c[0] === key)[1])}</strong><button class="square-icon btn btn-ghost btn-sm" data-did-close aria-label="Закрыть фильтр">×</button></div><input class="input" type="search" placeholder="Поиск значения" aria-label="Поиск значения"><div class="did-filter-values">${values.map(v => `<label><input type="checkbox" value="${escapeHtml(v)}" ${(prefs.filters[key] || []).includes(v) ? 'checked' : ''}> <span>${escapeHtml(key === 'financial_effect' ? Number(v).toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : v)}</span></label>`).join('') || '<p>Нет заполненных значений</p>'}</div><button class="btn btn-secondary btn-sm" data-did-filter-clear>Очистить фильтр</button>`;
-    root.appendChild(panel); button.setAttribute('aria-expanded', 'true');
-    const rect = button.getBoundingClientRect();
-    panel.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 320))}px`;
-    panel.style.top = `${Math.max(8, Math.min(rect.bottom + 5, window.innerHeight - 390))}px`;
-    panel.querySelector('input[type=search]').focus();
-    panel.querySelector('input[type=search]').oninput = event => panel.querySelectorAll('.did-filter-values label').forEach(label => { label.hidden = !label.textContent.toLocaleLowerCase('ru-RU').includes(event.target.value.toLocaleLowerCase('ru-RU')); });
-    panel.onchange = () => {
-      prefs.filters[key] = [...panel.querySelectorAll('input[type=checkbox]:checked')].map(el => el.value);
-      // Keep the popover mounted while rebuilding only the table beneath it.
-      render(); persist();
+    const label = DID_COLUMNS.find(c => c[0] === key)[1];
+    const panel = document.createElement('div'); panel.className = 'did-filter-panel ui-filter-popover';
+    panel.innerHTML = `<div class="ui-popover-header ui-popover-title">${escapeHtml(label)}</div><div class="ui-popover-field"><input class="input ui-control" type="search" placeholder="Поиск значения…" aria-label="Поиск значения"></div><div class="ui-filter-options">${selectionList({items:values.map(value=>({value,label:key === 'financial_effect' ? Number(value).toLocaleString('ru-RU', {minimumFractionDigits:1,maximumFractionDigits:1}) : value})),selected:prefs.filters[key] || []})}</div><div class="ui-popover-actions"><button type="button" class="btn btn-secondary btn-sm ui-btn" data-did-filter-clear>Очистить</button><button type="button" class="btn btn-primary btn-sm ui-btn" data-did-filter-apply>Применить</button></div>`;
+    filterPopover = createPopover({trigger:button,panel,label:`Фильтр: ${label}`,removeOnClose:true,
+      resolveTrigger:()=>root.querySelector(`[data-did-filter="${key}"]`) || button,
+      onClose:()=>{openFilter=null;filterPopover=null;}});
+    panel.querySelector('input[type=search]').oninput = event => filterSelectionList(panel.querySelector('.ui-selection-list'),event.target.value);
+    panel.querySelector('[data-did-filter-clear]').onclick = () => panel.querySelectorAll('input[type=checkbox]').forEach(input=>{input.checked=false;});
+    panel.querySelector('[data-did-filter-apply]').onclick = () => {
+      prefs.filters[key] = [...panel.querySelectorAll('input[type=checkbox]:checked')].map(el=>el.value);
+      closeFilter(); render(); persist();
+      root.querySelector(`[data-did-filter="${key}"]`)?.focus();
     };
-    panel.querySelector('[data-did-filter-clear]').onclick = () => { delete prefs.filters[key]; closeFilter(); render(); persist(); };
-    panel.querySelector('[data-did-close]').onclick = closeFilter;
-    panel.onkeydown = event => { if (event.key === 'Escape') { closeFilter(); root.querySelector(`[data-did-filter="${key}"]`)?.focus(); } };
+    filterPopover.open();
   }
   async function exportView(format) {
     if (loading || !canExport) return;

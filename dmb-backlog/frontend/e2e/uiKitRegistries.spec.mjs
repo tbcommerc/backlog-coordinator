@@ -28,9 +28,9 @@ for(const theme of ['light','dark']) for(const [name,width,compact,touch,zoom] o
             const box=el.getBoundingClientRect(), parent=root.getBoundingClientRect();
             return box.left>=parent.left-1 && box.right<=parent.right+1;
           }),
-          controls:[...root.querySelectorAll('.btn,.ui-control')].filter(el=>el.getClientRects().length).map(el=>{
+          controls:[...root.querySelectorAll('.btn,.ui-control,.ui-filter-chip')].filter(el=>el.getClientRects().length).map(el=>{
             const style=getComputedStyle(el);
-            return {name:el.textContent?.trim().slice(0,45)||el.id,height:parseFloat(style.height),width:parseFloat(style.width),small:el.matches('.btn-sm,.input-sm'),square:el.classList.contains('square-icon'),clipped:el.scrollWidth>el.clientWidth+1};
+            return {name:el.textContent?.trim().slice(0,45)||el.id,height:parseFloat(style.height),width:parseFloat(style.width),small:el.matches('.btn-sm,.input-sm'),chip:el.matches('.ui-filter-chip'),square:el.classList.contains('square-icon'),clipped:el.scrollWidth>el.clientWidth+1};
           }),
         }));
         expect(geometry.overflow,`${surface}: page overflow`).toBeLessThanOrEqual(1);
@@ -38,7 +38,7 @@ for(const theme of ['light','dark']) for(const [name,width,compact,touch,zoom] o
         await expect(page.locator('i[data-lucide]')).toHaveCount(0);
         expect(geometry.controls.length).toBeGreaterThan(3);
         for(const item of geometry.controls) {
-          const size=(width<=640||touch) ? 44 : item.small||compact ? 28 : 32;
+          const size=(width<=640||touch) ? 44 : item.chip ? 32 : item.small||compact ? 28 : 32;
           expect(item.height,`${surface}/${item.name}`).toBeGreaterThanOrEqual(size);
           // Text can wrap on small screens, but never expands desktop controls.
           if(width>640) expect(item.height,`${surface}/${item.name}`).toBe(size);

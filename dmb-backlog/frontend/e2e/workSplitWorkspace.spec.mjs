@@ -1,5 +1,28 @@
 import {test, expect} from '@playwright/test';
 
+test('compact inspector, fullscreen and sequential navigation preserve queue context',async({page})=>{
+ await page.setViewportSize({width:1422,height:800});await setup(page);
+ await first(page).click();
+ const box=await page.locator('.work-inspector-host').boundingBox();
+ expect(box.y,JSON.stringify(await page.locator('.work-workspace-layout').evaluate(el=>({layout:el.className,columns:getComputedStyle(el).gridTemplateColumns,parent:el.parentElement.className,filters:getComputedStyle(el.parentElement.querySelector('.work-filter-panel')).display,children:[...el.children].map(x=>({class:x.className,hidden:x.hidden,y:x.getBoundingClientRect().y}))})))).toBeLessThanOrEqual(200);
+ await page.getByRole('button',{name:'Показать условия',exact:true}).click();
+ await expect(page.locator('#work-search')).toBeVisible();
+ await page.getByRole('button',{name:'Свернуть условия',exact:true}).click();
+ await page.getByRole('button',{name:'На весь экран',exact:true}).click();
+ await expect(page.locator('dialog:modal')).toHaveClass(/is-fullscreen/);
+ await page.getByRole('button',{name:'Обычный размер',exact:true}).click();
+ await expect(page.locator('.work-dialog-inline')).toHaveCount(1);
+ const separator=page.getByRole('separator',{name:'Ширина карточки задачи'});
+ await expect(separator).toBeVisible();
+ const originalWidth=Number(await separator.getAttribute('aria-valuenow'));
+ await separator.focus();await page.keyboard.press('ArrowLeft');
+ await expect(separator).toHaveAttribute('aria-valuenow',String(originalWidth+10));
+ await expect(page.locator('[data-card-width]')).toHaveValue(String(originalWidth+10));
+ await page.getByRole('button',{name:'Следующая задача',exact:true}).click();
+ await expect(page.locator('.work-card-title')).toHaveText('Подготовить запуск');
+ expect(new URL(page.url()).hash).toContain('q=');
+});
+
 async function setup(page, {delayFirst = false} = {}) {
  const rows = [1,2].map(id=>({id,public_id:`WRK-${id}`,title:id===1?'Согласовать результат':'Подготовить запуск',description:'Проверенный результат с критериями приёмки.',execution_team_id:10,requester_id:2,assignee_id:1,assignee_name:'Исполнитель',acceptor_id:2,due_date:'2026-11-01',status:'ready',assignment_state:'accepted',version:1,can_edit:true,can_block:true,can_collaborate:true,acceptance_required:true,available_actions:['in_progress','cancelled'],context:{title:'Запуск продукта'}}));
  const writes=[];

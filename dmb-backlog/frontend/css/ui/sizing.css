@@ -1,5 +1,5 @@
 /* Shared UI contract. Page compatibility belongs in adapters.css. */
-:root :is(.btn, .iconbtn, .conflict-btn, .toast-action) {
+:root :is(.btn, .iconbtn, .conflict-btn, .toast-action, .modal-close, .modal-close-x, .prioritiser-requirements-x) {
   --ui-size: var(--control-height);
   --ui-font: var(--control-font);
   --ui-line: var(--control-line);
@@ -39,7 +39,7 @@
   --ui-size: var(--control-height-lg);
   --ui-icon: var(--control-icon-lg);
 }
-:root :is(.btn.square-icon, .btn.btn-icon, .iconbtn) {
+:root :is(.btn.square-icon, .btn.btn-icon, .iconbtn, .modal-close, .modal-close-x, .prioritiser-requirements-x) {
   width: var(--ui-target);
   min-width: var(--ui-target);
   height: var(--ui-target);
@@ -47,13 +47,14 @@
   flex: 0 0 var(--ui-target);
   padding: 0;
 }
-:root :is(.btn, .iconbtn, .conflict-btn, .toast-action) > :is(svg, [data-lucide], .ui-button-spinner) {
+:root :is(.modal-close, .modal-close-x, .prioritiser-requirements-x) { font-size:var(--ui-icon); line-height:1; }
+:root :is(.btn, .iconbtn, .conflict-btn, .toast-action, .modal-close, .modal-close-x, .prioritiser-requirements-x) > :is(svg, [data-lucide], .ui-button-spinner) {
   width: var(--ui-icon);
   height: var(--ui-icon);
   flex: 0 0 var(--ui-icon);
 }
 .ui-icon { width: var(--control-icon); height: var(--control-icon); flex: 0 0 auto; }
-:root :is(.btn, .iconbtn, .conflict-btn, .toast-action)[hidden] { display: none; }
+:root :is(.btn, .iconbtn, .conflict-btn, .toast-action, .modal-close, .modal-close-x, .prioritiser-requirements-x)[hidden] { display: none; }
 :root :is(.square-icon, .btn-icon)[aria-busy="true"] > span:not(.ui-button-spinner) { display: none; }
 :root :is(.input:where(input, select), .ui-control):not(:where(textarea, [multiple])) {
   --ui-size: var(--control-height);
@@ -92,3 +93,4 @@ input.ui-number-cell::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .ui-responsive-icon-label,
 .ui-responsive-icon-extra { display:none; }
 }
+.metric-applied-filters .btn { height:auto; min-height:var(--control-height-sm,32px); }

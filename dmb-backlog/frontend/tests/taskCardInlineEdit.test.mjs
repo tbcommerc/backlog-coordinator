@@ -314,7 +314,7 @@ test('зона загрузки файлов доступна с клавиат�
   assert.match(filesBody, /<svg aria-hidden="true"/);
   assert.match(filesBody, /id="attachment-file-input"[^>]*class="attachment-file-input-hidden"[^>]*tabindex="-1"[^>]*aria-hidden="true"/);
   assert.match(modal, /dropZone\.addEventListener\('keydown', \(e\) => \{[\s\S]*?e\.key !== 'Enter' && e\.key !== ' '[\s\S]*?fileInput\.click\(\)/);
-  assert.match(styles, /\.attachment-drop-zone:focus-visible[\s\S]*?outline: 2px solid var\(--primary\)/);
+  assert.match(styles, /\.attachment-drop-zone:focus-visible[\s\S]*?outline: 2px solid var\(--accent\)/);
 });
 
 test('вкладки реализуют ARIA tab pattern и клавиатурную навигацию', () => {

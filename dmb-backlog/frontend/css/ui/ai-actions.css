@@ -1,0 +1,68 @@
+/* Agent invocation is a semantic action, independent of the page's accent. */
+:root {
+  --ai-action-bg:#F3EFFF;
+  --ai-action-hover:#E9DFFF;
+  --ai-action-text:#6D28D9;
+  --ai-action-border:#C4B5FD;
+  --ai-action-solid:#6D28D9;
+  --ai-action-solid-hover:#5B21B6;
+  --ai-action-solid-text:#FFFFFF;
+}
+:root[data-theme="dark"] {
+  --ai-action-bg:#29203F;
+  --ai-action-hover:#382955;
+  --ai-action-text:#DDD6FE;
+  --ai-action-border:#8B6BC4;
+  --ai-action-solid:#7C3AED;
+  --ai-action-solid-hover:#6D28D9;
+}
+/* The ID alternatives match legacy modal nesting without page-owned styles. */
+:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary) {
+  background:var(--ai-action-bg);
+  color:var(--ai-action-text);
+  border:1px solid var(--ai-action-border);
+  box-shadow:none;
+  background-image:none;
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) .btn.btn-ai-primary {
+  background:var(--ai-action-solid);
+  color:var(--ai-action-solid-text);
+  border-color:var(--ai-action-solid);
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) .btn.btn-ai:not(:disabled):not([aria-disabled="true"]):hover {
+  background:var(--ai-action-hover);
+  border-color:var(--ai-action-text);
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) .btn.btn-ai-primary:not(:disabled):not([aria-disabled="true"]):hover {
+  background:var(--ai-action-solid-hover);
+  border-color:var(--ai-action-solid-hover);
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary):focus-visible {
+  outline:2px solid var(--ai-action-text);
+  outline-offset:3px;
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary):is(:disabled,[aria-disabled="true"]) {
+  background:var(--ai-action-bg);
+  color:var(--ai-action-text);
+  border-color:var(--ai-action-border);
+  opacity:.6;
+  cursor:not-allowed;
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary)[aria-busy="true"] {
+  cursor:progress;
+}
+:root :is(.btn-ai,.btn-ai-primary)[aria-busy="true"]:not(:has(.ui-button-spinner))::before {
+  content:"";
+  width:14px;
+  height:14px;
+  flex:none;
+  border:2px solid currentColor;
+  border-right-color:transparent;
+  border-radius:50%;
+  animation:ai-action-spin .8s linear infinite;
+}
+:root :is(.btn-ai,.btn-ai-primary)[aria-busy="true"]:not(:has(.ui-button-spinner)) > :is(i,svg) { display:none; }
+@keyframes ai-action-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) {
+  :root :is(.btn-ai,.btn-ai-primary)[aria-busy="true"]:not(:has(.ui-button-spinner))::before { animation:none; }
+}

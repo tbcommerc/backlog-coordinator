@@ -23,8 +23,9 @@ const app={api:{
     }
     if(path==='/work-tasks/options')return {teams:[{id:10,name:'Команда приёмки'}],projects:[{id:3,name:'Проект'}]};
     if(path==='/admin/task-types'||path==='/admin/channels')return [{id:1,name:'Основной'}];
-    if(path.startsWith('/work-tasks?')||path.startsWith('/tasks?')){
+    if(path.startsWith('/work-targets?')||path.startsWith('/work-tasks?')||path.startsWith('/tasks?')){
       if(window.__holdSearch)await new Promise(resolve=>window.__releaseSearch=resolve);
+      if(window.__searchRowsByKind)return {items:window.__searchRowsByKind[new URL(path,'http://fixture').searchParams.get('kind')]};
       return {items:[{id:11,public_id:'WRK-11',title:'Работа с длинным названием для проверки переноса результата поиска'}]};
     }
     throw Error('Unexpected fixture GET '+path);
@@ -35,7 +36,7 @@ const app={api:{
     if(window.__fail){window.__fail=false;throw Error('Версия изменилась. Проверьте черновик и повторите.');}
     return {};
   }
-},router:{refreshCurrentRoute:async()=>{window.__refreshed++;}}};
+},router:{refreshCurrentRoute:async()=>{window.__refreshed++;if(document.getElementById('fulfillment'))await window.__showFulfillment();}}};
 app.api.post=async(path,body)=>{await app.api.request('POST',path,body);window.__fulfilled=true;};
 window.__showFulfillment=async(reviewer=true)=>{
   const {mountFulfillment}=await import('/js/components/workResolution.js');

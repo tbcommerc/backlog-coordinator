@@ -1,4 +1,38 @@
 import { test, expect } from '@playwright/test';
+
+test('activity loads all 250 comments and 150 history events through cursors', async ({page}) => {
+ await setup(page);
+ await page.route('**/api/v1/work-tasks/1/comments?**', route => {
+  const before=Number(new URL(route.request().url()).searchParams.get('before') || 251);
+  const start=Math.max(1,before-100);
+  return route.fulfill({json:{items:Array.from({length:before-start},(_,i)=>({id:start+i,author_id:1,body:`Сообщение ${start+i}`})),next_cursor:start>1?start:null}});
+ });
+ await page.route('**/api/v1/work-tasks/1/history?**', route => {
+  const before=Number(new URL(route.request().url()).searchParams.get('before') || 151);
+  const start=Math.max(1,before-100);
+  return route.fulfill({json:{items:Array.from({length:before-start},(_,i)=>({id:before-i-1,action:'updated',reason:`Изменение ${before-i-1}`})),next_cursor:start>1?start:null}});
+ });
+ await page.locator('[data-close]').click();
+ await page.getByRole('button',{name:'WRK-1 · Подготовить сценарии приёмки'}).click();
+ await page.getByRole('tab',{name:'Активность',exact:true}).click();
+ await expect(page.locator('.work-comment').last()).toContainText('Сообщение 250');
+ await page.getByRole('button',{name:'Предыдущие комментарии'}).click();
+ await page.getByRole('button',{name:'Предыдущие комментарии'}).click();
+ await expect(page.locator('.work-comment')).toHaveCount(250);
+ await expect(page.locator('.work-comment').first()).toContainText('Сообщение 1');
+ await page.getByRole('button',{name:'Более ранние изменения'}).click();
+ await expect(page.locator('.work-history-item')).toHaveCount(150);
+ await expect(page.getByRole('button',{name:'Более ранние изменения'})).toHaveCount(0);
+});
+
+test('restoring cancelled work requests a reason and uses the shared transition', async ({page}) => {
+ const writes=await setup(page,{status:'cancelled',available_actions:['new'],can_edit:false});
+ await page.getByRole('button',{name:'Восстановить задачу',exact:true}).click();
+ await expect(page.locator('#wf-reason')).toBeVisible();
+ await page.locator('#wf-reason').fill('Ошибочная отмена');
+ await page.getByRole('button',{name:'Восстановить задачу',exact:true}).click();
+ expect(writes.at(-1).body).toMatchObject({status:'new',reason:'Ошибочная отмена',version:1});
+});
 async function setup(page, overrides = {}) {
  let row={id:1,public_id:'WRK-1',title:'Подготовить сценарии приёмки',description:'Проверить основные сценарии и приложить результаты проверки.',execution_team_id:10,work_direction:'organizational',assignee_id:1,due_date:'2026-11-01',acceptor_id:2,status:'in_progress',assignment_state:'accepted',version:1,available_actions:['in_acceptance','cancelled'],acceptance_required:true,can_edit:true,can_block:true,can_collaborate:true,can_place:true,can_reassign:true,...overrides};
  const writes=[], comments=[], files=[];
@@ -39,8 +73,11 @@ test('compact drawer, keyboard tabs and fixed footer at desktop/mobile in both t
   // Productivity fields may scroll; the modal and its fixed footer must fit the viewport.
   if(width===1440){const box=await page.locator('dialog').boundingBox();expect(box.width).toBeLessThanOrEqual(600);expect(box.height).toBeLessThanOrEqual(668);}
   await page.getByRole('tab',{name:'Задача',exact:true}).focus();await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab',{name:'Активность'})).toBeFocused();
+  await expect(page.getByRole('tab',{name:'Задача',exact:true})).toHaveAttribute('aria-selected','true');
+  await page.keyboard.press('Enter');
   await expect(page.getByRole('tab',{name:'Активность'})).toHaveAttribute('aria-selected','true');
-  await expect(page.locator('#wf-comment')).toBeVisible();await page.keyboard.press('Home');await expect(page.locator('#wf-title')).toBeVisible();
+  await expect(page.locator('#wf-comment')).toBeVisible();await page.keyboard.press('Home');await page.keyboard.press('Enter');await expect(page.locator('#wf-title')).toBeVisible();
   await page.screenshot({path:`test-results/work-card-${width}-${theme}.png`});
  }
 });
@@ -64,7 +101,7 @@ test('result draft survives task save and transition submits result',async({page
  await expect(page.locator('dialog')).toHaveCount(1);await expect(page.locator('.work-dialog-heading')).toContainText('На приёмке');expect(writes.at(-1).body).toEqual({version:2,status:'in_acceptance',result_text:'Все сценарии проверены',reason:''});
 });
 test('cancel requires reason and Ctrl+Enter confirms chosen action',async({page})=>{
- const writes=await setup(page);await page.locator('[data-card-menu] > summary').click();await page.getByRole('button',{name:'Отменить задачу',exact:true}).click();await page.getByRole('button',{name:'Отменить задачу',exact:true}).click();
+ const writes=await setup(page);await page.locator('[data-card-menu-trigger]').click();await page.getByRole('menuitem',{name:'Отменить задачу',exact:true}).click();await page.getByRole('button',{name:'Отменить задачу',exact:true}).click();
  expect(writes).toHaveLength(0);await expect(page.locator('#wf-reason')).toBeFocused();await page.locator('#wf-reason').fill('Потребность снята');await page.keyboard.press('Control+Enter');
  await expect(page.locator('dialog')).toHaveCount(1);await expect(page.locator('.work-dialog-heading')).toContainText('Отменена');expect(writes[0].body).toMatchObject({reason:'Потребность снята',status:'cancelled'});
 });
@@ -74,7 +111,7 @@ test('comment and file stay open, preserve edits and update version for dependen
  await expect(page.locator('.work-comment')).toContainText('Проверка завершена');await expect(page.locator('#wf-comment')).toHaveValue('');
  await page.locator('#wf-comment').fill('Второе сообщение');await page.keyboard.press('Control+Enter');await expect(page.locator('.work-comment')).toHaveCount(2);expect(writes[1].body.version).toBe(2);
  await page.getByRole('tab',{name:'Материалы'}).click();await page.locator('[data-work-upload]').setInputFiles({name:'result.txt',mimeType:'text/plain',buffer:Buffer.from('test results')});await expect(page.getByRole('button',{name:'result.txt'})).toBeVisible();
- await page.getByText('Зависимости',{exact:true}).click();await page.locator('#dep-id-search').fill('WRK-2');await page.locator('#dep-id-search').press('Enter');await page.getByRole('button',{name:'WRK-2 · Зависимая работа'}).click();await page.getByRole('button',{name:'Добавить зависимость'}).click();await expect.poll(()=>writes.length).toBe(4);expect(writes[3].body.source_version).toBe(4);
+ await page.getByText('Зависимости',{exact:true}).click();await page.getByRole('searchbox',{name:'Связанная работа',exact:true}).fill('WRK-2');await page.getByRole('searchbox',{name:'Связанная работа',exact:true}).press('Enter');await page.getByRole('combobox',{name:'Связанная работа: выбор',exact:true}).selectOption('2');await page.getByRole('button',{name:'Добавить зависимость'}).click();await expect.poll(()=>writes.length).toBe(4);expect(writes[3].body.source_version).toBe(4);
  await page.getByRole('button',{name:'Сохранить изменения'}).click();await page.getByRole('button',{name:'Закрыть',exact:true}).click();await expect(page.locator('dialog')).toHaveCount(0);expect(writes.at(-1).body).toMatchObject({version:4,title:'Мой несохранённый текст'});await expect(page.getByRole('button',{name:'WRK-1 · Мой несохранённый текст'})).toBeFocused();
 });
 test('completed readonly card has result without unavailable editing controls and restores focus',async({page})=>{
@@ -98,10 +135,10 @@ test('accept assignment uses selected assignee and due date',async({page})=>{
  expect(writes[0].body).toMatchObject({version:1,decision:'accepted',assignee_id:1,due_date:'2026-12-01'});
 });
 test('move and reassign retain placement and reassignment payloads',async({page})=>{
- const writes=await setup(page);await page.locator('[data-card-menu] > summary').click();await page.getByRole('button',{name:'Переместить',exact:true}).click();
+ const writes=await setup(page);await page.locator('[data-card-menu-trigger]').click();await page.getByRole('menuitem',{name:'Переместить',exact:true}).click();
  await page.locator('#wf-move-project').selectOption('5');await page.locator('#wf-move-reason').fill('Уточнено размещение');await page.getByRole('button',{name:'Подтвердить перенос'}).click();await expect.poll(()=>writes.length).toBe(1);await page.getByRole('button',{name:'Закрыть',exact:true}).click();await expect(page.locator('dialog')).toHaveCount(0);
  expect(writes[0].body).toEqual({version:1,major_task_id:null,direct_project_id:5,reason:'Уточнено размещение'});
- await page.getByRole('button',{name:'WRK-1 · Подготовить сценарии приёмки'}).click();await page.locator('[data-card-menu] > summary').click();await page.getByRole('button',{name:'Предложить другой команде',exact:true}).click();
+ await page.getByRole('button',{name:'WRK-1 · Подготовить сценарии приёмки'}).click();await page.locator('[data-card-menu-trigger]').click();await page.getByRole('menuitem',{name:'Предложить другой команде',exact:true}).click();
  await page.locator('#wf-reassign-team').selectOption('20');await page.locator('#wf-reassign-reason').fill('Нужна экспертиза');await page.getByRole('button',{name:'Предложить команде',exact:true}).click();await expect.poll(()=>writes.length).toBe(2);await page.getByRole('button',{name:'Закрыть',exact:true}).click();await expect(page.locator('dialog')).toHaveCount(0);
  expect(writes[1].body).toEqual({version:2,execution_team_id:20,reason:'Нужна экспертиза'});
 });
@@ -136,7 +173,7 @@ test('declining assignment requires reason and does not change team attributes',
 
 test('cross-team creation leaves assignee to receiving team',async({page})=>{
  await setup(page);await page.getByRole('button',{name:'Закрыть',exact:true}).click();await page.getByRole('button',{name:'Создать задачу',exact:true}).click();
- await page.getByText('Дополнительные параметры',{exact:true}).click();await page.locator('#wf-execution_team_id').selectOption('20');
+ await page.getByText('Команда и связь с проектом',{exact:true}).click();await page.locator('#wf-execution_team_id').selectOption('20');
  await expect(page.locator('#wf-assignee_id')).toBeDisabled();await expect(page.locator('#wf-assignee_id')).toHaveValue('');
  await expect(page.locator('[data-work-assignment-note]')).toBeVisible();
  await page.locator('#wf-execution_team_id').selectOption('10');await expect(page.locator('#wf-assignee_id')).toBeEnabled();
@@ -152,7 +189,7 @@ test('cancelled proposal explains closure and offers no assignment decision',asy
 test('whitespace title is explained locally and can be corrected',async({page})=>{
  const writes=await setup(page);await page.getByRole('button',{name:'Закрыть',exact:true}).click();await page.getByRole('button',{name:'Создать задачу',exact:true}).click();
  await page.locator('#wf-title').fill('   ');await page.getByRole('button',{name:'Создать',exact:true}).click();
- expect(writes).toHaveLength(0);expect(await page.locator('#wf-title').evaluate(el=>el.validationMessage)).toBe('Укажите название задачи');
+ expect(writes).toHaveLength(0);await expect(page.locator('#wf-title')).toHaveAttribute('aria-invalid','true');await expect(page.getByText('Укажите название задачи',{exact:true}).last()).toBeVisible();
  await page.locator('#wf-title').fill('Исправленное название');await page.getByRole('button',{name:'Создать',exact:true}).click();
  await page.getByRole('button',{name:'Закрыть',exact:true}).click();await expect(page.locator('dialog')).toHaveCount(0);expect(writes.at(-1).body.title).toBe('Исправленное название');
 });

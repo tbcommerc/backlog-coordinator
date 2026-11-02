@@ -1,3 +1,5 @@
+import { filterMatches } from '../ui/filterValues.js';
+import { progress as kitProgress } from '../ui/dataDisplay.js';
 console.log('[DMB] customerReport.js loaded');
 import { openTaskModal } from './modal.js?v=118';
 import { formatTaskPublicId } from '../taskPublicId.js';
@@ -124,7 +126,7 @@ function renderTasksTable(tasks, statusFilter) {
   const tbody = document.getElementById('customer-tasks-tbody');
   const countEl = document.getElementById('customer-tasks-count');
 
-  const filtered = statusFilter ? tasks.filter(t => t.status === statusFilter) : tasks;
+  const filtered = statusFilter ? tasks.filter(t => filterMatches(statusFilter,t.status)) : tasks;
 
   if (countEl) {
     countEl.textContent = `Найдено: ${filtered.length} задач`;
@@ -210,17 +212,4 @@ function renderPriority(priority) {
   return `<span class="badge badge-${cls}">${escapeHtml(priority || 'СРЕДНИЙ')}</span>`;
 }
 
-function renderProgress(progress) {
-  const p = progress || 0;
-  let colorClass = '';
-  if (p >= 100) colorClass = 'success';
-  else if (p > 0) colorClass = 'warning';
-  return `
-    <div style="display:flex;align-items:center;gap:8px;min-width:100px;">
-      <div class="progress-bar" style="flex:1;">
-        <div class="progress-fill ${colorClass}" style="width:${p}%"></div>
-      </div>
-      <span style="font-size:var(--text-xs);color:var(--text-secondary);min-width:30px;text-align:right;">${p}%</span>
-    </div>
-  `;
-}
+function renderProgress(value) { return kitProgress({value,showValue:true,tone:Number(value)>=100?'success':'accent'}); }

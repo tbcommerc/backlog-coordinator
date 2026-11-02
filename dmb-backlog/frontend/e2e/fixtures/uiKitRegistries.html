@@ -38,7 +38,7 @@
       is_read:false, is_resolved:false, created_at:'2026-10-09T10:00:00Z',
       task_id:index ? 42 : null, action_url:index ? '/backlog?task=42&tab=com' : '/reporting-statuses?source=notification&meeting_id=42',
     }));
-    const events = [{ id:7, event_type:'task.updated', aggregate_type:'Task', aggregate_id:42, aggregate_version:3, attempts:12, dead_lettered_at:'2026-10-09T10:00:00Z', last_error:'Сервис временно недоступен. Повторите после восстановления соединения.', payload:{ title:'<img src=x onerror=alert(1)>', task_id:42 } }];
+    const events = [{ id:7, event_type:'task.updated', aggregate_type:'Task', aggregate_id:42, aggregate_version:3, attempts:params.has('attempts') ? (params.get('attempts') === 'unknown' ? null : Number(params.get('attempts'))) : 12, dead_lettered_at:'2026-10-09T10:00:00Z', last_error:'Сервис временно недоступен. Повторите после восстановления соединения.', payload:{ title:'<img src=x onerror=alert(1)>', task_id:42 } }];
     const snapshot = () => ({ summary: { unread:notifications.filter(n=>!n.is_read).length, requires_action:1, today:23, by_category:{} } });
     const wait = async () => { if(window.__hold) await new Promise(resolve=>{ window.__release = () => { window.__hold=false; resolve(); }; }); };
     const api = {

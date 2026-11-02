@@ -9,7 +9,7 @@ export function renderLogin() {
       ${field({id:'login-email',label:'Логин',type:'text',attrs:{autocomplete:'username',placeholder:'Выдан администратором',maxlength:254}})}
       ${fieldFrame({id:'login-password',label:'Пароль',controlMarkup:`<div class="ui-input-action">${control({id:'login-password',type:'password',attrs:{autocomplete:'current-password'}})}${button({label:'Показать пароль',icon:'eye',iconOnly:true,variant:'ghost',attrs:{id:'login-pw-toggle','aria-pressed':false},className:'login-password-toggle'})}</div>`})}
       <div class="login-options"><span id="login-support">Забыли пароль? Обратитесь к администратору.</span><a href="#/activate" id="login-activate">Есть код приглашения</a></div>
-      <div id="login-error" class="ui-alert" data-ui-tone="danger" role="alert">${icon('circle-alert')}<span>Неверный пароль. Попробуйте ещё раз.</span></div>
+      <div id="login-error" class="ui-alert" data-ui-tone="danger" role="alert">${icon('alert-circle')}<span>Неверный пароль. Попробуйте ещё раз.</span></div>
       ${button({label:'Войти в систему',icon:'log-in',variant:'primary',attrs:{id:'login-btn',type:'submit'},className:'login-submit'})}
     </form></div><footer class="login-footer">© 2026 Backlog Coordinator</footer>
   </section></div>`;

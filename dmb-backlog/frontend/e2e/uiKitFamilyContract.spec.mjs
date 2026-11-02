@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 
 // Render production modules with in-memory responses; never connect to a DB.
 const surfaces = [
- ...['teams','projects','businessCustomers','users','roles','home','dictionaries','display','reports','audit'].map(tab=>[`admin-${tab}`,`uiKitAdminReports.html?surface=admin&admin_tab=${tab}`]),
+ ...['teams','projects','businessCustomers','users','roles','home','dictionaries','display','audit'].map(tab=>[`admin-${tab}`,`uiKitAdminReports.html?surface=admin&admin_tab=${tab}`]),
  ...['tribe','po-pl','it'].map(type=>[`analytics-${type}`,`uiKitAdminReports.html?surface=analytics&type=${type}`]),
  ...['dashboard','reports','directorate','customer','meetings'].map(surface=>[surface,`uiKitAdminReports.html?surface=${surface}`]),
  ['express','uiKitExpress.html?'],['settings','uiKitSettings.html?'],

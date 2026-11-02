@@ -57,7 +57,7 @@ for (const compact of [false,true]) for (const theme of ['light','dark']) test(`
  for(const route of ['team-backlog','work-reports?meeting_id=1']){
   await page.goto('/#/'+route);
   // A concrete production consumer, not an isolated th or synthetic reference.
-  const target=route==='team-backlog'?page.locator('#team-tasks-table thead').first():page.locator('.work-table thead').first();
+  const target=route==='team-backlog'?page.locator('#team-tasks-table thead').first():page.locator('.work-report-table thead').first();
   await expect(target).toBeVisible();
   await page.evaluate(({theme,compact})=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.compact=String(compact);},{theme,compact});
   await page.addStyleTag({content:'*{transition:none!important}'});

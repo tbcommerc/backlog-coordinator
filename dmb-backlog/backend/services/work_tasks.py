@@ -129,6 +129,9 @@ def record(db, row, user, action, before, reason=""):
     db.add(WorkHistory(work_task_id=row.id, actor_id=user.id, action=action, version=row.version,
                        before=before, after=state(row), reason=reason))
     notify_work(db, row, user, action, before, reason)
+    if action != 'created':
+        from services.request_followup import work_changed
+        work_changed(db, row, user, before)
     db.add(EventOutbox(event_type="work.changed", aggregate_type="work", aggregate_id=row.id,
                        aggregate_version=row.version, payload={"target": {"kind": "work", "id": row.id}}))
 
@@ -171,11 +174,19 @@ def create(db, user, req):
 
 def update(db, row, user, req):
     values = req.model_dump(exclude_unset=True, exclude={"version"})
+    reason = values.pop('reason', '')
     execution = editor(user, row.execution_team_id)
     require(execution or (row.requester_id == user.id and row.status == "new") or (
         row.assignee_id == user.id and set(values) <= {"blocked_reason"}))
     if row.status in {"done", "cancelled"}:
         raise HTTPException(422, "Сначала переоткройте задачу")
+    changed_terms = any(key in values and values[key] != getattr(row, key) for key in ('description', 'acceptor_id'))
+    if changed_terms and row.status in {'in_progress', 'in_acceptance'}:
+        if not reason:
+            raise HTTPException(422, 'Укажите причину изменения условий или приёмщика')
+        # A result submitted against old expectations must be presented again.
+        if row.status == 'in_acceptance': values['status'] = 'in_progress'
+        values['result_revision'] = (getattr(row, 'result_revision', None) or 1) + 1
     if "assignee_id" in values:
         require(execution)
         if row.assignment_state != "accepted":
@@ -189,7 +200,7 @@ def update(db, row, user, req):
         for field in ("description", "assignee_id", "due_date"):
             if field in values and not values[field]:
                 raise HTTPException(422, "Обязательны описание, исполнитель и срок")
-    return change(db, row, user, req.version, values, "updated")
+    return change(db, row, user, req.version, values, "updated", reason)
 
 
 def toggle_checklist(db, row, user, item_id, req):
@@ -207,7 +218,7 @@ def toggle_checklist(db, row, user, item_id, req):
 
 TRANSITIONS = {"new": ("ready", "cancelled"), "ready": ("in_progress", "cancelled"),
                "in_progress": ("in_acceptance", "done", "cancelled"),
-               "in_acceptance": ("done", "in_progress", "cancelled"), "done": ("ready",), "cancelled": ()}
+               "in_acceptance": ("done", "in_progress", "cancelled"), "done": ("ready",), "cancelled": ("new",)}
 
 
 def transition_values(row, user, req):
@@ -217,11 +228,16 @@ def transition_values(row, user, req):
     if target not in TRANSITIONS.get(source, ()):
         raise HTTPException(422, "Недопустимый переход")
     values = {"status": target}
-    needs_reason = target == "cancelled" or source == "done" or (source == "in_acceptance" and target == "in_progress")
+    needs_reason = target == "cancelled" or source in {"done", "cancelled"} or (source == "in_acceptance" and target == "in_progress")
     if needs_reason and not req.reason:
         raise HTTPException(422, "Укажите причину")
     if target == "cancelled":
         require(execution or (source in {"new", "ready"} and row.requester_id == user.id))
+    elif source == "cancelled":
+        require(execution)
+        # Restore into triage: old assignments and readiness must be reviewed.
+        values.update(completed_at=None, assignment_state="proposed")
+        values["result_revision"] = (getattr(row, "result_revision", None) or 1) + 1
     elif source == "done":
         require(execution or row.acceptor_id == user.id)
         values["completed_at"] = None
@@ -257,7 +273,7 @@ def transition_values(row, user, req):
 def available_actions(row, user):
     from work_contract import Transition
     actions = []
-    for target in ("ready", "in_progress", "in_acceptance", "done", "cancelled"):
+    for target in ("new", "ready", "in_progress", "in_acceptance", "done", "cancelled"):
         try:
             transition_values(row, user, Transition(version=row.version, status=target, reason="reason", result_text=row.result_text if row.status == "in_acceptance" else "result"))
             actions.append(target)
