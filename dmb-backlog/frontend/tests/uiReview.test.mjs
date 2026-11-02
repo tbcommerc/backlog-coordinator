@@ -45,7 +45,7 @@ test('active consumers import UI modules using one canonical URL', () => {
   function scan(dir) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
-      if (entry.isDirectory()) { if (!['lib', 'assistant-v2'].includes(entry.name)) scan(url); continue; }
+      if (entry.isDirectory()) { if (!['lib'].includes(entry.name)) scan(url); continue; }
       if (!entry.name.endsWith('.js')) continue;
       for (const [, path] of readFileSync(url, 'utf8').matchAll(/(?:from\s*|import\s*)['"]([^'"]+)['"]/g)) {
         if (!path.startsWith('.')) continue;

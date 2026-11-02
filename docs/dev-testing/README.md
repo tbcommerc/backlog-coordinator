@@ -57,7 +57,7 @@ PostgreSQL/Redis, readiness, SSE/outbox и observability. Это рабочий 
 | [`PRODUCT_UAT_SESSION.md`](PRODUCT_UAT_SESSION.md) | Модерируемая бизнес-приёмка агента владельцем продукта | Готов к проведению |
 | [`UX_UI_RUN_TEMPLATE.md`](UX_UI_RUN_TEMPLATE.md) | Протокол отдельного ручного прогона | Готов к использованию |
 
-Существующие автоматизированные наборы и безопасные команды запуска описаны в [`../../dmb-backlog/docs/TESTING.md`](../../dmb-backlog/docs/TESTING.md). Качество содержательной работы агента описывается отдельно в [`../../agent/docs/QUALITY_MODEL.md`](../../agent/docs/QUALITY_MODEL.md).
+Существующие автоматизированные наборы и безопасные команды запуска описаны в [`../../dmb-backlog/docs/TESTING.md`](../../dmb-backlog/docs/TESTING.md). Качество содержательной работы агента описывается отдельно в [`../../agent/docs/QUALITY_MODEL.md`](../../agents/business-analyst/docs/QUALITY_MODEL.md).
 
 ## План развития раздела
 

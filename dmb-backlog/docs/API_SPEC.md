@@ -200,7 +200,7 @@ PUT/confirm при активном анализе отвечают 409. Пос�
 словарь текстовых разделов с проверкой `expected_draft_hash`) и `dismiss_proposal`
 (оставить свой текст, отклонив оставшиеся операции). Существующий документ нельзя
 перезаписать через `create_draft`. Контракт и ограничения:
-[API агента](../../agent-v2/docs/API.md). Проверено 09.10.2026.
+[API агента](../../agents/business-analyst-experimental/docs/API.md). Проверено 09.10.2026.
 
 Создание пакета принимает `session_id`, `expected_draft_hash` и обязательный
 `Idempotency-Key` (либо одноимённый `idempotency_key` в JSON). При передаче обоих
@@ -517,7 +517,7 @@ Task-linked записи повторно фильтруются по текущ
 Backlog proxy поддерживает JSON `POST /agent/chat`, потоковый
 `POST /agent/chat-stream`, сессии, reset, send-for-review, редактирование draft
 section и persisted requirement requests. Внешний контракт Agent описан
-отдельно в `../../agent/docs/API.md`. Потоковый endpoint ретранслирует
+отдельно в `../../agents/business-analyst/docs/API.md`. Потоковый endpoint ретранслирует
 `text/event-stream` без накопления полного ответа и запрещает proxy buffering.
 События `delta` содержат отображаемый текст, а завершающий `result` — полный
 структурированный ответ.
@@ -662,25 +662,9 @@ backend workers. Повтор того же ключа и payload не повт�
 включён в создание, PATCH, массовое изменение, ответы и `/tasks/reference`.
 Полный контракт поведения и ограничение применения миграции — [отчёт ДИД](DID_BACKLOG_REPORT.md).
 
-## Legacy Assistant V2 gateway и adapter — проверено 19.09.2026
+## Удаление прежнего прототипа V2 — 02.11.2026
 
-`GET /api/v1/features` возвращает `assistant_v2.enabled` и
-`assistant_v2.pilot_allowed`. При выключенном flag endpoint не импортирует и не
-вызывает V2. При включённом flag `/api/v2/assistant/{path}` проксирует JSON в
-отдельный сервис с новым signed actor envelope на каждый запрос; пустой allowlist
-даёт `403`, недоступный процесс — bounded `503`.
-
-Public V2 поддерживает ручные versioned операции `POST /cases/{id}/gaps`,
-`POST /cases/{id}/gaps/{gap_id}/decisions`,
-`POST /cases/{id}/conflicts` и
-`POST /cases/{id}/conflicts/{conflict_id}/decisions`. Решение сохраняется
-append-only в `DecisionRecord`; изменение одновременно обновляет digest ревизии
-кейса, audit и outbox.
-
-Internal `/internal/assistant-v2/v1` доступен только при том же flag и требует
-service credential плюс actor envelope. Реализованы `POST /snapshots`,
-`POST /diffs/validate`, `POST /apply-intents/prepare`. Direct/atomic apply
-отсутствует. Public V2 OpenAPI публикуется самим сервисом на порту 9200.
+Старый сервис, его API, флаги и код интеграции удалены. Актуальный экспериментальный V2 — `agents/business-analyst-experimental/`. [Сравнение, сохранённые решения и проверки](../../docs/AGENT_V2_RETIREMENT_2026-11-02.md). Рабочие БД при удалении кода не изменялись.
 
 
 ## Учётные записи — изменение от 12.10.2026
@@ -695,7 +679,7 @@ API, модель сессий, интерфейсы, конфигурацию, 
 
 Добавлена отключённая по умолчанию интеграция самостоятельного сервиса. Gateway `/api/v1/backlog-assistant` обслуживает sessions/messages/runs/cancel/results/feedback; приватный Data API вынесен в отдельный mTLS listener 9450. Страница `#/backlog-assistant` и контекстная панель используют общие разговоры. Миграция `e8f1b2c3d405` создаёт только `backlog_assistant_integration`; очередь и история находятся в отдельной PostgreSQL БД агента.
 
-[Контракты и хранение](../../backlog-assistant/docs/API.md), [эксплуатация](../../backlog-assistant/docs/OPERATIONS.md), [подтверждённые проверки и ограничения пилота](../../backlog-assistant/docs/TESTING.md).
+[Контракты и хранение](../../agents/backlog-assistant/docs/API.md), [эксплуатация](../../agents/backlog-assistant/docs/OPERATIONS.md), [подтверждённые проверки и ограничения пилота](../../agents/backlog-assistant/docs/TESTING.md).
 
 
 ### Уточнения персональных уведомлений и квартального факта, 14.10.2026

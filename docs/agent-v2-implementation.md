@@ -11,7 +11,7 @@
 частичный или непроверенный результат явно показывается в UI. Авторские вопросы
 сохраняются, новые вопросы проверяются по источникам и границам. Последующее
 бизнес-ревью заново проверяет перенос, не меняя документ. Детали и ограничения:
-[API](../agent-v2/docs/API.md#полнота-первого-черновика--проверено-09102026).
+[API](../agents/business-analyst-experimental/docs/API.md#полнота-первого-черновика--проверено-09102026).
 Проверки инкремента: 419 тестов агента, 23 Node-теста, 24 браузерных сценария,
 19 тестов документной границы; два полных реальных прогона синтетического примера
 успешны. Оценка качества на произвольных материалах заказчика остаётся пилотной.
@@ -22,12 +22,12 @@
 раскрывают цитату конкретной строки версии источника. Проверки: 426 pytest,
 16 Node, 19 тестов границы и 33 браузерных сценария с двумя повторными проверками.
 Полный и сокращённый синтетические примеры прошли живую модель по 9/9 проверок.
-Детальные ограничения и результаты: [тестирование](../agent-v2/docs/TESTING.md).
+Детальные ограничения и результаты: [тестирование](../agents/business-analyst-experimental/docs/TESTING.md).
 
 Целевое ТЗ `assistant-v2-technical-spec.md` реализовано в новом каталоге
-`agent-v2/` как файловый fork `agent/` от commit
+`agents/business-analyst-experimental/` как файловый fork `agents/business-analyst/` от commit
 `ccb843aabb7515bb5b0e1be77e0680dd159dd817`. Существующий greenfield-каталог
-`assistant-v2/` не менялся и не является этой реализацией.
+Старый самостоятельный `assistant-v2/` удалён 02.11.2026; [сравнение и сохранённые решения](AGENT_V2_RETIREMENT_2026-11-02.md).
 
 Реализовано:
 
@@ -110,7 +110,7 @@
 
 Основные точки реализации:
 
-- [Документные операции](../agent-v2/agent_v2/v2/document_workspace.py).
+- [Документные операции](../agents/business-analyst-experimental/business_analyst_experimental/v2/document_workspace.py).
 - [Gateway и открытие БТ из объекта](../dmb-backlog/backend/routers/agent_v2_router.py).
 - [Условия публикации](../dmb-backlog/backend/services/agent_v2_documents.py).
 - [Согласование редакций](../dmb-backlog/backend/services/requirement_reviews.py).
@@ -144,7 +144,7 @@
 ядром документа, Node-тесты и браузерные сценарии с перехватом API. Защищённые
 пользователи, роли, команды и справочники не создавались и не изменялись.
 Команды и ограничения приведены в [тестировании DMB](../dmb-backlog/docs/TESTING.md)
-и [тестировании агента](../agent-v2/docs/TESTING.md).
+и [тестировании агента](../agents/business-analyst-experimental/docs/TESTING.md).
 
 Не выполнены: запуск всего стенда, применение миграции к рабочей БД,
 конкурентные транзакции на живой PostgreSQL и оценка качества LLM на материалах заказчика.
@@ -152,10 +152,10 @@
 09.10.2026 подключён OpenCode Go (`glm-5.3-flash`): реальный HTTP 200,
 структурированный JSON, создание правки и ревью искусственного БТ подтверждены.
 Ревью вернуло 12 замечаний, прошедших проверку формата и цитат, не изменив документ.
-Настройки V2 отделены от V1; см. [эксплуатацию](../agent-v2/docs/OPERATIONS.md).
+Настройки V2 отделены от V1; см. [эксплуатацию](../agents/business-analyst-experimental/docs/OPERATIONS.md).
 
-Точки входа и команды: [`../agent-v2/README.md`](../agent-v2/README.md).
-Полная трассировка fork: [`../agent-v2/FORK_PROVENANCE.json`](../agent-v2/FORK_PROVENANCE.json).
+Точки входа и команды: [`../agents/business-analyst-experimental/README.md`](../agents/business-analyst-experimental/README.md).
+Полная трассировка fork: [`../agents/business-analyst-experimental/FORK_PROVENANCE.json`](../agents/business-analyst-experimental/FORK_PROVENANCE.json).
 
 
 ## Исправления UX/UI-аудита — проверено 09.10.2026

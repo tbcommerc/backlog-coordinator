@@ -231,22 +231,11 @@ Production Nginx задаёт `frame-ancestors 'none'`, `object-src 'none'`,
 
 Исторический документ со смешанными реализованными и рекомендуемыми мерами сохранён в `archive/legacy/SECURITY_MIXED_2026-06-29.md` и не является источником текущего состояния.
 
-## Legacy Assistant V2 boundary — проверено 19.09.2026
+## Удаление прежнего прототипа V2 — 02.11.2026
 
-`ASSISTANT_V2_ALLOW_REAL_DATA=false` является отдельным fail-closed stop-gate:
-он блокирует создание и чтение `approved_real` cases, authorized DMB snapshots,
-ProposedDiff, rebase и apply intent. Synthetic UI явно предупреждает не вводить
-реальные данные.
+Старый сервис, его API, флаги и код интеграции удалены. Актуальный экспериментальный V2 — `agents/business-analyst-experimental/`. [Сравнение, сохранённые решения и проверки](../../docs/AGENT_V2_RETIREMENT_2026-11-02.md). Рабочие БД при удалении кода не изменялись.
 
-Pilot доступ не создаёт новых ролей: после обычной DMB-аутентификации
-автоматически допускается `admin=full`, а для остальных используется env allowlist
-ID/email. Глобальный feature flag остаётся приоритетным stop-gate и блокирует V2
-также для админа. Signed actor envelope ограничен issuer/audience/TTL,
-содержит jti и проверяется на replay; adapter дополнительно требует отдельный
-service secret, заново загружает активного DMB user и применяет object policy.
-Diff allowlist исключает users, roles, teams, dictionaries, owners и lifecycle
-поля. Остаточные production-риски и stop gates перечислены в
-[`../../assistant-v2/docs/THREAT_MODEL.md`](../../assistant-v2/docs/THREAT_MODEL.md).
+
 
 
 Контракт, проверки и границы приёмки: [ACCOUNT_SECURITY.md](ACCOUNT_SECURITY.md). Проверено 12.10.2026; cutover рабочей БД не выполнялся.

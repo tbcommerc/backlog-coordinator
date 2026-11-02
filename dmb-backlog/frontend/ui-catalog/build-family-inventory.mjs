@@ -2,7 +2,7 @@ import {readFileSync,readdirSync,writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {families} from './family-contracts.mjs';
 const root=new URL('../',import.meta.url),read=p=>readFileSync(new URL(p,root),'utf8');
-function walk(p){return readdirSync(new URL(p,root),{withFileTypes:true}).flatMap(e=>e.isDirectory()?['lib','assistant-v2'].includes(e.name)?[]:walk(p+'/'+e.name):[p+'/'+e.name]);}
+function walk(p){return readdirSync(new URL(p,root),{withFileTypes:true}).flatMap(e=>e.isDirectory()?['lib'].includes(e.name)?[]:walk(p+'/'+e.name):[p+'/'+e.name]);}
 export function buildInventory(){
  const paths=[...walk('js'),...walk('css'),...walk('e2e/fixtures')].filter(p=>/\.(js|css|html)$/.test(p)).sort();
  const sources=paths.map(path=>({path,sha256:createHash('sha256').update(read(path)).digest('hex')}));

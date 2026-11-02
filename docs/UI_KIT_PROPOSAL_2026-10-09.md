@@ -29,8 +29,8 @@ SPA на JavaScript с ES-модулями, HTML-шаблонами и CSS. В �
 Источники: [оболочка SPA](../dmb-backlog/frontend/index.html),
 [маршруты](../dmb-backlog/frontend/js/router.js),
 [Assistant V2](../dmb-backlog/frontend/js/agent-v2/workspace.js),
-[Streamlit UI](../prioritiser-agent/app/ui/streamlit_app.py),
-[запуск standalone UI](../prioritiser-agent/README.md).
+[Streamlit UI](../agents/value-priority-assessor/value_priority_assessor/ui/streamlit_app.py),
+[запуск standalone UI](../agents/value-priority-assessor/README.md).
 
 Для приоритизатора предлагаю единый пользовательский опыт обеспечивать через
 основной frontend. Если отдельный Streamlit UI используется как рабочий продукт,

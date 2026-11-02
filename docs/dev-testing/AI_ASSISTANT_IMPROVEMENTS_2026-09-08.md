@@ -125,9 +125,9 @@ node --test dmb-backlog/frontend/tests/requirementIntegrity.test.mjs dmb-backlog
 
 ## Профильная документация
 
-- [Состояние фактов](../../agent/docs/FACT_STATE.md)
-- [Контракт диалога](../../agent/docs/PRODUCT_DIALOGUE_SPEC.md)
-- [Модель качества](../../agent/docs/QUALITY_MODEL.md)
-- [API агента](../../agent/docs/API.md)
-- [База знаний](../../agent/docs/KB_GUIDE.md)
+- [Состояние фактов](../../agents/business-analyst/docs/FACT_STATE.md)
+- [Контракт диалога](../../agents/business-analyst/docs/PRODUCT_DIALOGUE_SPEC.md)
+- [Модель качества](../../agents/business-analyst/docs/QUALITY_MODEL.md)
+- [API агента](../../agents/business-analyst/docs/API.md)
+- [База знаний](../../agents/business-analyst/docs/KB_GUIDE.md)
 - [Результат проверки и хеши изменённых исходников](evidence/ai-ba-improvements-2026-09-08/verification.json)

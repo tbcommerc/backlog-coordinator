@@ -331,12 +331,12 @@ class RealEngineContractTests(unittest.TestCase):
         # no DMB database/app import or protected identity fixture is involved.
         with patch.dict(os.environ, {"AGENT_V2_SESSION_DATABASE_URL": "sqlite:///:memory:",
                                      "AGENT_V2_LLM_PROVIDER": "mock"}):
-            sys.path.insert(0, str(ROOT.parents[1] / "agent-v2"))
+            sys.path.insert(0, str(ROOT.parents[1] / "agents/business-analyst-experimental"))
             try:
                 from dataclasses import asdict
-                from agent_v2.session import SessionStore
-                from agent_v2.v2.orchestrator import V2Orchestrator
-                from agent_v2.v2 import document_workspace
+                from business_analyst_experimental.session import SessionStore
+                from business_analyst_experimental.v2.orchestrator import V2Orchestrator
+                from business_analyst_experimental.v2 import document_workspace
                 store = SessionStore(database_url="sqlite:///:memory:")
                 state = store.new_session(17)
                 state.product_mode, state.operator_role, state.artifact_type = "requirement_copilot", "BA", "business_requirement_v2"

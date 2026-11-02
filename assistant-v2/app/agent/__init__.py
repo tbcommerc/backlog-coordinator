@@ -1,2 +1,0 @@
-"""Schema-constrained proposal runtime."""
-

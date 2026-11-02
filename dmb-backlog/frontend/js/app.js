@@ -682,7 +682,6 @@ class App {
     this.api = new API();
     this.auth = new Auth(this.api, this.store);
     this.features = {
-      assistant_v2: { enabled: false, pilot_allowed: false },
       agent_v2: { enabled: false, pilot_allowed: false, operator_role: '' },
     };
     this.router = new Router(this);
@@ -755,7 +754,6 @@ class App {
     } catch (error) {
       console.warn('Feature bootstrap unavailable', error);
       this.features = {
-        assistant_v2: { enabled: false, pilot_allowed: false },
         agent_v2: { enabled: false, pilot_allowed: false, operator_role: '' },
       };
     }

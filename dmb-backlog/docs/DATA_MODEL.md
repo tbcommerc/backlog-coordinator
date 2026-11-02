@@ -352,19 +352,9 @@ claim/retry. Обработанные записи имеют ограничен
 
 Миграция `a9246d1c7e30` добавляет `did_client_groups` (код, название, порядок, активность), nullable FK `tasks.did_client_group_id` и таблицу `user_report_prefs` с уникальной парой пользователь/отчёт и JSON настроек. Контактное лицо использует существующий `tasks.business_customer_id` → `business_customers`, связанный с `departments`. Отдельный справочник контактов исключён по уточнению владельца продукта от 04.09.2026. Миграция применена локально 04.09.2026 с разрешения владельца продукта; справочник не наполнен. Подробности — [отчёт ДИД](DID_BACKLOG_REPORT.md).
 
-## Граница данных legacy Assistant V2 — проверено 19.09.2026
+## Удаление прежнего прототипа V2 — 02.11.2026
 
-В отдельной V2 DB `NeedCase.data_classification` сохраняет `synthetic` либо
-`approved_real`. При закрытом real-data gate записи `approved_real` не попадают
-в list projection и недоступны через case API; authorized DMB snapshot создаёт
-только `approved_real` case.
-
-Legacy `assistant-v2/` не добавляет таблиц или FK в основную DMB DB. Это описание
-сохранённого прототипа, а не нового домена `agent-v2/` выше. Authorized snapshots Task,
-Request и goal формируются adapter по текущей DMB policy и содержат только
-allowlisted projection, version, digest и policy metadata. V2 хранит копию в
-отдельной DB `assistant_v2`; её 22 таблицы и Alembic описаны в
-`../../assistant-v2/app/models.py` и `../../assistant-v2/migrations/`.
+Старый сервис, его API, флаги и код интеграции удалены. Актуальный экспериментальный V2 — `agents/business-analyst-experimental/`. [Сравнение, сохранённые решения и проверки](../../docs/AGENT_V2_RETIREMENT_2026-11-02.md). Рабочие БД при удалении кода не изменялись.
 
 
 ## Учётные записи — изменение от 12.10.2026
@@ -379,7 +369,7 @@ API, модель сессий, интерфейсы, конфигурацию, 
 
 Добавлена отключённая по умолчанию интеграция самостоятельного сервиса. Gateway `/api/v1/backlog-assistant` обслуживает sessions/messages/runs/cancel/results/feedback; приватный Data API вынесен в отдельный mTLS listener 9450. Страница `#/backlog-assistant` и контекстная панель используют общие разговоры. Миграция `e8f1b2c3d405` создаёт только `backlog_assistant_integration`; очередь и история находятся в отдельной PostgreSQL БД агента.
 
-[Контракты и хранение](../../backlog-assistant/docs/API.md), [эксплуатация](../../backlog-assistant/docs/OPERATIONS.md), [подтверждённые проверки и ограничения пилота](../../backlog-assistant/docs/TESTING.md).
+[Контракты и хранение](../../agents/backlog-assistant/docs/API.md), [эксплуатация](../../agents/backlog-assistant/docs/OPERATIONS.md), [подтверждённые проверки и ограничения пилота](../../agents/backlog-assistant/docs/TESTING.md).
 
 
 ## Рабочие задачи — проверено 16.10.2026

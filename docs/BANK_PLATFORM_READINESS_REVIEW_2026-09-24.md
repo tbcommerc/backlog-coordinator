@@ -71,8 +71,8 @@ Dockerfile, CI, отдельные тесты и эксплуатационны�
 **Факт.** Основной backend, BA-агент и Prioritiser исполняют прикладной Python-код.
 Текущий frontend — JavaScript. Источники:
 [`main.py`](../dmb-backlog/backend/main.py),
-[`agent/main.py`](../agent/agent/main.py),
-[`Prioritiser Dockerfile`](../prioritiser-agent/Dockerfile),
+[`agents/business-analyst/main.py`](../agents/business-analyst/business_analyst/main.py),
+[`Prioritiser Dockerfile`](../agents/value-priority-assessor/Dockerfile),
 [`package.json`](../dmb-backlog/package.json).
 
 **Что изменить.** Перенести бизнес-правила и API на разрешённый Java-стек.
@@ -104,12 +104,12 @@ Java без изменения структуры сохранит связан�
 ### F03. Закрытый AI-контур пока не обеспечен поставкой
 
 **Факт.** Адрес LLM конфигурируется, но значение по умолчанию в
-[`agent/config.py`](../agent/agent/config.py) и
+[`agents/business-analyst/config.py`](../agents/business-analyst/business_analyst/config.py) и
 [`compose.production.yaml`](../compose.production.yaml) — публичный endpoint.
 Адаптер передаёт сообщения на выбранный адрес. Это не доказательство того, что
 нынешняя рабочая установка отправляет данные наружу: её секретные настройки
 не проверялись. Входной фильтр
-[`input_harness.py`](../agent/agent/guardrails/input_harness.py) использует
+[`input_harness.py`](../agents/business-analyst/business_analyst/guardrails/input_harness.py) использует
 регулярные выражения для ряда чувствительных данных и prompt injection;
 это полезный дополнительный слой, но не полная классификация/изоляция данных.
 
@@ -127,7 +127,7 @@ Java без изменения структуры сохранит связан�
 
 ### F04. Схема БД BA-агента меняется при создании runtime
 
-**Факт.** [`session.py`](../agent/agent/session.py) вызывает `create_all`,
+**Факт.** [`session.py`](../agents/business-analyst/business_analyst/session.py) вызывает `create_all`,
 `ALTER TABLE` и backfill в конструкторе `SessionStore`; глобальный экземпляр
 создаётся при импорте модуля. В Compose агент имеет две реплики.
 Инициализация БД задаёт владельца `dmb` и для БД сессий, и для Prioritiser.
@@ -237,9 +237,9 @@ runtime и пользовательского пути через настоящ
 
 **Факт.** [`SECURITY.md`](../dmb-backlog/docs/SECURITY.md) называет аудит
 best-effort и неатомарным, хотя текущая реализация транзакционная. В
-[`agent/main.py`](../agent/agent/main.py) дважды зарегистрирован один и тот же
+[`agents/business-analyst/main.py`](../agents/business-analyst/business_analyst/main.py) дважды зарегистрирован один и тот же
 `GET /api/agent/ready` — подтверждено статическим разбором AST.
-Развивающийся `agent-v2/` пока не включён в проверенный production Compose/CI.
+Развивающийся `agents/business-analyst-experimental/` пока не включён в проверенный production Compose/CI.
 
 **Что изменить.** Выбрать состав банковского релиза, определить статус V1/V2,
 убрать дублирование маршрутов, актуализировать документы после изменений.

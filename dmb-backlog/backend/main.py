@@ -237,20 +237,7 @@ app.include_router(work_resolution_router, prefix="/api/v1", tags=["Work resolut
 app.include_router(work_relations_router, prefix="/api/v1", tags=["Work relations"])
 app.include_router(prioritiser_router.router, prefix="/api/v1/tasks", tags=["Task prioritiser"], dependencies=non_customer_dependencies)
 
-# V2 imports and routes do not exist in the process when the kill switch is off.
-# This is deliberately not a top-level import: flag-off isolation is testable.
-if settings.ASSISTANT_V2_ENABLED:
-    from routers.assistant_v2_adapter_router import router as assistant_v2_adapter_router
-    from routers.assistant_v2_gateway_router import router as assistant_v2_gateway_router
-    from services.assistant_v2_gateway import pilot_allowed as assistant_v2_pilot_allowed
-
-    app.include_router(assistant_v2_gateway_router, prefix="/api/v2/assistant", tags=["AI Assistant V2"])
-    app.include_router(assistant_v2_adapter_router, prefix="/internal/assistant-v2/v1", tags=["AI Assistant V2 internal"])
-else:
-    assistant_v2_pilot_allowed = lambda _user: False
-
-# Fork-based V2 is a separate opt-in feature and does not import or contact the
-# older greenfield prototype. Its gateway is absent from the process when off.
+# Experimental BA V2 gateway is absent while disabled.
 if settings.AGENT_V2_ENABLED and not settings.AGENT_V2_KILL_SWITCH:
     from routers.agent_v2_router import router as agent_v2_router
     from routers.requirement_reviews_router import router as requirement_reviews_router
@@ -276,10 +263,6 @@ async def health_check():
 def feature_bootstrap(current_user=Depends(get_current_user)):
     """Small shell bootstrap; does not import or contact V2 while disabled."""
     return {
-        "assistant_v2": {
-            "enabled": settings.ASSISTANT_V2_ENABLED,
-            "pilot_allowed": bool(assistant_v2_pilot_allowed(current_user)),
-        },
         "agent_v2": {
             "enabled": settings.AGENT_V2_ENABLED and not settings.AGENT_V2_KILL_SWITCH,
             "pilot_allowed": bool(agent_v2_pilot_allowed(current_user)),
@@ -379,22 +362,7 @@ async def readiness_check():
         checks["prioritiser"] = "disabled"
     await asyncio.gather(*dependency_probes)
 
-    # V2 is an explicitly non-blocking pilot dependency. Its state is visible to
-    # operators but can never make core DMB/V1 readiness fail.
-    if settings.ASSISTANT_V2_ENABLED:
-        try:
-            def request_assistant_v2() -> None:
-                with urllib.request.urlopen(f"{settings.ASSISTANT_V2_BASE_URL.rstrip('/')}/ready", timeout=3) as response:
-                    payload = json.loads(response.read().decode("utf-8"))
-                    if payload.get("status") != "ready":
-                        raise ValueError("dependency is not ready")
-            await asyncio.to_thread(request_assistant_v2)
-            checks["assistant_v2"] = "ok"
-        except Exception as exc:
-            checks["assistant_v2"] = f"non_blocking_error:{type(exc).__name__}"
-    else:
-        checks["assistant_v2"] = "disabled"
-
+    # Experimental V2 remains a non-blocking dependency.
     if settings.AGENT_V2_ENABLED and not settings.AGENT_V2_KILL_SWITCH:
         try:
             def request_agent_v2() -> None:

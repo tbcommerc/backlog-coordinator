@@ -1,13 +1,13 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param([switch]$CheckOnly)
 $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$assistantRoot = Join-Path $projectRoot 'backlog-assistant'
+$assistantRoot = Join-Path $projectRoot 'agents/backlog-assistant'
 $assistantPython = Join-Path $assistantRoot '.venv\Scripts\python.exe'
 $backendPython = Join-Path $projectRoot '.venv\Scripts\python.exe'
 $configPath = Join-Path $assistantRoot '.env'
-if (-not (Test-Path -LiteralPath $assistantPython)) { throw 'Install backlog-assistant/.venv using backlog-assistant/README.md first.' }
-if (-not (Test-Path -LiteralPath $configPath)) { throw 'Configure backlog-assistant/.env from .env.example: dedicated PostgreSQL, mTLS, secrets and pinned runtime image are required.' }
+if (-not (Test-Path -LiteralPath $assistantPython)) { throw 'Install agents/backlog-assistant/.venv using agents/backlog-assistant/README.md first.' }
+if (-not (Test-Path -LiteralPath $configPath)) { throw 'Configure agents/backlog-assistant/.env from .env.example: dedicated PostgreSQL, mTLS, secrets and pinned runtime image are required.' }
 foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
     if ($line -match '^\s*([A-Z][A-Z0-9_]*)\s*=(.*)$') {
         [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2].Trim().Trim('"').Trim("'"), 'Process')
@@ -15,17 +15,17 @@ foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
 }
 Push-Location $assistantRoot
 try {
-    & $assistantPython -m service.preflight
+    & $assistantPython -m backlog_assistant.preflight
     if ($LASTEXITCODE -ne 0) { throw 'Backlog Assistant prerequisites failed.' }
     if ($CheckOnly) { return }
-    & $assistantPython -m service.migrate
+    & $assistantPython -m backlog_assistant.migrate
     if ($LASTEXITCODE -ne 0) { throw 'Backlog Assistant dedicated database migration failed.' }
 } finally { Pop-Location }
 $runtime = Join-Path $projectRoot '.runtime'
 New-Item -ItemType Directory -Force -Path $runtime | Out-Null
 $services = @(
     @{ Name='backlog-assistant-data'; Port=9450; Python=$backendPython; Directory=(Join-Path $projectRoot 'dmb-backlog\backend'); Module='services.backlog_assistant_integration.server' },
-    @{ Name='backlog-assistant'; Port=9400; Python=$assistantPython; Directory=$assistantRoot; Module='service.bootstrap' }
+    @{ Name='backlog-assistant'; Port=9400; Python=$assistantPython; Directory=$assistantRoot; Module='backlog_assistant.bootstrap' }
 )
 function Get-AssistantListener($entry) {
     $listeners = @(Get-NetTCPConnection -LocalPort $entry.Port -State Listen -ErrorAction SilentlyContinue)
@@ -58,7 +58,7 @@ foreach ($entry in $services) {
 }
 Push-Location $assistantRoot
 try {
-    & $assistantPython -m service.preflight --health
+    & $assistantPython -m backlog_assistant.preflight --health
     if ($LASTEXITCODE -ne 0) { throw 'Backlog Assistant mTLS health check failed; inspect .runtime/backlog-assistant*.err.log.' }
 } finally { Pop-Location }
 foreach ($entry in $services) {

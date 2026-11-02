@@ -232,13 +232,13 @@ Frontend блокирует кнопку по `open_question_details[].blocking`
 
 - [Интерфейс ассистента](../../dmb-backlog/frontend/js/components/agentChat.js): `renderAgentChat`, `REQUIREMENT_MAP_GROUPS`, `initAgentChat`, `getSessionLifecycle`, `renderAgentResponse`, `updateRequirementWorkspace`, `saveRequirementField`, `showDraftPanel`, `showTeamSelectModal`, `saveDraftSection`, `renderRequestLink`.
 - [Стили страницы](../../dmb-backlog/frontend/css/pages.css): `.chat-wrapper--focus`, `.requirement-workspace`, `.requirement-map-group`, мобильные media queries.
-- [Основной runtime](../../agent/agent/agentic_orchestrator.py): `handle_message`, `_build_response`, `_pre_summary_gap`.
-- [Операции workflow](../../agent/agent/orchestrator.py): `_handle_confirm`, `_handle_draft_ready`, `confirm_and_send`, `edit_draft_section`, `reopen_for_revision`.
-- [Сборка черновика](../../agent/agent/composer/composer.py): `build_draft`, `blocking_slots`, `field_slots`.
-- [Независимая проверка](../../agent/agent/composer/reviewer.py): `review_draft`.
-- [Модель состояния](../../agent/agent/dialogue/state.py), [выбор режима](../../agent/agent/dialogue/mode_selector.py), [обещания эскалации](../../agent/agent/dialogue/escalation_handler.py).
+- [Основной runtime](../../agents/business-analyst/business_analyst/agentic_orchestrator.py): `handle_message`, `_build_response`, `_pre_summary_gap`.
+- [Операции workflow](../../agents/business-analyst/business_analyst/orchestrator.py): `_handle_confirm`, `_handle_draft_ready`, `confirm_and_send`, `edit_draft_section`, `reopen_for_revision`.
+- [Сборка черновика](../../agents/business-analyst/business_analyst/composer/composer.py): `build_draft`, `blocking_slots`, `field_slots`.
+- [Независимая проверка](../../agents/business-analyst/business_analyst/composer/reviewer.py): `review_draft`.
+- [Модель состояния](../../agents/business-analyst/business_analyst/dialogue/state.py), [выбор режима](../../agents/business-analyst/business_analyst/dialogue/mode_selector.py), [обещания эскалации](../../agents/business-analyst/business_analyst/dialogue/escalation_handler.py).
 - [Backend интеграции и запросов](../../dmb-backlog/backend/routers/agent_router.py): `_agent_request_context`, `agent_send_for_review`, `agent_request_resume`, `agent_request_status`, `AgentUxEvent`.
 - [Мои запросы](../../dmb-backlog/frontend/js/components/customerPortal.js), [общие представления запроса](../../dmb-backlog/frontend/js/components/requestPresentation.js), [ревью](../../dmb-backlog/frontend/js/components/reviewPage.js).
-- [Продуктовый контракт](../../agent/docs/PRODUCT_DIALOGUE_SPEC.md), [ручные сценарии](AGENT_UX_TEST_CASES.md), [frontend UX-тесты](../../dmb-backlog/frontend/tests/agentChatUx.test.mjs), [responsive E2E](../../dmb-backlog/frontend/e2e/agentChatResponsive.spec.mjs). Наличие теста/плана не трактовалось как прохождение сценария в этом аудите.
+- [Продуктовый контракт](../../agents/business-analyst/docs/PRODUCT_DIALOGUE_SPEC.md), [ручные сценарии](AGENT_UX_TEST_CASES.md), [frontend UX-тесты](../../dmb-backlog/frontend/tests/agentChatUx.test.mjs), [responsive E2E](../../dmb-backlog/frontend/e2e/agentChatResponsive.spec.mjs). Наличие теста/плана не трактовалось как прохождение сценария в этом аудите.
 
 Методические опоры: постепенное раскрытие второстепенных функций уменьшает сложность начального экрана ([NN/g: Progressive Disclosure](https://www.nngroup.com/articles/progressive-disclosure/)); границы возможностей ИИ, понятные причины и эффективное исправление результата — основные принципы взаимодействия с ИИ ([Microsoft HAX Guidelines](https://www.microsoft.com/en-us/haxtoolkit/ai-guidelines/)). Конкретные решения и приоритеты выше — выводы из данного продукта, а не обещание универсального эффекта этих подходов.

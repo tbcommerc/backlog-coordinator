@@ -55,7 +55,7 @@ P1 — исправить до повседневного использован
 
 **Исправление и приёмка:** сохранять H1 в `draft.title`, предоставить изменение названия. H1, заголовок документа и название в списке должны совпадать после импорта и перезагрузки.
 
-Источники: [импорт](../../agent-v2/agent_v2/v2/orchestrator.py), `import_requirement_document`; [компоновщик](../../agent-v2/agent_v2/v2/composer.py); [скриншот](../../outputs/agent-v2-ux-2026-10-09/desktop-import.jpg).
+Источники: [импорт](../../agents/business-analyst-experimental/business_analyst_experimental/v2/orchestrator.py), `import_requirement_document`; [компоновщик](../../agents/business-analyst-experimental/business_analyst_experimental/v2/composer.py); [скриншот](../../outputs/agent-v2-ux-2026-10-09/desktop-import.jpg).
 
 ### F03 — P1 — Раздел с названием из самого интерфейса не попадает в документ
 
@@ -67,7 +67,7 @@ P1 — исправить до повседневного использован
 
 **Исправление и приёмка:** согласовать заголовки UI и импортера; показывать результат разбора: распознано / не распознано, с возможностью назначить раздел. Указанный текст должен появляться в `scope_out`.
 
-Источники: [document_import.py](../../agent-v2/agent_v2/v2/document_import.py), [workspace.js](../../dmb-backlog/frontend/js/agent-v2/workspace.js).
+Источники: [document_import.py](../../agents/business-analyst-experimental/business_analyst_experimental/v2/document_import.py), [workspace.js](../../dmb-backlog/frontend/js/agent-v2/workspace.js).
 
 ### F04 — P2 — На ноутбуке помощник вынесен за конец документа
 
@@ -145,7 +145,7 @@ P1 — исправить до повседневного использован
 
 **Исправление и приёмка:** подтверждать сохранение введённой сути и переходить к действительно недостающему вопросу. Если автоматического разбора нет, явно сообщать об этом и предлагать заполнить конкретные поля.
 
-Источник: [orchestrator.py](../../agent-v2/agent_v2/v2/orchestrator.py), начальное сообщение режима `assignment_capture`.
+Источник: [orchestrator.py](../../agents/business-analyst-experimental/business_analyst_experimental/v2/orchestrator.py), начальное сообщение режима `assignment_capture`.
 
 ## Доступность AI на проверенном стенде
 

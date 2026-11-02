@@ -25,7 +25,7 @@ def load_file(name, path):
 
 
 artifacts = load_file("requirement_artifacts", BACKEND / "requirement_artifacts.py")
-agent_revision = load_file("agent_revision", ROOT / "agent/agent/composer/revision.py")
+agent_revision = load_file("agent_revision", ROOT / "agents/business-analyst/business_analyst/composer/revision.py")
 
 
 class Expression:
@@ -155,7 +155,7 @@ class RequirementIntegrityTests(unittest.TestCase):
 
     def test_agent_get_snapshot_serializes_read_review_and_hash(self):
         from contextlib import contextmanager
-        source = ast.parse((ROOT / "agent/agent/api/router.py").read_text(encoding="utf-8-sig"))
+        source = ast.parse((ROOT / "agents/business-analyst/business_analyst/api/router.py").read_text(encoding="utf-8-sig"))
         function = next(node for node in source.body if isinstance(node, ast.FunctionDef) and node.name == "session_state")
         function.decorator_list = []
         function.args.defaults = []

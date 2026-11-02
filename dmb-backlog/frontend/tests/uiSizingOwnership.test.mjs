@@ -19,7 +19,7 @@ function* activeModules(root = fileURLToPath(new URL('../js/', import.meta.url))
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (entry.isDirectory()) {
       // Historical V2 prototype and kit internals are not consumer templates.
-      if (!['lib', 'assistant-v2', 'ui'].includes(entry.name)) yield* activeModules(join(root, entry.name));
+      if (!['lib', 'ui'].includes(entry.name)) yield* activeModules(join(root, entry.name));
     } else if (entry.name.endsWith('.js')) yield join(root, entry.name);
   }
 }

@@ -126,8 +126,8 @@ customerPortal.test.mjs и requestPresentation.test.mjs — PASS. customerPortal
 | import_validation_contracts.py | 6 PASS |
 | notification_review_contracts.py | 8 PASS |
 | p1_validation_contracts.py | 11 PASS |
-| agent-v2/agent_v2/tests | 426 PASS |
-| backlog-assistant/tests | 45 PASS |
+| agents/business-analyst-experimental/business_analyst_experimental/tests | 426 PASS |
+| agents/backlog-assistant/tests | 45 PASS |
 
 Итого 619 тестов; все 11 процессов завершились с exit 0. Дополнительно Agent V2 повторён в новом временном окружении: установка requirements-dev.lock с --require-hashes — exit 0, pip check — без конфликтов, 426 PASS на pytest 8.3.4/httpx 0.27.0. Повтор не прибавляется к числу уникальных тестов. Команды и переменные окружения прочитаны непосредственно из workflow и выполнены локально на Python 3.12.5 / Windows; для pytest добавлен только уникальный временный basetemp. Это не результат удалённого GitHub Actions на Ubuntu и не полный прогон репозитория.
 
@@ -171,7 +171,7 @@ npm run test:unit
 - Подробные границы: [агент встреч](../../docs/meeting-capture-agent.md).
 
 - Backend: pytest-тесты в `backend/tests/`.
-- Fork-based Assistant V2: `../../agent-v2/agent_v2/tests/`; boundary gateway —
+- Fork-based Assistant V2: `../../agents/business-analyst-experimental/business_analyst_experimental/tests`; boundary gateway —
   `backend/tests/test_agent_v2_boundary.py`.
 - Frontend: Node.js test runner, файлы `frontend/tests/*.test.mjs`.
 - Browser: Playwright spec-файлы в `frontend/e2e/` для Chromium.
@@ -250,7 +250,7 @@ npx playwright test uiKitDataDisplay.spec.mjs uiKitLogin.spec.mjs uiKitCharts.sp
 
 `uiSizingOwnership.test.mjs` проверяет все активные JS-модули SPA: нативные
 контролы должны иметь общий CSS-класс, а кнопки — не переопределять геометрию
-inline. Исторический `js/assistant-v2/` и внутренние рендереры UI kit исключены.
+inline. Внутренние рендереры UI kit исключены; исторический `js/assistant-v2/` удалён.
 `uiKitDataDisplay.spec.mjs` проверяет комментарии и вложения, прогресс, фокус,
 плотность, touch и масштабирование; `uiKitLogin.spec.mjs` — вход с клавиатуры,
 раскрытие пароля, busy, ошибку и низкий экран. `uiKitCharts.spec.mjs` проверяет
@@ -452,8 +452,8 @@ Workflow `Quality Gate` находится в `D:\Проект\.github\workflows
 3. Playwright Chromium: browser-сценарии notification surfaces, ИИ-ассистента и
    каталога модальных окон; они измеряют overflow, границы контролов и читаемость
    подписей на целевых desktop, tablet, mobile и коротких landscape viewport.
-4. Полный pytest BA agent после установки hash-locked `agent/requirements-dev.lock`.
-5. Полный pytest Prioritiser после установки `prioritiser-agent/requirements.lock`,
+4. Полный pytest BA agent после установки hash-locked `agents/business-analyst/requirements-dev.lock`.
+5. Полный pytest Prioritiser после установки `agents/value-priority-assessor/requirements.lock`,
    с отключённым dense RAG и test-only providers.
 6. `pip-audit==2.7.3 --no-deps` для прямых runtime requirements DMB, V1 и Prioritiser.
 7. `backend-isolated`: три изолированных pytest-набора и шесть отдельных unittest-регрессий.
@@ -502,21 +502,17 @@ Backend-тесты используют настоящие тела функци
 - Локальный collection BA Agent обнаружил 206 тестов до остановки и 8 ошибок
   импорта из-за отсутствующего в текущем глобальном Python пакета `psycopg`.
   Это ограничение локального окружения, а не результат CI: workflow сначала
-  устанавливает полный `agent/requirements-dev.lock`.
+  устанавливает полный `agents/business-analyst/requirements-dev.lock`.
 - Playwright в этом срезе не запускался; наличие 9 spec-файлов и команда запуска
   проверены по `playwright.config.mjs`, `package.json` и workflow.
 
-## Assistant V2 — добавлено 19.09.2026
+## Удаление прежнего V2 — 02.11.2026
 
-`../../assistant-v2/tests/` проверяет state/readiness/digest, immutable workflow,
-idempotency/version conflict, review/diff/protected paths, actor envelope replay
-и запрет runtime DDL. Запуск: `..\.venv\Scripts\python.exe -m pytest -q` из
-`assistant-v2`. V1 regression manifest для режимов off/on/down находится в
-`../../assistant-v2/docs/REGRESSION_MANIFEST.md`.
+Старые тесты удалённого сервиса убраны вместе с реализацией. Регрессия отсутствия старого API и сохранения актуального V2 — `backend/tests/test_legacy_v2_retirement.py`; запускается напрямую без общего conftest и без рабочей БД. [Сравнение и результаты](../../docs/AGENT_V2_RETIREMENT_2026-11-02.md).
 
 ## Документный Agent V2 — проверено 09.10.2026
 
-Новый цикл относится к `agent-v2/`, а не к legacy-прототипу `assistant-v2/`.
+Новый цикл относится к `agents/business-analyst-experimental/`, а не к legacy-прототипу `assistant-v2/`.
 Из корня репозитория без общего backend conftest:
 
 ```powershell
@@ -539,7 +535,7 @@ idempotency/version conflict, review/diff/protected paths, actor envelope replay
 не создаются и не меняются.
 
 Для старого V2 boundary нужен `--noconftest` и безопасное окружение; команды
-в [профиле тестирования агента](../../agent-v2/docs/TESTING.md).
+в [профиле тестирования агента](../../agents/business-analyst-experimental/docs/TESTING.md).
 9 boundary-проверок прошли. Там же приведён полный изолированный suite агента:
 359 проверок прошли после интеграционных исправлений.
 

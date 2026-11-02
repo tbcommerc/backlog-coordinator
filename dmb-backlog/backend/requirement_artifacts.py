@@ -6,7 +6,7 @@ import json
 
 
 def draft_fingerprint(draft: dict) -> str:
-    # Public interservice contract, mirrored by agent/composer/revision.py.
+    # Public interservice contract, mirrored by agents/business-analyst/composer/revision.py.
     canonical = json.dumps(draft, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 

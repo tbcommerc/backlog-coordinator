@@ -19,7 +19,7 @@
 
 ## 1. Предлагаемое решение
 
-Развивать существующий `agent-v2/` и страницу `#/agent-v2` как рабочее место
+Развивать существующий `agents/business-analyst-experimental/` и страницу `#/agent-v2` как рабочее место
 бизнес-аналитика с тремя связанными действиями над одним документом:
 
 1. **Написать БТ** из запроса, контекста задачи и материалов аналитика.
@@ -56,11 +56,11 @@
 Поэтому улучшение одного промпта не закрывает сценарий независимого ревью.
 
 Источники: [UI](../dmb-backlog/frontend/js/agent-v2/workspace.js),
-[импорт](../agent-v2/agent_v2/v2/document_import.py),
-[orchestrator](../agent-v2/agent_v2/agentic_orchestrator.py),
-[reviewer](../agent-v2/agent_v2/composer/reviewer.py),
-[readiness](../agent-v2/agent_v2/v2/readiness.py),
-[модели V2](../agent-v2/agent_v2/v2/models.py),
+[импорт](../agents/business-analyst-experimental/business_analyst_experimental/v2/document_import.py),
+[orchestrator](../agents/business-analyst-experimental/business_analyst_experimental/agentic_orchestrator.py),
+[reviewer](../agents/business-analyst-experimental/business_analyst_experimental/composer/reviewer.py),
+[readiness](../agents/business-analyst-experimental/business_analyst_experimental/v2/readiness.py),
+[модели V2](../agents/business-analyst-experimental/business_analyst_experimental/v2/models.py),
 [gateway](../dmb-backlog/backend/routers/agent_v2_router.py),
 [представление запроса](../dmb-backlog/frontend/js/components/requestPresentation.js).
 

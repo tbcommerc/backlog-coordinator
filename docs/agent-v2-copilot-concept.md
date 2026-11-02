@@ -10,7 +10,7 @@
 
 > Статус: целевой продуктово-технический концепт (TO-BE), не описание реализованного AS-IS.  
 > Дата исследования: 20.09.2026.  
-> Область: целевой `agent-v2/` и пользовательский маршрут `#/agent-v2`; legacy-каталог
+> Область: целевой `agents/business-analyst-experimental/` и пользовательский маршрут `#/agent-v2`; legacy-каталог
 > `assistant-v2/` не рассматривается как база развития.
 
 > Статус реализации на 20.09.2026: начат первый вертикальный инкремент —
@@ -39,24 +39,24 @@ immutable revisions, human-approved patches и существующей очер
 Активный продуктовый контракт V1 прямо определяет его как интервью для
 бизнес-заказчика: свободное описание превращается в минимально полезный черновик,
 агент задаёт один вопрос за раз
-([PRODUCT_DIALOGUE_SPEC.md](../agent/docs/PRODUCT_DIALOGUE_SPEC.md)).
+([PRODUCT_DIALOGUE_SPEC.md](../agents/business-analyst/docs/PRODUCT_DIALOGUE_SPEC.md)).
 
 V2 добавляет правильные доменные сущности, но оставляет тот же interaction kernel:
 
 - `V2Orchestrator` наследует `AgenticOrchestrator`, а основной ход делегирует
   `super().handle_message(...)`
-  ([orchestrator.py](../agent-v2/agent_v2/v2/orchestrator.py#L39),
-  [orchestrator.py](../agent-v2/agent_v2/v2/orchestrator.py#L248));
+  ([orchestrator.py](../agents/business-analyst-experimental/business_analyst_experimental/v2/orchestrator.py#L39),
+  [orchestrator.py](../agents/business-analyst-experimental/business_analyst_experimental/v2/orchestrator.py#L248));
 - prompt по-прежнему требует ровно один вопрос и ожидание ответа
-  ([base_guard.md](../agent-v2/prompts/base_guard.md),
-  [requirement_copilot.md](../agent-v2/prompts/requirement_copilot.md));
+  ([base_guard.md](../agents/business-analyst-experimental/prompts/base_guard.md),
+  [requirement_copilot.md](../agents/business-analyst-experimental/prompts/requirement_copilot.md));
 - рабочее состояние по-прежнему организовано вокруг slots, history, числа вопросов,
   усталости, summary и draft
-  ([state.py](../agent-v2/agent_v2/dialogue/state.py#L300));
+  ([state.py](../agents/business-analyst-experimental/business_analyst_experimental/dialogue/state.py#L300));
 - для BA/PO встречаются унаследованные формулировки «нужна помощь аналитика» и
   «оставить бизнес-аналитику»
-  ([agentic_orchestrator.py](../agent-v2/agent_v2/agentic_orchestrator.py#L377),
-  [agentic_orchestrator.py](../agent-v2/agent_v2/agentic_orchestrator.py#L483)).
+  ([agentic_orchestrator.py](../agents/business-analyst-experimental/business_analyst_experimental/agentic_orchestrator.py#L377),
+  [agentic_orchestrator.py](../agents/business-analyst-experimental/business_analyst_experimental/agentic_orchestrator.py#L483)).
 
 То есть V2 изменил глубину интервью и выходной DTO, но не роль ИИ в работе.
 
@@ -87,8 +87,8 @@ V2 добавляет правильные доменные сущности, н
 
 `BusinessRequirementDraftV2` наследует `RequirementDraft` V1, а composer сначала
 строит старый draft и добавляет новые поля поверх него
-([models.py](../agent-v2/agent_v2/v2/models.py#L122),
-[composer.py](../agent-v2/agent_v2/v2/composer.py#L105)).
+([models.py](../agents/business-analyst-experimental/business_analyst_experimental/v2/models.py#L122),
+[composer.py](../agents/business-analyst-experimental/business_analyst_experimental/v2/composer.py#L105)).
 
 Сценарии, правила, FR/NFR, критерии, зависимости и риски — преимущественно списки
 строк. У элементов нет стабильных ID и типизированных связей. Поэтому невозможно
@@ -106,7 +106,7 @@ V2 добавляет правильные доменные сущности, н
 новый readiness gate. UI исключает `quality_issues` и `review_findings` из показа,
 а отправка использует V2 readiness
 ([workspace.js](../dmb-backlog/frontend/js/agent-v2/workspace.js#L108),
-[readiness.py](../agent-v2/agent_v2/v2/readiness.py#L64)).
+[readiness.py](../agents/business-analyst-experimental/business_analyst_experimental/v2/readiness.py#L64)).
 
 Наличие поля и минимальная длина критерия полезны как guard, но не заменяют
 проверки атомарности, однозначности, согласованности, трассируемости, покрытия и
@@ -134,9 +134,9 @@ fingerprint и stale patch. Frontend-проверки V2 в основном и�
 Отдельный риск текущей реализации: модельный runtime ожидает строгий
 `TurnDecision` JSON, но V2 prompt set не описывает его полную схему и семантику
 операций. Парсер и retry находятся в
-[agentic.py](../agent-v2/agent_v2/dialogue/agentic.py#L488), а prompt set собирается
+[agentic.py](../agents/business-analyst-experimental/business_analyst_experimental/dialogue/agentic.py#L488), а prompt set собирается
 только из трёх коротких файлов
-([prompts.py](../agent-v2/agent_v2/v2/prompts.py#L12)). Это следует проверить и
+([prompts.py](../agents/business-analyst-experimental/business_analyst_experimental/v2/prompts.py#L12)). Это следует проверить и
 исправить независимо от редизайна.
 
 ## 3. Чёткая граница между Assistant 1.0 и 2.0

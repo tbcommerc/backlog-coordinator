@@ -57,9 +57,9 @@
 | Основной backend | FastAPI, SQLAlchemy; API и значительная часть правил в роутерах | Извлекать спецификацию из исполняемого кода, включая зависимости, middleware и ORM hooks |
 | Frontend | Vanilla JavaScript, ES modules, hash routing, локальные CSS и ресурсы | Сохранить текущую поставку интерфейса и внешний API |
 | Данные | PostgreSQL, Alembic; 48 объявлений `__tablename__` в основном `models.py` | Это нижняя граница инвентаризации, без таблиц других сервисов, связующих таблиц и расхождений реальной БД |
-| Ассистент V1 | Отдельный Python HTTP-сервис `agent/` | Архитектура уже частично сервисная; существующую границу можно использовать |
-| Приоритизатор | Отдельный сервис `prioritiser-agent/`, расчёты, LLM, RAG и локальные ML-зависимости | Нужен ранний технический эксперимент по переносу вычислений и поиска на целевой стек |
-| Ассистент V2 | Условно подключаемый `agent-v2/`; отдельный legacy-прототип `assistant-v2/` | Сохранить действующие режимы и флаги; отдельно определить судьбу диагностических возможностей |
+| Ассистент V1 | Отдельный Python HTTP-сервис `agents/business-analyst/` | Архитектура уже частично сервисная; существующую границу можно использовать |
+| Приоритизатор | Отдельный сервис `agents/value-priority-assessor/`, расчёты, LLM, RAG и локальные ML-зависимости | Нужен ранний технический эксперимент по переносу вычислений и поиска на целевой стек |
+| Ассистент V2 | Действующий `agents/business-analyst-experimental/`; старый самостоятельный прототип удалён 02.11.2026 | Сохранить действующие режимы V2; учитывать [сохранённые решения](AGENT_V2_RETIREMENT_2026-11-02.md) |
 | Live-обновления | Транзакционный outbox, Redis Stream, SSE, повторная доставка и dead letters | Перенос CRUD без событий не обеспечивает сохранения функционала |
 | Безопасность | JWT, bcrypt, refresh cookie/сессии, проверки доступа к отдельным объектам | Сохранить не только роли, но и точные правила доступа, отзыва сессий и ошибок |
 | Файлы и эксплуатация | Каталог вложений, проверка ClamAV, scheduler, health/readiness, метрики и трассировка | Эти возможности входят в объём миграции |
@@ -378,9 +378,9 @@ object-level policy, а AI-сервисы — к внешним LLM. Эти за
 | Access & Reference | `users`, `roles`, `refresh_sessions`, `teams`, `team_competency_resources`, `competency_cost_history`, `channels`, `deadlines`, `departments`, `priorities`, `task_types`, `team_types`, `project_statuses`, `business_customers`, `did_client_groups`, `statuses`, `start_shifts`, `dictionary_items`, `display_settings`, `column_labels`, `field_labels` |
 | Reporting | `reports`, `user_report_prefs`; новые производные проекции с учётом source version |
 | Notifications | `notifications`, `notification_templates`, `user_notification_preferences`; cursor/replay и delivery state |
-| Assistant V1 | Существующая БД сессий `agent/`; текущая привязка `agent_sessions` переносится сюда с сохранением ограничения и ID |
-| Assistant V2 | Существующая отдельная БД/ревизии `agent-v2/` и пространства идентификаторов V2 |
-| Prioritisation | Собственная БД `prioritiser-agent/`, версии расчётных параметров/знаний, разрешённые локальные индексы и состояние кэша |
+| Assistant V1 | Существующая БД сессий `agents/business-analyst/`; текущая привязка `agent_sessions` переносится сюда с сохранением ограничения и ID |
+| Assistant V2 | Существующая отдельная БД/ревизии `agents/business-analyst-experimental/` и пространства идентификаторов V2 |
+| Prioritisation | Собственная БД `agents/value-priority-assessor/`, версии расчётных параметров/знаний, разрешённые локальные индексы и состояние кэша |
 
 `event_outbox`, `idempotency_records` и транзакционный `audit_log` становятся
 локальными механизмами каждого сервиса, выполняющего соответствующие команды.
@@ -656,10 +656,10 @@ diff ожидаемых изменений и проверенным rollback д
 - [Playwright config](../dmb-backlog/playwright.config.mjs),
   [browser tests](../dmb-backlog/frontend/e2e/), [CI](../.github/workflows/quality.yml),
   [программа DEV-испытаний](dev-testing/README.md).
-- [Ассистент V1](../agent/docs/ARCHITECTURE.md),
-  [ассистент V2](../agent-v2/docs/ARCHITECTURE.md),
-  [приоритизатор](../prioritiser-agent/README.md),
-  [его runtime-зависимости](../prioritiser-agent/requirements.txt).
+- [Ассистент V1](../agents/business-analyst/docs/ARCHITECTURE.md),
+  [ассистент V2](../agents/business-analyst-experimental/docs/ARCHITECTURE.md),
+  [приоритизатор](../agents/value-priority-assessor/README.md),
+  [его runtime-зависимости](../agents/value-priority-assessor/requirements.txt).
 - [Локальная инфраструктура](../compose.yaml),
   [production-топология](../compose.production.yaml),
   [правила защищённых данных](../AGENTS.md).

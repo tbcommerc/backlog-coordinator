@@ -4,11 +4,13 @@
 
 | № | Продуктовое название | Ответственность | Код и документация |
 |---|---|---|---|
-| 1 | Агент бизнес-аналитик | Написание БТ через чат с заказчиком | [agent](../agent/README.md), `agent/agent/` |
-| 2 | Агент бизнес-аналитик V2 | Экспериментальная версия первого: поручения, подготовка и ревью БТ | [agent-v2](../agent-v2/README.md), `agent-v2/agent_v2/` |
-| 3 | Агент анализа расшифровок и извлечения задач | Извлечение предложений из текста встречи, проверка и подтверждение человеком | [Поручения из встреч](meeting-capture-agent.md), [API](../agent/agent/api/router.py), [очередь](../dmb-backlog/backend/services/meeting_analysis.py), [gateway](../dmb-backlog/backend/routers/meeting_capture_router.py) |
-| 4 | Агент-ассистент по бэклогу | Чат для поиска, чтения и анализа существующего бэклога | [backlog-assistant](../backlog-assistant/README.md) |
-| 5 | Агент оценки Value и Priority score | Оценка ценности и приоритета по методике; числа рассчитывает программное ядро | [prioritiser-agent](../prioritiser-agent/README.md), [методика](../prioritiser-agent/docs/METHODOLOGY.md) |
+| 1 | Агент бизнес-аналитик | Написание БТ через чат с заказчиком | [business-analyst](../agents/business-analyst/README.md), `agents/business-analyst/business_analyst/` |
+| 2 | Агент бизнес-аналитик — экспериментальная версия | Экспериментальная версия первого: поручения, подготовка и ревью БТ | [business-analyst-experimental](../agents/business-analyst-experimental/README.md), `agents/business-analyst-experimental/business_analyst_experimental/` |
+| 3 | Агент анализа расшифровок и извлечения задач | Извлечение предложений из текста встречи, проверка и подтверждение человеком | [Поручения из встреч](meeting-capture-agent.md), [API](../agents/business-analyst/business_analyst/api/router.py), [очередь](../dmb-backlog/backend/services/meeting_analysis.py), [gateway](../dmb-backlog/backend/routers/meeting_capture_router.py) |
+| 4 | Агент-ассистент по бэклогу | Чат для поиска, чтения и анализа существующего бэклога | [backlog-assistant](../agents/backlog-assistant/README.md) |
+| 5 | Агент оценки Value и Priority score | Оценка ценности и приоритета по методике; числа рассчитывает программное ядро | [value-priority-assessor](../agents/value-priority-assessor/README.md), [методика](../agents/value-priority-assessor/docs/METHODOLOGY.md) |
+
+[Имена каталогов и Python-пакетов](../agents/README.md), [результаты переименования и запуска](AGENT_RENAMING_2026-11-02.md).
 
 ## Роли и сервисы
 
@@ -21,16 +23,14 @@ V2 — экспериментальное развитие бизнес-анал
 Источник истины — [start-project.ps1](../scripts/start-project.ps1).
 
 - Обычный запуск включает бизнес-аналитика V1, разбор расшифровок через V1 и экспериментальный V2.
-- Ассистент по бэклогу включается при наличии `backlog-assistant/.env` или флага `-IncludeBacklogAssistant`.
-- Оценщик запускается только по явному запросу с `-IncludePrioritiser`.
+- Ассистент по бэклогу включается при наличии `agents/backlog-assistant/.env` или флага `-IncludeBacklogAssistant`.
+- Оценщик запускается только по явному запросу с `-IncludeValuePriorityAssessor`.
 - `-WithoutAgents` отключает агентные сервисы.
 
 [Полная инструкция](LOCAL_DEVELOPMENT.md) содержит требования к окружению и настройке провайдера модели. Этот каталог не изменяет параметры доступа и не включает сервисы самостоятельно.
 
-## Устаревший прототип assistant-v2
+## Удалённый прототип
 
-[assistant-v2/](../assistant-v2/README.md) — прежний самостоятельный прототип. Он не является шестым продуктовым агентом и не является действующей реализацией экспериментального бизнес-аналитика V2. Для роли № 2 используется `agent-v2/`.
+Старый самостоятельный `assistant-v2` удалён из кода и запуска 02.11.2026 после [сравнения возможностей](AGENT_V2_RETIREMENT_2026-11-02.md). Исторические документы находятся в [архиве](archive/assistant-v2/README.md). Флаг `-IncludeAssistantV2`, старые API и конфигурация больше не поддерживаются.
 
-Прототип сохранён на прежнем пути для совместимости скриптов, API, тестов и документации. По умолчанию выключен; `-IncludeAssistantV2` запускает его диагностический сервис на порту 9200. Пользовательский маршрут `#/assistant-v2` перенаправляет на `#/agent-v2`.
-
-Перенос или удаление этого кода требует отдельного изменения связанных интеграций. Исторические материалы не переименовываются в отчёты о текущем состоянии.
+Единственный экспериментальный бизнес-аналитик V2 — `agents/business-analyst-experimental/`. Старый адрес `#/assistant-v2` служит только перенаправлением на `#/agent-v2`.

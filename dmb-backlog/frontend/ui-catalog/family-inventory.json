@@ -1217,7 +1217,7 @@
     },
     {
       "path": "css/components.css",
-      "sha256": "4f78068569ac8a90f95113d2cf59327462ba388ecd62e0ccc1a5f9d16786bc69"
+      "sha256": "a1370dae56427ddc2ec2e5d3ed8dc6bb2bb8cfb0a8352f95986db654ae290c92"
     },
     {
       "path": "css/did-backlog.css",
@@ -1249,7 +1249,7 @@
     },
     {
       "path": "css/pages.css",
-      "sha256": "490554e693763383f8815d9f343385e9eeb33149dbd0e892e24a8cbdb43f0965"
+      "sha256": "c2bd4e4fcead459644fa5a87a2697a6cab8bb3f884990034553780354585c520"
     },
     {
       "path": "css/responsive.css",
@@ -1264,12 +1264,16 @@
       "sha256": "abc6e79fc2b4ae410a7d09a397caac319e6abe2ba01966e7efc244211b0fd55c"
     },
     {
+      "path": "css/ui/ai-actions.css",
+      "sha256": "7fb3302fd29c7ca3048137c10cb25052f9f8b02522e9fedac9edd084ecc1af2c"
+    },
+    {
       "path": "css/ui/contracts.css",
       "sha256": "ce50b1ff4ed7491ded43905b8142249f03878d073ebae27d5519b0c787e7eb51"
     },
     {
       "path": "css/ui/core.css",
-      "sha256": "7e29be7d546e014c04f7b100b151fce68f86e2558c546e38419bf9ea4e600fc3"
+      "sha256": "dddf31ffe78f2222e568f14a301e28982f6472c538c7e680815a946e7b3080d6"
     },
     {
       "path": "css/ui/data-display.css",
@@ -1317,7 +1321,7 @@
     },
     {
       "path": "css/ui/kit.css",
-      "sha256": "b6c683c25f02af780bb133257f71549b0ac2b3ed536296f2e5faf85ce85cad1e"
+      "sha256": "57eda00cb6abcebdf6305c3f2c87e1420a21c02fe1286773fad2e54560a26a20"
     },
     {
       "path": "css/ui/login.css",
@@ -1361,7 +1365,7 @@
     },
     {
       "path": "css/work-workplace.css",
-      "sha256": "f3589d0b344e06749a516b5e47eec1bc4e962b44b2ebb2bd7e41d2925c2d12bb"
+      "sha256": "7ed73b38ee5abab4a4b8baf0978ce7625cb061f662a89c1025ced0f181b84b95"
     },
     {
       "path": "e2e/fixtures/accountSecurity.html",
@@ -1481,7 +1485,7 @@
     },
     {
       "path": "js/agent-v2/documentReview.js",
-      "sha256": "0418e6dd78fa65516f94b36f7e8486331fdaed838f99eceb69d80f5e8c510e74"
+      "sha256": "76ec166b7fe0eb36c92607f0273eddbcabb9d3bbc86e4328128ea9d1de27cd51"
     },
     {
       "path": "js/agent-v2/generation.js",
@@ -1489,15 +1493,15 @@
     },
     {
       "path": "js/agent-v2/journey.js",
-      "sha256": "b9906d8f38f0f8ac4816790e60f381a5ba1e30e70d47361d6a4454ab5cad4024"
+      "sha256": "d51675fb119f234dc665b3b535ec8a57b2a3c583ff9fb562e0754e025d75f5fd"
     },
     {
       "path": "js/agent-v2/routes.js",
-      "sha256": "ce9f1fe2b0c31d96929999a8cc5ce3dca3e10fd20e2671f82e5f3a4b7ed763d5"
+      "sha256": "f7d2f0ba5c0eff225e0472b23cdcae9d0fd1c828f910b00b9adabdd0e30f2467"
     },
     {
       "path": "js/agent-v2/workspace.js",
-      "sha256": "4a3118d1b552bbaa9294b7f4befbbcdebef87a71d8f86e3421f38d565ecb63e1"
+      "sha256": "7583a00c441187a87cd916bc1889ae908be1dcfe802e6caec88491d140eea4d4"
     },
     {
       "path": "js/api.js",
@@ -1505,7 +1509,7 @@
     },
     {
       "path": "js/app.js",
-      "sha256": "8a5e794b9b789b848b68ffa0963cf9bd3cff1c4489b08b18b32979a6912e8353"
+      "sha256": "8bad01b2d5c8d4ea643666bdc0e0ffff50167db72e4256d4d3e626c09ab4b4ab"
     },
     {
       "path": "js/auth.js",
@@ -1557,7 +1561,7 @@
     },
     {
       "path": "js/components/agentChat.js",
-      "sha256": "146ecc6f3ec148d4154e3ce822da06083381bdabbe7da1c4447f0973834338e1"
+      "sha256": "8e8238e7bdc8ab14173a2c094937031efd1872c547c186923b9665ef72b056f5"
     },
     {
       "path": "js/components/analytics.js",
@@ -1569,11 +1573,11 @@
     },
     {
       "path": "js/components/customerChat.js",
-      "sha256": "bb1f861d67444126b7b55a8305ca35ce878ea9649a9b77ea266241512b5b6484"
+      "sha256": "04e0ba3214da8810a0e5dae58048ec2cfc68ffbf22cbc111ecabacd0026d166e"
     },
     {
       "path": "js/components/customerPortal.js",
-      "sha256": "caa0360aedc2d98590f316262769c0923cd995e36b2a09072a6eccd5fc9476c6"
+      "sha256": "3207bbd854112cc2351bd10d8b2e32a33cea296c0a03281b481fc8fd2315caa6"
     },
     {
       "path": "js/components/customerReferences.js",
@@ -1613,7 +1617,7 @@
     },
     {
       "path": "js/components/meetingCapture.js",
-      "sha256": "9c82b7a5359a9e405eeacd11ecaf1541bebd00c4ba4670bf6471df86a596c4cb"
+      "sha256": "55b413db68b0c998928ff2513b7a501243affd3d5daacd7103b42d055d050d33"
     },
     {
       "path": "js/components/metrics.js",
@@ -1621,7 +1625,7 @@
     },
     {
       "path": "js/components/modal.js",
-      "sha256": "ac7413fb320fa2e785eac65593cc6cad56abf004cd5d8690096f49696d44461d"
+      "sha256": "6c3038c6e7dce413506a97bf85563e473eb96b3298754e976efd23ceb8f102cf"
     },
     {
       "path": "js/components/navbar.js",
@@ -1673,7 +1677,7 @@
     },
     {
       "path": "js/components/reviewPage.js",
-      "sha256": "6109e0756487ec3fc896b16ef63a454719aa2c36d058ad374e854455a81c9fa8"
+      "sha256": "a0ac71c66a872f3bee8bfc9eb52e6488488c8de5df36fac8690cc2948e28f340"
     },
     {
       "path": "js/components/settings.js",
@@ -1757,7 +1761,7 @@
     },
     {
       "path": "js/components/workTasks.js",
-      "sha256": "4499dcb5ddd8875d8a63cdede666591015b44e1255d09d3958c7f554824b3639"
+      "sha256": "31c69096f19452945127ec32dbffa2c1f38739ef90e5cdc49103d6501b1d6219"
     },
     {
       "path": "js/components/workUi.js",
@@ -1789,7 +1793,7 @@
     },
     {
       "path": "js/router.js",
-      "sha256": "c7c69efd193a893b0d3b0e7b01553b235aeb5db64465f79988c24da6a2890ae2"
+      "sha256": "bd88b1ef544521626844025a97ffeb9f9eb3e3fbdf997a2fa98ffe78d236e832"
     },
     {
       "path": "js/store.js",
@@ -1897,7 +1901,7 @@
     },
     {
       "path": "js/ui/primitives.js",
-      "sha256": "08262a6ee187681c6b3fa613fa1e1951a1cc62763dc957963f526334ca6ad509"
+      "sha256": "597dd06e5cfffacf0a0333a1694aec51fe55788a5bf97b6e43e97906b3299888"
     },
     {
       "path": "js/ui/selectionList.js",

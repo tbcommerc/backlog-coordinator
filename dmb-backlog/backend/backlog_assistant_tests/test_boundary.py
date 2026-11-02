@@ -124,7 +124,7 @@ def test_context_normalization_and_unknown_filter():
 
 
 def test_contract_artifacts_match_independent_release():
-    release = Path(__file__).resolve().parents[3] / "backlog-assistant" / "contracts"
+    release = Path(__file__).resolve().parents[3] / "agents/backlog-assistant" / "contracts"
     for artifact in ledger.SCHEMA_DIR.glob('*.json'):
         assert json.loads(artifact.read_text(encoding='utf-8')) == json.loads((release / artifact.name).read_text(encoding='utf-8'))
 

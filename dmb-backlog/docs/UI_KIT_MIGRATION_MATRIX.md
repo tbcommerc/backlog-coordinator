@@ -174,7 +174,7 @@
 - `frontend/modal-catalog.html` — Standalone каталог диалогов: поддерживать как тестовый стенд, не пользовательский маршрут.
 - `frontend/ui-catalog` — Standalone каталог UI kit: поддерживать и проверять общие компоненты.
 - `frontend/e2e/fixtures` — Изолированные стенды реальных рендереров: не пользовательские маршруты; kit подключать после CSS страниц.
-- `../prioritiser-agent` — Standalone Streamlit: отдельный стек, UI kit SPA не применим; стандартный запуск его не включает.
+- `../agents/value-priority-assessor` — Standalone Streamlit: отдельный стек, UI kit SPA не применим; стандартный запуск его не включает.
 - `../design-prototypes` — Исторические макеты: не источник AS-IS и не входят в приёмку активного SPA.
 - `frontend/js/components/customerChat.js` — Нет runtime-импортов в активном SPA; не мигрировать как действующий экран. При подключении требуется отдельная приёмка.
 - `frontend/js/components/navbar.js` — Старый standalone-рендер шапки без runtime-импортов; активная оболочка находится в app.js. Не мигрировать как действующий экран.

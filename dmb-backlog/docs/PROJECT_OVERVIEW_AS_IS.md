@@ -2,7 +2,7 @@
 
 Состав сервисов и схема подключений сверены по коду и скриптам 17.10.2026. Статус: **AS-IS PARTIAL**. Остальные разделы сохраняют baseline от 01.09.2026 и требуют адресной сверки; эта редакция не является повторной проверкой всех API, версий зависимостей и сценариев. Открытая работа: [DOC-01](../../docs/OPEN_TASKS.md).
 
-Основные источники проверки: `backend/main.py`, `backend/config.py`, `backend/models.py`, `backend/routers/`, `backend/rate_limit.py`, `frontend/js/`, `agent/agent/`, профильные тесты и корневой `../../.github/workflows/quality.yml`. При расхождении с кодом приоритет имеет исполняемая реализация.
+Основные источники проверки: `backend/main.py`, `backend/config.py`, `backend/models.py`, `backend/routers/`, `backend/rate_limit.py`, `frontend/js/`, `agents/business-analyst/business_analyst/`, профильные тесты и корневой `../../.github/workflows/quality.yml`. При расхождении с кодом приоритет имеет исполняемая реализация.
 
 ## Назначение
 
@@ -11,11 +11,10 @@
 | Каталог | Назначение | Локальный запуск |
 |---|---|---|
 | `dmb-backlog/` | FastAPI backend и встроенная раздача SPA | Стандартный запуск, порт 8000 |
-| `agent/` | AI Business Analyst Assistant V1 | Стандартный запуск, порт 9000 |
-| `agent-v2/` | Целевой fork V1: подготовка и ревью БТ | Обязателен в start-project.ps1, порт 9300; UI `#/agent-v2` |
-| `backlog-assistant/` | Самостоятельный помощник с OpenCode runtime и ограниченным Data API | `-IncludeBacklogAssistant`; скрипт также включает его при наличии backlog-assistant/.env |
-| `prioritiser-agent/` | Финансовый эффект и приоритет | Только явный `-IncludePrioritiser`, порт 9100 |
-| `assistant-v2/` | Сохранённый greenfield legacy-прототип | Только диагностический `-IncludeAssistantV2`, порт 9200; отдельного UI нет |
+| `agents/business-analyst/` | AI Business Analyst Assistant V1 | Стандартный запуск, порт 9000 |
+| `agents/business-analyst-experimental/` | Целевой fork V1: подготовка и ревью БТ | Обязателен в start-project.ps1, порт 9300; UI `#/agent-v2` |
+| `agents/backlog-assistant/` | Самостоятельный помощник с OpenCode runtime и ограниченным Data API | `-IncludeBacklogAssistant`; скрипт также включает его при наличии agents/backlog-assistant/.env |
+| `agents/value-priority-assessor/` | Финансовый эффект и приоритет | Только явный `-IncludeValuePriorityAssessor`, порт 9100 |
 
 Режим запуска сервиса не заменяет его настройки доступа и allowlist. Основной backend хранит рабочие сущности и проксирует разрешённые запросы к агентам. Новые контуры включают рабочие задачи/проекты, согласование редакций БТ, поручения встреч и безопасность учётных записей.
 
@@ -33,7 +32,7 @@ Browser SPA → DMB FastAPI :8000
   └─ legacy Assistant V2 :9200 (opt-in; gateway /api/v2/assistant)
 ```
 
-Источники сверки: [backend/main.py](../backend/main.py), [router.js](../frontend/js/router.js), [start-project.ps1](../../scripts/start-project.ps1). Подробные действующие контракты: [WORK_TASKS](WORK_TASKS.md), [ACCOUNT_SECURITY](ACCOUNT_SECURITY.md), [Agent V2](../../agent-v2/README.md), [помощник по бэклогу](../../backlog-assistant/README.md). Локальная эксплуатация: [LOCAL_DEVELOPMENT](../../docs/LOCAL_DEVELOPMENT.md).
+Источники сверки: [backend/main.py](../backend/main.py), [router.js](../frontend/js/router.js), [start-project.ps1](../../scripts/start-project.ps1). Подробные действующие контракты: [WORK_TASKS](WORK_TASKS.md), [ACCOUNT_SECURITY](ACCOUNT_SECURITY.md), [Agent V2](../../agents/business-analyst-experimental/README.md), [помощник по бэклогу](../../agents/backlog-assistant/README.md). Локальная эксплуатация: [LOCAL_DEVELOPMENT](../../docs/LOCAL_DEVELOPMENT.md).
 
 ## Технологии
 
@@ -70,15 +69,15 @@ Browser SPA → DMB FastAPI :8000
 
 ### Agent
 
-- `agent/run.py` — локальный запуск.
-- `agent/agent/main.py` — FastAPI assembly.
-- `agent/agent/api/router.py` — internal API.
-- `agent/agent/agentic_orchestrator.py` — основной model-driven dialogue runtime.
-- `agent/agent/orchestrator.py` — legacy runtime и общие детерминированные операции workflow.
-- `agent/agent/dialogue/agentic.py` — structured model decision и применение фактов.
-- `agent/agent/dialogue/` — agentic-компоненты и модули legacy rollback.
-- `agent/agent/kb/` — загрузка и поиск по базе знаний.
-- `agent/agent/llm/` — provider abstraction.
+- `agents/business-analyst/run.py` — локальный запуск.
+- `agents/business-analyst/business_analyst/main.py` — FastAPI assembly.
+- `agents/business-analyst/business_analyst/api/router.py` — internal API.
+- `agents/business-analyst/business_analyst/agentic_orchestrator.py` — основной model-driven dialogue runtime.
+- `agents/business-analyst/business_analyst/orchestrator.py` — legacy runtime и общие детерминированные операции workflow.
+- `agents/business-analyst/business_analyst/dialogue/agentic.py` — structured model decision и применение фактов.
+- `agents/business-analyst/business_analyst/dialogue/` — agentic-компоненты и модули legacy rollback.
+- `agents/business-analyst/business_analyst/kb/` — загрузка и поиск по базе знаний.
+- `agents/business-analyst/business_analyst/llm/` — provider abstraction.
 
 ## Фактический runtime backlog
 
@@ -182,7 +181,7 @@ python run_notification_scheduler.py
 
 ```powershell
 # Agent
-python -m pytest D:\Проект\agent\agent\tests -q --basetemp D:\Проект\.test-tmp-agent -p no:cacheprovider
+python -m pytest D:\Проект\agents\business-analyst\agent\tests -q --basetemp D:\Проект\.test-tmp-agent -p no:cacheprovider
 
 # Backend — запускать только против отдельной тестовой БД
 cd D:\Проект\dmb-backlog\backend
@@ -216,4 +215,4 @@ pytest tests -v
 - `SECURITY.md` — заявленные security practices.
 - `DEPLOYMENT.md` — локальные и целевые сценарии развёртывания.
 - `TESTING.md` — стратегия тестирования.
-- `agent/docs/` — отдельная документация AI-агента.
+- `agents/business-analyst/docs/` — отдельная документация AI-агента.

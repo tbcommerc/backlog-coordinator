@@ -1,7 +1,11 @@
 # Карта проекта Backlog coordinator
 
+[Переименование агентов 02.11.2026](AGENT_RENAMING_2026-11-02.md) — структура `agents/`, новые Python-пакеты, обновлённые сценарии и фактические результаты проверок.
+
+[Локальное упорядочение 02.11.2026](LOCAL_REPOSITORY_CLEANUP_2026-11-02.md) — перенос устаревшего прототипа, сохранение временных результатов и проверки.
+
 [Каталог пяти агентов](AGENT_CATALOG.md) — согласованный состав, размещение кода,
-режимы запуска и статус устаревшего прототипа `assistant-v2/`. Сверено 02.11.2026.
+режимы запуска и результаты удаления устаревшего прототипа. Сверено 02.11.2026.
 
 [Внедрение UI Kit в экраны, 30.10.2026](dev-testing/UI_KIT_ADOPTION_2026-10-30.md)
 — карточки, таблицы, периоды и выбор связанной работы; проверки и границы приёмки.
@@ -102,47 +106,34 @@ SectionCard и DetailPanel; пилоты рабочих задач и метри
 Состав проекта и режимы запуска:
 
 - `dmb-backlog/` — система управления бэклогом: FastAPI backend и SPA на vanilla JavaScript.
-- `backlog-assistant/` — самостоятельный [помощник по бэклогу](../backlog-assistant/README.md).
-- `agent/` — AI Business Analyst Assistant: отдельный FastAPI-сервис для диалогового сбора требований.
-- `prioritiser-agent/` — агент расчёта финансового эффекта и приоритета задач.
-- `assistant-v2/` — legacy greenfield-прототип; не показывается отдельной
-  страницей, выключен по умолчанию и запускается только для диагностики флагом
-  `-IncludeAssistantV2`.
-- `agent-v2/` — целевой fork-based Assistant V2 для BA/PO по актуальному ТЗ;
+- `agents/backlog-assistant/` — самостоятельный [помощник по бэклогу](../agents/backlog-assistant/README.md).
+- `agents/business-analyst/` — AI Business Analyst Assistant: отдельный FastAPI-сервис для диалогового сбора требований.
+- `agents/value-priority-assessor/` — агент расчёта финансового эффекта и приоритета задач.
+- `agents/business-analyst-experimental/` — целевой fork-based Assistant V2 для BA/PO по актуальному ТЗ;
   обязательно запускается стандартным скриптом проекта (проверено 12.10.2026).
 
 Полный локальный запуск всей платформы описан в `docs/LOCAL_DEVELOPMENT.md`.
 Из корня используется `powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1`.
 Task Prioritiser в локальном запуске выключен по умолчанию и добавляется флагом
-`-IncludePrioritiser`.
-Legacy-прототип `assistant-v2/` также выключен по умолчанию и добавляется только
-для диагностики флагом `-IncludeAssistantV2`; его фактический scope и stop gates описаны в
-[`docs/assistant-v2-implementation.md`](assistant-v2-implementation.md).
+`-IncludeValuePriorityAssessor`.
+Старый самостоятельный прототип удалён из кода 02.11.2026; [сравнение и сохранённые решения](AGENT_V2_RETIREMENT_2026-11-02.md).
 Проверки перед многопользовательским стендом собраны в `docs/MULTIUSER_ROLLOUT.md`.
 Воспроизводимая production-топология и операторские команды описаны в
 `docs/PRODUCTION_RUNBOOK.md`.
 Техническое задание на экспериментальный AI-ассистент V2 для BA/PO,
-создаваемый в целевом каталоге `agent-v2/` как изолированный fork существующего
-`agent/` с режимами фиксации поручения и глубокой проработки бизнес-требования,
+создаваемый в целевом каталоге `agents/business-analyst-experimental/` как изолированный fork существующего
+`agents/business-analyst/` с режимами фиксации поручения и глубокой проработки бизнес-требования,
 находится в
 [`docs/assistant-v2-technical-spec.md`](assistant-v2-technical-spec.md).
-ТЗ не объявляет текущий greenfield-каталог `assistant-v2/` целевой реализацией.
+Старый самостоятельный прототип удалён; целевая экспериментальная реализация находится в `agents/business-analyst-experimental/`.
 
 Фактическая fork-based реализация описана в
 [`docs/agent-v2-implementation.md`](agent-v2-implementation.md) и
-[`agent-v2/README.md`](../agent-v2/README.md). Она работает на порту 9300,
+[`agents/business-analyst-experimental/README.md`](../agents/business-analyst-experimental/README.md). Она работает на порту 9300,
 имеет единственный пользовательский UI V2 `#/agent-v2` и не импортирует старый
 `assistant-v2/`; `#/assistant-v2` перенаправляется на каноническую страницу.
 
-Документация сохранённого legacy-прототипа:
-
-- [`docs/assistant-v2-implementation.md`](assistant-v2-implementation.md) —
-  реализованный scope и намеренно закрытые production gates;
-- [`assistant-v2/README.md`](../assistant-v2/README.md) — запуск и точки входа;
-- [`assistant-v2/docs/THREAT_MODEL.md`](../assistant-v2/docs/THREAT_MODEL.md) —
-  trust boundaries, угрозы и остаточные риски;
-- [`assistant-v2/docs/OPERATIONS.md`](../assistant-v2/docs/OPERATIONS.md) —
-  readiness, kill switch, degraded mode и эксплуатационные ограничения.
+Исторические документы удалённого прототипа: [архив](archive/assistant-v2/README.md). Его команды и API не действуют.
 
 Документация целевого fork-based V2:
 
@@ -157,10 +148,10 @@ Legacy-прототип `assistant-v2/` также выключен по умо�
   AI-ревью, интеграция с запросами/задачами и отдельный предмет «редакция БТ»
   в общей очереди человеческого ревью; основной цикл этапов 1–3 реализован,
   расширение и оценка качества на пилоте остаются TO-BE;
-- [`agent-v2/docs/ARCHITECTURE.md`](../agent-v2/docs/ARCHITECTURE.md) — границы и потоки;
-- [`agent-v2/docs/API.md`](../agent-v2/docs/API.md) — внутренний и gateway API;
-- [`agent-v2/docs/OPERATIONS.md`](../agent-v2/docs/OPERATIONS.md) — запуск, rollout и rollback;
-- [`agent-v2/docs/TESTING.md`](../agent-v2/docs/TESTING.md) — проверки.
+- [`agents/business-analyst-experimental/docs/ARCHITECTURE.md`](../agents/business-analyst-experimental/docs/ARCHITECTURE.md) — границы и потоки;
+- [`agents/business-analyst-experimental/docs/API.md`](../agents/business-analyst-experimental/docs/API.md) — внутренний и gateway API;
+- [`agents/business-analyst-experimental/docs/OPERATIONS.md`](../agents/business-analyst-experimental/docs/OPERATIONS.md) — запуск, rollout и rollback;
+- [`agents/business-analyst-experimental/docs/TESTING.md`](../agents/business-analyst-experimental/docs/TESTING.md) — проверки.
 
 ## План трансформации
 
@@ -171,10 +162,10 @@ Legacy-прототип `assistant-v2/` также выключен по умо�
   максимально обособлен от DMB; [контракт серверного OpenCode](backlog-assistant-opencode.md)
   описывает Runtime Adapter, HTTP/MCP, делегирование и изоляцию запусков.
   Самостоятельный пакет и интеграция добавлены 14.10.2026; локально настроены
-  сервисы и диалоговый интерфейс. В шаблоне доступ выключен. [Реализация и ограничения проверки](../backlog-assistant/README.md),
-  [запуск](../backlog-assistant/docs/OPERATIONS.md),
-  [результаты тестов и условия пилота](../backlog-assistant/docs/TESTING.md).
-  Проект остаётся целевым контрактом. Проверена [оценка на 80 примерах](../backlog-assistant/docs/EVALUATION_80_2026-10-15.md) (80/80, 15.10.2026); промышленная нагрузочная приёмка остаётся отдельным условием.
+  сервисы и диалоговый интерфейс. В шаблоне доступ выключен. [Реализация и ограничения проверки](../agents/backlog-assistant/README.md),
+  [запуск](../agents/backlog-assistant/docs/OPERATIONS.md),
+  [результаты тестов и условия пилота](../agents/backlog-assistant/docs/TESTING.md).
+  Проект остаётся целевым контрактом. Проверена [оценка на 80 примерах](../agents/backlog-assistant/docs/EVALUATION_80_2026-10-15.md) (80/80, 15.10.2026); промышленная нагрузочная приёмка остаётся отдельным условием.
 
 - [Безопасное управление учётными записями](account-security-design.md)
   — проект от 12.10.2026: вход по логину без реальной почты, приглашения от
@@ -276,38 +267,38 @@ Legacy-прототип `assistant-v2/` также выключен по умо�
 
 Основные точки входа:
 
-- `agent/run.py` — запуск сервиса на порту 9000.
-- `agent/agent/main.py` — приложение и API агента.
-- `agent/agent/agentic_orchestrator.py` — оркестрация диалога.
-- `agent/agent/dialogue/agentic.py` — активный системный prompt (`SYSTEM`) и
-  структурированный контракт решения модели; `agent/agent/prompts/system_prompt.md`
+- `agents/business-analyst/run.py` — запуск сервиса на порту 9000.
+- `agents/business-analyst/business_analyst/main.py` — приложение и API агента.
+- `agents/business-analyst/business_analyst/agentic_orchestrator.py` — оркестрация диалога.
+- `agents/business-analyst/business_analyst/dialogue/agentic.py` — активный системный prompt (`SYSTEM`) и
+  структурированный контракт решения модели; `agents/business-analyst/business_analyst/prompts/system_prompt.md`
   не загружается текущим runtime.
-- `agent/agent/workflow/` — этапы workflow.
-- `agent/agent/tools/` — инструменты агента.
-- `agent/kb_seed/` — исходные материалы базы знаний.
-- `agent/agent/tests/` — pytest.
+- `agents/business-analyst/business_analyst/workflow/` — этапы workflow.
+- `agents/business-analyst/business_analyst/tools/` — инструменты агента.
+- `agents/business-analyst/kb_seed/` — исходные материалы базы знаний.
+- `agents/business-analyst/business_analyst/tests/` — pytest.
 
 Документация:
 
-- `agent/docs/ARCHITECTURE.md` — архитектура сервиса.
-- `agent/docs/API.md` — API.
-- `agent/docs/KB_GUIDE.md` — база знаний.
-- `agent/docs/PRODUCT_DIALOGUE_SPEC.md` — логика диалога.
-- `agent/docs/QUALITY_MODEL.md` — модель качества.
+- `agents/business-analyst/docs/ARCHITECTURE.md` — архитектура сервиса.
+- `agents/business-analyst/docs/API.md` — API.
+- `agents/business-analyst/docs/KB_GUIDE.md` — база знаний.
+- `agents/business-analyst/docs/PRODUCT_DIALOGUE_SPEC.md` — логика диалога.
+- `agents/business-analyst/docs/QUALITY_MODEL.md` — модель качества.
 
 ## Task Prioritiser
 
 Основные точки входа:
 
-- `prioritiser-agent/app/api/main.py` — FastAPI-приложение на порту 9100.
-- `prioritiser-agent/app/api/contract.py` — входной и выходной контракт агента.
-- `prioritiser-agent/app/service/scenarios.py` — идемпотентные сценарии запрос-ответ для Backlog coordinator.
-- `prioritiser-agent/app/core/value.py` — расчёт финансового эффекта.
-- `prioritiser-agent/app/core/scoring.py` — расчёт факторов и приоритета P1–P5.
-- `prioritiser-agent/app/cli.py` — CLI детерминированного ядра.
-- `prioritiser-agent/AGENTS.md` и `agent-prompts/` — контракт и промпты агентного слоя.
-- `prioritiser-agent/UPSTREAM.md` — источник и зафиксированная версия внешнего проекта.
-- `prioritiser-agent/graphify-out/` — локальный граф знаний по коду агента; каталог не включается в Git.
+- `agents/value-priority-assessor/value_priority_assessor/api/main.py` — FastAPI-приложение на порту 9100.
+- `agents/value-priority-assessor/value_priority_assessor/api/contract.py` — входной и выходной контракт агента.
+- `agents/value-priority-assessor/value_priority_assessor/service/scenarios.py` — идемпотентные сценарии запрос-ответ для Backlog coordinator.
+- `agents/value-priority-assessor/value_priority_assessor/core/value.py` — расчёт финансового эффекта.
+- `agents/value-priority-assessor/value_priority_assessor/core/scoring.py` — расчёт факторов и приоритета P1–P5.
+- `agents/value-priority-assessor/value_priority_assessor/cli.py` — CLI детерминированного ядра.
+- `agents/value-priority-assessor/AGENTS.md` и `agent-prompts/` — контракт и промпты агентного слоя.
+- `agents/value-priority-assessor/UPSTREAM.md` — источник и зафиксированная версия внешнего проекта.
+- `agents/value-priority-assessor/graphify-out/` — локальный граф знаний по коду агента; каталог не включается в Git.
 
 Производные файлы общего локального графа создаются в `graphify-out/` в корне. Устаревшая текущая выгрузка от 09.09.2026 удалена 17.10.2026; для запросов нужен новый build. Исторические снимки, заметки и вспомогательные скрипты сохранены. Его
 `graph.json`, `graph.html` и `GRAPH_REPORT.md` являются производными материалами,

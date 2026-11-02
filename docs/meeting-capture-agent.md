@@ -31,10 +31,10 @@ OpenCode Go (`glm-5.3-flash`), без подмены API/LLM.
 
 Первый прогон блокировался HTTP 401 `api_key_expired`: прежняя настройка,
 ключ из локального профиля OpenCode Go и отдельно разрешённая проверка ключа
-из `agent-v2/.env` не восстановили доступ. После входа пользователя в OpenCode
+из `agents/business-analyst-experimental/.env` не восстановили доступ. После входа пользователя в OpenCode
 Console и его отдельного подтверждения создан новый персональный ключ с
 правами `Restricted → Models: Request`, остальные права `None`, без срока
-истечения. Ключ сохранён только в `agent/.env`, основной агент перезапущен.
+истечения. Ключ сохранён только в `agents/business-analyst/.env`, основной агент перезапущен.
 Значения ключей не включались в вывод, снимки, Git или документы; ключи других
 сервисов и локальный профиль CLI не менялись.
 
@@ -342,6 +342,6 @@ API: извлечение → правка → выбор связи → под�
 
 Источники: [API](../dmb-backlog/backend/routers/meeting_capture_router.py),
 [контракт](../dmb-backlog/backend/meeting_contract.py),
-[извлечение](../agent/agent/meeting_extraction.py),
+[извлечение](../agents/business-analyst/business_analyst/meeting_task_extractor.py),
 [страница](../dmb-backlog/frontend/js/components/meetingCapture.js),
 [миграция](../dmb-backlog/backend/alembic/versions/b7e3a9d1c542_meeting_captures.py).

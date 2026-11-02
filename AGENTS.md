@@ -5,7 +5,7 @@
 ## Документация
 
 - Источник истины: исполняемый код, конфигурация, миграции и тесты; документация обновляется вслед за ними.
-- Активные документы и их назначение перечислены в `docs/index.md`, `dmb-backlog/docs/README.md`, `agent/docs/README.md` и `prioritiser-agent/README.md`.
+- Активные документы и их назначение перечислены в `docs/index.md`, `dmb-backlog/docs/README.md`, `agents/business-analyst/docs/README.md` и `agents/value-priority-assessor/README.md`.
 - Не выдавай исторические отчёты, `archive/`, прототипы и `graphify-out/` за текущее AS-IS.
 - После изменения API, модели данных, запуска, переменных окружения или поведения страницы обновляй соответствующий профильный документ и дату проверки.
 - Перед коммитом проверяй локальные Markdown-ссылки и не добавляй `.env`, виртуальные окружения, БД, backup-файлы, runtime-логи и `graphify-out/`.
@@ -14,7 +14,7 @@
 
 - На запросы «Запусти проект», «Подними проект» и аналогичные выполняй из корня `powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1` и дождись итогового health-check.
 - Стандартный локальный запуск включает PostgreSQL, Redis, Alembic-миграции, AI-агента, backend и встроенную раздачу frontend; Task Prioritiser по умолчанию не запускается из-за высокого расхода памяти.
-- Task Prioritiser включай только по прямому запросу пользователя, добавляя к команде запуска флаг `-IncludePrioritiser`.
+- Task Prioritiser включай только по прямому запросу пользователя, добавляя к команде запуска флаг `-IncludeValuePriorityAssessor`.
 - После успешного запуска сообщай адрес приложения `http://127.0.0.1:8000`, адреса API-документации и расположение логов `.runtime/`.
 - На запрос статуса выполняй `powershell -ExecutionPolicy Bypass -File scripts/project-status.ps1`.
 - На запрос остановки выполняй `powershell -ExecutionPolicy Bypass -File scripts/stop-project.ps1`.

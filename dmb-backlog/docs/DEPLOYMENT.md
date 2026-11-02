@@ -25,7 +25,7 @@ Swagger UI `/docs` и frontend как статические файлы. Осн�
 
 Fork-based Assistant V2 включается отдельными `AGENT_V2_*`: feature flag,
 kill switch, base URL, secret, pilot user IDs/emails и списки имён ролей BA/PO.
-Штатный локальный launcher запускает его только с `-IncludeAgentV2` на порту
+Штатный локальный launcher запускает его только с `-IncludeBusinessAnalystExperimental` на порту
 9300 и с отдельной БД `agent_v2_sessions`; без флага DMB gateway не регистрируется.
 
 - `DEBUG`
@@ -101,11 +101,7 @@ Jaeger и read-only smoke/load/failover/backup scripts. Compose предназн
 Изменение структуры БД регулирует [SCHEMA_CHANGES.md](SCHEMA_CHANGES.md), а
 проверки перед выпуском — [TESTING.md](TESTING.md).
 
-Assistant V2 не входит в стандартный или production Compose baseline. Локально
-он запускается только корневым `scripts/start-project.ps1 -IncludeAssistantV2`,
-который создаёт отдельную DB/роль, применяет отдельный Alembic и поднимает порт
-9200. Real-data/provider/production gates остаются закрытыми; operator runbook:
-[`../../assistant-v2/docs/OPERATIONS.md`](../../assistant-v2/docs/OPERATIONS.md).
+Старый самостоятельный прототип V2 удалён из запуска 02.11.2026. Экспериментальная версия работает из `agents/business-analyst-experimental/`; [сравнение и проверки](../../docs/AGENT_V2_RETIREMENT_2026-11-02.md).
 
 ## Feature flag канбана — проверено 21.10.2026
 

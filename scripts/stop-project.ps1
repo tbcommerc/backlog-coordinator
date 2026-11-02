@@ -12,7 +12,7 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue) -and (Test-Path (Joi
     $env:Path = "$perUserDockerBin;$env:Path"
 }
 
-foreach ($service in @("backend", "agent", "prioritiser", "assistant-v2", "agent-v2", "backlog-assistant", "backlog-assistant-data")) {
+foreach ($service in @("backend", "agent", "prioritiser", "agent-v2", "backlog-assistant", "backlog-assistant-data")) {
     $pidPath = Join-Path $runtimeDir "$service.pid"
     if (-not (Test-Path $pidPath)) { continue }
     $processId = [int](Get-Content -Raw $pidPath)

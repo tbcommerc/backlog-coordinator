@@ -1,7 +1,7 @@
 import {readFileSync,readdirSync,writeFileSync,existsSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 const root=new URL('../',import.meta.url),read=p=>readFileSync(new URL(p,root),'utf8');
-function walk(p){return readdirSync(new URL(p,root),{withFileTypes:true}).flatMap(e=>e.isDirectory()?['lib','assistant-v2'].includes(e.name)?[]:walk(p+'/'+e.name):[p+'/'+e.name]);}
+function walk(p){return readdirSync(new URL(p,root),{withFileTypes:true}).flatMap(e=>e.isDirectory()?['lib'].includes(e.name)?[]:walk(p+'/'+e.name):[p+'/'+e.name]);}
 export const detectors={
  readOnlyField:/\breadOnlyField\b|\bdescriptionList\b|ui-readonly-field|ui-description-list/,
  sectionCard:/\bsectionCard\b|ui-section-card/,

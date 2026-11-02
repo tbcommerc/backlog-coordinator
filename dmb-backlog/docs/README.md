@@ -52,7 +52,7 @@ last_reviewed: 2026-10-26
 | Документ | Когда читать | Классификация |
 |---|---|---|
 | [Техническое задание на канбан рабочих задач](../../docs/work-tasks-kanban-spec.md) | Бизнес-правила, дизайн desktop/mobile, фильтры, API доски, внедрение и приёмка | TO-BE DRAFT от 21.10.2026; первая версия и последующее развитие разделены; не AS-IS |
-| [Помощник по бэклогу](../../docs/backlog-assistant-design.md) и [серверный OpenCode](../../docs/backlog-assistant-opencode.md) | Самостоятельный агентный сервис, тонкий DMB gateway/Data API, HTTP/MCP, ACL, диалоги и изоляция runtime | Целевой контракт; реализация добавлена. AS-IS и ограничения: [README помощника](../../backlog-assistant/README.md) |
+| [Помощник по бэклогу](../../docs/backlog-assistant-design.md) и [серверный OpenCode](../../docs/backlog-assistant-opencode.md) | Самостоятельный агентный сервис, тонкий DMB gateway/Data API, HTTP/MCP, ACL, диалоги и изоляция runtime | Целевой контракт; реализация добавлена. AS-IS и ограничения: [README помощника](../../agents/backlog-assistant/README.md) |
 | [Безопасное управление учётными записями](../../docs/account-security-design.md) | Логин без почты, приглашения, смена и восстановление пароля, сессии, API и миграция | Реализованный контур и оставшаяся приёмка: [ACCOUNT_SECURITY.md](ACCOUNT_SECURITY.md) |
 | [Адаптация системы к структуре работ трайба](../../docs/work-structure-system-design.md) | Предлагаемые модель хранения, UX/UI, API, миграция, доступ, интеграция и этапы внедрения | Целевой проект; реализованный локальный контур и этап 5: [WORK_TASKS.md](WORK_TASKS.md) |
 | [Структура работ трайба](../../docs/work-structure.md) | Актуальные сущности, один уровень рабочих задач, классификации, запросы и внешний IT-трекер; схемы и открытые вопросы | TO-BE: решения пользователя зафиксированы 09.10.2026; предложения выделены отдельно; не AS-IS |
@@ -76,7 +76,7 @@ last_reviewed: 2026-10-26
 | [`SECURITY.md`](SECURITY.md) | Меры, ограничения, текущая ACL источников V2 и независимость ревьюера | Основные источники сверены 09.09.2026; V2 boundary и allowlist proxy проверены по коду/изолированным тестам 09.10.2026 |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Локальный запуск и поставляемая стендовая topology | AS-IS VERIFIED по scripts/Compose на 01.09.2026; внешние HA/TLS решения остаются вне репозитория |
 | [`SCHEMA_CHANGES.md`](SCHEMA_CHANGES.md) | Изменение схемы БД и миграция RequirementReview | Новый head проверен 09.10.2026 через offline PostgreSQL DDL; миграция на рабочей БД не выполнялась |
-| [`../../docs/assistant-v2-implementation.md`](../../docs/assistant-v2-implementation.md) | Scope сохранённого legacy-прототипа Assistant V2 и stop gates | AS-IS PARTIAL на 19.09.2026 |
+| [`../../docs/assistant-v2-implementation.md`](../../docs/archive/assistant-v2/IMPLEMENTATION.md) | Scope сохранённого legacy-прототипа Assistant V2 и stop gates | AS-IS PARTIAL на 19.09.2026 |
 | [`../../docs/agent-v2-implementation.md`](../../docs/agent-v2-implementation.md) | Fork-based Assistant V2: написание, AI-ревью, gateway и согласование редакции БТ | Инкремент 09.10.2026 сверяется с кодом и указанными изолированными проверками; не свидетельство live-развёртывания |
 | [`NOTIFICATION_SERVICE_TOP_DOWN.md`](proposals/NOTIFICATION_SERVICE_TOP_DOWN.md) | Утверждённая продуктовая модель уведомлений и её реализация | AS-IS VERIFIED / PRODUCT DECISION на 07.09.2026 |
 | [`CODE_REVIEW_2026-08-19.md`](archive/reviews/CODE_REVIEW_2026-08-19.md) | История выявленных проблем и решений | Исторический аудит на конкретную дату |
@@ -124,7 +124,7 @@ API, модель сессий, интерфейсы, конфигурацию, 
 
 Добавлена отключённая по умолчанию интеграция самостоятельного сервиса. Gateway `/api/v1/backlog-assistant` обслуживает sessions/messages/runs/cancel/results/feedback; приватный Data API вынесен в отдельный mTLS listener 9450. Страница `#/backlog-assistant` и контекстная панель используют общие разговоры. Миграция `e8f1b2c3d405` создаёт только `backlog_assistant_integration`; очередь и история находятся в отдельной PostgreSQL БД агента.
 
-[Контракты и хранение](../../backlog-assistant/docs/API.md), [эксплуатация](../../backlog-assistant/docs/OPERATIONS.md), [подтверждённые проверки и ограничения пилота](../../backlog-assistant/docs/TESTING.md).
+[Контракты и хранение](../../agents/backlog-assistant/docs/API.md), [эксплуатация](../../agents/backlog-assistant/docs/OPERATIONS.md), [подтверждённые проверки и ограничения пилота](../../agents/backlog-assistant/docs/TESTING.md).
 
 
 - [Рабочие задачи](WORK_TASKS.md) — реализация локального контура от 16.10.2026; AS-IS PARTIAL, миграция рабочей БД и полная приёмка не выполнены.

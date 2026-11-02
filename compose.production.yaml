@@ -144,7 +144,7 @@ services:
   agent:
     build:
       context: .
-      dockerfile: agent/Dockerfile
+      dockerfile: agents/business-analyst/Dockerfile
     restart: unless-stopped
     environment: *agent-environment
     depends_on:
@@ -165,7 +165,7 @@ services:
   prioritiser-migration:
     build:
       context: .
-      dockerfile: prioritiser-agent/Dockerfile
+      dockerfile: agents/value-priority-assessor/Dockerfile
     environment:
       PRIORITISER_DB_URL: "${DMB_PRIORITISER_DATABASE_URL:?set DMB_PRIORITISER_DATABASE_URL with URL-encoded credentials}"
       PRIORITISER_DEBUG: "false"
@@ -179,7 +179,7 @@ services:
   prioritiser:
     build:
       context: .
-      dockerfile: prioritiser-agent/Dockerfile
+      dockerfile: agents/value-priority-assessor/Dockerfile
     restart: unless-stopped
     environment:
       PRIORITISER_DB_URL: "${DMB_PRIORITISER_DATABASE_URL:?set DMB_PRIORITISER_DATABASE_URL with URL-encoded credentials}"

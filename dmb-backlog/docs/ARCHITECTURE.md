@@ -47,10 +47,10 @@ Backend lifespan запускает `services/meeting_analysis.py`: один dae
 Fork-based Assistant V2 подключается как условный adapter/gateway и отсутствует
 в registry приложения при выключенном `AGENT_V2_ENABLED` или включённом
 `AGENT_V2_KILL_SWITCH`. Он использует собственный secret и session DB.
-Рабочий документ и AI-операции находятся в `agent-v2/`, а неизменяемые пакеты
+Рабочий документ и AI-операции находятся в `agents/business-analyst-experimental/`, а неизменяемые пакеты
 человеческого согласования — в новой DMB-таблице `requirement_reviews`.
 Существующий intake `requirement_requests` сохраняет отдельный lifecycle.
-Детальная схема: [`../../agent-v2/docs/ARCHITECTURE.md`](../../agent-v2/docs/ARCHITECTURE.md).
+Детальная схема: [`../../agents/business-analyst-experimental/docs/ARCHITECTURE.md`](../../agents/business-analyst-experimental/docs/ARCHITECTURE.md).
 
 Межсервисные вызовы backend → V1 BA Agent/Prioritiser имеют ограниченные повторы
 с экспоненциальной задержкой и circuit breaker. Повторяются транспортные ошибки
@@ -141,7 +141,7 @@ Frontend обслуживается самим FastAPI через `/static`; к�
 
 ### AI Business Analyst Agent
 
-Backlog вызывает Agent по `AGENT_BASE_URL` и передаёт `X-Agent-Secret`. Agent является отдельным приложением и процессом; его архитектура описана в `../../agent/docs/ARCHITECTURE.md`.
+Backlog вызывает Agent по `AGENT_BASE_URL` и передаёт `X-Agent-Secret`. Agent является отдельным приложением и процессом; его архитектура описана в `../../agents/business-analyst/docs/ARCHITECTURE.md`.
 
 Основной chat UI использует сквозной SSE: браузер вызывает backend
 `/api/v1/agent/chat-stream`, backend проверяет принадлежность сессии и без
@@ -164,7 +164,7 @@ Backend преобразует карточку задачи во внешний
 отображении и не служат fallback для пустого финансового эффекта.
 OpenAI-compatible провайдер, endpoint, модель и учётные данные совпадают с
 настройками AI Business Analyst Agent; локальный launcher синхронизирует их из
-`agent/.env`, а production Compose передаёт обоим сервисам одинаковые `DMB_*`
+`agents/business-analyst/.env`, а production Compose передаёт обоим сервисам одинаковые `DMB_*`
 переменные.
 
 ## API-границы
@@ -305,12 +305,6 @@ list-запросы остаются у полной фильтруемой ле
 - `DEPLOYMENT.md` — локальные и целевые сценарии поставки.
 - `archive/legacy/ARCHITECTURE_MIXED_2026-06-29.md` — исторический документ со смешанными AS-IS и TO-BE утверждениями; не использовать как источник текущего состояния.
 
-## Изолированный legacy Assistant V2 — проверено 19.09.2026
+## Удаление прежнего прототипа V2 — 02.11.2026
 
-При `ASSISTANT_V2_ENABLED=true` backend условно регистрирует browser gateway
-`/api/v2/assistant` и internal adapter `/internal/assistant-v2/v1`. При false
-модули V2 не импортируются и routes отсутствуют. Gateway выпускает actor envelope;
-adapter повторно применяет текущие DMB object policies. Отдельный процесс
-`assistant-v2` не импортирует DMB и не имеет его DB credentials. Основной
-readiness отображает V2 как non-blocking dependency. Полная граница и stop gates:
-[`../../docs/assistant-v2-implementation.md`](../../docs/assistant-v2-implementation.md).
+Старый сервис, его API, флаги и код интеграции удалены. Актуальный экспериментальный V2 — `agents/business-analyst-experimental/`. [Сравнение, сохранённые решения и проверки](../../docs/AGENT_V2_RETIREMENT_2026-11-02.md). Рабочие БД при удалении кода не изменялись.

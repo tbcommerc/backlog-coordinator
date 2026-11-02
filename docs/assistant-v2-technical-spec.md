@@ -7,8 +7,8 @@
 | Статус | Целевая спецификация, готова к декомпозиции |
 | Дата проверки AS-IS | 19.09.2026 |
 | Целевая аудитория | Product Owner, Business Analyst, разработчики, QA, архитекторы, эксплуатация |
-| Базовая реализация | существующий сервис agent/ |
-| Рекомендуемый каталог V2 | agent-v2/ |
+| Базовая реализация | существующий сервис agents/business-analyst/ |
+| Рекомендуемый каталог V2 | agents/business-analyst-experimental/ |
 | Стратегия MVP | изолированный fork/copy V1 без общего runtime-кода |
 | Основные режимы | assignment_capture и requirement_copilot |
 
@@ -18,7 +18,7 @@ V2 должен развиваться как экспериментальная
 
 Каталог assistant-v2/, присутствующий в рабочем дереве на дату проверки, является
 реализацией прежней концепции. Документ
-[assistant-v2-implementation.md](assistant-v2-implementation.md) остаётся описанием её
+[assistant-v2-implementation.md](archive/assistant-v2/IMPLEMENTATION.md) остаётся описанием её
 фактического AS-IS, но не задаёт целевую архитектуру. Решение о переносе полезных
 элементов, консервации или удалении этого прототипа принимается отдельно; данное ТЗ
 не разрешает автоматически менять его данные или код.
@@ -81,7 +81,7 @@ V2 MUST использовать текущего аутентифицирова
 
 ### 3.1. Входит
 
-- изолированная копия V1 в agent-v2/;
+- изолированная копия V1 в agents/business-analyst-experimental/;
 - отдельные entrypoint, процесс, порт 9300, API prefix,
   `AGENT_V2_*`-конфигурация, секрет и БД сессий V2;
 - выбор одного из двух режимов при создании сессии;
@@ -135,28 +135,28 @@ workflow, outcome analytics и audio transcription остаются за гра�
 
 | Возможность V1 | Реализация |
 |---|---|
-| Entrypoint, порт и runtime config | [agent/run.py](../agent/run.py#L1), [agent/agent/config.py](../agent/agent/config.py#L13) |
-| FastAPI и internal prefix | [agent/agent/main.py](../agent/agent/main.py#L48), router под `/api/agent` |
+| Entrypoint, порт и runtime config | [agents/business-analyst/run.py](../agents/business-analyst/run.py#L1), [agents/business-analyst/business_analyst/config.py](../agents/business-analyst/business_analyst/config.py#L13) |
+| FastAPI и internal prefix | [agents/business-analyst/business_analyst/main.py](../agents/business-analyst/business_analyst/main.py#L48), router под `/api/agent` |
 | Browser/DMB gateway | [dmb-backlog/backend/routers/agent_router.py](../dmb-backlog/backend/routers/agent_router.py#L416), в browser доступен под `/api/v1/agent` |
-| DTO chat/session/review | [agent/agent/api/schemas.py](../agent/agent/api/schemas.py#L7) |
-| Основной runtime | [agent/agent/agentic_orchestrator.py](../agent/agent/agentic_orchestrator.py#L36) |
-| Базовая workflow-логика | [agent/agent/orchestrator.py](../agent/agent/orchestrator.py#L97) |
-| Персистентные сессии, receipts, locking | [agent/agent/session.py](../agent/agent/session.py#L221), `SessionStore` |
-| DialogueState и слоты | [agent/agent/dialogue/state.py](../agent/agent/dialogue/state.py#L180) |
-| Активный prompt, structured decision и guards | [agent/agent/dialogue/agentic.py](../agent/agent/dialogue/agentic.py#L34), `SYSTEM`, `TurnDecision`, `AgenticBA` |
-| Composer и схема результата | [agent/agent/composer/composer.py](../agent/agent/composer/composer.py#L55) |
-| Fingerprint ревизии | [agent/agent/composer/revision.py](../agent/agent/composer/revision.py#L6) |
-| Независимая проверка черновика | [agent/agent/composer/reviewer.py](../agent/agent/composer/reviewer.py#L23) |
-| Контекст пользователя | [agent/agent/context.py](../agent/agent/context.py#L10) |
-| Retrieval hooks | [agent/agent/kb/retrieval.py](../agent/agent/kb/retrieval.py#L8) |
-| Audit без текста сообщения | [agent/agent/audit.py](../agent/agent/audit.py#L13) |
+| DTO chat/session/review | [agents/business-analyst/business_analyst/api/schemas.py](../agents/business-analyst/business_analyst/api/schemas.py#L7) |
+| Основной runtime | [agents/business-analyst/business_analyst/agentic_orchestrator.py](../agents/business-analyst/business_analyst/agentic_orchestrator.py#L36) |
+| Базовая workflow-логика | [agents/business-analyst/business_analyst/orchestrator.py](../agents/business-analyst/business_analyst/orchestrator.py#L97) |
+| Персистентные сессии, receipts, locking | [agents/business-analyst/business_analyst/session.py](../agents/business-analyst/business_analyst/session.py#L221), `SessionStore` |
+| DialogueState и слоты | [agents/business-analyst/business_analyst/dialogue/state.py](../agents/business-analyst/business_analyst/dialogue/state.py#L180) |
+| Активный prompt, structured decision и guards | [agents/business-analyst/business_analyst/dialogue/agentic.py](../agents/business-analyst/business_analyst/dialogue/agentic.py#L34), `SYSTEM`, `TurnDecision`, `AgenticBA` |
+| Composer и схема результата | [agents/business-analyst/business_analyst/composer/composer.py](../agents/business-analyst/business_analyst/composer/composer.py#L55) |
+| Fingerprint ревизии | [agents/business-analyst/business_analyst/composer/revision.py](../agents/business-analyst/business_analyst/composer/revision.py#L6) |
+| Независимая проверка черновика | [agents/business-analyst/business_analyst/composer/reviewer.py](../agents/business-analyst/business_analyst/composer/reviewer.py#L23) |
+| Контекст пользователя | [agents/business-analyst/business_analyst/context.py](../agents/business-analyst/business_analyst/context.py#L10) |
+| Retrieval hooks | [agents/business-analyst/business_analyst/kb/retrieval.py](../agents/business-analyst/business_analyst/kb/retrieval.py#L8) |
+| Audit без текста сообщения | [agents/business-analyst/business_analyst/audit.py](../agents/business-analyst/business_analyst/audit.py#L13) |
 | DMB active-session mapping | [dmb-backlog/backend/models.py](../dmb-backlog/backend/models.py#L799), `AgentSession` |
 | DMB review entity и revision history | [dmb-backlog/backend/models.py](../dmb-backlog/backend/models.py#L810), `RequirementRequest` |
 | Review миграции | [3a886fb49c17_initial_postgresql_schema.py](../dmb-backlog/backend/alembic/versions/3a886fb49c17_initial_postgresql_schema.py#L610), [c1a9e8b7d602_requirement_revision_history.py](../dmb-backlog/backend/alembic/versions/c1a9e8b7d602_requirement_revision_history.py#L17) |
 | V1 chat UI и route | [agentChat.js](../dmb-backlog/frontend/js/components/agentChat.js#L112), [router.js](../dmb-backlog/frontend/js/router.js#L131) |
 | Review UI | [reviewPage.js](../dmb-backlog/frontend/js/components/reviewPage.js#L219), [requestPresentation.js](../dmb-backlog/frontend/js/components/requestPresentation.js#L135) |
 
-`agent/agent/prompts/system_prompt.md` присутствует в репозитории, но текущий
+`agents/business-analyst/business_analyst/prompts/system_prompt.md` присутствует в репозитории, но текущий
 runtime передаёт модели константу `SYSTEM` из `dialogue/agentic.py`.
 Поэтому fork baseline MUST характеризовать именно этот активный prompt;
 перенос его в versioned files — отдельная V2-адаптация после baseline gate.
@@ -183,14 +183,14 @@ V1 уже умеет:
 
 ### V2-FORK-001. Изолированный fork
 
-Начальная версия agent-v2/ MUST быть файловой копией agent/ на зафиксированном
+Начальная версия agents/business-analyst-experimental/ MUST быть файловой копией agents/business-analyst/ на зафиксированном
 commit. Копирование выполняется до функциональных изменений и сопровождается
 характеризационными тестами.
 
 ### V2-FORK-002. Независимость импортов
 
-- agent/ MUST NOT импортировать agent-v2/;
-- agent-v2/ MUST NOT импортировать agent/;
+- agents/business-analyst/ MUST NOT импортировать agents/business-analyst-experimental/;
+- agents/business-analyst-experimental/ MUST NOT импортировать agents/business-analyst/;
 - общие исходники через symlink, PYTHONPATH или runtime mount запрещены;
 - обновление одной версии не должно перезапускать другую.
 
@@ -204,7 +204,7 @@ commit. Копирование выполняется до функционал�
 
 V2 MUST иметь:
 
-- `agent-v2/run_v2.py` и самостоятельный процесс с health/readiness;
+- `agents/business-analyst-experimental/run.py` и самостоятельный процесс с health/readiness;
 - локальный порт 9300, не занятый V1 (9000), prioritiser (9100) и
   имеющимся greenfield-прототипом (9200);
 - internal prefix `/api/agent-v2`, browser gateway prefix `/api/v2/agent`
@@ -248,10 +248,10 @@ flowchart LR
 Рекомендуемая структура:
 
 ~~~text
-agent/
-  agent/
+agents/business-analyst/
+  agents/business-analyst/
   tests/
-agent-v2/
+agents/business-analyst-experimental/
   agent_v2/
   tests/
   prompts/
@@ -268,13 +268,13 @@ agent-v2/
 ## 7. Матрица повторного использования V1
 
 Коды действий: `REUSE` — использовать текущий DMB/V1-компонент без
-изменения; `COPY` — физически скопировать в `agent-v2/`; `ADAPT` — менять
+изменения; `COPY` — физически скопировать в `agents/business-analyst-experimental/`; `ADAPT` — менять
 только V2-копию после baseline gate; `ADD` — добавить изолированный
 V2-компонент. `COPY → ADAPT` означает именно эту очерёдность.
 
 | Компонент V1 | Фактический файл/класс | Действие | BA/PO delta | Риск влияния на V1 | Compatibility test |
 |---|---|---|---|---|---|
-| Entrypoint/config/FastAPI | `agent/run.py`, `config.Settings`, `main.app` | COPY → ADAPT | `run_v2.py`, port 9300, `AGENT_V2_*`, `/api/agent-v2` | общий env или неверный import | import-origin assertion; V1 route/OpenAPI snapshot |
+| Entrypoint/config/FastAPI | `agents/business-analyst/run.py`, `config.Settings`, `main.app` | COPY → ADAPT | `run.py`, port 9300, `AGENT_V2_*`, `/api/agent-v2` | общий env или неверный import | import-origin assertion; V1 route/OpenAPI snapshot |
 | Service API | `api/router.py`, `api/schemas.py` | COPY → ADAPT | `product_mode`, `operator_role`, source/link/handoff/patch DTO | rename V1 response fields | V1 `test_full_chat_flow`; normalized baseline responses |
 | User context | `context.UserContext`, `style_for` | COPY → ADAPT | trusted `operator_role`, capabilities snapshot; dialogue style сохранён | client role spoofing | forged-context negative tests; V1 style cases |
 | Session persistence | `session.SessionStore`, `state_to_dict`, `state_from_dict` | COPY → ADAPT | V2 fields и schema version в `state_json`; отдельная DB | запись в V1 DB | DB URL/role assertion; state round-trip |
@@ -301,7 +301,7 @@ V2-компонент. `COPY → ADAPT` означает именно эту о�
 | V1 chat UI | `agentChat.js`, `#/customer/create` | REUSE | нет; V1 bundle/route remain unchanged | eager V2 loading | `agentChatWorkflow.test.mjs`, `agentChatUx.test.mjs` |
 | V2 UI | нет в V1 | ADD | lazy `#/agent-v2`, mode/source/link/artifact/diff views | router startup regression | feature/allowlist/lazy-load tests |
 | Review UI | `reviewPage.js`, `requestPresentation.js` | REUSE → ADAPT minimally | additive V2 sections, V1 fallback | V1 card regression | review/presentation/integrity frontend suites |
-| Test patterns | `agent/agent/tests`, backend/frontend suites | COPY baseline + ADD | differential harness, BA/PO golden conversations | volatile-field false differences | normalized comparison with explicit ignore list |
+| Test patterns | `agents/business-analyst/business_analyst/tests`, backend/frontend suites | COPY baseline + ADD | differential harness, BA/PO golden conversations | volatile-field false differences | normalized comparison with explicit ignore list |
 
 `REUSE` не разрешает рефакторинг V1 ради V2. Если additive integration требует
 правки общего DMB-файла (`main.py`, `router.js`, presentation renderer), она
@@ -309,7 +309,7 @@ V2-компонент. `COPY → ADAPT` означает именно эту о�
 
 ## 8. Provenance fork и синхронизация исправлений
 
-В корне agent-v2/ MUST находиться FORK_PROVENANCE.json. Он фиксирует:
+В корне agents/business-analyst-experimental/ MUST находиться FORK_PROVENANCE.json. Он фиксирует:
 
 - исходный Git commit и чистоту source tree в момент fork;
 - дату копирования;
@@ -893,7 +893,7 @@ V2 сохраняет structured TurnDecision и deterministic guards V1.
 | operator_context | trusted BA/PO role, style и допустимая глубина |
 | product_mode | assignment_capture или requirement_copilot |
 
-Промпты MUST храниться как versioned files в agent-v2/prompts/. Версия prompt set
+Промпты MUST храниться как versioned files в agents/business-analyst-experimental/prompts/. Версия prompt set
 пишется в telemetry и artifact metadata.
 
 В prompt для assignment_capture агент не требует полной спецификации. В prompt для
@@ -914,7 +914,7 @@ BA/PO golden conversations, security corpus и differential check против
 - build_business_requirement_v2(state, context).
 
 Общие функции нормализации, provenance, gaps, conflicts, scores и rendering
-сохраняются в пределах agent-v2/.
+сохраняются в пределах agents/business-analyst-experimental/.
 
 ### 16.2. Revisions
 
@@ -1196,7 +1196,7 @@ Kill switch:
 Состав:
 
 - зафиксировать source commit;
-- скопировать agent/ в agent-v2/ без product changes;
+- скопировать agents/business-analyst/ в agents/business-analyst-experimental/ без product changes;
 - переименовать пакет и tests paths;
 - добавить FORK_PROVENANCE.json;
 - запустить V1 suite;
@@ -1326,19 +1326,19 @@ fork baseline. Нормализация исключает session id, timestamp
 
 После каждого инкремента запускаются неизменённые suites V1:
 
-- agent API/orchestration/state: [test_api.py](../agent/agent/tests/test_api.py),
-  [test_orchestrator.py](../agent/agent/tests/test_orchestrator.py),
-  [test_agentic_orchestrator.py](../agent/agent/tests/test_agentic_orchestrator.py),
-  [test_session_retention.py](../agent/agent/tests/test_session_retention.py);
+- agent API/orchestration/state: [test_api.py](../agents/business-analyst/business_analyst/tests/test_api.py),
+  [test_orchestrator.py](../agents/business-analyst/business_analyst/tests/test_orchestrator.py),
+  [test_agentic_orchestrator.py](../agents/business-analyst/business_analyst/tests/test_agentic_orchestrator.py),
+  [test_session_retention.py](../agents/business-analyst/business_analyst/tests/test_session_retention.py);
 - composer/quality/audit/KB/runtime:
-  [test_composer.py](../agent/agent/tests/test_composer.py),
-  [test_artifact_quality_regressions.py](../agent/agent/tests/test_artifact_quality_regressions.py),
-  [test_audit_privacy.py](../agent/agent/tests/test_audit_privacy.py),
-  [test_audit_dialogue_regressions.py](../agent/agent/tests/test_audit_dialogue_regressions.py),
-  [test_kb_contracts.py](../agent/agent/tests/test_kb_contracts.py),
-  [test_kb_adapters.py](../agent/agent/tests/test_kb_adapters.py),
-  [test_runtime_safety.py](../agent/agent/tests/test_runtime_safety.py),
-  [test_draft_ux_workflow.py](../agent/agent/tests/test_draft_ux_workflow.py);
+  [test_composer.py](../agents/business-analyst/business_analyst/tests/test_composer.py),
+  [test_artifact_quality_regressions.py](../agents/business-analyst/business_analyst/tests/test_artifact_quality_regressions.py),
+  [test_audit_privacy.py](../agents/business-analyst/business_analyst/tests/test_audit_privacy.py),
+  [test_audit_dialogue_regressions.py](../agents/business-analyst/business_analyst/tests/test_audit_dialogue_regressions.py),
+  [test_kb_contracts.py](../agents/business-analyst/business_analyst/tests/test_kb_contracts.py),
+  [test_kb_adapters.py](../agents/business-analyst/business_analyst/tests/test_kb_adapters.py),
+  [test_runtime_safety.py](../agents/business-analyst/business_analyst/tests/test_runtime_safety.py),
+  [test_draft_ux_workflow.py](../agents/business-analyst/business_analyst/tests/test_draft_ux_workflow.py);
 - DMB gateway/review integrity:
   [test_agent_send_for_review_access.py](../dmb-backlog/backend/tests/test_agent_send_for_review_access.py),
   [test_requirement_artifact_integrity.py](../dmb-backlog/backend/tests/test_requirement_artifact_integrity.py);
@@ -1576,16 +1576,16 @@ artifact content доступны только в разрешённых хра�
 {
   "schema": "agent-v2-fork-provenance.v1",
   "source": {
-    "path": "agent/",
+    "path": "agents/business-analyst/",
     "git_commit": "TO_BE_FIXED_AT_FORK",
     "source_tree_clean": true,
     "copied_at": "2026-09-19T00:00:00Z"
   },
-  "destination": "agent-v2/",
+  "destination": "agents/business-analyst-experimental/",
   "critical_files": [
     {
-      "source_path": "agent/agent/session.py",
-      "destination_path": "agent-v2/agent_v2/session.py",
+      "source_path": "agents/business-analyst/business_analyst/session.py",
+      "destination_path": "agents/business-analyst-experimental/business_analyst_experimental/session.py",
       "source_sha256": "TO_BE_COMPUTED",
       "destination_sha256": "TO_BE_COMPUTED",
       "action": "copy_then_adapt",

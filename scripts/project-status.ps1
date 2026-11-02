@@ -5,17 +5,18 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue) -and (Test-Path (Joi
     $env:Path = "$perUserDockerBin;$env:Path"
 }
 
+$serviceDisplayNames = @{ agent = 'business-analyst'; prioritiser = 'value-priority-assessor'; 'agent-v2' = 'business-analyst-experimental' }
 $serviceHealthUrls = @{
     backend = "http://127.0.0.1:8000/api/v1/health/ready"
     agent = "http://127.0.0.1:9000/api/agent/ready"
     prioritiser = "http://127.0.0.1:9100/ready"
-    "assistant-v2" = "http://127.0.0.1:9200/ready"
     "agent-v2" = "http://127.0.0.1:9300/api/agent-v2/ready"
     "backlog-assistant" = "https://127.0.0.1:9400/health"
     "backlog-assistant-data" = "https://127.0.0.1:9450/health"
 }
 
-foreach ($service in @("backend", "agent", "prioritiser", "assistant-v2", "agent-v2", "backlog-assistant", "backlog-assistant-data")) {
+foreach ($service in @("backend", "agent", "prioritiser", "agent-v2", "backlog-assistant", "backlog-assistant-data")) {
+    $displayName = if ($serviceDisplayNames.ContainsKey($service)) { $serviceDisplayNames[$service] } else { $service }
     $pidPath = Join-Path $runtimeDir "$service.pid"
     $running = $false
     if (Test-Path $pidPath) {
@@ -25,7 +26,7 @@ foreach ($service in @("backend", "agent", "prioritiser", "assistant-v2", "agent
     $processState = if ($running) { "running" } else { "stopped" }
     $healthState = "unreachable"
     if ($running -and $service -like 'backlog-assistant*') {
-        Write-Host ("{0}: process=running, health=requires-mTLS (service.preflight --health)" -f $service)
+        Write-Host ("{0}: process=running, health=requires-mTLS (backlog_assistant.preflight --health)" -f $displayName)
         continue
     }
     if ($running) {
@@ -37,7 +38,7 @@ foreach ($service in @("backend", "agent", "prioritiser", "assistant-v2", "agent
             $healthState = "unreachable"
         }
     }
-    Write-Host ("{0}: process={1}, health={2}" -f $service, $processState, $healthState)
+    Write-Host ("{0}: process={1}, health={2}" -f $displayName, $processState, $healthState)
 }
 
 if (Get-Command docker -ErrorAction SilentlyContinue) {

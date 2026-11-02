@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 function* consumers(root=fileURLToPath(new URL('../js/',import.meta.url))){
  for(const entry of readdirSync(root,{withFileTypes:true})){
-  if(entry.isDirectory()){if(!['lib','ui','assistant-v2'].includes(entry.name))yield* consumers(join(root,entry.name));}
+  if(entry.isDirectory()){if(!['lib','ui'].includes(entry.name))yield* consumers(join(root,entry.name));}
   else if(entry.name.endsWith('.js'))yield join(root,entry.name);
  }
 }

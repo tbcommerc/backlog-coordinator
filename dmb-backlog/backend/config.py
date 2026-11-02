@@ -11,8 +11,6 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_SECRET_KEY = "your-secret-key-change-in-production-dmb2026"
 DEFAULT_AGENT_SECRET = "dmb-agent-local-secret-2026"
 DEFAULT_PRIORITISER_SECRET = "dmb-prioritiser-local-secret-2026"
-DEFAULT_ASSISTANT_V2_ENVELOPE_SECRET = "change-this-assistant-v2-envelope-secret"
-DEFAULT_ASSISTANT_V2_SERVICE_SECRET = "change-this-assistant-v2-service-secret"
 DEFAULT_AGENT_V2_SECRET = "dmb-agent-v2-local-secret-2026"
 
 
@@ -122,19 +120,7 @@ class Settings(BaseSettings):
     INTERSERVICE_CIRCUIT_FAILURE_THRESHOLD: int = 5
     INTERSERVICE_CIRCUIT_RESET_SECONDS: float = 30.0
 
-    # Isolated AI Assistant V2. Safe defaults keep all routes, imports and
-    # dependency traffic disabled until the operator explicitly opts in.
-    ASSISTANT_V2_ENABLED: bool = False
-    ASSISTANT_V2_BASE_URL: str = "http://127.0.0.1:9200"
-    ASSISTANT_V2_TIMEOUT_SECONDS: float = 65.0
-    ASSISTANT_V2_PILOT_USER_IDS: str = ""
-    ASSISTANT_V2_PILOT_EMAILS: str = ""
-    ASSISTANT_V2_ENVELOPE_SECRET: str = DEFAULT_ASSISTANT_V2_ENVELOPE_SECRET
-    ASSISTANT_V2_SERVICE_SECRET: str = DEFAULT_ASSISTANT_V2_SERVICE_SECRET
-    ASSISTANT_V2_ENVELOPE_TTL_SECONDS: int = 300
-
-    # Fork-based BA/PO Assistant V2 from docs/assistant-v2-technical-spec.md.
-    # It coexists with the older greenfield ASSISTANT_V2 prototype above.
+    # Experimental BA/PO V2; implementation lives in agents/business-analyst-experimental/.
     AGENT_V2_ENABLED: bool = False
     AGENT_V2_KILL_SWITCH: bool = False
     AGENT_V2_BASE_URL: str = "http://127.0.0.1:9300"
@@ -190,13 +176,6 @@ def validate_runtime_settings() -> None:
         or settings.PRIORITISER_SECRET == DEFAULT_PRIORITISER_SECRET
     ):
         errors.append("PRIORITISER_SECRET must be set to a non-default value")
-    if settings.ASSISTANT_V2_ENABLED:
-        if settings.ASSISTANT_V2_ENVELOPE_SECRET == DEFAULT_ASSISTANT_V2_ENVELOPE_SECRET:
-            errors.append("ASSISTANT_V2_ENVELOPE_SECRET must be set to a non-default value")
-        if settings.ASSISTANT_V2_SERVICE_SECRET == DEFAULT_ASSISTANT_V2_SERVICE_SECRET:
-            errors.append("ASSISTANT_V2_SERVICE_SECRET must be set to a non-default value")
-        if settings.ASSISTANT_V2_ENVELOPE_TTL_SECONDS < 30 or settings.ASSISTANT_V2_ENVELOPE_TTL_SECONDS > 600:
-            errors.append("ASSISTANT_V2_ENVELOPE_TTL_SECONDS must be between 30 and 600")
     if settings.AGENT_V2_ENABLED and (
         not settings.AGENT_V2_SECRET
         or settings.AGENT_V2_SECRET == DEFAULT_AGENT_V2_SECRET

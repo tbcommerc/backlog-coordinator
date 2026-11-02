@@ -18,7 +18,7 @@ test('active styles and templates cannot reintroduce tiny text or private weight
   const violations=[];
   function scan(root){for(const entry of readdirSync(root,{withFileTypes:true})){
     const path=join(root,entry.name);
-    if(entry.isDirectory()){if(!['lib','assistant-v2'].includes(entry.name))scan(path);continue;}
+    if(entry.isDirectory()){if(!['lib'].includes(entry.name))scan(path);continue;}
     if(!/\.(css|js)$/.test(entry.name))continue;
     const source=readFileSync(path,'utf8');
     for(const m of source.matchAll(/font-size\s*:\s*(\d*\.?\d+)(px|rem)\b/g))if(+m[1]*(m[2]==='rem'?16:1)<12)violations.push(path+': '+m[0]);

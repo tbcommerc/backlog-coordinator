@@ -341,7 +341,7 @@ health-check успешны. Она не меняет защищённые за�
 
 **Приёмка:** QA-заказчик без почты создаёт запрос, передаёт на ревью; PO размещает его в рабочей задаче, разбивает на части и подтверждает итог только после их приёмки. Отдельно проверить повтор и частичное покрытие.
 
-Источники: [gateway](../../dmb-backlog/backend/routers/agent_router.py), [преобразование контекста](../../agent/agent/api/router.py), [модель контекста](../../agent/agent/context.py), [снимок ошибки](evidence/work-tasks-2026-10-20/12-request-create-error.png).
+Источники: [gateway](../../dmb-backlog/backend/routers/agent_router.py), [преобразование контекста](../../agents/business-analyst/business_analyst/api/router.py), [модель контекста](../../agents/business-analyst/business_analyst/context.py), [снимок ошибки](evidence/work-tasks-2026-10-20/12-request-create-error.png).
 
 ### R02 · P2 · Уведомление не объясняет требуемое действие
 

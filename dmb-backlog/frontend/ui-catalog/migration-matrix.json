@@ -3987,7 +3987,7 @@
       "decision": "Изолированные стенды реальных рендереров: не пользовательские маршруты; kit подключать после CSS страниц."
     },
     {
-      "source": "../prioritiser-agent",
+      "source": "../agents/value-priority-assessor",
       "decision": "Standalone Streamlit: отдельный стек, UI kit SPA не применим; стандартный запуск его не включает."
     },
     {

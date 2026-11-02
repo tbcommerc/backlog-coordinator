@@ -6,8 +6,8 @@
 
 - [Полный снимок очереди и протоколов 17.10.2026](task-history/OPEN_TASKS_2026-10-17.md): сохранены исходные FAIL/PASS и последовательность исправлений; текущие статусы берутся из открытой очереди.
 - [Ранний проект трекера](design/business-work-tracker-design.md): заменён [структурой работ](../work-structure.md).
-- [Исторические E2E агента V1](../../agent/docs/archive/e2e/) и [legacy-архитектура](../../agent/docs/archive/legacy/) — общие оригиналы для V1/V2. Удалены только 16 побайтово одинаковых исторических копий V2; активные baseline-профили оставлены независимыми.
-- [Ревью интерфейса V1 от 21.08.2026](../../agent/docs/archive/reviews/FRONTEND_AI_ASSISTANT_REVIEW.md).
+- [Исторические E2E агента V1](../../agents/business-analyst/docs/archive/e2e) и [legacy-архитектура](../../agents/business-analyst/docs/archive/legacy) — общие оригиналы для V1/V2. Удалены только 16 побайтово одинаковых исторических копий V2; активные baseline-профили оставлены независимыми.
+- [Ревью интерфейса V1 от 21.08.2026](../../agents/business-analyst/docs/archive/reviews/FRONTEND_AI_ASSISTANT_REVIEW.md).
 - [Архив Backlog coordinator](../../dmb-backlog/docs/archive/).
 
 ## Сохранённые визуальные материалы

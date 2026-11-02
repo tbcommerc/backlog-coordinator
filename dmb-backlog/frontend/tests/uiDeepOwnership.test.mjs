@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import {families} from '../ui-catalog/family-contracts.mjs';
 import {ICON_ALIASES} from '../js/ui/primitives.js';
 const root=new URL('../',import.meta.url),read=p=>readFileSync(new URL(p,root),'utf8');
-function files(p){return readdirSync(new URL(p,root),{withFileTypes:true}).flatMap(e=>e.isDirectory()?['lib','assistant-v2'].includes(e.name)?[]:files(p+'/'+e.name):[p+'/'+e.name]);}
+function files(p){return readdirSync(new URL(p,root),{withFileTypes:true}).flatMap(e=>e.isDirectory()?['lib'].includes(e.name)?[]:files(p+'/'+e.name):[p+'/'+e.name]);}
 
 test('U27 every public export has family, states and a real browser suite',()=>{
  const exports=[...read('js/ui/index.js').matchAll(/export\s*\{([^}]+)\}/g)].flatMap(m=>m[1].split(',').map(s=>s.trim()));

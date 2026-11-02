@@ -251,7 +251,7 @@ def test_read_only_users_cannot_create_meeting_work():
 
 
 def test_extractor_validates_quotes_and_never_confirms():
-    path = Path(__file__).resolve().parents[3] / 'agent' / 'agent' / 'meeting_extraction.py'
+    path = Path(__file__).resolve().parents[3] / 'agents/business-analyst' / 'business_analyst' / 'meeting_task_extractor.py'
     spec = importlib.util.spec_from_file_location('meeting_extraction', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -271,7 +271,7 @@ def test_extractor_validates_quotes_and_never_confirms():
 @pytest.mark.parametrize('status,expected', [(401, True), (403, True), (429, False), (500, False)])
 def test_extraction_failure_only_exposes_safe_provider_category(status, expected):
     from urllib.error import HTTPError
-    path = Path(__file__).resolve().parents[3] / 'agent' / 'agent' / 'meeting_extraction.py'
+    path = Path(__file__).resolve().parents[3] / 'agents/business-analyst' / 'business_analyst' / 'meeting_task_extractor.py'
     spec = importlib.util.spec_from_file_location('meeting_failure', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

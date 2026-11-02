@@ -7,8 +7,8 @@ uploads/
 
 # Local opencode config and dependencies
 .opencode/
-!prioritiser-agent/.opencode/
-!prioritiser-agent/.opencode/**
+!agents/value-priority-assessor/.opencode/
+!agents/value-priority-assessor/.opencode/**
 
 # Temporary test data / credentials (never commit)
 fl.json
@@ -46,3 +46,9 @@ graphify-out/
 .runtime-*.py
 .runtime-*.json
 .runtime-*.txt
+
+# Preserved local diagnostics moved out of source directories
+/outputs/local-artifacts/
+
+# Local test workspaces carried with relocated agent services
+.test-*/

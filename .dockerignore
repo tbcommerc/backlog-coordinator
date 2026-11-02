@@ -12,7 +12,20 @@
 **/graphify-out
 .runtime
 .env
-agent/.env
+agents/business-analyst/.env
 dmb-backlog/.env
-prioritiser-agent/.env
+agents/value-priority-assessor/.env
 node_modules
+
+# Archived local diagnostics
+outputs/local-artifacts
+
+# Agent services now live below agents/: exclude nested local state
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/.venv*
+**/node_modules
+**/.runtime
+**/.test-*

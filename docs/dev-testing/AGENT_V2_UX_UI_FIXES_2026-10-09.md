@@ -58,4 +58,4 @@
   `/api/agent-v2/ready` вернул `ready`: БД доступна, LLM настроена, feature включён.
   Обновлённая страница `#/agent-v2` открыта в браузере и проверена визуально по UI.
 
-Команды повторения описаны в [TESTING](../../agent-v2/docs/TESTING.md).
+Команды повторения описаны в [TESTING](../../agents/business-analyst-experimental/docs/TESTING.md).

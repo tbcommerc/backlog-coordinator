@@ -2692,53 +2692,11 @@ export function openTaskModal(task = null) {
 
   initTaskDetailModal(window.app);
 
-  if (task?.id) {
-    const prefillKey = `assistant-v2-task-prefill:${task.id}`;
-    const rawPrefill = sessionStorage.getItem(prefillKey);
-    if (rawPrefill) {
-      sessionStorage.removeItem(prefillKey);
-      try {
-        const parsed = JSON.parse(rawPrefill);
-        applyAssistantV2TaskPrefill(parsed, window.app).catch(error => {
-          console.error('Failed to apply Assistant V2 prefill', error);
-          cardToast('Не удалось применить предложение Assistant V2', 'warn');
-        });
-      } catch (error) {
-        console.error('Invalid Assistant V2 prefill', error);
-      }
-    }
-  }
-
   if (window.lucide) {
     window.lucide.createIcons();
   }
 
   return currentModal;
-}
-
-export async function applyAssistantV2TaskPrefill(prefill, app = window.app) {
-  if (!currentTask?.id || !prefill || typeof prefill !== 'object') return false;
-  await cardStartEdit(app, 'title');
-  if (!cardState.editing || !cardState.draft) return false;
-  const allowed = {
-    title: 'title',
-    description: 'description',
-    comment: 'comment',
-    link_mockups: 'mockupUrl',
-    link_requirements: 'reqLinks',
-  };
-  Object.entries(allowed).forEach(([source, target]) => {
-    if (!Object.prototype.hasOwnProperty.call(prefill, source)) return;
-    const value = prefill[source];
-    cardState.draft[target] = target === 'reqLinks'
-      ? (Array.isArray(value) ? value : cardParseLinks(value))
-      : (value ?? '');
-  });
-  cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
-  if (cardState.dirty) saveCardEditDraft();
-  cardRender();
-  cardToast('Предложение Assistant V2 перенесено в форму. Проверьте и сохраните изменения вручную.', 'ok');
-  return cardState.dirty;
 }
 
 // ============================================================

@@ -59,7 +59,7 @@ legacy-задача в списке не открывается, а заверш
 - [agent_router.py](../../dmb-backlog/backend/routers/agent_router.py);
 - [customer_router.py](../../dmb-backlog/backend/routers/customer_router.py);
 - [models.py](../../dmb-backlog/backend/models.py);
-- [PRODUCT_DIALOGUE_SPEC.md](../../agent/docs/PRODUCT_DIALOGUE_SPEC.md);
+- [PRODUCT_DIALOGUE_SPEC.md](../../agents/business-analyst/docs/PRODUCT_DIALOGUE_SPEC.md);
 - [PAGE_LOGIC.md](../../dmb-backlog/docs/PAGE_LOGIC.md).
 
 ## 1. Сквозная модель AS-IS
