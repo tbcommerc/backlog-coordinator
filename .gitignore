@@ -38,3 +38,11 @@ playwright-report/
 graphify-out/
 *.db.bak*
 *.xlsx.bak
+
+# Local runtime probes, browser artifacts and temporary verification scripts
+.runtime-*/
+.runtime-*.cjs
+.runtime-*.mjs
+.runtime-*.py
+.runtime-*.json
+.runtime-*.txt

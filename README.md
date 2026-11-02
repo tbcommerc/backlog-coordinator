@@ -1,29 +1,49 @@
-# Backlog coordinator
+# Backlog Coordinator
 
-Платформа управления бэклогом задач и AI-ассистент для сбора бизнес-требований банковского подразделения DMB (Digital Merchant Banking).
+Платформа управления бэклогом DMB (Digital Merchant Banking) и пять агентов для работы с требованиями, встречами и приоритетами.
 
-## Структура
+## Пять агентов
 
-| Папка | Описание |
-|-------|----------|
-| `agent/` | AI Business Analyst Assistant — FastAPI-сервис для диалогового сбора требований |
-| `dmb-backlog/` | Система управления бэклогом — FastAPI backend + SPA frontend |
-| `prioritiser-agent/` | Агент расчёта финансового эффекта и приоритета задач |
+| Агент | Назначение | Реализация |
+|---|---|---|
+| Бизнес-аналитик | Написание бизнес-требований (БТ) через чат с заказчиком | [agent/](agent/README.md) |
+| Бизнес-аналитик V2 | Экспериментальная версия первого агента | [agent-v2/](agent-v2/README.md) |
+| Анализ расшифровок и извлечение задач | Предложения задач из текста встречи с проверкой человеком | [Модуль встреч](docs/meeting-capture-agent.md) внутри `agent/` и `dmb-backlog/` |
+| Ассистент по бэклогу | Поиск, чтение и анализ данных бэклога через чат | [backlog-assistant/](backlog-assistant/README.md) |
+| Оценка Value и Priority score | Оценка ценности и расчёт приоритета задач | [prioritiser-agent/](prioritiser-agent/README.md) |
 
-## Быстрый старт всей платформы
+[Каталог агентов](docs/AGENT_CATALOG.md) объясняет границы ролей, расположение кода и режимы запуска.
+Пять ролей не требуют пяти процессов: бизнес-аналитик и разбор расшифровок используют общий сервис `agent/`.
 
-Штатный локальный запуск выполняется из корня на Windows:
+## Структура платформы
+
+- [dmb-backlog/](dmb-backlog/README.md) — backend на FastAPI и SPA-интерфейс, интеграция агентов.
+- `scripts/` — запуск, проверка состояния и остановка локального проекта.
+- [docs/](docs/index.md) — карта действующей документации; исторические материалы находятся в `archive/`.
+- [assistant-v2/](assistant-v2/README.md) — устаревший отдельный прототип V2, сохранённый для диагностики и совместимости. В состав пяти агентов не входит; экспериментальная версия бизнес-аналитика находится в `agent-v2/`.
+
+## Локальный запуск
+
+Из корня репозитория на Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 ```
 
-Сценарий поднимает PostgreSQL и Redis, применяет Alembic-миграции, создаёт два
-изолированных Python-окружения и запускает три сервиса. После health-check:
+Скрипт поднимает PostgreSQL, Redis, применяет миграции и запускает backend, бизнес-аналитика V1 и экспериментальный V2. Агент разбора расшифровок работает через сервис V1. Ассистент по бэклогу подключается автоматически при наличии `backlog-assistant/.env`; отдельный флаг — `-IncludeBacklogAssistant`.
 
-- приложение и backend API: `http://127.0.0.1:8000`;
-- AI Business Analyst API: `http://127.0.0.1:9000/docs`;
-- Task Prioritiser API: `http://127.0.0.1:9100/docs`;
+Оценщик Value и Priority score по умолчанию выключен из-за расхода памяти. Для его запуска:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1 -IncludePrioritiser
+```
+
+Адреса после успешного health-check:
+
+- приложение и backend API: `http://127.0.0.1:8000`, документация — `http://127.0.0.1:8000/docs`;
+- бизнес-аналитик V1 и разбор встреч: `http://127.0.0.1:9000/docs`;
+- бизнес-аналитик V2: `http://127.0.0.1:9300/docs`;
+- оценщик при включении: `http://127.0.0.1:9100/docs`;
 - логи: `.runtime/`.
 
 Статус и остановка:
@@ -33,25 +53,14 @@ powershell -ExecutionPolicy Bypass -File scripts/project-status.ps1
 powershell -ExecutionPolicy Bypass -File scripts/stop-project.ps1
 ```
 
-Полный локальный запуск требует доступный реальный LLM. `LLM_PROVIDER=mock`
-используется только изолированными тестами и отклоняется стартовым сценарием,
-чтобы UI не выдавал тестовые данные за ответ агента. Настройте
-OpenAI-compatible endpoint в `agent/.env` по `agent/.env.example`; стартовый
-сценарий передаст те же параметры prioritiser.
-
-Отдельные команды запуска сервисов в их README предназначены для диагностики.
-Полная инструкция и требования Docker находятся в
-[docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md).
+Полный запуск требует Docker и доступную реальную языковую модель. Настройка — по `agent/.env.example`; `LLM_PROVIDER=mock` предназначен для изолированных тестов и не допускается штатным запуском. Секреты и локальные данные в Git не добавляются.
 
 ## Документация
 
-- [Agent README](agent/README.md) — API, архитектура, структура
-- [Backlog coordinator README](dmb-backlog/README.md) — полная документация Backend + Frontend
-- [Карта документации](docs/index.md) — актуальные документы и источники истины
-- [Task Prioritiser README](prioritiser-agent/README.md) — методика, API и агентный слой
-- [Prioritiser upstream](prioritiser-agent/UPSTREAM.md) — источник и версия интегрированного агента
-- [Локальный запуск всей платформы](docs/LOCAL_DEVELOPMENT.md) — единый сценарий для трёх сервисов
-- [Production runbook](docs/PRODUCTION_RUNBOOK.md) — многорепличный стенд, smoke, observability и backup
+- [Каталог пяти агентов](docs/AGENT_CATALOG.md).
+- [Карта документации](docs/index.md).
+- [Локальное развёртывание](docs/LOCAL_DEVELOPMENT.md).
+- [Эксплуатация стенда](docs/PRODUCTION_RUNBOOK.md).
+- [Методика и происхождение оценщика](prioritiser-agent/UPSTREAM.md).
 
-Документация сверена с текущим рабочим деревом 01.09.2026. Исторические отчёты
-и материалы в каталогах `archive/` не переписываются при актуализации AS-IS.
+Состав агентов и команды запуска сверены с кодом 02.11.2026. Это проверка структуры, а не заявление о производственной приёмке всех агентов.
