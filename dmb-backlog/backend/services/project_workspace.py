@@ -4,6 +4,7 @@ Task/WorkTask/Metric retain their own lifecycle. A project has no computed
 completion percentage. Every work-derived projection applies its source ACL.
 """
 import re
+import json
 from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -12,7 +13,7 @@ from sqlalchemy import func, or_, cast, String
 from sqlalchemy.orm import joinedload
 
 from auth import task_read_scope_clause
-from models import Project, Task, TaskStatus, TaskHistory, Deadline, WorkTask, Team
+from models import Project, Task, TaskStatus, TaskHistory, Deadline, WorkTask, Team, User
 from metric_models import Metric, MetricPeriod, MetricMeasurement
 from services.work_query import Selection, Filters
 from services.metric_rules import summarize, today
@@ -40,7 +41,7 @@ def deadline_slots(code, name):
 
 
 def task_scope(db, user, project_id):
-    return db.query(Task).filter(Task.project_id == project_id, Task.is_deleted.is_(False),
+    return db.query(Task).filter((Task.project_id.in_(project_id) if isinstance(project_id,list) else Task.project_id == project_id), Task.is_deleted.is_(False),
                                  task_read_scope_clause(user, Task))
 
 
@@ -61,18 +62,30 @@ def passport(row):
                 responsible=row.pl.name if row.pl else None, created_at=row.created_at)
 
 
-def catalogue(db, user, q='', page=1):
+def catalogue(db, user, q='', page=1, team='', owner=''):
     query = db.query(Project).options(joinedload(Project.status), joinedload(Project.pl))
     if q.strip():
         pattern = '%' + q.strip().replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
         query = query.filter(or_(Project.name.ilike(pattern, escape='\\'), Project.code.ilike(pattern, escape='\\')))
+    all_projects=query.all()
+    from services.project_management import task_rows
+    projected=task_rows(db,user,[p.id for p in all_projects])
+    options=dict(teams=sorted({r['team'] for r in projected if r.get('team')}),owners=sorted({p.pl.name for p in all_projects if p.pl}))
+    if team:
+        query=query.filter(Project.id.in_({r['project_id'] for r in projected if r.get('team')==team}))
+    if owner:
+        query=query.filter(Project.pl.has(User.name==owner))
     total = query.count()
     page = min(page, max(1, (total + 23) // 24))
     rows = query.order_by(Project.name, Project.id).offset((page - 1) * 24).limit(24).all()
     ids = [x.id for x in rows]
     counts = dict(db.query(Task.project_id, func.count(Task.id)).filter(Task.project_id.in_(ids),
         Task.is_deleted.is_(False), task_read_scope_clause(user, Task)).group_by(Task.project_id).all())
-    return dict(items=[{**passport(x), 'backlog_count': counts.get(x.id, 0)} for x in rows], total=total, page=page)
+    def signals(project_id):
+        tasks=[r for r in projected if r['project_id']==project_id]
+        future=sorted(r['milestone_on'] for r in tasks if r['is_milestone'] and r['milestone_on'] and r['milestone_on']>=today() and r['status_code']!='done')
+        return dict(overdue=sum('overdue' in r['issues'] for r in tasks), next_milestone=future[0] if future else None)
+    return dict(items=[{**passport(x), 'backlog_count': counts.get(x.id, 0), **signals(x.id)} for x in rows], total=total, page=page,filter_options=options)
 
 
 def deadlines(db):
@@ -106,7 +119,7 @@ def workspace(db, user, project_id, year):
 
 
 def task_row(row):
-    return dict(id=row.id, public_id=row.public_id, title=row.title,
+    return dict(id=row.id, project_id=row.project_id, public_id=row.public_id, title=row.title,
                 status=row.status.name if row.status else None, status_code=row.status.code if row.status else None,
                 team=row.team.name if row.team else None, owner=row.owner.name if row.owner else None,
                 deadline=row.deadline.name if row.deadline else None,
@@ -158,15 +171,23 @@ def results(db, user, project_id, year, quarter=0, kind='work', page=1):
             done = db.query(cast(TaskStatus.id, String)).filter(TaskStatus.code == 'done')
             query = query.filter(TaskHistory.field_name == 'status_id', TaskHistory.new_value.in_(done))
         else:
-            query = query.filter(TaskHistory.field_name == 'deadline_id')
+            query = query.filter(TaskHistory.field_name.in_(['deadline_id', 'project_plan']))
         total = query.count()
         rows = query.options(joinedload(TaskHistory.task)).order_by(TaskHistory.changed_at.desc(), TaskHistory.id.desc()).offset((page - 1) * 30).limit(30).all()
         refs = deadlines(db) if kind == 'moves' else {}
         def label(value):
             if not value or value == 'None': return 'Не указан'
             return refs.get(int(value), {}).get('name', 'Недоступный срок') if value.isdigit() else 'Недоступный срок'
+        def plan_label(raw):
+            try:
+                value=json.loads(raw or 'null') or {}
+                return f"{value.get('starts_on') or '—'} — {value.get('ends_on') or '—'}; " + ('веха' if value.get('is_milestone') else 'задача')
+            except (ValueError, TypeError):
+                return 'План не распознан'
         items = [dict(id=x.task_id, title=x.task.title, public_id=x.task.public_id, changed_at=x.changed_at,
-                      before=label(x.old_value), after=label(x.new_value)) for x in rows]
+                      before=(plan_label if x.field_name=='project_plan' else label)(x.old_value),
+                      after=(plan_label if x.field_name=='project_plan' else label)(x.new_value),
+                      reason=(json.loads(x.new_value).get('change_reason','') if x.field_name=='project_plan' and x.new_value else '')) for x in rows]
     else:
         query = db.query(MetricPeriod, Metric).join(Metric, Metric.id == MetricPeriod.metric_id).filter(
             Metric.project_id == project_id, task_read_scope_clause(user, Metric),
@@ -181,7 +202,14 @@ def results(db, user, project_id, year, quarter=0, kind='work', page=1):
             samples = [x for x in points if x.period_id == p.id]
             summary = summarize(p, samples, at=min(today(), end - timedelta(days=1)))
             previous = sorted((x for x in samples if x.measured_on < start), key=lambda x: (x.measured_on, x.id))
+            if p.model_version == 'quarterly_v2':
+                from metric_quarterly_models import FactRevision
+                fact = db.get(FactRevision,p.current_fact_revision_id) if p.current_fact_revision_id else None
+                # Explicit quarter facts must never be replaced by observations.
+                available = fact and fact.as_of_date < end and fact.as_of_date <= today()
+                summary = dict(fact=float(fact.value) if available else None, measured_on=fact.as_of_date if available else None)
+                previous = []
             items.append(dict(id=m.id, title=m.title, period=p.label, unit=p.unit_snapshot or m.unit,
                 target=p.target, upper=p.upper, direction=p.direction, state=p.state,
-                previous_fact=float(previous[-1].value) if previous else None, summary=summary))
+                model_version=p.model_version, previous_fact=float(previous[-1].value) if previous else None, summary=summary))
     return dict(items=items, total=total, page=page, start=start, end_exclusive=end, kind=kind)

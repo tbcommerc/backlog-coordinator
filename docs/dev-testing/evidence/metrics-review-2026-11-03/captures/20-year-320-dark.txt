@@ -1,0 +1,957 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - link:
+      - /url: "#/dashboard"
+      - generic: Главная
+    - text: Управление бэклогом
+    - link:
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link:
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link:
+      - /url: "#/metrics"
+      - generic: Метрики
+    - link:
+      - /url: "#/work-projects"
+      - generic: Проекты
+    - link:
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link:
+      - /url: "#/review"
+      - generic: Запросы заказчиков
+    - link:
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+    - text: Аналитика
+    - link:
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link:
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link:
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link:
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+    - text: Бизнес-заказчику
+    - link:
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - text: ИИ-агенты
+    - link:
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link:
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link:
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link:
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - text: Настройки и администрирование
+    - link:
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - generic: "62"
+- banner:
+  - button "Открыть меню":
+  - navigation "Хлебные крошки":
+    - link "Главная":
+      - /url: "#/dashboard"
+    - generic: /
+    - generic: Метрики
+  - button "Открыть поиск":
+  - 'button "Уведомления: 62 непрочитанных"':
+    - 'generic "Непрочитанных уведомлений: 62"': "62"
+  - button "Переключить тему":
+  - button:
+    - generic: QB
+- main:
+  - heading "Метрики" [level=1]
+  - paragraph: Квартальные планы, факты и подтверждённые итоги
+  - button "Новая метрика":
+    - generic: Новая метрика
+  - generic: Поиск
+  - textbox "Поиск"
+  - generic: Год
+  - spinbutton "Год": "2025"
+  - generic: Квартал
+  - combobox "Квартал" [disabled]:
+    - option "1 квартал" [selected]
+    - option "2 квартал"
+    - option "3 квартал"
+    - option "4 квартал"
+  - generic: Представление
+  - combobox "Представление":
+    - option "За квартал"
+    - option "За год" [selected]
+  - generic: Команды
+  - combobox "Команды":
+    - option "Все" [selected]
+    - option "AI"
+    - option "Core"
+    - option "Delivery"
+    - option "IB"
+    - option "Methodology"
+    - option "Post-Trade (Finance)"
+    - option "Post-Trade (Products & Service)"
+    - option "Pre-Trade"
+    - option "QA Team A"
+    - option "QA Team B"
+    - option "ИТ ЛТ"
+    - option "Проектный офис"
+  - generic: Владельцы
+  - combobox "Владельцы":
+    - option "Все" [selected]
+    - option "QA admin"
+    - option "QA ba-a"
+    - option "QA ba-a-peer"
+    - option "QA ba-b"
+    - option "QA ba-no-team"
+    - option "QA cl-a"
+    - option "QA invited"
+    - option "QA it-pl-a"
+    - option "QA it-pl-b"
+    - option "QA no-access"
+    - option "QA pl-a"
+    - option "QA po-a"
+    - option "QA po-b"
+    - option "QA reset-required"
+    - option "QA tribe-lead"
+    - option "UX тест — без команды"
+    - option "А. Коптелов"
+    - option "А. Мазунин"
+    - option "А. Нуждин"
+    - option "В. Баклушин"
+    - option "В. Гусев"
+    - option "В. Лемце"
+    - option "В. Стодольский"
+    - option "Д. Андреев"
+    - option "Д. Козлов"
+    - option "Д. Маркус"
+    - option "Д. Орлова"
+    - option "Д. Фомин"
+    - option "И. Мишутин"
+    - option "И. Яковлев"
+    - option "Л. Куликов"
+    - option "М. Первак"
+    - option "Р. Хачатрян"
+    - option "Тимофей Бабяк"
+    - option "Ю. Шилов"
+  - generic: Проекты
+  - combobox "Проекты":
+    - option "Все" [selected]
+    - option "AI ПОМОЩНИК IB"
+    - option "AI-СПРАВКА ПО КЛИЕНТУ"
+    - option "BI"
+    - option "DATA"
+    - option "IB"
+    - option "MIS"
+    - option "АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ"
+    - option "ВЕНДОРОЗАМЕЩЕНИЕ"
+    - option "ВЫВОД PM В СИГМУ"
+    - option "ДАШБОРДЫ"
+    - option "ДЕСК НЕДВИЖИМОСТИ"
+    - option "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ"
+    - option "ИМПОРТОЗАМЕЩЕНИЕ"
+    - option "КАРТОЧКА КЛИЕНТА"
+    - option "ЛИДЫ ДЛЯ КМ"
+    - option "ЛИДЫ ОТ КМ"
+    - option "МАРШРУТИЗАЦИЯ"
+    - option "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД"
+    - option "ПАЙПЛАЙН-СКАНЕР СДЕЛОК"
+    - option "ПРОЧИЕ ЦЕЛИ"
+    - option "РЕАЛИЗОВАН ПОИСК ПОТЕНЦИАЛОВ ДЛЯ НОВЫХ ВЫПУСКОВ ОБЛИГАЦИЙ"
+    - option "СДЕЛКИ МАРШРУТИЗАЦИИ"
+    - option "ЦЕЛИ ЛПР"
+    - option "ЦИФРОВОЙ МЕТОДОЛОГ"
+    - option "ЦКП"
+  - generic: Состояние метрики
+  - combobox "Состояние метрики":
+    - option "Все" [selected]
+    - option "Черновик"
+    - option "Ведётся"
+    - option "Приостановлена"
+  - generic: Состояние периода
+  - combobox "Состояние периода":
+    - option "Все" [selected]
+    - option "Черновик"
+    - option "В работе"
+    - option "Закрыт"
+    - option "Отменён"
+  - generic: Область
+  - combobox "Область":
+    - option "Все метрики" [selected]
+    - option "Мои метрики"
+  - generic: Сортировка
+  - combobox "Сортировка":
+    - option "По названию" [selected]
+    - option "По изменению"
+    - option "По сроку замера"
+  - checkbox "Архив"
+  - text: Архив
+  - button "Сброс":
+    - generic: Сброс
+  - button "Нет факта · 1":
+    - generic: Нет факта · 1
+  - button "Ожидают итога · 1":
+    - generic: Ожидают итога · 1
+  - button "Цель не достигнута · 1":
+    - generic: Цель не достигнута · 1
+  - button "Просрочен замер · 0":
+    - generic: Просрочен замер · 0
+  - region "Годовой реестр — таблица" [active]:
+    - table "Годовой реестр":
+      - caption: Годовой реестр
+      - rowgroup:
+        - row "Метрика 1 квартал 2 квартал 3 квартал 4 квартал":
+          - columnheader "Метрика"
+          - columnheader "1 квартал"
+          - columnheader "2 квартал"
+          - columnheader "3 квартал"
+          - columnheader "4 квартал"
+      - rowgroup:
+        - 'row "DEV-QA-QUARTERLY-LIVE-20261103 MET-7324 · шт План: 100 Факт: 80 Итоговый · 2025-03-31 Цель не достигнута · 80% План: 100 Факт: — Ожидает итога Нет факта План: 100 Факт: — Ожидает итога Нет факта План: 100 Факт: — Ожидает итога Нет факта"':
+          - cell "DEV-QA-QUARTERLY-LIVE-20261103 MET-7324 · шт":
+            - link "DEV-QA-QUARTERLY-LIVE-20261103":
+              - /url: "#/metrics/7324?year=2025&quarter=1&view=year"
+            - generic: MET-7324 · шт
+          - 'cell "План: 100 Факт: 80 Итоговый · 2025-03-31 Цель не достигнута · 80%"':
+            - 'link "План: 100 Факт: 80 Итоговый · 2025-03-31 Цель не достигнута · 80%"':
+              - /url: "#/metrics/7324?year=2025&quarter=1&view=year&period_id=28475"
+              - generic: "План: 100"
+              - strong: "Факт: 80"
+              - generic: Итоговый · 2025-03-31
+              - generic: Цель не достигнута · 80%
+          - 'cell "План: 100 Факт: — Ожидает итога Нет факта"':
+            - 'link "План: 100 Факт: — Ожидает итога Нет факта"':
+              - /url: "#/metrics/7324?year=2025&quarter=1&view=year&period_id=28476"
+              - generic: "План: 100"
+              - strong: "Факт: —"
+              - generic: Ожидает итога
+              - generic: Нет факта
+          - 'cell "План: 100 Факт: — Ожидает итога Нет факта"':
+            - 'link "План: 100 Факт: — Ожидает итога Нет факта"':
+              - /url: "#/metrics/7324?year=2025&quarter=1&view=year&period_id=28477"
+              - generic: "План: 100"
+              - strong: "Факт: —"
+              - generic: Ожидает итога
+              - generic: Нет факта
+          - 'cell "План: 100 Факт: — Ожидает итога Нет факта"':
+            - 'link "План: 100 Факт: — Ожидает итога Нет факта"':
+              - /url: "#/metrics/7324?year=2025&quarter=1&view=year&period_id=28478"
+              - generic: "План: 100"
+              - strong: "Факт: —"
+              - generic: Ожидает итога
+              - generic: Нет факта
+        - 'row "DEV-QA-UI-REVIEW-20261027 MET-071 · % · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "DEV-QA-UI-REVIEW-20261027 MET-071 · % · Прежняя модель":
+            - link "DEV-QA-UI-REVIEW-20261027":
+              - /url: "#/metrics/71?year=2025&quarter=1&view=year"
+            - generic: MET-071 · % · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/71?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/71?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/71?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/71?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Автоматизация интеграционного тестирования MET-002 · дней · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Автоматизация интеграционного тестирования MET-002 · дней · Прежняя модель":
+            - link "Автоматизация интеграционного тестирования":
+              - /url: "#/metrics/2?year=2025&quarter=1&view=year"
+            - generic: MET-002 · дней · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/2?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/2?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/2?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/2?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Автоматизация отчётов о доступности MET-014 · ч.-дн · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Автоматизация отчётов о доступности MET-014 · ч.-дн · Прежняя модель":
+            - link "Автоматизация отчётов о доступности":
+              - /url: "#/metrics/14?year=2025&quarter=1&view=year"
+            - generic: MET-014 · ч.-дн · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/14?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/14?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/14?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/14?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Аудит качества данных в задачах MET-032 · % · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Аудит качества данных в задачах MET-032 · % · Прежняя модель":
+            - link "Аудит качества данных в задачах":
+              - /url: "#/metrics/32?year=2025&quarter=1&view=year"
+            - generic: MET-032 · % · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/32?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/32?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/32?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/32?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Внедрение SLA для расчётных операций MET-010 · ед. · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Внедрение SLA для расчётных операций MET-010 · ед. · Прежняя модель":
+            - link "Внедрение SLA для расчётных операций":
+              - /url: "#/metrics/10?year=2025&quarter=1&view=year"
+            - generic: MET-010 · ед. · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/10?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/10?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/10?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/10?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Внедрение пайплайн-отчётности MET-019 · млн ₽ · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Внедрение пайплайн-отчётности MET-019 · млн ₽ · Прежняя модель":
+            - link "Внедрение пайплайн-отчётности":
+              - /url: "#/metrics/19?year=2025&quarter=1&view=year"
+            - generic: MET-019 · млн ₽ · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/19?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/19?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/19?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/19?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Генеративная аналитика для руководства MET-033 · шт. · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Генеративная аналитика для руководства MET-033 · шт. · Прежняя модель":
+            - link "Генеративная аналитика для руководства":
+              - /url: "#/metrics/33?year=2025&quarter=1&view=year"
+            - generic: MET-033 · шт. · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/33?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/33?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/33?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/33?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Дашборд P&L Pre-Trade MET-004 · ч.-дн · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Дашборд P&L Pre-Trade MET-004 · ч.-дн · Прежняя модель":
+            - link "Дашборд P&L Pre-Trade":
+              - /url: "#/metrics/4?year=2025&quarter=1&view=year"
+            - generic: MET-004 · ч.-дн · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/4?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/4?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/4?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/4?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Дашборд P&L для казначейства MET-007 · ч.-дн · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Дашборд P&L для казначейства MET-007 · ч.-дн · Прежняя модель":
+            - link "Дашборд P&L для казначейства":
+              - /url: "#/metrics/7?year=2025&quarter=1&view=year"
+            - generic: MET-007 · ч.-дн · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/7?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/7?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/7?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/7?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Дашборд активностей КМ MET-012 · % · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Дашборд активностей КМ MET-012 · % · Прежняя модель":
+            - link "Дашборд активностей КМ":
+              - /url: "#/metrics/12?year=2025&quarter=1&view=year"
+            - generic: MET-012 · % · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/12?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/12?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/12?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/12?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Дашборд контрольных точек расчётов MET-009 · ед. · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Дашборд контрольных точек расчётов MET-009 · ед. · Прежняя модель":
+            - link "Дашборд контрольных точек расчётов":
+              - /url: "#/metrics/9?year=2025&quarter=1&view=year"
+            - generic: MET-009 · ед. · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/9?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/9?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/9?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/9?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Дашборд портфеля для руководства MET-038 · дней · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Дашборд портфеля для руководства MET-038 · дней · Прежняя модель":
+            - link "Дашборд портфеля для руководства":
+              - /url: "#/metrics/38?year=2025&quarter=1&view=year"
+            - generic: MET-038 · дней · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/38?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/38?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/38?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/38?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Дашборд статуса проектов MET-034 · ч.-дн · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Дашборд статуса проектов MET-034 · ч.-дн · Прежняя модель":
+            - link "Дашборд статуса проектов":
+              - /url: "#/metrics/34?year=2025&quarter=1&view=year"
+            - generic: MET-034 · ч.-дн · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/34?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/34?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/34?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/34?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Дашборд стоимости фондирования MET-022 · млн ₽ · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Дашборд стоимости фондирования MET-022 · млн ₽ · Прежняя модель":
+            - link "Дашборд стоимости фондирования":
+              - /url: "#/metrics/22?year=2025&quarter=1&view=year"
+            - generic: MET-022 · млн ₽ · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/22?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/22?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/22?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/22?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Дашборд финансовых метрик деска MET-018 · % · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Дашборд финансовых метрик деска MET-018 · % · Прежняя модель":
+            - link "Дашборд финансовых метрик деска":
+              - /url: "#/metrics/18?year=2025&quarter=1&view=year"
+            - generic: MET-018 · % · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/18?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/18?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/18?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/18?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Дашборд экономической прибыли MET-024 · ч.-дн · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Дашборд экономической прибыли MET-024 · ч.-дн · Прежняя модель":
+            - link "Дашборд экономической прибыли":
+              - /url: "#/metrics/24?year=2025&quarter=1&view=year"
+            - generic: MET-024 · ч.-дн · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/24?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/24?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/24?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/24?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Единый портфель проектов MET-029 · ед. · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Единый портфель проектов MET-029 · ед. · Прежняя модель":
+            - link "Единый портфель проектов":
+              - /url: "#/metrics/29?year=2025&quarter=1&view=year"
+            - generic: MET-029 · ед. · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/29?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/29?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/29?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/29?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Интеграция PMO с бэклогом команд MET-037 · ч.-дн · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Интеграция PMO с бэклогом команд MET-037 · ч.-дн · Прежняя модель":
+            - link "Интеграция PMO с бэклогом команд":
+              - /url: "#/metrics/37?year=2025&quarter=1&view=year"
+            - generic: MET-037 · ч.-дн · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/37?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/37?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/37?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/37?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Контроль бюджета проектов MET-035 · млн ₽ · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Контроль бюджета проектов MET-035 · млн ₽ · Прежняя модель":
+            - link "Контроль бюджета проектов":
+              - /url: "#/metrics/35?year=2025&quarter=1&view=year"
+            - generic: MET-035 · млн ₽ · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/35?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/35?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/35?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/35?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Контроль исполнения стратегических целей MET-030 · ч.-дн · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Контроль исполнения стратегических целей MET-030 · ч.-дн · Прежняя модель":
+            - link "Контроль исполнения стратегических целей":
+              - /url: "#/metrics/30?year=2025&quarter=1&view=year"
+            - generic: MET-030 · ч.-дн · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/30?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/30?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/30?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/30?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Метрики DORA MET-017 · тыс. руб · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Метрики DORA MET-017 · тыс. руб · Прежняя модель":
+            - link "Метрики DORA":
+              - /url: "#/metrics/17?year=2025&quarter=1&view=year"
+            - generic: MET-017 · тыс. руб · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/17?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/17?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/17?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/17?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Метрики зрелости команд MET-025 · дней · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Метрики зрелости команд MET-025 · дней · Прежняя модель":
+            - link "Метрики зрелости команд":
+              - /url: "#/metrics/25?year=2025&quarter=1&view=year"
+            - generic: MET-025 · дней · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/25?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/25?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/25?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/25?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Модуль отчётов для Нац. расчётного депозитария MET-008 · тыс. руб · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Модуль отчётов для Нац. расчётного депозитария MET-008 · тыс. руб · Прежняя модель":
+            - link "Модуль отчётов для Нац. расчётного депозитария":
+              - /url: "#/metrics/8?year=2025&quarter=1&view=year"
+            - generic: MET-008 · тыс. руб · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/8?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/8?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/8?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/8?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+        - 'row "Модуль экспорта данных в BI MET-013 · шт. · Прежняя модель План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся План: — Факт: — Не ведётся"':
+          - cell "Модуль экспорта данных в BI MET-013 · шт. · Прежняя модель":
+            - link "Модуль экспорта данных в BI":
+              - /url: "#/metrics/13?year=2025&quarter=1&view=year"
+            - generic: MET-013 · шт. · Прежняя модель
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/13?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/13?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/13?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+          - 'cell "План: — Факт: — Не ведётся"':
+            - 'link "План: — Факт: — Не ведётся"':
+              - /url: "#/metrics/13?year=2025&quarter=1&view=year"
+              - generic: "План: —"
+              - strong: "Факт: —"
+              - generic: Не ведётся
+  - status: "Найдено: 40 · Страница 1 из 2"
+  - button "Назад" [disabled]:
+    - generic: Назад
+  - button "Далее":
+    - generic: Далее

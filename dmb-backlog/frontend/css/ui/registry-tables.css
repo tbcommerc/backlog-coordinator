@@ -1,0 +1,79 @@
+/* Registry variant: Backlog is the visual reference. Pages own column layout only. */
+:root { --ui-table-sticky-gap:var(--space-4); }
+.ui-table-sticky-header {
+  position:fixed;
+  z-index:20;
+  box-sizing:border-box;
+  padding-top:var(--ui-table-sticky-gap);
+  background:var(--bg-primary);
+}
+.ui-table-sticky-surface {
+  overflow:hidden;
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  background:var(--bg-tertiary);
+  border-bottom:1px solid var(--border-color);
+}
+.ui-table-sticky-surface > table {
+  margin:0;
+  table-layout:fixed;
+  border-collapse:collapse;
+}
+/* Named composition: registry controls scroll away; only table headings dock. */
+:root .main-content .sticky-toolbar[data-ui-toolbar="flow"] {
+  position:relative;
+  inset:auto;
+  left:auto !important; /* neutralise the legacy sidebar-state inset */
+  padding:0;
+}
+.ui-data-table[data-ui-table="registry"] {
+  border:1px solid var(--border-color);
+  border-radius:var(--radius-lg);
+  background:var(--bg-secondary);
+  overflow:hidden;
+}
+/* Allow a surrounding registry surface to own its single enclosing border. */
+.ui-data-table.ui-table-embedded[data-ui-table="registry"] { border:0; border-radius:0; }
+:root .ui-table[data-ui-table="registry"] {
+  --ui-table-padding-y:var(--table-cell-padding-y);
+  --ui-table-padding-x:var(--space-3);
+}
+:root .ui-table[data-ui-table="registry"] > tbody > tr > td { box-sizing:border-box; height:48px; }
+:root .ui-table-title {
+  display:block;
+  min-width:0;
+  max-width:100%;
+  min-height:0;
+  padding:0;
+  border:0;
+  border-radius:var(--radius-sm);
+  background:transparent;
+  color:var(--text-primary);
+  font-family:inherit;
+  font-size:var(--text-control-sm);
+  font-weight:var(--font-semibold);
+  line-height:1.4;
+  text-align:left;
+  text-decoration:none;
+  overflow-wrap:anywhere;
+  cursor:pointer;
+}
+:root .ui-table-title:hover { color:var(--text-link); text-decoration:underline; }
+:root .ui-table-title:focus-visible { outline:2px solid var(--focus-color); outline-offset:2px; }
+:root .ui-table-meta,
+:root .ui-table[data-ui-table="registry"] .ui-table-cell-secondary {
+  color:var(--text-secondary);
+  font-size:var(--text-control-sm);
+  font-weight:var(--font-normal,400);
+  line-height:1.4;
+}
+.ui-table-id { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+.ui-table-primary { display:flex; align-items:center; gap:var(--space-2); min-width:0; }
+.ui-table-primary > .ui-table-title { flex:1; }
+.ui-table-primary > .ui-badge { flex:none; }
+@media(min-width:701px) {
+  :root .ui-table-title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+}
+@media(max-width:700px) {
+  :root .ui-data-table[data-ui-table="registry"][data-ui-responsive="cards"] tbody tr > td { height:auto; }
+  :root .ui-table-title { white-space:normal; }
+}

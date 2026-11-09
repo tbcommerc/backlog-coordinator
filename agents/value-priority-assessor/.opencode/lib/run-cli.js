@@ -6,6 +6,7 @@
 // вводные и объясняет результат, арифметику выполняет детерминированный код,
 // иначе два прогона одного бэклога дали бы разные приоритеты.
 
+import { runRemoteCli } from "./remote-tools.js"
 import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
@@ -19,6 +20,10 @@ export function resolvePython(directory) {
 }
 
 export function runCli(directory, args, timeoutMs = 120000) {
+  const mode = process.env.PRIORITISER_TOOL_MODE || "cli"
+  if (mode === "http") return runRemoteCli(args)
+  if (mode !== "cli") throw new Error("remote_tool_mode_invalid")
+
   return new Promise((resolve, reject) => {
     const python = resolvePython(directory)
     const child = spawn(python, ["-m", "value_priority_assessor.cli", ...args], {

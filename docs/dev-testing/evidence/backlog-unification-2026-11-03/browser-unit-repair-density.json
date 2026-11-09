@@ -1,0 +1,11 @@
+{
+  "scope": "final tablet signal layout and complete priority labels; all 18 density/theme/zoom cases",
+  "stats": {
+    "startTime": "2026-11-04T10:02:57.141Z",
+    "duration": 87260.06599999999,
+    "expected": 18,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

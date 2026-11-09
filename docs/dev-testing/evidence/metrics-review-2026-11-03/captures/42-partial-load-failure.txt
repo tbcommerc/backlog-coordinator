@@ -1,0 +1,5 @@
+- main:
+  - alert:
+    - heading "Метрики недоступны" [level=3]
+    - paragraph: "QA: файлы недоступны"
+    - button "Повторить"

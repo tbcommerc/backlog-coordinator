@@ -9,14 +9,27 @@
       "family": 2,
       "source": "frontend/js/components/requestLifecycle.js",
       "entry": "/review/:id",
-      "components": ["Button", "Control", "ViewState"],
+      "components": [
+        "Button",
+        "Control",
+        "ViewState"
+      ],
       "local": "Переходы запроса и причина решения",
-      "tests": ["reviewResponsive.spec.mjs"],
-      "states": ["loading", "error", "ready", "readonly"],
+      "tests": [
+        "reviewResponsive.spec.mjs"
+      ],
+      "states": [
+        "loading",
+        "error",
+        "ready",
+        "readonly"
+      ],
       "status": "pending",
       "verification": "Зарегистрирована поверхность; отдельная приёмка диалога не выполнена.",
       "verifiedScope": "Инвентаризация исходного модуля; browser acceptance остаётся открытой.",
-      "contractEvidence": ["frontend/tests/uiMigrationMatrix.test.mjs"]
+      "contractEvidence": [
+        "frontend/tests/uiMigrationMatrix.test.mjs"
+      ]
     },
     {
       "id": "dashboard",
@@ -52,9 +65,9 @@
     },
     {
       "id": "backlog",
-      "title": "Бэклог DMB",
+      "title": "Бэклог: все доступные и моя команда",
       "family": 1,
-      "source": "frontend/js/components/taskTable.js",
+      "source": "frontend/js/components/backlogPage.js",
       "entry": "/backlog",
       "components": [
         "Button",
@@ -64,10 +77,12 @@
       ],
       "local": "Sticky-таблица, карточки, массовые операции",
       "tests": [
-        "uiKitBacklog.spec.mjs",
-        "uiKitComposites.spec.mjs",
-        "visualRefresh.spec.mjs",
-        "registryGeometry.spec.mjs"
+        "unifiedBacklogNavigation.spec.mjs",
+        "unifiedBacklogInventory.spec.mjs",
+        "unifiedBacklogVisual.spec.mjs",
+        "unifiedBacklogOperations.spec.mjs",
+        "unifiedBacklogFailure.spec.mjs",
+        "unifiedBacklogRevocation.spec.mjs"
       ],
       "states": [
         "loading",
@@ -77,8 +92,8 @@
         "readonly"
       ],
       "status": "browser-verified",
-      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
-      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнение 22.10.2026: компонентные проверки унификации V01–V10, 1440/1280/720/390/320 CSS px, light/dark. Живой ролевой прогон и настоящий zoom 200% не заявляются.",
+      "verification": "04.11.2026: единый контроллер all/team; совместимый адрес проверен через реальный router, без переноса старых подтверждений.",
+      "verifiedScope": "Изолированный browser API: loading/empty/error/readonly, таблица/карточки, операции, клавиатура, 7 размеров × 2 темы × 2 области; coarse pointer и контраст. Отдельный Chromium tab zoom 200% и живые готовые QA-профили на PostgreSQL. Доказательства и границы общей регрессии: docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md.",
       "contractEvidence": [
         "frontend/tests/uiSizingOwnership.test.mjs",
         "frontend/tests/uiMigrationMatrix.test.mjs"
@@ -86,7 +101,7 @@
     },
     {
       "id": "team-backlog",
-      "title": "Бэклог команды",
+      "title": "Совместимый адрес командного бэклога",
       "family": 1,
       "source": "frontend/js/components/teamBacklog.js",
       "entry": "/team-backlog",
@@ -98,8 +113,12 @@
       ],
       "local": "Sticky-таблица, карточки, выбор строк",
       "tests": [
-        "uiKitBacklog.spec.mjs",
-        "uiKitComposites.spec.mjs"
+        "unifiedBacklogNavigation.spec.mjs",
+        "unifiedBacklogInventory.spec.mjs",
+        "unifiedBacklogVisual.spec.mjs",
+        "unifiedBacklogOperations.spec.mjs",
+        "unifiedBacklogFailure.spec.mjs",
+        "unifiedBacklogRevocation.spec.mjs"
       ],
       "states": [
         "loading",
@@ -109,8 +128,8 @@
         "readonly"
       ],
       "status": "browser-verified",
-      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
-      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных.",
+      "verification": "04.11.2026: единый контроллер all/team; совместимый адрес проверен через реальный router, без переноса старых подтверждений.",
+      "verifiedScope": "Изолированный browser API: loading/empty/error/readonly, таблица/карточки, операции, клавиатура, 7 размеров × 2 темы × 2 области; coarse pointer и контраст. Отдельный Chromium tab zoom 200% и живые готовые QA-профили на PostgreSQL. Доказательства и границы общей регрессии: docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md.",
       "contractEvidence": [
         "frontend/tests/uiSizingOwnership.test.mjs",
         "frontend/tests/uiMigrationMatrix.test.mjs"
@@ -3907,6 +3926,7 @@
     "frontend/js/components/agentChat.js",
     "frontend/js/components/analytics.js",
     "frontend/js/components/auditLog.js",
+    "frontend/js/components/backlogPage.js",
     "frontend/js/components/customerChat.js",
     "frontend/js/components/customerPortal.js",
     "frontend/js/components/customerReferences.js",
@@ -3920,10 +3940,15 @@
     "frontend/js/components/login.js",
     "frontend/js/components/meetingCapture.js",
     "frontend/js/components/metrics.js",
+    "frontend/js/components/metricsMigration.js",
+    "frontend/js/components/metricsPresentation.js",
+    "frontend/js/components/metricsQuarterly.js",
     "frontend/js/components/modal.js",
     "frontend/js/components/navbar.js",
     "frontend/js/components/notifications.js",
     "frontend/js/components/outboxDeadLetters.js",
+    "frontend/js/components/projectManagement.js",
+    "frontend/js/components/projectUi.js",
     "frontend/js/components/projectWorkspace.js",
     "frontend/js/components/quarterlyGoalsUpdate.js",
     "frontend/js/components/quickEdit.js",
@@ -4042,7 +4067,7 @@
     "frontend/js/components/taskAttachments.js": "active-surface",
     "frontend/js/components/taskColumns.js": "shared-renderer-or-helper",
     "frontend/js/components/taskComments.js": "active-surface",
-    "frontend/js/components/taskTable.js": "active-surface",
+    "frontend/js/components/taskTable.js": "helper",
     "frontend/js/components/teamBacklog.js": "active-surface",
     "frontend/js/components/viewState.js": "shared-renderer-or-helper",
     "frontend/js/components/workProjects.js": "active-surface",
@@ -4058,7 +4083,13 @@
     "frontend/js/components/workPicker.js": "shared-renderer-or-helper",
     "frontend/js/components/workProductivity.js": "shared-renderer-or-helper",
     "frontend/js/components/workQueue.js": "shared-renderer-or-helper",
-    "frontend/js/components/metrics.js": "active-surface"
+    "frontend/js/components/metrics.js": "active-surface",
+    "frontend/js/components/backlogPage.js": "active-surface",
+    "frontend/js/components/metricsMigration.js": "helper",
+    "frontend/js/components/metricsQuarterly.js": "active-surface",
+    "frontend/js/components/projectManagement.js": "active-surface",
+    "frontend/js/components/projectUi.js": "active-surface",
+    "frontend/js/components/metricsPresentation.js": "helper"
   },
   "exceptions": [
     {

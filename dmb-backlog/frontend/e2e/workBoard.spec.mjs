@@ -58,7 +58,7 @@ test('selected detail remains open when its column is excluded by a filter',asyn
  await page.locator('#work-status').selectOption('in_progress');
  await page.getByRole('button',{name:'Применить',exact:true}).click();
  await expect(page.locator('[data-membership-note]')).toContainText('больше не входит');
- await expect(page.getByRole('button',{name:'К доске',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Закрыть',exact:true})).toBeVisible();
  expect(page.url()).toContain('/work-tasks/101?');
 });
 
@@ -93,7 +93,7 @@ test('menu begins work; result uses shared detail form and cancellation sends no
  await expect(page.locator('.work-transition-form')).toContainText('Не выполнено пунктов: 1');
  await page.locator('#wf-result_text').fill('Сохранённый результат');
  await page.getByRole('button',{name:'Назад',exact:true}).click();expect(writes).toHaveLength(1);
- await page.getByRole('button',{name:'К доске',exact:true}).click();
+ await page.getByRole('button',{name:'Закрыть',exact:true}).click();
  await page.getByRole('button',{name:'Действия WRK-101',exact:true}).click();
  await page.getByRole('menuitem',{name:'Передать на приёмку',exact:true}).click();
  await expect(page.locator('#wf-result_text')).toHaveValue('Сохранённый результат');
@@ -206,10 +206,10 @@ for(const width of [320,390,768,1024,1280,1440,1920])for(const theme of ['light'
  if(width<640){await expect(page.getByLabel('Этап',{exact:true})).toBeVisible();await page.getByLabel('Этап',{exact:true}).selectOption('ready');await expect(page.locator('[data-board-column="new"]')).toBeHidden();}
  await page.screenshot({path:info.outputPath('board.png'),fullPage:true});
  await page.locator('[data-board-column="ready"] [data-work-id]').first().click();
- await expect(page.getByRole('button',{name:'К доске',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Закрыть',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  if(width>=1280)await expect(page.locator('.work-dialog-inline')).toBeVisible();else await expect(page.locator('dialog:modal.work-board-detail')).toBeVisible();
  await page.screenshot({path:info.outputPath('board-detail.png'),fullPage:true});
- await page.getByRole('button',{name:'К доске',exact:true}).click();
+ await page.getByRole('button',{name:'Закрыть',exact:true}).click();
  await expect(page.locator('[data-board-column="ready"]')).toBeVisible();
 });

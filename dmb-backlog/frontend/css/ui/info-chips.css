@@ -40,9 +40,9 @@
   font-weight: var(--font-medium);
   letter-spacing: normal;
   text-transform: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: var(--info-chip-white-space, nowrap);
+  overflow: var(--info-chip-overflow, hidden);
+  text-overflow: var(--info-chip-text-overflow, ellipsis);
   overflow-wrap: normal;
   vertical-align: middle;
   &:where(:not(.ui-tag):not(:has(> span, > strong, > b, > small, svg, i, .ui-avatar))) { display: inline-block; }
@@ -54,9 +54,9 @@
     min-width: 0;
     font: inherit;
     color: inherit;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: var(--info-chip-overflow, hidden);
+    text-overflow: var(--info-chip-text-overflow, ellipsis);
+    white-space: var(--info-chip-white-space, nowrap);
     overflow-wrap: normal;
   }
   & svg { width: var(--info-chip-icon); height: var(--info-chip-icon); flex: none; color: inherit; }
@@ -109,3 +109,5 @@
    Styling must not turn an inactive state into a visible warning. */
 :is(:root, #task-detail-overlay, #create-task-overlay) .qe-unestimated > div:first-child .qe-unestimated-label:not([hidden]) { display: inline-flex; }
 
+
+.ui-badge-wrap { --info-chip-white-space:normal; --info-chip-overflow:visible; --info-chip-text-overflow:clip; }

@@ -173,19 +173,21 @@
       "status": "pending",
       "consumers": [
         "js/backlog-assistant/answer.js",
+        "js/backlogRouteState.js",
         "js/components/admin.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/expressEstimate.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/reportingStatuses.js",
         "js/components/reviewPage.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workProjects.js",
         "js/components/workQueue.js",
@@ -313,7 +315,8 @@
       "openQuestions": [
         "Code-reviewed does not equal acceptance of every role, state and responsive combination.",
         "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история.",
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "search": {
@@ -332,8 +335,10 @@
         "js/components/filterToolbar.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/reportingStatuses.js",
@@ -346,20 +351,25 @@
       "codeEvidence": [],
       "openQuestions": [
         "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/reports.js",
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен.",
+        "04.11.2026: финальный discovery согласован; общий статус pending не повышен."
       ]
     },
     "filter": {
       "status": "pending",
       "consumers": [
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
         "js/components/didBacklog.js",
         "js/components/expressEstimate.js",
         "js/components/filterToolbar.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/notifications.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quickFilters.js",
         "js/components/reports.js",
@@ -369,21 +379,26 @@
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен.",
+        "04.11.2026: финальный discovery согласован; общий статус pending не повышен."
       ]
     },
     "sorting": {
       "status": "pending",
       "consumers": [
+        "js/backlogPreferences.js",
+        "js/backlogRouteState.js",
         "js/components/admin.js",
+        "js/components/backlogPage.js",
         "js/components/didBacklog.js",
         "js/components/reports.js",
-        "js/components/tableUtils.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js"
+        "js/components/tableUtils.js"
       ],
       "codeEvidence": [],
-      "openQuestions": []
+      "openQuestions": [
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
+      ]
     },
     "selection": {
       "status": "pending",
@@ -393,6 +408,7 @@
         "js/components/admin.js",
         "js/components/agentChat.js",
         "js/components/analytics.js",
+        "js/components/backlogPage.js",
         "js/components/customerReferences.js",
         "js/components/didBacklog.js",
         "js/components/expressEstimate.js",
@@ -400,40 +416,42 @@
         "js/components/login.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/quickEdit.js",
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
         "js/components/reviewPage.js",
         "js/components/tableSelection.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workProductivity.js",
         "js/components/workProjects.js",
         "js/components/workTasks.js"
       ],
       "codeEvidence": [],
-      "openQuestions": []
+      "openQuestions": [
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
+      ]
     },
     "bulk": {
       "status": "pending",
       "consumers": [
         "js/adminLabels.js",
         "js/app.js",
+        "js/components/backlogPage.js",
         "js/components/didBacklog.js",
         "js/components/filterToolbar.js",
         "js/components/meetingCapture.js",
         "js/components/modal.js",
         "js/components/reportingStatuses.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workProjects.js",
         "js/components/workTasks.js"
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/workProjects.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/workProjects.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "status": {
@@ -444,6 +462,7 @@
         "js/components/adminDictionaries.js",
         "js/components/agentChat.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReport.js",
         "js/components/dashboard.js",
@@ -453,8 +472,10 @@
         "js/components/kanbanBoard.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/notifications.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickFilters.js",
@@ -464,8 +485,6 @@
         "js/components/reviewPage.js",
         "js/components/settings.js",
         "js/components/sidebar.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
         "js/components/workProjects.js",
@@ -477,7 +496,8 @@
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "counter": {
@@ -488,10 +508,10 @@
         "js/components/auditLog.js",
         "js/components/customerPortal.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
-        "js/components/projectWorkspace.js",
         "js/components/quickFilters.js",
         "js/components/reportingStatuses.js",
         "js/components/reviewPage.js",
@@ -595,7 +615,9 @@
       "openQuestions": [
         "Code review is scoped to Counter identity/composition, not all operational scenarios.",
         "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история.",
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен.",
+        "04.11.2026: финальный discovery согласован; общий статус pending не повышен."
       ]
     },
     "tabs": {
@@ -605,12 +627,12 @@
         "js/components/agentChat.js",
         "js/components/directorateReport.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/projectWorkspace.js",
         "js/components/reportingStatuses.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
-        "js/components/workTaskDrawer.js"
+        "js/components/settings.js"
       ],
       "codeEvidence": [
         {
@@ -671,7 +693,9 @@
       "openQuestions": [
         "Code-reviewed does not equal acceptance of every role, state and responsive combination.",
         "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история.",
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js",
+        "04.11.2026: после исправления шести unit-ошибок удалён phantom tab-handler WorkTask; discovery обновлён. Общая browser-acceptance семьи не объявляется.",
+        "04.11.2026: финальный discovery согласован; общий статус pending не повышен."
       ]
     },
     "dialog": {
@@ -682,6 +706,7 @@
         "js/components/accountSecurity.js",
         "js/components/admin.js",
         "js/components/agentChat.js",
+        "js/components/backlogPage.js",
         "js/components/customerReferences.js",
         "js/components/expressEstimate.js",
         "js/components/metrics.js",
@@ -692,15 +717,14 @@
         "js/components/reports.js",
         "js/components/requestLifecycle.js",
         "js/components/reviewPage.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workResolution.js",
         "js/components/workTaskDrawer.js",
         "js/modalAccessibility.js"
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/requestLifecycle.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/requestLifecycle.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "confirmation": {
@@ -710,11 +734,14 @@
         "js/app.js",
         "js/components/admin.js",
         "js/components/agentChat.js",
+        "js/components/backlogPage.js",
         "js/components/customerReferences.js",
         "js/components/expressEstimate.js",
         "js/components/filterToolbar.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/outboxDeadLetters.js",
         "js/components/quarterlyGoalsUpdate.js",
@@ -725,7 +752,9 @@
         "js/uiFeedback.js"
       ],
       "codeEvidence": [],
-      "openQuestions": []
+      "openQuestions": [
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
+      ]
     },
     "field": {
       "status": "pending",
@@ -741,6 +770,7 @@
         "js/components/agentChat.js",
         "js/components/analytics.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerChat.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
@@ -752,8 +782,12 @@
         "js/components/login.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
+        "js/components/projectUi.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
@@ -764,8 +798,6 @@
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
         "js/components/settings.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
         "js/components/workProjects.js",
@@ -778,7 +810,8 @@
       "codeEvidence": [],
       "openQuestions": [
         "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/requestLifecycle.js",
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "validation": {
@@ -790,6 +823,7 @@
         "js/components/auditLog.js",
         "js/components/filterToolbar.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/quickEdit.js",
         "js/components/reports.js",
@@ -802,7 +836,8 @@
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "feedback": {
@@ -816,6 +851,7 @@
         "js/components/adminDictionaries.js",
         "js/components/agentChat.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
         "js/components/dashboard.js",
@@ -827,9 +863,12 @@
         "js/components/login.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
@@ -838,8 +877,6 @@
         "js/components/requestLifecycle.js",
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
         "js/components/workProjects.js",
@@ -853,7 +890,8 @@
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/requestLifecycle.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/requestLifecycle.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "viewState": {
@@ -867,6 +905,7 @@
         "js/components/agentChat.js",
         "js/components/analytics.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
         "js/components/dashboard.js",
@@ -877,20 +916,21 @@
         "js/components/kanbanBoard.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
+        "js/components/quickFilters.js",
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
         "js/components/requestLifecycle.js",
         "js/components/reviewPage.js",
         "js/components/settings.js",
         "js/components/sidebar.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/viewState.js",
         "js/components/workBoard.js",
         "js/components/workProjects.js",
@@ -902,7 +942,8 @@
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/requestLifecycle.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/requestLifecycle.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "upload": {
@@ -912,6 +953,8 @@
         "js/api.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/reports.js",
         "js/components/requirementReviews.js",
@@ -971,7 +1014,8 @@
       "openQuestions": [
         "Native-picker exceptions preserve their existing interaction; full functional transport testing is outside this unification disposition.",
         "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история.",
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "progress": {
@@ -981,19 +1025,20 @@
         "js/backlog-assistant/answer.js",
         "js/components/agentChat.js",
         "js/components/analytics.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReport.js",
         "js/components/expressEstimate.js",
         "js/components/filterToolbar.js",
         "js/components/metrics.js",
+        "js/components/metricsPresentation.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
         "js/components/reports.js",
         "js/components/tableUtils.js",
         "js/components/taskColumns.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
         "js/components/workTaskDrawer.js"
@@ -1121,7 +1166,8 @@
         }
       ],
       "openQuestions": [
-        "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история."
+        "29.10.2026: после внедрения компонентов карточек требуется повторная проверка изменённых потребителей; прежнее codeEvidence сохранено как история.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "menu": {
@@ -1129,16 +1175,16 @@
       "consumers": [
         "js/app.js",
         "js/components/agentChat.js",
+        "js/components/backlogPage.js",
         "js/components/kanbanBoard.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workTaskDrawer.js",
         "js/components/workTasks.js"
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "tooltip": {
@@ -1151,6 +1197,7 @@
         "js/components/agentChat.js",
         "js/components/analytics.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/dashboard.js",
         "js/components/didBacklog.js",
@@ -1160,6 +1207,7 @@
         "js/components/modal.js",
         "js/components/navbar.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
@@ -1169,8 +1217,6 @@
         "js/components/sidebar.js",
         "js/components/tableUtils.js",
         "js/components/taskAttachments.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
         "js/components/workQueue.js",
@@ -1178,7 +1224,8 @@
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/workTasks.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js, js/components/workTasks.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "popover": {
@@ -1186,16 +1233,20 @@
       "consumers": [
         "js/app.js",
         "js/components/agentChat.js",
+        "js/components/backlogPage.js",
         "js/components/didBacklog.js",
         "js/components/expressEstimate.js",
         "js/components/filterToolbar.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/reports.js",
         "js/components/taskComments.js",
         "js/uiFeedback.js"
       ],
       "codeEvidence": [],
-      "openQuestions": []
+      "openQuestions": [
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
+      ]
     },
     "navigation": {
       "status": "pending",
@@ -1208,6 +1259,7 @@
         "js/components/accountSecurity.js",
         "js/components/agentChat.js",
         "js/components/analytics.js",
+        "js/components/backlogPage.js",
         "js/components/customerChat.js",
         "js/components/customerPortal.js",
         "js/components/dashboard.js",
@@ -1217,9 +1269,11 @@
         "js/components/login.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/navbar.js",
         "js/components/notifications.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/reportingStatuses.js",
@@ -1228,8 +1282,6 @@
         "js/components/reviewPage.js",
         "js/components/settings.js",
         "js/components/sidebar.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workProjects.js",
         "js/components/workReports.js",
         "js/components/workTaskDrawer.js",
@@ -1239,7 +1291,8 @@
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/backlogTaskLoader.js, js/components/projectWorkspace.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/backlogTaskLoader.js, js/components/projectWorkspace.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "table": {
@@ -1251,29 +1304,33 @@
         "js/components/agentChat.js",
         "js/components/analytics.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerReport.js",
         "js/components/didBacklog.js",
         "js/components/expressEstimate.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/reports.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workQueue.js",
         "js/components/workReports.js",
         "js/components/workTasks.js"
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "date": {
       "status": "pending",
       "consumers": [
+        "js/components/metricsMigration.js",
         "js/components/modal.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quickEdit.js",
         "js/components/reportingStatuses.js",
@@ -1285,7 +1342,8 @@
       "codeEvidence": [],
       "openQuestions": [
         "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js",
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "chart": {
@@ -1295,22 +1353,24 @@
         "js/backlog-assistant/presentation.js",
         "js/components/agentChat.js",
         "js/components/analytics.js",
+        "js/components/backlogPage.js",
         "js/components/expressEstimate.js",
         "js/components/filterToolbar.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/reports.js",
         "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/taskAttachments.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workProjects.js",
         "js/components/workQueue.js",
         "js/components/workTasks.js"
       ],
       "codeEvidence": [],
-      "openQuestions": []
+      "openQuestions": [
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
+      ]
     },
     "avatar": {
       "status": "pending",
@@ -1392,13 +1452,16 @@
         "js/components/agentChat.js",
         "js/components/analytics.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/didBacklog.js",
         "js/components/expressEstimate.js",
         "js/components/filterToolbar.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quickFilters.js",
         "js/components/reportingStatuses.js",
@@ -1406,8 +1469,6 @@
         "js/components/requestPresentation.js",
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
         "js/components/workProjects.js",
@@ -1418,22 +1479,24 @@
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js"
+        "Discovery reconciled 2026-10-29; changed candidates require review: js/components/projectWorkspace.js",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "download": {
       "status": "pending",
       "consumers": [
         "js/api.js",
+        "js/components/backlogPage.js",
         "js/components/didBacklog.js",
         "js/components/modal.js",
         "js/components/reports.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/taskCsv.js"
       ],
       "codeEvidence": [],
-      "openQuestions": []
+      "openQuestions": [
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
+      ]
     },
     "drag": {
       "status": "pending",
@@ -1456,6 +1519,7 @@
         "js/components/admin.js",
         "js/components/agentChat.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
         "js/components/didBacklog.js",
@@ -1468,12 +1532,11 @@
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
         "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
         "js/components/reviewPage.js",
         "js/components/settings.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/viewState.js",
         "js/components/workBoard.js",
         "js/components/workRelations.js",
@@ -1482,33 +1545,37 @@
         "js/components/workTasks.js"
       ],
       "codeEvidence": [],
-      "openQuestions": []
+      "openQuestions": [
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
+      ]
     },
     "permissions": {
       "status": "pending",
       "consumers": [
         "js/app.js",
         "js/backlog-assistant/page.js",
+        "js/backlogContext.js",
         "js/components/accountSecurity.js",
         "js/components/admin.js",
         "js/components/agentChat.js",
         "js/components/analytics.js",
+        "js/components/backlogPage.js",
         "js/components/directorateReport.js",
         "js/components/expressEstimate.js",
         "js/components/filterToolbar.js",
         "js/components/kanbanBoard.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/quarterlyGoalsUpdate.js",
+        "js/components/quickEdit.js",
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
         "js/components/settings.js",
         "js/components/sidebar.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/viewState.js",
         "js/components/workProjects.js",
         "js/components/workRelations.js",
@@ -1520,7 +1587,9 @@
         "js/uiFeedback.js"
       ],
       "codeEvidence": [],
-      "openQuestions": []
+      "openQuestions": [
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
+      ]
     },
     "readOnlyField": {
       "status": "pending",
@@ -1529,7 +1598,8 @@
         "js/components/agentChat.js",
         "js/components/directorateReport.js",
         "js/components/metrics.js",
-        "js/components/projectWorkspace.js",
+        "js/components/metricsQuarterly.js",
+        "js/components/projectManagement.js",
         "js/components/reports.js",
         "js/components/requestPresentation.js",
         "js/components/settings.js",
@@ -1538,71 +1608,86 @@
       "codeEvidence": [],
       "openQuestions": [
         "Новые компоненты карточек: изолированные проверки описаны в UI_KIT_DETAIL_COMPONENTS_2026-10-29.md; живая приёмка ещё не проведена.",
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен.",
+        "04.11.2026: финальный discovery согласован; общий статус pending не повышен."
       ]
     },
     "sectionCard": {
       "status": "pending",
       "consumers": [
         "js/components/metrics.js",
-        "js/components/projectWorkspace.js",
+        "js/components/metricsQuarterly.js",
+        "js/components/projectManagement.js",
         "js/components/workTaskDrawer.js"
       ],
       "codeEvidence": [],
       "openQuestions": [
         "Новые компоненты карточек: изолированные проверки описаны в UI_KIT_DETAIL_COMPONENTS_2026-10-29.md; живая приёмка ещё не проведена.",
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "detailPanel": {
       "status": "pending",
       "consumers": [
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/workTaskDrawer.js",
         "js/modalAccessibility.js"
       ],
       "codeEvidence": [],
       "openQuestions": [
-        "Новые компоненты карточек: изолированные проверки описаны в UI_KIT_DETAIL_COMPONENTS_2026-10-29.md; живая приёмка ещё не проведена."
+        "Новые компоненты карточек: изолированные проверки описаны в UI_KIT_DETAIL_COMPONENTS_2026-10-29.md; живая приёмка ещё не проведена.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "dataTable": {
       "status": "pending",
       "consumers": [
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/workReports.js"
       ],
       "codeEvidence": [],
       "openQuestions": [
         "DataTable/TableCell: fixture verification is recorded in UI_KIT_TABLES_2026-10-29.md; live role acceptance remains open.",
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "tableCell": {
       "status": "pending",
       "consumers": [
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/workReports.js"
       ],
       "codeEvidence": [],
       "openQuestions": [
         "DataTable/TableCell: fixture verification is recorded in UI_KIT_TABLES_2026-10-29.md; live role acceptance remains open.",
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "entityPicker": {
       "status": "pending",
       "consumers": [
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/workPicker.js",
         "js/components/workResolution.js"
       ],
       "codeEvidence": [],
       "openQuestions": [
         "EntityPicker fixture verification: UI_KIT_ENTITY_PICKER_2026-10-29.md; live role acceptance remains open.",
-        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending."
+        "2026-10-30: Consumer discovery/source changed during UI Kit adoption. Scoped fixture evidence: docs/dev-testing/UI_KIT_ADOPTION_2026-10-30.md. Historical evidence retained; full current code/live acceptance remains pending.",
+        "04.11.2026: discovery согласован после объединения бэклога и соседних текущих изменений. Приёмка единого бэклога — docs/dev-testing/BACKLOG_UNIFICATION_2026-11-03.md; pending всей семьи не повышен."
       ]
     },
     "intervals": {

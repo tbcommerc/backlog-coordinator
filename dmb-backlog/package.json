@@ -5,6 +5,9 @@
   "scripts": {
     "test:unit": "node --test frontend/tests/*.test.mjs",
     "test:e2e": "playwright test",
+    "test:design": "playwright test --config=playwright.design.config.mjs",
+    "test:backlog": "playwright test --config=playwright.backlog-acceptance.config.mjs",
+    "test:backlog:performance": "playwright test --config=playwright.backlog-performance.config.mjs",
     "test:ui-details": "playwright test --config=playwright.ui-details.config.mjs",
     "test:ui-tables": "playwright test --config=playwright.ui-tables.config.mjs",
     "test:ui-picker": "playwright test --config=playwright.ui-picker.config.mjs",

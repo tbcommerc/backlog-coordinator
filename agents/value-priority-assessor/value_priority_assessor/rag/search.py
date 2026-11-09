@@ -37,7 +37,7 @@ RRF_K = 60
 # первые 6 символов («витрин-а/-ы/-ой», «автоматизац-ия/-ии»).
 STEM_LENGTH = 6
 
-INDEX_DIR = DATA_DIR / "index"
+INDEX_DIR = Path(get_settings().rag_index_dir).expanduser() if get_settings().rag_index_dir else DATA_DIR / "index"
 VECTOR_INDEX_PATH = INDEX_DIR / "vector.faiss"
 VECTOR_META_PATH = INDEX_DIR / "vector-meta.json"
 
@@ -94,7 +94,10 @@ class VectorIndex:
         self.chunks = chunks
         self.signature = signature
         self.available = False
-        self.model_name = get_settings().rag_embedding_model
+        settings = get_settings()
+        self.model_name = settings.rag_embedding_model
+        self.encoder_profile = {"model": self.model_name, "revision": settings.rag_embedding_revision,
+            "cache_dir": settings.rag_model_cache_dir, "local_files_only": settings.rag_local_files_only}
         self.rebuilt = False
         self._index = None
         self._model = None
@@ -124,11 +127,14 @@ class VectorIndex:
         if VECTOR_INDEX_PATH.exists() and VECTOR_META_PATH.exists():
             meta = json.loads(VECTOR_META_PATH.read_text(encoding="utf-8"))
             if (
-                meta.get("corpus_signature") == self.signature
+                meta.get("schema_version") == 3
+                and meta.get("encoder_profile") == self.encoder_profile
+                and meta.get("corpus_signature") == self.signature
                 and meta.get("model_name") == self.model_name
                 and meta.get("document_count") == len(self.chunks)
             ):
-                self._index = faiss.read_index(str(VECTOR_INDEX_PATH))
+                import numpy as np
+                self._index = faiss.deserialize_index(np.frombuffer(VECTOR_INDEX_PATH.read_bytes(),dtype="uint8").copy())
                 return
 
         self._build()
@@ -154,11 +160,13 @@ class VectorIndex:
         index.add(vectors)
 
         INDEX_DIR.mkdir(parents=True, exist_ok=True)
-        faiss.write_index(index, str(VECTOR_INDEX_PATH))
+        # Python handles Unicode paths on Windows; FAISS narrow fopen does not.
+        VECTOR_INDEX_PATH.write_bytes(faiss.serialize_index(index).tobytes())
         VECTOR_META_PATH.write_text(
             json.dumps(
                 {
-                    "schema_version": 2,
+                    "schema_version": 3,
+                    "encoder_profile": self.encoder_profile,
                     "engine": "faiss",
                     "index_type": "IndexFlatIP",
                     "metric": "inner_product_on_normalized_embeddings",

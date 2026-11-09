@@ -78,12 +78,13 @@ async def test_model_budget_counts_retries_and_rejects_before_network():
 
 @pytest.mark.asyncio
 async def test_unknown_provider_delivery_reserves_output_budget():
+    from dmb_agent_contracts.model import AgentError
     b = await bridge()
     async def transport(request):
         raise httpx.ReadTimeout("synthetic")
     broker = ModelBroker(b, "https://synthetic.invalid/v1", "test", "model", transport=httpx.MockTransport(transport))
     for _ in range(4):
-        with pytest.raises(httpx.ReadTimeout):
+        with pytest.raises(AgentError,match="operation_deadline_exceeded"):
             await broker.completion({"model": "model", "messages": []})
     with pytest.raises(ValueError, match="budget"):
         await broker.completion({"model": "model", "messages": []})
@@ -99,6 +100,37 @@ async def test_revoked_execution_never_calls_provider():
     with pytest.raises(ValueError):
         await broker.completion({"model": "model", "messages": []})
     assert broker.requests == 0
+    await broker.client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_finished_logical_owner_cannot_use_remaining_broker_budget():
+    from dmb_agent_contracts.operation import operation_scope
+    from dmb_agent_contracts.model import AgentError
+    b=await bridge()
+    calls=[]
+    async def transport(request):
+        calls.append(request)
+        return httpx.Response(200,json={"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":5}})
+    with operation_scope(max_model_attempts=4) as owner:
+        broker=ModelBroker(b,"https://synthetic.invalid/v1","synthetic","model",transport=httpx.MockTransport(transport))
+        await broker.completion({"model":"model","messages":[]})
+        assert owner.model_attempts==broker.requests==1
+    with pytest.raises(AgentError,match="operation_already_finished"):
+        await broker.completion({"model":"model","messages":[]})
+    assert len(calls)==broker.requests==1
+    await broker.client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_provider_body_is_not_saved_as_operator_diagnostic():
+    b=await bridge()
+    async def transport(request):
+        return httpx.Response(500,text="synthetic-user-material synthetic-secret")
+    broker=ModelBroker(b,"https://synthetic.invalid/v1","synthetic-secret","model",transport=httpx.MockTransport(transport))
+    with pytest.raises(httpx.HTTPStatusError):
+        await broker.completion({"model":"model","messages":[]})
+    assert broker.provider_error=="provider_http_500"
     await broker.client.aclose()
 
 
@@ -373,3 +405,43 @@ async def test_count_cannot_drop_explicit_search_literal():
     result=await b.call('aggregate_backlog',{'query':{},'group_by':'status','metrics':['count']})
     assert result.data['total']==2
     assert data.calls[-1]['arguments']['query']['terms']==['Альфа']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("usage", [
+    {"prompt_tokens": True, "completion_tokens": 1},
+    {"prompt_tokens": -1, "completion_tokens": 1},
+    {"prompt_tokens": 1, "completion_tokens": False},
+    {"prompt_tokens": "1", "completion_tokens": 1},
+])
+async def test_invalid_usage_cannot_refund_reserved_output(usage):
+    b = await bridge()
+    async def transport(request):
+        return httpx.Response(200, json={"choices": [], "usage": usage})
+    broker = ModelBroker(b, "https://synthetic.invalid/v1", "test", "model", transport=httpx.MockTransport(transport))
+    try:
+        with pytest.raises(ValueError, match="provider_usage_not_qualified"):
+            await broker.completion({"model": "model", "messages": []})
+        assert broker.requests == 1 and broker.output_reserved == 1500
+    finally:
+        await broker.client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('status,code',[(401,'provider_auth_failed'),(403,'provider_auth_failed'),(429,'provider_quota_exhausted')])
+async def test_auth_and_quota_failure_fence_subsequent_native_runtime_retries(status,code):
+    b = await bridge()
+    calls=[]
+    async def transport(request):
+        calls.append(request)
+        return httpx.Response(status)
+    broker=ModelBroker(b,'https://synthetic.invalid/v1','test','model',transport=httpx.MockTransport(transport))
+    try:
+        with pytest.raises(httpx.HTTPStatusError):
+            await broker.completion({'model':'model','messages':[]})
+        assert b.failure==code
+        with pytest.raises(ValueError,match=code):
+            await broker.completion({'model':'model','messages':[]})
+        assert len(calls)==broker.requests==1 and broker.output_reserved==1500
+    finally:
+        await broker.client.aclose()

@@ -1,0 +1,57 @@
+{
+  "mode": "live PostgreSQL; agents disabled",
+  "results": [
+    {
+      "check": "Authenticated on authorized origin",
+      "status": "PASS"
+    },
+    {
+      "check": "team register loads",
+      "status": "PASS"
+    },
+    {
+      "check": "Team API excludes other teams and metrics",
+      "status": "PASS"
+    },
+    {
+      "check": "Authenticated on authorized origin",
+      "status": "PASS"
+    },
+    {
+      "check": "readonly register loads",
+      "status": "PASS"
+    },
+    {
+      "check": "Read-only profile cannot enter quick editor",
+      "status": "PASS"
+    },
+    {
+      "check": "Authenticated on authorized origin",
+      "status": "PASS"
+    },
+    {
+      "check": "Existing references and cleanup authority available",
+      "status": "PASS"
+    },
+    {
+      "check": "Ordinary QA task created",
+      "status": "PASS"
+    },
+    {
+      "check": "Created task appears in full filtered register",
+      "status": "PASS"
+    },
+    {
+      "check": "Quick edit persisted on PostgreSQL with current version",
+      "status": "PASS"
+    },
+    {
+      "check": "Task card retains list scope",
+      "status": "PASS"
+    },
+    {
+      "check": "Only created ordinary QA task removed",
+      "status": "PASS"
+    }
+  ]
+}

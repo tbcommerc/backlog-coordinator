@@ -127,15 +127,27 @@ def analyze_session(capture_id: UUID, req: VersionRequest, db: Session = Depends
         raise HTTPException(409, "Разбор уже содержит пункты. Повторный анализ может затереть правки; создайте новый разбор.")
     if not row.transcript.strip():
         raise HTTPException(422, "Добавьте текст расшифровки")
+    prior_operation_id = row.analysis_run_id if row.analysis_backend == "meeting-analyzer" and row.analysis_status in ("failed","cancelled") else None
+    prior_service_run_id = row.analysis_service_run_id if prior_operation_id else None
     try:
-        change_draft(db, row, req.version, {"analysis_status": "queued", "analysis_run_id": str(uuid4()),
-            "analysis_requested_at": datetime.now(timezone.utc), "analysis_started_at": None,
+        from config import settings
+        operation_id, requested_at = str(uuid4()), datetime.now(timezone.utc)
+        change_draft(db, row, req.version, {"analysis_status": "queued", "analysis_run_id": operation_id,
+            "analysis_backend": "meeting-analyzer" if settings.MEETING_ANALYZER_ENABLED else "legacy",
+            "analysis_service_run_id": None, "analysis_ack_pending": False,
+            "analysis_requested_at": requested_at, "analysis_started_at": None,
             "analysis_finished_at": None, "analysis_error_code": None})
     except HTTPException:
         db.refresh(row)
         if row.analysis_status in (*ACTIVE, "completed"):
             return snapshot(db, row, user)
         raise
+    if settings.MEETING_ANALYZER_ENABLED:
+        from services.meeting_service_delivery import create_intent
+        create_intent(db, {"id": row.id, "owner_id": row.owner_id, "transcript": row.transcript,
+            "meeting_date": row.meeting_date, "version": req.version + 1,
+            "analysis_run_id": operation_id, "analysis_requested_at": requested_at,
+            "retry_operation_id": prior_operation_id, "retry_service_run_id": prior_service_run_id})
     db.commit()
     db.refresh(row)
     return snapshot(db, row, user)

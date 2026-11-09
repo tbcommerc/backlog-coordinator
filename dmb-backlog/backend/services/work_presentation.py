@@ -20,9 +20,6 @@ def next_step(row, capabilities, people=None, team_name=None):
         kind, label, action = 'acceptance', 'Принять результат', 'done'
         actor_kind, actor_id = 'acceptor', row.acceptor_id
         actionable = action in capabilities.get('available_actions', [])
-    elif row.blocked_reason:
-        kind, label, action = 'blocker', 'Снять препятствие', 'clear-blocker'
-        actionable = capabilities.get('can_block', False)
     elif row.status == 'new':
         kind, label, action = 'prepare', 'Подготовить к исполнению', 'ready'
         actor_kind, actor_id = 'requester', row.requester_id

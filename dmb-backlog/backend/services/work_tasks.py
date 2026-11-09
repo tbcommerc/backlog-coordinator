@@ -176,8 +176,7 @@ def update(db, row, user, req):
     values = req.model_dump(exclude_unset=True, exclude={"version"})
     reason = values.pop('reason', '')
     execution = editor(user, row.execution_team_id)
-    require(execution or (row.requester_id == user.id and row.status == "new") or (
-        row.assignee_id == user.id and set(values) <= {"blocked_reason"}))
+    require(execution or (row.requester_id == user.id and row.status == "new"))
     if row.status in {"done", "cancelled"}:
         raise HTTPException(422, "Сначала переоткройте задачу")
     changed_terms = any(key in values and values[key] != getattr(row, key) for key in ('description', 'acceptor_id'))
@@ -302,8 +301,7 @@ def response(db, row, user):
     data["available_actions"] = available_actions(row, user)
     data["can_edit"] = editor(user, row.execution_team_id) or (row.requester_id == user.id and row.status == "new")
     data["can_collaborate"] = participant(row, user)
-    data["can_block"] = row.status not in {"done", "cancelled"} and (data["can_edit"] or row.assignee_id == user.id)
-    data['can_check'] = data['can_block']
+    data["can_check"] = row.status not in {"done", "cancelled"} and (data["can_edit"] or row.assignee_id == user.id)
     data['priority'] = row.priority or 'normal'
     data['checklist'] = row.checklist or []
     data['checklist_progress'] = {'done': sum(bool(x['completed']) for x in data['checklist']), 'total': len(data['checklist'])}
@@ -324,7 +322,7 @@ def history_item(db, item, user):
     """Allowlisted changes: do not expose inaccessible context snapshots."""
     labels = {"title": "Название", "description": "Ожидаемый результат", "status": "Статус",
               "due_date": "Срок", "assignee_id": "Исполнитель", "acceptor_id": "Приёмщик",
-              "execution_team_id": "Команда", "blocked_reason": "Препятствие", "assignment_state": "Назначение",
+              "execution_team_id": "Команда", "assignment_state": "Назначение",
               "result_text": "Фактический результат", "priority": "Приоритет", "checklist": "Чек-лист"}
     actor = db.get(User, item.actor_id) if item.actor_id else None
     def display(key, value):

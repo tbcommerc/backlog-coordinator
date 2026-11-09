@@ -10,6 +10,7 @@ import queue
 import secrets
 import threading
 from dataclasses import asdict
+from contextlib import contextmanager
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
@@ -22,6 +23,7 @@ from ..mcp.registry import registry as mcp_registry
 from ..llm.rephrase import rephrase_stream
 from ..meeting_task_extractor import ExtractionInput, extract_meeting, extraction_failure_detail
 from ..llm.factory import get_llm
+from ..llm.context import llm_session
 from ..orchestrator import get_orchestrator
 from ..session import SessionConflictError
 from ..tools.base import registry as tool_registry
@@ -41,6 +43,13 @@ router = APIRouter()
 logger = logging.getLogger("business_analyst.api")
 
 _orchestrator = get_orchestrator()
+
+
+@contextmanager
+def _session_scope(session_id):
+    with _orchestrator.store.serialized(session_id):
+        with llm_session(session_id):
+            yield
 
 
 def _check_secret(x_agent_secret: str = Header(default="")):
@@ -74,7 +83,11 @@ def _to_ctx(raw: dict | None) -> UserContext | None:
 
 @router.post("/chat", response_model=AgentResponse)
 def chat(req: ChatRequest, _=Depends(_check_secret)):
-    with _orchestrator.store.serialized(req.session_id):
+    from dmb_agent_contracts.operation import current_operation
+    if not settings.UNIT_TEST_MODE and current_operation() is None:
+        from ..compatibility import chat_request
+        return chat_request(req)
+    with _session_scope(req.session_id):
         if not req.session_id or _orchestrator.store.get(req.session_id) is None:
             raise HTTPException(status_code=404, detail="Session not found")
         cached = _orchestrator.store.get_cached_response(req.session_id, req.message_id)
@@ -123,7 +136,14 @@ def chat_stream(req: ChatRequest, _=Depends(_check_secret)):
 
     def work() -> None:
         try:
-            with _orchestrator.store.serialized(req.session_id):
+            if not settings.UNIT_TEST_MODE:
+                from ..compatibility import chat_request
+                payload = chat_request(req, on_status=lambda stage: emit("status", {"stage":stage}))
+                if payload.get("message"):
+                    emit("delta", {"text":payload["message"]})
+                emit("result", payload)
+                return
+            with _session_scope(req.session_id):
                 cached = _orchestrator.store.get_cached_response(req.session_id, req.message_id)
                 if cached is not None:
                     emit("result", cached)
@@ -185,7 +205,7 @@ def new_session(req: NewSessionRequest, _=Depends(_check_secret)):
 
 @router.post("/reset")
 def reset(req: ResetRequest, _=Depends(_check_secret)):
-    with _orchestrator.store.serialized(req.session_id):
+    with _session_scope(req.session_id):
         _orchestrator.store.delete(req.session_id)
     return {"success": True}
 
@@ -194,7 +214,7 @@ def reset(req: ResetRequest, _=Depends(_check_secret)):
 def session_state(session_id: str, _=Depends(_check_secret)):
     # Building a restored draft can refresh its review findings and save state.
     # Read, review and fingerprint must share the same session boundary as edits.
-    with _orchestrator.store.serialized(session_id):
+    with _session_scope(session_id):
         state = _orchestrator.store.get(session_id)
         if state is None:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -212,7 +232,7 @@ def sessions(user_id: int = 0, _=Depends(_check_secret)):
 
 @router.post("/session/{session_id}/archive")
 def archive_session(session_id: str, archived: bool = True, _=Depends(_check_secret)):
-    with _orchestrator.store.serialized(session_id):
+    with _session_scope(session_id):
         state = _orchestrator.store.set_archived(session_id, archived)
     if state is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -221,7 +241,7 @@ def archive_session(session_id: str, archived: bool = True, _=Depends(_check_sec
 
 @router.post("/send-for-review", response_model=AgentResponse)
 def send_for_review(req: SendForReviewRequest, _=Depends(_check_secret)):
-    with _orchestrator.store.serialized(req.session_id):
+    with _session_scope(req.session_id):
         response = _orchestrator.confirm_and_send(
             req.session_id, req.task_id, req.title, req.user_id,
             expected_draft_hash=req.expected_draft_hash,
@@ -234,14 +254,14 @@ def send_for_review(req: SendForReviewRequest, _=Depends(_check_secret)):
 
 @router.post("/reopen-review", response_model=AgentResponse)
 def reopen_review(req: ReopenReviewRequest, _=Depends(_check_secret)):
-    with _orchestrator.store.serialized(req.session_id):
+    with _session_scope(req.session_id):
         return _orchestrator.reopen_for_revision(req.session_id, req.user_id, req.comment)
 
 
 @router.post("/cancel-review", response_model=AgentResponse)
 def cancel_review(req: CancelReviewRequest, _=Depends(_check_secret)):
     """Compensate a backend transaction failure for one exact submission."""
-    with _orchestrator.store.serialized(req.session_id):
+    with _session_scope(req.session_id):
         return _orchestrator.cancel_review_submission(
             req.session_id, req.task_id, req.user_id,
         )
@@ -249,7 +269,7 @@ def cancel_review(req: CancelReviewRequest, _=Depends(_check_secret)):
 
 @router.post("/edit-draft-section", response_model=AgentResponse)
 def edit_draft_section(req: EditDraftSectionRequest, _=Depends(_check_secret)):
-    with _orchestrator.store.serialized(req.session_id):
+    with _session_scope(req.session_id):
         return _orchestrator.edit_draft_section(req.session_id, req.field, req.value, req.user_id)
 
 

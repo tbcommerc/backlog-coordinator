@@ -44,7 +44,7 @@ export function renderAnswer(answer) {
         ${answer.clarification ? `<p>${esc(answer.clarification.question)}</p>${answer.clarification.options.map(o => button({ label: o, attrs: { 'data-followup': o } })).join('')}` : ''}
         ${blocks}
         <p class="ba-answer-meta">Данные на ${esc(observedAt(answer.as_of))} · область: ${esc(answer.context?.object_ref || 'доступный бэклог')}</p>
-        <details><summary>Основания и полнота</summary><p>Показано: ${esc(answer.coverage?.displayed_count ?? 0)}. За пределами показа: ${esc(answer.coverage?.omitted_count ?? 0)}.</p>
+        <details><summary class="ui-disclosure-text">Основания и полнота</summary><p>Показано: ${esc(answer.coverage?.displayed_count ?? 0)}. За пределами показа: ${esc(answer.coverage?.omitted_count ?? 0)}.</p>
             <ul>${(answer.sources || []).map(s => `<li>${esc(s.kind)} · ${esc(s.fields.join(', '))}</li>`).join('')}</ul></details>
         ${(answer.limitations || []).map(l => `<p class="text-muted">${esc(l)}</p>`).join('')}
         <div class="ba-actions">${button({ label: 'Скопировать', size: 'small', variant: 'ghost', attrs: { 'data-ba-copy': '' } })}

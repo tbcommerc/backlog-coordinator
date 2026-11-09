@@ -1,0 +1,50 @@
+/* SegmentControl A: shared neutral rail and one moving selected surface. */
+.ui-segmented {
+ --segment-height:var(--control-height); --segment-font:var(--control-font);
+ --segment-padding:var(--control-padding-x); --segment-inset:2px; --segment-scope-width:64px;
+ position:relative; isolation:isolate; display:inline-flex; align-items:stretch;
+ flex-wrap:nowrap; flex:none; gap:2px; width:max-content; max-width:100%; min-width:0;
+ height:max(var(--segment-height),var(--control-target-min)); padding:var(--segment-inset);
+ box-sizing:border-box; border:0; border-radius:var(--radius-md);
+ background:var(--bg-tertiary); vertical-align:middle;
+}
+.ui-segmented[hidden] { display:none; }
+.ui-segmented[data-ui-size=small] { --segment-height:var(--control-height-sm); --segment-font:var(--control-font-sm); --segment-padding:var(--control-padding-x-sm); }
+.ui-segmented[data-ui-size=extra-small] { --segment-height:var(--control-height-xs); --segment-font:var(--control-font-xs); --segment-padding:var(--control-padding-x-xs); }
+.ui-segmented[data-ui-size=large] { --segment-height:var(--control-height-lg); --segment-font:var(--control-font-lg); --segment-padding:var(--control-padding-x-lg); }
+.ui-segmented > .ui-segment-item {
+ position:relative; z-index:1; display:inline-flex; align-items:center; justify-content:center;
+ flex:0 1 auto; min-width:var(--control-target-min); gap:var(--control-gap); height:100%; margin:0;
+ padding:0 var(--segment-padding); box-sizing:border-box; border:0;
+ border-radius:calc(var(--radius-md) - var(--segment-inset)); background:transparent;
+ color:var(--text-secondary); font-family:var(--font-family); font-size:var(--segment-font);
+ font-weight:var(--font-medium); line-height:var(--control-line-sm); white-space:nowrap;
+ cursor:pointer; appearance:none; box-shadow:none;
+}
+.ui-segment-item > span:not(.ui-segment-count) { min-width:0; }
+.ui-segment-item .ui-icon { width:var(--control-icon); height:var(--control-icon); flex:none; }
+.ui-segmented > .ui-segment-icon { width:calc(max(var(--segment-height),var(--control-target-min)) - 2 * var(--segment-inset)); flex:none; padding:0; }
+.ui-segmented > .ui-segment-item[aria-pressed=true] { color:var(--accent-text); }
+.ui-segmented:not([data-segment-ready]) > .ui-segment-item[aria-pressed=true] { background:var(--bg-secondary); box-shadow:var(--shadow-sm); }
+.ui-segmented > .ui-segment-item:not([aria-pressed=true]):not(:disabled):hover { background:var(--bg-hover); color:var(--text-primary); }
+.ui-segmented > .ui-segment-item:focus-visible { outline:2px solid var(--focus-color); outline-offset:2px; }
+.ui-segment-thumb { position:absolute; z-index:0; pointer-events:none; top:var(--segment-inset); bottom:var(--segment-inset); left:0; border-radius:calc(var(--radius-md) - var(--segment-inset)); background:var(--bg-secondary); box-shadow:var(--shadow-sm); visibility:hidden; }
+.ui-segmented[data-segment-ready] > .ui-segment-thumb { visibility:visible; }
+.ui-segmented[data-segment-animate] > .ui-segment-thumb { transition:transform 180ms ease,width 180ms ease; }
+.ui-segment-count { font-size:var(--control-font-xs); font-variant-numeric:tabular-nums; }
+.ui-segmented[aria-disabled=true], .ui-segmented:not([aria-disabled=true]) > .ui-segment-item:disabled { opacity:.5; }
+.ui-segmented[aria-disabled=true] > .ui-segment-item, .ui-segmented > .ui-segment-item:disabled { cursor:not-allowed; }
+.ui-segmented.ui-segmented-fill { display:flex; width:100%; }
+.ui-segmented-fill > .ui-segment-item { flex:1 1 0; }
+.ui-segmented.ui-segmented-compact > .ui-segment-item { min-width:var(--segment-scope-width,64px); flex:1; }
+@media(any-pointer:coarse) {
+ .ui-segmented { padding-block:0; }
+ .ui-segment-thumb { top:0; bottom:0; }
+ .ui-segmented > .ui-segment-icon { width:max(var(--segment-height),var(--control-target-min)); }
+}
+@media(prefers-reduced-motion:reduce) { .ui-segmented[data-segment-animate] > .ui-segment-thumb { transition:none; } }
+@media(forced-colors:active) {
+ .ui-segmented { outline:1px solid CanvasText; }
+ .ui-segmented > .ui-segment-item[aria-pressed=true] { outline:2px solid Highlight; outline-offset:-2px; }
+ .ui-segment-thumb { box-shadow:none; }
+}

@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     RUN_STARTUP_SEED: Optional[bool] = False
+    METRICS_QUARTERLY_WRITE_ENABLED: bool = True
     RUN_STARTUP_MAINTENANCE: Optional[bool] = False
     RUN_NOTIFICATION_SCHEDULER: Optional[bool] = None
     
@@ -113,8 +114,13 @@ class Settings(BaseSettings):
 
     # AI Business Analyst Assistant (agent service)
     AGENT_BASE_URL: str = "http://127.0.0.1:9000"
+    AGENT_RECOVERY_READ_ONLY: bool = False
     AGENT_SECRET: str = DEFAULT_AGENT_SECRET
     AGENT_TIMEOUT_SECONDS: float = 180.0
+    MEETING_ANALYZER_ENABLED: bool = False
+    MEETING_ANALYZER_BASE_URL: str = "http://127.0.0.1:9500"
+    MEETING_ANALYZER_SECRET: str = ""
+    MEETING_ANALYSIS_WORKER_ENABLED: bool = True
     INTERSERVICE_MAX_ATTEMPTS: int = 3
     INTERSERVICE_RETRY_BASE_SECONDS: float = 0.1
     INTERSERVICE_CIRCUIT_FAILURE_THRESHOLD: int = 5
@@ -122,6 +128,7 @@ class Settings(BaseSettings):
 
     # Experimental BA/PO V2; implementation lives in agents/business-analyst-experimental/.
     AGENT_V2_ENABLED: bool = False
+    AGENT_V2_RECOVERY_READ_ONLY: bool = False
     AGENT_V2_KILL_SWITCH: bool = False
     AGENT_V2_BASE_URL: str = "http://127.0.0.1:9300"
     AGENT_V2_TIMEOUT_SECONDS: float = 180.0

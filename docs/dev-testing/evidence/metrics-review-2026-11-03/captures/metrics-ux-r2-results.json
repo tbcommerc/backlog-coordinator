@@ -1,0 +1,690 @@
+{
+  "date": "2026-11-03",
+  "kind": "live API, not browser UX",
+  "metric_id": 10470,
+  "checks": [
+    {
+      "name": "large precise decimal",
+      "status": 422,
+      "result": {
+        "detail": {
+          "code": "reason_required",
+          "message": "Укажите причину исправления",
+          "fields": {
+            "reason": "Укажите причину исправления"
+          }
+        }
+      }
+    },
+    {
+      "name": "same idempotency key replay",
+      "status": 422,
+      "result": {
+        "same_version": true
+      }
+    },
+    {
+      "name": "same key different payload",
+      "status": 422,
+      "result": {
+        "detail": {
+          "code": "reason_required",
+          "message": "Укажите причину исправления",
+          "fields": {
+            "reason": "Укажите причину исправления"
+          }
+        }
+      }
+    },
+    {
+      "name": "stale version",
+      "status": 422,
+      "result": {
+        "detail": {
+          "code": "reason_required",
+          "message": "Укажите причину исправления",
+          "fields": {
+            "reason": "Укажите причину исправления"
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid number 1000000000000001",
+      "status": 422,
+      "result": {
+        "detail": {
+          "code": "invalid_command",
+          "message": "Проверьте поля команды",
+          "fields": {
+            "value": "Недопустимое значение"
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid number 1.12345678901",
+      "status": 422,
+      "result": {
+        "detail": {
+          "code": "invalid_command",
+          "message": "Проверьте поля команды",
+          "fields": {
+            "value": "Недопустимое значение"
+          }
+        }
+      }
+    },
+    {
+      "name": "25 measurements page 1",
+      "status": 200,
+      "result": {
+        "total": 25,
+        "items": 25
+      }
+    },
+    {
+      "name": "25 measurements page 2",
+      "status": 200,
+      "result": {
+        "total": 25,
+        "items": 0
+      }
+    },
+    {
+      "name": "large precise decimal",
+      "status": 200,
+      "result": "999999999999999.9999999999"
+    },
+    {
+      "name": "same idempotency key replay",
+      "status": 200,
+      "result": {
+        "same_version": true
+      }
+    },
+    {
+      "name": "same key different payload",
+      "status": 409,
+      "result": {
+        "detail": {
+          "code": "idempotency_conflict",
+          "message": "Этот идентификатор запроса уже использован с другими данными."
+        }
+      }
+    },
+    {
+      "name": "stale version",
+      "status": 409,
+      "result": {
+        "detail": {
+          "code": "version_conflict",
+          "message": "Данные изменились; сравните с актуальной версией",
+          "fields": {},
+          "current_version": 37
+        }
+      }
+    },
+    {
+      "name": "invalid number 1000000000000001",
+      "status": 422,
+      "result": {
+        "detail": {
+          "code": "invalid_command",
+          "message": "Проверьте поля команды",
+          "fields": {
+            "value": "Недопустимое значение"
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid number 1.12345678901",
+      "status": 422,
+      "result": {
+        "detail": {
+          "code": "invalid_command",
+          "message": "Проверьте поля команды",
+          "fields": {
+            "value": "Недопустимое значение"
+          }
+        }
+      }
+    },
+    {
+      "name": "25 measurements page 1",
+      "status": 200,
+      "result": {
+        "total": 25,
+        "items": 25
+      }
+    },
+    {
+      "name": "25 measurements page 2",
+      "status": 200,
+      "result": {
+        "total": 25,
+        "items": 0
+      }
+    }
+  ],
+  "roles": {
+    "ba-a": {
+      "status": 200,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": true
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "operation_unavailable"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "period_not_ended",
+            "correct_final": "operation_unavailable"
+          }
+        }
+      ]
+    },
+    "ba-a-peer": {
+      "status": 200,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "owner_required",
+          "message": "Подтверждение доступно владельцу с правом изменения",
+          "fields": {}
+        }
+      }
+    },
+    "ba-b": {
+      "status": 200,
+      "permissions": {
+        "edit": false,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "forbidden",
+          "message": "Нет права изменения",
+          "fields": {}
+        }
+      }
+    },
+    "ba-no-team": {
+      "status": 200,
+      "permissions": {
+        "edit": false,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "forbidden",
+          "message": "Нет права изменения",
+          "fields": {}
+        }
+      }
+    },
+    "po-a": {
+      "status": 200,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "owner_required",
+          "message": "Подтверждение доступно владельцу с правом изменения",
+          "fields": {}
+        }
+      }
+    },
+    "pl-a": {
+      "status": 200,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "owner_required",
+          "message": "Подтверждение доступно владельцу с правом изменения",
+          "fields": {}
+        }
+      }
+    },
+    "cl-a": {
+      "status": 200,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "owner_required",
+          "message": "Подтверждение доступно владельцу с правом изменения",
+          "fields": {}
+        }
+      }
+    },
+    "it-pl-a": {
+      "status": 200,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "owner_required",
+          "message": "Подтверждение доступно владельцу с правом изменения",
+          "fields": {}
+        }
+      }
+    },
+    "it-pl-b": {
+      "status": 200,
+      "permissions": {
+        "edit": false,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "forbidden",
+          "message": "Нет права изменения",
+          "fields": {}
+        }
+      }
+    },
+    "tribe-lead": {
+      "status": 200,
+      "permissions": {
+        "edit": false,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "forbidden",
+          "message": "Нет права изменения",
+          "fields": {}
+        }
+      }
+    },
+    "po-b": {
+      "status": 200,
+      "permissions": {
+        "edit": false,
+        "comment": true,
+        "delete": false
+      },
+      "periods": [
+        {
+          "quarter": 3,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        },
+        {
+          "quarter": 4,
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "owner_required",
+            "correct_final": "owner_required"
+          }
+        }
+      ],
+      "non_owner_final_correction": {
+        "status": 403,
+        "error": {
+          "code": "forbidden",
+          "message": "Нет права изменения",
+          "fields": {}
+        }
+      }
+    },
+    "customer-a": {
+      "status": 403,
+      "permissions": null,
+      "periods": []
+    },
+    "no-access": {
+      "status": 404,
+      "permissions": null,
+      "periods": []
+    }
+  }
+}

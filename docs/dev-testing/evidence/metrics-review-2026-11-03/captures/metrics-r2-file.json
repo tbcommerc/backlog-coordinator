@@ -1,0 +1,29 @@
+[
+  {
+    "name": "upload synthetic text",
+    "status": 201,
+    "data": {
+      "version": 51
+    }
+  },
+  {
+    "name": "file listed",
+    "status": 200,
+    "data": {
+      "files": [
+        {
+          "id": 24,
+          "filename": "QA-METRICS-R2.txt",
+          "period_id": 40788
+        }
+      ]
+    }
+  },
+  {
+    "name": "download matches upload",
+    "status": 200,
+    "data": {
+      "bytes_equal": true
+    }
+  }
+]

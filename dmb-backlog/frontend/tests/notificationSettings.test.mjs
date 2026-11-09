@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const source = fs.readFileSync(new URL('../js/components/settings.js', import.meta.url), 'utf8');
+const source = fs.readFileSync(new URL('../js/components/notificationPreferences.js', import.meta.url), 'utf8');
 
 assert.match(source, /key: 'assignment'.*mandatory: true/, 'assignment must always be enabled');
 assert.match(source, /key: 'reporting'.*mandatory: true/, 'reporting reminders must always be enabled');

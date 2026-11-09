@@ -105,8 +105,9 @@ def test_assignee_cannot_change_requirements(db):
     task = row(); db.add(task); db.commit()
     with pytest.raises(HTTPException) as exc: work.update(db, task, user(2, scope='none'), WorkUpdate(version=1, title='X'))
     assert exc.value.status_code == 403
-    work.update(db, task, user(2, scope='none'), WorkUpdate(version=1, blocked_reason='Жду ответ'))
-    assert task.blocked_reason == 'Жду ответ'
+    with pytest.raises(ValidationError):
+        WorkUpdate(version=1, blocked_reason='Жду ответ')
+    assert 'blocked_reason' not in WorkTask.__table__.columns
 
 
 def test_start_requires_description_due_and_assignee():

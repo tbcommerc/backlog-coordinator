@@ -83,7 +83,7 @@ def run():
             except DBAPIError: pass
             else: raise AssertionError('snapshot delete allowed')
             checks.append('PostgreSQL snapshot UPDATE/DELETE guards')
-            try: work.update(db,rows[0],user,WorkUpdate(version=old_version,blocked_reason='stale'))
+            try: work.update(db,rows[0],user,WorkUpdate(version=old_version,description='stale'))
             except HTTPException as exc: assert exc.status_code==409
             else: raise AssertionError('stale update accepted')
             checks.append('optimistic work version conflict')

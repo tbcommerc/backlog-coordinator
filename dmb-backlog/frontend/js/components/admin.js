@@ -117,7 +117,7 @@ function renderAdminListTools(tab, total, filterOptions = [], filterLabel = 'В�
   const hasCriteria = Boolean(state.search || state.filter);
   const search = uiControl({ type: 'search', value: state.search, className: 'admin-list-search-input', attrs: { 'data-list-tab': tab, placeholder: 'Поиск', 'aria-label': 'Поиск' } });
   const filter = filterOptions.length ? uiControl({ kind: 'select', value: state.filter, options: [{ value: '', label: filterLabel }, ...filterOptions], className: 'admin-list-filter', attrs: { 'data-list-tab': tab, 'aria-label': 'Фильтр' } }) : '';
-  return `<div class="admin-list-tools"><div class="admin-list-search">${uiIcon('search')}${search}</div>${filter}<span class="admin-list-count" role="status" aria-live="polite">Найдено: ${total}</span>${hasCriteria ? uiButton({ label: 'Сбросить фильтры', variant: 'ghost', size: 'small', className: 'admin-list-reset', attrs: { 'data-list-tab': tab } }) : ''}</div>`;
+  return `<div class="admin-list-tools"><div class="admin-list-search">${uiIcon('search')}${search}</div>${filter}<span class="admin-list-count" role="status" aria-live="polite">Найдено: ${total}</span>${hasCriteria ? uiButton({ label: 'Сбросить фильтры', variant: 'ghost', className: 'admin-list-reset', attrs: { 'data-list-tab': tab } }) : ''}</div>`;
 }
 
 function renderAdminPagination(tab, page, pages, total, pageSize = ADMIN_PAGE_SIZE) {
@@ -709,7 +709,7 @@ function renderTeamsTab(app) {
   return `
     <div class="admin-action-row admin-list-action-row">
       ${renderAdminListTools('teams', pageData.total)}
-      <button class="btn btn-primary btn-sm admin-add-btn" data-type="team">
+      <button class="btn btn-primary admin-add-btn" data-type="team">
         <i data-lucide="plus"></i> Новая команда
       </button>
     </div>
@@ -761,7 +761,7 @@ function renderProjectsTab(app) {
   return `
     <div class="admin-action-row admin-list-action-row">
       ${renderAdminListTools('projects', pageData.total, statuses.map(status => ({ value: status.id, label: status.name })), 'Все статусы')}
-      <button class="btn btn-primary btn-sm" id="project-add-btn">
+      <button class="btn btn-primary" id="project-add-btn">
         <i data-lucide="plus"></i> Добавить проект
       </button>
     </div>
@@ -822,7 +822,7 @@ function renderBusinessCustomersTab(app) {
   return `
     <div class="admin-action-row admin-list-action-row">
       ${renderAdminListTools('businessCustomers', pageData.total, departments.map(department => ({ value: department.id, label: department.name })), 'Все подразделения')}
-      <button class="btn btn-primary btn-sm" id="bc-add-btn">
+      <button class="btn btn-primary" id="bc-add-btn">
         <i data-lucide="plus"></i> Добавить бизнес-заказчика
       </button>
     </div>
@@ -978,11 +978,11 @@ function renderUsersTab(app) {
           <input class="input ui-control ui-search-clearable" id="admin-user-search" aria-label="Поиск пользователей" value="${escapeHtmlAttribute(userSearch)}" placeholder="Поиск пользователей">
           ${userSearch ? `<button class="square-icon btn btn-secondary btn-sm ui-btn" id="admin-user-search-clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%)" title="Очистить"><i data-lucide="x" style=""></i></button>` : ''}
         </div>
-        <details class="admin-user-filter-group"${window.innerWidth > 900 && window.innerHeight > 600 ? ' open' : ''}><summary>Фильтры${Object.values(userFilters).some(Boolean) ? ' · применены' : ''}</summary><div class="admin-user-filter-fields">${roleFilter}${teamFilter}${statusFilter}</div></details>
+        <details class="admin-user-filter-group"${window.innerWidth > 900 && window.innerHeight > 600 ? ' open' : ''}><summary class="ui-disclosure-text">Фильтры${Object.values(userFilters).some(Boolean) ? ' · применены' : ''}</summary><div class="admin-user-filter-fields">${roleFilter}${teamFilter}${statusFilter}</div></details>
         <span class="admin-list-count" role="status" aria-live="polite">Найдено: ${userPageData.total}</span>
-        ${(userSearch || userFilters.role || userFilters.team || userFilters.status) ? '<button type="button" class="btn btn-ghost btn-sm" id="admin-user-filters-reset">Сбросить фильтры</button>' : ''}
+        ${(userSearch || userFilters.role || userFilters.team || userFilters.status) ? '<button type="button" class="btn btn-ghost" id="admin-user-filters-reset">Сбросить фильтры</button>' : ''}
       </div>
-      <button class="btn btn-primary btn-sm admin-add-btn" data-type="user"><i data-lucide="plus"></i> Новый пользователь</button>
+      <button class="btn btn-primary admin-add-btn" data-type="user"><i data-lucide="plus"></i> Новый пользователь</button>
     </div>
     <div class="admin-section" style="padding:0;overflow-x:auto">
       <table class="ui-table ui-table-admin admin-users-table" style="width:100%;border-collapse:collapse;font-size:13px">
@@ -1041,7 +1041,6 @@ function getRolePreview(role) {
     ['Мои запросы и ИИ-ассистент', isCustomer || access('customer') !== 'none', isCustomer ? 'Специальный режим роли' : getAccessLabel(access('customer'))],
     ['Ревью запросов', !isCustomer && canReview, reviewAccess === 'all' ? 'Все команды' : reviewAccess === 'team' ? 'Своя команда' : 'Нет доступа'],
     ['Мои уведомления', !isCustomer, 'Базовый раздел'],
-    ['Настройки', !isCustomer && access('settings') !== 'none', getAccessLabel(access('settings'))],
     ['Администрирование и аудит', !isCustomer && access('admin') !== 'none', getAccessLabel(access('admin'))],
   ].map(([label, visible, detail]) => ({ label, visible, detail }));
   const writable = ['backlog_dmb', 'backlog_team', 'reports', 'analytics', 'customer'].filter(key => ['read_write', 'write_own', 'write_all', 'full'].includes(access(key))).length;
@@ -1069,12 +1068,11 @@ function renderRolesTab(app) {
   const pageData = paginateAdminItems(filtered, 'roles');
   const roles = pageData.items;
   const permLevels = [
-    { key: 'backlog_dmb_access', label: 'Бэклог DMB', help: 'Просмотр и изменение общего бэклога DMB' },
-    { key: 'backlog_team_access', label: 'Бэклог команды', help: 'Доступ к задачам своей или всех команд' },
+    { key: 'backlog_dmb_access', label: 'Бэклог — общая область', help: 'Просмотр и изменение общего бэклога DMB' },
+    { key: 'backlog_team_access', label: 'Бэклог — моя команда', help: 'Доступ к задачам своей или всех команд' },
     { key: 'reports_access', label: 'Статусы встреч', help: 'Просмотр и изменение статусов для встреч' },
     { key: 'analytics_access', label: 'Аналитика', help: 'Доступ к аналитическим представлениям' },
     { key: 'customer_access', label: 'Бизнес-заказчик', help: 'Работа с порталом бизнес-заказчика' },
-    { key: 'settings_access', label: 'Настройки', help: 'Доступ к пользовательским настройкам' },
     { key: 'admin_access', label: 'Админ', help: 'Доступ к административным функциям' },
   ];
 
@@ -1114,7 +1112,7 @@ function renderRolesTab(app) {
   return `
     <div class="admin-action-row admin-list-action-row">
       ${renderAdminListTools('roles', pageData.total, [{ value: 'active', label: 'Активные' }, { value: 'in_dev', label: 'В разработке' }, { value: 'archived', label: 'Архивные' }], 'Все статусы')}
-      <button class="btn btn-primary btn-sm admin-add-btn" data-type="role">
+      <button class="btn btn-primary admin-add-btn" data-type="role">
         <i data-lucide="plus"></i> Новая роль
       </button>
     </div>
@@ -1169,7 +1167,7 @@ function renderAuditTab() {
     <select class="input audit-filter" id="audit-user" data-ui-filter-value="${escapeHtml(auditState.userId)}"><option value="">Все пользователи</option>${filters.users.map(user => option(user.id, user.name, auditState.userId)).join('')}</select>
     ${dateRange({ id: 'admin-audit-period', label: 'Период', from: { id: 'audit-date-from', label: 'Дата с', value: auditState.dateFrom, controlClassName: 'audit-filter' }, to: { id: 'audit-date-to', label: 'Дата по', value: auditState.dateTo, controlClassName: 'audit-filter' } })}
     <span class="admin-list-count" role="status" aria-live="polite">Записей: ${data.total || 0}</span>
-    <button type="button" class="btn btn-ghost btn-sm" id="audit-reset">Сбросить</button>
+    <button type="button" class="btn btn-ghost" id="audit-reset">Сбросить</button>
   </div><div class="admin-section audit-table-wrap"><table class="ui-table ui-table-admin admin-table audit-table"><thead><tr><th>Дата</th><th>Пользователь</th><th>Результат</th><th>Действие</th><th>Сущность</th><th>Изменённые поля</th><th>Trace / Request ID</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table></div>
   ${renderAdminPagination('audit', data.page || 1, data.pages || 1, data.total || 0, auditState.perPage)}`;
 }
@@ -1644,7 +1642,7 @@ function renderNotificationTemplatesTab(app) {
     <td><button type="button" class="btn btn-secondary btn-sm ui-btn notification-template-toggle ${item.is_active ? 'is-active' : ''}" data-id="${item.id}" aria-pressed="${item.is_active}" aria-label="${item.is_active ? 'Отключить' : 'Включить'} шаблон"${canManage ? '' : ' disabled'}><span></span>${item.is_active ? 'Включён' : 'Выключен'}</button></td>
     <td class="actions"><button class="btn btn-ghost btn-sm square-icon admin-edit-btn" data-type="notificationTemplate" data-id="${item.id}" title="Редактировать"><i data-lucide="pen-line"></i></button><button class="btn btn-ghost btn-sm square-icon admin-delete-btn" data-type="notificationTemplate" data-id="${item.id}" title="Удалить"><i data-lucide="trash-2"></i></button></td>
   </tr>`).join('') : '<tr><td colspan="6" class="admin-empty-cell">Шаблоны пока не созданы</td></tr>';
-  return `<div class="admin-action-row admin-list-action-row"><div><h2 style="margin:0">Шаблоны уведомлений</h2><p class="text-muted" style="margin:4px 0 0">Тестовая отправка не выполняется</p></div><button class="btn btn-primary btn-sm admin-add-btn" data-type="notificationTemplate"><i data-lucide="plus"></i> Новый шаблон</button></div>
+  return `<div class="admin-action-row admin-list-action-row"><div><h2 style="margin:0">Шаблоны уведомлений</h2><p class="text-muted" style="margin:4px 0 0">Тестовая отправка не выполняется</p></div><button class="btn btn-primary admin-add-btn" data-type="notificationTemplate"><i data-lucide="plus"></i> Новый шаблон</button></div>
     <div class="admin-section audit-table-wrap"><table class="ui-table ui-table-admin admin-table"><thead><tr><th>Шаблон</th><th>Событие</th><th>Получатели</th><th>Периодичность</th><th>Статус</th><th>Действия</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
@@ -1803,7 +1801,6 @@ function renderRoleForm(data) {
     { key: 'reports_access', label: 'Статусы для встреч', opts: ['none','read','read_write'] },
     { key: 'analytics_access', label: 'Аналитика', opts: ['none','read','read_write'] },
     { key: 'customer_access', label: 'Портал бизнес-заказчика', opts: ['none','read','read_write'] },
-    { key: 'settings_access', label: 'Настройки', opts: ['none','available'] },
     { key: 'admin_access', label: 'Администрирование', opts: ['none','partial','full'] },
   ];
   const permHtml = permFields.map(p => {

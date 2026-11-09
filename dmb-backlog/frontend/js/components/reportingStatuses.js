@@ -1,3 +1,4 @@
+import { safeBacklogReturn } from '../backlogRouteState.js';
 import { filterValues, filterMatches } from '../ui/filterValues.js';
 import { tabNavigationTarget } from '../ui/controls.js';
 import { loadMore } from '../ui/specialized.js';
@@ -52,6 +53,9 @@ function formatUpdated(value) {
 }
 
 function sourceBackLink(source) {
+  const raw=new URLSearchParams(globalThis.window?.location?.hash?.split('?')[1]||'').get('return_to');
+  if(raw){const target=safeBacklogReturn(raw,null);if(target)return {href:target,label:'В бэклог'};}
+
   if (source === 'team-backlog') return { href: '#/team-backlog', label: 'В бэклог команды' };
   if (source === 'report') return { href: '#/reports', label: 'К отчётам' };
   if (source === 'notification') return { href: notificationReturnHref(), label: 'К уведомлениям' };
@@ -190,7 +194,7 @@ function renderStatusCard(item, meeting) {
       <button type="button" class="ui-link reporting-task-link" data-open-reporting-task="${item.task_id}"><span>${escapeHtml(item.public_id)}</span><strong>${escapeHtml(item.title || 'Без названия')}</strong><i data-lucide="arrow-up-right"></i></button>
       <span class="reporting-task-state"><i data-lucide="${isReady ? 'badge-check' : 'circle-dashed'}"></i>${draft ? 'Изменено · требует подтверждения' : isReady ? 'Готово' : 'Не подтверждено'}</span>
     </div>
-    <details class="reporting-previous-status"${previousOpen}><summary>Предыдущая встреча${previous?.meeting_date ? ` · ${escapeHtml(formatMeetingDate(previous.meeting_date))}` : ''}</summary><p>${previous?.text ? escapeHtml(previous.text) : 'Статус не предоставлялся'}</p></details>
+    <details class="reporting-previous-status"${previousOpen}><summary class="ui-disclosure-text">Предыдущая встреча${previous?.meeting_date ? ` · ${escapeHtml(formatMeetingDate(previous.meeting_date))}` : ''}</summary><p>${previous?.text ? escapeHtml(previous.text) : 'Статус не предоставлялся'}</p></details>
     <label class="reporting-status-editor"><span class="reporting-status-editor-label">${isWeekly ? 'Результат недели' : 'Статус к выбранной встрече'}</span><textarea class="input" rows="4" maxlength="5000" data-reporting-text="${item.task_id}" placeholder="${isWeekly ? 'Что реально изменилось за неделю' : 'Результат · Риски и блокеры · Следующий шаг и срок'}" ${editable ? '' : 'disabled'}>${escapeHtml(text)}</textarea><small class="reporting-status-counter" data-reporting-counter="${item.task_id}">${String(text).length} / 5000</small></label>
     ${weeklyFields}
     <div class="reporting-task-status-footer">
@@ -235,7 +239,7 @@ function renderPreparation() {
         <label class="reporting-status-readiness-select"><span class="sr-only">Состояние статуса</span><select class="input" data-reporting-readiness data-ui-filter-value="${escapeHtml(workspaceState.readiness)}"><option value="needs" ${workspaceState.readiness === 'needs' ? 'selected' : ''}>Требуют подтверждения</option><option value="drafts" ${workspaceState.readiness === 'drafts' ? 'selected' : ''}>Черновики</option><option value="ready" ${workspaceState.readiness === 'ready' ? 'selected' : ''}>Готовы</option><option value="all" ${workspaceState.readiness === 'all' ? 'selected' : ''}>Все статусы</option></select></label>
         <span class="reporting-status-result">${items.length} из ${summary.total_tasks} задач</span>
         <div class="reporting-readiness" style="--readiness:${percent}%" aria-label="Готовность статусов: ${percent}%"><strong>${percent}%</strong><span>${summary.filled_tasks} из ${summary.total_tasks} готово</span></div>
-        ${readOnly ? '' : `<div class="reporting-status-bulk"><span data-reporting-dirty aria-live="polite">${workspaceState.dirty.size ? `Изменено: ${workspaceState.dirty.size}` : 'Все изменения сохранены'}</span><button type="button" class="btn btn-secondary btn-sm" data-save-reporting-all ${workspaceState.dirty.size ? '' : 'disabled'}><i data-lucide="save"></i>Сохранить черновики</button><button type="button" class="btn btn-primary btn-sm" data-confirm-reporting-all ${confirmableCount ? '' : 'disabled'}><i data-lucide="badge-check"></i>Сохранить и подтвердить${confirmableCount ? ` · ${confirmableCount}` : ''}</button></div>`}
+        ${readOnly ? '' : `<div class="reporting-status-bulk"><span data-reporting-dirty aria-live="polite">${workspaceState.dirty.size ? `Изменено: ${workspaceState.dirty.size}` : 'Все изменения сохранены'}</span><button type="button" class="btn btn-secondary" data-save-reporting-all ${workspaceState.dirty.size ? '' : 'disabled'}><i data-lucide="save"></i>Сохранить черновики</button><button type="button" class="btn btn-primary" data-confirm-reporting-all ${confirmableCount ? '' : 'disabled'}><i data-lucide="badge-check"></i>Сохранить и подтвердить${confirmableCount ? ` · ${confirmableCount}` : ''}</button></div>`}
       </div>
       <div class="reporting-task-status-list">${renderTaskListContent(items, meeting)}</div>
     </section>`;

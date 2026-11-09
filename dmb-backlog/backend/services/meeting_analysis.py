@@ -18,6 +18,15 @@ logger = logging.getLogger("dmb_backlog.meeting_analysis")
 ACTIVE = ("queued", "running")
 RUN_TIMEOUT_SECONDS = 600
 ERROR_MESSAGES = {
+    "meeting_ai_quota": "Провайдер AI ограничил доступный лимит. Попросите администратора проверить квоту и лимиты, затем запустите анализ явно. Черновик сохранён.",
+    "meeting_service_auth": "Не удалось авторизовать подключение к сервису анализа. Попросите администратора проверить подключение. Черновик сохранён.",
+    "meeting_service_configuration": "Сервис анализа не поддерживает текущий запрос. Попросите администратора проверить подключение и настройки. Черновик сохранён.",
+    "operation_forbidden": "Право на выполнение анализа отозвано. Результат не применён; исходные правки сохранены.",
+    "result_expired": "Срок хранения результата анализа истёк. Черновик сохранён; новый анализ запускается только по вашему решению.",
+    "invalid_input": "Сервис анализа отклонил формат или размер исходного текста. Исправьте источник или продолжите вручную; черновик сохранён.",
+    "operation_limit": "Достигнут лимит вызовов этого разбора. Черновик сохранён; новый анализ запускается только по вашему решению.",
+    "cancelled": "Анализ отменён. Исходная расшифровка и ручные правки сохранены.",
+    "source_conflict": "Разбор изменён во время анализа. Результат не применён; исходные правки сохранены.",
     "meeting_ai_auth": "Провайдер AI отклонил авторизацию. Администратору нужно проверить ключ и доступ к модели.",
     "invalid_result": "Агент вернул непроверяемый результат. Исходная расшифровка сохранена.",
     "interrupted": "Обработка прервана или превысила время ожидания. Можно явно запустить новый анализ.",
@@ -40,6 +49,7 @@ def expire_runs(db, timestamp=None):
     count = db.query(MeetingCapture).filter(
         MeetingCapture.status == "draft",
         MeetingCapture.analysis_status == "running",
+        MeetingCapture.analysis_backend == "legacy",
         MeetingCapture.analysis_started_at < timestamp - timedelta(seconds=RUN_TIMEOUT_SECONDS),
     ).update({"analysis_status": "failed", "analysis_error_code": "interrupted",
               "analysis_finished_at": timestamp, "updated_at": timestamp,
@@ -49,7 +59,7 @@ def expire_runs(db, timestamp=None):
 
 
 def claim_run(db):
-    row = db.query(MeetingCapture).filter_by(status="draft", analysis_status="queued").order_by(
+    row = db.query(MeetingCapture).filter_by(status="draft", analysis_status="queued", analysis_backend="legacy").order_by(
         MeetingCapture.analysis_requested_at, MeetingCapture.id).with_for_update(skip_locked=True).first()
     if row is None:
         db.rollback()
@@ -79,7 +89,8 @@ def execute_run(session_factory, claimed, call_agent):
     except (ValidationError, KeyError, TypeError, ValueError):
         error_code = "invalid_result"
     except HTTPException as error:
-        error_code = "meeting_ai_auth" if isinstance(error.detail, dict) and error.detail.get("code") == "meeting_ai_auth" else "unavailable"
+        code = error.detail.get("code") if isinstance(error.detail, dict) else None
+        error_code = code if isinstance(code, str) and code in ERROR_MESSAGES else "unavailable"
     except Exception:
         # Never persist or log the transcript, provider response or credentials.
         error_code = "unavailable"
@@ -124,6 +135,10 @@ class MeetingAnalysisWorker:
     def run(self):
         while not self.stopping.is_set():
             try:
+                from config import settings
+                if settings.MEETING_ANALYZER_ENABLED:
+                    from .meeting_service_delivery import deliver_one
+                    deliver_one(self.session_factory)
                 with self.session_factory() as db:
                     expire_runs(db)
                     claimed = claim_run(db)

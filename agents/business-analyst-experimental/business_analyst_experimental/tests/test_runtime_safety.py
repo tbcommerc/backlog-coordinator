@@ -72,6 +72,8 @@ def test_production_requires_postgresql_session_store(monkeypatch):
 
 
 def _valid_production_runtime(monkeypatch):
+    monkeypatch.setattr(settings, "OPENAI_BASE_URL", "https://opencode.ai/zen/go/v1")
+    monkeypatch.setattr(settings, "UNIT_TEST_MODE", False)
     monkeypatch.setattr(settings, "DEBUG", False)
     monkeypatch.setattr(settings, "AGENT_SECRET", "unique-agent-secret")
     monkeypatch.setattr(settings, "SESSION_DATABASE_URL", "postgresql+psycopg://agent:test@db/agent_sessions")
@@ -96,3 +98,28 @@ def test_production_requires_provider_key(monkeypatch):
 def test_valid_production_runtime_is_accepted(monkeypatch):
     _valid_production_runtime(monkeypatch)
     validate_runtime_settings()
+
+
+def test_local_service_rejects_mock_without_unit_mode(monkeypatch):
+    monkeypatch.setattr(settings, "DEBUG", True)
+    monkeypatch.setattr(settings, "UNIT_TEST_MODE", False)
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "mock")
+    with pytest.raises(RuntimeError, match="LLM_PROVIDER"):
+        validate_runtime_settings()
+
+
+def test_explicit_unit_mode_accepts_mock(monkeypatch):
+    monkeypatch.setattr(settings, "DEBUG", True)
+    monkeypatch.setattr(settings, "UNIT_TEST_MODE", True)
+    validate_runtime_settings()
+
+
+@pytest.mark.parametrize("provider_name", ["mock", "openai_compat"])
+def test_factory_cannot_silently_fallback_in_local_service(monkeypatch, provider_name):
+    from business_analyst_experimental.llm.factory import get_llm
+    monkeypatch.setattr(settings, "DEBUG", True)
+    monkeypatch.setattr(settings, "UNIT_TEST_MODE", False)
+    monkeypatch.setattr(settings, "LLM_PROVIDER", provider_name)
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "")
+    with pytest.raises(RuntimeError):
+        get_llm()

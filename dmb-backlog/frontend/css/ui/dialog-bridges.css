@@ -88,6 +88,9 @@
 @media (max-width:1024px) {
 :is(#task-detail-overlay, #create-task-overlay) .btn.ui-responsive-icon { width:var(--ui-target); min-width:var(--ui-target); height:var(--ui-target); flex:0 0 var(--ui-target); padding:0; }
 }
+@media (min-width:1025px) {
+:is(#task-detail-overlay, #create-task-overlay) .btn.ui-action-equal { width:var(--control-action-width); min-width:var(--control-action-width); max-width:var(--control-action-width); flex:0 0 var(--control-action-width); }
+}
 
 :is(#task-detail-overlay, #create-task-overlay) .ui-table:is(.ui-table-data, .ui-table-admin, .ui-table-editor, .ui-table-prose) {
   --ui-table-padding-y: var(--table-cell-padding-y);

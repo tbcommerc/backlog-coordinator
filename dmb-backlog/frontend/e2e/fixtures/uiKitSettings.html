@@ -18,7 +18,7 @@
 <body>
   <main id="page-content"></main>
   <script type="module">
-    import { renderSettings, initSettings } from '/js/components/settings.js';
+    import { renderNotificationPreferences, initNotificationPreferences } from '/js/components/notificationPreferences.js';
     import { applyThemePreference } from '/js/theme.js';
     const params=new URLSearchParams(location.search);
     if(params.has('theme')) localStorage.setItem('dmb_theme',params.get('theme'));
@@ -51,8 +51,9 @@
     }};
     if(!location.hash) history.replaceState(null,'',`${location.pathname}${location.search}#/settings`);
     window.__renderSettings=async()=>{
-      document.getElementById('page-content').innerHTML=renderSettings(app);
-      await initSettings(app);
+      document.getElementById('page-content').innerHTML=renderNotificationPreferences(app);
+      initNotificationPreferences(app);
+      document.getElementById("notification-preferences").open=true;
       window.lucide?.createIcons();
     };
     await window.__renderSettings();

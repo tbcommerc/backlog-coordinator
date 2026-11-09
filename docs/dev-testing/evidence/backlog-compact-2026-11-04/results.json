@@ -1,0 +1,147 @@
+{
+  "verified": "2026-11-04",
+  "scope": "real SPA with isolated mock API; full-shell visual review, not live PostgreSQL",
+  "browser_stats": {
+    "startTime": "2026-11-04T10:23:58.413Z",
+    "duration": 57894.119,
+    "expected": 15,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact backlog heading light 320",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact backlog heading light 390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact backlog heading light 1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact backlog heading light 1920",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact backlog heading dark 320",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact backlog heading dark 390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact backlog heading dark 1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact backlog heading dark 1920",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact baseline comparison light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCompact.spec.mjs",
+      "name": "compact baseline comparison dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-R01/R04/R05/D02: one workspace and legacy route",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-S01/F02: independent search",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-A05/A08: read-only and malformed scope",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-C02: deep task link",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-R01/R03: sidebar keeps the last context and exact search after leaving the page",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    }
+  ],
+  "unit": {
+    "pass": 17,
+    "fail": 0
+  },
+  "live": {
+    "status": "BLOCKED",
+    "reason": "127.0.0.1:8000 connection refused; no DB mutations"
+  },
+  "mechanical_scan": {
+    "existing_warnings_in_pages_css": 27,
+    "new_selector_findings": 0,
+    "scope": "page heading, inline segmented control and backlog scope placement"
+  }
+}

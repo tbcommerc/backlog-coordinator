@@ -1,0 +1,1 @@
+import {defineConfig} from '@playwright/test';import main from './playwright.backlog-acceptance.config.mjs';export default defineConfig({...main,testMatch:[...main.testMatch,'**/uiKitTaskForms.spec.mjs'],reporter:[['line'],['json',{outputFile:'../.runtime/backlog-edges-results.json'}]]});

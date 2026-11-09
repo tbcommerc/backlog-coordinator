@@ -9,6 +9,7 @@ for(const width of [320,390,768,1024,1280,1440])for(const theme of ['light','dar
  await page.locator('#theme').selectOption(theme);
  const geometry=await frame.locator('.work-queue-panel').evaluate(el=>({width:el.clientWidth,overflow:document.documentElement.scrollWidth>innerWidth,rows:[...el.querySelectorAll('[data-work-row]')].map(row=>({height:row.getBoundingClientRect().height,display:getComputedStyle(row).display,titleWidth:row.cells[0].getBoundingClientRect().width,cellBorders:[...row.cells].map(td=>getComputedStyle(td).borderBottomWidth)}))}));
  expect(geometry.overflow).toBe(false);
+ for(const badge of await frame.locator('.work-queue-signals .work-priority').all())expect(await badge.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
  for(const row of geometry.rows){expect(row.display).toBe(geometry.width>=860?'table-row':'grid');expect(row.height).toBeLessThanOrEqual(geometry.width>=860?104:geometry.width>=460?130:190);if(geometry.width>=860)expect(row.titleWidth).toBeGreaterThanOrEqual(320);else expect(row.cellBorders.every(x=>x==='0px')).toBe(true);}
  await page.screenshot({path:info.outputPath('queue.png')});
  await frame.locator('[data-work-id="77"]').click();await expect(frame.locator('.work-dialog')).toBeVisible();

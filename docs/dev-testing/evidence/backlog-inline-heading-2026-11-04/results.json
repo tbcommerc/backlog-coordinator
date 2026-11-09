@@ -1,0 +1,118 @@
+{
+  "verified": "2026-11-04",
+  "browser": {
+    "startTime": "2026-11-04T11:03:32.508Z",
+    "duration": 67702.516,
+    "expected": 15,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "unit": {
+    "passed": 13,
+    "failed": 0
+  },
+  "live": [
+    {
+      "scope": "all",
+      "width": 1440,
+      "status": "PASS",
+      "geometry": {
+        "overflow": 0,
+        "groupWidth": 384,
+        "centerOffset": 0,
+        "controls": [
+          {
+            "width": 190,
+            "height": 28
+          },
+          {
+            "width": 190,
+            "height": 28
+          },
+          {
+            "width": 190,
+            "height": 28
+          }
+        ]
+      }
+    },
+    {
+      "scope": "team",
+      "width": 1440,
+      "status": "PASS",
+      "geometry": {
+        "overflow": 0,
+        "groupWidth": 384,
+        "centerOffset": 0,
+        "controls": [
+          {
+            "width": 190,
+            "height": 28
+          },
+          {
+            "width": 190,
+            "height": 28
+          },
+          {
+            "width": 190,
+            "height": 28
+          }
+        ]
+      }
+    },
+    {
+      "scope": "all",
+      "width": 390,
+      "status": "PASS",
+      "geometry": {
+        "overflow": 0,
+        "groupWidth": 256,
+        "centerOffset": 0,
+        "controls": [
+          {
+            "width": 126,
+            "height": 44
+          },
+          {
+            "width": 126,
+            "height": 44
+          },
+          {
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "scope": "team",
+      "width": 390,
+      "status": "PASS",
+      "geometry": {
+        "overflow": 0,
+        "groupWidth": 256,
+        "centerOffset": 0,
+        "controls": [
+          {
+            "width": 126,
+            "height": 44
+          },
+          {
+            "width": 126,
+            "height": 44
+          },
+          {
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    }
+  ],
+  "scope": "all/team, light/dark, 320/390/1280/1440/1920; title and scopes share vertical center; all four heights equal, all desktop text widths equal; keyboard and routes",
+  "mechanical_scan": {
+    "existing_pages_css_findings": 27,
+    "new_layout_findings": 0
+  }
+}

@@ -8,8 +8,8 @@ import {
 
 const componentSource = await readFile(new URL('../js/components/quarterlyGoalsUpdate.js', import.meta.url), 'utf8');
 const reportsSource = await readFile(new URL('../js/components/reports.js', import.meta.url), 'utf8');
-const backlogSource = await readFile(new URL('../js/components/taskTable.js', import.meta.url), 'utf8');
-const teamBacklogSource = await readFile(new URL('../js/components/teamBacklog.js', import.meta.url), 'utf8');
+const backlogSource = await readFile(new URL('../js/components/backlogPage.js', import.meta.url), 'utf8');
+const teamBacklogSource = await readFile(new URL('../js/components/backlogPage.js', import.meta.url), 'utf8');
 const routerSource = await readFile(new URL('../js/router.js', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 const pagesCss = await readFile(new URL('../css/pages.css', import.meta.url), 'utf8');
@@ -52,8 +52,8 @@ assert.match(backlogSource, /bulkOpsMenu: true/);
 assert.match(backlogSource, /openBacklogOperationsMenu\(app\)/);
 assert.match(backlogSource, /data-backlog-operation="quarterly-goals"/);
 assert.match(backlogSource, /Обновить прогресс и статусы/);
-assert.match(backlogSource, /quarterlyGoalsUpdateHref\(\{ source: 'backlog' \}\)/);
-assert.match(teamBacklogSource, /data-team-operation="quarterly-goals"/);
+assert.match(backlogSource, /withBacklogReturn\(quarterlyGoalsUpdateHref/);
+assert.match(teamBacklogSource, /data-backlog-operation="quarterly-goals"/);
 assert.match(teamBacklogSource, /Обновить прогресс и статусы/);
 assert.match(routerSource, /'\/quarterly-goals-update':/);
 

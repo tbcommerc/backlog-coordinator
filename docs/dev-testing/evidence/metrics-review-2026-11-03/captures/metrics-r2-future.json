@@ -1,0 +1,112 @@
+[
+  {
+    "name": "future scope",
+    "status": 200,
+    "data": {
+      "version": 49,
+      "error": null
+    }
+  },
+  {
+    "name": "future plan",
+    "status": 200,
+    "data": [
+      {
+        "id": 40789,
+        "year": 2027,
+        "quarter": 1,
+        "state": "active",
+        "availability": "planned",
+        "model_version": "quarterly_v2",
+        "start_date": "2027-01-01",
+        "end_date": "2027-03-31",
+        "plan": {
+          "revision_id": 40630,
+          "result_type": "range",
+          "direction": "range",
+          "target": "90",
+          "upper": "110",
+          "baseline": null,
+          "baseline_date": null,
+          "cadence": "none",
+          "interval_days": null,
+          "first_due_date": null,
+          "source_snapshot": "Синтетический набор UX-ревью R2",
+          "method_snapshot": "",
+          "unit_snapshot": "%"
+        },
+        "fact": null,
+        "result": {
+          "outcome": "no_data",
+          "is_final": false,
+          "progress": null,
+          "deviation": null
+        },
+        "observations": {
+          "count": 0,
+          "latest_date": null,
+          "violation_count": 0,
+          "violation_dates": []
+        },
+        "capabilities": {
+          "write_fact": false,
+          "add_measurement": false,
+          "close": false,
+          "correct_final": false
+        },
+        "disabled_reasons": {
+          "write_fact": "operation_unavailable",
+          "add_measurement": "operation_unavailable",
+          "close": "period_not_ended",
+          "correct_final": "operation_unavailable"
+        },
+        "source_measurement_changed": false,
+        "closure_revision_id": null,
+        "closed_at": null,
+        "cancellation_reason": null,
+        "schedule": {
+          "missed_count": 0,
+          "overdue": false,
+          "next_due": null
+        },
+        "original_plan": {
+          "id": 40630,
+          "period_id": 40789,
+          "revision_no": 1,
+          "previous_revision_id": null,
+          "data": {
+            "result_type": "range",
+            "direction": "range",
+            "target": "90",
+            "upper": "110",
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический набор UX-ревью R2",
+            "method_snapshot": "",
+            "unit_snapshot": "%",
+            "approval_state": "active"
+          },
+          "author_id": 25,
+          "reason": "",
+          "created_at": "2026-11-03T14:58:10.478161+00:00"
+        },
+        "closures": [],
+        "observations_corrected_after_closure": false
+      }
+    ]
+  },
+  {
+    "name": "future fact blocked",
+    "status": 422,
+    "data": {
+      "detail": {
+        "code": "invalid_date",
+        "message": "Дата факта должна быть внутри квартала и не в будущем",
+        "fields": {}
+      }
+    }
+  }
+]

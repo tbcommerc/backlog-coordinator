@@ -52,7 +52,7 @@ export function renderMeetingCapture() {
         <div id="mc-notice" class="mc-notice" role="status" aria-live="polite"></div>
         <div id="mc-error" class="mc-error" role="alert" hidden></div>
         <div id="mc-workspace"></div>
-        <details class="mc-history"><summary>Мои разборы встреч</summary><div id="mc-history-list">Загрузка…</div></details>
+        <details class="mc-history"><summary class="ui-disclosure-text">Мои разборы встреч</summary><div id="mc-history-list">Загрузка…</div></details>
     </section>`;
 }
 
@@ -61,7 +61,7 @@ function renderItem(item, index, links, suggestions, expanded) {
     const prop = (name, label, props = {}) => field({ id: `${prefix}-${name}`, label, value: item[name] || '', attrs: { 'data-field': name, maxlength: 255 }, ...props });
     const linked = links.find(task => task.id === item.task_id);
     return `<details class="mc-item" data-item="${esc(item.id)}" ${expanded ? 'open' : ''}>
-        <summary><strong data-summary-title>${esc(item.title)}</strong><span data-summary-meta>${esc(item.owner_text || 'Исполнитель не указан')} · ${esc(item.due_date || item.due_text || 'Срок не указан')}</span><span data-summary-status>${item.selected ? 'Проверено · включено' : 'Требует проверки'}</span></summary>
+        <summary class="ui-disclosure-text"><strong data-summary-title>${esc(item.title)}</strong><span data-summary-meta>${esc(item.owner_text || 'Исполнитель не указан')} · ${esc(item.due_date || item.due_text || 'Срок не указан')}</span><span data-summary-status>${item.selected ? 'Проверено · включено' : 'Требует проверки'}</span></summary>
         <div class="mc-item-body">
         <div class="mc-item-heading"><span class="mc-item-number">${index + 1}</span>${badge({ label: kindLabel(item.kind), tone: item.kind === 'action' ? 'accent' : 'info' })}
             ${badge({ label: item.origin === 'ai' ? 'Из расшифровки' : 'Добавлено вручную' })}${action('Удалить пункт', 'remove', { icon: 'trash-2', iconOnly: true, variant: 'ghost' })}</div>
@@ -71,8 +71,8 @@ function renderItem(item, index, links, suggestions, expanded) {
         <div class="mc-two-fields">${prop('owner_text', 'Исполнитель по расшифровке', { hint: 'Имя текстом. Это не назначение пользователя.', attrs: { 'data-field': 'owner_text', maxlength: 255, placeholder: 'Не указан' } })}${prop('due_date', 'Подтверждённый срок', { type: 'date' })}</div>
         ${prop('due_text', 'Как срок прозвучал на встрече', { attrs: { 'data-field': 'due_text', maxlength: 255, placeholder: 'Например: к следующей пятнице' } })}
         <p class="mc-hint">Проверьте исполнителя и срок. Агент не заполняет отсутствующие факты.</p>
-        ${item.quote ? `<details class="mc-evidence"><summary>Основание в расшифровке</summary><blockquote>${esc(item.quote)}</blockquote></details>` : '<p class="mc-hint">Добавлено вручную — цитата не требуется.</p>'}
-        <details class="mc-link-box" ${item.link_choice === 'task' || suggestions !== undefined ? 'open' : ''}><summary>Связь с крупной задачей${item.link_choice === 'none' ? ' · без привязки' : item.task_id ? ' · выбрана' : ' · требуется решение'}</summary><p class="mc-hint">Предложение становится связью только после вашего выбора.</p>
+        ${item.quote ? `<details class="mc-evidence"><summary class="ui-disclosure-text">Основание в расшифровке</summary><blockquote>${esc(item.quote)}</blockquote></details>` : '<p class="mc-hint">Добавлено вручную — цитата не требуется.</p>'}
+        <details class="mc-link-box" ${item.link_choice === 'task' || suggestions !== undefined ? 'open' : ''}><summary class="ui-disclosure-text">Связь с крупной задачей${item.link_choice === 'none' ? ' · без привязки' : item.task_id ? ' · выбрана' : ' · требуется решение'}</summary><p class="mc-hint">Предложение становится связью только после вашего выбора.</p>
             ${field({ id: `${prefix}-link`, label: 'Решение о привязке', kind: 'select', value: item.link_choice || '', options: [{ value: '', label: 'Ещё не выбрано' }, { value: 'task', label: 'Выбрать крупную задачу ниже' }, { value: 'none', label: 'Без привязки' }], attrs: { 'data-field': 'link_choice' } })}
             ${linked ? `<p class="mc-chosen">${icon('link')} ${esc(linked.public_id || '#' + linked.id)} · ${esc(linked.title)}</p>` : item.task_id ? '<p class="mc-error">Ранее выбранная задача недоступна. Измените привязку.</p>' : ''}
             <div class="mc-actions">${action('Предложить соответствия', 'suggest', { variant: 'ai', size: 'small' })}</div>
@@ -94,10 +94,10 @@ function renderAnalysis(state) {
         <p id="mc-long-wait" hidden>Ответ пока не получен. Повторно запускать разбор не нужно.</p>
         <p class="mc-hint">${phase === 'saving' ? 'Сохраняем источник перед запуском.' : 'Можно уйти со страницы или обновить её. Анализ продолжится на сервере; статус и результат доступны в «Моих разборах встреч».'}</p></div>`;
     if (phase === 'empty') return `<div class="mc-panel mc-empty"><h3 id="mc-analysis-title" tabindex="-1">Разбор завершён</h3><p>Явных поручений и договорённостей не найдено.</p><p>Просмотрите источник, измените текст или добавьте пункт вручную.</p></div>`;
-    if (['failed', 'uncertain', 'configuration'].includes(phase)) return `<div class="mc-panel mc-analysis"><h3 id="mc-analysis-title" tabindex="-1">${phase === 'configuration' ? 'Нужно проверить настройки AI' : phase === 'uncertain' ? 'Не удалось получить результат' : 'Не удалось завершить разбор'}</h3>
+    if (['failed', 'uncertain', 'configuration', 'quota'].includes(phase)) return `<div class="mc-panel mc-analysis"><h3 id="mc-analysis-title" tabindex="-1">${phase === 'configuration' ? 'Нужно проверить настройки AI' : phase === 'quota' ? 'Проверьте лимит AI' : phase === 'uncertain' ? 'Не удалось получить результат' : 'Не удалось завершить разбор'}</h3>
         <p>${state.sourceSaved ? 'Исходная расшифровка сохранена в черновике.' : 'Текст остаётся на странице. Сохранение черновика не подтверждено.'}</p>
         ${state.analysis_error_message && phase !== 'configuration' ? `<p>${esc(state.analysis_error_message)}</p>` : ''}
-        <p>${phase === 'configuration' ? 'Провайдер AI отклонил авторизацию. Попросите администратора проверить ключ и доступ к модели. Повтор без изменения настроек не поможет. Можно добавить пункты вручную.' : phase === 'uncertain' ? 'Связь прервалась: анализ мог продолжиться на сервере. Сначала проверьте результат.' : 'Повторите попытку или добавьте пункты вручную.'}</p>
+        <p>${phase === 'configuration' ? esc(state.analysis_error_message || 'Провайдер AI отклонил авторизацию. Попросите администратора проверить ключ и доступ к модели. Повтор без изменения настроек не поможет. Можно добавить пункты вручную.') : phase === 'quota' ? 'Новый анализ можно запустить после проверки лимита. Можно продолжить вручную.' : phase === 'uncertain' ? 'Связь прервалась: анализ мог продолжиться на сервере. Сначала проверьте результат.' : 'Повторите попытку или добавьте пункты вручную.'}</p>
         ${state.id ? action('Проверить результат', 'reload-result') : ''}</div>`;
     return `<div class="mc-panel mc-empty">${icon('list-checks')}<h3>Здесь появится план действий</h3><p>Добавьте расшифровку и запустите разбор. Каждый пункт можно исправить, дополнить или удалить.</p><p class="mc-hint">Можно начать вручную, даже если AI недоступен.</p></div>`;
 }
@@ -114,9 +114,9 @@ function renderWorkspace(state) {
                 return `<article>${badge({ label: kindLabel(item.kind) })}<h3>${esc(item.title)}</h3><p class="mc-preserve">${esc(item.description)}</p>
                     <dl><dt>Исполнитель</dt><dd>${esc(item.owner_text || 'Не указан')}</dd><dt>Срок</dt><dd>${esc(item.due_date || 'Не установлен')}${item.due_text ? ' · ' + esc(item.due_text) : ''}</dd>
                     <dt>Крупная задача</dt><dd>${task ? `<a class="ui-link" href="#/backlog?task=${task.id}">${esc(task.public_id || '#' + task.id)} · ${esc(task.title)}</a>` : item.task_id ? 'Задача недоступна' : 'Без привязки'}</dd></dl>
-                    ${item.quote ? `<details><summary>Основание</summary><blockquote>${esc(item.quote)}</blockquote></details>` : ''}</article>`;
+                    ${item.quote ? `<details><summary class="ui-disclosure-text">Основание</summary><blockquote>${esc(item.quote)}</blockquote></details>` : ''}</article>`;
             }).join('')}</div>
-            ${saved ? `<details><summary>Исходная расшифровка</summary><pre class="mc-preserve">${esc(state.transcript)}</pre></details>` : `<div class="mc-actions">${action('Вернуться к правкам', 'back')}${action(`Создать выбранные записи — ${chosen.length}`, 'confirm', { variant: 'primary', icon: 'check' })}</div>`}
+            ${saved ? `<details><summary class="ui-disclosure-text">Исходная расшифровка</summary><pre class="mc-preserve">${esc(state.transcript)}</pre></details>` : `<div class="mc-actions">${action('Вернуться к правкам', 'back')}${action(`Создать выбранные записи — ${chosen.length}`, 'confirm', { variant: 'primary', icon: 'check' })}</div>`}
         </section>`;
     }
     const summary = meetingReviewSummary(state.items);
@@ -129,7 +129,7 @@ function renderWorkspace(state) {
             ${field({ id: 'mc-transcript', label: 'Или вставьте текст', kind: 'textarea', value: state.transcript, readonly: state.items.length > 0 || analyzing,
                 hint: analyzing ? 'Расшифровка сохранена для фонового анализа. Можно читать и копировать текст.' : state.items.length ? 'Источник зафиксирован для сохранения оснований. Для другого текста создайте новый разбор.' : 'До 60 000 символов. Аудио и видео нужно предварительно расшифровать.',
                 attrs: { 'data-meta': 'transcript', rows: 12, maxlength: TRANSCRIPT_LIMIT, placeholder: 'Вставьте расшифровку разговора с именами участников…' } })}
-            <div class="mc-actions">${action(analyzing ? 'Анализируем…' : state.analysis === 'configuration' ? 'Повторить после настройки AI' : ['failed', 'uncertain'].includes(state.analysis) ? 'Повторить анализ' : 'Найти поручения и договорённости', 'analyze', { variant: 'ai-primary', attrs: { 'aria-busy': analyzing, disabled: state.items.length > 0 || analyzing || state.analysis_status === 'completed' } })}</div>
+            <div class="mc-actions">${action(analyzing ? 'Анализируем…' : state.analysis === 'configuration' ? 'Повторить после настройки AI' : state.analysis === 'quota' ? 'Повторить после проверки лимита' : ['failed', 'uncertain'].includes(state.analysis) ? 'Повторить анализ' : 'Найти поручения и договорённости', 'analyze', { variant: 'ai-primary', attrs: { 'aria-busy': analyzing, disabled: state.items.length > 0 || analyzing || state.analysis_status === 'completed' } })}</div>
             <p class="mc-hint">AI отделит поручения от решений и приложит цитаты. Все результаты требуют вашей проверки.</p>
         </section>
         <section class="mc-results" aria-busy="${analyzing}"><div class="mc-section-title"><h2>Поручения и договорённости</h2>${analyzing ? '' : `<span>${state.items.length}</span>`}</div>
@@ -168,7 +168,7 @@ export async function initMeetingCapture(app) {
     const draw = () => {
         if (!root.isConnected) return;
         workspace.innerHTML = renderWorkspace(state);
-        const current = state.preview || state.status === 'saved' ? 3 : ['saving', 'queued', 'running', 'failed', 'uncertain', 'configuration'].includes(state.analysis) ? 1 : state.items.length || state.analysis === 'empty' ? 2 : 0;
+        const current = state.preview || state.status === 'saved' ? 3 : ['saving', 'queued', 'running', 'failed', 'uncertain', 'configuration', 'quota'].includes(state.analysis) ? 1 : state.items.length || state.analysis === 'empty' ? 2 : 0;
         setStepForm(root.querySelector('#mc-step-form'), String(current));
         if (busy) root.querySelectorAll('button,input,textarea,select').forEach(el => {
             if (el.id === 'mc-transcript') el.readOnly = true;
@@ -213,7 +213,7 @@ export async function initMeetingCapture(app) {
     const markDirty = () => { state.dirty = true; const label = root.querySelector('#mc-draft-status'); if (label) label.textContent = 'Есть несохранённые изменения'; };
     const apply = result => {
         state = { ...state, ...result, dirty: false, sourceSaved: true };
-        if (result.analysis_status) state.analysis = ({ queued: 'queued', running: 'running', completed: state.items.length ? 'done' : 'empty', failed: state.analysis_error_code === 'meeting_ai_auth' ? 'configuration' : 'failed' })[result.analysis_status] || (state.items.length ? 'done' : 'idle');
+        if (result.analysis_status) state.analysis = ({ queued: 'queued', running: 'running', completed: state.items.length ? 'done' : 'empty', failed: ['meeting_ai_auth', 'meeting_service_auth', 'meeting_service_configuration'].includes(state.analysis_error_code) ? 'configuration' : state.analysis_error_code === 'meeting_ai_quota' ? 'quota' : 'failed' })[result.analysis_status] || (state.items.length ? 'done' : 'idle');
         if (state.analysis_requested_at) analysisStarted = Date.parse(state.analysis_requested_at);
         remember(state.id);
     };
@@ -421,7 +421,7 @@ export async function initMeetingCapture(app) {
             if (['save', 'analyze', 'confirm', 'preview'].includes(name)) refreshHistory();
         } catch (error) {
             if (name === 'analyze') {
-                state.analysis = error.code === 'meeting_ai_auth' ? 'configuration' : analysisSent && !error.status ? 'uncertain' : 'failed';
+                state.analysis = ['meeting_ai_auth', 'meeting_service_auth', 'meeting_service_configuration'].includes(error.code) ? 'configuration' : error.code === 'meeting_ai_quota' ? 'quota' : analysisSent && !error.status ? 'uncertain' : 'failed';
                 if (analysisSent && state.id) {
                     try {
                         const latest = await app.api.get(`${BASE}/sessions/${state.id}`);

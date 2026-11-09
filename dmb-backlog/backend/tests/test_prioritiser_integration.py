@@ -180,12 +180,12 @@ def test_insufficient_value_forwards_real_missing_inputs():
 
 
 def test_value_endpoint_returns_proposal_without_database_write(monkeypatch):
-    task = _task()
+    task = _task(version=7)
     monkeypatch.setattr(prioritiser_router, "_load_task", lambda *_args: task)
     monkeypatch.setattr(
         prioritiser_router,
         "_call_prioritiser",
-        lambda path, payload: {
+        lambda path, payload, **kwargs: {
             "status": "ok",
             "value": {
                 "value_mln": 42.5,
@@ -235,12 +235,12 @@ def test_value_is_saved_to_main_fields_only_after_approval(monkeypatch):
 
 def test_priority_endpoint_converts_raw_score_to_percent(monkeypatch):
     captured = {}
-    task = _task()
+    task = _task(version=3)
     monkeypatch.setattr(prioritiser_router, "_load_task", lambda *_args: task)
     monkeypatch.setattr(
         prioritiser_router,
         "_call_prioritiser",
-        lambda path, payload: {
+        lambda path, payload, **kwargs: {
             "status": "ok",
             "priority": {"priority": "P2", "score": 0.684, "rationale": "Сильный вклад Value."},
             "value": {"value_mln": 35.0, "explanation": "Оценка по аналогам.", "confidence": "high"},
@@ -263,3 +263,17 @@ def test_priority_endpoint_converts_raw_score_to_percent(monkeypatch):
     assert captured["changes"].priority_score == 68
     assert "Приоритет P2" in captured["changes"].priority_justification
     assert "financial_effect_ai" not in captured["changes"].model_fields_set
+
+
+@pytest.mark.parametrize('kind',['value','priority'])
+def test_stale_source_is_rejected_before_agent_dispatch(monkeypatch,kind):
+    from fastapi import HTTPException
+    monkeypatch.setattr(prioritiser_router,'_load_task',lambda *_args:_task(version=9))
+    def forbidden(*args,**kwargs):
+        raise AssertionError('A stale source may not spend model budget')
+    monkeypatch.setattr(prioritiser_router,'_call_prioritiser',forbidden)
+    handler = prioritiser_router.calculate_task_value if kind=='value' else prioritiser_router.calculate_task_priority
+    with pytest.raises(HTTPException) as error:
+        handler(17,prioritiser_router.PrioritiserRunRequest(version=8),_Db(),SimpleNamespace(id=1))
+    assert error.value.status_code==409
+    assert error.value.detail['code']=='source_revision_conflict'

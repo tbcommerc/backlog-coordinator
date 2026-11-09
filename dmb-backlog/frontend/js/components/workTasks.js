@@ -1,6 +1,7 @@
+import { segmentedControl } from '../ui/segmented.js';
 import { filterValues, setFilterValue, encodeFilterValues } from '../ui/filterValues.js';
 import { mountWorkBoard } from './workBoard.js?v=4';
-import { openWork } from './workTaskDrawer.js?v=14';
+import { openWork } from './workTaskDrawer.js?v=16';
 export { openWork };
 import { escapeHtml as esc } from '../htmlUtils.js';
 import { button, field, pageHeader, filterChip, kpiCard } from '../ui/primitives.js';
@@ -19,10 +20,10 @@ const action = (label, name, extra = {}) => button({ label, ...extra, attrs: { '
 const opt = (rows, empty = 'Не выбран') => [{ value: '', label: empty }, ...rows.map(x => ({ value: x.id, label: x.name || x.title }))];
 const error = e => Number(e?.status) === 409 ? 'Данные изменены другим участником. Черновик сохранён. Закройте панель и откройте задачу снова для сверки.' : formatErrorMessage(e);
 const late = row => row.due_date && !['done','cancelled'].includes(row.status) && row.due_date < new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'});
-const nextWorkStep = row => row.status === 'in_acceptance' ? 'Принять результат' : row.blocked_reason ? 'Снять препятствие' : row.assignment_state === 'proposed' ? 'Принять назначение' : !row.assignee_id ? 'Назначить исполнителя' : row.status === 'new' ? 'Передать исполнителю' : row.status === 'ready' ? 'Начать работу' : 'Подготовить результат';
+const nextWorkStep = row => row.status === 'in_acceptance' ? 'Принять результат' : row.assignment_state === 'proposed' ? 'Принять назначение' : !row.assignee_id ? 'Назначить исполнителя' : row.status === 'new' ? 'Передать исполнителю' : row.status === 'ready' ? 'Начать работу' : 'Подготовить результат';
 
 export function renderWorkTasks() {
-    return `<section class="work-page work-task-workplace">${pageHeader({ title: 'Рабочие задачи', description: 'Личная очередь и задачи команды', actions: '<div data-work-display-slot></div><div data-work-create-slot></div>' })}<div id="work-list"></div></section>`;
+    return `<section class="work-page work-task-workplace">${pageHeader({ title: 'Рабочие задачи', className:'ui-registry-header', actions: '<div class="ui-registry-actions"><div data-work-display-slot></div><div data-work-refresh-slot></div><div data-work-create-slot></div></div>' })}<div id="work-list"></div></section>`;
 }
 
 export async function initWorkTasks(app) {
@@ -60,7 +61,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     const initial = new URLSearchParams(location.hash.split('?')[1] || '');
     let grouped = initial.get('grouped') === '1';
     if ((workspace || projectContext) && /^\d+$/.test(initial.get(workspace ? 'page' : 'wp') || '')) page = Math.max(1, Number(initial.get(workspace ? 'page' : 'wp')));
-    const attention = new Set(workspace ? (initial.get('attention') || '').split(',').filter(x => ['overdue','blocked','unassigned'].includes(x)) : []);
+    const attention = new Set(workspace ? (initial.get('attention') || '').split(',').filter(x => ['overdue','unassigned'].includes(x)) : []);
     let display = workspace && ['summary','board'].includes(initial.get('display')) ? initial.get('display') : 'list';
     let listPage = display==='list'?page:1;
     let invalidFilters = false;
@@ -77,7 +78,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     const fitInspector=()=>{const host=query('.work-inspector-host');if(!host || host.hidden)return;const top=host.getBoundingClientRect().top;host.style.setProperty('--work-inspector-height',Math.max(180,window.innerHeight-Math.max(12,top)-12)+'px');};
     const layoutObserver=new ResizeObserver(()=>{layoutInspector();fitInspector();});layoutObserver.observe(root);
     window.addEventListener('scroll',fitInspector,true);window.addEventListener('resize',fitInspector);
-    root.innerHTML = `${workspace ? `<nav class="ui-segmented work-workspace-nav" aria-label="Представление задач">${['list','board','summary'].map(mode => button({label:({list:'Список',board:'Доска',summary:'Сводка'})[mode],variant:'secondary',attrs:{'data-work-display':mode,'aria-pressed':String(mode === display)}})).join('')}</nav><nav class="work-collections" aria-label="Подборки задач">${Object.entries(collections).map(([value,label]) => filterChip({label,count:'—',selected:value === defaultView,attrs:{'data-work-collection':value}})).join('')}</nav>` : ''}<div class="work-list-actions"></div><form class="work-filter-panel" aria-label="Фильтры рабочих задач"><div class="work-filters">
+    root.innerHTML = `${workspace ? `${segmentedControl({label:'Представление задач',className:'work-workspace-nav',value:display,items:['list','board','summary'].map(mode=>({value:mode,label:({list:'Список',board:'Доска',summary:'Сводка'})[mode],attrs:{'data-work-display':mode}}))})}<nav class="work-collections" aria-label="Подборки задач">${Object.entries(collections).map(([value,label]) => filterChip({label,variant:'navigation',count:'—',selected:value === defaultView,attrs:{'data-work-collection':value}})).join('')}</nav>` : ''}<div class="work-list-actions"></div><form class="work-filter-panel" aria-label="Фильтры рабочих задач"><div class="work-filters">
         ${listField({ id: 'work-view', label: 'Показать задачи', kind: 'select', value: defaultView, options: Object.entries(collections).map(([value,label]) => ({value,label})) })}
         ${listField({ id: 'work-status', label: 'Статус', kind: 'select', value:(workspace || projectContext)?'active':'', options: [{ value: '', label: 'Все статусы' }, { value: 'active', label: 'Активные' }, {value:'active_done',label:'Активные и выполненные'}, ...Object.entries(WORK_STATUSES).map(([value, label]) => ({ value, label }))] })}
         ${listField({ id: 'work-search', label: 'Поиск по ID, названию, описанию и результату', type: 'search', className: 'work-search-field', attrs: { placeholder: 'Поиск в этой очереди' } })}
@@ -87,7 +88,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
         <div id="${controlId('work-extra-filters')}" class="work-extra-filters" hidden>
         ${listField({id:'work-priority',label:'Приоритет',kind:'select',options:[{value:'',label:'Все приоритеты'},...Object.entries(WORK_PRIORITIES).map(([value,label])=>({value,label}))]})}
         ${listField({id:'work-direction',label:'Направление',kind:'select',options:[{value:'',label:'Все направления'},{value:'product',label:'Продуктовое'},{value:'organizational',label:'Организационное'}]})}
-        ${listField({id:'work-attention',label:'Требует внимания',kind:'select',options:[{value:'',label:'Все задачи'},{value:'overdue',label:'Просроченные'},{value:'blocked',label:'Есть препятствие'},{value:'unassigned',label:'Без исполнителя'}]})}
+        ${listField({id:'work-attention',label:'Требует внимания',kind:'select',options:[{value:'',label:'Все задачи'},{value:'overdue',label:'Просроченные'},{value:'unassigned',label:'Без исполнителя'}]})}
         ${listField({id:'work-done-period',label:'Выполненные за период',kind:'select',options:[{value:'all',label:'За всё время'},{value:'7d',label:'За 7 дней'},{value:'30d',label:'За 30 дней'}]})}<div class="work-option-fields"></div></div><p class="work-options-error" role="status" hidden></p></form>
         ${workspace ? '<div class="work-workspace-layout"><div class="work-queue-column" data-split-primary><p class="work-list-message" role="status" hidden></p><div class="work-results" aria-live="polite"></div></div><div data-split-handle role="separator" tabindex="0" aria-orientation="vertical" aria-label="Ширина карточки задачи" hidden></div><aside class="work-inspector-host" data-split-secondary aria-label="Выбранная задача" hidden></aside></div>' : '<div class="work-results" aria-live="polite"></div>'}`;
     if(workspace){
@@ -99,7 +100,11 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     }
     if (majorId) query('#work-view').closest('.ui-field').hidden = true;
     const result = query('.work-results');
-    if(workspace)query('.work-filter-tools').insertAdjacentHTML('beforeend',action('Обновить','board-refresh',{variant:'ghost',icon:'refresh-cw',iconOnly:true,attrs:{title:'Обновить задачи'}}));
+    if(workspace){
+        const slot=root.parentElement.querySelector('[data-work-refresh-slot]')||query('.work-filter-tools');
+        slot.insertAdjacentHTML('beforeend',action('Обновить','refresh',{variant:'ghost',icon:'refresh-cw',iconOnly:true,attrs:{title:'Обновить задачи'}}));
+        if(!root.contains(slot))slot.onclick=event=>root.onclick?.(event);
+    }
     const form = query('form');
     if (!workspace) query('#work-extra-filters').prepend(query('#work-sort').closest('.ui-field'));
     if (workspace) query('#work-view').closest('.ui-field').classList.add('work-mobile-collection');
@@ -125,18 +130,18 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     let filterSnapshot = null, searchTimer = null;
     if(workspace){
         form.insertAdjacentHTML('beforebegin','<p class="work-inspector-context" data-inspector-context></p>');
-        form.insertAdjacentHTML('beforebegin', action('Показать условия','inspector-filters',{variant:'ghost',attrs:{'data-inspector-filters':'','aria-expanded':'false'}}));
-        query('[data-inspector-filters]').onclick=()=>{const expanded=root.classList.toggle('inspector-conditions-expanded');query('[data-inspector-filters]').setAttribute('aria-expanded',String(expanded));query('[data-inspector-filters] span').textContent=expanded?'Свернуть условия':'Показать условия';fitInspector();};
+        form.insertAdjacentHTML('beforebegin', action('Показать фильтры','inspector-filters',{variant:'ghost',attrs:{'data-inspector-filters':'','aria-expanded':'false'}}));
+        query('[data-inspector-filters]').onclick=()=>{const expanded=root.classList.toggle('inspector-conditions-expanded');query('[data-inspector-filters]').setAttribute('aria-expanded',String(expanded));query('[data-inspector-filters] span').textContent=expanded?'Скрыть фильтры':'Показать фильтры';fitInspector();};
     }
     const value = id => filterSnapshot && Object.hasOwn(filterSnapshot,id) ? filterSnapshot[id] : query('#' + id)?.value || '';
     const filterPanel = query('#work-extra-filters');
     filterPanel.insertAdjacentHTML('afterbegin',`<div class="work-filter-heading"><h2>Фильтры</h2>${action('Закрыть','cancel-filters',{variant:'ghost',attrs:{'aria-label':'Закрыть фильтры'}})}</div>`);
-    const focusLabels = {today:'Сегодня',overdue:'Просрочка',blocked:'Препятствия'};
-    const focusAppearance = {today:{icon:'calendar-check',tone:'info'},overdue:{icon:'alert-circle',tone:'danger'},blocked:{icon:'alert-triangle',tone:'warning'}};
+    const focusLabels = {today:'Сегодня',overdue:'Просрочка'};
+    const focusAppearance = {today:{icon:'calendar-check',tone:'info'},overdue:{icon:'alert-circle',tone:'danger'}};
     if(workspace){
         filterPanel.insertAdjacentHTML('beforeend',listField({id:'work-focus',label:'Любое из условий',kind:'select',options:[{value:'',label:'Все задачи'},...Object.entries(focusLabels).map(([value,label])=>({value,label}))]}));
         query('#work-focus').closest('.ui-field').hidden=true;
-        form.insertAdjacentHTML('afterend','<nav class="work-focus-nav" aria-label="Быстрые выборки"></nav>');
+        form.insertAdjacentHTML('afterend','<div class="work-secondary-toolbar ui-registry-secondary"><nav class="work-focus-nav" aria-label="Быстрые выборки"></nav><div class="work-sort-slot"></div></div>');
     }
     const renderCounts = data => {
         if(!workspace)return;
@@ -155,7 +160,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     };
     if(workspace){
         query('#work-attention').closest('.ui-field').hidden=true;
-        filterPanel.insertAdjacentHTML('beforeend',`<fieldset class="work-attention-fields"><legend>Все условия</legend><p class="work-filter-help">Задачи должны соответствовать всем отмеченным условиям.</p>${[['overdue','Просрочены'],['blocked','С препятствием'],['unassigned','Без исполнителя']].map(([key,label])=>`<label><input type="checkbox" data-attention-draft="${key}"> ${label}</label>`).join('')}</fieldset>`);
+        filterPanel.insertAdjacentHTML('beforeend',`<fieldset class="work-attention-fields"><legend>Все условия</legend><p class="work-filter-help">Задачи должны соответствовать всем отмеченным условиям.</p>${[['overdue','Просрочены'],['unassigned','Без исполнителя']].map(([key,label])=>`<label><input type="checkbox" data-attention-draft="${key}"> ${label}</label>`).join('')}</fieldset>`);
     }
     query('.work-filter-tools').insertAdjacentHTML('beforeend',listField({id:'work-completed',label:'Выполненные',kind:'select',options:[{value:'hidden',label:'Активные'},{value:'7d',label:'Выполненные: 7 дней'},{value:'30d',label:'Выполненные: 30 дней'},{value:'all',label:'Выполненные: все'}]}));
     filterPanel.insertAdjacentHTML('beforeend', `<div class="work-filter-apply">${action('Применить','apply-filters',{variant:'primary'})}${action('Отмена','cancel-filters',{variant:'ghost'})}</div>`);
@@ -179,7 +184,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
         if(wasOpen)query('[data-work-action=filters]').focus();
     };
     const renderChips = () => {
-        const context=query('[data-inspector-context]');if(context)context.textContent=`${collections[value('work-view')]} · ${query('#work-status')?.selectedOptions[0]?.textContent || 'Все статусы'}${value('work-search')?' · Поиск: '+value('work-search'):''}${attention.size?' · Все условия: '+[...attention].map(key=>({overdue:'Просрочка',blocked:'Препятствия',unassigned:'Без исполнителя'})[key]).join(', '):''}${['work-priority','work-team','work-assignee','work-direction','work-filter-project','work-parent'].some(id=>value(id))?' · Дополнительные условия':''}${filterValues(value('work-focus')).length?' · Любое из условий внимания':''}`;
+        const context=query('[data-inspector-context]');if(context)context.textContent=`${collections[value('work-view')]} · ${query('#work-status')?.selectedOptions[0]?.textContent || 'Все статусы'}${value('work-search')?' · Поиск: '+value('work-search'):''}${attention.size?' · Все условия: '+[...attention].map(key=>({overdue:'Просрочка',unassigned:'Без исполнителя'})[key]).join(', '):''}${['work-priority','work-team','work-assignee','work-direction','work-filter-project','work-parent'].some(id=>value(id))?' · Дополнительные условия':''}${filterValues(value('work-focus')).length?' · Любое из условий внимания':''}`;
         root.classList.toggle('has-work-search',!!value('work-search'));
         query('[data-work-action=clear-search]').hidden=!value('work-search');
         const defaults={'work-status':(workspace || projectContext)?'active':'','work-sort':workspace?'attention':'due','work-done-period':'all'};
@@ -187,7 +192,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
         query('.work-filter-chips').innerHTML=ids.filter(id=>(value(id)||id==='work-status')&&value(id)!==defaults[id]).map(id=>{
             const el=query('#'+id),label=el?.selectedOptions?.[0]?.textContent||value(id);
             return button({label:label+' ×',variant:'ghost',attrs:{'data-remove-filter':id,'aria-label':'Убрать условие: '+label}});
-        }).join('')+[...attention].map(key=>button({label:({overdue:'Просрочка',blocked:'Препятствия',unassigned:'Без исполнителя'})[key]+' ×',variant:'ghost',attrs:{'data-remove-attention':key}})).join('')+(filterValues(value('work-focus')).length>1?'<span class="work-muted">Любое из условий внимания</span>':'')+(attention.size>1?'<span class="work-muted">Все выбранные признаки</span>':'');
+        }).join('')+[...attention].map(key=>button({label:({overdue:'Просрочка',unassigned:'Без исполнителя'})[key]+' ×',variant:'ghost',attrs:{'data-remove-attention':key}})).join('')+(filterValues(value('work-focus')).length>1?'<span class="work-muted">Любое из условий внимания</span>':'')+(attention.size>1?'<span class="work-muted">Все выбранные признаки</span>':'');
         query('#work-done-period').closest('.ui-field').hidden=!(!value('work-status')||filterValues(value('work-status')).some(status=>['done','active_done'].includes(status)));
         query('#work-completed').value=(!value('work-status')||filterValues(value('work-status')).some(status=>['done','active_done'].includes(status)))?value('work-done-period')||'all':'hidden';
         query('#work-completed').disabled=value('work-view')==='acceptance';
@@ -201,16 +206,17 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     if (workspace) {
         query('#work-extra-filters').insertAdjacentHTML('beforeend', listField({id:'work-parent',label:'Номер родительской задачи',type:'number',attrs:{min:1}}));
         for (const [param,id] of Object.entries(shared)) if (initial.has(param) && query('#'+id) && !['team','assignee','attention'].includes(param)) { const control=query('#'+id);if(control.tagName==='SELECT')setFilterValue(control,initial.get(param));else control.value=initial.get(param);if(control.tagName==='SELECT'&&control.value!==initial.get(param))invalidFilters=true; }
-        if(initial.has('attention') && initial.get('attention').split(',').filter(Boolean).some(key=>!['overdue','blocked','unassigned'].includes(key)))invalidFilters=true;
+        if(initial.has('attention') && initial.get('attention').split(',').filter(Boolean).some(key=>!['overdue','unassigned'].includes(key)))invalidFilters=true;
         if (!Object.hasOwn(collections,value('work-view'))) query('#work-view').value = defaultView;
         parentPicker=mountWorkPicker(query('#work-parent'),app,{label:'Родительская задача'});
     }
     filterPanel.append(query('.work-filter-apply'));
     const completedField=query('#work-completed').closest('.ui-field');
+    if(projectContext)completedField.hidden=true;
     const sortField=query('#work-sort').closest('.ui-field');
     if(workspace){
-        form.classList.add('work-toolbar','filter-panel');
-        form.insertAdjacentHTML('afterbegin','<div class="work-toolbar-search"></div><div class="work-toolbar-primary"></div>');
+        form.classList.add('work-toolbar','filter-panel','ui-registry-toolbar');
+        form.insertAdjacentHTML('afterbegin','<div class="work-toolbar-search"></div><div class="work-toolbar-primary ui-registry-fields"></div>');
         query('.work-toolbar-search').append(query('#work-search').closest('.ui-field'));
         form.append(query('.work-filter-tools'));
         for (const name of ['status','priority','sort']) {
@@ -228,16 +234,19 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
         query('.work-filter-heading h2').textContent='Все фильтры';
         query('[data-work-action=reset] span').textContent='Сброс';
         query('#work-done-period').labels[0].textContent='Период завершения';
-        query('#work-sort').title='Сначала просроченные, затем ожидающие приёмки, с препятствием, без исполнителя и остальные активные';
+        query('#work-sort').title='Сначала просроченные, затем ожидающие приёмки, без исполнителя и остальные активные';
     }
     const filterMedia=matchMedia('(max-width:900px)');
     function placePrimaryFields(inPanel){
         const fields=['work-status','work-priority','work-team','work-assignee','work-done-period','work-sort'].map(id=>query('#'+id)?.closest('.ui-field')).filter(Boolean);
+        fields.forEach(el=>el.classList.remove('ui-field-inline'));
         if(inPanel)query('.work-filter-heading').after(...fields);
         else {
-            const secondary=fields.filter(el=>el.querySelector('#work-team,#work-assignee'));
+            const secondary=fields.filter(el=>el.querySelector('#work-team,#work-assignee,#work-priority'));
             query('.work-filter-heading').after(...secondary);
-            query('.work-toolbar-primary').append(...fields.filter(el=>!secondary.includes(el)));
+            query('.work-toolbar-primary').append(...fields.filter(el=>!secondary.includes(el)&&el!==sortField));
+            query('.work-sort-slot').append(sortField);
+            fields.filter(el=>!secondary.includes(el)).forEach(el=>el.classList.add('ui-field-inline'));
         }
     }
     const placeFilters=()=>{
@@ -255,6 +264,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
         query('[data-work-action=apply-filters] span').textContent=filterMedia.matches?'Показать задачи':'Применить';
     };
     filterMedia.addEventListener('change',placeFilters);placeFilters();
+    if(workspace)sortField.addEventListener('change',event=>{if(!form.contains(sortField))form.onchange?.(event);});
     const syncLocation = () => {
         if (projectContext && live()) {
             const params=new URLSearchParams(location.hash.split('?')[1]||'');
@@ -396,7 +406,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
             if (workspace) {
                 renderCounts(data);
                 if (display === 'summary') {
-                    const metrics = [['overdue','Просрочены'],['blocked','Есть препятствие'],['in_acceptance','Ожидают приёмки'],['unassigned','Без исполнителя'],['active','Активные'],['done','Выполнены'],['total','Всего']];
+                    const metrics = [['overdue','Просрочены'],['in_acceptance','Ожидают приёмки'],['unassigned','Без исполнителя'],['active','Активные'],['done','Выполнены'],['total','Всего']];
                     result.innerHTML = `<section aria-label="Сводка задач"><h2>Состояние задач</h2><p class="work-muted">${esc(collections[value('work-view')])}. Показатели учитывают выбранные фильтры и могут пересекаться.</p><div class="work-summary-grid">${metrics.map(([key,label]) => {
                         const filtered=data.summary_states?.[key]?.state==='filtered'||key==='done'&&(!(!value('work-status')||filterValues(value('work-status')).some(status=>['done','active_done'].includes(status)))||value('work-view')==='acceptance');
                         const n=data.summary?.[key];
@@ -404,7 +414,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
                         return kpiCard({label:filtered && key==='done'?'Выполнены · включить за 7 дней':label,value:text,variant:'metric',className:'work-metric',attrs:{'data-work-metric':key,'data-ui-state':filtered?'filtered':Number.isFinite(n)?'ready':'unavailable',title:filtered?'Показатель не включён в выборку':Number.isFinite(n)?'Показать задачи':'Данные показателя недоступны',hidden:key==='total'&&data.summary?.active===n,disabled:!filtered&&!n}});
                     }).join('')}</div>${!data.total ? '<p>По выбранным условиям задач нет.</p>' : ''}</section>`;
                     const priorities=data.attention_items || data.items.filter(x=>!['done','cancelled'].includes(x.status)).slice(0,5);
-                    if(priorities.length) result.insertAdjacentHTML('beforeend',`<section class="work-priorities"><h2>Ближайшие действия</h2><p class="work-muted">Просрочки, приёмка и препятствия — затем ближайшие сроки. До пяти задач по выбранным условиям.</p><ul class="work-priority-list">${priorities.map(x=>`<li><button class="ui-link work-task-link" data-work-id="${x.id}">${esc(x.public_id)} · ${esc(x.title)}</button><div>${workStatus(x.status,WORK_STATUSES)} <span class="${late(x)?'work-warning':''}">${late(x)?'Просрочено · ':''}${esc(workDate(x.due_date))}</span></div><p>${esc(x.next_step?.label||nextWorkStep(x))} · ${esc(x.next_step?.actor_name || (x.status==='in_acceptance' ? x.acceptor_name || 'Приёмщик не назначен' : x.assignee_name || 'Исполнитель не назначен'))}</p>${x.blocked_reason?`<p class="work-warning">${esc(x.blocked_reason)}</p>`:''}</li>`).join('')}</ul></section>`);
+                    if(priorities.length) result.insertAdjacentHTML('beforeend',`<section class="work-priorities"><h2>Ближайшие действия</h2><p class="work-muted">Просрочки и приёмка — затем ближайшие сроки. До пяти задач по выбранным условиям.</p><ul class="work-priority-list">${priorities.map(x=>`<li><button class="ui-link work-task-link" data-work-id="${x.id}">${esc(x.public_id)} · ${esc(x.title)}</button><div>${workStatus(x.status,WORK_STATUSES)} <span class="${late(x)?'work-warning':''}">${late(x)?'Просрочено · ':''}${esc(workDate(x.due_date))}</span></div><p>${esc(x.next_step?.label||nextWorkStep(x))} · ${esc(x.next_step?.actor_name || (x.status==='in_acceptance' ? x.acceptor_name || 'Приёмщик не назначен' : x.assignee_name || 'Исполнитель не назначен'))}</p></li>`).join('')}</ul></section>`);
                     return;
                 }
             }
@@ -432,10 +442,10 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
                 return;
             }
             const constrained = ['work-search','work-direction','work-team','work-assignee','work-priority','work-focus','work-filter-project','work-parent'].some(id=>value(id)) || attention.size>0 || !['active',''].includes(value('work-status'));
-            const emptyContext = !workspace && (majorId || projectId) && value('work-view') === 'all' && !constrained;
+            const emptyContext = !workspace && (majorId || projectId) && value('work-view') === 'all' && !constrained && value('work-status') !== 'active';
             const emptyQueue = value('work-view')==='mine' ? 'Вам пока не назначены задачи' : value('work-view')==='acceptance' ? 'Нет результатов, ожидающих вашей приёмки' : value('work-view')==='requested' ? 'Вы пока не поручили задач' : 'Рабочих задач пока нет';
             const filtered = value('work-view') !== 'all' || ['work-status', 'work-search', 'work-direction', 'work-attention', 'work-team', 'work-assignee', 'work-priority'].some(id => value(id));
-            result.innerHTML = `${workspace ? '' : workMetrics(data.summary)}<div class="work-panel">${data.items.length ? `<div class="work-table-wrap"><table data-ui-density="compact" class="ui-table ui-table-data work-table"><caption class="sr-only">Рабочие задачи</caption><thead><tr><th scope="col">Задача</th><th scope="col">Исполнитель</th><th scope="col">Срок</th><th scope="col">Статус</th><th scope="col">Контекст</th></tr></thead><tbody>${data.items.map(x => `<tr><td data-label="Задача"><button class="ui-link work-task-link" data-work-id="${x.id}">${esc(x.public_id)} · ${esc(x.title)}</button>${!['done','cancelled'].includes(x.status) && x.blocked_reason ? '<span class="work-warning">Есть блокер</span>' : ''}</td><td data-label="Исполнитель">${esc(x.assignee_name || 'Не назначен')}</td><td data-label="Срок">${esc(workDate(x.due_date))}</td><td data-label="Статус">${workStatus(x.status, WORK_STATUSES)}${!['done','cancelled'].includes(x.status) && x.assignment_state === 'proposed' ? '<small>Ожидает принятия командой</small>' : !['done','cancelled'].includes(x.status) && x.assignment_state === 'declined' ? '<small>Назначение отклонено</small>' : ''}</td><td data-label="Контекст">${esc(x.context?.title || 'Самостоятельная')}</td></tr>`).join('')}</tbody></table></div>` : renderViewState({ title: constrained ? 'Задачи не найдены по условиям' : emptyQueue, message: emptyContext ? 'В выбранном разделе пока нет доступных рабочих задач.' : constrained ? 'Измените поиск или сбросьте условия, сохранив выбранную очередь.' : 'Откройте все доступные задачи или выберите другую очередь.', actionLabel: emptyContext ? undefined : constrained ? 'Сбросить условия' : 'Показать все доступные', actionAttrs: { 'data-work-action': constrained ? 'reset' : 'clear' } })}${workPager(page, data.total)}</div>`;
+            result.innerHTML = `${workspace ? '' : workMetrics(data.summary)}<div class="work-panel">${data.items.length ? `<div class="work-table-wrap"><table data-ui-sticky-header="page" data-ui-density="compact" class="ui-table ui-table-data work-table"><caption class="sr-only">Рабочие задачи</caption><thead><tr><th scope="col">Задача</th><th scope="col">Исполнитель</th><th scope="col">Срок</th><th scope="col">Статус</th><th scope="col">Контекст</th></tr></thead><tbody>${data.items.map(x => `<tr><td data-label="Задача"><button class="ui-link work-task-link" data-work-id="${x.id}">${esc(x.public_id)} · ${esc(x.title)}</button></td><td data-label="Исполнитель">${esc(x.assignee_name || 'Не назначен')}</td><td data-label="Срок">${esc(workDate(x.due_date))}</td><td data-label="Статус">${workStatus(x.status, WORK_STATUSES)}${!['done','cancelled'].includes(x.status) && x.assignment_state === 'proposed' ? '<small>Ожидает принятия командой</small>' : !['done','cancelled'].includes(x.status) && x.assignment_state === 'declined' ? '<small>Назначение отклонено</small>' : ''}</td><td data-label="Контекст">${esc(x.context?.title || 'Самостоятельная')}</td></tr>`).join('')}</tbody></table></div>` : renderViewState({ title: constrained ? 'Задачи не найдены по условиям' : projectContext&&value('work-status')==='active' ? 'Нет активных рабочих задач' : emptyQueue, message: emptyContext ? 'В выбранном разделе пока нет доступных рабочих задач.' : constrained ? 'Измените поиск или сбросьте условия, сохранив выбранную очередь.' : 'Откройте все доступные задачи или выберите другую очередь.', actionLabel: emptyContext ? undefined : constrained ? 'Сбросить условия' : 'Показать все доступные', actionAttrs: { 'data-work-action': constrained ? 'reset' : 'clear' } })}${workPager(page, data.total)}</div>`;
             for (const item of data.items.filter(late)) {
                 const cell=result.querySelector(`[data-work-id="${item.id}"]`)?.closest('tr')?.querySelector('[data-label="Срок"]');
                 if(cell){cell.classList.add('work-warning');cell.insertAdjacentHTML('beforeend','<small class="work-overdue-label">Просрочено</small>');}
@@ -450,7 +460,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
         if(event.target.closest('[data-work-grouping]')) { grouped=!grouped; collapsedGroups.clear(); await load(); return; }
         if (event.target.closest('.work-inspector-host, [data-board-root], [data-queue-menu], [data-queue-command]')) return;
         const groupButton=event.target.closest('[data-work-group]');
-        if(groupButton){const group=groupButton.dataset.workGroup,collapsed=groupButton.getAttribute('aria-expanded')==='true';collapsed?collapsedGroups.add(group):collapsedGroups.delete(group);groupButton.setAttribute('aria-expanded',String(!collapsed));groupButton.querySelector('[aria-hidden]').textContent=collapsed?'▸':'▾';groupButton.closest('tbody').querySelectorAll('[data-work-row]').forEach(row=>row.hidden=collapsed);return;}
+        if(groupButton){const group=groupButton.dataset.workGroup,collapsed=groupButton.getAttribute('aria-expanded')==='true';collapsed?collapsedGroups.add(group):collapsedGroups.delete(group);groupButton.setAttribute('aria-expanded',String(!collapsed));groupButton.querySelector('[aria-hidden]').textContent=collapsed?'Показать':'Скрыть';groupButton.closest('tbody').querySelectorAll('[data-work-row]').forEach(row=>row.hidden=collapsed);return;}
         const focus=event.target.closest('[data-work-focus]')?.dataset.workFocus;
         if(focus){closeFilters();const selected=new Set(filterValues(value('work-focus')));selected.has(focus)?selected.delete(focus):selected.add(focus);setFilterValue(query('#work-focus'),encodeFilterValues([...selected]));page=1;await load();return;}
         const removed=event.target.closest('[data-remove-filter]')?.dataset.removeFilter;
@@ -471,13 +481,15 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
             if (collection) {closeFilters();query('#work-view').value = collection;if(query('#work-focus'))query('#work-focus').value='';}
             if (metric) {
                 display = 'list';
-                if (['overdue','blocked','unassigned'].includes(metric)) { attention.add(metric); query('#work-attention').value = attention.size === 1 ? metric : ''; }
+                if (['overdue','unassigned'].includes(metric)) { attention.add(metric); query('#work-attention').value = attention.size === 1 ? metric : ''; }
                 if (['in_acceptance','done','active'].includes(metric)) query('#work-status').value = metric;
                 if(metric==='done'){query('#work-done-period').value='7d';if(value('work-view')==='acceptance'){query('#work-status').value='in_acceptance';const notice=query('.work-list-message');notice.hidden=false;notice.textContent='«Мне принять» включает только ожидающие приёмки работы. Выберите другую подборку для выполненных.';}}
             }
             page = 1; await load(); return;
         }
-        const id = event.target.closest('[data-work-id]')?.dataset.workId;
+        const taskButton = event.target.closest('[data-work-id]');
+        const taskRow = event.target.closest('.work-table tbody tr');
+        const id = taskButton?.dataset.workId || (!event.target.closest('button, a, input, select, textarea, [role="button"]') && taskRow?.querySelector('[data-work-id]')?.dataset.workId);
         if (id) { if (workspace) await openSelected(Number(id)); else await openWork(app, Number(id), null, load); return; }
         const a = event.target.closest('[data-work-action]')?.dataset.workAction;
         if(a==='toggle-search'){const opened=root.classList.toggle('search-open');event.target.closest('button').setAttribute('aria-expanded',String(opened));if(opened)query('#work-search').focus();return;}
@@ -496,7 +508,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
         if(a==='cancel-filters'){closeFilters();return;}
         if(a==='apply-filters'){closeFilters(true);attention.clear();if(workspace)filterPanel.querySelectorAll('[data-attention-draft]:checked').forEach(el=>attention.add(el.dataset.attentionDraft));else if(value('work-attention'))attention.add(value('work-attention'));page=1;await load();return;}
         if (a === 'options') await loadOptions();
-        if (a === 'board-refresh') { if(board)await board.refresh();else await load(); }
+        if (a === 'board-refresh' || a === 'refresh') { if(board)await board.refresh();else await load(); }
         if (a === 'reset' || a === 'clear') {
             const collection=value('work-view');closeFilters();invalidFilters=false;form.reset();parentPicker?.reset();
             clearTimeout(searchTimer);

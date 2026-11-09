@@ -1,3 +1,4 @@
+
 /* Project catalogue and overview. Controls keep shared UI-kit sizing. */
 #work-projects-page .project-return { display:flex; align-items:center; gap:var(--space-3); margin:0; }
 #work-project-body, #work-projects-page [role=tabpanel] { min-width:0; }
@@ -47,14 +48,17 @@
 #work-projects-page .toolbar-title { overflow-wrap:anywhere; }
 #work-projects-page .toolbar-subtitle { margin:var(--space-1) 0 0; color:var(--text-secondary); }
 #work-projects-page .project-breadcrumb { display:flex; align-items:center; gap:var(--space-3); font-size:var(--text-xs); color:var(--text-secondary); }
-#work-projects-page .project-catalog-toolbar { display:grid; grid-template-columns:minmax(0,420px) auto minmax(0,1fr); align-items:end; gap:var(--space-2); margin:0 0 var(--space-3); }
+#work-projects-page .project-catalog-toolbar { margin:0 0 var(--space-3); }
+.project-catalog-search { display:flex; align-items:center; flex-wrap:wrap; }
+.project-catalog-search-field { flex:1 1 240px; min-width:0; }
+#project-catalog-filters { padding:var(--space-4) 0; }
+.project-catalog-filter-actions { display:flex; gap:var(--space-2); justify-content:flex-end; margin-top:var(--space-3); }
+.project-catalog-chips:not(:empty) { margin-bottom:var(--space-3); }
 #work-projects-page .project-catalog-toolbar .ui-field { min-width:0; margin:0; }
 #work-projects-page .project-catalog-actions { display:flex; align-items:center; gap:var(--space-2); }
-#work-projects-page #project-search-count { justify-self:end; align-self:center; color:var(--text-secondary); font-size:var(--text-sm); }
+#work-projects-page #project-search-count { color:var(--text-secondary); font-size:var(--type-meta-size); }
 @media(max-width:600px) {
- #work-projects-page .project-catalog-toolbar { grid-template-columns:minmax(0,1fr) auto; }
- #work-projects-page .project-catalog-toolbar:has([data-project-reset]:not([hidden])) .ui-field { grid-column:1/-1; }
- #work-projects-page #project-search-count { grid-column:1/-1; justify-self:start; }
+ .project-catalog-search-field { flex-basis:100%; }
 }
 #work-projects-page .project-catalog-count { color:var(--text-secondary); font-size:var(--text-xs); padding-block:var(--space-2); font-variant-numeric:tabular-nums; }
 #work-projects-page .project-catalog { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr)); gap:var(--space-4); list-style:none; margin:0; padding:0; }
@@ -62,7 +66,7 @@
 #work-projects-page .project-card { height:100%; box-sizing:border-box; display:grid; grid-template-columns:40px minmax(0,1fr); grid-template-rows:1fr auto; gap:var(--space-4) var(--space-3); padding:var(--space-5); border:1px solid var(--border-color); border-radius:var(--radius-lg); background:var(--bg-secondary); color:var(--text-primary); text-decoration:none; transition:border-color .15s,background .15s; }
 #work-projects-page .project-card:hover { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 4%,var(--bg-secondary)); }
 #work-projects-page .project-card:focus-visible, #work-projects-page summary:focus-visible { outline:2px solid var(--border-focus); outline-offset:3px; }
-#work-projects-page .project-card-icon { display:grid; place-items:center; width:40px; height:40px; border-radius:var(--radius-md); background:var(--accent-light); color:var(--text-link); }
+#work-projects-page .project-card-icon { display:grid; place-items:center; width:40px; height:40px; border-radius:var(--radius-md); background:var(--accent-light); color:var(--accent-text); }
 #work-projects-page .project-card-icon svg { width:23px; height:23px; }
 #work-projects-page .project-card-name { align-self:center; font-size:var(--text-base); line-height:1.45; font-weight:var(--font-semibold); overflow-wrap:anywhere; }
 #work-projects-page .project-card-footer { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; padding-top:var(--space-3); border-top:1px solid var(--border-color); color:var(--text-secondary); font-size:var(--text-xs); }
@@ -367,8 +371,9 @@
 }
 
 /* Unified task workspace, using shared UI kit control sizes. */
-.work-workspace-nav, .work-collections, .work-quick-filters { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-block:var(--space-2); }
-.work-workspace-nav [aria-pressed="true"], .work-collections [aria-pressed="true"], .work-quick-filters [aria-pressed="true"] { background:var(--bg-tertiary); color:var(--text-primary); outline:2px solid var(--border-color); outline-offset:-2px; }
+.work-workspace-nav { margin-block:var(--space-2); }
+.work-collections, .work-quick-filters { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-block:var(--space-2); }
+.work-quick-filters [aria-pressed="true"] { background:var(--bg-tertiary); color:var(--text-primary); outline:2px solid var(--border-color); outline-offset:-2px; }
 .work-summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:var(--space-3); margin-block:var(--space-3); }
 .work-summary-grid .btn { white-space:normal; }
 .work-next-step { margin:0 0 var(--space-1); padding:var(--space-1) var(--space-2); background:var(--bg-tertiary); border-radius:var(--radius-md); font-size:var(--text-xs); overflow-wrap:anywhere; }
@@ -553,7 +558,6 @@
 .work-list-status[data-status="in_acceptance"] i { background:var(--warning-text); border-color:var(--warning-text); }
 .work-list-status[data-status="done"] i { background:var(--success-text); border-color:var(--success-text); }
 .work-task-workplace > .ui-page-header { min-height:32px; align-items:center; margin:0; }
-.work-task-workplace .work-workspace-nav { gap:2px; padding:3px; border-radius:8px; background:var(--bg-tertiary); }
 .work-task-workplace .work-create-icon { display:block; }
 .work-task-workplace .work-collections { border-bottom:1px solid var(--border-color); gap:20px; padding:0; }
 .work-task-workplace .work-filter-panel { background:transparent; border:0; border-radius:0; padding:4px 0; }
@@ -576,15 +580,17 @@
 .work-queue-panel .work-queue thead th:nth-child(3) { width:132px; }
 .work-queue-panel .work-queue thead th:nth-child(4) { width:128px; }
 .work-queue-panel .work-queue thead th:nth-child(5) { width:40px; }
-.work-queue-panel .ui-table.work-queue > tbody > tr[data-work-row] > td { padding:13px 16px; border:0; vertical-align:middle; line-height:18px; background:transparent; }
+.work-queue-panel .ui-table.work-queue > tbody > tr[data-work-row] > td { border:0; vertical-align:middle; background:transparent; }
 .work-queue-panel .work-queue tr[data-work-row] { border-bottom:1px solid var(--border-color); }
 .work-queue-panel .work-queue tr[data-work-row]:hover { background:var(--bg-hover); }
 .work-queue-panel .work-queue tr.is-selected { background:var(--bg-tertiary); box-shadow:inset 3px 0 var(--accent); }
 :root .work-queue-panel .ui-table.work-queue.ui-table-data > tbody > tr[data-work-row]:hover > td { background:transparent; }
 :root .work-queue-panel .ui-table.work-queue > tbody > .work-queue-group > th { padding:4px 16px; font-size:var(--text-xs); line-height:18px; font-weight:600; color:var(--text-primary); background:var(--bg-secondary); border:0; }
 .work-queue-panel .work-task-link.ui-link { display:block; width:100%; color:var(--text-primary); text-align:left; text-decoration:none; min-height:0; padding:0; }
-.work-queue-panel .work-task-link:hover { color:var(--accent); }
-.work-queue-title { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; font-size:14px; font-weight:500; line-height:20px; overflow-wrap:anywhere; }
+.work-table tbody tr:has([data-work-id]) { cursor:pointer; }
+.work-table .work-task-link.ui-link { color:var(--text-primary); text-decoration:none; }
+.work-table .work-task-link.ui-link:hover { color:var(--text-primary); text-decoration:none; }
+.work-queue-title { display:block; overflow:hidden; text-overflow:ellipsis; font:inherit; }
 .work-queue-context { display:flex; align-items:center; gap:8px; margin-top:4px; min-width:0; font-size:var(--text-xs); line-height:16px; color:var(--text-secondary); }
 .work-queue-context .work-public-id { flex-shrink:0; font-size:inherit; }
 .work-queue-context .work-context-name { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; min-width:0; }
@@ -744,12 +750,28 @@
 .work-dialog-head { gap:4px 12px; }
 .work-dialog-notices { max-height:90px; overflow:auto; }
 .work-dialog-footer { flex-shrink:0; }
+
+/* A single page and a single editable representation of each task field. */
+.work-card-title-editor { flex:1 0 100%; min-width:0; }
+.work-card-title-editor .ui-control { width:100%; font-weight:600; }
+.work-primary-fields { display:grid; grid-template-columns:minmax(0,2fr) minmax(120px,1fr); gap:var(--space-2); align-items:end; }
+.work-primary-fields .work-assignment-fields .ui-field { display:block; }
+.work-primary-fields .form-label { margin-bottom:var(--space-1); }
+.work-page-section { margin-top:var(--space-3); border-top:1px solid var(--border-color); padding-top:var(--space-2); }
+.work-checklist-unified .work-checklist-editor li { grid-template-columns:24px minmax(0,1fr) auto; align-items:center; }
+.work-check-completion { width:18px; height:18px; accent-color:var(--accent); margin:0; }
+.work-checklist-unified input:checked + [data-item-title] { color:var(--text-secondary); text-decoration:line-through; }
+.work-checklist-unified .work-checklist-editor { list-style:none; padding:0; }
+@media(max-width:640px) {
+ .work-primary-fields { grid-template-columns:minmax(0,1fr); }
+ .work-checklist-unified .work-checklist-editor li { grid-template-columns:24px minmax(0,1fr); }
+ .work-checklist-unified .work-checklist-tools { grid-column:2; }
+}
 .work-dialog .work-card-properties { grid-template-columns:repeat(2,minmax(0,1fr)); }
-.work-activity-filters { display:flex; gap:8px; margin-bottom:12px; }
-.work-activity-filters [aria-pressed=true] { box-shadow:inset 0 -2px var(--accent); }
+.work-activity-filters { margin-bottom:12px; }
 .work-history-details { margin-top:4px; }
 .work-personal-next { white-space:normal; display:block; }
-:root .work-queue-panel .work-queue-title { font-size:14px; line-height:20px; }
+
 @media(max-width:900px) {
  .work-task-workplace .work-focus-nav { flex-wrap:nowrap; min-height:36px; padding:0; overflow:auto; }
  .work-task-workplace .work-focus-nav .ui-filter-chip { flex:none; white-space:nowrap; }

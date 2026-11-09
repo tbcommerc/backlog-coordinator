@@ -3,6 +3,7 @@ import hashlib
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Iterator
+from dmb_agent_contracts.operation import operation_scope
 
 
 _conversation_id: ContextVar[str | None] = ContextVar("llm_conversation_id", default=None)
@@ -18,6 +19,7 @@ def llm_session(session_id: str) -> Iterator[None]:
     opaque_id = "dmb-v2-" + hashlib.sha256(session_id.encode("utf-8")).hexdigest()
     token = _conversation_id.set(opaque_id)
     try:
-        yield
+        with operation_scope():
+            yield
     finally:
         _conversation_id.reset(token)

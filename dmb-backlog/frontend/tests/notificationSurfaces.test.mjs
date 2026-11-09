@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const app = fs.readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
 const notificationStore = fs.readFileSync(new URL('../js/notificationStore.js', import.meta.url), 'utf8');
 const dashboard = fs.readFileSync(new URL('../js/components/dashboard.js', import.meta.url), 'utf8');
-const settings = fs.readFileSync(new URL('../js/components/settings.js', import.meta.url), 'utf8');
+const settings = fs.readFileSync(new URL('../js/components/notificationPreferences.js', import.meta.url), 'utf8');
 const componentsCss = fs.readFileSync(new URL('../css/components.css', import.meta.url), 'utf8');
 const pagesCss = fs.readFileSync(new URL('../css/pages.css', import.meta.url), 'utf8');
 

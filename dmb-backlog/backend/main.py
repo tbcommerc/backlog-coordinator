@@ -42,6 +42,7 @@ from routers.work_tasks_router import router as work_tasks_router
 from routers.projects_router import router as projects_router
 from routers.work_files_router import router as work_files_router
 from routers.metrics_router import router as metrics_router
+from routers.metrics_quarterly_router import router as metrics_quarterly_router
 from routers.work_resolution_router import router as work_resolution_router
 from routers.work_relations_router import router as work_relations_router
 from routers import prioritiser_router
@@ -143,11 +144,13 @@ async def lifespan(app: FastAPI):
     from routers.agent_router import _call_agent
     from database import SessionLocal
     meeting_worker = MeetingAnalysisWorker(SessionLocal, _call_agent)
-    meeting_worker.start()
+    if settings.MEETING_ANALYSIS_WORKER_ENABLED:
+        meeting_worker.start()
     try:
         yield
     finally:
-        meeting_worker.stop()
+        if settings.MEETING_ANALYSIS_WORKER_ENABLED:
+            meeting_worker.stop()
 
     if scheduler_task is not None:
         scheduler_task.cancel()
@@ -232,6 +235,7 @@ app.include_router(work_reporting_router, prefix="/api/v1", tags=["Work reportin
 app.include_router(work_tasks_router, prefix="/api/v1", tags=["Work tasks"])
 app.include_router(projects_router, prefix="/api/v1", tags=["Projects"])
 app.include_router(metrics_router, prefix="/api/v1", tags=["Metrics"])
+app.include_router(metrics_quarterly_router, prefix="/api/v2", tags=["Quarterly metrics"])
 app.include_router(work_files_router, prefix="/api/v1", tags=["Work files"])
 app.include_router(work_resolution_router, prefix="/api/v1", tags=["Work resolution"])
 app.include_router(work_relations_router, prefix="/api/v1", tags=["Work relations"])

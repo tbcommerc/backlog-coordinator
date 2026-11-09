@@ -15,5 +15,5 @@ test('deleting attachments refreshes heading and tab without reload',async({page
 });
 for(const route of ['backlog','team-backlog'])for(const format of ['array','json','csv'])test('all Jira links: '+route+' '+format,async({page})=>{
  const {tasks}=await mockApp(page);const links=['https://jira.example.com/A-1','https://jira.example.com/A-2'];tasks[0].link_jira=format==='array'?links:format==='json'?JSON.stringify(links):links.join(', ');
- await page.addInitScript(()=>{for(const key of ['dmb_backlog_columns_v1','dmb_team_columns_v1'])localStorage.setItem(key,JSON.stringify({settings:{link_jira:true}}));});await page.goto('/#/'+route);const row=page.locator('tr[data-task-id="41"]');for(const href of links)await expect(row.locator('a[href="'+href+'"]')).toBeVisible();
+ await page.addInitScript(()=>{localStorage.setItem('dmb_backlog_workspace_v2:101',JSON.stringify({schemaVersion:2,userId:101,contexts:Object.fromEntries(['all','team'].map(s=>[s,{columns:{settings:{link_jira:true}},views:{items:[],defaultId:null}}]))}));});await page.goto('/#/'+route);const row=page.locator('tr[data-task-id="41"]');for(const href of links)await expect(row.locator('a[href="'+href+'"]')).toBeVisible();
 });

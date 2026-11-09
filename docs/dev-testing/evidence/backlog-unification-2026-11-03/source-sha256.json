@@ -1,0 +1,21 @@
+{
+  "dmb-backlog/frontend/js/app.js": "e2dcdf78527d81248d1d344c700e6164e525ba6af155f4d6e63088f3123875a4",
+  "dmb-backlog/frontend/js/backlogContext.js": "4ef465d496b605dc97d8e0001c18ec185dbc3c0396ff59210332b67afd410349",
+  "dmb-backlog/frontend/js/backlogPreferences.js": "0a4d029ed264d98237a1557081598cb212ab0cc00cbc910412201ac8e01a460f",
+  "dmb-backlog/frontend/js/backlogRouteState.js": "64a431f4f234b43b01f590c1377b4628f9cc6b7c28d9553cca657f38b85b1ba9",
+  "dmb-backlog/frontend/js/router.js": "c86011b249d3731a774d0f69ab3358ea97948cb052b5a7113751fb4f41bc7914",
+  "dmb-backlog/frontend/js/components/backlogPage.js": "9b7c9ae72435e5b53108ad1aac08d6523cdd42209f9f0ec7e36121982dc72840",
+  "dmb-backlog/frontend/js/components/expressEstimate.js": "7e66a0e39f95dde3ebf840909dfa469b72fb5815bc87fc013b5bc86fdf3723af",
+  "dmb-backlog/frontend/js/components/filterToolbar.js": "63062b152f6e8822aa50b7ea210dc5d5e730acfdd8f598751153e466168ec413",
+  "dmb-backlog/frontend/js/components/modal.js": "1ef0aa8428a48b8722b218061db6b987511fa31fa7ace21fd803540efdfcc977",
+  "dmb-backlog/frontend/js/components/quarterlyGoalsUpdate.js": "a1312cdae5967547f06af29839bff602fb2b9ab2f37fb90dd773654ee4556c2a",
+  "dmb-backlog/frontend/js/components/quickEdit.js": "c7041758aa8a2505ec7303fbb20998154be59f01b95a62c50f5221304a7ffd5e",
+  "dmb-backlog/frontend/js/components/quickFilters.js": "1968e0425cdd6f809ba791a7452fc9fe8258e9de80cfe650954c538fab71c97e",
+  "dmb-backlog/frontend/js/components/reportingStatuses.js": "0c3470492d23dbe22e7395437208a529aac0b09d16e60df4cbe994ed61b09721",
+  "dmb-backlog/frontend/js/components/sidebar.js": "8f1937d532a5737c23550c649599fc9ac7ec290c2665ff0ea36ec5482e820a44",
+  "dmb-backlog/frontend/js/components/taskTable.js": "fd15ac3587461c1cd72c6d0aada6961f0a6572ec056802ac0e5fb5383cfe2037",
+  "dmb-backlog/frontend/js/components/teamBacklog.js": "f091683c0966a1ed80663a829d637c8d432c46dee33845397fabada61362dd3e",
+  "dmb-backlog/frontend/js/components/workRelations.js": "0e5d8d4245b97151b9714b678a86944973544eae8c1e9392829a34fa3572b824",
+  "dmb-backlog/backend/auth.py": "ec4cc09bfaf78f542d8d7596960d07de86f21f5de3e3ddd592b8d1f8f5942fea",
+  "dmb-backlog/backend/import_service.py": "71de868cdce571c6e61852584c989f212b7c58dd651820d4c3e729ab0c85e711"
+}

@@ -1,0 +1,2870 @@
+{
+  "round": "R3",
+  "date": "2026-11-03",
+  "checks": [
+    {
+      "name": "readiness",
+      "status": 200,
+      "result": {
+        "status": "ready",
+        "checks": {
+          "database": "ok",
+          "outbox_pending": 0,
+          "outbox_dead_lettered": 0,
+          "outbox_oldest_seconds": 0,
+          "redis": "ok",
+          "attachment_storage": "ok",
+          "prioritiser": "disabled",
+          "agent": "ok",
+          "agent_v2": "ok"
+        }
+      }
+    },
+    {
+      "name": "existing references checked",
+      "status": 200,
+      "result": {
+        "team_id": 11,
+        "team": "QA Team A",
+        "owner_id": 25,
+        "owner": "QA ba-a"
+      }
+    },
+    {
+      "name": "reports",
+      "status": 200,
+      "result": {
+        "items": [
+          {
+            "id": 24,
+            "metric_id": 10470,
+            "period_id": 40787,
+            "meeting_id": 11,
+            "text": "QA R3 UI: синтетический статус проверки закрытого квартала; не рабочая отчётность.",
+            "snapshot": {
+              "id": 40787,
+              "year": 2026,
+              "quarter": 3,
+              "state": "completed",
+              "availability": "completed",
+              "model_version": "quarterly_v2",
+              "start_date": "2026-07-01",
+              "end_date": "2026-09-30",
+              "plan": {
+                "revision_id": 40637,
+                "result_type": "range",
+                "direction": "range",
+                "target": "90",
+                "upper": "110",
+                "baseline": null,
+                "baseline_date": null,
+                "cadence": "none",
+                "interval_days": null,
+                "first_due_date": null,
+                "source_snapshot": "Синтетический набор UX-ревью R2",
+                "method_snapshot": "",
+                "unit_snapshot": "%"
+              },
+              "fact": {
+                "id": 40121,
+                "period_id": 40787,
+                "revision_no": 2,
+                "previous_revision_id": 40120,
+                "value": "105",
+                "as_of_date": "2026-09-30",
+                "status": "final",
+                "source": "Синтетический набор UX-ревью R2",
+                "comment": "",
+                "reason": "QA R2: сверка синтетического источника",
+                "source_measurement_id": null,
+                "source_measurement_snapshot": null,
+                "numerator": null,
+                "denominator": null,
+                "author_id": 25,
+                "created_at": "2026-11-03T14:27:35.824366+00:00"
+              },
+              "result": {
+                "outcome": "within_range",
+                "is_final": true,
+                "progress": null,
+                "deviation": "0"
+              },
+              "observations": {
+                "count": 0,
+                "latest_date": null,
+                "violation_count": 0,
+                "violation_dates": []
+              },
+              "capabilities": {
+                "write_fact": false,
+                "add_measurement": false,
+                "close": false,
+                "correct_final": true
+              },
+              "disabled_reasons": {
+                "write_fact": "operation_unavailable",
+                "add_measurement": "operation_unavailable",
+                "close": "operation_unavailable"
+              },
+              "source_measurement_changed": false,
+              "closure_revision_id": 108,
+              "closed_at": "2026-11-03T14:27:19.177382+00:00",
+              "cancellation_reason": null,
+              "schedule": {
+                "missed_count": 0,
+                "overdue": false,
+                "next_due": null
+              }
+            },
+            "author_id": 25,
+            "updated_at": "2026-11-03T17:34:13.577870+00:00"
+          },
+          {
+            "id": 23,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "meeting_id": 11,
+            "text": "QA R3: синтетический статус для UX-проверки, не рабочая отчётность.",
+            "snapshot": {
+              "id": 40788,
+              "year": 2026,
+              "quarter": 4,
+              "state": "active",
+              "availability": "active",
+              "model_version": "quarterly_v2",
+              "start_date": "2026-10-01",
+              "end_date": "2026-12-31",
+              "plan": {
+                "revision_id": 40629,
+                "result_type": "range",
+                "direction": "range",
+                "target": "90",
+                "upper": "110",
+                "baseline": null,
+                "baseline_date": null,
+                "cadence": "none",
+                "interval_days": null,
+                "first_due_date": null,
+                "source_snapshot": "Синтетический набор UX-ревью R2",
+                "method_snapshot": "",
+                "unit_snapshot": "%"
+              },
+              "fact": {
+                "id": 40161,
+                "period_id": 40788,
+                "revision_no": 5,
+                "previous_revision_id": 40124,
+                "value": "999999999999999.9999999999",
+                "as_of_date": "2026-11-03",
+                "status": "preliminary",
+                "source": "QA R3",
+                "comment": "",
+                "reason": "QA R3: большое точное число",
+                "source_measurement_id": null,
+                "source_measurement_snapshot": null,
+                "numerator": null,
+                "denominator": null,
+                "author_id": 25,
+                "created_at": "2026-11-03T17:20:19.838281+00:00"
+              },
+              "result": {
+                "outcome": "outside_range",
+                "is_final": false,
+                "progress": null,
+                "deviation": "999999999999889.9999999999"
+              },
+              "observations": {
+                "count": 26,
+                "latest_date": "2026-11-03",
+                "violation_count": 4,
+                "violation_dates": [
+                  "2026-10-22",
+                  "2026-10-23",
+                  "2026-10-24",
+                  "2026-10-25"
+                ]
+              },
+              "capabilities": {
+                "write_fact": true,
+                "add_measurement": true,
+                "close": false,
+                "correct_final": false
+              },
+              "disabled_reasons": {
+                "close": "period_not_ended",
+                "correct_final": "operation_unavailable"
+              },
+              "source_measurement_changed": false,
+              "closure_revision_id": null,
+              "closed_at": null,
+              "cancellation_reason": null,
+              "schedule": {
+                "missed_count": 0,
+                "overdue": false,
+                "next_due": null
+              }
+            },
+            "author_id": 25,
+            "updated_at": "2026-11-03T17:21:48.318305+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "name": "history?limit=100",
+      "status": 200,
+      "result": {
+        "items": [
+          {
+            "id": 2370,
+            "metric_id": 10470,
+            "period_id": 40787,
+            "actor_id": 25,
+            "action": "report",
+            "before": {},
+            "after": {
+              "meeting_id": 11,
+              "text": "QA R3 UI: синтетический статус проверки закрытого квартала; не рабочая отчётность.",
+              "snapshot": {
+                "id": 40787,
+                "year": 2026,
+                "quarter": 3,
+                "state": "completed",
+                "availability": "completed",
+                "model_version": "quarterly_v2",
+                "start_date": "2026-07-01",
+                "end_date": "2026-09-30",
+                "plan": {
+                  "revision_id": 40637,
+                  "result_type": "range",
+                  "direction": "range",
+                  "target": "90",
+                  "upper": "110",
+                  "baseline": null,
+                  "baseline_date": null,
+                  "cadence": "none",
+                  "interval_days": null,
+                  "first_due_date": null,
+                  "source_snapshot": "Синтетический набор UX-ревью R2",
+                  "method_snapshot": "",
+                  "unit_snapshot": "%"
+                },
+                "fact": {
+                  "id": 40121,
+                  "period_id": 40787,
+                  "revision_no": 2,
+                  "previous_revision_id": 40120,
+                  "value": "105",
+                  "as_of_date": "2026-09-30",
+                  "status": "final",
+                  "source": "Синтетический набор UX-ревью R2",
+                  "comment": "",
+                  "reason": "QA R2: сверка синтетического источника",
+                  "source_measurement_id": null,
+                  "source_measurement_snapshot": null,
+                  "numerator": null,
+                  "denominator": null,
+                  "author_id": 25,
+                  "created_at": "2026-11-03T14:27:35.824366+00:00"
+                },
+                "result": {
+                  "outcome": "within_range",
+                  "is_final": true,
+                  "progress": null,
+                  "deviation": "0"
+                },
+                "observations": {
+                  "count": 0,
+                  "latest_date": null,
+                  "violation_count": 0,
+                  "violation_dates": []
+                },
+                "capabilities": {
+                  "write_fact": false,
+                  "add_measurement": false,
+                  "close": false,
+                  "correct_final": true
+                },
+                "disabled_reasons": {
+                  "write_fact": "operation_unavailable",
+                  "add_measurement": "operation_unavailable",
+                  "close": "operation_unavailable"
+                },
+                "source_measurement_changed": false,
+                "closure_revision_id": 108,
+                "closed_at": "2026-11-03T14:27:19.177382+00:00",
+                "cancellation_reason": null,
+                "schedule": {
+                  "missed_count": 0,
+                  "overdue": false,
+                  "next_due": null
+                }
+              }
+            },
+            "reason": "",
+            "created_at": "2026-11-03T17:34:13.162098+00:00"
+          },
+          {
+            "id": 2369,
+            "metric_id": 10470,
+            "period_id": 40787,
+            "actor_id": 25,
+            "action": "period_closed",
+            "before": {},
+            "after": {
+              "closure_revision_id": 108,
+              "result": {
+                "outcome": "within_range",
+                "is_final": true,
+                "progress": null,
+                "deviation": "0"
+              },
+              "observations": {
+                "count": 0,
+                "latest_date": null,
+                "violation_count": 0,
+                "violation_dates": []
+              },
+              "rules_version": "quarterly-1",
+              "confirmed_as_of_date": "2026-09-30",
+              "early_date_confirmed": false
+            },
+            "reason": "QA R3: UI пересмотр закрытого плана",
+            "created_at": "2026-11-03T17:33:01.248171+00:00"
+          },
+          {
+            "id": 2368,
+            "metric_id": 10470,
+            "period_id": 40787,
+            "actor_id": 25,
+            "action": "plan_revised",
+            "before": {
+              "result_type": "range",
+              "direction": "range",
+              "target": "95",
+              "upper": "115",
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический набор UX-ревью R2",
+              "method_snapshot": "",
+              "unit_snapshot": "%"
+            },
+            "after": {
+              "result_type": "range",
+              "direction": "range",
+              "target": "90",
+              "upper": "110",
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический набор UX-ревью R2",
+              "method_snapshot": "",
+              "unit_snapshot": "%",
+              "revision_id": 40637
+            },
+            "reason": "QA R3: UI пересмотр закрытого плана",
+            "created_at": "2026-11-03T17:33:01.248171+00:00"
+          },
+          {
+            "id": 2362,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "report",
+            "before": {},
+            "after": {
+              "meeting_id": 11,
+              "text": "QA R3: синтетический статус для UX-проверки, не рабочая отчётность.",
+              "snapshot": {
+                "id": 40788,
+                "year": 2026,
+                "quarter": 4,
+                "state": "active",
+                "availability": "active",
+                "model_version": "quarterly_v2",
+                "start_date": "2026-10-01",
+                "end_date": "2026-12-31",
+                "plan": {
+                  "revision_id": 40629,
+                  "result_type": "range",
+                  "direction": "range",
+                  "target": "90",
+                  "upper": "110",
+                  "baseline": null,
+                  "baseline_date": null,
+                  "cadence": "none",
+                  "interval_days": null,
+                  "first_due_date": null,
+                  "source_snapshot": "Синтетический набор UX-ревью R2",
+                  "method_snapshot": "",
+                  "unit_snapshot": "%"
+                },
+                "fact": {
+                  "id": 40161,
+                  "period_id": 40788,
+                  "revision_no": 5,
+                  "previous_revision_id": 40124,
+                  "value": "999999999999999.9999999999",
+                  "as_of_date": "2026-11-03",
+                  "status": "preliminary",
+                  "source": "QA R3",
+                  "comment": "",
+                  "reason": "QA R3: большое точное число",
+                  "source_measurement_id": null,
+                  "source_measurement_snapshot": null,
+                  "numerator": null,
+                  "denominator": null,
+                  "author_id": 25,
+                  "created_at": "2026-11-03T17:20:19.838281+00:00"
+                },
+                "result": {
+                  "outcome": "outside_range",
+                  "is_final": false,
+                  "progress": null,
+                  "deviation": "999999999999889.9999999999"
+                },
+                "observations": {
+                  "count": 26,
+                  "latest_date": "2026-11-03",
+                  "violation_count": 4,
+                  "violation_dates": [
+                    "2026-10-22",
+                    "2026-10-23",
+                    "2026-10-24",
+                    "2026-10-25"
+                  ]
+                },
+                "capabilities": {
+                  "write_fact": true,
+                  "add_measurement": true,
+                  "close": false,
+                  "correct_final": false
+                },
+                "disabled_reasons": {
+                  "close": "period_not_ended",
+                  "correct_final": "operation_unavailable"
+                },
+                "source_measurement_changed": false,
+                "closure_revision_id": null,
+                "closed_at": null,
+                "cancellation_reason": null,
+                "schedule": {
+                  "missed_count": 0,
+                  "overdue": false,
+                  "next_due": null
+                }
+              }
+            },
+            "reason": "",
+            "created_at": "2026-11-03T17:21:48.002588+00:00"
+          },
+          {
+            "id": 2361,
+            "metric_id": 10470,
+            "period_id": 40787,
+            "actor_id": 25,
+            "action": "period_closed",
+            "before": {},
+            "after": {
+              "closure_revision_id": 107,
+              "result": {
+                "outcome": "within_range",
+                "is_final": true,
+                "progress": null,
+                "deviation": "0"
+              },
+              "observations": {
+                "count": 0,
+                "latest_date": null,
+                "violation_count": 0,
+                "violation_dates": []
+              },
+              "rules_version": "quarterly-1",
+              "confirmed_as_of_date": "2026-09-30",
+              "early_date_confirmed": false
+            },
+            "reason": "QA R3: пересмотр закрытого плана",
+            "created_at": "2026-11-03T17:20:20.640907+00:00"
+          },
+          {
+            "id": 2360,
+            "metric_id": 10470,
+            "period_id": 40787,
+            "actor_id": 25,
+            "action": "plan_revised",
+            "before": {
+              "result_type": "range",
+              "direction": "range",
+              "target": "90",
+              "upper": "110",
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический набор UX-ревью R2",
+              "method_snapshot": "",
+              "unit_snapshot": "%"
+            },
+            "after": {
+              "result_type": "range",
+              "direction": "range",
+              "target": "95",
+              "upper": "115",
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический набор UX-ревью R2",
+              "method_snapshot": "",
+              "unit_snapshot": "%",
+              "revision_id": 40635
+            },
+            "reason": "QA R3: пересмотр закрытого плана",
+            "created_at": "2026-11-03T17:20:20.640907+00:00"
+          },
+          {
+            "id": 2359,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "fact_corrected",
+            "before": {
+              "id": 40124,
+              "period_id": 40788,
+              "revision_no": 4,
+              "previous_revision_id": 40123,
+              "value": "101",
+              "as_of_date": "2026-11-03",
+              "status": "preliminary",
+              "source": "QA R2",
+              "comment": "",
+              "reason": "QA R2: редактор A",
+              "source_measurement_id": null,
+              "source_measurement_snapshot": null,
+              "numerator": null,
+              "denominator": null,
+              "author_id": 25,
+              "created_at": "2026-11-03T14:45:37.748289+00:00"
+            },
+            "after": {
+              "id": 40161,
+              "period_id": 40788,
+              "revision_no": 5,
+              "previous_revision_id": 40124,
+              "value": "999999999999999.9999999999",
+              "as_of_date": "2026-11-03",
+              "status": "preliminary",
+              "source": "QA R3",
+              "comment": "",
+              "reason": "QA R3: большое точное число",
+              "source_measurement_id": null,
+              "source_measurement_snapshot": null,
+              "numerator": null,
+              "denominator": null,
+              "author_id": 25,
+              "created_at": "2026-11-03T17:20:19.838281+00:00"
+            },
+            "reason": "QA R3: большое точное число",
+            "created_at": "2026-11-03T17:20:19.838281+00:00"
+          },
+          {
+            "id": 2358,
+            "metric_id": 10470,
+            "period_id": null,
+            "actor_id": 25,
+            "action": "passport",
+            "before": {
+              "id": 10470,
+              "title": "DEV-QA-METRICS-UX-20261103-R2-RANGE",
+              "description": "",
+              "team_id": 11,
+              "owner_id": 25,
+              "project_id": null,
+              "unit": "%",
+              "method": "",
+              "source": "Синтетический набор UX-ревью R2",
+              "involved_team_ids": [],
+              "tags": [],
+              "priority_id": null,
+              "business_customer_id": null,
+              "department_id": null,
+              "did_client_group_id": null,
+              "legacy_task_id": null,
+              "legacy_snapshot": null,
+              "is_archived": false,
+              "version": 52,
+              "model_version": "quarterly_v2",
+              "lifecycle_state": "tracking",
+              "preferred_result_type": "range",
+              "default_direction": "range",
+              "annual_aggregation": "none",
+              "aggregation_scale": 100,
+              "display_precision": 2,
+              "created_by": 25,
+              "created_at": "2026-11-03T14:25:18.668429+00:00",
+              "updated_at": "2026-11-03T15:00:21.734864+00:00"
+            },
+            "after": {
+              "method": "QA R3: точность десятичных значений",
+              "display_precision": 10
+            },
+            "reason": "QA R3: паспорт и точность",
+            "created_at": "2026-11-03T17:20:19.296876+00:00"
+          },
+          {
+            "id": 2343,
+            "metric_id": 10470,
+            "period_id": null,
+            "actor_id": 25,
+            "action": "linked",
+            "before": {},
+            "after": {
+              "work_task_id": 108
+            },
+            "reason": "",
+            "created_at": "2026-11-03T15:00:21.701851+00:00"
+          },
+          {
+            "id": 2342,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "file_added",
+            "before": {},
+            "after": {
+              "filename": "QA-METRICS-R2.txt",
+              "period_id": 40788
+            },
+            "reason": "",
+            "created_at": "2026-11-03T15:00:17.593924+00:00"
+          },
+          {
+            "id": 2341,
+            "metric_id": 10470,
+            "period_id": 40789,
+            "actor_id": 25,
+            "action": "plan_created",
+            "before": {},
+            "after": {
+              "result_type": "range",
+              "direction": "range",
+              "target": "90",
+              "upper": "110",
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический набор UX-ревью R2",
+              "method_snapshot": "",
+              "unit_snapshot": "%",
+              "revision_id": 40630
+            },
+            "reason": "",
+            "created_at": "2026-11-03T14:58:10.478161+00:00"
+          },
+          {
+            "id": 2340,
+            "metric_id": 10470,
+            "period_id": null,
+            "actor_id": 25,
+            "action": "year_scope_changed",
+            "before": {},
+            "after": {
+              "version": 48,
+              "reason": "QA R2: будущий год",
+              "expected_quarters": [
+                1
+              ],
+              "exclusions": {},
+              "aggregation": "sum",
+              "scale": 100
+            },
+            "reason": "QA R2: будущий год",
+            "created_at": "2026-11-03T14:58:10.065035+00:00"
+          },
+          {
+            "id": 2339,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "comment",
+            "before": {},
+            "after": {
+              "text": "QA R2: длинный синтетический комментарий. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестовый текст. Тестов"
+            },
+            "reason": "",
+            "created_at": "2026-11-03T14:58:02.448944+00:00"
+          },
+          {
+            "id": 2338,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "measurement_added",
+            "before": {},
+            "after": {
+              "id": 1000107,
+              "period_id": 40788,
+              "measured_on": "2026-10-25",
+              "value": "114",
+              "source": "QA R2 pagination",
+              "comment": "",
+              "author_id": 25,
+              "created_at": "2026-11-03T14:57:54.559197+00:00",
+              "updated_at": "2026-11-03T14:57:54.639264+00:00"
+            },
+            "reason": "",
+            "created_at": "2026-11-03T14:57:54.559197+00:00"
+          },
+          {
+            "id": 2337,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "period_restored",
+            "before": {},
+            "after": {
+              "state": "active"
+            },
+            "reason": "QA R2 restore period",
+            "created_at": "2026-11-03T14:56:51.059909+00:00"
+          },
+          {
+            "id": 2336,
+            "metric_id": 10470,
+            "period_id": null,
+            "actor_id": 25,
+            "action": "metric_resumed",
+            "before": {},
+            "after": {},
+            "reason": "QA R2 resume after restore",
+            "created_at": "2026-11-03T14:56:50.768118+00:00"
+          },
+          {
+            "id": 2335,
+            "metric_id": 10470,
+            "period_id": null,
+            "actor_id": 25,
+            "action": "metric_restored",
+            "before": {
+              "id": 10470,
+              "title": "DEV-QA-METRICS-UX-20261103-R2-RANGE",
+              "description": "",
+              "team_id": 11,
+              "owner_id": 25,
+              "project_id": null,
+              "unit": "%",
+              "method": "",
+              "source": "Синтетический набор UX-ревью R2",
+              "involved_team_ids": [],
+              "tags": [],
+              "priority_id": null,
+              "business_customer_id": null,
+              "department_id": null,
+              "did_client_group_id": null,
+              "legacy_task_id": null,
+              "legacy_snapshot": null,
+              "is_archived": true,
+              "version": 43,
+              "model_version": "quarterly_v2",
+              "lifecycle_state": "tracking",
+              "preferred_result_type": "range",
+              "default_direction": "range",
+              "annual_aggregation": "none",
+              "aggregation_scale": 100,
+              "display_precision": 2,
+              "created_by": 25,
+              "created_at": "2026-11-03T14:25:18.668429+00:00",
+              "updated_at": "2026-11-03T14:56:50.180314+00:00"
+            },
+            "after": {
+              "id": 10470,
+              "title": "DEV-QA-METRICS-UX-20261103-R2-RANGE",
+              "description": "",
+              "team_id": 11,
+              "owner_id": 25,
+              "project_id": null,
+              "unit": "%",
+              "method": "",
+              "source": "Синтетический набор UX-ревью R2",
+              "involved_team_ids": [],
+              "tags": [],
+              "priority_id": null,
+              "business_customer_id": null,
+              "department_id": null,
+              "did_client_group_id": null,
+              "legacy_task_id": null,
+              "legacy_snapshot": null,
+              "is_archived": false,
+              "version": 43,
+              "model_version": "quarterly_v2",
+              "lifecycle_state": "paused",
+              "preferred_result_type": "range",
+              "default_direction": "range",
+              "annual_aggregation": "none",
+              "aggregation_scale": 100,
+              "display_precision": 2,
+              "created_by": 25,
+              "created_at": "2026-11-03T14:25:18.668429+00:00",
+              "updated_at": "2026-11-03T14:56:50.180314+00:00"
+            },
+            "reason": "QA R2 restore",
+            "created_at": "2026-11-03T14:56:50.439349+00:00"
+          },
+          {
+            "id": 2334,
+            "metric_id": 10470,
+            "period_id": null,
+            "actor_id": 25,
+            "action": "metric_archived",
+            "before": {
+              "id": 10470,
+              "title": "DEV-QA-METRICS-UX-20261103-R2-RANGE",
+              "description": "",
+              "team_id": 11,
+              "owner_id": 25,
+              "project_id": null,
+              "unit": "%",
+              "method": "",
+              "source": "Синтетический набор UX-ревью R2",
+              "involved_team_ids": [],
+              "tags": [],
+              "priority_id": null,
+              "business_customer_id": null,
+              "department_id": null,
+              "did_client_group_id": null,
+              "legacy_task_id": null,
+              "legacy_snapshot": null,
+              "is_archived": false,
+              "version": 42,
+              "model_version": "quarterly_v2",
+              "lifecycle_state": "tracking",
+              "preferred_result_type": "range",
+              "default_direction": "range",
+              "annual_aggregation": "none",
+              "aggregation_scale": 100,
+              "display_precision": 2,
+              "created_by": 25,
+              "created_at": "2026-11-03T14:25:18.668429+00:00",
+              "updated_at": "2026-11-03T14:56:49.848527+00:00"
+            },
+            "after": {
+              "id": 10470,
+              "title": "DEV-QA-METRICS-UX-20261103-R2-RANGE",
+              "description": "",
+              "team_id": 11,
+              "owner_id": 25,
+              "project_id": null,
+              "unit": "%",
+              "method": "",
+              "source": "Синтетический набор UX-ревью R2",
+              "involved_team_ids": [],
+              "tags": [],
+              "priority_id": null,
+              "business_customer_id": null,
+              "department_id": null,
+              "did_client_group_id": null,
+              "legacy_task_id": null,
+              "legacy_snapshot": null,
+              "is_archived": true,
+              "version": 42,
+              "model_version": "quarterly_v2",
+              "lifecycle_state": "tracking",
+              "preferred_result_type": "range",
+              "default_direction": "range",
+              "annual_aggregation": "none",
+              "aggregation_scale": 100,
+              "display_precision": 2,
+              "created_by": 25,
+              "created_at": "2026-11-03T14:25:18.668429+00:00",
+              "updated_at": "2026-11-03T14:56:49.848527+00:00"
+            },
+            "reason": "QA R2 archive",
+            "created_at": "2026-11-03T14:56:50.110916+00:00"
+          },
+          {
+            "id": 2333,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "period_cancelled",
+            "before": {},
+            "after": {
+              "state": "cancelled"
+            },
+            "reason": "QA R2 cancel",
+            "created_at": "2026-11-03T14:56:49.771783+00:00"
+          },
+          {
+            "id": 2332,
+            "metric_id": 10470,
+            "period_id": null,
+            "actor_id": 25,
+            "action": "metric_resumed",
+            "before": {},
+            "after": {},
+            "reason": "QA R2 resume",
+            "created_at": "2026-11-03T14:56:49.190341+00:00"
+          },
+          {
+            "id": 2331,
+            "metric_id": 10470,
+            "period_id": null,
+            "actor_id": 25,
+            "action": "metric_paused",
+            "before": {},
+            "after": {},
+            "reason": "QA R2 pause",
+            "created_at": "2026-11-03T14:56:48.616999+00:00"
+          },
+          {
+            "id": 2298,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "fact_corrected",
+            "before": {
+              "id": 40123,
+              "period_id": 40788,
+              "revision_no": 3,
+              "previous_revision_id": 40122,
+              "value": "102",
+              "as_of_date": "2026-11-03",
+              "status": "preliminary",
+              "source": "QA R2",
+              "comment": "",
+              "reason": "QA R2: редактор B",
+              "source_measurement_id": null,
+              "source_measurement_snapshot": null,
+              "numerator": null,
+              "denominator": null,
+              "author_id": 25,
+              "created_at": "2026-11-03T14:43:36.313645+00:00"
+            },
+            "after": {
+              "id": 40124,
+              "period_id": 40788,
+              "revision_no": 4,
+              "previous_revision_id": 40123,
+              "value": "101",
+              "as_of_date": "2026-11-03",
+              "status": "preliminary",
+              "source": "QA R2",
+              "comment": "",
+              "reason": "QA R2: редактор A",
+              "source_measurement_id": null,
+              "source_measurement_snapshot": null,
+              "numerator": null,
+              "denominator": null,
+              "author_id": 25,
+              "created_at": "2026-11-03T14:45:37.748289+00:00"
+            },
+            "reason": "QA R2: редактор A",
+            "created_at": "2026-11-03T14:45:37.748289+00:00"
+          },
+          {
+            "id": 2297,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "fact_corrected",
+            "before": {
+              "id": 40122,
+              "period_id": 40788,
+              "revision_no": 2,
+              "previous_revision_id": 40119,
+              "value": "999999999999999.9999999999",
+              "as_of_date": "2026-11-03",
+              "status": "preliminary",
+              "source": "QA R2",
+              "comment": "",
+              "reason": "QA R2: numeric and replay checks",
+              "source_measurement_id": null,
+              "source_measurement_snapshot": null,
+              "numerator": null,
+              "denominator": null,
+              "author_id": 25,
+              "created_at": "2026-11-03T14:31:22.851443+00:00"
+            },
+            "after": {
+              "id": 40123,
+              "period_id": 40788,
+              "revision_no": 3,
+              "previous_revision_id": 40122,
+              "value": "102",
+              "as_of_date": "2026-11-03",
+              "status": "preliminary",
+              "source": "QA R2",
+              "comment": "",
+              "reason": "QA R2: редактор B",
+              "source_measurement_id": null,
+              "source_measurement_snapshot": null,
+              "numerator": null,
+              "denominator": null,
+              "author_id": 25,
+              "created_at": "2026-11-03T14:43:36.313645+00:00"
+            },
+            "reason": "QA R2: редактор B",
+            "created_at": "2026-11-03T14:43:36.313645+00:00"
+          },
+          {
+            "id": 2296,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "fact_corrected",
+            "before": {
+              "id": 40119,
+              "period_id": 40788,
+              "revision_no": 1,
+              "previous_revision_id": null,
+              "value": "0",
+              "as_of_date": "2026-11-03",
+              "status": "preliminary",
+              "source": "Синтетический набор UX-ревью R2",
+              "comment": "",
+              "reason": "",
+              "source_measurement_id": null,
+              "source_measurement_snapshot": null,
+              "numerator": null,
+              "denominator": null,
+              "author_id": 25,
+              "created_at": "2026-11-03T14:25:43.096420+00:00"
+            },
+            "after": {
+              "id": 40122,
+              "period_id": 40788,
+              "revision_no": 2,
+              "previous_revision_id": 40119,
+              "value": "999999999999999.9999999999",
+              "as_of_date": "2026-11-03",
+              "status": "preliminary",
+              "source": "QA R2",
+              "comment": "",
+              "reason": "QA R2: numeric and replay checks",
+              "source_measurement_id": null,
+              "source_measurement_snapshot": null,
+              "numerator": null,
+              "denominator": null,
+              "author_id": 25,
+              "created_at": "2026-11-03T14:31:22.851443+00:00"
+            },
+            "reason": "QA R2: numeric and replay checks",
+            "created_at": "2026-11-03T14:31:22.851443+00:00"
+          },
+          {
+            "id": 2295,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "actor_id": 25,
+            "action": "measurement_added",
+            "before": {},
+            "after": {
+              "id": 1000106,
+              "period_id": 40788,
+              "measured_on": "2026-10-24",
+              "value": "113",
+              "source": "QA R2 pagination",
+              "comment": "",
+              "author_id": 25,
+              "created_at": "2026-11-03T14:30:20.369764+00:00",
+              "updated_at": "2026-11-03T14:30:20.397832+00:00"
+            },
+            "reason": "",
+            "created_at": "2026-11-03T14:30:20.369764+00:00"
+          }
+        ],
+        "total": 59,
+        "page": 1
+      }
+    }
+  ],
+  "metrics": {
+    "10470": {
+      "id": 10470,
+      "title": "DEV-QA-METRICS-UX-20261103-R2-RANGE",
+      "description": "",
+      "team_id": 11,
+      "owner_id": 25,
+      "project_id": null,
+      "unit": "%",
+      "method": "QA R3: точность десятичных значений",
+      "source": "Синтетический набор UX-ревью R2",
+      "involved_team_ids": [],
+      "tags": [],
+      "priority_id": null,
+      "business_customer_id": null,
+      "department_id": null,
+      "did_client_group_id": null,
+      "legacy_task_id": null,
+      "is_archived": false,
+      "version": 60,
+      "model_version": "quarterly_v2",
+      "lifecycle_state": "tracking",
+      "preferred_result_type": "range",
+      "default_direction": "range",
+      "annual_aggregation": "none",
+      "aggregation_scale": 100,
+      "display_precision": 10,
+      "created_by": 25,
+      "created_at": "2026-11-03T14:25:18.668429+00:00",
+      "updated_at": "2026-11-03T17:34:13.577870+00:00",
+      "public_id": "MET-10470",
+      "owner": "QA ba-a",
+      "team": "QA Team A",
+      "project": null,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "year": 2026,
+      "periods": [
+        {
+          "id": 40787,
+          "year": 2026,
+          "quarter": 3,
+          "state": "completed",
+          "availability": "completed",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-07-01",
+          "end_date": "2026-09-30",
+          "plan": {
+            "revision_id": 40637,
+            "result_type": "range",
+            "direction": "range",
+            "target": "90",
+            "upper": "110",
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический набор UX-ревью R2",
+            "method_snapshot": "",
+            "unit_snapshot": "%"
+          },
+          "fact": {
+            "id": 40121,
+            "period_id": 40787,
+            "revision_no": 2,
+            "previous_revision_id": 40120,
+            "value": "105",
+            "as_of_date": "2026-09-30",
+            "status": "final",
+            "source": "Синтетический набор UX-ревью R2",
+            "comment": "",
+            "reason": "QA R2: сверка синтетического источника",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T14:27:35.824366+00:00"
+          },
+          "result": {
+            "outcome": "within_range",
+            "is_final": true,
+            "progress": null,
+            "deviation": "0"
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": 0,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": true
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": 108,
+          "closed_at": "2026-11-03T14:27:19.177382+00:00",
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40628,
+            "period_id": 40787,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "range",
+              "direction": "range",
+              "target": "90",
+              "upper": "110",
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический набор UX-ревью R2",
+              "method_snapshot": "",
+              "unit_snapshot": "%",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T14:25:18.668429+00:00"
+          },
+          "closures": [
+            {
+              "id": 105,
+              "period_id": 40787,
+              "plan_revision_id": 40628,
+              "fact_revision_id": 40120,
+              "previous_revision_id": null,
+              "author_id": 25,
+              "snapshot": {
+                "result": {
+                  "outcome": "within_range",
+                  "is_final": true,
+                  "progress": null,
+                  "deviation": "0"
+                },
+                "observations": {
+                  "count": 0,
+                  "latest_date": null,
+                  "violation_count": 0,
+                  "violation_dates": []
+                },
+                "rules_version": "quarterly-1",
+                "confirmed_as_of_date": "2026-09-30",
+                "early_date_confirmed": false
+              },
+              "comment": "",
+              "created_at": "2026-11-03T14:27:19.045399+00:00"
+            },
+            {
+              "id": 106,
+              "period_id": 40787,
+              "plan_revision_id": 40628,
+              "fact_revision_id": 40121,
+              "previous_revision_id": 105,
+              "author_id": 25,
+              "snapshot": {
+                "result": {
+                  "outcome": "within_range",
+                  "is_final": true,
+                  "progress": null,
+                  "deviation": "0"
+                },
+                "observations": {
+                  "count": 0,
+                  "latest_date": null,
+                  "violation_count": 0,
+                  "violation_dates": []
+                },
+                "rules_version": "quarterly-1",
+                "confirmed_as_of_date": "2026-09-30",
+                "early_date_confirmed": false
+              },
+              "comment": "QA R2: сверка синтетического источника",
+              "created_at": "2026-11-03T14:27:35.824366+00:00"
+            },
+            {
+              "id": 107,
+              "period_id": 40787,
+              "plan_revision_id": 40635,
+              "fact_revision_id": 40121,
+              "previous_revision_id": 106,
+              "author_id": 25,
+              "snapshot": {
+                "result": {
+                  "outcome": "within_range",
+                  "is_final": true,
+                  "progress": null,
+                  "deviation": "0"
+                },
+                "observations": {
+                  "count": 0,
+                  "latest_date": null,
+                  "violation_count": 0,
+                  "violation_dates": []
+                },
+                "rules_version": "quarterly-1",
+                "confirmed_as_of_date": "2026-09-30",
+                "early_date_confirmed": false
+              },
+              "comment": "QA R3: пересмотр закрытого плана",
+              "created_at": "2026-11-03T17:20:20.640907+00:00"
+            },
+            {
+              "id": 108,
+              "period_id": 40787,
+              "plan_revision_id": 40637,
+              "fact_revision_id": 40121,
+              "previous_revision_id": 107,
+              "author_id": 25,
+              "snapshot": {
+                "result": {
+                  "outcome": "within_range",
+                  "is_final": true,
+                  "progress": null,
+                  "deviation": "0"
+                },
+                "observations": {
+                  "count": 0,
+                  "latest_date": null,
+                  "violation_count": 0,
+                  "violation_dates": []
+                },
+                "rules_version": "quarterly-1",
+                "confirmed_as_of_date": "2026-09-30",
+                "early_date_confirmed": false
+              },
+              "comment": "QA R3: UI пересмотр закрытого плана",
+              "created_at": "2026-11-03T17:33:01.248171+00:00"
+            }
+          ],
+          "observations_corrected_after_closure": false
+        },
+        {
+          "id": 40788,
+          "year": 2026,
+          "quarter": 4,
+          "state": "active",
+          "availability": "active",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-10-01",
+          "end_date": "2026-12-31",
+          "plan": {
+            "revision_id": 40629,
+            "result_type": "range",
+            "direction": "range",
+            "target": "90",
+            "upper": "110",
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический набор UX-ревью R2",
+            "method_snapshot": "",
+            "unit_snapshot": "%"
+          },
+          "fact": {
+            "id": 40161,
+            "period_id": 40788,
+            "revision_no": 5,
+            "previous_revision_id": 40124,
+            "value": "999999999999999.9999999999",
+            "as_of_date": "2026-11-03",
+            "status": "preliminary",
+            "source": "QA R3",
+            "comment": "",
+            "reason": "QA R3: большое точное число",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T17:20:19.838281+00:00"
+          },
+          "result": {
+            "outcome": "outside_range",
+            "is_final": false,
+            "progress": null,
+            "deviation": "999999999999889.9999999999"
+          },
+          "observations": {
+            "count": 26,
+            "latest_date": "2026-11-03",
+            "violation_count": 4,
+            "violation_dates": [
+              "2026-10-22",
+              "2026-10-23",
+              "2026-10-24",
+              "2026-10-25"
+            ]
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "period_not_ended",
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40629,
+            "period_id": 40788,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "range",
+              "direction": "range",
+              "target": "90",
+              "upper": "110",
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический набор UX-ревью R2",
+              "method_snapshot": "",
+              "unit_snapshot": "%",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T14:25:18.668429+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        }
+      ],
+      "quarters": [
+        {
+          "quarter": 1,
+          "availability": "outside_scope"
+        },
+        {
+          "quarter": 2,
+          "availability": "outside_scope"
+        },
+        {
+          "id": 40787,
+          "year": 2026,
+          "quarter": 3,
+          "state": "completed",
+          "availability": "completed",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-07-01",
+          "end_date": "2026-09-30",
+          "plan": {
+            "revision_id": 40637,
+            "result_type": "range",
+            "direction": "range",
+            "target": "90",
+            "upper": "110",
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический набор UX-ревью R2",
+            "method_snapshot": "",
+            "unit_snapshot": "%"
+          },
+          "fact": {
+            "id": 40121,
+            "period_id": 40787,
+            "revision_no": 2,
+            "previous_revision_id": 40120,
+            "value": "105",
+            "as_of_date": "2026-09-30",
+            "status": "final",
+            "source": "Синтетический набор UX-ревью R2",
+            "comment": "",
+            "reason": "QA R2: сверка синтетического источника",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T14:27:35.824366+00:00"
+          },
+          "result": {
+            "outcome": "within_range",
+            "is_final": true,
+            "progress": null,
+            "deviation": "0"
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": 0,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": true
+          },
+          "disabled_reasons": {
+            "write_fact": "operation_unavailable",
+            "add_measurement": "operation_unavailable",
+            "close": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": 108,
+          "closed_at": "2026-11-03T14:27:19.177382+00:00",
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40628,
+            "period_id": 40787,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "range",
+              "direction": "range",
+              "target": "90",
+              "upper": "110",
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический набор UX-ревью R2",
+              "method_snapshot": "",
+              "unit_snapshot": "%",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T14:25:18.668429+00:00"
+          },
+          "closures": [
+            {
+              "id": 105,
+              "period_id": 40787,
+              "plan_revision_id": 40628,
+              "fact_revision_id": 40120,
+              "previous_revision_id": null,
+              "author_id": 25,
+              "snapshot": {
+                "result": {
+                  "outcome": "within_range",
+                  "is_final": true,
+                  "progress": null,
+                  "deviation": "0"
+                },
+                "observations": {
+                  "count": 0,
+                  "latest_date": null,
+                  "violation_count": 0,
+                  "violation_dates": []
+                },
+                "rules_version": "quarterly-1",
+                "confirmed_as_of_date": "2026-09-30",
+                "early_date_confirmed": false
+              },
+              "comment": "",
+              "created_at": "2026-11-03T14:27:19.045399+00:00"
+            },
+            {
+              "id": 106,
+              "period_id": 40787,
+              "plan_revision_id": 40628,
+              "fact_revision_id": 40121,
+              "previous_revision_id": 105,
+              "author_id": 25,
+              "snapshot": {
+                "result": {
+                  "outcome": "within_range",
+                  "is_final": true,
+                  "progress": null,
+                  "deviation": "0"
+                },
+                "observations": {
+                  "count": 0,
+                  "latest_date": null,
+                  "violation_count": 0,
+                  "violation_dates": []
+                },
+                "rules_version": "quarterly-1",
+                "confirmed_as_of_date": "2026-09-30",
+                "early_date_confirmed": false
+              },
+              "comment": "QA R2: сверка синтетического источника",
+              "created_at": "2026-11-03T14:27:35.824366+00:00"
+            },
+            {
+              "id": 107,
+              "period_id": 40787,
+              "plan_revision_id": 40635,
+              "fact_revision_id": 40121,
+              "previous_revision_id": 106,
+              "author_id": 25,
+              "snapshot": {
+                "result": {
+                  "outcome": "within_range",
+                  "is_final": true,
+                  "progress": null,
+                  "deviation": "0"
+                },
+                "observations": {
+                  "count": 0,
+                  "latest_date": null,
+                  "violation_count": 0,
+                  "violation_dates": []
+                },
+                "rules_version": "quarterly-1",
+                "confirmed_as_of_date": "2026-09-30",
+                "early_date_confirmed": false
+              },
+              "comment": "QA R3: пересмотр закрытого плана",
+              "created_at": "2026-11-03T17:20:20.640907+00:00"
+            },
+            {
+              "id": 108,
+              "period_id": 40787,
+              "plan_revision_id": 40637,
+              "fact_revision_id": 40121,
+              "previous_revision_id": 107,
+              "author_id": 25,
+              "snapshot": {
+                "result": {
+                  "outcome": "within_range",
+                  "is_final": true,
+                  "progress": null,
+                  "deviation": "0"
+                },
+                "observations": {
+                  "count": 0,
+                  "latest_date": null,
+                  "violation_count": 0,
+                  "violation_dates": []
+                },
+                "rules_version": "quarterly-1",
+                "confirmed_as_of_date": "2026-09-30",
+                "early_date_confirmed": false
+              },
+              "comment": "QA R3: UI пересмотр закрытого плана",
+              "created_at": "2026-11-03T17:33:01.248171+00:00"
+            }
+          ],
+          "observations_corrected_after_closure": false
+        },
+        {
+          "id": 40788,
+          "year": 2026,
+          "quarter": 4,
+          "state": "active",
+          "availability": "active",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-10-01",
+          "end_date": "2026-12-31",
+          "plan": {
+            "revision_id": 40629,
+            "result_type": "range",
+            "direction": "range",
+            "target": "90",
+            "upper": "110",
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический набор UX-ревью R2",
+            "method_snapshot": "",
+            "unit_snapshot": "%"
+          },
+          "fact": {
+            "id": 40161,
+            "period_id": 40788,
+            "revision_no": 5,
+            "previous_revision_id": 40124,
+            "value": "999999999999999.9999999999",
+            "as_of_date": "2026-11-03",
+            "status": "preliminary",
+            "source": "QA R3",
+            "comment": "",
+            "reason": "QA R3: большое точное число",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T17:20:19.838281+00:00"
+          },
+          "result": {
+            "outcome": "outside_range",
+            "is_final": false,
+            "progress": null,
+            "deviation": "999999999999889.9999999999"
+          },
+          "observations": {
+            "count": 26,
+            "latest_date": "2026-11-03",
+            "violation_count": 4,
+            "violation_dates": [
+              "2026-10-22",
+              "2026-10-23",
+              "2026-10-24",
+              "2026-10-25"
+            ]
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "period_not_ended",
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40629,
+            "period_id": 40788,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "range",
+              "direction": "range",
+              "target": "90",
+              "upper": "110",
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический набор UX-ревью R2",
+              "method_snapshot": "",
+              "unit_snapshot": "%",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T14:25:18.668429+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        }
+      ],
+      "annual": {
+        "confirmed_value": null,
+        "preliminary_value": null,
+        "final_value": null,
+        "plan": null,
+        "completeness": "empty",
+        "reason": null,
+        "scope_adjusted": true,
+        "coverage": {
+          "expected": [
+            3,
+            4
+          ],
+          "participating": [
+            3,
+            4
+          ],
+          "closed": [
+            3
+          ],
+          "missing": [],
+          "unplanned": [],
+          "excluded": {},
+          "cancelled": [],
+          "cancellation_reasons": {}
+        }
+      },
+      "year_settings": {
+        "id": 10175,
+        "metric_id": 10470,
+        "year": 2026,
+        "expected_quarters": [
+          3,
+          4
+        ],
+        "exclusions": {},
+        "aggregation": "none",
+        "scale": 100
+      },
+      "legacy_periods": [],
+      "business_date": "2026-11-03",
+      "selected_period_id": null,
+      "legacy": null
+    },
+    "10471": {
+      "id": 10471,
+      "title": "DEV-QA-METRICS-UX-20261103-R2-VOLUME",
+      "description": "QA UX review R3 03.11.2026; сохранить для воспроизведения, очистка по отдельному согласованию.",
+      "team_id": 11,
+      "owner_id": 25,
+      "project_id": null,
+      "unit": "шт",
+      "method": "QA R3: методика сохранена через интерфейс",
+      "source": "Синтетический QA UX R3",
+      "involved_team_ids": [],
+      "tags": [],
+      "priority_id": null,
+      "business_customer_id": null,
+      "department_id": null,
+      "did_client_group_id": null,
+      "legacy_task_id": null,
+      "is_archived": false,
+      "version": 12,
+      "model_version": "quarterly_v2",
+      "lifecycle_state": "tracking",
+      "preferred_result_type": "volume",
+      "default_direction": "up",
+      "annual_aggregation": "sum",
+      "aggregation_scale": 100,
+      "display_precision": 2,
+      "created_by": 25,
+      "created_at": "2026-11-03T17:20:11.001251+00:00",
+      "updated_at": "2026-11-03T17:29:36.516576+00:00",
+      "public_id": "MET-10471",
+      "owner": "QA ba-a",
+      "team": "QA Team A",
+      "project": null,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "year": 2026,
+      "periods": [
+        {
+          "id": 40790,
+          "year": 2026,
+          "quarter": 3,
+          "state": "active",
+          "availability": "awaiting_close",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-07-01",
+          "end_date": "2026-09-30",
+          "plan": {
+            "revision_id": 40631,
+            "result_type": "volume",
+            "direction": "up",
+            "target": "100",
+            "upper": null,
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический QA UX R3",
+            "method_snapshot": "Контрольное значение из синтетического источника",
+            "unit_snapshot": "шт"
+          },
+          "fact": null,
+          "result": {
+            "outcome": "no_data",
+            "is_final": false,
+            "progress": null,
+            "deviation": null
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": null,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": true,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40631,
+            "period_id": 40790,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "volume",
+              "direction": "up",
+              "target": "100",
+              "upper": null,
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический QA UX R3",
+              "method_snapshot": "Контрольное значение из синтетического источника",
+              "unit_snapshot": "шт",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T17:20:11.001251+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        },
+        {
+          "id": 40791,
+          "year": 2026,
+          "quarter": 4,
+          "state": "active",
+          "availability": "active",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-10-01",
+          "end_date": "2026-12-31",
+          "plan": {
+            "revision_id": 40636,
+            "result_type": "volume",
+            "direction": "up",
+            "target": "110",
+            "upper": null,
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический QA UX R3",
+            "method_snapshot": "Контрольное значение из синтетического источника",
+            "unit_snapshot": "шт"
+          },
+          "fact": {
+            "id": 40158,
+            "period_id": 40791,
+            "revision_no": 2,
+            "previous_revision_id": 40157,
+            "value": "100.25",
+            "as_of_date": "2026-11-03",
+            "status": "preliminary",
+            "source": "QA R3",
+            "comment": "",
+            "reason": "QA R3: проверка результата",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T17:20:14.503167+00:00"
+          },
+          "result": {
+            "outcome": "not_achieved",
+            "is_final": false,
+            "progress": "91.1363636364",
+            "deviation": "-9.75"
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": null,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "period_not_ended",
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40632,
+            "period_id": 40791,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "volume",
+              "direction": "up",
+              "target": "100",
+              "upper": null,
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический QA UX R3",
+              "method_snapshot": "Контрольное значение из синтетического источника",
+              "unit_snapshot": "шт",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T17:20:11.001251+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        }
+      ],
+      "quarters": [
+        {
+          "quarter": 1,
+          "availability": "outside_scope"
+        },
+        {
+          "quarter": 2,
+          "availability": "outside_scope"
+        },
+        {
+          "id": 40790,
+          "year": 2026,
+          "quarter": 3,
+          "state": "active",
+          "availability": "awaiting_close",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-07-01",
+          "end_date": "2026-09-30",
+          "plan": {
+            "revision_id": 40631,
+            "result_type": "volume",
+            "direction": "up",
+            "target": "100",
+            "upper": null,
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический QA UX R3",
+            "method_snapshot": "Контрольное значение из синтетического источника",
+            "unit_snapshot": "шт"
+          },
+          "fact": null,
+          "result": {
+            "outcome": "no_data",
+            "is_final": false,
+            "progress": null,
+            "deviation": null
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": null,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": true,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40631,
+            "period_id": 40790,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "volume",
+              "direction": "up",
+              "target": "100",
+              "upper": null,
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический QA UX R3",
+              "method_snapshot": "Контрольное значение из синтетического источника",
+              "unit_snapshot": "шт",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T17:20:11.001251+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        },
+        {
+          "id": 40791,
+          "year": 2026,
+          "quarter": 4,
+          "state": "active",
+          "availability": "active",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-10-01",
+          "end_date": "2026-12-31",
+          "plan": {
+            "revision_id": 40636,
+            "result_type": "volume",
+            "direction": "up",
+            "target": "110",
+            "upper": null,
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический QA UX R3",
+            "method_snapshot": "Контрольное значение из синтетического источника",
+            "unit_snapshot": "шт"
+          },
+          "fact": {
+            "id": 40158,
+            "period_id": 40791,
+            "revision_no": 2,
+            "previous_revision_id": 40157,
+            "value": "100.25",
+            "as_of_date": "2026-11-03",
+            "status": "preliminary",
+            "source": "QA R3",
+            "comment": "",
+            "reason": "QA R3: проверка результата",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T17:20:14.503167+00:00"
+          },
+          "result": {
+            "outcome": "not_achieved",
+            "is_final": false,
+            "progress": "91.1363636364",
+            "deviation": "-9.75"
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": null,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "period_not_ended",
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40632,
+            "period_id": 40791,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "volume",
+              "direction": "up",
+              "target": "100",
+              "upper": null,
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический QA UX R3",
+              "method_snapshot": "Контрольное значение из синтетического источника",
+              "unit_snapshot": "шт",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T17:20:11.001251+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        }
+      ],
+      "annual": {
+        "confirmed_value": null,
+        "preliminary_value": "100.25",
+        "final_value": null,
+        "plan": "110",
+        "completeness": "partial",
+        "reason": null,
+        "scope_adjusted": true,
+        "coverage": {
+          "expected": [
+            3,
+            4
+          ],
+          "participating": [
+            3,
+            4
+          ],
+          "closed": [],
+          "missing": [
+            3
+          ],
+          "unplanned": [],
+          "excluded": {},
+          "cancelled": [],
+          "cancellation_reasons": {}
+        },
+        "progress": null,
+        "deviation": null
+      },
+      "year_settings": {
+        "id": 10177,
+        "metric_id": 10471,
+        "year": 2026,
+        "expected_quarters": [
+          3,
+          4
+        ],
+        "exclusions": {},
+        "aggregation": "last",
+        "scale": 100
+      },
+      "legacy_periods": [],
+      "business_date": "2026-11-03",
+      "selected_period_id": null,
+      "legacy": null
+    },
+    "10472": {
+      "id": 10472,
+      "title": "DEV-QA-METRICS-UX-20261103-R2-CHANGE",
+      "description": "QA UX review R3 03.11.2026; сохранить для воспроизведения, очистка по отдельному согласованию.",
+      "team_id": 11,
+      "owner_id": 25,
+      "project_id": null,
+      "unit": "шт",
+      "method": "Контрольное значение из синтетического источника",
+      "source": "Синтетический QA UX R3",
+      "involved_team_ids": [],
+      "tags": [],
+      "priority_id": null,
+      "business_customer_id": null,
+      "department_id": null,
+      "did_client_group_id": null,
+      "legacy_task_id": null,
+      "is_archived": false,
+      "version": 5,
+      "model_version": "quarterly_v2",
+      "lifecycle_state": "tracking",
+      "preferred_result_type": "change",
+      "default_direction": "down",
+      "annual_aggregation": "last",
+      "aggregation_scale": 100,
+      "display_precision": 2,
+      "created_by": 25,
+      "created_at": "2026-11-03T17:20:15.599068+00:00",
+      "updated_at": "2026-11-03T17:20:17.664230+00:00",
+      "public_id": "MET-10472",
+      "owner": "QA ba-a",
+      "team": "QA Team A",
+      "project": null,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "year": 2026,
+      "periods": [
+        {
+          "id": 40792,
+          "year": 2026,
+          "quarter": 4,
+          "state": "active",
+          "availability": "active",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-10-01",
+          "end_date": "2026-12-31",
+          "plan": {
+            "revision_id": 40633,
+            "result_type": "change",
+            "direction": "down",
+            "target": "80",
+            "upper": null,
+            "baseline": "100",
+            "baseline_date": "2026-10-01",
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический QA UX R3",
+            "method_snapshot": "Контрольное значение из синтетического источника",
+            "unit_snapshot": "шт"
+          },
+          "fact": {
+            "id": 40159,
+            "period_id": 40792,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "value": "90",
+            "as_of_date": "2026-11-03",
+            "status": "preliminary",
+            "source": "QA R3",
+            "comment": "",
+            "reason": "QA R3: проверка результата",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T17:20:17.568399+00:00"
+          },
+          "result": {
+            "outcome": "not_achieved",
+            "is_final": false,
+            "progress": "50",
+            "deviation": "10"
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": null,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "period_not_ended",
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40633,
+            "period_id": 40792,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "change",
+              "direction": "down",
+              "target": "80",
+              "upper": null,
+              "baseline": "100",
+              "baseline_date": "2026-10-01",
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический QA UX R3",
+              "method_snapshot": "Контрольное значение из синтетического источника",
+              "unit_snapshot": "шт",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T17:20:15.599068+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        }
+      ],
+      "quarters": [
+        {
+          "quarter": 1,
+          "availability": "outside_scope"
+        },
+        {
+          "quarter": 2,
+          "availability": "outside_scope"
+        },
+        {
+          "quarter": 3,
+          "availability": "outside_scope"
+        },
+        {
+          "id": 40792,
+          "year": 2026,
+          "quarter": 4,
+          "state": "active",
+          "availability": "active",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-10-01",
+          "end_date": "2026-12-31",
+          "plan": {
+            "revision_id": 40633,
+            "result_type": "change",
+            "direction": "down",
+            "target": "80",
+            "upper": null,
+            "baseline": "100",
+            "baseline_date": "2026-10-01",
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический QA UX R3",
+            "method_snapshot": "Контрольное значение из синтетического источника",
+            "unit_snapshot": "шт"
+          },
+          "fact": {
+            "id": 40159,
+            "period_id": 40792,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "value": "90",
+            "as_of_date": "2026-11-03",
+            "status": "preliminary",
+            "source": "QA R3",
+            "comment": "",
+            "reason": "QA R3: проверка результата",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T17:20:17.568399+00:00"
+          },
+          "result": {
+            "outcome": "not_achieved",
+            "is_final": false,
+            "progress": "50",
+            "deviation": "10"
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": null,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "period_not_ended",
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40633,
+            "period_id": 40792,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "change",
+              "direction": "down",
+              "target": "80",
+              "upper": null,
+              "baseline": "100",
+              "baseline_date": "2026-10-01",
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический QA UX R3",
+              "method_snapshot": "Контрольное значение из синтетического источника",
+              "unit_snapshot": "шт",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T17:20:15.599068+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        }
+      ],
+      "annual": {
+        "confirmed_value": null,
+        "preliminary_value": "90",
+        "final_value": null,
+        "plan": "80",
+        "completeness": "partial",
+        "reason": null,
+        "scope_adjusted": true,
+        "coverage": {
+          "expected": [
+            4
+          ],
+          "participating": [
+            4
+          ],
+          "closed": [],
+          "missing": [],
+          "unplanned": [],
+          "excluded": {},
+          "cancelled": [],
+          "cancellation_reasons": {}
+        },
+        "progress": null,
+        "deviation": null
+      },
+      "year_settings": {
+        "id": 10178,
+        "metric_id": 10472,
+        "year": 2026,
+        "expected_quarters": [
+          4
+        ],
+        "exclusions": {},
+        "aggregation": "last",
+        "scale": 100
+      },
+      "legacy_periods": [],
+      "business_date": "2026-11-03",
+      "selected_period_id": null,
+      "legacy": null
+    },
+    "10473": {
+      "id": 10473,
+      "title": "DEV-QA-METRICS-UX-20261103-R2-THRESHOLD",
+      "description": "QA UX review R3 03.11.2026; сохранить для воспроизведения, очистка по отдельному согласованию.",
+      "team_id": 11,
+      "owner_id": 25,
+      "project_id": null,
+      "unit": "шт",
+      "method": "Контрольное значение из синтетического источника",
+      "source": "Синтетический QA UX R3",
+      "involved_team_ids": [],
+      "tags": [],
+      "priority_id": null,
+      "business_customer_id": null,
+      "department_id": null,
+      "did_client_group_id": null,
+      "legacy_task_id": null,
+      "is_archived": false,
+      "version": 5,
+      "model_version": "quarterly_v2",
+      "lifecycle_state": "tracking",
+      "preferred_result_type": "threshold",
+      "default_direction": "down",
+      "annual_aggregation": "last",
+      "aggregation_scale": 100,
+      "display_precision": 2,
+      "created_by": 25,
+      "created_at": "2026-11-03T17:20:18.140681+00:00",
+      "updated_at": "2026-11-03T17:20:18.801021+00:00",
+      "public_id": "MET-10473",
+      "owner": "QA ba-a",
+      "team": "QA Team A",
+      "project": null,
+      "permissions": {
+        "edit": true,
+        "comment": true,
+        "delete": false
+      },
+      "year": 2026,
+      "periods": [
+        {
+          "id": 40793,
+          "year": 2026,
+          "quarter": 4,
+          "state": "active",
+          "availability": "active",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-10-01",
+          "end_date": "2026-12-31",
+          "plan": {
+            "revision_id": 40634,
+            "result_type": "threshold",
+            "direction": "down",
+            "target": "0",
+            "upper": null,
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический QA UX R3",
+            "method_snapshot": "Контрольное значение из синтетического источника",
+            "unit_snapshot": "шт"
+          },
+          "fact": {
+            "id": 40160,
+            "period_id": 40793,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "value": "-5",
+            "as_of_date": "2026-11-03",
+            "status": "preliminary",
+            "source": "QA R3",
+            "comment": "",
+            "reason": "QA R3: проверка результата",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T17:20:18.727627+00:00"
+          },
+          "result": {
+            "outcome": "achieved",
+            "is_final": false,
+            "progress": null,
+            "deviation": "-5"
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": null,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "period_not_ended",
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40634,
+            "period_id": 40793,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "threshold",
+              "direction": "down",
+              "target": "0",
+              "upper": null,
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический QA UX R3",
+              "method_snapshot": "Контрольное значение из синтетического источника",
+              "unit_snapshot": "шт",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T17:20:18.140681+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        }
+      ],
+      "quarters": [
+        {
+          "quarter": 1,
+          "availability": "outside_scope"
+        },
+        {
+          "quarter": 2,
+          "availability": "outside_scope"
+        },
+        {
+          "quarter": 3,
+          "availability": "outside_scope"
+        },
+        {
+          "id": 40793,
+          "year": 2026,
+          "quarter": 4,
+          "state": "active",
+          "availability": "active",
+          "model_version": "quarterly_v2",
+          "start_date": "2026-10-01",
+          "end_date": "2026-12-31",
+          "plan": {
+            "revision_id": 40634,
+            "result_type": "threshold",
+            "direction": "down",
+            "target": "0",
+            "upper": null,
+            "baseline": null,
+            "baseline_date": null,
+            "cadence": "none",
+            "interval_days": null,
+            "first_due_date": null,
+            "source_snapshot": "Синтетический QA UX R3",
+            "method_snapshot": "Контрольное значение из синтетического источника",
+            "unit_snapshot": "шт"
+          },
+          "fact": {
+            "id": 40160,
+            "period_id": 40793,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "value": "-5",
+            "as_of_date": "2026-11-03",
+            "status": "preliminary",
+            "source": "QA R3",
+            "comment": "",
+            "reason": "QA R3: проверка результата",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T17:20:18.727627+00:00"
+          },
+          "result": {
+            "outcome": "achieved",
+            "is_final": false,
+            "progress": null,
+            "deviation": "-5"
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": null,
+            "violation_dates": []
+          },
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          },
+          "disabled_reasons": {
+            "close": "period_not_ended",
+            "correct_final": "operation_unavailable"
+          },
+          "source_measurement_changed": false,
+          "closure_revision_id": null,
+          "closed_at": null,
+          "cancellation_reason": null,
+          "schedule": {
+            "missed_count": 0,
+            "overdue": false,
+            "next_due": null
+          },
+          "original_plan": {
+            "id": 40634,
+            "period_id": 40793,
+            "revision_no": 1,
+            "previous_revision_id": null,
+            "data": {
+              "result_type": "threshold",
+              "direction": "down",
+              "target": "0",
+              "upper": null,
+              "baseline": null,
+              "baseline_date": null,
+              "cadence": "none",
+              "interval_days": null,
+              "first_due_date": null,
+              "source_snapshot": "Синтетический QA UX R3",
+              "method_snapshot": "Контрольное значение из синтетического источника",
+              "unit_snapshot": "шт",
+              "approval_state": "active"
+            },
+            "author_id": 25,
+            "reason": "",
+            "created_at": "2026-11-03T17:20:18.140681+00:00"
+          },
+          "closures": [],
+          "observations_corrected_after_closure": false
+        }
+      ],
+      "annual": {
+        "confirmed_value": null,
+        "preliminary_value": "-5",
+        "final_value": null,
+        "plan": "0",
+        "completeness": "partial",
+        "reason": null,
+        "scope_adjusted": true,
+        "coverage": {
+          "expected": [
+            4
+          ],
+          "participating": [
+            4
+          ],
+          "closed": [],
+          "missing": [],
+          "unplanned": [],
+          "excluded": {},
+          "cancelled": [],
+          "cancellation_reasons": {}
+        },
+        "progress": null,
+        "deviation": null
+      },
+      "year_settings": {
+        "id": 10179,
+        "metric_id": 10473,
+        "year": 2026,
+        "expected_quarters": [
+          4
+        ],
+        "exclusions": {},
+        "aggregation": "last",
+        "scale": 100
+      },
+      "legacy_periods": [],
+      "business_date": "2026-11-03",
+      "selected_period_id": null,
+      "legacy": null
+    }
+  }
+}

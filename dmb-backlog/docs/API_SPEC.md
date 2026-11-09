@@ -19,6 +19,10 @@ evidence:
 
 # API Backlog coordinator
 
+Проверено 03.11.2026: добавлены управление планом задач проекта и агрегированный
+управленческий обзор. Контракты GET/PUT, параметры, ACL и ошибки описаны в
+[Проекты: API и миграция](PROJECTS.md#api-и-миграция).
+
 ## Запросы заказчиков — проверено 29.10.2026
 
 - `GET /api/v1/agent/requests/registry` — полный серверный поиск, фильтры,
@@ -69,6 +73,12 @@ JSON-массив в строке, например `team_id=["1","2"]` (с об
 свою семантику. Новый UI передаёт `views` для нескольких состояний без этих
 одиночных флагов. Все списки и агрегаты используют общий отбор без дублирования
 строк. [Решение по каждому фильтру](FILTER_CARDINALITY.md).
+
+## Квартальные метрики v2 — проверено 04.11.2026
+
+`GET /api/v2/metrics` в квартальном режиме возвращает в `period.plan` направление, границы и базу цели. В годовом режиме элементы содержат `quarters`, `annual` и `annual_aggregation`; `annual` использует тот же расчёт и формат, что карточка. Числовые значения остаются десятичными строками. Компактные планы включают `direction`, `baseline`, `unit_snapshot`, `method_snapshot`; компактный факт — `numerator` и `denominator`, необходимые для годового отношения сумм.
+
+Удаление вложения и снятие связи используют `DELETE /api/v2/metrics/{mid}/files/{file_id}` и `DELETE /api/v2/metrics/{mid}/links/{link_id}`, query `version` и заголовок `Idempotency-Key`. Снятие связи не удаляет связанную задачу. [Правила и интерфейс](METRICS.md), [OpenAPI](METRICS_QUARTERLY.openapi.json).
 
 ## Метрики — проверено 26.10.2026
 
@@ -761,3 +771,9 @@ Batch-save пустого справочника принимает исходн
 ## API доски рабочих задач — проверено 21.10.2026
 
 Добавлены `GET /api/v1/work-tasks/board` и `GET /api/v1/work-tasks/board/columns/{column_status}`. `options` возвращает `board_enabled`. Выборка использует общие со списком ACL и фильтры, включая `effective_project_id`, `done_period=all|7d|30d`, `status=active_done`; список сохраняет `project_id` для прямой связи. Доска использует `direct_project_id` для прямой связи. Пагинация колонок подписанными курсорами, размер 1–50, по умолчанию 20. Записи выполняются существующим `POST /work-tasks/{id}/transitions` с версией. DTO, ошибки, срок курсоров и flag: [WORK_BOARD.md](WORK_BOARD.md).
+
+## Дополнение API проектов — 03.11.2026
+
+Каталог: `GET /projects` — фильтры `team`, `owner`, ACL-сигналы `overdue`, `next_milestone`, `filter_options`. Управленческая выдача: `team`, `owner`, `state`, `sort=start|due|owner|title`; фильтрация до пагинации, поля `overdue_days`, `filter_options`, `can_edit`.
+
+Подробный актуальный контракт и поведение: [PROJECTS.md](PROJECTS.md).

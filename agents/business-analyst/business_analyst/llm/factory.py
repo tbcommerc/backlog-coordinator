@@ -11,10 +11,10 @@ def get_llm() -> LLMProvider:
         provider = OpenAICompatProvider()
         if provider.available():
             return provider
-        if not settings.DEBUG:
-            raise RuntimeError("OpenAI-compatible LLM provider is unavailable in production")
-        # Development keeps an explicit local fallback for offline work.
+        if not (settings.DEBUG and settings.UNIT_TEST_MODE):
+            raise RuntimeError("OpenAI-compatible LLM provider is unavailable; configure OPENAI_API_KEY")
+        # Only explicitly isolated unit tests may use a deterministic provider.
         return MockProvider()
-    if settings.DEBUG and provider_name == "mock":
+    if settings.DEBUG and settings.UNIT_TEST_MODE and provider_name == "mock":
         return MockProvider()
-    raise RuntimeError(f"Unsupported LLM provider: {provider_name or '<empty>'}")
+    raise RuntimeError("Unsupported LLM_PROVIDER or unit mode is not enabled")

@@ -1,0 +1,2397 @@
+{
+  "environment": "isolated mock API; Chromium; port 4189",
+  "stats": {
+    "startTime": "2026-11-04T08:49:08.096Z",
+    "duration": 976057.028,
+    "expected": 298,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "backlog: search entered during initial loading is retained",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "backlog: CSV download matches filtered rows, labels and escaped text",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "backlog: offline load can recover without losing search",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "backlog: timeout load can recover without losing search",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "backlog: server load can recover without losing search",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "backlog: saved default survives reload and can be removed",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "team: search entered during initial loading is retained",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "team: CSV download matches filtered rows, labels and escaped text",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "team: offline load can recover without losing search",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "team: timeout load can recover without losing search",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "team: server load can recover without losing search",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "team: saved default survives reload and can be removed",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "import CSV template has equal column counts and preserves list examples",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "no-team profile has an explanation and no task mutation controls",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "import preview: 03_valid_cp1251_semicolon.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "import preview: 37_length_and_injection.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "import preview: 40_valid_minimal.xlsx",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "import preview: 44_valid_spreadsheetml_2003.xls",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "import preview: 26_quoted_multiline.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "import preview: 39_partial_success.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "import preview: 51_exactly_10000_rows.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditClosure.spec.mjs",
+      "name": "import valid to broken to empty to valid cannot submit stale preview",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-01 backlog: mobile pagination reveals the first row below the toolbar",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-01/02/13/15 backlog: page starts at the first row and ID stays visible",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-13/15 backlog: keyboard sort and resize",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-11/12/14 backlog: mobile columns keep ID and cards open using the keyboard",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-04 backlog: short screen leaves useful table area in quick edit",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "C02/UX-19 backlog: pending quick edits guard view switching and expose field errors",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-01 team: mobile pagination reveals the first row below the toolbar",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-01/02/13/15 team: page starts at the first row and ID stays visible",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-13/15 team: keyboard sort and resize",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-11/12/14 team: mobile columns keep ID and cards open using the keyboard",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-04 team: short screen leaves useful table area in quick edit",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "C02/UX-19 team: pending quick edits guard view switching and expose field errors",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-07/08: mobile tab arrows share the tab strip and every panel has the active name",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-09/16: empty DMB gives useful guidance and reversed ranges have inline errors",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "C01: concurrent editors show a version conflict and retain the second draft",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "C01: a 409 without conflict details leaves a visible error and retains draft",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "UX-19: bulk selection and progress have names, empty changes have a persistent error",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditRemaining.spec.mjs",
+      "name": "C02: saved card view asks about pending changes and discard does not write",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditState.spec.mjs",
+      "name": "UX-03: quick-filter counts follow DMB → team → DMB and refresh",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditState.spec.mjs",
+      "name": "UX-05/06/10: backlog keeps search, rows and count through quick save and navigation",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditState.spec.mjs",
+      "name": "UX-05/06/10: team keeps search, rows and count through quick save and navigation",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditState.spec.mjs",
+      "name": "UX-17: read-only BA sees a reason and cannot enter an empty editor",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditState.spec.mjs",
+      "name": "UX-05/18: missing optional references stay empty and legacy task can save progress",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditState.spec.mjs",
+      "name": "UX-18: clearing an existing task type still blocks saving",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogAuditState.spec.mjs",
+      "name": "UX-17: empty search is distinguished from missing permissions and can be reset",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogEmptyValues.spec.mjs",
+      "name": "empty status and priority stay empty: backlog",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogEmptyValues.spec.mjs",
+      "name": "empty status and priority stay empty: team",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogFieldParity.spec.mjs",
+      "name": "both backlogs display the same populated supplemental fields",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogFieldParity.spec.mjs",
+      "name": "empty team guidance matches creation permission: true",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogFieldParity.spec.mjs",
+      "name": "empty team guidance matches creation permission: false",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogFilterAlignment.spec.mjs",
+      "name": "backlog: short viewport aligns filters with table at 1280px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogFilterAlignment.spec.mjs",
+      "name": "backlog: short viewport aligns filters with table at 1920px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogFilterAlignment.spec.mjs",
+      "name": "team-backlog: short viewport aligns filters with table at 1280px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogFilterAlignment.spec.mjs",
+      "name": "team-backlog: short viewport aligns filters with table at 1920px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogKeyboardEditor.spec.mjs",
+      "name": "table task opens using keyboard: backlog",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogKeyboardEditor.spec.mjs",
+      "name": "table task opens using keyboard: team-backlog",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogKeyboardEditor.spec.mjs",
+      "name": "full editor names department, DID client and financial effect",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogKeyboardEditor.spec.mjs",
+      "name": "rejected sync is offered again: inline=false",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "backlogKeyboardEditor.spec.mjs",
+      "name": "rejected sync is offered again: inline=true",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "cardCommentsLinksFiles.spec.mjs",
+      "name": "comment completion preserves only new draft: false",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "cardCommentsLinksFiles.spec.mjs",
+      "name": "comment completion preserves only new draft: true",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "cardCommentsLinksFiles.spec.mjs",
+      "name": "deleting attachments refreshes heading and tab without reload",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "cardCommentsLinksFiles.spec.mjs",
+      "name": "all Jira links: backlog array",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "cardCommentsLinksFiles.spec.mjs",
+      "name": "all Jira links: backlog json",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "cardCommentsLinksFiles.spec.mjs",
+      "name": "all Jira links: backlog csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "cardCommentsLinksFiles.spec.mjs",
+      "name": "all Jira links: team-backlog array",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "cardCommentsLinksFiles.spec.mjs",
+      "name": "all Jira links: team-backlog json",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "cardCommentsLinksFiles.spec.mjs",
+      "name": "all Jira links: team-backlog csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "historyConflict.spec.mjs",
+      "name": "history renders attachment and empty values as user-facing text",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "historyConflict.spec.mjs",
+      "name": "conflict choices name field and version and preserve cancelled draft",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 01_valid_utf8_bom_semicolon.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 03_valid_cp1251_semicolon.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 09_empty_zero_bytes.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 10_missing_title_header.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 23_blank_first_line_semicolon.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 26_quoted_multiline.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 28_utf16le_bom.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 29_undecodable_byte_98.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 33_numeric_formats.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 35_reference_not_found.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 37_length_and_injection.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 40_valid_minimal.xlsx",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 42_multisheet_instructions_first.xlsx",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 44_valid_spreadsheetml_2003.xls",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 45_corrupt_excel.xlsx",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "import preflight 55_many_preview_errors.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importAudit.spec.mjs",
+      "name": "evidence-based import UX/UI audit",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importFeedback.spec.mjs",
+      "name": "global import failure gets focus and replacement clears old report",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importFeedback.spec.mjs",
+      "name": "missing headers explain the header position without CSV-only wording",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importFeedback.spec.mjs",
+      "name": "result and downloadable report persist until explicit close: partial=false",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importFeedback.spec.mjs",
+      "name": "result and downloadable report persist until explicit close: partial=true",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importGuards.spec.mjs",
+      "name": "keyboard file selection, focus trap and Escape return focus",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importGuards.spec.mjs",
+      "name": "invalid file clears stale preview: empty.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importGuards.spec.mjs",
+      "name": "invalid file clears stale preview: broken.xlsx",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importGuards.spec.mjs",
+      "name": "invalid file clears stale preview: quotes.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importGuards.spec.mjs",
+      "name": "invalid file clears stale preview: nul.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importGuards.spec.mjs",
+      "name": "invalid file clears stale preview: duplicate.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importGuards.spec.mjs",
+      "name": "invalid file clears stale preview: aliases.csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importRetry.spec.mjs",
+      "name": "metadata and failed-only export exclude successful warning rows",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importRetry.spec.mjs",
+      "name": "global rollback never guesses failed rows",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importSize.spec.mjs",
+      "name": "size boundary before read: csv",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importSize.spec.mjs",
+      "name": "size boundary before read: xlsx",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importSize.spec.mjs",
+      "name": "size boundary before read: xls",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importSize.spec.mjs",
+      "name": "oversize replaces preview, persists and recovers on valid file without sending",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importSize.spec.mjs",
+      "name": "expanded Excel is rejected before POST",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importSize.spec.mjs",
+      "name": "server 413 remains inline",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "importValidation.spec.mjs",
+      "name": "import preview warns about unsafe cells and clears warnings for valid boundary values",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskCardIncrement.spec.mjs",
+      "name": "sys показывает число и список файлов, а загрузка работает с клавиатуры",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskCardIncrement.spec.mjs",
+      "name": "legacy hash tab=files открывает каноническую вкладку sys",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskCardIncrement.spec.mjs",
+      "name": "deep-link открывает, подсвечивает и фокусирует указанный комментарий",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskCardIncrement.spec.mjs",
+      "name": "неотправленный комментарий сохраняется при переключении com → main → com",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskCardIncrement.spec.mjs",
+      "name": "вкладки имеют ARIA-семантику и управляются стрелками, Home и End",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskCardIncrement.spec.mjs",
+      "name": "V30 показывает и редактирует четыре возвращённых атрибута",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskCardIncrement.spec.mjs",
+      "name": "read-only режим сохраняет просмотр, но убирает все изменяющие действия",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskRouteMessages.spec.mjs",
+      "name": "direct task route opens card: backlog",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskRouteMessages.spec.mjs",
+      "name": "direct task route opens card: team-backlog",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskRouteMessages.spec.mjs",
+      "name": "unavailable direct task explains failure: 403",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskRouteMessages.spec.mjs",
+      "name": "unavailable direct task explains failure: 404",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskRouteMessages.spec.mjs",
+      "name": "quick save confirmation names one change: backlog",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "taskRouteMessages.spec.mjs",
+      "name": "quick save confirmation names one change: team",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "name": "экспресс-оценка: компактные действия и квадратные иконки, light, 1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "name": "экспресс-оценка: компактные действия и квадратные иконки, light, 900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "name": "экспресс-оценка: компактные действия и квадратные иконки, light, 390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "name": "экспресс-оценка: компактные действия и квадратные иконки, dark, 1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "name": "экспресс-оценка: компактные действия и квадратные иконки, dark, 900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitExpress.spec.mjs",
+      "name": "экспресс-оценка: компактные действия и квадратные иконки, dark, 390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "readonly kanban cannot move tasks by menu or drag",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "keyboard status menu serializes save, restores focus and rolls back failure",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "kanban controls, statuses and overflow: light/desktop",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "kanban controls, statuses and overflow: light/compact",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "kanban controls, statuses and overflow: light/mobile",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "kanban controls, statuses and overflow: light/touch",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "kanban controls, statuses and overflow: dark/desktop",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "kanban controls, statuses and overflow: dark/compact",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "kanban controls, statuses and overflow: dark/mobile",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "kanban controls, statuses and overflow: dark/touch",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitKanban.spec.mjs",
+      "name": "kanban error retries and empty state is explicit",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: navigation waits for saving and preserves failed draft on cancel",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "weekly required fields and pending save light/false",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "weekly required fields and pending save light/true",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "weekly required fields and pending save dark/false",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "weekly required fields and pending save dark/true",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: failed bulk confirmation retains draft and retries batch",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: queued changes, failed predecessor and undo use latest version",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: dirty navigation traps focus, cancels with Escape and restores selected tab",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: controls, drafts and retry light/desktop",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: controls, drafts and retry light/compact",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: controls, drafts and retry light/mobile",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: controls, drafts and retry light/touch",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: controls, drafts and retry dark/desktop",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: controls, drafts and retry dark/compact",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: controls, drafts and retry dark/mobile",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: controls, drafts and retry dark/touch",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: controls, drafts and retry light/desktop",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: controls, drafts and retry light/compact",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: controls, drafts and retry light/mobile",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: controls, drafts and retry light/touch",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: controls, drafts and retry dark/desktop",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: controls, drafts and retry dark/compact",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: controls, drafts and retry dark/mobile",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: controls, drafts and retry dark/touch",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: loading settles into empty state",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "statuses: readonly and load error",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: loading settles into empty state",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitReportingWorkspaces.spec.mjs",
+      "name": "quarterly: readonly and load error",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "comment mentions share popover without closing task light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "comment mentions share popover without closing task dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "создание связывает ошибки с полями и не отправляет незаполненную форму",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "создание сохраняет ввод после ошибки, исключает двойной запрос и позволяет повторить",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "редактирование восстанавливает кнопку и черновик после ошибки API",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "мобильное редактирование не обрезает действия и защищает черновик при отмене",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "мобильная форма: общие контролы и действия доступны в light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "мобильная форма: общие контролы и действия доступны в dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "подсказка расчёта: отступы и границы 320 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "подсказка расчёта: отступы и границы 320 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "подсказка расчёта: отступы и границы 390 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "подсказка расчёта: отступы и границы 390 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "подсказка расчёта: отступы и границы 1280 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitTaskForms.spec.mjs",
+      "name": "подсказка расчёта: отступы и границы 1280 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogBulk.spec.mjs",
+      "name": "BU-O05/O06/O08: bulk exact targets, preview and no automatic network replay selected",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogBulk.spec.mjs",
+      "name": "BU-O05/O06/O08: bulk exact targets, preview and no automatic network replay team-exclude",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogBulk.spec.mjs",
+      "name": "BU-O05/O06/O08: bulk exact targets, preview and no automatic network replay network-uncertain",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogBulk.spec.mjs",
+      "name": "BU-O09: denied bulk does not hide reporting and quarterly actions",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C08/C09: roundtrip preserves all/page/search through reporting",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C08/C09: roundtrip preserves all/page/search through quarterly-goals",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C09: express handoff uses the safe original all context",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-E10: status/progress suggestion modifies only draft until explicit save",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C06/C07: saving outside the filter refreshes after close and preserves result focus",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C01/C05: all baseline tabs, history and distinct WorkTask panels remain available",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C10: dependency links in a scoped card keep query and area",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C05: PI decision reason and history navigation survive unification",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCreation.spec.mjs",
+      "name": "BU-O02: team",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCreation.spec.mjs",
+      "name": "BU-O02: all safe default",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCreation.spec.mjs",
+      "name": "BU-O02: all one filtered team",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCreation.spec.mjs",
+      "name": "BU-O02: all several filtered teams",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCreation.spec.mjs",
+      "name": "BU-O02: team editor cannot inherit a foreign team",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCreation.spec.mjs",
+      "name": "BU-O04: create outside filter opens the new card and keeps the original selection",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogEditing.spec.mjs",
+      "name": "BU-E01/E08: quick-edit control title",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogEditing.spec.mjs",
+      "name": "BU-E01/E08: quick-edit control progress",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogEditing.spec.mjs",
+      "name": "BU-E01/E08: quick-edit control owner_id",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogEditing.spec.mjs",
+      "name": "BU-E01/E08: quick-edit control did_demo",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogEditing.spec.mjs",
+      "name": "BU-E01/E08: quick-edit control date_received",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogEditing.spec.mjs",
+      "name": "BU-E01/E08: quick-edit control tags",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogEditing.spec.mjs",
+      "name": "BU-E02: sorting, pagination, filtering and hidden columns preserve Task-keyed edits",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogEditing.spec.mjs",
+      "name": "BU-E05: Back dirty cancel retains scope; discard allows navigation without writes",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFailure.spec.mjs",
+      "name": "BU-E07/E08: partial save retries only the failed Task",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFailure.spec.mjs",
+      "name": "BU-A12/E06: 403 reloads capabilities, retains permitted input and cancels navigation",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFailure.spec.mjs",
+      "name": "BU-A11/E15: revocation clears inaccessible snapshot and stops remaining mutations",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFailure.spec.mjs",
+      "name": "BU-E12: no automatic write retry after offline",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFailure.spec.mjs",
+      "name": "BU-E12: no automatic write retry after timeout",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFailure.spec.mjs",
+      "name": "BU-E12: one regular 401 refresh precedes one successful write",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFailure.spec.mjs",
+      "name": "BU-E13: repeated keyboard save while busy sends one mutation",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFilters.spec.mjs",
+      "name": "BU-F03: export and saving a view read input before debounce",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFilters.spec.mjs",
+      "name": "BU-F07: Escape and outside click discard uncommitted filter text",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFilters.spec.mjs",
+      "name": "BU-F14: zero/five pins, sixth rejection and independent team defaults",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFilters.spec.mjs",
+      "name": "BU-F15/T04: filter, pin and column resets have independent scopes",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFilters.spec.mjs",
+      "name": "BU-T08: table and cards preserve exact filtered order and Task IDs",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogFilters.spec.mjs",
+      "name": "BU-V03/V06: compact actions are reachable and shortcuts do not escape a popover",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogInventory.spec.mjs",
+      "name": "BU-T01/G02: all 41 fields render, retain labels and export all",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogInventory.spec.mjs",
+      "name": "BU-T01/G02: all 41 fields render, retain labels and export team",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogInventory.spec.mjs",
+      "name": "BU-G07/M15: previous renderer reads untouched legacy settings and leaves v2 intact",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogInventory.spec.mjs",
+      "name": "BU-S02/S03: explicit empty URL overrides session and default while retaining columns",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogInventory.spec.mjs",
+      "name": "BU-R11/D11: typing replaces history and filters never fetch another snapshot",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogInventory.spec.mjs",
+      "name": "BU-M02/M04: legacy migration is explicit and remains available after dismissal",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogInventory.spec.mjs",
+      "name": "BU-C07: closing a card without its original row restores focus to results",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogInventory.spec.mjs",
+      "name": "BU-S13: simultaneous rename detects revision conflict and preserves both choices",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-A01/A02/A03/A05/A07/A08/A09 team editor",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-A01/A02/A03/A05/A07/A08/A09 team only",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-A01/A02/A03/A05/A07/A08/A09 no team",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-A01/A02/A03/A05/A07/A08/A09 no access",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-A01/A02/A03/A05/A07/A08/A09 unknown capability",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-A01/A02/A03/A05/A07/A08/A09 team write_all is not global read",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-R10: back and forward restore same-scope search and pages",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-D15: twenty context changes do not multiply list loads",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-D05: rapid ABA only commits the newest context",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogLifecycle.spec.mjs",
+      "name": "BU-E14/D13: realtime refresh preserves quick-edit input",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-R01/R04/R05/D02: one workspace and legacy route",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-S01/F02: independent search",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-A05/A08: read-only and malformed scope",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-C02: deep task link",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogNavigation.spec.mjs",
+      "name": "BU-R01/R03: sidebar keeps the last context and exact search after leaving the page",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogOperations.spec.mjs",
+      "name": "BU-E01/E08/E09: all saves only changed fields and keeps context",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogOperations.spec.mjs",
+      "name": "BU-E01/E08/E09: team saves only changed fields and keeps context",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogOperations.spec.mjs",
+      "name": "BU-E03: dirty cancel keeps URL, draft and scope",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogOperations.spec.mjs",
+      "name": "BU-O13/O14/O16: complete filtered CSV uses visible columns and ignores selection",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogOperations.spec.mjs",
+      "name": "BU-S05: saved view survives reload in its own context",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogRealtime.spec.mjs",
+      "name": "BU-D12: concurrent invalidations keep one active and one queued snapshot",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogRealtime.spec.mjs",
+      "name": "BU-D14/D17: hidden invalidation is retained and returning performs one refresh",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogRealtime.spec.mjs",
+      "name": "BU-D17: activity changes skip register reload; reconnect bursts coalesce",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogRevocation.spec.mjs",
+      "name": "BU-S11/A11: auth end immediately purges card without old-session mutations",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogRevocation.spec.mjs",
+      "name": "BU-S11/A11: auth end immediately purges create without old-session mutations",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogRevocation.spec.mjs",
+      "name": "BU-A11/A12: card 403 refreshes capabilities and purges inaccessible data",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogRevocation.spec.mjs",
+      "name": "BU-A11/A12: card 403 refreshes capabilities and preserves permitted draft without another write",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogState.spec.mjs",
+      "name": "BU-S09: shared aliases and partial personal settings priority false",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogState.spec.mjs",
+      "name": "BU-S09: shared aliases and partial personal settings priority true",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogState.spec.mjs",
+      "name": "BU-S06/F09: adapted legacy view explains team replacement and is not dirty",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogState.spec.mjs",
+      "name": "BU-S10: resize keeps the explicitly chosen set of columns",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogState.spec.mjs",
+      "name": "BU-S12/D06: a changed team does not reuse the previous team selection or default",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogState.spec.mjs",
+      "name": "BU-T07: pagination preserves horizontal table position",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogState.spec.mjs",
+      "name": "BU-O15: an empty filtered export is disabled with a reason",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogSupplement.spec.mjs",
+      "name": "BU-R12: closing a card preserves list page and search",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogSupplement.spec.mjs",
+      "name": "BU-R13: accessible out-of-filter card is explained without expanding the list",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogSupplement.spec.mjs",
+      "name": "BU-V05/V06: keyboard scope, search and escape all",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogSupplement.spec.mjs",
+      "name": "BU-V05/V06: keyboard scope, search and escape team",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogSupplement.spec.mjs",
+      "name": "BU-D13: deferred refresh runs exactly once after selection clears",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogSupplement.spec.mjs",
+      "name": "BU-V02/V10: coarse-pointer targets and contrast light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogSupplement.spec.mjs",
+      "name": "BU-V02/V10: coarse-pointer targets and contrast dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogSupplement.spec.mjs",
+      "name": "BU-E13/E15: a pending quick-save neither repeats nor continues into another session",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 320x780",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 390x844",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 768x1024",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 1024x768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 1440x900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 1920x1080",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 1024x580",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 320x780",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 390x844",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 768x1024",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 1024x768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 1440x900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 1920x1080",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 1024x580",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 320x780",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 390x844",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 768x1024",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 1024x768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 1440x900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 1920x1080",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 1024x580",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 320x780",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 390x844",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 768x1024",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 1024x768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 1440x900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 1920x1080",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 1024x580",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    }
+  ]
+}

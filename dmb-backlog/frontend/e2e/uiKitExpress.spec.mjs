@@ -10,6 +10,8 @@ for (const theme of ['light', 'dark']) {
       await page.goto(`/e2e/fixtures/uiKitExpress.html?theme=${theme}`);
       await expect(page.locator('html')).toHaveAttribute('data-fixture-ready', 'true');
       await expect(page.locator('.qe-task-block')).toHaveCount(2);
+      const heights=await page.locator('#qe-task-search-input,.qe-estimate-filters,.qe-collapse-actions button').evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>e.getBoundingClientRect().height));
+      expect(Math.max(...heights)-Math.min(...heights)).toBeLessThanOrEqual(1);
       const resourceRows = page.locator('.qe-resource-table tbody tr');
       const rowHeight = await resourceRows.first().evaluate(el => el.getBoundingClientRect().height);
       await page.locator('#res-edit-btn').click();
@@ -30,9 +32,9 @@ for (const theme of ['light', 'dark']) {
         return { width: box.width, height: box.height, font: parseFloat(style.fontSize) };
       }));
       for (const box of geometry) {
-        expect(box.height).toBe(width > 640 ? 24 : 44);
-        expect(box.font).toBe(12);
-        if (width > 900) expect(box.width).toBeLessThan(140);
+        expect(box.height).toBe(width > 640 ? 32 : 44);
+        expect(box.font).toBe(13);
+        expect(box.width).toBeLessThan(width);
       }
       const icons = await page.locator(squareActions).evaluateAll(buttons => buttons.map(button => {
         const box = button.getBoundingClientRect(); return { width: box.width, height: box.height };

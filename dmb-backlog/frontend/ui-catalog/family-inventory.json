@@ -36,6 +36,7 @@
         "js/components/agentChat.js",
         "js/components/analytics.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerChat.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
@@ -49,10 +50,14 @@
         "js/components/login.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/navbar.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
+        "js/components/projectUi.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
@@ -67,8 +72,6 @@
         "js/components/tableUtils.js",
         "js/components/taskAttachments.js",
         "js/components/taskComments.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/viewState.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
@@ -105,8 +108,8 @@
       "consumers": [
         "js/components/customerPortal.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/notifications.js",
-        "js/components/projectWorkspace.js",
         "js/components/quickFilters.js",
         "js/components/reviewPage.js",
         "js/components/workTasks.js"
@@ -129,6 +132,7 @@
       ],
       "test": "uiKitDeepContracts.spec.mjs",
       "consumers": [
+        "js/components/projectManagement.js",
         "js/components/workTasks.js"
       ]
     },
@@ -187,6 +191,7 @@
         "js/components/agentChat.js",
         "js/components/analytics.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerChat.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
@@ -198,8 +203,12 @@
         "js/components/login.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
+        "js/components/projectUi.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
@@ -210,8 +219,6 @@
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
         "js/components/settings.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workPicker.js",
         "js/components/workProductivity.js",
@@ -243,6 +250,7 @@
         "js/agent-v2/journey.js",
         "js/components/admin.js",
         "js/components/agentChat.js",
+        "js/components/backlogPage.js",
         "js/components/customerReferences.js",
         "js/components/didBacklog.js",
         "js/components/expressEstimate.js",
@@ -250,13 +258,13 @@
         "js/components/login.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/quickEdit.js",
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
         "js/components/reviewPage.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workProductivity.js",
         "js/components/workTaskDrawer.js",
         "js/components/workTasks.js"
@@ -314,10 +322,13 @@
       "consumers": [
         "js/agent-v2/workspace.js",
         "js/backlog-assistant/answer.js",
+        "js/backlogRouteState.js",
         "js/components/admin.js",
         "js/components/agentChat.js",
+        "js/components/backlogPage.js",
         "js/components/directorateReport.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/projectWorkspace.js",
         "js/components/reportingStatuses.js",
@@ -325,7 +336,6 @@
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
         "js/components/settings.js",
-        "js/components/workTaskDrawer.js",
         "js/notificationUtils.js",
         "js/router.js"
       ]
@@ -356,6 +366,7 @@
         "js/components/adminDictionaries.js",
         "js/components/agentChat.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReport.js",
         "js/components/dashboard.js",
@@ -365,8 +376,10 @@
         "js/components/kanbanBoard.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/notifications.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quickEdit.js",
         "js/components/quickFilters.js",
@@ -375,8 +388,6 @@
         "js/components/requestPresentation.js",
         "js/components/settings.js",
         "js/components/sidebar.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workProjects.js",
         "js/components/workReports.js",
         "js/components/workUi.js",
@@ -456,19 +467,20 @@
         "js/backlog-assistant/answer.js",
         "js/components/agentChat.js",
         "js/components/analytics.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReport.js",
         "js/components/expressEstimate.js",
         "js/components/filterToolbar.js",
         "js/components/metrics.js",
+        "js/components/metricsPresentation.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
         "js/components/reports.js",
         "js/components/tableUtils.js",
         "js/components/taskColumns.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
         "js/components/workTaskDrawer.js"
@@ -496,14 +508,17 @@
         "js/components/admin.js",
         "js/components/analytics.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
         "js/components/didBacklog.js",
         "js/components/expressEstimate.js",
         "js/components/kanbanBoard.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/reportingStatuses.js",
@@ -511,8 +526,6 @@
         "js/components/requestLifecycle.js",
         "js/components/reviewPage.js",
         "js/components/settings.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/viewState.js",
         "js/components/workProjects.js",
         "js/components/workReports.js",
@@ -542,10 +555,13 @@
         "js/app.js",
         "js/components/agentChat.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerReferences.js",
         "js/components/filterToolbar.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/outboxDeadLetters.js",
         "js/components/quarterlyGoalsUpdate.js",
@@ -579,6 +595,7 @@
         "js/components/adminDictionaries.js",
         "js/components/agentChat.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
         "js/components/customerReport.js",
@@ -590,8 +607,11 @@
         "js/components/login.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/outboxDeadLetters.js",
+        "js/components/projectManagement.js",
         "js/components/quickEdit.js",
         "js/components/quickFilters.js",
         "js/components/reportingStatuses.js",
@@ -635,16 +655,16 @@
         "js/backlog-assistant/answer.js",
         "js/components/admin.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerPortal.js",
         "js/components/expressEstimate.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
         "js/components/reportingStatuses.js",
         "js/components/reviewPage.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/workBoard.js",
         "js/components/workUi.js"
       ]
@@ -669,6 +689,7 @@
         "js/app.js",
         "js/components/didBacklog.js",
         "js/components/filterToolbar.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/reports.js"
       ]
@@ -690,6 +711,7 @@
       "consumers": [
         "js/components/didBacklog.js",
         "js/components/filterToolbar.js",
+        "js/components/metricsQuarterly.js",
         "js/components/reports.js"
       ]
     },
@@ -775,17 +797,34 @@
     {
       "name": "SegmentedControl",
       "exports": [
-        "segmentedControl"
+        "segmentedControl",
+        "installSegmentedControls"
       ],
       "selectors": ".ui-segmented",
       "states": [
         "selected",
         "disabled",
         "keyboard",
-        "group"
+        "group",
+        "resize",
+        "hidden",
+        "reduced-motion",
+        "forced-colors"
       ],
-      "test": "uiKitDeepContracts.spec.mjs",
-      "consumers": []
+      "test": "segmentedControl.spec.mjs",
+      "consumers": [
+        "js/app.js",
+        "js/components/backlogPage.js",
+        "js/components/expressEstimate.js",
+        "js/components/filterToolbar.js",
+        "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
+        "js/components/quarterlyGoalsUpdate.js",
+        "js/components/reports.js",
+        "js/components/settings.js",
+        "js/components/workTaskDrawer.js",
+        "js/components/workTasks.js"
+      ]
     },
     {
       "name": "PageHeader",
@@ -810,11 +849,11 @@
         "js/components/kanbanBoard.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
         "js/components/reports.js",
         "js/components/settings.js",
-        "js/components/teamBacklog.js",
         "js/components/workProjects.js",
         "js/components/workReports.js",
         "js/components/workTasks.js",
@@ -846,7 +885,8 @@
         "js/components/agentChat.js",
         "js/components/directorateReport.js",
         "js/components/metrics.js",
-        "js/components/projectWorkspace.js",
+        "js/components/metricsQuarterly.js",
+        "js/components/projectManagement.js",
         "js/components/reports.js",
         "js/components/requestPresentation.js",
         "js/components/settings.js",
@@ -873,7 +913,8 @@
       "test": "uiKitDetailComponents.spec.mjs",
       "consumers": [
         "js/components/metrics.js",
-        "js/components/projectWorkspace.js",
+        "js/components/metricsQuarterly.js",
+        "js/components/projectManagement.js",
         "js/components/workTaskDrawer.js"
       ]
     },
@@ -898,6 +939,8 @@
       "test": "uiKitDetailComponents.spec.mjs",
       "consumers": [
         "js/components/metrics.js",
+        "js/components/metricsMigration.js",
+        "js/components/metricsQuarterly.js",
         "js/components/workTaskDrawer.js",
         "js/modalAccessibility.js"
       ]
@@ -925,6 +968,8 @@
       "test": "uiKitDataTable.spec.mjs",
       "consumers": [
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/workReports.js"
       ]
@@ -950,6 +995,8 @@
       "test": "uiKitDataTable.spec.mjs",
       "consumers": [
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
+        "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/workReports.js"
       ]
@@ -982,6 +1029,7 @@
       "test": "uiKitEntityPicker.spec.mjs",
       "consumers": [
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/workPicker.js",
         "js/components/workResolution.js"
       ]
@@ -1110,6 +1158,7 @@
         "js/components/agentChat.js",
         "js/components/analytics.js",
         "js/components/auditLog.js",
+        "js/components/backlogPage.js",
         "js/components/customerChat.js",
         "js/components/customerPortal.js",
         "js/components/customerReferences.js",
@@ -1123,6 +1172,7 @@
         "js/components/login.js",
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/navbar.js",
         "js/components/notifications.js",
@@ -1137,8 +1187,6 @@
         "js/components/sidebar.js",
         "js/components/tableUtils.js",
         "js/components/taskAttachments.js",
-        "js/components/taskTable.js",
-        "js/components/teamBacklog.js",
         "js/components/viewState.js",
         "js/components/workBoard.js",
         "js/components/workProjects.js",
@@ -1181,6 +1229,7 @@
         "js/components/customerReport.js",
         "js/components/directorateReport.js",
         "js/components/metrics.js",
+        "js/components/metricsQuarterly.js",
         "js/components/notifications.js",
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
@@ -1205,7 +1254,7 @@
     },
     {
       "path": "css/analytics-lt.css",
-      "sha256": "3950346428abec1c311849b4bde3e71b5facc4451755b8c59db13615ac3a2066"
+      "sha256": "647c4c3c2f85afc2cbe66a3e66ecc3068c7472c8592a86628233103cc7558f01"
     },
     {
       "path": "css/backlog-assistant.css",
@@ -1213,11 +1262,11 @@
     },
     {
       "path": "css/base.css",
-      "sha256": "61718e85a4b0f10e37b02df5a40ba6266ca4e8fcd154b324483a63d6a27a8a01"
+      "sha256": "7deda2c3f7164802e7ed334f0875baa4cd4192f6a97b41199c67573e3daba1e5"
     },
     {
       "path": "css/components.css",
-      "sha256": "a1370dae56427ddc2ec2e5d3ed8dc6bb2bb8cfb0a8352f95986db654ae290c92"
+      "sha256": "7c663eb105f1e35c7f98ccc63e4ef6eb9c0c7ebed9b02bf4f3ee900075c0fc0d"
     },
     {
       "path": "css/did-backlog.css",
@@ -1241,7 +1290,7 @@
     },
     {
       "path": "css/metrics.css",
-      "sha256": "cf5b796f639e542f083d1780899dfa73371d4fbe5fdc66ad0f1a408bbc9215c5"
+      "sha256": "382e498e36ccc17c8f9c11b4e344180253cba7e8fdae4755611f73f5bd688caf"
     },
     {
       "path": "css/modal-system.css",
@@ -1249,7 +1298,11 @@
     },
     {
       "path": "css/pages.css",
-      "sha256": "c2bd4e4fcead459644fa5a87a2697a6cab8bb3f884990034553780354585c520"
+      "sha256": "d5bdb0838388242d58904ab6be6382520543fab747ec1b8e01e5cb4e7cacfe68"
+    },
+    {
+      "path": "css/project-management.css",
+      "sha256": "934691bb1b91daaa0606da919b77c1e551838bc1bc36d23e1106beea78cc8981"
     },
     {
       "path": "css/responsive.css",
@@ -1257,23 +1310,23 @@
     },
     {
       "path": "css/tokens.css",
-      "sha256": "5cd4a496dc6fc97cedeca5a24def3afb01a34294ec2bdbf52fd2995f555b157b"
+      "sha256": "a08119ff834ef21b24d1b371efd3e5074dc2d5474ae9f6f098f297284a02124d"
     },
     {
       "path": "css/ui/adapters.css",
-      "sha256": "abc6e79fc2b4ae410a7d09a397caac319e6abe2ba01966e7efc244211b0fd55c"
+      "sha256": "e65ed98196dab590bee6ea52308647a2963d135172249b5526a256e4523da5f4"
     },
     {
       "path": "css/ui/ai-actions.css",
-      "sha256": "7fb3302fd29c7ca3048137c10cb25052f9f8b02522e9fedac9edd084ecc1af2c"
+      "sha256": "220f0ab9d76068462630615e336eded5e2115a31a9880bfd653d024f446b6706"
     },
     {
       "path": "css/ui/contracts.css",
-      "sha256": "ce50b1ff4ed7491ded43905b8142249f03878d073ebae27d5519b0c787e7eb51"
+      "sha256": "43b506c9fc9e54c0bc7daa29577d8068094fdec403ff16cc2901582403085a07"
     },
     {
       "path": "css/ui/core.css",
-      "sha256": "dddf31ffe78f2222e568f14a301e28982f6472c538c7e680815a946e7b3080d6"
+      "sha256": "5617dca9efa9c300cf763a4f7bf5457782afe198f0458a1f07324a06abd6b76c"
     },
     {
       "path": "css/ui/data-display.css",
@@ -1285,11 +1338,15 @@
     },
     {
       "path": "css/ui/detail-components.css",
-      "sha256": "51b5fd00d820e0f8cbe0c8bbe7a213b744d2183c7d76e60710eb63463a3809fd"
+      "sha256": "43b37ee303312e32e4bf051cf77b4005f2d79df373421b722462d6b3c7058bd0"
     },
     {
       "path": "css/ui/dialog-bridges.css",
-      "sha256": "63e7b1467789a30ce1a439834b3740f7144a59abcb69213aeb65e2733fa20ed0"
+      "sha256": "046ec19ed7273809280b3d3c52acac2dc347873594cf9164b6ea986dc702d9c9"
+    },
+    {
+      "path": "css/ui/disclosure-navigation.css",
+      "sha256": "d3d4a5bea6a4d3286d00de290e70734c6f0537a7d55fd2dc9650cef8bf9f9547"
     },
     {
       "path": "css/ui/entity-picker.css",
@@ -1297,7 +1354,7 @@
     },
     {
       "path": "css/ui/filter-select.css",
-      "sha256": "b66d982ae8e3f46b4e5347284ccd21be2d4b01492efbdcd454bda86013fb348b"
+      "sha256": "02c12f070413206232fde6b55407286f3ce23f4c49efb86d48bb4d18225aa8ab"
     },
     {
       "path": "css/ui/foundations.css",
@@ -1309,11 +1366,11 @@
     },
     {
       "path": "css/ui/info-chips.css",
-      "sha256": "cf9627f29bca7612ac1709ef4f35838fd8d90301c1a491a60b9178be5849023a"
+      "sha256": "4db98385ff4876e9c7b4e6a45e7c6dfff517d80c932e0106e7d438e5a87e684c"
     },
     {
       "path": "css/ui/interactions.css",
-      "sha256": "5bd98e3b3791599e1cd5cb14b7dbf6d30da19fbd05af38c4e3df2529faf7a5b5"
+      "sha256": "387e349014f1559ee1c415894fa92ed3b8ba82b56bf54c89f4c84bcda54ffd5c"
     },
     {
       "path": "css/ui/intervals.css",
@@ -1321,11 +1378,15 @@
     },
     {
       "path": "css/ui/kit.css",
-      "sha256": "57eda00cb6abcebdf6305c3f2c87e1420a21c02fe1286773fad2e54560a26a20"
+      "sha256": "c3eace967a182859c6fe4fcb052f66df97a5c838ca0612266b1ce1966c695e71"
     },
     {
       "path": "css/ui/login.css",
       "sha256": "cce6984fba57c7c37988fe1b4b5c0ee1b0714b425c32fc34b83172109e0c42a9"
+    },
+    {
+      "path": "css/ui/page-compositions.css",
+      "sha256": "632d175bbcc054c2433c3f19ae35c723b1524bf845eaa8a4241b238cfb96506b"
     },
     {
       "path": "css/ui/popover.css",
@@ -1333,15 +1394,23 @@
     },
     {
       "path": "css/ui/registry-primitives.css",
-      "sha256": "1735e9aa37ca2d43b14566779f6db0dee46e116307d89207ad346f1df9ab5886"
+      "sha256": "2ab79955dfc72fdcd4a94a0ca9a99ec3564022da0988aa811a654cd2b805293c"
+    },
+    {
+      "path": "css/ui/registry-tables.css",
+      "sha256": "ab4986efa4b97f33bccc2425ad50c0967010cee6f9459f3a5be3c7d7650e5893"
     },
     {
       "path": "css/ui/registry.css",
       "sha256": "e67bd96a3bdb2b42529b48b5840d411313080b451f5c3c28c9b2b117564aa12e"
     },
     {
+      "path": "css/ui/segmented.css",
+      "sha256": "f06f313a1c26afc88e9b728eb18136e72a3691c090d67e9e7300ebefa9b1914d"
+    },
+    {
       "path": "css/ui/sizing.css",
-      "sha256": "5b6c1a5f85734c93442a109b848097c14f73d91dc12c78475a630aaa97dee743"
+      "sha256": "bfd346e20d6f016120909fad09bea13c7011bdc5ec0f84700d3b5bed3d04b84e"
     },
     {
       "path": "css/ui/tables.css",
@@ -1361,11 +1430,11 @@
     },
     {
       "path": "css/work-tasks.css",
-      "sha256": "1d9bfa8ee90dcd54ba0dd8e1555ce4d9987c54ee5fd62262a59c423fe5cae2a1"
+      "sha256": "baa538a4f6b7f0138142c9ec57476e3194fde6e7ee027baf4d1915de59ff7af5"
     },
     {
       "path": "css/work-workplace.css",
-      "sha256": "7ed73b38ee5abab4a4b8baf0978ce7625cb061f662a89c1025ced0f181b84b95"
+      "sha256": "4c4c9007341e17182038ce4d7d385b69c4a0fc40b93e7f03fe4bc37f5e6f5b89"
     },
     {
       "path": "e2e/fixtures/accountSecurity.html",
@@ -1384,6 +1453,10 @@
       "sha256": "4ea993e528a775effb0388a69d53549484bb59e98058f87691eeeb57261886d2"
     },
     {
+      "path": "e2e/fixtures/metrics-review-r2.html",
+      "sha256": "6fd4da3b759c7e051123702b9ae4df529f719c9dd65e3fb1fe751afdc926c278"
+    },
+    {
       "path": "e2e/fixtures/modalCatalog.html",
       "sha256": "f06555fc62ae52b5f0b814123009d5d277e9d36e688dea3ba0e5b8a22988cc29"
     },
@@ -1397,7 +1470,11 @@
     },
     {
       "path": "e2e/fixtures/projectData.js",
-      "sha256": "c78f2b9889c5e0cb7eb8bb8cdc8dfd191a5b4c0a7ec6faa8633d84678c15dd8e"
+      "sha256": "1f286474470826bd3d445b4d7019161854c39c5da53157fdf8796a34e858fcfa"
+    },
+    {
+      "path": "e2e/fixtures/projectManagementSetup.js",
+      "sha256": "0f1f66e143ece04ecd0f18204a070ad0ffb36d895cebe831a2263bc5b7a8ae4c"
     },
     {
       "path": "e2e/fixtures/requirementWorkspace.html",
@@ -1409,7 +1486,7 @@
     },
     {
       "path": "e2e/fixtures/taskCardIncrement.html",
-      "sha256": "2e3caeb0d817d4715171cf71ced06f86866b277af51f0ef21fe581e399514a27"
+      "sha256": "7e75074ae41b7fd96c9f70354a8dfc3323921ab8a935d1ba8f95461c2d9b3076"
     },
     {
       "path": "e2e/fixtures/teamWeeklyReport.html",
@@ -1429,7 +1506,7 @@
     },
     {
       "path": "e2e/fixtures/uiKitExpress.html",
-      "sha256": "cad4971403b2d2ff86e58f89137050afc6758a882ff695766c9d2206825aa90e"
+      "sha256": "ad90788e6a99a7907b2d703757e5601e83de9220100a62e54fd56e984b07b3c4"
     },
     {
       "path": "e2e/fixtures/uiKitLogin.html",
@@ -1485,15 +1562,15 @@
     },
     {
       "path": "js/agent-v2/documentReview.js",
-      "sha256": "76ec166b7fe0eb36c92607f0273eddbcabb9d3bbc86e4328128ea9d1de27cd51"
+      "sha256": "d41aab858ec9e9e146b57bc4319edccb647194b4034b9979768937bd2a7dad84"
     },
     {
       "path": "js/agent-v2/generation.js",
-      "sha256": "8710181629b7fb26b2e9dcf06c60cf90e7105a074e4af432ce79ab0375fe9e1e"
+      "sha256": "f9d5c017cfb58000981c0c8dd3526156aad5858a2c7a7d8f981803889dbdb7da"
     },
     {
       "path": "js/agent-v2/journey.js",
-      "sha256": "d51675fb119f234dc665b3b535ec8a57b2a3c583ff9fb562e0754e025d75f5fd"
+      "sha256": "5b51497f8ff9b96314e45d8fedfce605e6b2711a662acb809df77e36f8afc5eb"
     },
     {
       "path": "js/agent-v2/routes.js",
@@ -1501,15 +1578,15 @@
     },
     {
       "path": "js/agent-v2/workspace.js",
-      "sha256": "7583a00c441187a87cd916bc1889ae908be1dcfe802e6caec88491d140eea4d4"
+      "sha256": "342067b31499a9ffb7f7400e9cd724c525932ac6358dd9fcda1021988da437d3"
     },
     {
       "path": "js/api.js",
-      "sha256": "bdc89df068928ec36c84504c999d59fb38ceb0ba4fa294669a9a379d023217df"
+      "sha256": "7e5fd740cc7c267d68bbc09c0969080a2ada1270169fde769555ed9ecc119a16"
     },
     {
       "path": "js/app.js",
-      "sha256": "8bad01b2d5c8d4ea643666bdc0e0ffff50167db72e4256d4d3e626c09ab4b4ab"
+      "sha256": "8fda9e2a566ef3686885140c63c94e9c1d9c0dba39b8a00a555f12bd944e6538"
     },
     {
       "path": "js/auth.js",
@@ -1517,7 +1594,7 @@
     },
     {
       "path": "js/backlog-assistant/answer.js",
-      "sha256": "3e930e295eb0c0318af3f43b7d7ebecad2d2eaba229f93d268aabb9f49ce998b"
+      "sha256": "d21137fcf9874fe18d435663fe1f6d5e6ed827186cb5d534252346fc7619ccba"
     },
     {
       "path": "js/backlog-assistant/api.js",
@@ -1529,7 +1606,7 @@
     },
     {
       "path": "js/backlog-assistant/page.js",
-      "sha256": "adb0612ab405172ec6034530fc6fe5225dc8d962518dc561859114006bfcc551"
+      "sha256": "e252415194d1b3c4d7e325882ec5b15cbdf666d8e55c3d1d8c7c6b5b49425218"
     },
     {
       "path": "js/backlog-assistant/panel.js",
@@ -1544,8 +1621,20 @@
       "sha256": "48de68c41b2ffb5cca798d6101e15e38fb32bcf261125631b57e18d9f488ef8d"
     },
     {
+      "path": "js/backlogContext.js",
+      "sha256": "4ef465d496b605dc97d8e0001c18ec185dbc3c0396ff59210332b67afd410349"
+    },
+    {
+      "path": "js/backlogPreferences.js",
+      "sha256": "0a4d029ed264d98237a1557081598cb212ab0cc00cbc910412201ac8e01a460f"
+    },
+    {
+      "path": "js/backlogRouteState.js",
+      "sha256": "64a431f4f234b43b01f590c1377b4628f9cc6b7c28d9553cca657f38b85b1ba9"
+    },
+    {
       "path": "js/backlogTaskLoader.js",
-      "sha256": "c37527e6c06e0d1e10cd2d8a2d88db60686cd37a2391e13e05cadd4f0a607ecc"
+      "sha256": "fba8a6d4d329ef0f41d4bd62e0ad4f0626ab35e4e4f1469076ba7b94f0622e3b"
     },
     {
       "path": "js/components/accountSecurity.js",
@@ -1553,23 +1642,27 @@
     },
     {
       "path": "js/components/admin.js",
-      "sha256": "fde9efda454a2e485f6e41340ce5a136da5a140f59447c061754ce509d61bf27"
+      "sha256": "001c3ee911a7f978da8fe9d15aa47daafc540962f65450ed17934bfe85f9e5ac"
     },
     {
       "path": "js/components/adminDictionaries.js",
-      "sha256": "eccb15af04b062ce8e921829ca080940c5c7dfa81ebb079e520e576f75235d84"
+      "sha256": "d02d858b80336b55722213b0ab09839655f1cf700a7076946351ea7a011cf342"
     },
     {
       "path": "js/components/agentChat.js",
-      "sha256": "8e8238e7bdc8ab14173a2c094937031efd1872c547c186923b9665ef72b056f5"
+      "sha256": "585ad9af090ca689d63b904c20eb6cc66a75ae5e508a20446cfb57bf46a81c08"
     },
     {
       "path": "js/components/analytics.js",
-      "sha256": "c72b7a3c40353b45f10d8b7301150f3c35d7827b9677cf413d4d0ecd007ae94c"
+      "sha256": "c70615fd86b8d97c4dcccb1529535644fb76ce740612602535f2f6ef3ffa1059"
     },
     {
       "path": "js/components/auditLog.js",
       "sha256": "9c2c7efdd90b6bb0e8271d990f7ae5e5c346f0e85b51f5a1fcf65001a1d9013b"
+    },
+    {
+      "path": "js/components/backlogPage.js",
+      "sha256": "a060b0b0f1b188cdc68a621a58e46f3c63d8ddf8e64ee16b52938eef2789d9bf"
     },
     {
       "path": "js/components/customerChat.js",
@@ -1585,31 +1678,31 @@
     },
     {
       "path": "js/components/customerReport.js",
-      "sha256": "ea580966fd16bbf9c2c587341b109f74279a2a8aecc255468b3e55cc433df330"
+      "sha256": "bea1e7ae7b165ab3b644c9a9c5d52376414f691debcc03347da9f4c8cfb0b04a"
     },
     {
       "path": "js/components/dashboard.js",
-      "sha256": "c54ee55d8a670abf2e9be4e062046b1a26d6b8de061c2f9694ffa2d98bc25848"
+      "sha256": "e1abb9658445796d5ab601d175bdb79472d4bbadf79e8c762f34bb1b4bd0564a"
     },
     {
       "path": "js/components/didBacklog.js",
-      "sha256": "35a931e7ebb27973c9834d556eb8ad8c94b47b82db81c62f08fac7fdbc2196cd"
+      "sha256": "34ae7d4441787ac8d9d90298751da5d7109fa030c79dc1227bf4eece37561ad5"
     },
     {
       "path": "js/components/directorateReport.js",
-      "sha256": "709ca7449f01c7feab3ba49d7d863143a17ef6b317130a4ac80ae34d6e951769"
+      "sha256": "5cff27f98644b19d1ce95e552a1e50666e5979f7b9a8da522f99a58411b92ca9"
     },
     {
       "path": "js/components/expressEstimate.js",
-      "sha256": "107ff0642f15fab0af6e68a44add198436f4e5a097952390e7edd89dfdd7e157"
+      "sha256": "1e01a75a5665cdecdacb35cb125f8b53c0e0600facf30023321582d23ac4c27e"
     },
     {
       "path": "js/components/filterToolbar.js",
-      "sha256": "404ab035f0d67b5b0e7fb43f0100bed5bd16bb2a112b4c994b03599d520c0ca3"
+      "sha256": "b3bb1fdffd8bd09d7271e635a11614c87a590aa724cd7443945a880e41074855"
     },
     {
       "path": "js/components/kanbanBoard.js",
-      "sha256": "288b74b5185d59954412f029f6d1733abeb74d3335158e705de426688e0f392d"
+      "sha256": "4be8640bfeccd27b7d43158b503d20b45a1d382e92097d2dce8c4c250f9ca310"
     },
     {
       "path": "js/components/login.js",
@@ -1617,15 +1710,27 @@
     },
     {
       "path": "js/components/meetingCapture.js",
-      "sha256": "55b413db68b0c998928ff2513b7a501243affd3d5daacd7103b42d055d050d33"
+      "sha256": "b35236fdf682e29f823c883eefa536fde9209d9f3b98d969aa5dba64d0504aae"
     },
     {
       "path": "js/components/metrics.js",
-      "sha256": "9911b70f7b43e93c31104eacbe25e0026ce402a10bb30665b80f959f5f2ec334"
+      "sha256": "0c33a6d86f7afe14de7ae03e06b36d68d0bb3f87f33411def4b0c0cbef6ace88"
+    },
+    {
+      "path": "js/components/metricsMigration.js",
+      "sha256": "b3fc9195b440162231702e12daa663891df6cbb54ec1250e8da4d33a1f55cc5c"
+    },
+    {
+      "path": "js/components/metricsPresentation.js",
+      "sha256": "f4221a05842c19d5aac3a480301c7598acf708351407df7f781f143528cd4033"
+    },
+    {
+      "path": "js/components/metricsQuarterly.js",
+      "sha256": "9dfa5e89d24872311fc0ed0a7099f03f14ffc514c937cdb713be7c46237845c8"
     },
     {
       "path": "js/components/modal.js",
-      "sha256": "6c3038c6e7dce413506a97bf85563e473eb96b3298754e976efd23ceb8f102cf"
+      "sha256": "0f3a39fb4faaba9f4b4f564f0310eb916bd55a8a5431d2551aeb29cfaab78ee9"
     },
     {
       "path": "js/components/navbar.js",
@@ -1637,31 +1742,39 @@
     },
     {
       "path": "js/components/outboxDeadLetters.js",
-      "sha256": "9d9a24e7c39f209a588a1e88e257229a9c38c5f09edfdec5fda739aca1c8591f"
+      "sha256": "75e7112f3331291859394e4867d7b9c263ecf412365a195a6e839dac81998995"
+    },
+    {
+      "path": "js/components/projectManagement.js",
+      "sha256": "6709e38c11336ffcd3605b8a6e20c87b0868b80a7bd8b0349ae11f307ab6c9d7"
+    },
+    {
+      "path": "js/components/projectUi.js",
+      "sha256": "27d38c26efd240d7444775ac7f56be556051ba41c7044c4471298d7aee62d153"
     },
     {
       "path": "js/components/projectWorkspace.js",
-      "sha256": "752d49ec38250af029d04a0108b8902564e29e43bb63e26a1bb4865d80b14768"
+      "sha256": "ead8e684f31224282ca159bddf66f50be4a12add240a0a96e04c5cb1ad42e37d"
     },
     {
       "path": "js/components/quarterlyGoalsUpdate.js",
-      "sha256": "fabe26398c17bf2020d72d7e52a736e032bfafdb4c7ac5d1e03481a91ceffd11"
+      "sha256": "30fce529463918160e19b886ee5221b3b073301f1d24788073571744eb7f7f61"
     },
     {
       "path": "js/components/quickEdit.js",
-      "sha256": "811152270656e7d08bf0dc300ddc7311e96c5caaeb0019cb42cfb2979da6b37e"
+      "sha256": "874a5d775991fa7f7bec48d459fba714994e8fa12d4b1a5f5f593c89a74e76e3"
     },
     {
       "path": "js/components/quickFilters.js",
-      "sha256": "566d537e33e0f0fd8bd1030763045c34b270e4dadca3213fc86b0f5ff84baf59"
+      "sha256": "a225dba9693b60d8ef696cee4b86ef2a75114a3221009388189da28746c1ac42"
     },
     {
       "path": "js/components/reportingStatuses.js",
-      "sha256": "cdb2f7d35fae0546d1eaab4a252723095543b1a4ff56cf264b4bae46fb1dc5b2"
+      "sha256": "b268902a7fcb6a8b7ccd3b93d4d8cc9b29abf20b9774ae8416f119f778e516fe"
     },
     {
       "path": "js/components/reports.js",
-      "sha256": "ff7488667603f169567014bf3ccbe0c1a3ddcf04021c5c6e13496607a12ee32e"
+      "sha256": "94ed145885cee6979e2ed98f0a92b8a20360254d737ebe2f087d1aac5ffaa910"
     },
     {
       "path": "js/components/requestLifecycle.js",
@@ -1669,23 +1782,23 @@
     },
     {
       "path": "js/components/requestPresentation.js",
-      "sha256": "e1b4d3f4507d7ab4e71c324add9aa9576f976404098910dcffac6ff46ce03fa4"
+      "sha256": "f3ae6dd3fb4c82f1fc7baa8ea3bdadae5572cbf4447a1a98f96c0a318ad62320"
     },
     {
       "path": "js/components/requirementReviews.js",
-      "sha256": "d19a3fe54c1752c0d7c88754f7c4ece8a116747459e56f4d9991040664ad7dbf"
+      "sha256": "05f816f7ead4545b7025257151f8c1bcdf0303eb46e90300ae9684f0a295ab81"
     },
     {
       "path": "js/components/reviewPage.js",
-      "sha256": "a0ac71c66a872f3bee8bfc9eb52e6488488c8de5df36fac8690cc2948e28f340"
+      "sha256": "e0d86c2c50da8e96d206adefe34d89bc548274b2932767c8b0e96ba93110974f"
     },
     {
       "path": "js/components/settings.js",
-      "sha256": "d1c9dbfe2e157866550b065a977db8d5f5f137a8eb5cc02117528cc886e65e57"
+      "sha256": "1bdb278b1f6659f048d70fc097615a097c7f9992fccb32d40f173dde09caab5c"
     },
     {
       "path": "js/components/sidebar.js",
-      "sha256": "dbde364ea2b8c9288dfba2080d42207b3f059a629c338f6029d3d1c610d52cba"
+      "sha256": "8f1937d532a5737c23550c649599fc9ac7ec290c2665ff0ea36ec5482e820a44"
     },
     {
       "path": "js/components/tableSelection.js",
@@ -1709,11 +1822,11 @@
     },
     {
       "path": "js/components/taskTable.js",
-      "sha256": "674e23d3b9039a18da16cc7add8017566ac6e1f9bf94c79eaf246a3c61811000"
+      "sha256": "f766001e014c8ac0471cbf3d49079fbdbe887b3268cdfec81fe740e902adce69"
     },
     {
       "path": "js/components/teamBacklog.js",
-      "sha256": "60230a7748b49cf6df570aa27650f5c0028d86eee3a93727dab1186297d58236"
+      "sha256": "dab5a1e48a2d1d896b8089b7d95657226adae899aa742f7d772c0122dcd97d39"
     },
     {
       "path": "js/components/viewState.js",
@@ -1725,7 +1838,7 @@
     },
     {
       "path": "js/components/workBoard.js",
-      "sha256": "db8f0887fae721a6439def500aee987a68df3184611ff2a6fcb1e1f73b680a22"
+      "sha256": "551bae06796d1941d68739e5fa57074816df31587c5af68708183aabe03ee4e9"
     },
     {
       "path": "js/components/workPicker.js",
@@ -1733,23 +1846,23 @@
     },
     {
       "path": "js/components/workProductivity.js",
-      "sha256": "f3f8d63e174a58101b67ea20c94b9472b9de11fdd53b1149d18c3bae4caab263"
+      "sha256": "68fe26322e648c2ae8780fe80ea6ee3fd77d87e2cd14621506426828e70a663c"
     },
     {
       "path": "js/components/workProjects.js",
-      "sha256": "22510421c4d47f04a3bf10a00ffcfa5599ad05b3c2c801610b5985cd8afd18c6"
+      "sha256": "ee736d048486ca39a9b1ce267abdcaac1297372d6027069f039d97614c81a106"
     },
     {
       "path": "js/components/workQueue.js",
-      "sha256": "5b8027f4198c875b9af02d9a22dcb468ff9286900210e78b4bebab6d4bf851fe"
+      "sha256": "166cba35a9489c6f4a7c3552044b396e952a2683f888f6afeeb0c45d6503746b"
     },
     {
       "path": "js/components/workRelations.js",
-      "sha256": "78f3161ee3f5c7f4667a0f49fd52b8aad70ef6724b2ccf98c7b50eaa5d8cc299"
+      "sha256": "e6bdfb317864a6f72f97ee8a70504f46da5bb3cef4fcb22e4723eec5875dddac"
     },
     {
       "path": "js/components/workReports.js",
-      "sha256": "5de077b0a19fc11bbe59de451dbd2030c58a4509aa7f1fd9fcbfd9e4c1ef01a9"
+      "sha256": "36a174a4b75057669f9aba639719cb390c28b2dd0fff07d9bcc55bdedf2ffadc"
     },
     {
       "path": "js/components/workResolution.js",
@@ -1757,15 +1870,15 @@
     },
     {
       "path": "js/components/workTaskDrawer.js",
-      "sha256": "b2c199e068fe0c23cecd2537f035db399b050924bfb4015d1ad10f9d770fb92d"
+      "sha256": "44054f9ae3c4d4c06c873bd1c0c4dfdf4de6c1855ede7a52c8b5db7080a1e230"
     },
     {
       "path": "js/components/workTasks.js",
-      "sha256": "31c69096f19452945127ec32dbffa2c1f38739ef90e5cdc49103d6501b1d6219"
+      "sha256": "b14b32a17b1d62b6babaabfc131bfb8e081f56147551222adb7a98d2bb21d234"
     },
     {
       "path": "js/components/workUi.js",
-      "sha256": "23f3d8b600d9023aa12ec89a3b2888cea06f8c2b5c6dad838ae2d9a0b3e179d2"
+      "sha256": "86de3b1688bd38638066bbad11a65fec9dd365440705c84b26ac25f23ef5ce0c"
     },
     {
       "path": "js/eventStream.js",
@@ -1793,7 +1906,7 @@
     },
     {
       "path": "js/router.js",
-      "sha256": "bd88b1ef544521626844025a97ffeb9f9eb3e3fbdf997a2fa98ffe78d236e832"
+      "sha256": "c3315704ff8d64cc537d6e3ec2b391ccca9be0331d8cfa592dd3d3b7f16c0fe5"
     },
     {
       "path": "js/store.js",
@@ -1857,15 +1970,15 @@
     },
     {
       "path": "js/ui/dataTable.js",
-      "sha256": "8531d10e7b6dbb0b949d0cb6c870fc3a5b370434249beb510cd39d30b4d79dec"
+      "sha256": "17d50dbe3ea7388d3dba622a9260d9eb8e33a8cf2a288e40f097b17c1f5aeb32"
     },
     {
       "path": "js/ui/detailComponents.js",
-      "sha256": "dcc1d57b755b057ff2e2359cfb9e17dcd8110183db88f9b400e2a230fe68843c"
+      "sha256": "eec9aa759af72e8ea4266c6f2ce9d17e936edeaa9f2d709fb5baef6275f84aed"
     },
     {
       "path": "js/ui/detailPanel.js",
-      "sha256": "be12f5178399d4e34f181971569b790cc5079085db56270df01a2ad9884248cc"
+      "sha256": "8bc0bc2f7b270e2b50e4811dad37c0213c270040fb81e385ab249790194376be"
     },
     {
       "path": "js/ui/entityPicker.js",
@@ -1873,7 +1986,7 @@
     },
     {
       "path": "js/ui/filterPolicy.js",
-      "sha256": "33874c175a71aa5c452853b994792a6399001f5e05fc77dc22cca5769ef303a1"
+      "sha256": "8791b5de63cd1bcc46ee8888e5df79346e649bb8213bdccc2fe1b1d254df3810"
     },
     {
       "path": "js/ui/filterSelect.js",
@@ -1889,7 +2002,7 @@
     },
     {
       "path": "js/ui/index.js",
-      "sha256": "0bf26170b68cac4e146c306026bd33dfad1eaf7b8f7d51417b3de12fc2cf120e"
+      "sha256": "ac39d67ad968bad95e92b7537aa95ff8c9f75d0046fd462a05e8ad76c46603c7"
     },
     {
       "path": "js/ui/intervals.js",
@@ -1901,15 +2014,19 @@
     },
     {
       "path": "js/ui/primitives.js",
-      "sha256": "597dd06e5cfffacf0a0333a1694aec51fe55788a5bf97b6e43e97906b3299888"
+      "sha256": "493c5ebeb6cb574e29dc78d2f32050923fa4f6be7e5ba67bfe066d5f9bcd9285"
+    },
+    {
+      "path": "js/ui/segmented.js",
+      "sha256": "e6cb70023f73515baeaf740f39418c245710d15911f1ae93be948ade300b4f00"
     },
     {
       "path": "js/ui/selectionList.js",
-      "sha256": "c169f610d0b83a97c6f3eabdb02b8df18d4a4638221279dcfe3db7483b3af481"
+      "sha256": "6a641c2cd5fd8a49a5a6c3e7158cbb8626fe91a9a26526608e557d25d78cb5e0"
     },
     {
       "path": "js/ui/specialized.js",
-      "sha256": "66234a5f4c3041c8f54f5cdf2dea079ec9a063787d36552e4c9ac29bcd558f4a"
+      "sha256": "22720d16739c699066c715a76e921010541818af758e04a0c618163ffd091e60"
     },
     {
       "path": "js/ui/splitPane.js",

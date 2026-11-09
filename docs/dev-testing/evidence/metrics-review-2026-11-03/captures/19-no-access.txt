@@ -1,0 +1,58 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - generic: Управление бэклогом
+    - link "Метрики":
+      - /url: "#/metrics"
+      - generic: Метрики
+    - link "Проекты":
+      - /url: "#/work-projects"
+      - generic: Проекты
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - generic: Аналитика
+    - generic: Бизнес-заказчику
+    - generic: ИИ-агенты
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - 'generic "Непрочитанных уведомлений: 24"': "24"
+    - link "Настройки":
+      - /url: "#/settings"
+      - generic: Настройки
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - link "Главная":
+      - /url: "#/dashboard"
+    - generic: /
+    - link "Метрики":
+      - /url: "#/metrics"
+    - generic: /
+    - generic: Карточка метрики
+  - combobox "Поиск задач"
+  - 'button "Уведомления: 24 непрочитанных"':
+    - 'generic "Непрочитанных уведомлений: 24"': "24"
+  - button "Переключить тему":
+  - button "Q.no-access":
+    - generic: QN
+    - generic: Q.no-access
+- main:
+  - alert:
+    - heading "Метрики недоступны" [level=3]
+    - paragraph: Метрика недоступна
+    - button "Повторить":
+      - generic: Повторить

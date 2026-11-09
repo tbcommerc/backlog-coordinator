@@ -22,7 +22,7 @@ async function mockApplication(page) {
       team_id: 1,
       team_name: 'Проектный офис',
       role_name: 'Администратор',
-      permissions: { customer_portal_mode: 'all' },
+      permissions: {customer_portal_mode:'all',backlog_dmb:'read_write',backlog_team:'write_all',task_edit:'all'},
     });
     if (apiPath === '/admin/field-labels') return json(route, {});
     if (apiPath === '/admin/display-settings/shared') return json(route, { settings: {} });
@@ -110,7 +110,7 @@ const smallFixtures = [
 
 
 for(const file of smallFixtures)test('import preflight '+file,async({page},testInfo)=>{
- await mockApplication(page);await page.goto('/#/team-backlog');await expect(page.getByRole('heading',{name:/Бэклог команды/})).toBeVisible();
+ await mockApplication(page);await page.goto('/#/team-backlog');await expect(page.locator('#tasks-content')).toHaveAttribute('data-ready','true');await expect(page.getByRole('heading',{name:/^Бэклог$/})).toBeVisible();
  const snapshot=await uploadAndSnapshot(page,file);await fs.mkdir(testInfo.outputPath('evidence'),{recursive:true});await fs.writeFile(testInfo.outputPath('evidence/preflight.json'),JSON.stringify({file,snapshot},null,2));
 });
 
@@ -124,8 +124,8 @@ test('evidence-based import UX/UI audit', async ({ page }, testInfo) => {
   page.on('console', msg => { if (msg.type() === 'error') results.consoleErrors.push(msg.text()); });
   page.on('pageerror', error => results.consoleErrors.push(`pageerror: ${error.message}`));
 
-  await page.goto('/#/team-backlog');
-  await page.getByRole('heading', { name: /Бэклог команды/ }).waitFor({ state: 'visible' });
+  await page.goto('/#/team-backlog');await expect(page.locator('#tasks-content')).toHaveAttribute('data-ready','true');
+  await page.getByRole('heading', { name: /^Бэклог$/ }).waitFor({ state: 'visible' });
 
   for (const viewport of [
     { name: 'desktop-1440x900', width: 1440, height: 900 },

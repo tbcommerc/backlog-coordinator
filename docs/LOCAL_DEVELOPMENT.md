@@ -1,7 +1,8 @@
 # Локальный запуск Backlog coordinator
 
 > AS-IS проверено по `scripts/start-project.ps1`, status/stop scripts и
-> `compose.yaml` 12.10.2026.
+> `compose.yaml` 03.11.2026. Полная приёмка нового состава открыта;
+> [фактический статус миграции](dev-testing/agent-services/IMPLEMENTATION.md).
 
 ## Что запускается
 
@@ -24,15 +25,16 @@
 не исчерпывала память рабочей станции. Его можно явно добавить флагом
 `-IncludeValuePriorityAssessor`.
 
-Агент «Поручения из встреч» входит в обязательный сервис `agent` на порту 9000.
-Отдельного процесса или флага не требует; страница `#/meeting-capture`.
-С 17.10.2026 backend также запускает встроенный обработчик фонового анализа:
-очередь и результат хранятся в PostgreSQL, UI можно закрыть/обновить. Нужна
-миграция `b6f4c2d9e821` (`alembic upgrade head` в штатном запуске); отдельный
-worker-процесс, Redis-очередь и новые переменные окружения не требуются.
-Локальный V1, включая разбор встреч, настроен на OpenCode Go
-(`OPENAI_BASE_URL=https://opencode.ai/zen/go/v1`, `OPENAI_MODEL=glm-5.3-flash`);
-ключ хранится в `agents/business-analyst/.env`. Проверено 12.10.2026 реальным извлечением через API.
+Для анализа встреч добавлен самостоятельный [meeting-analyzer](../agents/meeting-analyzer/README.md)
+на порту 9500 с собственным профилем и PostgreSQL-БД. Новый стандартный launcher
+включает его и DMB delivery adapter. Старые capture runs сохраняют legacy backend;
+они не переотправляются новому исполнителю. Перед стартом необходимы настройки
+сервиса и техническая миграция. UI остаётся `#/meeting-capture`.
+Миграция, API и worker запускаются из `agents/meeting-analyzer`: установленный
+wheel загружает собственный `.env` из рабочего каталога. Переменные процесса
+имеют приоритет. Встроенные default service secrets V1/V2 не проходят runtime
+проверку: локальные профили агентов и DMB должны содержать согласованные
+непустые межсервисные секреты, отличные от default.
 
 Frontend не требует отдельного процесса: FastAPI отдаёт его вместе с backend.
 
@@ -97,12 +99,12 @@ powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1 -IncludeValue
 powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 ```
 
-Настройка LLM V2 проверена 09.10.2026: по умолчанию launcher копирует
-provider/key/base/model из `agents/business-analyst/.env`. Чтобы сохранить отдельный ключ и модель,
-задайте в `agents/business-analyst-experimental/.env` `AGENT_V2_INHERIT_V1_LLM=false` и четыре
-`AGENT_V2_LLM_PROVIDER` / `AGENT_V2_OPENAI_API_KEY` / `AGENT_V2_OPENAI_BASE_URL` /
-`AGENT_V2_OPENAI_MODEL`. Пример OpenCode Go и безопасная проверка подключения —
-[эксплуатация V2](../agents/business-analyst-experimental/docs/OPERATIONS.md#opencode-go-через-api-ключ).
+Настройка LLM V2 проверена 02.11.2026: собственные provider/key/base/model
+сохраняются. Наследование V1 включается только явным `AGENT_V2_INHERIT_V1_LLM=true`
+и происходит в памяти процесса без записи в `.env`. Пустое значение означает
+отсутствие наследования. Нужны `AGENT_V2_LLM_PROVIDER`, `AGENT_V2_OPENAI_API_KEY`,
+`AGENT_V2_OPENAI_BASE_URL`, `AGENT_V2_OPENAI_MODEL`.
+[Эксплуатация V2](../agents/business-analyst-experimental/docs/OPERATIONS.md).
 
 Пункт меню и UI `#/agent-v2` видны всегда. Полный администратор получает доступ
 автоматически с trusted context BA. Для доступа остальных BA/PO пользователь
@@ -141,12 +143,12 @@ HTTP-проверка принимает стандартные состояни
 Модель сохраняется в проектном runtime-кэше `.runtime/hf-cache`, чтобы запуск не
 зависел от свободного места в системном пользовательском кэше.
 
-Провайдер, ключ, endpoint и модель LLM для агента приоритизации при запуске с
-`-IncludeValuePriorityAssessor` синхронизируются из `agents/business-analyst/.env`. Поэтому оба агента используют
-одни и те же `LLM_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_BASE_URL` и
-`OPENAI_MODEL`; отдельная настройка ключа приоритизатора не требуется.
-`LLM_PROVIDER` обязателен; значение `mock` отклоняется полным стартовым
-сценарием и остаётся доступным только изолированным тестам.
+Проверено 03.11.2026: оценщик при `-IncludeValuePriorityAssessor` читает
+собственный профиль. Launcher не копирует ключи из V1 в его `.env`.
+Обязательны собственные PostgreSQL DSN, service secret и Go Chat Completions.
+[Имена aliases и lifecycle](../agents/CONFIGURATION.md). Согласованная разовая
+миграция V2/оценщика на параметры V1 выполнена отдельно с проверкой и откатом;
+она не включает автоматическую синхронизацию последующих запусков.
 
 Повторный запуск использует существующие Docker volumes и не переустанавливает
 зависимости, пока не изменятся файлы `requirements.txt`.
@@ -231,3 +233,19 @@ SQLite-скрипты и не используется.
 ## Канбан рабочих задач — проверено 21.10.2026
 
 Для локального пилота в `dmb-backlog/.env` включён `WORK_TASK_BOARD_ENABLED=true`; в шаблоне конфигурации значение по умолчанию `false`. После смены значения перезапусти проект штатными скриптами из корня. Вход: `http://127.0.0.1:8000/#/work-tasks?display=board`. Новая миграция не нужна; seed и Task Prioritiser для доски не требуются. Для отката достаточно `false` и перезапуска, данные задач сохраняются. [Контракт и результаты проверок](../dmb-backlog/docs/WORK_BOARD.md).
+
+## Самостоятельные сервисы — проверено 03.11.2026
+
+[Aliases, SDK и lifecycle](../agents/CONFIGURATION.md): корневой start использует
+тот же реестр владения, что start-agent/stop-agent. Повторный запуск не завершает
+все сервисы; живой owned process проверяется на readiness, чужой занятый порт
+вызывает отказ. Старый файл только с PID не даёт права завершать процесс.
+Существующий legacy launch не присваивается автоматически.
+
+Логи независимых API: `.runtime/business-analyst.api.err.log`,
+`.runtime/business-analyst-experimental.api.err.log`,
+`.runtime/meeting-analyzer.api.err.log`,
+`.runtime/value-priority-assessor.api.err.log`; backend — `backend.err.log`,
+ассистент — `backlog-assistant.err.log` и `backlog-assistant-data.err.log`.
+Полный повторный старт и mTLS lifecycle после изменения ещё не квалифицированы;
+результаты и оставшиеся пункты — в [отчёте](dev-testing/agent-services/IMPLEMENTATION.md).

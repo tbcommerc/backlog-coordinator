@@ -1,0 +1,13 @@
+[
+  {
+    "name": "plan",
+    "status": 409,
+    "data": {
+      "detail": {
+        "code": "invalid_transition",
+        "message": "Изменение типа требует новой метрики",
+        "fields": {}
+      }
+    }
+  }
+]

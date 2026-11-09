@@ -18,6 +18,22 @@ from bridge.model import ModelBroker
 from runtime.opencode import config
 
 
+def free_runtime_port():
+    # Keep the released publish port outside Windows/Linux automatic client
+    # ranges: an early health request must not claim it as its own source port.
+    for _ in range(100):
+        probe = socket.socket()
+        try:
+            port = 20000 + secrets.randbelow(10000)
+            probe.bind(("127.0.0.1",port))
+            return port
+        except OSError:
+            continue
+        finally:
+            probe.close()
+    raise ValueError("runtime_port_unavailable")
+
+
 def event_stream(result):
     choices = []
     for choice in result.get("choices", []):
@@ -71,11 +87,15 @@ class LocalProbeLauncher:
             cwd=str(root / "workspace"), env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
 
+    def runtime_endpoint(self, instance_id, port):
+        return f"http://127.0.0.1:{port}"
+
     async def launch(self, context, bridge, model):
         self.assert_data(bridge)
         # Stable private identity is persisted before prepare, so a janitor can
         # remove an orphan even if the controller dies during container startup.
         instance_id = str(uuid.UUID(context["execution_ref"]))
+        port = free_runtime_port()
         root = self.root / instance_id
         root.mkdir()
         for name in ("workspace", "home", "config", "data", "state", "cache", "temp"):
@@ -108,7 +128,7 @@ class LocalProbeLauncher:
                 broker.errors.append(str(exc) if isinstance(exc, ValueError) else
                     f"HTTP_{exc.response.status_code}" if isinstance(exc, httpx.HTTPStatusError) else type(exc).__name__)
                 if isinstance(exc, ValueError):
-                    bridge.failure = "model_boundary_rejected"
+                    bridge.failure = bridge.failure or "model_boundary_rejected"
                 raise HTTPException(503, "controlled_model_unavailable")
             if body.get("stream"):
                 return StreamingResponse(event_stream(result), media_type="text/event-stream")
@@ -119,10 +139,6 @@ class LocalProbeLauncher:
         bridge_port = sock.getsockname()[1]
         server = uvicorn.Server(uvicorn.Config(app, log_level="error", access_log=False, timeout_graceful_shutdown=2))
         server_task = asyncio.create_task(server.serve(sockets=[sock]))
-        runtime_socket = socket.socket()
-        runtime_socket.bind(("127.0.0.1", 0))
-        port = runtime_socket.getsockname()[1]
-        runtime_socket.close()
         cfg = config(model, f"http://{self.broker_url_host}:{bridge_port}/v1", f"http://{self.broker_url_host}:{bridge_port}/mcp", token, bridge.schemas)
         (root / "workspace" / "opencode.json").write_text(json.dumps(cfg), encoding="utf-8")
         env = {k: v for k, v in os.environ.items() if k.upper() in {"SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "PATH"}}
@@ -145,13 +161,14 @@ class LocalProbeLauncher:
             raise
         self.instances[instance_id] = (process, root, server, server_task, broker)
         self.stderr_tasks[instance_id] = asyncio.create_task(self.drain_stderr(instance_id, process, (password, token)))
+        endpoint = self.runtime_endpoint(instance_id, port)
         try:
             async with httpx.AsyncClient(trust_env=False, auth=("opencode", password), timeout=1) as client:
                 for _ in range(200):
                     try:
-                        response = await client.get(f"http://127.0.0.1:{port}/global/health")
+                        response = await client.get(endpoint+"/global/health")
                         if response.status_code == 200:
-                            return {"id": instance_id, "endpoint": f"http://127.0.0.1:{port}", "password": password,
+                            return {"id": instance_id, "endpoint": endpoint, "password": password,
                                 "config": getattr(self, "config_overrides", {}).pop(instance_id, cfg)}
                     except httpx.HTTPError:
                         pass

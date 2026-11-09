@@ -138,7 +138,7 @@ export class API {
      */
     async request(method, path, data = null, requestOptions = {}) {
         const context = this.requestContext(path);
-        const url = `${this.baseURL}${path}`;
+        const url = `${requestOptions.apiVersion === 2 ? '/api/v2' : this.baseURL}${path}`;
         const options = {
             method,
             headers: this.getHeaders(),

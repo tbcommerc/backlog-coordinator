@@ -14,7 +14,7 @@ def add_months(anchor, count):
 
 def due_dates(period):
     anchor = period.first_due_date
-    if not anchor:
+    if period.cadence == 'none' or not anchor:
         return []
     result = []
     for i in range(3662):
@@ -59,7 +59,12 @@ def summarize(period, measurements, at=None):
     violations = 0
     if period.direction=='range' and target is not None and upper is not None:
         violations = sum(not target <= float(x.value) <= upper for x in points)
-        outcome = 'no_data' if not points else 'violated' if violations else 'unconfirmed' if missed or at < period.end_date else 'within_range' if points else 'no_data'
+        outcome = 'no_data' if not points else 'violated' if violations else 'unconfirmed' if period.cadence == 'none' or missed or at < period.end_date else 'within_range'
+    deviation = None
+    if value is not None and target is not None:
+        deviation = (value - target if period.direction != 'range' else
+                     value - target if value < target else value - upper if upper is not None and value > upper else 0)
     return dict(fact=value, measured_on=last.measured_on if last else None, progress=progress, achieved=achieved,
+                deviation=deviation,
                 next_due=next_due, missed_count=len(missed), freshness=freshness,
                 overdue_days=(at-next_due).days if missed else 0, outcome=outcome, violation_count=violations)

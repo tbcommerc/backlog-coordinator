@@ -8,6 +8,7 @@ import { createPopover } from '../ui/popover.js';
 import { selectionList, filterSelectionList } from '../ui/selectionList.js';
 import { button as uiButton, control as uiControl, field as uiField, pageHeader as uiPageHeader } from '../ui/primitives.js';
 import { setButtonBusy } from '../ui/controls.js';
+import { segmentedControl } from '../ui/segmented.js';
 import { progress as uiProgress } from '../ui/dataDisplay.js';
 /**
  * DMB Backlog - Reports Page
@@ -17,8 +18,8 @@ import { renderDirectorateReport, initDirectorateReport } from './directorateRep
 import { escapeHtml } from '../htmlUtils.js';
 import { bindViewStateAction, renderViewState } from './viewState.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
-import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=21';
-import { quarterlyGoalsUpdateHref } from './quarterlyGoalsUpdate.js?v=11';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=22';
+import { quarterlyGoalsUpdateHref } from './quarterlyGoalsUpdate.js?v=12';
 
 function renderInvolvedTeams(teams) {
   if (!teams || !teams.length) return '—';
@@ -232,11 +233,8 @@ function renderMeetingToolbar() {
       ${dateRange({ id: 'meeting-period', label: 'Период встреч', from: { label: 'Дата с', value: meetingFilters.from, attrs: { 'data-meeting-filter': 'from' } }, to: { label: 'Дата по', value: meetingFilters.to, attrs: { 'data-meeting-filter': 'to' } } })}
     </div>
     <div class="meeting-toolbar-actions">
-      <div class="meeting-view-switch" role="group" aria-label="Представление календаря">
-        <button class="btn btn-sm ${meetingView === 'cards' ? 'btn-primary' : 'btn-secondary'}" data-meeting-view="cards">Карточки</button>
-        <button class="btn btn-sm ${meetingView === 'timeline' ? 'btn-primary' : 'btn-secondary'}" data-meeting-view="timeline">Хронология</button>
-      </div>
-      <button class="btn btn-secondary btn-sm" data-meeting-reset ${filtersActive ? '' : 'disabled'}><i data-lucide="refresh-ccw"></i> Сбросить</button>
+      ${segmentedControl({label:'Представление календаря',value:meetingView,items:[{value:'cards',label:'Карточки',attrs:{'data-meeting-view':'cards'}},{value:'timeline',label:'Хронология',attrs:{'data-meeting-view':'timeline'}}]})}
+      <button class="btn btn-secondary" data-meeting-reset ${filtersActive ? '' : 'disabled'}><i data-lucide="refresh-ccw"></i> Сбросить</button>
     </div>
   </div>`;
 }
@@ -670,7 +668,7 @@ async function showReportingMeetingPreparation(meeting, app) {
           ${uiButton({ label: 'Сохранить', variant: 'primary', size: 'small', attrs: { 'data-save-preparation': true, 'data-task-id': item.task_id, 'data-version': item.version } })}`
           : `<p class="meeting-preparation-text">${item.text ? escapeHtml(item.text) : 'Статус не заполнен'}</p>`}
         <div class="meeting-status-version"><span>Версия ${item.version}</span>${item.updated_at ? `<small>${escapeHtml(new Date(item.updated_at).toLocaleString('ru-RU'))}${item.updated_by_name ? ` · ${escapeHtml(item.updated_by_name)}` : ''}</small>` : ''}</div>
-        ${item.revisions?.length ? `<details class="meeting-status-revisions"><summary>История изменений · ${item.revisions.length}</summary>${item.revisions.map(revision => `<div><small>${escapeHtml(revision.changed_at ? new Date(revision.changed_at).toLocaleString('ru-RU') : '—')} · ${escapeHtml(revision.changed_by_name || 'Система')}</small><p>${escapeHtml(revision.new_text || 'Статус очищен')}</p></div>`).join('')}</details>` : ''}
+        ${item.revisions?.length ? `<details class="meeting-status-revisions"><summary class="ui-disclosure-text">История изменений · ${item.revisions.length}</summary>${item.revisions.map(revision => `<div><small>${escapeHtml(revision.changed_at ? new Date(revision.changed_at).toLocaleString('ru-RU') : '—')} · ${escapeHtml(revision.changed_by_name || 'Система')}</small><p>${escapeHtml(revision.new_text || 'Статус очищен')}</p></div>`).join('')}</details>` : ''}
       </article>`).join('')}</div>`;
     const modalBody = overlay.querySelector('.modal-body');
     if (modalBody) modalBody.innerHTML = body;
@@ -2009,7 +2007,7 @@ async function createReportChart(canvasId, config) {
       });
       if (!Object.keys(reportChartInstances).length) { reportChartThemeObserver.disconnect(); reportChartThemeObserver = null; }
     });
-    reportChartThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-accent'] });
+    reportChartThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 }
 

@@ -30,12 +30,12 @@ export async function initWorkReports(app) {
         }
         const columns = major ? [
             { key: 'task', label: 'Задача бэклога', render: x => `<a class="ui-link work-task-link" href="#/work-reports?task=${x.id}">${esc(x.public_id)} · ${esc(x.title)}</a>` },
-            ...[['total','Рабочих задач'],['done','Выполнено'],['overdue','Просрочено'],['blocked','Блокеры'],['in_acceptance','На приёмке'],['external_links','Внешние ссылки']].map(([key,label])=>({ key, label, render: x => { const n=key==='external_links'?x.external_links:x.work[key]; return n && ['overdue','blocked'].includes(key)?badge({label:n,tone:'danger'}):tableCell({value:n??0,type:'number'}); } })),
+            ...[['total','Рабочих задач'],['done','Выполнено'],['overdue','Просрочено'],['in_acceptance','На приёмке'],['external_links','Внешние ссылки']].map(([key,label])=>({ key, label, render: x => { const n=key==='external_links'?x.external_links:x.work[key]; return n && key==='overdue'?badge({label:n,tone:'danger'}):tableCell({value:n??0,type:'number'}); } })),
         ] : [
             { key: 'task', label: 'Рабочая задача', render: x => `<a class="ui-link work-task-link" href="#/work-tasks/${x.id}">WRK-${x.id} · ${esc(x.title)}</a>` },
             { key: 'status', label: 'Статус', render: x => workStatus(x.status,WORK_STATUSES) },
             { key: 'due_date', label: 'Срок', render: x => tableCell({value:workDate(x.due_date)}) },
-            { key: 'result', label: 'Результат и блокеры', render: x => `<div class="work-result-text">${x.blocked_reason?`<p class="work-warning">Блокер: ${esc(x.blocked_reason)}</p>`:''}${x.result_text?`<p>${esc(x.result_text)}</p>`:x.blocked_reason?'':'<span class="work-muted">Не указан</span>'}</div>` },
+            { key: 'result', label: 'Результат', render: x => `<div class="work-result-text">${x.result_text?`<p>${esc(x.result_text)}</p>`:'<span class="work-muted">Не указан</span>'}</div>` },
         ];
         target.innerHTML = dataTable({ label: major?'Задачи бэклога':'Рабочие задачи', rows: items, columns, responsive: 'cards', density: 'compact', tableClassName: 'work-report-table' }) + workPager(pages[kind],rows.length,pageSize,kind);
     }

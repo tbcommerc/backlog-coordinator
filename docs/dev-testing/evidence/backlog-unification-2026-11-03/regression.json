@@ -1,0 +1,37 @@
+{
+  "global_unit": {
+    "tests": 498,
+    "passed": 498,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "complete frontend unit; no test exclusions"
+  },
+  "safe_backend": {
+    "policy_tests": 3,
+    "import_tests": 1,
+    "import_subcases": 8,
+    "database_used": false
+  },
+  "final_targeted": {
+    "snapshot_and_preferences": 23,
+    "passed": 23
+  },
+  "ui_review": "discovery/coverage structure PASS; not complete UI acceptance",
+  "ui_kit_receipt": "STALE; no fabricated refreshed global receipt",
+  "followup_browser": {
+    "tests": 181,
+    "passed": 154,
+    "failed": 27,
+    "skipped": 0,
+    "receipt": "browser-unit-repair.json"
+  },
+  "final_density_browser": {
+    "tests": 18,
+    "passed": 18,
+    "failed": 0,
+    "receipt": "browser-unit-repair-density.json"
+  },
+  "resolved_browser_density_failures": 6,
+  "outstanding_broader_browser_expectations": 21,
+  "resolved_previous_failures": 6
+}

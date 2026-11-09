@@ -3,19 +3,21 @@ import { avatar, counter } from './ui/dataDisplay.js';
 import { createPopover } from './ui/popover.js';
 import { bindActionMenu } from './ui/actionMenu.js';
 import { installFilterSelects } from './ui/filterSelect.js';
+import { installSegmentedControls } from './ui/segmented.js';
+import { installStickyTableHeaders } from './ui/stickyTableHeader.js';
 /**
  * DMB Backlog - Main Application
  * Entry point, initializes router and store
  */
 console.log('[DMB] app.js v20260910 pip-flow-v5.1 loaded');
 
-import { Router, createTaskOpenHandler } from './router.js?v=230';
+import { Router, createTaskOpenHandler } from './router.js?v=233';
 import { applyThemePreference } from './theme.js';
 import { renderLogin, initLogin } from './components/login.js?v=3';
 import { Store } from './store.js';
 import { API } from './api.js?v=4';
 import { Auth } from './auth.js';
-import { renderSidebar, initSidebar } from './components/sidebar.js?v=70';
+import { renderSidebar, initSidebar } from './components/sidebar.js?v=71';
 import { safeExternalUrl } from './urlUtils.js';
 import { confirmAction, formatErrorMessage, showFieldError, showToast } from './uiFeedback.js';
 import { initModalAccessibility } from './modalAccessibility.js';
@@ -109,7 +111,8 @@ function scheduleLiveRouteRefresh(app, kind, detail = {}) {
   window.clearTimeout(liveRouteRefreshTimers.get(kind));
   liveRouteRefreshTimers.set(kind, window.setTimeout(async () => {
     liveRouteRefreshTimers.delete(kind);
-    if (document.hidden) return;
+    if((window.location.hash.slice(1).split('?')[0]||'/dashboard')!==path)return;
+    if (document.hidden&&!['/backlog','/team-backlog'].includes(path)) return;
     try {
       await app.router.refreshCurrentRoute();
     } catch (error) {
@@ -190,7 +193,7 @@ async function loadNotifDropdown(app) {
           </span>
         </button>`;
     }).join('');
-    body.innerHTML += `<a href="#/notifications" class="ui-link notif-dropdown-all">Все уведомления →</a>`;
+    body.innerHTML += `<a href="#/notifications" class="ui-nav-action notif-dropdown-all">Все уведомления</a>`;
     if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
   } catch (error) {
     body.innerHTML = `<div class="notif-dropdown-state notif-dropdown-error" role="alert"><span>${escapeHtml(formatErrorMessage(error) || 'Не удалось загрузить уведомления')}</span><button type="button" class="btn btn-secondary btn-sm" data-retry-notifications>Повторить</button></div>`;
@@ -251,7 +254,7 @@ function renderLinkJiraList(links) {
   if (!arr.length) return '—';
   return arr.map(url => {
     const safeUrl = safeExternalUrl(url);
-    return safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Jira</a>` : 'Некорректная ссылка';
+    return safeUrl ? `<a class="ui-entity-link" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">Jira</a>` : 'Некорректная ссылка';
   }).join(', ');
 }
 
@@ -260,7 +263,7 @@ function renderLinkJiraTags(links) {
   if (!arr.length) return '';
   return arr.map(url => {
     const safeUrl = safeExternalUrl(url);
-    return safeUrl ? `<a class="b-tag" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>` : '';
+    return safeUrl ? `<a class="ui-entity-link b-tag" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">🔗 Jira</a>` : '';
   }).join('');
 }
 
@@ -356,7 +359,7 @@ async function handleSearch(query, app) {
 }
 
 async function handleLogout() {
-  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=92');
+  const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=95');
   const { clearAgentChatTransientStorage } = await import('./components/agentChat.js?v=96');
   const ok = await confirmDiscardChanges('Выйти', 'Есть несохранённые изменения. Выйти и потерять их?');
   if (!ok) return;
@@ -432,7 +435,6 @@ export function renderAppShell(content) {
                 <span class="user-menu-full-name">${userName}</span>
               </div>
               <button onclick="app.router.navigate('/account/security')" class="ui-surface-action dropdown-item" role="menuitem">Безопасность</button>
-              <button onclick="app.router.navigate('/settings')" class="ui-surface-action dropdown-item"><i data-lucide="settings" style="width: 16px; height: 16px;"></i> Настройки</button>
               <button id="logout-btn" class="ui-surface-action dropdown-item danger" role="menuitem"><i data-lucide="log-out" style="width: 16px; height: 16px;"></i> Выйти</button>
             </div>
           </div>
@@ -691,6 +693,8 @@ class App {
 
   async init() {
     this.disposeFilterSelects ||= installFilterSelects();
+    this.disposeSegmentedControls ||= installSegmentedControls();
+    this.disposeStickyTableHeaders ||= installStickyTableHeaders();
     this.applyTheme();
     if (location.hash.startsWith('#/activate')) { showSetup(this); return; }
 
@@ -706,16 +710,16 @@ class App {
       this.renderAppLayout();
       this.router.onBeforeNavigate = async (toPath, fromHash) => {
         if (this.assistantV2NavigationGuard && !(await this.assistantV2NavigationGuard(toPath, fromHash))) return false;
-        const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=120');
+        const { confirmAndCloseTaskFormsForNavigation } = await import('./components/modal.js?v=125');
         const taskCardOk = await confirmAndCloseTaskFormsForNavigation();
         if (!taskCardOk) return false;
-        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=92');
+        const { confirmDiscardChanges, clearQuickEditState } = await import('./components/quickEdit.js?v=95');
         const ok = await confirmDiscardChanges('Продолжить', 'Есть несохранённые изменения в режиме массового редактирования. Перейти и потерять их?');
         if (ok) clearQuickEditState();
         if (!ok) return false;
-        const { confirmReportingStatusNavigation } = await import('./components/reportingStatuses.js?v=21');
+        const { confirmReportingStatusNavigation } = await import('./components/reportingStatuses.js?v=22');
         if (!(await confirmReportingStatusNavigation())) return false;
-        const { confirmQuarterlyGoalsNavigation } = await import('./components/quarterlyGoalsUpdate.js?v=11');
+        const { confirmQuarterlyGoalsNavigation } = await import('./components/quarterlyGoalsUpdate.js?v=12');
         return confirmQuarterlyGoalsNavigation();
       };
       this.router.init();
@@ -725,11 +729,7 @@ class App {
   }
 
   applyTheme() {
-    const accent = localStorage.getItem('dmb_accent') || 'indigo';
-    const compact = localStorage.getItem('dmb_compact') === 'true';
     const theme = localStorage.getItem('dmb_theme') || 'light';
-    document.documentElement.setAttribute('data-accent', accent);
-    document.documentElement.setAttribute('data-compact', compact);
     applyThemePreference(theme);
   }
 
@@ -822,7 +822,8 @@ class App {
       await this.loadFeatures();
       this.renderAppLayout();
       this.router.init();
-      this.router.navigate('/dashboard');
+      // router.init resolves the preserved deep link after authentication.
+
     });
   }
 

@@ -30,7 +30,7 @@ export function tableCell({ value, type = 'text', secondary = '', href = '', ton
 
 // render(row, index) returns trusted cell content. Sorting is controlled by the
 // consumer: the component never sorts one page of a server-side registry.
-export function dataTable({ label, columns = [], rows = [], sort = null, state = 'default', stateTitle, message = '', actionLabel = '', actionAttrs = {}, toolbar = '', footer = '', responsive = 'scroll', density = 'default', className = '', tableClassName = '', attrs = {} } = {}) {
+export function dataTable({ label, columns = [], rows = [], sort = null, state = 'default', stateTitle, message = '', actionLabel = '', actionAttrs = {}, toolbar = '', footer = '', responsive = 'scroll', stickyHeader = false, variant = 'default', density = 'default', className = '', tableClassName = '', attrs = {} } = {}) {
   if (!label || !columns.length || columns.some(c => !c.key || !c.label) || new Set(columns.map(c => c.key)).size !== columns.length) {
     throw new TypeError('DataTable requires a label and columns with unique keys and labels');
   }
@@ -41,9 +41,9 @@ export function dataTable({ label, columns = [], rows = [], sort = null, state =
     return `<th scope="col"${col.sortable ? ` aria-sort="${direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}"` : ''}>${title}</th>`;
   }).join('');
   const body = state === 'default' ? rows.map((row, index) => `<tr>${columns.map(col => `<td data-label="${esc(col.label)}">${col.render ? col.render(row, index) : tableCell({ value: row[col.key], type: col.type })}</td>`).join('')}</tr>`).join('') : '';
-  return `<div class="ui-data-table ${esc(className)}"${attributes({ ...attrs, 'data-ui-state': state, 'data-ui-responsive': responsive === 'cards' ? 'cards' : 'scroll' })}>
+  return `<div class="ui-data-table ${esc(className)}"${attributes({ ...attrs, 'data-ui-state': state, 'data-ui-responsive': responsive === 'cards' ? 'cards' : 'scroll', 'data-ui-table': variant === 'registry' ? 'registry' : 'default' })}>
     ${toolbar ? `<div class="ui-data-table-toolbar">${toolbar}</div>` : ''}
-    ${state === 'default' ? `<div class="ui-data-table-scroll" role="region" aria-label="${esc(label)} — таблица" tabindex="0"><table class="ui-table ui-table-data ${esc(tableClassName)}" data-ui-density="${density === 'compact' ? 'compact' : 'default'}"><caption class="sr-only">${esc(label)}</caption><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></div>` : `<div aria-label="${esc(label)}">${renderViewState({ kind: state, title: stateTitle, message, actionLabel: state === 'loading' ? '' : actionLabel, actionAttrs, scope: 'partial' })}</div>`}
+    ${state === 'default' ? `<div class="ui-data-table-scroll" role="region" aria-label="${esc(label)} — таблица" tabindex="0"><table${stickyHeader ? ' data-ui-sticky-header="page"' : ''} class="ui-table ui-table-data ${esc(tableClassName)}" data-ui-table="${variant === 'registry' ? 'registry' : 'default'}" data-ui-density="${density === 'compact' ? 'compact' : 'default'}"><caption class="sr-only">${esc(label)}</caption><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></div>` : `<div aria-label="${esc(label)}">${renderViewState({ kind: state, title: stateTitle, message, actionLabel: state === 'loading' ? '' : actionLabel, actionAttrs, scope: 'partial' })}</div>`}
     ${footer ? `<div class="ui-data-table-footer">${footer}</div>` : ''}
   </div>`;
 }

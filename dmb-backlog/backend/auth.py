@@ -63,6 +63,8 @@ def get_task_action_scope(user: User, action: Literal["edit", "comment", "delete
     value = getattr(getattr(user, "role", None), field, None)
     if value in {"none", "team", "all"}:
         return value
+    if value is not None:
+        return "none"
     name = (user.role_name or "").strip().casefold()
     if action == "edit":
         if name in TASK_GLOBAL_EDITOR_ROLES: return "all"

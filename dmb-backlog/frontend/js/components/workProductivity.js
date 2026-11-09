@@ -10,17 +10,26 @@ export function checklistValue(value) {
     catch { return []; }
 }
 export const checklistCount = items => `${items.filter(x=>x.completed).length} из ${items.length}`;
+export const checklistProgress = items => progress({value:items.length ? 100*items.filter(x=>x.completed).length/items.length : 0,label:'Прогресс чек-листа'});
 export function checklistView(row) {
     const items = row.checklist || [];
     if (!items.length) return '';
-    return `<section class="work-checklist-view" aria-label="Чек-лист"><h3>Чек-лист · <span data-checklist-count>${checklistCount(items)}</span></h3>${progress({value:100*items.filter(x=>x.completed).length/items.length,label:'Прогресс чек-листа'})}<ul>${items.map(item=>`<li><label class="ui-checkbox"><input type="checkbox" data-check-item="${esc(item.id)}" ${item.completed?'checked':''} ${row.can_check?'':'disabled'}><span>${esc(item.title)}</span></label></li>`).join('')}</ul><p class="work-muted">Пункты помогают отслеживать работу; завершение подтверждается отдельно.</p></section>`;
+    return `<section class="work-checklist-view" aria-label="Чек-лист"><h3>Чек-лист · <span data-checklist-count>${checklistCount(items)}</span></h3>${checklistProgress(items)}<ul>${items.map(item=>`<li><label class="ui-checkbox"><input type="checkbox" data-check-item="${esc(item.id)}" ${item.completed?'checked':''} ${row.can_check?'':'disabled'}><span>${esc(item.title)}</span></label></li>`).join('')}</ul><p class="work-muted">Пункты помогают отслеживать работу; завершение подтверждается отдельно.</p></section>`;
 }
 
-export function mountChecklistEditor(host, input, editable) {
+export function mountChecklistEditor(host, input, editable, {completion = false, canCheck = false, savedIds = []} = {}) {
     let items = checklistValue(input.value);
     const emit = () => {input.value=JSON.stringify(items);input.dispatchEvent(new Event('input',{bubbles:true}));};
     const render = () => {
         host.innerHTML = `<ol class="work-checklist-editor">${items.map((item,index)=>`<li><input class="input ui-control" aria-label="Пункт ${index+1}" data-item-title="${index}" value="${esc(item.title)}" maxlength="300" required ${editable?'':'disabled'}><div class="work-checklist-tools">${button({label:'Выше',variant:'ghost',attrs:{'data-item-up':index,'aria-label':`Переместить пункт ${index+1} выше`,disabled:!editable || index===0}})}${button({label:'Убрать',variant:'ghost',attrs:{'data-item-remove':index,'aria-label':`Убрать пункт ${index+1}`,disabled:!editable}})}</div></li>`).join('')}</ol>${editable?button({label:'Добавить пункт',variant:'secondary',attrs:{'data-item-add':'',disabled:items.length>=50}}):''}<p class="work-muted">До 50 пунктов. Изменения сохраняются вместе с задачей.</p>`;
+        if (completion) {
+            host.classList.add('work-checklist-view', 'work-checklist-unified');
+            host.insertAdjacentHTML('afterbegin', `<h3>Чек-лист · <span data-checklist-count>${checklistCount(items)}</span></h3>${checklistProgress(items)}`);
+            host.querySelectorAll('[data-item-title]').forEach((title, index) => {
+                const item = items[index];
+                title.insertAdjacentHTML('beforebegin', `<input type="checkbox" class="work-check-completion" data-check-item="${esc(item.id)}" aria-label="Выполнено: ${esc(item.title || 'новый пункт')}" ${item.completed ? 'checked' : ''} ${canCheck && savedIds.includes(item.id) ? '' : 'disabled'}>`);
+            });
+        }
     };
     host.oninput = event => {
         if (!event.target.matches('[data-item-title]')) return;
@@ -41,7 +50,7 @@ export function mountChecklistEditor(host, input, editable) {
 }
 
 export function mountWorkTemplates(host, app, {getContent, apply, canApply, isBusy}) {
-    host.innerHTML=`<details class="work-card-details"><summary>${canApply?'Из шаблона':'Сохранить как шаблон'}</summary><p class="work-muted">Личные шаблоны переносят содержание, приоритет и чек-лист. Исполнитель, дата и выполненные отметки не копируются.</p><div data-template-controls></div><p data-template-message role="status"></p></details>`;
+    host.innerHTML=`<details class="work-card-details"><summary class="ui-disclosure-text">${canApply?'Из шаблона':'Сохранить как шаблон'}</summary><p class="work-muted">Личные шаблоны переносят содержание, приоритет и чек-лист. Исполнитель, дата и выполненные отметки не копируются.</p><div data-template-controls></div><p data-template-message role="status"></p></details>`;
     const controls=host.querySelector('[data-template-controls]'),notice=host.querySelector('[data-template-message]');
     let items=[],selected='',busy=false;
     const selectedItem=()=>items.find(x=>String(x.id)===selected);

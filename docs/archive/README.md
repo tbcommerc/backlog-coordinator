@@ -16,7 +16,7 @@
 
 | Материал | Назначение |
 |---|---|
-| [Карточка задачи последняя.html](<../../Карточка задачи последняя.html>) | Референс, упомянутый в modal.js; не удалять как случайный HTML |
+| [Карточка задачи — референс.html](<../../dmb-backlog/Карточка задачи - референс.html>) | Сохранённый визуальный референс карточки задачи |
 | [tribe-backlog-dashboard.html](../../tribe-backlog-dashboard.html) | Сохранённый самостоятельный макет |
 | [task-card-vnext.html](../../design-prototypes/task-card-vnext.html) | Дизайн-прототип следующей карточки |
 | [task-card-prototype.html](../../exports/task-card-prototype.html) | Экспорт прототипа |

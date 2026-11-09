@@ -1,0 +1,65 @@
+/* Reusable Operate compositions. Controls keep the sizing.css contract. */
+.ui-registry-header { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-3); }
+.ui-registry-header .ui-page-heading { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-3); }
+.ui-registry-actions { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2); margin-left:auto; }
+.ui-registry-secondary { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-2) var(--space-4); margin-block:var(--space-3); min-width:0; }
+.ui-registry-conditions { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2); min-width:0; }
+:root .ui-filter-chip.ui-filter-navigation { border-color:transparent; border-radius:0; background:transparent; box-shadow:none; color:var(--text-secondary); }
+:root .ui-filter-chip.ui-filter-navigation[aria-pressed=true] { border-bottom-color:var(--accent); color:var(--text-primary); }
+:root .ui-filter-chip.ui-filter-navigation[aria-pressed=true] .quick-filter-count { background:var(--accent-light); color:var(--accent-text); }
+
+:root .ui-registry-toolbar { box-sizing:border-box; border:1px solid var(--border-color); border-radius:var(--radius-lg); background:var(--bg-secondary); padding:var(--space-2) var(--space-3); gap:var(--space-2); }
+:root .ui-registry-fields { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); min-width:0; }
+:root .ui-field.ui-field-inline { display:flex; flex:1 1 0; align-items:center; gap:var(--space-1); min-width:0; max-width:none; margin:0; padding-left:var(--space-2); border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-secondary); }
+:root .ui-field-inline > .form-label { position:static; display:inline-flex; flex:none; width:auto; height:auto; overflow:visible; clip-path:none; margin:0; font-size:var(--type-meta-size); line-height:var(--type-meta-line); color:var(--text-secondary); }
+:root .ui-field-inline > .ui-control { flex:1 1 0; min-width:0; width:0; border-color:transparent; border-radius:0 var(--radius-md) var(--radius-md) 0; background-color:transparent; padding-left:0; box-shadow:none; }
+:root .ui-field-inline:focus-within { outline:2px solid var(--accent); outline-offset:2px; }
+:root .ui-field-inline > .ui-control:focus { outline:none; box-shadow:none; }
+:root .ui-field-inline[hidden] { display:none; }
+
+/* Sections inside a detail panel: one enclosing surface, no nested cards. */
+.ui-section-card.ui-section-plain { border:0; border-radius:0; background:transparent; }
+.ui-section-plain > .ui-section-header { padding:var(--space-2) 0; }
+.ui-section-plain > .ui-section-header :is(h2,h3,h4) { font-size:var(--type-body-size); line-height:var(--type-body-line); }
+.ui-section-plain > .ui-section-body { padding:0 0 var(--space-3); }
+.ui-section-plain > .ui-section-body > :first-child { margin-top:0; }
+.ui-section-plain > .ui-section-body > :last-child { margin-bottom:0; }
+.ui-section-plain > .ui-section-footer { padding-inline:0; }
+.ui-detail-summary { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--space-2) var(--space-4); padding-bottom:var(--space-3); margin-bottom:var(--space-2); border-bottom:1px solid var(--border-color); }
+
+/* Explicit compact compositions; control geometry stays in the Kit. */
+.ui-search-field { position:relative; }
+.ui-search-field > .ui-icon { position:absolute; left:var(--space-3); top:50%; transform:translateY(-50%); color:var(--text-secondary); pointer-events:none; }
+.ui-search-field > .ui-control { width:100%; padding-left:calc(var(--control-icon) + var(--space-5)); }
+.ui-field-label-hidden > :is(.ui-field-label,.form-label) { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+@media(max-width:700px) {
+ :root .ui-btn.ui-btn-mobile-icon { width:var(--control-target-min,44px); min-width:var(--control-target-min,44px); padding-inline:0; }
+ .ui-btn-mobile-icon > .ui-icon { flex:none; }
+ .ui-btn-mobile-icon > span { position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+}
+@media(max-width:360px) {
+ .ui-tabs.ui-tabs-fit > .ui-tab { flex:1; min-width:0; padding-inline:var(--space-2); }
+}
+
+/* Registry search/disclosure: layout only; Kit owns controls. */
+.ui-registry-search-row { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2); }
+.ui-registry-search { flex:1 1 240px; min-width:0; }
+.ui-registry-filter-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--space-3); padding-block:var(--space-3); }
+.ui-registry-filter-grid > .ui-field { margin:0; }
+.ui-registry-filter-panel[hidden] { display:none; }
+.ui-registry-sort { flex:0 1 260px; min-width:0; }
+.ui-registry-collections { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-block:var(--space-3); }
+.ui-registry-mobile-collection { display:none; }
+.ui-route-tabs { margin-block:var(--space-3); }
+.ui-route-tabs > .ui-tab { text-decoration:none; }
+.ui-summary-strip { display:flex; flex-wrap:wrap; gap:var(--space-2) var(--space-4); border-block:1px solid var(--border-color); padding-block:var(--space-2); }
+:root .ui-kpi-card.ui-kpi-inline { display:inline-flex; flex-direction:row; align-items:baseline; flex-wrap:wrap; gap:var(--space-2); width:auto; min-height:var(--control-h); padding:var(--space-1) var(--space-2); border:0; border-radius:var(--radius-md); background:transparent; box-shadow:none; }
+:root .ui-kpi-card.ui-kpi-inline > strong { font-size:var(--type-body-size); line-height:var(--type-body-line); }
+@media(max-width:700px) {
+ .ui-registry-filter-grid { grid-template-columns:minmax(0,1fr); }
+ .ui-registry-collections-responsive { display:none; }
+ .ui-registry-mobile-collection { display:block; margin-block:var(--space-3); }
+ .ui-registry-sort { flex-basis:100%; }
+}
+
+.ui-registry-conditions:empty { display:none; }

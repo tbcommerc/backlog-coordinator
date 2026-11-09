@@ -20,8 +20,11 @@ test('append and cursor consumers cannot restore private controls',()=>{
 });
 
 test('real panel tabs use the shared navigation; URL navigation remains links',()=>{
- for(const file of ['admin','agentChat','directorateReport','modal','reportingStatuses','workTaskDrawer'])assert.match(read('components/'+file+'.js'),/tabNavigationTarget/,file);
- assert.match(read('components/settings.js'),/mountTabs/);
+ for(const file of ['admin','agentChat','directorateReport','modal','reportingStatuses'])assert.match(read('components/'+file+'.js'),/tabNavigationTarget/,file);
+ const drawer=read('components/workTaskDrawer.js');
+ assert.match(drawer,/collapseSection\(/);
+ assert.match(drawer,/const revealSection/);
+ assert.doesNotMatch(drawer,/role="tab(?:list|panel)?"|closest\('\[role="tab"\]'\)/);
  assert.match(read('components/metrics.js'),/aria-current/);
  assert.match(read('components/reviewPage.js'),/href="#\/review/);
 });

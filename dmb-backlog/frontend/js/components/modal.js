@@ -1,7 +1,7 @@
 import { pagination as kitPagination } from '../ui/forms.js';
 import { taskStatusTone, taskPriorityTone } from '../taskDisplay.js';
 import { badge as uiBadge } from '../ui/primitives.js';
-import { mountRelations } from './workRelations.js?v=2';
+import { mountRelations } from './workRelations.js?v=3';
 import { mountWorkList } from './workTasks.js?v=25';
 import { csvRows, downloadCsv, parseCsvRows, decodeCsvContent } from '../taskCsv.js';
 import { createPopover } from '../ui/popover.js';
@@ -30,6 +30,7 @@ let currentTask = null;
 let modalMode = 'view';
 let currentModal = null;
 let onSaveCallback = null;
+let _createTaskContext = {};
 let _createTaskDirty = false;
 let _createTaskInitialSnapshot = '';
 let _createTaskSaving = false;
@@ -179,6 +180,7 @@ function renderExternalTaskChangeBanner(detail) {
 
 function ensureTaskRealtimeEvents() {
   if (_taskRealtimeBound) return;
+  document.addEventListener('dmb:session-ended',revokeTaskModalAccess);
   document.addEventListener('dmb:task-changed', event => {
     const detail = event.detail || {};
     const aggregate = detail.aggregate || {};
@@ -282,12 +284,13 @@ function restoreTaskModalReturnFocus(context) {
   if (!target && Number.isFinite(context.taskId)) {
     target = document.querySelector(`[data-id="${context.taskId}"], [data-task-id="${context.taskId}"]`);
   }
+  if (!target && /^#\/backlog(?:\?|$)/.test(window.location.hash)) target=document.getElementById('tasks-count')||document.getElementById('tasks-container');
   if (!target) return;
   const hadTabindex = target.hasAttribute('tabindex');
   if (!hadTabindex && !target.matches('button, a[href], input, select, textarea')) target.setAttribute('tabindex', '-1');
   target.focus({ preventScroll: true });
   target.scrollIntoView({ block: 'nearest' });
-  if (!hadTabindex) setTimeout(() => target.removeAttribute('tabindex'), 0);
+  if (!hadTabindex) target.addEventListener('blur',()=>target.removeAttribute('tabindex'),{once:true});
 }
 
 function createTaskFormSnapshot() {
@@ -418,7 +421,8 @@ function showCreateDuplicateWarning(tasks) {
     tasks.forEach(task => {
       const link = document.createElement('a');
       link.className = 'create-duplicate-item';
-      link.href = `#${currentPath}?task=${task.id}`;
+      const params=new URLSearchParams(window.location.hash.split('?')[1]||'');params.set('task',String(task.id));
+      link.href = `#${currentPath}?${params.toString()}`;
       link.target = '_blank';
       link.rel = 'noopener';
       const id = document.createElement('b');
@@ -819,7 +823,7 @@ function renderLinkJiraTags(links) {
   }
   return links.filter(Boolean).map(url => {
     const safeUrl = safeExternalUrl(url);
-    return safeUrl ? `<a class="b-tag" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:#1e40af;background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2)">🔗 Jira</a>` : '';
+    return safeUrl ? `<a class="ui-entity-link b-tag" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">🔗 Jira</a>` : '';
   }).join('');
 }
 
@@ -1579,7 +1583,7 @@ function renderOverviewDashboard(task) {
           const color = typeof tag === 'object' && tag !== null ? (tag.color || '') : '';
           return name ? uiTag({ label: name, color, className: 'b-tag' }) : '';
         }).join('')}
-        ${safeExternalUrl(t.link_mockups) ? `<a class="b-tag" href="${escapeHtml(safeExternalUrl(t.link_mockups))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:#1e40af;background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2)">📎 Макеты</a>` : ''}
+        ${safeExternalUrl(t.link_mockups) ? `<a class="ui-entity-link b-tag" href="${escapeHtml(safeExternalUrl(t.link_mockups))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">📎 Макеты</a>` : ''}
         ${renderLinkJiraTags(t.link_jira)}
       </div>
     </div>`;
@@ -2075,7 +2079,7 @@ function initTaskDetailModalLegacy(app) {
   // Share button (copy link)
   document.getElementById('td-share-btn')?.addEventListener('click', () => {
     if (currentTask?.id) {
-      navigator.clipboard?.writeText(window.location.origin + '/#/backlog?task=' + currentTask.id)
+      navigator.clipboard?.writeText(window.location.origin + '/' + (()=>{const q=new URLSearchParams(window.location.hash.split('?')[1]||'');q.set('task',currentTask.id);return '#/backlog?'+q.toString();})())
         .then(() => window.toast?.('Ссылка скопирована', 'info'))
         .catch(() => {});
     }
@@ -2616,15 +2620,16 @@ async function saveTaskDetail(app) {
 // ============================================================
 //  CLOSE MODAL
 // ============================================================
-export function closeTaskDetailModal() {
-  if (document.getElementById('task-detail-overlay')?.classList.contains('modal-closing')) return;
+export function closeTaskDetailModal(options = {}) {
+  const {skipNetwork=false,preserveRoute=false,immediate=false,restoreFocus=true}=options||{};
+  if (!immediate&&document.getElementById('task-detail-overlay')?.classList.contains('modal-closing')) return;
   const taskId = currentTask?.id;
   const closingModal = document.getElementById('task-detail-overlay');
   restoreTaskModalDocumentTitle();
   deactivateTaskModalFocusTrap();
   if (_cardRouteTabHandler) { document.removeEventListener('task-tab-change', _cardRouteTabHandler); _cardRouteTabHandler = null; }
   const returnFocus = takeTaskModalReturnFocus();
-  window.app?.router?.clearTaskRoute?.();
+  if(!preserveRoute)window.app?.router?.clearTaskRoute?.();
   _taskCardRequestGate.cancelAll();
   if (taskId) _taskCommentDraftSession.clear(taskId);
   cardState.dirty = false;
@@ -2659,15 +2664,16 @@ export function closeTaskDetailModal() {
   const overlay = closingModal;
   if (overlay) {
     overlay.classList.add('modal-closing');
-    setTimeout(() => {
+    const finishClose=() => {
       overlay.remove();
       if (Number(currentTask?.id) === Number(taskId)) currentTask = null;
       if (currentModal === overlay) currentModal = null;
       if (!currentTask) modalMode = 'view';
-      if (!document.getElementById('task-detail-overlay')) restoreTaskModalReturnFocus(returnFocus);
-    }, 200);
+      if (restoreFocus&&!document.getElementById('task-detail-overlay')) restoreTaskModalReturnFocus(returnFocus);
+    };
+    if(immediate)finishClose();else setTimeout(finishClose,200);
   }
-  if (taskId && wasEditing) {
+  if (taskId && wasEditing && !skipNetwork) {
     releaseLock(taskId);
   }
   _lockInfo = null;
@@ -2676,6 +2682,8 @@ export function closeTaskDetailModal() {
 // ============================================================
 //  OPEN TASK MODAL (главная точка входа)
 // ============================================================
+export function revokeTaskModalAccess(){closeTaskDetailModal({skipNetwork:true,preserveRoute:true,immediate:true,restoreFocus:false});currentTask=null;currentModal=null;cardState.current=null;cardState.history=[];cardDict=null;cardMaps=null;onSaveCallback=null;const create=document.getElementById('create-task-overlay');if(create){clearCreateTaskDraft();closeCreateTaskModal();create.remove();}}
+
 export function openTaskModal(task = null) {
   ensureTaskRealtimeEvents();
   rememberTaskModalReturnFocus(task?.id);
@@ -2745,14 +2753,18 @@ export function renderTaskCard(task, searchQuery = '') {
     </div>`;
 }
 
+function taskSaveContext(){const u=window.app?.store?.get('currentUser');return `${window.location.hash.split('?')[0]}:${u?.id}:${u?.team_id}`;}
 export function setOnTaskSaved(callback) {
-  onSaveCallback = callback;
+  const owner=taskSaveContext();onSaveCallback=callback?()=>owner===taskSaveContext()?callback():undefined:null;
 }
+function notifyTaskSaved(){try{Promise.resolve(onSaveCallback?.()).catch(()=>console.warn('Task saved; list refresh failed'));}catch{console.warn('Task saved; list refresh failed');}}
 
 // ============================================================
 //  CREATE TASK MODAL (dedicated form with required fields)
 // ============================================================
-export function openCreateTaskModal(app) {
+export function openCreateTaskModal(app, options = {}) {
+  ensureTaskRealtimeEvents();
+  _createTaskContext = options;
   rememberTaskModalReturnFocus();
   currentTask = null;
   modalMode = 'create';
@@ -3120,6 +3132,8 @@ async function populateCreateSelects(app) {
     if (teamSelect && currentUser?.team_id != null && Array.from(teamSelect.options).some(option => option.value === String(currentUser.team_id))) {
       teamSelect.value = String(currentUser.team_id);
     }
+    if(teamSelect && _createTaskContext.teamId!=null && Array.from(teamSelect.options).some(o=>o.value===String(_createTaskContext.teamId)))teamSelect.value=String(_createTaskContext.teamId);
+    if(teamSelect && currentUser?.permissions?.task_edit==='team'){teamSelect.value=String(currentUser.team_id||'');teamSelect.disabled=true;}
     populate(ref.task_types, 'create-task-type');
     populate(ref.channels, 'create-channel');
     populate(ref.projects, 'create-project', 'Не выбран');
@@ -4104,7 +4118,7 @@ function showBulkResultModal(result, tasks, fallbackError = '') {
   const groups = [
     { key: 'changed', label: 'Изменено', ids: result?.changed_task_ids || [], color: 'var(--success)' },
     { key: 'unchanged', label: 'Без изменений', ids: result?.unchanged_task_ids || [], color: 'var(--text-muted)' },
-    { key: 'error', label: 'Ошибка', ids: result?.error_task_ids || [], color: 'var(--danger)', errors: result?.errors || (fallbackError ? [fallbackError] : []) },
+    { key: 'error', label: result?.outcome_unknown?'Требуют проверки':'Ошибка', ids: result?.error_task_ids || [], color: 'var(--danger)', errors: result?.errors || (fallbackError ? [fallbackError] : []) },
   ].filter(group => group.ids.length || group.errors?.length);
   const overlay = document.createElement('div');
   overlay.id = 'bulk-result-overlay';
@@ -4112,7 +4126,7 @@ function showBulkResultModal(result, tasks, fallbackError = '') {
   overlay.style.zIndex = '1110';
   const groupHtml = groups.map((group, index) => `
     <details ${index === 0 || group.key === 'error' ? 'open' : ''} style="border:1px solid var(--border-color);border-radius:8px;background:var(--bg-secondary);">
-      <summary style="cursor:pointer;padding:10px 12px;font-size:13px;font-weight:600;color:${group.color};">${group.label} · ${group.ids.length}</summary>
+      <summary class="ui-disclosure-text" style="cursor:pointer;padding:10px 12px;font-size:13px;font-weight:600;color:${group.color};">${group.label} · ${group.ids.length}</summary>
       <div style="padding:0 12px 12px;display:grid;gap:6px;max-height:190px;overflow:auto;">
         ${(group.errors || []).map(error => `<div style="font-size:12px;color:var(--danger);">${escapeHtml(error)}</div>`).join('')}
         ${group.ids.map(id => `<div style="display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:12px;"><span style="font-family:var(--font-mono);color:var(--text-muted);">${formatTaskPublicId(taskMap.get(Number(id)) || id)}</span><span>${escapeHtml(taskMap.get(Number(id))?.title || 'Задача')}</span></div>`).join('')}
@@ -4120,7 +4134,7 @@ function showBulkResultModal(result, tasks, fallbackError = '') {
       ${group.key === 'error' && group.ids.length ? `<div style="padding:0 12px 10px;text-align:right;"><button class="btn btn-secondary btn-xs" data-copy-error-ids>Копировать ID</button></div>` : ''}
     </details>`).join('');
   overlay.innerHTML = `<div class="modal modal-md" role="dialog" aria-modal="true" aria-labelledby="bulk-result-title">
-    <div class="modal-header"><div><div class="modal-title" id="bulk-result-title">Результат массовой операции</div><div class="app-modal__subtitle">${result?.operation_id ? `Операция ${escapeHtml(result.operation_id.slice(0, 8))}` : 'Операция не выполнена'}</div></div><button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" data-modal-close aria-label="Закрыть">&times;</button></div>
+    <div class="modal-header"><div><div class="modal-title" id="bulk-result-title">Результат массовой операции</div><div class="app-modal__subtitle">${result?.operation_id ? `Операция ${escapeHtml(result.operation_id.slice(0, 8))}` : result?.outcome_unknown?'Результат не подтверждён. Проверьте задачи перед повтором.':'Операция не выполнена'}</div></div><button type="button" class="btn btn-ghost btn-lg square-icon ui-btn modal-close" data-modal-close aria-label="Закрыть">&times;</button></div>
     <div class="modal-body" style="display:grid;gap:8px;">${groupHtml || '<div style="font-size:13px;color:var(--text-muted);">Нет данных о результате</div>'}</div>
     <div class="modal-footer"><button class="btn btn-primary btn-sm" data-close-bulk-result>Закрыть</button></div>
   </div>`;
@@ -4667,9 +4681,10 @@ export function showBulkOpsModal(app, scope, tasks) {
             closeBulkModal();
             showBulkResultModal({
               changed_task_ids: [], unchanged_task_ids: [], error_task_ids: taskIds,
+              outcome_unknown:!e.status||e.status>=500,
               errors: [e.message || 'Не удалось выполнить массовое изменение'],
             }, tasks, e.message);
-            resolve({ success: false, error: e });
+            resolve({ success: false, error: e, outcomeUnknown:!e.status||e.status>=500 });
           }
         });
       }
@@ -4813,7 +4828,7 @@ export function importTasksFromExcel(app, onSuccess) {
       <div class="app-modal__body">
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <a href="#" id="download-template-link" style="font-size:13px;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:6px;">
+        <a class="ui-entity-link" href="#" id="download-template-link" style="font-size:13px;text-decoration:none;display:flex;align-items:center;gap:6px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Скачать шаблон CSV
         </a>
@@ -5156,14 +5171,14 @@ export function importTasksFromExcel(app, onSuccess) {
     overlay.querySelector('#import-file-details').innerHTML =
       escapeHtml(previewData.format + ' · ' + previewData.encoding + ' · разделитель: ' + previewData.delimiter + (previewData.sheet ? ' · лист: ' + previewData.sheet : '')) +
       '<br>Всего строк: ' + previewData.rows.length + '. Показаны первые 5; справочники и сохранение проверяет сервер.' +
-      '<details><summary>Сопоставление колонок (предварительное)</summary>' + mapping.join('<br>') + '</details>';
+      '<details><summary class="ui-disclosure-text">Сопоставление колонок (предварительное)</summary>' + mapping.join('<br>') + '</details>';
 
     thead.innerHTML = `<tr>${previewData.headers.map(h => `<th style="text-align:left;border-bottom:1px solid var(--border-color);white-space:nowrap">${escapeHtml(h)}</th>`).join('')}</tr>`;
 
     const previewRows = previewData.rows.slice(0, 5);
     tbody.innerHTML = previewRows.map(row => {
       return `<tr>
-        ${row.map((cell, i) => `<td style="border-bottom:1px solid var(--border-color);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(cell || '')}</td>`).join('')}
+        ${row.map((cell, i) => `<td style="border-bottom:1px solid var(--border-color);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(String(cell ?? '').slice(0,300))}${String(cell ?? '').length>300?'…':''}</td>`).join('')}
       </tr>`;
     }).join('');
   }
@@ -6087,10 +6102,10 @@ function cardKpiBlockV30(t, e) {
     + cardStatV30('Фактические трудозатраты', '<span data-dyn="ftz">' + cardFmtNum(ftz) + '</span> <small>ч/д</small>')
     + cardStatV30('Стоимость по ФТЗ', '<span data-dyn="fcost">' + cardFmtMoney(fcost) + '</span>')
     + cardStatV30('C/V по ФТЗ', '<span data-dyn="cvF" class="' + cardCvCls(cvF) + '">' + (cvF == null ? '—' : cvF.toLocaleString('ru-RU')) + '</span>') + '</div></div>';
-  h += '<div class="psrow"><div class="bigcard"><div class="bc-head"><span class="bc-title">Priority Score</span><span class="lk" title="Автоматически">' + cardIcon('lock') + '</span>' + cardPrioritiserButton('priority') + '</div><div class="bc-value"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div><div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование агента</summary><div class="jtxt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</div></details><div class="aipop" id="psPop"></div></div>';
+  h += '<div class="psrow"><div class="bigcard"><div class="bc-head"><span class="bc-title">Priority Score</span><span class="lk" title="Автоматически">' + cardIcon('lock') + '</span>' + cardPrioritiserButton('priority') + '</div><div class="bc-value"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div><div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div><div class="bc-div"></div><details class="jdetails"><summary class="ui-disclosure-text">Обоснование агента</summary><div class="jtxt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</div></details><div class="aipop" id="psPop"></div></div>';
   h += '<div class="bigcard"><div class="bc-head"><span class="bc-title">Финансовый эффект</span>' + cardPrioritiserButton('value') + '</div>';
   if (e) h += '<div class="bc-value" style="font-size:18px"><input class="input ui-control" type="number" step="0.1" min="0" data-k="finEffect" aria-label="Финансовый эффект" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:150px;display:inline-block"> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><div class="jlab">Обоснование расчёта</div><div class="jtxt">' + cardTaC('finJust', t.finJust, 3) + '</div>';
-  else h += '<div class="bc-value"><span data-dyn="fin">' + cardFmtNum(displayFin, 2) + '</span> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><details class="jdetails"><summary>Обоснование расчёта</summary><div class="jtxt">' + (displayFinJust ? cardNl2br(displayFinJust) : '—') + '</div></details>';
+  else h += '<div class="bc-value"><span data-dyn="fin">' + cardFmtNum(displayFin, 2) + '</span> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><details class="jdetails"><summary class="ui-disclosure-text">Обоснование расчёта</summary><div class="jtxt">' + (displayFinJust ? cardNl2br(displayFinJust) : '—') + '</div></details>';
   return h + '<div class="aipop" id="finPop"></div></div></div>';
 }
 
@@ -6220,7 +6235,7 @@ function cardEffortTable(t, e) {
 }
 function cardEffortDisclosure(t, e) {
   return '<details class="effort-disclosure">'
-    + '<summary><span class="effort-disclosure-title">' + cardIcon('edit') + 'Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)</span><span class="effort-disclosure-hint">Развернуть</span></summary>'
+    + '<summary class="ui-disclosure-text"><span class="effort-disclosure-title">' + cardIcon('edit') + 'Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)</span><span class="effort-disclosure-hint">Развернуть</span></summary>'
     + '<div class="effort-disclosure-body">' + cardEffortTable(t, e)
     + '<div class="field effort-source"><div class="flabel"><span class="flt">Источник ФТЗ</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">Фактические трудозатраты поступают из внешней БД, связанной с Jira. Разница &lt; 0 — факт ниже оценки, &gt; 0 — перерасход.</span></div></div>'
     + '</div></details>';
@@ -6594,6 +6609,7 @@ function cardRender() {
   cardRenderFooter();
   const modal = document.getElementById('task-detail-modal');
   if (modal) modal.classList.toggle('editing', cardState.editing);
+  if(currentTask?.id)document.dispatchEvent(new CustomEvent('task-card-rendered',{detail:{taskId:currentTask.id}}));
 
 }
 
@@ -7281,6 +7297,7 @@ async function cardSaveEdit(app) {
     updateTaskNetworkState();
     return;
   }
+  if(!cardEditPermission().allowed){cardToast(cardEditPermission().reason||'Редактирование недоступно','warn');return;}
   const api = app?.api || window.app?.api;
   if (!api || !currentTask?.id) return;
   const taskId = Number(currentTask.id);
@@ -7342,11 +7359,13 @@ async function cardSaveEdit(app) {
     modalMode = 'view';
     cardRender();
     cardHighlightSavedFields(changes);
+    notifyTaskSaved();
     cardToast('Сохранено · изменений: ' + changes.length, 'ok');
     const savedTaskId = Number(currentTask?.id);
     cardToastAction('Сохранено · изменений: ' + changes.length, 'Отменить', () => cardUndoSavedChanges(app, previousSnapshot, savedTaskId));
   } catch (e) {
     if (!cardMatchesCurrentTask(taskId)) return;
+    if(e?.status===403)document.dispatchEvent(new CustomEvent('dmb:task-access-denied',{detail:{taskId}}));
     if (e && e.status === 409) {
       cardShowConflict(e.data?.detail ?? e.data, app);
     } else if (e && e.status === 423) {
@@ -7804,11 +7823,13 @@ async function cardOnClick(ev, app) {
     if (a === 'copy-link') {
       const url = new URL(window.location.href);
       const currentPath = window.location.hash.slice(1).split('?')[0] || '/backlog';
-      const params = new URLSearchParams({ task: String(currentTask.id) });
+      const params = new URLSearchParams(currentPath==='/backlog'?(window.location.hash.split('?')[1]||''):'');
+      params.set('task',String(currentTask.id));params.set('bv','2');
+      if(!params.has('scope'))params.set('scope',['read','read_write'].includes(window.app?.store?.get('currentUser')?.permissions?.backlog_dmb)?'all':'team');
       if (cardState.tab !== 'main') params.set('tab', cardState.tab);
       const commentTarget = cardState.tab === 'com' ? parseCommentTarget(window.location.hash) : null;
       if (commentTarget) params.set('comment', String(commentTarget));
-      url.hash = `${currentPath}?${params.toString()}`;
+      url.hash = `/backlog?${params.toString()}`;
       try {
         await navigator.clipboard.writeText(url.toString());
         cardToast('Ссылка на задачу скопирована', 'ok');

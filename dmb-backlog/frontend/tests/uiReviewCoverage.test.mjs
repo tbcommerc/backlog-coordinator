@@ -6,7 +6,7 @@ import {buildReviewInventory,detectors,detectReviewFamilies,reviewUiImports} fro
 test('discovery finds local pagers even without a UI Kit import',()=>{
  for(const source of ['<div class="metric-pager">','data-page="2"','next_cursor','load-more'])assert.ok(detectors.pagination.test(source));
  const inventory=buildReviewInventory();
- for(const name of ['admin','taskTable','teamBacklog','metrics'])assert.ok(inventory.families.find(f=>f.family==='pagination').consumers.includes('js/components/'+name+'.js'));
+ for(const name of ['admin','backlogPage','metrics'])assert.ok(inventory.families.find(f=>f.family==='pagination').consumers.includes('js/components/'+name+'.js'));
  assert.ok(inventory.routeEvidence.some(r=>r.text.includes('/metrics')),'dynamic route candidates must not disappear');
  assert.ok(inventory.modules.some(m=>m.path==='js/agent-v2/workspace.js'));
  assert.ok(inventory.surfaces.every(s=>s.live==='not-reverified'),'historical claims cannot imply current live acceptance');
@@ -22,7 +22,7 @@ test('numbered pagination bounds huge totals and preserves per-consumer hooks',(
  assert.doesNotMatch(pagination({page:1,pages:1}),/aria-current/);
 });
 test('every ordinary pager uses the common implementation',()=>{
- for(const name of ['admin','taskTable','teamBacklog','metrics','auditLog','customerPortal','modal','outboxDeadLetters','workUi']){
+ for(const name of ['admin','backlogPage','metrics','auditLog','customerPortal','modal','outboxDeadLetters','workUi']){
   const text=readFileSync(new URL('../js/components/'+name+'.js',import.meta.url),'utf8');
   assert.match(text,/import \{ pagination(?: as \w+)? \} from ['"]\.\.\/ui\/forms.js['"]/ ,name);
   assert.doesNotMatch(text,/for \(let p = 1; p <= totalPages|<span>\$\{(?:data\.)?page\} \/ \$\{(?:data\.)?pages\}/,name);
@@ -33,7 +33,7 @@ test('pager actions distinguish arrow intent from page numbers sharing the same 
 
 test('discovery follows named UI imports independently of local aliases',()=>{
  const source="import { progress as anyPercent, field as arbitraryInput, tabs as sectionNavigation } from '../ui/index.js';";const found=detectReviewFamilies(source).map(f=>f.family);for(const f of ['progress','field','tabs'])assert.ok(found.includes(f),f);assert.equal(reviewUiImports(source).find(i=>i.exported==='progress').local,'anyPercent');
- const inventory=buildReviewInventory();for(const file of ['taskTable','teamBacklog','modal','customerPortal','customerReport','reports'])assert.ok(inventory.families.find(f=>f.family==='progress').consumers.includes('js/components/'+file+'.js'),file);
+ const inventory=buildReviewInventory();for(const file of ['backlogPage','modal','customerPortal','customerReport','reports'])assert.ok(inventory.families.find(f=>f.family==='progress').consumers.includes('js/components/'+file+'.js'),file);
 });
 
 test('unsupported UI import syntax cannot silently bypass discovery',()=>{

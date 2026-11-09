@@ -3,7 +3,7 @@ import { selectionList, filterSelectionList } from '../ui/selectionList.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { renderViewState, bindViewStateAction } from './viewState.js';
 import { formatErrorMessage } from '../uiFeedback.js';
-import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=21';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=22';
 
 export const DID_COLUMNS = [
   ['did_client_group', 'Группировка для клиентов ДИД', 12],
@@ -81,7 +81,7 @@ export async function initDidBacklog(app) {
     const empties = view.reduce((n, r) => n + r.gaps.length, 0), gaps = view.filter(r => r.gaps.length).length;
     const hasFilters = Object.values(prefs.filters).some(v => v.length);
     const resized = DID_COLUMNS.some(([key, , width]) => Math.abs(prefs.widths[key] - width) > .001);
-    content.innerHTML = `<div class="did-controls"><div class="did-quarter-bar"><label for="did-quarter"><i data-lucide="calendar-days" aria-hidden="true"></i>Квартал</label><select id="did-quarter" class="input" data-did-quarter ${loading ? 'disabled' : ''}>${calendar.quarters.map(q => `<option ${q === prefs.quarter ? 'selected' : ''}>${escapeHtml(q)}</option>`).join('')}</select><span class="did-scope">Цели и AD-HOC</span><details class="did-rules" ${rulesOpen ? 'open' : ''}><summary><i data-lucide="info" aria-hidden="true"></i>Правила отчёта<i data-lucide="chevron-down" aria-hidden="true"></i></summary><div>Задачи типов «Квартальная/годовая цель» и «AD-HOC» за выбранный квартал. Годовые цели включаются в IV квартал. Исключены статусы «Холд», «Отклонена», «Не актуальна».</div></details></div>
+    content.innerHTML = `<div class="did-controls"><div class="did-quarter-bar"><label for="did-quarter"><i data-lucide="calendar-days" aria-hidden="true"></i>Квартал</label><select id="did-quarter" class="input" data-did-quarter ${loading ? 'disabled' : ''}>${calendar.quarters.map(q => `<option ${q === prefs.quarter ? 'selected' : ''}>${escapeHtml(q)}</option>`).join('')}</select><span class="did-scope">Цели и AD-HOC</span><details class="did-rules" ${rulesOpen ? 'open' : ''}><summary class="ui-disclosure-text"><i data-lucide="info" aria-hidden="true"></i>Правила отчёта<i data-lucide="chevron-down" aria-hidden="true"></i></summary><div>Задачи типов «Квартальная/годовая цель» и «AD-HOC» за выбранный квартал. Годовые цели включаются в IV квартал. Исключены статусы «Холд», «Отклонена», «Не актуальна».</div></details></div>
       ${hasFilters ? `<div class="active-filters-row did-active-filters" aria-label="Активные фильтры">${DID_COLUMNS.filter(([key]) => prefs.filters[key]?.length).map(([key, label]) => `<span class="active-filter-chip"><span class="chip-label">${escapeHtml(COLUMN_LABELS[key] || label)}:</span><span class="chip-value" title="${escapeHtml(prefs.filters[key].join(', '))}">${escapeHtml(prefs.filters[key].length === 1 ? prefs.filters[key][0] : `Выбрано: ${prefs.filters[key].length}`)}</span><button class="btn btn-ghost btn-sm square-icon ui-btn chip-clear" data-did-remove-filter="${key}" aria-label="Снять фильтр: ${escapeHtml(label)}">×</button></span>`).join('')}<button class="btn btn-ghost btn-sm" data-did-clear>Сбросить фильтры</button></div>` : ''}</div>
       <div class="did-completeness ${loading ? 'content-loading-state' : ''} ${view.length ? (empties ? 'has-gaps' : 'complete') : ''}" role="status"><i data-lucide="${empties ? 'alert-circle' : view.length ? 'check-circle' : 'info'}" aria-hidden="true"></i><span>${loading ? 'Загрузка данных…' : view.length ? (empties ? `<strong>Не заполнено полей: ${empties}</strong><span>В ${gaps} из ${view.length} задач. Отмечены в таблице.</span>` : '<strong>Все данные заполнены</strong><span>Отчёт готов к отправке.</span>') : 'Нет данных для проверки'}</span></div>
       <div class="card did-table-card" aria-busy="${loading}"><div class="did-table-scroll" tabindex="0" role="region" aria-label="Таблица бэклога ДИД"><table class="ui-table ui-table-data did-table"><caption class="sr-only">Бэклог для бизнес-заказчиков ДИД — ${escapeHtml(prefs.quarter)}</caption><colgroup>${DID_COLUMNS.map(([key]) => `<col style="width:${prefs.widths[key]}%">`).join('')}</colgroup><thead><tr>${DID_COLUMNS.map(([key, label], index) => {
@@ -183,7 +183,7 @@ export async function initDidBacklog(app) {
       prefs = defaultDidPrefs(calendar.current_quarter); await load();
     } else if (!event.target.closest('thead, .did-filter-panel')) {
       const row = event.target.closest('[data-did-task]');
-      if (row) { try { const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=118'); const task = await app.api.get(`/tasks/${row.dataset.didTask}`); setOnTaskSaved(() => { if (alive()) load(); }); openTaskModal(task); } catch (error) { window.toast?.(error.message, 'error'); } }
+      if (row) { try { const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=125'); const task = await app.api.get(`/tasks/${row.dataset.didTask}`); setOnTaskSaved(() => { if (alive()) load(); }); openTaskModal(task); } catch (error) { window.toast?.(error.message, 'error'); } }
     }
   });
   root.addEventListener('change', event => {

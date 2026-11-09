@@ -10,6 +10,7 @@ from value_priority_assessor.config import get_settings as load_settings
 def _settings():
     return SimpleNamespace(
         service_secret="service-test-secret",
+        debug=False,
         methodologist_secret="methodologist-test-secret",
     )
 
@@ -48,11 +49,18 @@ def test_openapi_declares_both_capability_headers():
     }
 
 
-def test_ready_is_public_when_optional_models_disabled(monkeypatch):
-    settings = load_settings()
-    monkeypatch.setattr(settings, "debug", True)
-    monkeypatch.setattr(settings, "llm_provider", "mock")
-    monkeypatch.setattr(settings, "rag_vector", False)
-    monkeypatch.setattr(settings, "value_analogy", False)
-    monkeypatch.setattr(settings, "strategy_use_rag", False)
-    assert main.ready().status_code == 200
+def test_ready_is_public_when_optional_models_disabled(monkeypatch, tmp_path):
+    from sqlalchemy import create_engine
+    from dmb_agent_contracts.run_store import metadata
+    from value_priority_assessor.config import Settings
+    settings = Settings(_env_file=None, db_url='sqlite:///:memory:', debug=True,
+        unit_test_mode=True, llm_provider='mock', rag_vector=False,
+        value_analogy=False, strategy_use_rag=False, service_secret='synthetic-readiness')
+    engine = create_engine('sqlite:///'+(tmp_path/'readiness.sqlite').as_posix())
+    metadata.create_all(engine)  # Only the two technical tables, no references/users.
+    monkeypatch.setattr(main, 'get_settings', lambda:settings)
+    monkeypatch.setattr(main, 'get_engine', lambda:engine)
+    try:
+        assert main.ready().status_code == 200
+    finally:
+        engine.dispose()

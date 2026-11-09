@@ -1,0 +1,7 @@
+{
+  "runtime_version": "1.17.13",
+  "openapi_sha256": "001bbdf782f8d411d0243134a5248b6c1d84e92006f7b095a73cb473a7598598",
+  "profile": "remote-opencode-prepared",
+  "default_enabled": false,
+  "real_remote": "not_verified"
+}

@@ -55,7 +55,7 @@ assert.match(source, /action==='removed'&&Array\.isArray\(ids\)/, 'terminal meet
 assert.match(source, /removeVisibleNotifications\(ids\)/, 'live removal must remove held-meeting reminder cards before reloading the feed');
 assert.match(source, /\/notifications\/unread/, 'read state must be reversible');
 assert.match(source, /notifications:return-scroll/, 'return navigation must restore the feed position');
-assert.match(source, /#\/settings\?section=notifications/, 'settings action must open notification preferences directly');
+assert.match(source, /renderNotificationPreferences\(\)/, 'notification preferences must be embedded in the notification center');
 assert.doesNotMatch(source, /IntersectionObserver/, 'explicit load-more control must remain available');
 assert.match(source, /hasMore=data\.items\.length>0&&page\*20<total/, 'empty result pages must never expose load-more');
 

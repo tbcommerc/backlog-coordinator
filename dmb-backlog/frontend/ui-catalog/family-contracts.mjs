@@ -23,7 +23,7 @@ export const families = [
  ['Tooltip','bindTooltip','.ui-tooltip','hover focus close destroy descriptions','uiKitDeepContracts.spec.mjs'],
  ['Upload','fileUpload setUploadState','.ui-upload','idle dragover selected uploading cancelled error disabled','uiKitDeepContracts.spec.mjs'],
  ['Range','rangeControl','.ui-range input[type=range]','min max step disabled keyboard','uiKitDeepContracts.spec.mjs'],
- ['SegmentedControl','segmentedControl','.ui-segmented','selected disabled keyboard group','uiKitDeepContracts.spec.mjs'],
+ ['SegmentedControl','segmentedControl installSegmentedControls','.ui-segmented','selected disabled keyboard group resize hidden reduced-motion forced-colors','segmentedControl.spec.mjs'],
  ['PageHeader','pageHeader','.ui-page-header','title description actions wrapping','uiKitFamilyContract.spec.mjs'],
  ['ReadOnlyField','readOnlyField descriptionList bindReadOnlyFields','.ui-readonly-field .ui-description-list','default zero empty loading error link copy long hidden','uiKitDetailComponents.spec.mjs'],
  ['SectionCard','sectionCard','.ui-section-card','default loading empty error open closed actions footer hidden','uiKitDetailComponents.spec.mjs'],

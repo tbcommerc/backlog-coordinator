@@ -1,0 +1,14 @@
+{
+  "verified": "2026-11-04",
+  "stats": {
+    "startTime": "2026-11-04T10:37:14.468Z",
+    "duration": 49265.118,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "scope": "real SPA, isolated mock API; both all/team; reload; unchanged legacy; no automatic claim; manual import",
+  "design_scan": [],
+  "source_sha256": "0138228a51fe040ead326d0b389d60917619f73dfb01932860b060308cdfa4f4"
+}

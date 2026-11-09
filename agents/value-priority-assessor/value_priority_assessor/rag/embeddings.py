@@ -17,30 +17,30 @@ from typing import Any
 
 
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="embedding-warmup")
-_futures: dict[str, Future[Any]] = {}
+_futures: dict[tuple, Future[Any]] = {}
 _futures_lock = Lock()
 
 
-def _load_encoder(model_name: str) -> Any:
-    from sentence_transformers import SentenceTransformer
+def _profile(model_name):
     from value_priority_assessor.config import get_settings
+    settings=get_settings()
+    return (model_name,settings.rag_embedding_revision,settings.rag_model_cache_dir or None,settings.rag_local_files_only)
 
-    settings = get_settings()
-    return SentenceTransformer(
-        model_name,
-        revision=settings.rag_embedding_revision,
-        cache_folder=settings.rag_model_cache_dir or None,
-        local_files_only=settings.rag_local_files_only,
-    )
+
+def _load_encoder(model_name: str, profile=None) -> Any:
+    from sentence_transformers import SentenceTransformer
+    profile=profile or _profile(model_name)
+    return SentenceTransformer(model_name, revision=profile[1], cache_folder=profile[2], local_files_only=profile[3])
 
 
 def start_encoder_warmup(model_name: str) -> Future[Any]:
     """Start one shared model load per process without blocking health checks."""
+    profile=_profile(model_name)
     with _futures_lock:
-        future = _futures.get(model_name)
+        future = _futures.get(profile)
         if future is None:
-            future = _executor.submit(_load_encoder, model_name)
-            _futures[model_name] = future
+            future = _executor.submit(_load_encoder, model_name, profile)
+            _futures[profile] = future
         return future
 
 
@@ -51,8 +51,9 @@ def get_encoder(model_name: str) -> Any:
 
 def get_encoder_status(model_name: str) -> str:
     """Return a non-blocking readiness state for the shared encoder."""
+    profile=_profile(model_name)
     with _futures_lock:
-        future = _futures.get(model_name)
+        future = _futures.get(profile)
     if future is None:
         return "not_started"
     if not future.done():

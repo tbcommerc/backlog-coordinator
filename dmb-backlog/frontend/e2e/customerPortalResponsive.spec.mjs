@@ -105,7 +105,7 @@ test('mobile customer queue keeps every card reachable and exposes the active dr
   expect(mainGeometry.scrollHeight).toBeGreaterThan(mainGeometry.clientHeight);
   expect(mainGeometry.scrollTop).toBeGreaterThan(0);
 
-  await page.getByRole('button', { name: /Черновики/ }).click();
+  await page.getByLabel('Подборка запросов',{exact:true}).selectOption('draft');
   await expect(page).toHaveURL(/status=draft/);
   await expect(page.locator('.customer-request-card')).toHaveCount(1);
   await page.locator('[data-draft-session="draft-1"]').click();
@@ -113,21 +113,25 @@ test('mobile customer queue keeps every card reachable and exposes the active dr
   expect(calls.activations()).toBe(1);
 });
 
-test('desktop customer cards share one geometry and surface', async ({ page }) => {
+test('desktop customer cards fit their content and share one surface', async ({ page }, testInfo) => {
   await mockCustomerPortal(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/#/customer');
 
   const cards = page.locator('.customer-request-card');
   await expect(cards).toHaveCount(22);
-  await expect(page.locator('.customer-request-card-context')).toHaveCount(22);
+  await expect(page.locator('.request-card-decision')).toHaveCount(1);
+  await expect(page.getByText('Черновик сохранён в ассистенте',{exact:true})).toHaveCount(0);
   const geometry = await cards.evaluateAll(elements => elements.map(element => ({
     height: element.getBoundingClientRect().height,
     background: getComputedStyle(element).backgroundColor,
     borderLeftWidth: getComputedStyle(element).borderLeftWidth,
   })));
   const heights = geometry.map(item => item.height);
-  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
+  expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(1);
+  expect(Math.min(...heights)).toBeGreaterThanOrEqual(132);
+  expect(Math.min(...heights)).toBeLessThan(200);
+  await page.screenshot({path: testInfo.outputPath('customer-full.png'), fullPage: true});
   expect(new Set(geometry.map(item => item.background)).size).toBe(1);
   expect(new Set(geometry.map(item => item.borderLeftWidth))).toEqual(new Set(['4px']));
 
@@ -192,7 +196,7 @@ test('server queue reaches records beyond 200, persists page, searches and recov
   await expect(page.getByText('Запросы не найдены', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Сбросить фильтры' }).click();
   await expect(page.locator('.customer-request-card')).toHaveCount(25);
-  await page.getByRole('combobox', { name: 'Сортировка запросов' }).selectOption('oldest');
+  await page.getByRole('combobox', { name: 'Сортировка:' }).selectOption('oldest');
   await expect(page.locator('.customer-request-card').first()).toContainText('Уникальная сверка 251');
   calls.failNext();
   await page.getByRole('button', { name: 'Обновить запросы', exact: true }).click();
@@ -276,10 +280,10 @@ test('customer queue explains personal and shared scope and uses safe task detai
   await mockCustomerPortal(page);
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/customer');
-  await expect(page.getByText('Ваши личные запросы и черновики, а также общие задачи вашего бизнес-заказчика',{exact:true})).toBeVisible();
+  await expect(page.getByText('Личные запросы и общие задачи вашего заказчика',{exact:true})).toBeVisible();
   await expect(page.getByText('Личный запрос #100',{exact:true})).toBeVisible();
   const shared=page.locator('.customer-request-card').filter({hasText:'Legacy-задача заказчика'});
-  await expect(shared).toContainText('общая задача бизнес-заказчика');
+  await expect(shared).toContainText('Общая задача');
   await expect(shared).toHaveAttribute('href','#/customer/task/901');
   await expect(page.locator('.customer-request-card[href*="#/backlog"]')).toHaveCount(0);
   await shared.click();
@@ -299,4 +303,14 @@ for(const status of [403,404,503])test('customer task shared failure and return 
 
 for(const status of [403,404,503])test('customer request shared failure and return '+status,async({page})=>{
  await mockCustomerPortal(page);await page.route('**/api/v1/agent/requests/100',route=>json(route,{detail:'Запрос не найден'},status));await page.goto('/#/customer/request/100');await expect(page.getByRole('heading',{name:status===503?'Не удалось загрузить запрос':'Запрос недоступен',exact:true})).toBeVisible();await page.getByRole('button',{name:'Вернуться к запросам',exact:true}).click();await expect(page).toHaveURL(/#\/customer$/);
+});
+
+for(const width of [320,390,1366])for(const theme of ['light','dark'])test(`customer registry panel ${width} ${theme}`,async({page},testInfo)=>{
+ await mockCustomerPortal(page);await page.setViewportSize({width,height:844});await page.goto('/#/customer');await expect(page.locator('.customer-request-card')).toHaveCount(22);
+ await page.locator('html').evaluate((el,t)=>el.dataset.theme=t,theme);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:testInfo.outputPath('customer-full.png'),fullPage:true});
+ if(width<=700)await page.getByLabel('Подборка запросов',{exact:true}).selectOption('work');else await page.locator('[data-stat-filter=work]').click();
+ await expect(page).toHaveURL(/status=work/);await page.getByRole('button',{name:'Сброс',exact:true}).click();await expect(page).not.toHaveURL(/status=/);
+ await expect(page.locator('.customer-request-card')).toHaveCount(22);
 });

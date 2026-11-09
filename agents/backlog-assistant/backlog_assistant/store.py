@@ -2,12 +2,16 @@
 import hashlib
 import time
 import uuid
+from contextlib import nullcontext
 from sqlalchemy import (MetaData, Table, Column, String, Text, Integer, Float, Boolean,
                         JSON, ForeignKey, UniqueConstraint, Index, select, update, delete, func, text)
 from sqlalchemy.exc import IntegrityError
 from backlog_assistant.security import canonical
 
 metadata = MetaData()
+from dmb_agent_contracts.run_store import metadata as run_metadata
+for technical_table in run_metadata.tables.values():
+    technical_table.to_metadata(metadata)
 sessions = Table("backlog_assistant_sessions", metadata,
     Column("id", String(36), primary_key=True), Column("owner", String(512), nullable=False, index=True),
     Column("context", JSON, nullable=False), Column("revision", Integer, nullable=False),
@@ -108,9 +112,9 @@ class Store:
             c.execute(update(sessions).where(sessions.c.id == sid).values(**values))
             return dict(row, **values)
 
-    def enqueue(self, owner, sid, key, body):
+    def enqueue(self, owner, sid, key, body, *, connection=None, run_id=None):
         hashed = hashlib.sha256(canonical(body).encode()).hexdigest()
-        with self.engine.begin() as c:
+        with (nullcontext(connection) if connection is not None else self.engine.begin()) as c:
             self._lock(c, "queue")
             self._lock(c, owner)
             s = self._session(c, owner, sid)
@@ -128,7 +132,7 @@ class Store:
                     count(runs.c.owner == owner, runs.c.created > time.time()-60) >= 10 or
                     count(runs.c.status == "queued") >= 20):
                 raise StoreError("capacity_exceeded", 429)
-            row = dict(id=str(uuid.uuid4()), session_id=sid, owner=owner, execution_ref=body["execution_ref"],
+            row = dict(id=run_id or str(uuid.uuid4()), session_id=sid, owner=owner, execution_ref=body["execution_ref"],
                 key=key, body_hash=hashed, input=body, status="queued", stage="queued", created=time.time(),
                 updated=time.time(), cancel_requested=False, receipts=[], cleanup_pending=False)
             c.execute(runs.insert().values(**row))
@@ -149,17 +153,26 @@ class Store:
             if not row:
                 raise StoreError("not_found", 404)
             if row["status"] in ACTIVE:
-                c.execute(update(runs).where(runs.c.id == rid).values(cancel_requested=True,
-                    status="cancelled" if row["status"] == "queued" else "cancelling", updated=time.time()))
+                values = dict(cancel_requested=True,
+                    status="cancelled" if row["status"] == "queued" else "cancelling", updated=time.time())
+                c.execute(update(runs).where(runs.c.id == rid).values(**values))
+                from backlog_assistant.runs import sync
+                sync(self, c, dict(row), values)
 
     def claim(self, worker):
         with self.engine.begin() as c:
             self._lock(c, "queue")
-            # Expired dispatches never return to queued: no automatic duplicate prompt.
-            c.execute(update(runs).where(runs.c.status.in_(("running", "cancelling")), runs.c.lease_until < time.time())
-                .values(status="interrupted", error_code="lease_expired", cleanup_pending=True))
-            c.execute(update(runs).where(runs.c.status == "queued", runs.c.created < time.time()-15)
-                .values(status="expired", error_code="queue_timeout"))
+            # Expired dispatches never return to queued: no duplicate prompt.
+            expired = c.execute(select(runs).where(
+                (runs.c.status.in_(("running", "cancelling")) & (runs.c.lease_until < time.time())) |
+                ((runs.c.status == "queued") & (runs.c.created < time.time()-15)))
+                .with_for_update()).mappings().all()
+            from backlog_assistant.runs import sync
+            for old in expired:
+                values = (dict(status="expired", error_code="queue_timeout") if old["status"] == "queued"
+                    else dict(status="interrupted", error_code="lease_expired", cleanup_pending=True))
+                c.execute(update(runs).where(runs.c.id == old["id"]).values(**values))
+                sync(self, c, dict(old), values)
             active = c.execute(select(func.count()).select_from(runs).where(
                 runs.c.status.in_(("running", "cancelling")) | runs.c.cleanup_pending.is_(True))).scalar_one()
             if active >= 4:
@@ -172,6 +185,14 @@ class Store:
             c.execute(update(runs).where(runs.c.id == row["id"]).values(**values))
             return dict(row, **values)
 
+    def defer(self, rid, worker, error):
+        with self.engine.begin() as c:
+            changed = c.execute(update(runs).where(runs.c.id == rid, runs.c.lease_owner == worker,
+                runs.c.status == "running", runs.c.dispatch_ref.is_(None),
+                runs.c.cancel_requested.is_(False)).values(status="queued", stage="waiting_for_slot",
+                    lease_owner=None, lease_until=None, error_code=error, updated=time.time()))
+            return changed.rowcount == 1
+
     def save(self, rid, worker, **values):
         with self.engine.begin() as c:
             row = c.execute(select(runs).where(runs.c.id == rid, runs.c.lease_owner == worker).with_for_update()).mappings().first()
@@ -180,6 +201,8 @@ class Store:
             if row["cancel_requested"] and values.get("status") in {"completed", "partial"}:
                 raise StoreError("cancelled")
             c.execute(update(runs).where(runs.c.id == rid).values(updated=time.time(), **values))
+            from backlog_assistant.runs import sync
+            sync(self, c, dict(row), values)
 
     def heartbeat(self, rid, worker):
         with self.engine.begin() as c:

@@ -9,6 +9,9 @@ from business_analyst_experimental.llm.openai_compat import LLMRateLimitError, L
 
 
 class _Response:
+    def __init__(self, content="ok"):
+        self.content = content
+
     def __enter__(self):
         return self
 
@@ -16,7 +19,7 @@ class _Response:
         return None
 
     def read(self):
-        return json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
+        return json.dumps({"choices": [{"message": {"content": self.content}, "finish_reason": "stop"}]}).encode()
 
 
 class _StreamResponse:
@@ -49,7 +52,7 @@ def test_reasoning_setting_is_optional_for_json_and_stream(monkeypatch, effort):
         yield "{}"
     monkeypatch.setattr(provider, "_post", post)
     monkeypatch.setattr(provider, "_stream_post", stream)
-    assert provider.chat_json([]) == "{}"
+    assert provider.chat_json([{"role": "user", "content": "test"}]) == "{}"
     assert list(provider.chat_stream([])) == ["{}"]
     for payload in captured:
         if effort:
@@ -63,7 +66,7 @@ def test_incomplete_json_is_rejected_even_when_prefix_parses(monkeypatch):
     monkeypatch.setattr(provider, "_post", lambda *a, **kw: {
         "choices": [{"message": {"content": "{}"}, "finish_reason": "length"}]})
     with pytest.raises(LLMResponseIncompleteError):
-        provider.chat_json([])
+        provider.chat_json([{"role": "user", "content": "test"}])
     assert provider.last_response_meta["finish_reason"] == "length"
 
 
@@ -90,7 +93,7 @@ def test_retries_transient_rate_limit(monkeypatch):
             raise outcome
         return outcome
 
-    monkeypatch.setattr("urllib.request.urlopen", respond)
+    monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.open_http", respond)
     monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.time.sleep", lambda _delay: None)
 
     result = OpenAICompatProvider().chat([{"role": "user", "content": "test"}])
@@ -106,7 +109,7 @@ def test_fails_after_bounded_rate_limit_retries(monkeypatch):
         calls.append(1)
         raise _rate_limit()
 
-    monkeypatch.setattr("urllib.request.urlopen", fail)
+    monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.open_http", fail)
     monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.time.sleep", lambda _delay: None)
 
     with pytest.raises(LLMRateLimitError, match="after 3 attempts"):
@@ -125,10 +128,10 @@ def test_document_deadline_caps_attempts_and_prevents_retry_after_budget(monkeyp
         calls.append(timeout)
         clock[0] += timeout
         raise TimeoutError('synthetic timeout')
-    monkeypatch.setattr('urllib.request.urlopen', fail)
+    monkeypatch.setattr('business_analyst_experimental.llm.openai_compat.open_http', fail)
     monkeypatch.setattr('business_analyst_experimental.llm.openai_compat.time.sleep', lambda _: pytest.fail('must not sleep past deadline'))
     with pytest.raises(TimeoutError, match='document_operation_deadline'):
-        provider.chat_json([], timeout=90)
+        provider.chat_json([{"role": "user", "content": "test"}], timeout=90)
     assert calls == [3.0]
 
 
@@ -141,9 +144,9 @@ def test_opencode_uses_api_key_and_application_identity(monkeypatch, base_url):
         captured["method"] = request.get_method()
         captured["headers"] = {key.lower(): value for key, value in request.header_items()}
         captured["payload"] = json.loads(request.data.decode("utf-8"))
-        return _Response()
+        return _Response("{}")
 
-    monkeypatch.setattr("urllib.request.urlopen", respond)
+    monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.open_http", respond)
     monkeypatch.setattr(
         "business_analyst_experimental.llm.openai_compat.settings.OPENAI_BASE_URL",
         base_url,
@@ -151,7 +154,7 @@ def test_opencode_uses_api_key_and_application_identity(monkeypatch, base_url):
     monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.settings.OPENAI_API_KEY", "test-opencode-key")
     monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.settings.OPENAI_MODEL", "test-model")
 
-    assert OpenAICompatProvider().chat_json([{"role": "user", "content": "test"}]) == "ok"
+    assert OpenAICompatProvider().chat_json([{"role": "user", "content": "test"}]) == "{}"
     assert captured["url"] == base_url.rstrip("/") + "/chat/completions"
     assert captured["method"] == "POST"
     assert captured["headers"]["authorization"] == "Bearer test-opencode-key"
@@ -172,7 +175,7 @@ def test_retries_transient_upstream_503(monkeypatch):
             raise outcome
         return outcome
 
-    monkeypatch.setattr("urllib.request.urlopen", respond)
+    monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.open_http", respond)
     monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.time.sleep", lambda _delay: None)
 
     assert OpenAICompatProvider().chat([{"role": "user", "content": "test"}]) == "ok"
@@ -184,7 +187,7 @@ def test_chat_json_requests_json_object(monkeypatch):
 
     def post(_path, payload, timeout=60.0):
         captured.update(payload)
-        return {"choices": [{"message": {"content": '{"ok":true}'}}]}
+        return {"choices": [{"message": {"content": '{"ok":true}'}, "finish_reason": "stop"}]}
 
     provider = OpenAICompatProvider()
     monkeypatch.setattr(provider, "_post", post)
@@ -211,7 +214,7 @@ def test_chat_stream_yields_provider_deltas(monkeypatch):
             b'\n',
         ])
 
-    monkeypatch.setattr("urllib.request.urlopen", respond)
+    monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.open_http", respond)
     monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.settings.OPENAI_BASE_URL", "https://opencode.ai/zen/v1/")
     monkeypatch.setattr("business_analyst_experimental.llm.openai_compat.settings.OPENAI_API_KEY", "test-opencode-key")
 
@@ -270,3 +273,51 @@ def test_llm_session_restores_nested_context_after_exception():
 def test_opencode_session_header_is_not_sent_to_other_origins_or_paths(url):
     with llm_session("private-conversation"):
         assert "x-opencode-session" not in OpenAICompatProvider()._headers(url)
+
+
+def test_go_chat_does_not_imply_embedding_capability(monkeypatch):
+    provider=OpenAICompatProvider()
+    monkeypatch.setattr(provider,"_post",lambda *a,**kw:pytest.fail("Unqualified embeddings request"))
+    assert provider.embed("Synthetic") is None
+
+
+def test_logical_run_is_shared_but_next_turn_is_separate(monkeypatch):
+    from types import SimpleNamespace
+    from dmb_agent_contracts.operation import current_operation
+    from business_analyst_experimental.llm.context import llm_session
+    provider=OpenAICompatProvider()
+    captured=[]
+    def complete(request):
+        captured.append(request)
+        return SimpleNamespace(text="synthetic")
+    monkeypatch.setattr(provider,"complete",complete)
+    with llm_session("synthetic-conversation"):
+        owner=current_operation()
+        provider.chat([{"role":"user","content":"synthetic one"}])
+        provider.chat([{"role":"user","content":"synthetic two"}])
+        assert captured[0].run_id==captured[1].run_id==owner.run_id
+        assert captured[0].request_id!=captured[1].request_id
+    with llm_session("synthetic-conversation"):
+        provider.chat([{"role":"user","content":"synthetic next turn"}])
+    assert captured[2].run_id!=captured[0].run_id
+
+
+def test_shared_attempt_budget_counts_real_transport_retries(monkeypatch):
+    from dmb_agent_contracts.operation import operation_scope
+    from dmb_agent_contracts.model import AgentError
+    import business_analyst_experimental.llm.openai_compat as module
+    calls=[]
+    def open_synthetic(request,timeout):
+        calls.append(request)
+        if len(calls)==1:raise urllib.error.HTTPError("https://synthetic.invalid",429,"synthetic",{},None)
+        return _Response("synthetic")
+    monkeypatch.setattr(module,"open_http",open_synthetic)
+    monkeypatch.setattr(module.time,"sleep",lambda _:None)
+    monkeypatch.setattr(module.settings,"OPENAI_API_KEY","synthetic")
+    provider=OpenAICompatProvider()
+    with operation_scope(max_model_attempts=2) as owner:
+        assert provider.chat([{"role":"user","content":"synthetic"}])=="synthetic"
+        assert owner.model_attempts==2
+        with pytest.raises(AgentError,match="local_budget_exceeded"):
+            provider.chat([{"role":"user","content":"synthetic again"}])
+        assert len(calls)==2

@@ -1,0 +1,26 @@
+# Explicit trusted Docker controller. Only this service receives the daemon socket.
+# Use together with compose.agent-services.yaml; supply its own DB/TLS/Data API.
+services:
+  backlog-assistant:
+    environment:
+      ASSISTANT_DOCKER_NETWORK: dmb-agent-controller
+      ASSISTANT_DOCKER_BRIDGE_IP: 172.29.233.10
+      ASSISTANT_STATE_DIR: /state/instances
+    group_add: ["0"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - backlog-controller-state:/state/instances
+    networks:
+      default: {}
+      backlog-controller:
+        ipv4_address: 172.29.233.10
+    labels:
+      dmb.agent.controller: backlog-assistant
+networks:
+  backlog-controller:
+    name: dmb-agent-controller
+    ipam:
+      config:
+        - subnet: 172.29.233.0/24
+volumes:
+  backlog-controller-state:

@@ -164,12 +164,12 @@ export function renderRequestRevisionHistory(item = {}) {
     const draft = revision.draft || {};
     const previous = index ? revisions[index - 1].draft || {} : null;
     const changed = previous ? [...new Set([...Object.keys(previous), ...Object.keys(draft)])].filter(key => JSON.stringify(previous[key]) !== JSON.stringify(draft[key])) : [];
-    return `<details class="review-more"><summary>Редакция ${escapeHtml(revision.revision || index + 1)} · ${escapeHtml(formatDate(revision.created_at))}</summary><div class="card-body">${revision.legacy_snapshot ? '<p>Сохранённый снимок прежнего запроса. Более ранние редакции недоступны.</p>' : ''}<p>${escapeHtml(revision.author_name || '')}</p>${changed.length ? `<p><strong>Изменено:</strong> ${changed.map(key => escapeHtml(REQUIREMENT_FIELD_LABELS[key] || key)).join(', ')}</p>` : previous ? '<p>Формулировки отправлены повторно без изменений.</p>' : ''}${descriptionList({ items: Object.entries(draft).filter(([, value]) => value !== null && value !== '' && JSON.stringify(value) !== '[]' && JSON.stringify(value) !== '{}').map(([key,value]) => ({ label: REQUIREMENT_FIELD_LABELS[key] || key, value: readableValue(value) })) })}</div></details>`;
+    return `<details class="review-more"><summary class="ui-disclosure-text">Редакция ${escapeHtml(revision.revision || index + 1)} · ${escapeHtml(formatDate(revision.created_at))}</summary><div class="card-body">${revision.legacy_snapshot ? '<p>Сохранённый снимок прежнего запроса. Более ранние редакции недоступны.</p>' : ''}<p>${escapeHtml(revision.author_name || '')}</p>${changed.length ? `<p><strong>Изменено:</strong> ${changed.map(key => escapeHtml(REQUIREMENT_FIELD_LABELS[key] || key)).join(', ')}</p>` : previous ? '<p>Формулировки отправлены повторно без изменений.</p>' : ''}${descriptionList({ items: Object.entries(draft).filter(([, value]) => value !== null && value !== '' && JSON.stringify(value) !== '[]' && JSON.stringify(value) !== '{}').map(([key,value]) => ({ label: REQUIREMENT_FIELD_LABELS[key] || key, value: readableValue(value) })) })}</div></details>`;
   }).reverse().join('')}</div></section>`;
 }
 
 export function renderRequestParticipants(item = {}) {
-  return `<details class="card review-more request-participants-card"><summary>Участники и даты <span>Справочная информация</span><i data-lucide="chevron-down"></i></summary><div class="card-body request-participants">
+  return `<details class="card review-more request-participants-card"><summary class="ui-disclosure-text">Участники и даты <span>Справочная информация</span><i data-lucide="chevron-down"></i></summary><div class="card-body request-participants">
     ${participant('Заказчик', item.author_name || '—')}
     ${participant('Команда', item.team_name || 'Назначается')}
     ${participant('Ревьюер', item.reviewer_name || 'Не назначен')}
@@ -187,7 +187,7 @@ export function renderLegacyRequestDescription(description, { supplemental = fal
   const text = String(description || '').trim();
   if (!text) return '';
   if (supplemental) {
-    return `<details class="card review-more request-legacy-description"><summary>Исходное описание <span>Полный сохранённый текст</span><i data-lucide="chevron-down"></i></summary><div class="card-body"><p>${escapeHtml(text)}</p></div></details>`;
+    return `<details class="card review-more request-legacy-description"><summary class="ui-disclosure-text">Исходное описание <span>Полный сохранённый текст</span><i data-lucide="chevron-down"></i></summary><div class="card-body"><p>${escapeHtml(text)}</p></div></details>`;
   }
   return `<section class="card request-legacy-description"><div class="card-header"><div><h2 class="card-title">Исходное описание</h2><p class="review-card-subtitle">Структурированный паспорт для этой записи отсутствует</p></div></div><div class="card-body"><p>${escapeHtml(text)}</p></div></section>`;
 }
@@ -277,7 +277,7 @@ export function renderCustomerAssistantDetails(draft = {}) {
   const confidence = ({ high: 'Высокая', medium: 'Средняя', low: 'Низкая' })[draft.confidence] || 'Не определена';
   const intent = INTENTS[draft.intent] || draft.intent || 'Не определён';
   if (completeness === null && quality === null && confidence === 'Не определена' && intent === 'Не определён') return '';
-  return `<details class="card review-more customer-assistant-details"><summary>Как сформирован запрос <span>Справочная информация</span><i data-lucide="chevron-down"></i></summary><div class="card-body customer-assistant-summary">${assistantFact('Полнота данных', completeness === null ? 'Не рассчитана' : `${completeness}%`)}${assistantFact('Качество формулировок', quality === null ? 'Не рассчитано' : `${quality}%`)}${assistantFact('Уверенность ассистента', confidence)}${assistantFact('Тип обращения', intent)}</div></details>`;
+  return `<details class="card review-more customer-assistant-details"><summary class="ui-disclosure-text">Как сформирован запрос <span>Справочная информация</span><i data-lucide="chevron-down"></i></summary><div class="card-body customer-assistant-summary">${assistantFact('Полнота данных', completeness === null ? 'Не рассчитана' : `${completeness}%`)}${assistantFact('Качество формулировок', quality === null ? 'Не рассчитано' : `${quality}%`)}${assistantFact('Уверенность ассистента', confidence)}${assistantFact('Тип обращения', intent)}</div></details>`;
 }
 
 function field(label, value, icon, id, draft = {}, key = '') {
@@ -299,7 +299,7 @@ function renderFieldEvidence(draft, key) {
   const source = ({ user: 'Заказчик', user_message: 'Сообщение заказчика', model: 'Вывод ассистента', llm_extraction: 'Извлечено ассистентом', knowledge_base: 'База знаний', assumption: 'Допущение' })[evidence?.source] || evidence?.source || 'Не указан';
   const certainty = evidence?.assumption ? 'Допущение, требуется проверка' : evidence?.confirmed === true ? 'Подтверждено заказчиком' : evidence ? 'Отдельное подтверждение не зафиксировано' : '';
   const claims = Array.isArray(evidence?.claims) ? evidence.claims : [];
-  return `<details class="request-field-evidence"><summary>Источник и проверка${statusLabel ? ` · ${escapeHtml(statusLabel)}` : ''}</summary><p>Источник: ${escapeHtml(source)}. ${escapeHtml(certainty)}${Number.isFinite(Number(confidence)) ? ` · Уверенность: ${Math.round(Number(confidence) * 100)}%` : ''}</p>${evidence?.evidence ? `<blockquote>${escapeHtml(readableValue(evidence.evidence))}</blockquote>` : ''}${evidence?.message_id ? `<small>Сообщение: ${escapeHtml(evidence.message_id)}</small>` : ''}${claims.length ? `<ul>${claims.map(claim => `<li>${escapeHtml(claim.value || '')}${claim.assumption ? ' · Допущение' : ''}${claim.evidence ? `<blockquote>${escapeHtml(readableValue(claim.evidence))}</blockquote>` : ''}${claim.message_id ? `<small>Сообщение: ${escapeHtml(claim.message_id)}</small>` : ''}</li>`).join('')}</ul>` : ''}</details>`;
+  return `<details class="request-field-evidence"><summary class="ui-disclosure-text">Источник и проверка${statusLabel ? ` · ${escapeHtml(statusLabel)}` : ''}</summary><p>Источник: ${escapeHtml(source)}. ${escapeHtml(certainty)}${Number.isFinite(Number(confidence)) ? ` · Уверенность: ${Math.round(Number(confidence) * 100)}%` : ''}</p>${evidence?.evidence ? `<blockquote>${escapeHtml(readableValue(evidence.evidence))}</blockquote>` : ''}${evidence?.message_id ? `<small>Сообщение: ${escapeHtml(evidence.message_id)}</small>` : ''}${claims.length ? `<ul>${claims.map(claim => `<li>${escapeHtml(claim.value || '')}${claim.assumption ? ' · Допущение' : ''}${claim.evidence ? `<blockquote>${escapeHtml(readableValue(claim.evidence))}</blockquote>` : ''}${claim.message_id ? `<small>Сообщение: ${escapeHtml(claim.message_id)}</small>` : ''}</li>`).join('')}</ul>` : ''}</details>`;
 }
 
 function readableValue(value) {

@@ -235,6 +235,9 @@ def _methodology_chunks() -> list[Chunk]:
     if not docs.is_dir():
         return chunks
     for path in sorted(docs.glob("*.md")):
+        # Deployment instructions are not business methodology.
+        if path.name == "REMOTE_TOOLS.md":
+            continue
         text = path.read_text(encoding="utf-8")
         chunks.extend(_split_markdown(text, str(path.relative_to(REPO_ROOT)), "methodology"))
     return chunks

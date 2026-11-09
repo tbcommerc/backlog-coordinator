@@ -1,5 +1,11 @@
 # Агент «Поручения из встреч»
 
+Проверено 02.11.2026: добавлен самостоятельный [meeting-analyzer](../agents/meeting-analyzer/README.md).
+Новые задания стандартного launcher идут через его API, старые сохраняют legacy
+backend V1. UI и подтверждение человеком сохранены. Четыре синтетических live Go
+сценария сервиса пройдены; сквозная UI-приёмка новой доставки не завершена.
+[Фактический статус](dev-testing/agent-services/IMPLEMENTATION.md).
+
 **29.10.2026 — общий StepForm.** Индикатор этапов использует UI Kit:
 «Расшифровка → Анализ → Проверка результатов → Сохранение». Текущий этап
 проецируется из прежнего состояния процесса, объявляется через aria-current
@@ -345,3 +351,40 @@ API: извлечение → правка → выбор связи → под�
 [извлечение](../agents/business-analyst/business_analyst/meeting_task_extractor.py),
 [страница](../dmb-backlog/frontend/js/components/meetingCapture.js),
 [миграция](../dmb-backlog/backend/alembic/versions/b7e3a9d1c542_meeting_captures.py).
+
+## Доставка в отдельный сервис — проверено 03.11.2026
+
+Новый сервис получает исходный deadline DMB (время постановки + 600 секунд),
+чтобы задержка доставки не продлевала операцию. Redirect не передаёт credential;
+run ID, ссылки и canonical payload hash проверяются до применения результата.
+Ошибки квоты и подключения имеют отдельные состояния интерфейса; новый анализ
+запускается явно. Расшифровка и ручные правки сохраняются.
+
+Миграция `d251c98e30f7` после `c140b87d29e6` добавляет техническую таблицу
+`meeting_application_receipts`: consumer operation, service run, source hash/
+revision, payload hash, применённые ссылки и время решения. Применение черновика
+и квитанция фиксируются одной транзакцией. ACK имеет отдельную долговечную
+очередь с задержкой повторов 2–60 секунд, не исчезает при новом анализе и
+не меняет флаги следующей операции. Принятые запуски, отсоединённые правкой
+черновика, восстанавливаются для cancel/ACK. Старые pending ACK переносятся
+миграцией. Таблица намеренно не ссылается FK на удаляемый черновик.
+Миграция пока проверена в disposable PostgreSQL; к рабочей БД не применялась.
+
+23 Playwright-сценария с подменным API и 4 frontend unit-теста PASS.
+Используется отдельный порт 4197 (`playwright.agent-migration.config.mjs`),
+чтобы параллельные проверки других страниц не выключали fixture server.
+Это не приёмка UI с настоящим Go. Общая миграция остаётся PARTIAL: полный cutover/rollback, общий limiter и живая сквозная UI-приёмка ещё не завершены.
+
+Намерение `meeting_delivery_intents` теперь создаётся в транзакции analyze API:
+immutable payload, исходная версия, actor и ключ операции. Перед network IO
+фиксируется `unknown`; повтор использует исходный envelope. После подтверждения
+приёма payload удаляется, receipt и service run фиксируются атомарно.
+При отсоединённом unknown intent вызывается `POST /internal/agent/v1/runs/cancellations`
+с тем же ключом и payload: сервис атомарно отменяет существующий run или создаёт
+cancelled tombstone. Поздний create получает отменённый run, не создавая работу.
+Cleanup имеет backoff 2–60 секунд; временный intent payload очищается через
+24 часа с явным `delivery_expired`, если сервис недоступен. Его собственные
+retention/deadline продолжают действовать; удаление не объявляет ACK успешным.
+DMB регрессия: 50 PASS, включая disposable PostgreSQL migration и analyze API.
+Meeting service: 20 unit + 13 PostgreSQL integration PASS (33 вместе), в том
+числе настоящая create/cancel race. Go не вызывался.

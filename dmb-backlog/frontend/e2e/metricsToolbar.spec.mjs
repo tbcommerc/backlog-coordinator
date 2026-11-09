@@ -10,7 +10,7 @@ async function openRegistry(page,{width=1440,theme='light',hash='#/metrics',canC
   const {installFilterSelects}=await import('/js/ui/filterSelect.js');
   installFilterSelects();
   document.documentElement.dataset.theme=theme;
-  const mod=await import('/js/components/metrics.js');
+  const legacy=await import('/js/components/metrics.js'); const mod={renderMetrics:legacy.renderLegacyMetrics,initMetrics:legacy.initLegacyMetrics};
   const options={user_id:1,can_create:canCreate,current_period:'2026-Q4',periods:[{id:'2026-Q3',name:'3 квартал 2026'},{id:'2026-Q4',name:'4 квартал 2026'}],teams:[{id:1,name:'Проектный офис'}],users:[{id:1,name:'Владелец метрик'}],projects:[{id:7,name:'Развитие платформы'}]};
   const registry={items:[{id:1,title:'Показатель качества',public_id:'MET-1',unit:'%',owner:'Владелец метрик',team:'Проектный офис'}],summary:{active:1,achieved:0,overdue:0,missing:0},total:1,page:1,pages:1};
   window.metricRequests=[];

@@ -1,0 +1,1461 @@
+{
+  "environment": "isolated Chromium mock API, port 4196; follow-up after six unit fixes",
+  "stats": {
+    "startTime": "2026-11-04T09:41:52.543Z",
+    "duration": 1193475.126,
+    "expected": 154,
+    "skipped": 0,
+    "unexpected": 27,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "aiActions.spec.mjs",
+      "name": "AI actions: light, 390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "aiActions.spec.mjs",
+      "name": "AI actions: light, 1280",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "aiActions.spec.mjs",
+      "name": "AI actions: dark, 390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "aiActions.spec.mjs",
+      "name": "AI actions: dark, 1280",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "creation sends decimal strings and atomic plans",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "fact error retains input and retry key",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "read-only card hides write actions",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 320 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 320 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 390 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 390 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 768 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 768 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 1024 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 1024 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 1440 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarter and year fit 1440 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "keyboard and 200 percent layout",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "write failure retains form 401",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "write failure retains form 409",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "write failure retains form 422",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "write failure retains form TimeoutError",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "write failure retains form AbortError",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "multiple attention filters use shared JSON encoding",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "quarterly duplicate measurement correction keeps typed value",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "large decimal remains readable on narrow card",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M03 M04 M06: range direction legacy and annual meaning",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M14 M15 M16: guided creation validates without losing input",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M20: measurement boundary 0",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M20: measurement boundary 1",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M20: measurement boundary 25",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M20: measurement boundary 26",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M23: lazy secondary load and partial failure retain primary card",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M13 M29: readable history and collapsible long comments",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M24: unlink is scoped to relation and confirmed",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M18: nearest future meeting is selected",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M08 M09 M10 M11: period controls and accessible chart values",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M17 M19 M27: conditional settings and independent preliminary action",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M21: closing card restores source link focus",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M28: conflict compares user values and refreshed values",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M22: detail load 403 has recovery action",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M22: detail load 404 has recovery action",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M22: detail load 503 has recovery action",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsQuarterly.spec.mjs",
+      "name": "M25: migration enables only explicitly selected data",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "one form creates metric and active goal; draft allows incomplete target",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "conditional fields, validation and failed save preserve entered values",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "duplicate date opens explicit correction and preserves new value",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "next period defaults after existing periods and starts in one request",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "compact card and legacy navigation light/1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "compact card and legacy navigation light/390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "compact card and legacy navigation light/320",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "compact card and legacy navigation dark/1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "compact card and legacy navigation dark/390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsSimplification.spec.mjs",
+      "name": "compact card and legacy navigation dark/320",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "metric teams allow multiple values and restore them from URL",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "several metric attention shortcuts persist together",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "period uses shared popup and filters retain equal widths",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "search debounce, Enter, focus and filter persistence",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "immediate filters, hidden conditions, sorting, reset and stale debounce",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "continued typing survives an in-flight registry response",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "toolbar geometry light/320",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "toolbar geometry light/390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "toolbar geometry light/768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "toolbar geometry light/1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "toolbar geometry dark/320",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "toolbar geometry dark/390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "toolbar geometry dark/768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "toolbar geometry dark/1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "metricsToolbar.spec.mjs",
+      "name": "read-only role and direct URL restore",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitMetricsIntegration.spec.mjs",
+      "name": "metrics UI recipes and dialog: light/1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitMetricsIntegration.spec.mjs",
+      "name": "metrics UI recipes and dialog: light/390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitMetricsIntegration.spec.mjs",
+      "name": "metrics UI recipes and dialog: dark/1440",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "uiKitMetricsIntegration.spec.mjs",
+      "name": "metrics UI recipes and dialog: dark/390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C08/C09: roundtrip preserves all/page/search through reporting",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C08/C09: roundtrip preserves all/page/search through quarterly-goals",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C09: express handoff uses the safe original all context",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-E10: status/progress suggestion modifies only draft until explicit save",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C06/C07: saving outside the filter refreshes after close and preserves result focus",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C01/C05: all baseline tabs, history and distinct WorkTask panels remain available",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C10: dependency links in a scoped card keep query and area",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogCardFlows.spec.mjs",
+      "name": "BU-C05: PI decision reason and history navigation survive unification",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 320x780",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 390x844",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 768x1024",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 1024x768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 1440x900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 1920x1080",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all light 1024x580",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 320x780",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 390x844",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 768x1024",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 1024x768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 1440x900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 1920x1080",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team light 1024x580",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 320x780",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 390x844",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 768x1024",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 1024x768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 1440x900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 1920x1080",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 all dark 1024x580",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 320x780",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 390x844",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 768x1024",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 1024x768",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 1440x900",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 1920x1080",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "unifiedBacklogVisual.spec.mjs",
+      "name": "BU-V01/V02/V04/V10/V12 team dark 1024x580",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 320 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 320 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 390 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 390 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 768 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 768 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 1024 light",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 1024 dark",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 1280 light",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 1280 dark",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 1440 light",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue density 1440 dark",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue zoom emulation 1.25 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue zoom emulation 1.25 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue zoom emulation 1.5 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue zoom emulation 1.5 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue zoom emulation 2 light",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workListDensity.spec.mjs",
+      "name": "queue zoom emulation 2 dark",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workQueueAlignment.spec.mjs",
+      "name": "inspector queue columns align at 1440",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workQueueAlignment.spec.mjs",
+      "name": "inspector queue columns align at 1920",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workQueueAlignment.spec.mjs",
+      "name": "queue remains readable with modal card at 390",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workQueueAlignment.spec.mjs",
+      "name": "queue remains readable with modal card at 1280",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "compact inspector, fullscreen and sequential navigation preserve queue context",
+      "status": "unexpected",
+      "runs": [
+        "timedOut"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "non-modal card preserves queue, draft, filters and selected task after save and transition",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "slow previous card cannot overwrite selection",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "creating and commenting keep the task URL, including when comment ID differs",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "list and card fit 320 light",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "list and card fit 320 dark",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "list and card fit 390 light",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "list and card fit 390 dark",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "list and card fit 1024 light",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "list and card fit 1024 dark",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "list and card fit 1440 light",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workSplitWorkspace.spec.mjs",
+      "name": "list and card fit 1440 dark",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "activity loads all 250 comments and 150 history events through cursors",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "restoring cancelled work requests a reason and uses the shared transition",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "compact single page, keyboard sections and fixed footer at desktop/mobile in both themes",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "return feedback is immediately visible and opens history",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "result draft survives task save and transition submits result",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "cancel requires reason and Ctrl+Enter confirms chosen action",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "comment and file stay open, preserve edits and update version for dependencies/save",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "completed readonly card has result without unavailable editing controls and restores focus",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "Вернуть на доработку requires reason and preserves existing result",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "Переоткрыть requires reason and preserves existing result",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "accept assignment uses selected assignee and due date",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "move and reassign retain placement and reassignment payloads",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "next step new to ready submits allowed action",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "next step ready to in_progress submits allowed action",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "next step in_progress to done submits allowed action",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "next step in_acceptance to done submits allowed action",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "retired obstacle stays absent with legacy response fields",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "declining assignment requires reason and does not change team attributes",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "cross-team creation leaves assignee to receiving team",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "cancelled proposal explains closure and offers no assignment decision",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workTaskDrawer.spec.mjs",
+      "name": "whitespace title is explained locally and can be corrected",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "desktop toolbar keeps search readable at 1280px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "desktop toolbar keeps search readable at 1440px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "desktop toolbar keeps search readable at 1920px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "toolbar fits 1440px and keeps focus filters accessible",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "toolbar fits 1024px and keeps focus filters accessible",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "toolbar fits 768px and keeps focus filters accessible",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "toolbar fits 390px and keeps focus filters accessible",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "toolbar fits 320px and keeps focus filters accessible",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "compact dark toolbar keeps keyboard focus and refresh available",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "several focus shortcuts form one OR selection",
+      "status": "unexpected",
+      "runs": [
+        "timedOut"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "focus respects context, toggles off, and reset preserves collection and display",
+      "status": "unexpected",
+      "runs": [
+        "failed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "completion period is explicit, cancellable on mobile and restored on reset",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "filters survive viewport changes without duplicate controls",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "expanded all-filters panel is readable and transactional at 1440px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "expanded all-filters panel is readable and transactional at 1024px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "expanded all-filters panel is readable and transactional at 390px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workToolbar.spec.mjs",
+      "name": "expanded all-filters panel is readable and transactional at 320px",
+      "status": "expected",
+      "runs": [
+        "passed"
+      ]
+    }
+  ]
+}

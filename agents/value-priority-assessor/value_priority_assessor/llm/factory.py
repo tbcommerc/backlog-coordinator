@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import Any
 
@@ -29,6 +30,17 @@ from value_priority_assessor.llm.singleflight import run_singleflight
 _PURPOSE = "classify_task"
 
 
+def _safe_failure(error):
+    code=getattr(error,"code",None)
+    return code if isinstance(code,str) and re.fullmatch(r"[a-z][a-z0-9_]{0,63}",code) else type(error).__name__
+
+
+def _cache_model(adapter):
+    model=str(getattr(adapter,"model",adapter.name))
+    scope=getattr(adapter,"cache_profile_ref",None)
+    return model if not scope else model+"\0profile:"+scope
+
+
 def get_adapter(provider: str | None = None) -> LLMAdapter:
     """Создаёт адаптер по имени провайдера.
 
@@ -41,6 +53,8 @@ def get_adapter(provider: str | None = None) -> LLMAdapter:
         raise RuntimeError("не задан PRIORITISER_LLM_PROVIDER")
 
     if name == "mock":
+        if not getattr(settings, "unit_test_mode", False):
+            raise RuntimeError("PRIORITISER_LLM_PROVIDER=mock requires PRIORITISER_UNIT_TEST_MODE")
         return MockAdapter()
     if name == "openai_compat":
         from value_priority_assessor.llm.openai_compat import OpenAICompatAdapter
@@ -49,6 +63,7 @@ def get_adapter(provider: str | None = None) -> LLMAdapter:
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
             model=settings.openai_model,
+            protocol=getattr(settings, "model_protocol", "chat_completions"),
             timeout=settings.llm_timeout_seconds,
             retry_attempts=settings.llm_retry_attempts,
             retry_base_seconds=settings.llm_retry_base_seconds,
@@ -91,7 +106,7 @@ def classify_with_cache(
     """
     model = getattr(adapter, "model", adapter.name)
     user_prompt = build_user_prompt(task_text, team, team_class)
-    key = prompt_hash(SYSTEM_PROMPT, user_prompt, str(model))
+    key = prompt_hash(SYSTEM_PROMPT, user_prompt, _cache_model(adapter))
 
     settings = get_settings()
     use_cache = settings.llm_cache_enabled and session is not None
@@ -120,7 +135,7 @@ def classify_with_cache(
         try:
             hints = adapter.classify(task_text, team, team_class)
         except Exception as exc:  # noqa: BLE001 - ошибка записывается и возвращается вызывающему коду
-            error = f"{type(exc).__name__}: {exc}"
+            error = _safe_failure(exc)
             failure = exc
 
         raw = _serialise(hints) if hints is not None else None
@@ -146,7 +161,7 @@ def classify_with_cache(
         if failure is not None:
             raise RuntimeError(
                 "LLM недоступна: классификация задачи не выполнена"
-            ) from failure
+            ) from None
         if raw is None:
             raise RuntimeError("LLM не вернула результат классификации")
         return raw
@@ -178,7 +193,7 @@ def complete_with_cache(
     """
     model = str(getattr(adapter, "model", adapter.name))
     schema_text = json.dumps(schema or {}, ensure_ascii=False, sort_keys=True)
-    key = prompt_hash(system_prompt, user_prompt, f"{model}\0{schema_text}")
+    key = prompt_hash(system_prompt, user_prompt, f"{_cache_model(adapter)}\0{schema_text}")
     settings = get_settings()
     use_cache = settings.llm_cache_enabled and session is not None
 
@@ -204,7 +219,7 @@ def complete_with_cache(
         try:
             raw = adapter.complete(system_prompt, user_prompt, schema)
         except Exception as exc:  # noqa: BLE001 - recorded below and propagated
-            error = f"{type(exc).__name__}: {exc}"
+            error = _safe_failure(exc)
             failure = exc
 
         if session is not None:
@@ -227,7 +242,7 @@ def complete_with_cache(
             session.flush()
 
         if failure is not None:
-            raise RuntimeError(f"LLM недоступна: {purpose} не выполнен") from failure
+            raise RuntimeError(f"LLM недоступна: {purpose} не выполнен") from None
         if raw is None:
             raise RuntimeError(f"LLM не вернула результат: {purpose}")
         return raw

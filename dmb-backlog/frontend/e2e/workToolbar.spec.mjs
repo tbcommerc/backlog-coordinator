@@ -28,7 +28,7 @@ for(const width of [1280,1440,1920])test(`desktop toolbar keeps search readable 
  expect(await page.locator('.work-toolbar').evaluate(el=>parseFloat(getComputedStyle(el).borderTopWidth))).toBe(1);
  expect((await search.boundingBox()).width).toBeGreaterThanOrEqual(280);
  expect(await search.evaluate(el=>{const c=getComputedStyle(el),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');ctx.font=c.font;return el.clientWidth-parseFloat(c.paddingLeft)-parseFloat(c.paddingRight)>=ctx.measureText(el.placeholder).width;})).toBe(true);
- for(const id of ['status','priority','sort']){
+ for(const id of ['status','sort']){
   const box=await page.locator(`#work-${id}`).boundingBox(),label=await page.locator(`label[for=work-${id}]`).boundingBox();
   expect(label.x+label.width).toBeLessThanOrEqual(box.x+1);
   expect(Math.abs(label.y+label.height/2-box.y-box.height/2)).toBeLessThanOrEqual(1);
@@ -43,7 +43,7 @@ for(const width of [1440,1024,768,390,320])test(`toolbar fits ${width}px and kee
  await expect(page.locator('[data-work-focus]')).toHaveCount(3);
  for(const el of await page.locator('[data-work-focus]').all()){await expect(el).toBeInViewport({ratio:1});expect(await el.evaluate(el=>{const r=el.getBoundingClientRect(),p=el.parentElement.getBoundingClientRect();return r.left>=p.left && r.right<=p.right;})).toBe(true);}
  if(width>900){
-  for(const id of ['status','priority','sort']){
+  for(const id of ['status','sort']){
    await expect(page.locator(`#work-${id}`)).toBeVisible();
    expect((await page.locator(`label[for=work-${id}]`).boundingBox()).width).toBeGreaterThan(20);
   }
@@ -90,7 +90,9 @@ test('several focus shortcuts form one OR selection',async({page})=>{
 
 test('focus respects context, toggles off, and reset preserves collection and display',async({page})=>{
  const queries=await setup(page);
+ await page.locator('[data-work-action=filters]').click();
  await page.locator('#work-priority').selectOption('high');
+ await page.locator('[data-work-action=apply-filters]').click();
  await page.locator('#work-status').selectOption('in_progress');
  await page.locator('[data-work-focus=overdue]').click();
  await expect.poll(()=>queries.at(-1).get('focus')).toBe('overdue');

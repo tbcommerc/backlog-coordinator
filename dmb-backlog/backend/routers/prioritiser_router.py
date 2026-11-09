@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from uuid import uuid4
 import urllib.error
 import urllib.request
 from decimal import Decimal
@@ -100,7 +101,7 @@ def _task_payload(task: Task, db: Session) -> dict:
     }
 
 
-def _call_prioritiser(path: str, payload: dict) -> dict:
+def _call_prioritiser(path: str, payload: dict, *, actor_ref: str = "", source_revision: int = 0) -> dict:
     if not settings.PRIORITISER_ENABLED:
         raise HTTPException(
             status_code=503,
@@ -113,6 +114,8 @@ def _call_prioritiser(path: str, payload: dict) -> dict:
         headers={
             "Content-Type": "application/json",
             "X-Prioritiser-Secret": settings.PRIORITISER_SECRET,
+            **({"X-Agent-Caller":"dmb","X-Actor-Ref":actor_ref,
+                "Idempotency-Key":str(uuid4()),"X-Source-Revision":str(source_revision)} if actor_ref else {}),
         },
         method="POST",
     )
@@ -196,9 +199,12 @@ def calculate_task_value(
     current_user: User = Depends(get_current_user),
 ):
     task = _load_task(task_id, db, current_user)
+    if task.version != body.version:
+        raise HTTPException(409, detail={"code":"source_revision_conflict", "message":"Задача изменилась. Обновите её перед расчётом."})
     result = _call_prioritiser(
         "/agent/value/full",
         {"request_type": "value", "task": _task_payload(task, db)},
+        actor_ref=str(current_user.id),source_revision=body.version,
     )
     _raise_agent_error(result)
     value = result.get("value") or {}
@@ -240,9 +246,12 @@ def calculate_task_priority(
     current_user: User = Depends(get_current_user),
 ):
     task = _load_task(task_id, db, current_user)
+    if task.version != body.version:
+        raise HTTPException(409, detail={"code":"source_revision_conflict", "message":"Задача изменилась. Обновите её перед расчётом."})
     result = _call_prioritiser(
         "/agent/priority/full",
         {"request_type": "priority", "task": _task_payload(task, db)},
+        actor_ref=str(current_user.id),source_revision=body.version,
     )
     _raise_agent_error(result)
     priority = result.get("priority") or {}

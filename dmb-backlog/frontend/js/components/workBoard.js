@@ -24,7 +24,6 @@ export function boardCard(row,selected,{personal=false,userId=null}={}) {
  ${progress?.total?`<span class="work-board-checklist" aria-label="Чек-лист: ${progress.done} из ${progress.total}" title="Чек-лист: ${progress.done} из ${progress.total}">${icon('list-checks')}<span>${progress.done}/${progress.total}</span></span>`:''}
  <span class="work-board-due${row.is_overdue?' work-warning':''}" title="${esc(date)}${row.due_date?' · '+esc(row.due_date):''}" aria-label="${esc(date)}">${icon(row.status==='done'?'check':'calendar-days')}<span>${esc(compactDate)}</span></span>
  </div>
- ${!closed&&row.blocked?`<details class="work-board-blocker"><summary>Есть препятствие</summary><p>${esc(row.blocked_reason_preview)}${row.blocked_reason_truncated?'…':''}</p>${row.blocked_reason_truncated?'<span class="work-muted">Полностью — в карточке задачи</span>':''}</details>`:''}
  ${!closed&&row.assignment_state==='proposed'?'<p class="work-board-signal">Ожидает принятия командой</p>':''}
  ${!closed&&row.assignment_state==='declined'?'<p class="work-board-signal">Назначение отклонено</p>':''}
  ${!closed&&row.return_feedback_present?'<p class="work-board-signal">Возвращено на доработку</p>':''}</li>`;
@@ -77,7 +76,7 @@ export function mountWorkBoard(host,app,{open,counts,showDone,selected=()=>null,
   const statuses=data.columns.filter(x=>x.state==='included');
   scroller.innerHTML=statuses.map(renderColumn).join('');
   const wasOpen=cancelled.querySelector('details')?.open;
-  cancelled.innerHTML=data.cancelled.state==='included'?`<details ${wasOpen||data.filters.status==='cancelled'?'open':''}><summary>Отменённые · ${data.cancelled.total}</summary>${renderColumn(data.cancelled)}</details>`:'';
+  cancelled.innerHTML=data.cancelled.state==='included'?`<details ${wasOpen||data.filters.status==='cancelled'?'open':''}><summary class="ui-disclosure-text">Отменённые · ${data.cancelled.total}</summary>${renderColumn(data.cancelled)}</details>`:'';
   const included=all().filter(x=>x.state==='included');
   root.querySelector('[data-board-mobile]').innerHTML=field({id:'work-board-column',label:'Этап',kind:'select',value:column,options:included.map(x=>({value:x.status,label:`${x.title} · ${x.total}`}))});
   if(!included.some(x=>x.status===column))column=included[0]?.status||'';
@@ -87,8 +86,7 @@ export function mountWorkBoard(host,app,{open,counts,showDone,selected=()=>null,
    const row=find(trigger.dataset.boardMenu),panel=document.createElement('div');
    panel.innerHTML=btn('Открыть задачу',{'data-board-operation':'open'})+
     (row.transition_options||[]).map(x=>btn(x.enabled?x.label:`${x.label}: заполните обязательные поля`,{'data-board-operation':x.enabled?x.target:'edit',disabled:!x.enabled&&!row.can_edit})).join('')+
-    (row.can_decide_assignment?btn('Принять назначение',{'data-board-operation':'accept-assignment'})+btn('Отклонить назначение',{'data-board-operation':'decline-assignment'}):'')+
-    (row.can_block?btn('Указать препятствие',{'data-board-operation':'edit'}):'');
+    (row.can_decide_assignment?btn('Принять назначение',{'data-board-operation':'accept-assignment'})+btn('Отклонить назначение',{'data-board-operation':'decline-assignment'}):'');
    root.append(panel);
    panel.addEventListener('click',event=>{const op=event.target.closest('[data-board-operation]')?.dataset.boardOperation;if(op)act(row,op);});
    const menu=bindActionMenu({trigger,panel,label:`Действия ${row.public_id}`,onClose:()=>{if(deferredRender&&!disposed)queueMicrotask(render);}});
@@ -161,7 +159,7 @@ export function mountWorkBoard(host,app,{open,counts,showDone,selected=()=>null,
  }
  listen(root,'click',event=>{
   const target=event.target;
-  if(target.closest('[data-board-menu], [data-board-operation], .work-board-blocker'))return;
+  if(target.closest('[data-board-menu], [data-board-operation]'))return;
   if(target.closest('[data-board-refresh]')){load();return;}
   if(target.closest('[data-board-done]')){showDone();return;}
   const pager=target.closest('[data-board-page]');if(pager){pageColumn(pager.dataset.boardPage,pager.dataset.direction);return;}
@@ -176,7 +174,7 @@ export function mountWorkBoard(host,app,{open,counts,showDone,selected=()=>null,
   root.querySelectorAll('[data-drop-label]').forEach(x=>x.remove());drag=null;if(message)say(message);
  };
  listen(root,'pointerdown',event=>{
-  if(event.pointerType==='touch'||event.button!==0||event.target.closest('button:not([data-work-id]),a,input,select,textarea,summary,.work-board-blocker'))return;
+  if(event.pointerType==='touch'||event.button!==0||event.target.closest('button:not([data-work-id]),a,input,select,textarea,summary'))return;
   // A title click opens the task; moving past the threshold drags the card.
   // Menu controls and expandable blocker content retain their own gestures.
   const card=event.target.closest('[data-board-card]');if(!card)return;

@@ -234,7 +234,7 @@ class TestCache:
         session.flush()
 
         call = session.scalars(select(LlmCall)).one()
-        assert "контур недоступен" in call.error
+        assert call.error == "RuntimeError"
         assert call.response is None
 
 

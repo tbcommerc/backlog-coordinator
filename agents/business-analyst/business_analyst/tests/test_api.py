@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from business_analyst.main import app
+from business_analyst.config import settings
 from business_analyst.api import router as api_router
 from business_analyst.agentic_orchestrator import AgenticOrchestrator
 from business_analyst.dialogue.agentic import Fact, TurnDecision
@@ -10,7 +11,10 @@ from business_analyst.session import SessionStore
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "AGENT_SECRET", 'synthetic-v1-api-test-secret')
     api_router._orchestrator = AgenticOrchestrator(SessionStore(str(tmp_path / "api.db")))
+    import business_analyst.main as main_module
+    monkeypatch.setattr(main_module, "session_store", api_router._orchestrator.store)
     def decision(state, text):
         facts = [] if text.lower() in {"да", "да, всё верно"} else [Fact("need_statement", text, 0.9, evidence=text)]
         return TurnDecision(facts=facts, next_action="ask", focus="to_be",
@@ -20,7 +24,7 @@ def client(tmp_path, monkeypatch):
         yield c
 
 
-SECRET = {"X-Agent-Secret": "dmb-agent-local-secret-2026"}
+SECRET = {"X-Agent-Secret": 'synthetic-v1-api-test-secret'}
 
 
 def test_config_requires_secret(client):
@@ -208,3 +212,9 @@ def test_chat_unknown_session_returns_404(client):
         "session_id": "missing-session", "message": "Привет",
     })
     assert response.status_code == 404
+
+
+def test_standard_health_aliases_use_isolated_storage(client):
+    assert client.get("/health/live").status_code==200
+    response=client.get("/health/ready")
+    assert response.status_code==200 and response.json()["status"]=="ready"

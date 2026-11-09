@@ -29,3 +29,18 @@
 :root :is(.ui-collapse-section) > summary::before { content:''; width:7px; height:7px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); transition:transform .15s; flex:none; }
 :root :is(.ui-collapse-section)[open] > summary::before { transform:rotate(45deg); }
 :root :is(.ui-collapse-section) > summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* Heading accessory stays with the title and wraps in reading order. */
+:root .ui-page-heading { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-3); min-width:0; }
+
+/* Keep title/context together; let actions wrap within the remaining space. */
+:root .ui-page-header-inline-context .toolbar-title-wrap { flex:0 0 auto; min-width:0; max-width:100%; }
+:root .ui-page-header-inline-context .ui-page-heading { flex-wrap:nowrap; }
+:root .ui-page-header-inline-context .toolbar-title { flex:none; white-space:nowrap; }
+:root .ui-page-header-inline-context .toolbar-actions { flex:1 1 24rem; min-width:0; justify-content:flex-end; }
+
+/* Compact desktop action row: equal text actions without unused width. */
+.ui-page-header-compact-actions { --control-action-width:160px; }
+@media (min-width:1025px) {
+ :root .ui-page-header-compact-actions .toolbar-actions { flex-wrap:nowrap; }
+}

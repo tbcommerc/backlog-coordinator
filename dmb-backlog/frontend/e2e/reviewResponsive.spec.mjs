@@ -42,7 +42,11 @@ async function mockReview(page, { staleOnApprove = false, queueItems = [requestI
     if (path === '/admin/field-labels') return json(route, {});
     if (path === '/tasks/reference') return json(route, { statuses: [], priorities: [], deadlines: [], teams: [], projects: [], task_types: [], channels: [], departments: [], business_customers: [], did_client_groups: [], tags: [], users: [] });
     if (path === '/notifications/snapshot') return json(route, { revision: 1, summary: { unread: 0, requires_action: 0, today: 0, by_category: {} }, recent_items: [], recent_total: 0, action_items: [], action_total: 0 });
-    if (path === '/agent/requests/review') return json(route, queueItems);
+    if (path === '/agent/requests/registry') {
+      const search=url.searchParams.get('q')||'',mode=url.searchParams.get('mode')||'all',state=url.searchParams.get('status')||'any';
+      const items=queueItems.filter(item=>(!search||`${item.id} #${item.id} ${item.title}`.includes(search))&&(state==='any'||state.split(',').includes(item.status))&&mode!=='history');
+      return json(route,{items,total:items.length,has_more:false,counts:{new:0,mine:items.length,action:items.length,risk:items.length,aged:0},options:{teams:[{id:12,name:'Расчёты'}],customers:[],coordinators:[]}});
+    }
     if (path === '/agent/requests/8' && route.request().method() === 'GET') {
       detailCalls += 1;
       return json(route, staleOnApprove && detailCalls > 1 ? { ...requestItem, version: 5 } : requestItem);
@@ -72,6 +76,40 @@ for(const theme of ['light','dark'])for(const width of [390,1280])test(`review a
   await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
   await expect(page.locator(`#btn-${action}`)).toBeFocused();
  }
+});
+
+for (const width of [390, 1366, 1600]) for (const theme of ['light', 'dark']) test(`review queue preserves tabs and content-sized cards ${width} ${theme}`, async ({ page }, testInfo) => {
+  const queueItems = Array.from({length: 10}, (_, index) => ({
+    ...requestItem, id: index + 1,
+    title: index === 0 ? 'Длинное название запроса: '.repeat(18) : `Короткий запрос ${index + 1}`,
+  }));
+  await mockReview(page, {queueItems});
+  await page.setViewportSize({width, height: 768});
+  await page.goto('/#/review');
+  await expect(page.locator('.review-request-card')).toHaveCount(10);
+  await page.locator('html').evaluate((el, value) => el.dataset.theme = value, theme);
+  const measure = () => page.evaluate(() => {
+    const nav = document.querySelector('.ui-route-tabs');
+    const list = document.querySelector('#review-list-content');
+    const cards = [...document.querySelectorAll('.review-request-card')];
+    return {navHeight: nav.clientHeight, navContentHeight: nav.scrollHeight,
+      first: cards[0].getBoundingClientRect().height, second: cards[1].getBoundingClientRect().height,
+      listBottom: list.getBoundingClientRect().bottom, overflow: document.documentElement.scrollWidth > innerWidth};
+  });
+  const geometry = await measure();
+  expect(geometry.navHeight).toBeGreaterThanOrEqual(32);
+  expect(geometry.navContentHeight).toBeLessThanOrEqual(geometry.navHeight + 1);
+  expect(geometry.second).toBeLessThan(geometry.first);
+  expect(geometry.overflow).toBe(false);
+  if (width > 700) {
+    expect(geometry.second).toBeLessThan(200);
+    expect(geometry.listBottom).toBeLessThanOrEqual(768);
+  }
+  await page.screenshot({path: testInfo.outputPath('queue-full.png'), fullPage: true});
+  await page.getByRole('button', {name: 'Все фильтры', exact: true}).click();
+  const expanded = await measure();
+  expect(expanded.navContentHeight).toBeLessThanOrEqual(expanded.navHeight + 1);
+  await expect(page.getByRole('link', {name: 'Редакции БТ', exact: true})).toBeVisible();
 });
 
 test('desktop review list fills the available viewport height', async ({ page }) => {
@@ -107,10 +145,11 @@ test('mobile review keeps content before decisions and preserves a failed commen
   const { statusCalls } = await mockReview(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#/review');
-  await expect(page.getByRole('heading', { name: 'Ревью запросов' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Запросы заказчиков' })).toBeVisible();
   await page.getByRole('searchbox', { name: /Поиск по номеру/ }).fill('#8');
   await expect(page.getByRole('link', { name: /Запрос #8/ })).toBeVisible();
-  await expect(page.locator('#review-count')).toHaveText('Показано 1 · загружено 1');
+  await expect(page.locator('#review-count')).toHaveText('Показано 1 из 1');
+  await page.getByRole('button',{name:'Все фильтры',exact:true}).click();
   await page.locator('#review-mode-filter').selectOption('history');
   await expect(page).toHaveURL(/mode=history/);
   await page.locator('#review-mode-filter').selectOption('action');
@@ -190,20 +229,35 @@ test('review blocks transfer when the rendered version is stale', async ({ page 
 test('review append error retains rows, retries the same offset once and focuses new content',async({page})=>{
  const items=Array.from({length:250},(_,i)=>({...requestItem,id:i+1,title:`Запрос ${i+1}`}));
  await mockReview(page,{queueItems:items});const offsets=[];let failed=false;
- await page.route('**/api/v1/agent/requests/review?*',async route=>{const offset=Number(new URL(route.request().url()).searchParams.get('offset'));offsets.push(offset);if(offset===250&&!failed){failed=true;return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Синтетический сбой догрузки'})});}return route.fulfill({contentType:'application/json',body:JSON.stringify(offset===0?items:[{...requestItem,id:251,title:'Новая строка'}])});});
+ await page.route('**/api/v1/agent/requests/registry?*',async route=>{const offset=Number(new URL(route.request().url()).searchParams.get('offset'));offsets.push(offset);if(offset===250&&!failed){failed=true;return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Синтетический сбой догрузки'})});}return route.fulfill({contentType:'application/json',body:JSON.stringify({items:offset===0?items:[{...requestItem,id:251,title:'Новая строка'}],total:251,has_more:offset===0,counts:{},options:{}})});});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/#/review');await expect(page.locator('.review-request-card')).toHaveCount(250);
  await page.locator('#load-more-review').evaluate(b=>{b.click();b.click();});await expect(page.locator('#retry-review-list')).toBeVisible();await expect(page.locator('#retry-review-list')).toBeFocused();await expect(page.locator('.review-request-card')).toHaveCount(250);
  await page.locator('#retry-review-list').click();await expect(page.locator('.review-request-card')).toHaveCount(251);await expect(page.locator('[data-review-id="251"]')).toBeFocused();expect(offsets).toEqual([0,250,250]);expect(errors).toEqual([]);
 });
 
-test('review filtered empty batch retains continuation and finds a match beyond the loaded page',async({page})=>{
+test('review server search finds a match beyond the first loaded page',async({page})=>{
  const items=Array.from({length:250},(_,i)=>({...requestItem,id:i+1,title:`Запрос ${i+1}`}));await mockReview(page,{queueItems:items});
- await page.route('**/api/v1/agent/requests/review?*',route=>route.fulfill({contentType:'application/json',body:JSON.stringify(Number(new URL(route.request().url()).searchParams.get('offset'))===0?items:[{...requestItem,id:251,title:'Нужное совпадение'}])}));
- await page.goto('/#/review');await expect(page.locator('.review-request-card')).toHaveCount(250);await page.locator('#review-search').fill('Нужное совпадение');await expect(page.getByText('Ничего не найдено',{exact:true})).toBeVisible();await expect(page.locator('#load-more-review')).toBeVisible();await page.locator('#load-more-review').click();await expect(page.locator('.review-request-card')).toHaveCount(1);await expect(page.locator('[data-review-id="251"]')).toBeFocused();
+ await page.route('**/api/v1/agent/requests/registry?*',route=>{const query=new URL(route.request().url()).searchParams.get('q');return route.fulfill({json:{items:query?[{...requestItem,id:251,title:'Нужное совпадение'}]:items,total:query?1:251,has_more:!query,counts:{},options:{}}});});
+ await page.goto('/#/review');await expect(page.locator('.review-request-card')).toHaveCount(250);
+ await page.locator('#review-search').fill('Нужное совпадение');await expect(page.locator('.review-request-card')).toHaveCount(1);await expect(page.locator('[data-review-id="251"]')).toBeVisible();await expect(page.locator('#load-more-review')).toHaveCount(0);
 });
 
 test('review ignores an old response after leaving and reopening the queue',async({page})=>{
  await mockReview(page);let releaseOld;let calls=0;
- await page.route('**/api/v1/agent/requests/review?*',async route=>{calls++;if(calls===1){await new Promise(resolve=>releaseOld=resolve);await route.fulfill({contentType:'application/json',body:JSON.stringify([{...requestItem,title:'Устаревший ответ'}])}).catch(()=>{});return;}return route.fulfill({contentType:'application/json',body:JSON.stringify([{...requestItem,title:'Актуальный ответ'}])});});
+ await page.route('**/api/v1/agent/requests/registry?*',async route=>{calls++;if(calls===1){await new Promise(resolve=>releaseOld=resolve);await route.fulfill({contentType:'application/json',body:JSON.stringify({items:[{...requestItem,title:'Устаревший ответ'}],total:1,counts:{},options:{}})}).catch(()=>{});return;}return route.fulfill({contentType:'application/json',body:JSON.stringify({items:[{...requestItem,title:'Актуальный ответ'}],total:1,counts:{},options:{}})});});
  await page.goto('/#/review');await expect.poll(()=>calls).toBe(1);await page.evaluate(()=>{window.location.hash='#/settings';});await expect(page.getByRole('heading',{name:'Персональные настройки',exact:true})).toBeVisible();await page.evaluate(()=>{window.location.hash='#/review';});await expect(page.locator('.review-request-card')).toContainText('Актуальный ответ');releaseOld();await expect(page.locator('.review-request-card')).toContainText('Актуальный ответ');await expect(page.getByText('Устаревший ответ',{exact:true})).toHaveCount(0);
+});
+
+for(const width of [320,390,1366])for(const theme of ['light','dark'])test(`review registry panel ${width} ${theme}`,async({page},testInfo)=>{
+ await mockReview(page);await page.setViewportSize({width,height:844});await page.goto('/#/review');await expect(page.locator('.review-request-card')).toHaveCount(1);
+ await page.locator('html').evaluate((el,t)=>el.dataset.theme=t,theme);
+ await expect(page.locator('#review-filters-panel')).toBeHidden();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:testInfo.outputPath('review-full.png'),fullPage:true});
+ await page.getByRole('button',{name:'Все фильтры',exact:true}).click();await page.getByLabel('Стадия',{exact:true}).click();
+ await page.getByRole('checkbox',{name:'На ревью',exact:true}).check();await page.getByRole('button',{name:'Применить',exact:true}).click();
+ await expect(page.locator('[data-review-clear=status]')).toContainText('На ревью');
+ await page.locator('#review-filters-toggle').click();await page.reload();await expect(page.locator('[data-review-clear=status]')).toBeVisible();
+ await page.locator('[data-review-clear=status]').click();await expect(page.locator('[data-review-clear=status]')).toHaveCount(0);
+ await page.locator('[data-review-filter="true"][data-review-kind="signals"]').click();await expect(page).toHaveURL(/signals=1/);
+ await page.getByRole('button',{name:'Сброс',exact:true}).click();await expect(page).not.toHaveURL(/signals=/);
 });

@@ -7,7 +7,7 @@
 <script type="module">
 import {renderNotifications,initNotifications} from '/js/components/notifications.js';
 import {renderOutboxDeadLetters,initOutboxDeadLetters} from '/js/components/outboxDeadLetters.js';
-import {renderSettings,initSettings} from '/js/components/settings.js';
+import {renderNotificationPreferences,initNotificationPreferences} from '/js/components/notificationPreferences.js';
 import {showToast,formatErrorMessage} from '/js/uiFeedback.js';
 import {initModalAccessibility} from '/js/modalAccessibility.js';
 const p=new URLSearchParams(location.search), surface=p.get('surface')||'notifications';
@@ -42,6 +42,6 @@ document.getElementById('audit-empty').onclick=()=>{items=[];events=[];document.
 document.getElementById('audit-theme').onclick=()=>document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
 initModalAccessibility();
 if(!location.hash)history.replaceState(null,'',location.pathname+location.search+(surface==='settings'?'#/settings?section=notifications':surface==='outbox'?'#/outbox-dead-letters':'#/notifications'));
-const [render,init]=surface==='settings'?[renderSettings,initSettings]:surface==='outbox'?[renderOutboxDeadLetters,initOutboxDeadLetters]:[renderNotifications,initNotifications];
-document.getElementById('page-content').innerHTML=render(app);await init(app);window.lucide?.createIcons();
+const [render,init]=surface==='settings'?[renderNotificationPreferences,initNotificationPreferences]:surface==='outbox'?[renderOutboxDeadLetters,initOutboxDeadLetters]:[renderNotifications,initNotifications];
+document.getElementById('page-content').innerHTML=render(app);await init(app);if(surface==='settings')document.getElementById('notification-preferences').open=true;window.lucide?.createIcons();
 </script></body></html>

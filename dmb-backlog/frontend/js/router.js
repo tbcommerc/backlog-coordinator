@@ -3,22 +3,20 @@ import { renderViewState } from './components/viewState.js';
 import { escapeHtml } from './htmlUtils.js';
 import { renderSecurity, initSecurity } from './components/accountSecurity.js';
 import { renderDashboard, initDashboard } from './components/dashboard.js?v=20';
-import { renderTasksPage, initTasksPage } from './components/taskTable.js?v=132';
-import { renderTeamBacklog, initTeamBacklog } from './components/teamBacklog.js?v=134';
-import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js?v=41';
+import { renderBacklogPage, initBacklogPage, disposeBacklogPage, handleBacklogQuery, refreshBacklogPage } from './components/backlogPage.js?v=3';
+import { renderExpressEstimate, initExpressEstimate } from './components/expressEstimate.js?v=42';
 import { renderKanban, initKanban } from './components/kanbanBoard.js?v=14';
 import { renderReports, initReports, renderReportPage, initReportPage, renderReportingMeetingsManagement, initReportingMeetingsManagement } from './components/reports.js?v=45';
 import { renderAnalytics, initAnalytics } from './components/analytics.js?v=24';
-import { renderNotifications, initNotifications } from './components/notifications.js?v=23';
-import { renderSettings, initSettings } from './components/settings.js?v=7';
+import { renderNotifications, initNotifications } from './components/notifications.js?v=24';
 import { renderAdmin, initAdmin } from './components/admin.js?v=15';
 import { renderCustomerPortal, initCustomerPortal, renderRequestPage, initRequestPage, renderCustomerTaskPage, initCustomerTaskPage } from './components/customerPortal.js?v=12';
 import { renderAgentChat, initAgentChat } from './components/agentChat.js?v=96';
 import { renderAuditLog, initAuditLog } from './components/auditLog.js?v=6';
 import { renderOutboxDeadLetters, initOutboxDeadLetters } from './components/outboxDeadLetters.js?v=7';
 import { renderReviewPage, initReviewPage, renderReviewDetailPage, initReviewDetailPage } from './components/reviewPage.js?v=11';
-import { renderReportingStatuses, initReportingStatuses } from './components/reportingStatuses.js?v=21';
-import { renderQuarterlyGoalsUpdate, initQuarterlyGoalsUpdate } from './components/quarterlyGoalsUpdate.js?v=11';
+import { renderReportingStatuses, initReportingStatuses } from './components/reportingStatuses.js?v=22';
+import { renderQuarterlyGoalsUpdate, initQuarterlyGoalsUpdate } from './components/quarterlyGoalsUpdate.js?v=12';
 
 export const TASK_DETAIL_TABS = Object.freeze(['main', 'rep', 'com', 'sys', 'log', 'work']);
 const TASK_DETAIL_TAB_SET = new Set(TASK_DETAIL_TABS);
@@ -41,7 +39,7 @@ export function shouldClearFailedTaskRoute(error) {
 }
 
 export function createTaskOpenHandler(app, options = {}) {
-    const loadTaskModal = options.loadTaskModal || (() => import('./components/modal.js?v=120'));
+    const loadTaskModal = options.loadTaskModal || (() => import('./components/modal.js?v=125'));
     const getTaskOverlay = options.getTaskOverlay || (() => document.getElementById('task-detail-overlay'));
     const dispatchTaskTabChange = options.dispatchTaskTabChange || ((taskId, tab) => {
         document.dispatchEvent(new CustomEvent('task-tab-change', { detail: { taskId, tab } }));
@@ -118,8 +116,8 @@ export class Router {
         this.app = app;
         this.routes = {
             '/dashboard': { render: renderDashboard, init: initDashboard },
-            '/backlog': { render: renderTasksPage, init: initTasksPage },
-            '/team-backlog': { render: renderTeamBacklog, init: initTeamBacklog },
+            '/backlog': { render: renderBacklogPage, init: initBacklogPage },
+            '/team-backlog': { render: renderBacklogPage, init: initBacklogPage },
             '/express-estimate': { render: renderExpressEstimate, init: initExpressEstimate },
             '/kanban': { render: renderKanban, init: initKanban },
             '/reports': { render: renderReports, init: initReports },
@@ -132,7 +130,6 @@ export class Router {
             '/analytics/it': { render: (app) => renderAnalytics('it', app), init: (app) => initAnalytics('it', app) },
             '/notifications': { render: renderNotifications, init: initNotifications },
             '/account/security': { render: renderSecurity, init: initSecurity },
-            '/settings': { render: renderSettings, init: initSettings },
             '/admin': { render: renderAdmin, init: initAdmin },
             '/audit-log': { render: renderAuditLog, init: initAuditLog },
             '/outbox-dead-letters': { render: renderOutboxDeadLetters, init: initOutboxDeadLetters },
@@ -162,11 +159,18 @@ export class Router {
         this.handleRoute();
     }
 
+    historyStateFor(method, state = history.state) {
+        const previous=Number.isSafeInteger(this.historyIndex)?this.historyIndex:Number.isSafeInteger(history.state?.dmbHistoryIndex)?history.state.dmbHistoryIndex:0;
+        this.historyIndex=method==='pushState'?previous+1:previous;
+        return {...(state||{}),dmbHistoryIndex:this.historyIndex};
+    }
+
     navigate(path) {
         window.location.hash = path;
     }
 
     async refreshCurrentRoute() {
+        if(this.renderedPath==='/backlog')return refreshBacklogPage();
         // Force the active renderer/init pair to run without changing history.
         // Used by debounced realtime invalidations from other workers.
         this.lastHash = null;
@@ -231,7 +235,7 @@ export class Router {
         if (normalizedCommentId) params.set('comment', String(normalizedCommentId));
         else params.delete('comment');
         const nextHash = `${path}?${params.toString()}`;
-        history.pushState({ ...(history.state || {}), dmbTaskModal: true }, '', '#' + nextHash);
+        history.pushState(this.historyStateFor('pushState',{ ...(history.state || {}), dmbTaskModal: true }), '', '#' + nextHash);
         this.lastHash = nextHash;
         this.lastDeepLinkedTask = `${path}:${normalizedTaskId}`;
     }
@@ -340,32 +344,41 @@ export class Router {
         const hash = window.location.hash.slice(1) || this.defaultRoute;
         const [path, query = ''] = hash.split('?');
         const from = this.lastHash;
+        if(this.cancelledNavigationHash===hash){this.cancelledNavigationHash=null;return;}
+        const targetIndex=Number.isSafeInteger(history.state?.dmbHistoryIndex)?history.state.dmbHistoryIndex:(from===null?0:(this.historyIndex??0)+1);
+        if(!Number.isSafeInteger(history.state?.dmbHistoryIndex))history.replaceState({...history.state,dmbHistoryIndex:targetIndex},'','#'+hash);
 
         if (this.onBeforeNavigate && from !== null && hash !== from) {
             const ok = await this.onBeforeNavigate(path, from);
             if (generation !== this.navigationGeneration) return;
             if (!ok) {
                 if (from !== hash && from !== null) {
-                    history.replaceState(null, '', '#' + from);
+                    const offset=(this.historyIndex??targetIndex)-targetIndex;
+                    if(offset&&typeof history.go==='function'){this.cancelledNavigationHash=from;history.go(offset);}
+                    else history.replaceState(this.historyStateFor('replaceState'), '', '#' + from);
                 }
                 return;
             }
         }
 
 
+        this.historyIndex=targetIndex;
         const user = this.app?.store?.get('currentUser');
+        if(path==='/settings'){history.replaceState(history.state,'','#/notifications?section=preferences');return this.handleRoute();}
+        if(path==='/team-backlog'){const legacy=new URLSearchParams(query);legacy.set('scope','team');history.replaceState(history.state,'','#/backlog?'+legacy.toString());return this.handleRoute();}
         const isAssistantV2Route = path === '/assistant-v2' || path.startsWith('/assistant-v2/');
         if (isAssistantV2Route) {
-            history.replaceState(null, '', '#/agent-v2');
+            history.replaceState(this.historyStateFor('replaceState',{}), '', '#/agent-v2');
             return this.handleRoute();
         }
         const isAgentV2Route = path === '/agent-v2' || path.startsWith('/agent-v2/');
-        const businessCustomerAllowedPaths = new Set(['/customer', '/customer/create', '/agent-v2', '/backlog-assistant', '/account/security', '/notifications', '/settings']);
+        const businessCustomerAllowedPaths = new Set(['/customer', '/customer/create', '/agent-v2', '/backlog-assistant', '/account/security', '/notifications']);
         const isCustomerRequestDetail = /^\/customer\/request\/\d+$/.test(path);
         const isCustomerTaskDetail = /^\/customer\/task\/\d+$/.test(path);
         if (user?.permissions?.customer_portal_mode === 'only' && !businessCustomerAllowedPaths.has(path) && !isCustomerRequestDetail && !isCustomerTaskDetail) {
+            if (/^\/metrics(?:\/|$)/.test(path)) window.toast?.('Метрики недоступны в режиме заказчика. Открыт раздел «Мои запросы».', 'warning');
             if (window.location.hash !== '#/customer') {
-                history.replaceState(null, '', '#/customer');
+                history.replaceState(this.historyStateFor('replaceState',{}), '', '#/customer');
             }
             return this.handleRoute();
         }
@@ -375,7 +388,7 @@ export class Router {
                 if (generation !== this.navigationGeneration) return;
                 if (options.board_enabled === true) {
                     sessionStorage.setItem('work-board-redirect-notice','1');
-                    history.replaceState(null,'',`#/work-tasks?display=board&view=${user?.team_id?'team':'all'}&status=active&sort=attention`);
+                    history.replaceState(this.historyStateFor('replaceState',{}),'',`#/work-tasks?display=board&view=${user?.team_id?'team':'all'}&status=active&sort=attention`);
                     return this.handleRoute();
                 }
             } catch { /* Keep the legacy route available when capability discovery fails. */ }
@@ -406,14 +419,17 @@ export class Router {
         this.lastHash = hash;
         this.syncAssistantFocusMode(path);
         const fromPath = from?.split('?')[0];
-        const projectChanged = path === '/work-projects' && ['project','scope','major','mp','section','year','bucket','bq','bstate','bp','quarter','result','rp','cq','cp'].some(key => new URLSearchParams(query).get(key) !== new URLSearchParams(from?.split('?')[1] || '').get(key));
+        const projectChanged = path === '/work-projects' && ['project','scope','major','mp','section','year','bucket','bq','bstate','bp','quarter','result','rp','cq','cp','horizon','keys','pq','pg','baseline','pteam','powner','pstate','psort','scale','cteam','cowner','cview'].some(key => new URLSearchParams(query).get(key) !== new URLSearchParams(from?.split('?')[1] || '').get(key));
         const queryDrivenWorkPage = /^\/metrics(?:\/\d+)?$/.test(path) || projectChanged || path === '/work-reports' || /^\/work-tasks(?:\/\d+)?$/.test(path);
         if (from !== null && path === fromPath && this.renderedPath === path && path !== '/meeting-capture' && !queryDrivenWorkPage) {
-            this.openDeepLinkedTask(path, query);
-            this.updateSidebarActive(path);
-            return;
+            if(path!=='/backlog'||handleBacklogQuery('#'+hash)){
+              this.openDeepLinkedTask(path, query);
+              this.updateSidebarActive(path);
+              return;
+            }
         }
 
+        if(path!=='/backlog'&&this.renderedPath==='/backlog')disposeBacklogPage();
         const route = this.routes[path];
 
         // dynamic route: /customer/request/{id}
@@ -465,11 +481,11 @@ export class Router {
           if (generation !== this.navigationGeneration) return;
           dynamicHandler = { render: module.renderMetrics, init: module.initMetrics };
         } else if (path === '/work-projects') {
-          const module = await import('./components/workProjects.js?v=27');
+          const module = await import('./components/workProjects.js?v=28');
           if (generation !== this.navigationGeneration) return;
           dynamicHandler = { render: module.renderWorkProjects, init: module.initWorkProjects };
         } else if (/^\/work-tasks(?:\/\d+)?$/.test(path)) {
-          const module = await import('./components/workTasks.js?v=31');
+          const module = await import('./components/workTasks.js?v=32');
           if (generation !== this.navigationGeneration) return;
           dynamicHandler = { render: module.renderWorkTasks, init: module.initWorkTasks };
         } else if (path === '/meeting-capture') {
@@ -504,7 +520,7 @@ export class Router {
                         '/work-reports': 'Снимок задач встречи',
                         '/meeting-capture': 'Поручения из встреч',
                         '/backlog-assistant': 'Помощник по бэклогу',
-                        '/backlog': 'Бэклог DMB',
+                        '/backlog': 'Бэклог',
                         '/team-backlog': 'Бэклог команды',
                         '/express-estimate': 'Экспресс-оценка',
                         '/kanban': 'Канбан-доска',
@@ -517,7 +533,6 @@ export class Router {
                         '/analytics/po-pl': 'Аналитика PO/PL',
                         '/analytics/it': 'Аналитика для ИТ',
                         '/notifications': 'Мои уведомления',
-                        '/settings': 'Настройки',
                         '/account/security': 'Безопасность аккаунта',
                         '/admin': 'Администрирование',
                         '/audit-log': 'Аудит действий',
@@ -540,7 +555,8 @@ export class Router {
                     if (path === '/work-projects' && projectId) {
                         links.push('<a href="#/work-projects" class="breadcrumb-parent">Проекты</a>');
                     }
-                    const currentName = path === '/work-projects' && projectId ? 'Обзор проекта' : pageName;
+                    const projectSectionNames = {about:'Обзор проекта',backlog:'План',planning:'План',gantt:'Гант и вехи',deviations:'Отклонения',results:'Результаты',metrics:'Результаты',execution:'Рабочие задачи'};
+                    const currentName = path === '/work-projects' && projectId ? (projectSectionNames[new URLSearchParams(query).get('section')] || 'Обзор проекта') : pageName;
                     links.push(`<span class="breadcrumb-current" aria-current="page">${escapeHtml(currentName)}</span>`);
                     bc.innerHTML = links.join('<span class="breadcrumb-separator" aria-hidden="true">/</span>');
                 }

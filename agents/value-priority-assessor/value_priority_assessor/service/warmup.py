@@ -24,13 +24,19 @@ def _warm_runtime() -> dict[str, Any]:
     ):
         from value_priority_assessor.rag.search import index_status
 
-        result["rag"] = index_status().get("retrieval_mode", "unknown")
+        status=index_status()
+        if settings.rag_vector and not status.get("vector_enabled"):
+            raise RuntimeError("rag_index_not_ready")
+        result["rag"] = status.get("retrieval_mode", "unknown")
 
     if settings.value_analogy:
         from value_priority_assessor.service.scenarios import _analogy_index
         from value_priority_assessor.snapshot import get_snapshot
 
-        index = _analogy_index(get_snapshot())
+        snapshot=get_snapshot()
+        index = _analogy_index(snapshot)
+        if snapshot.available and (index is None or not index.available):
+            raise RuntimeError("analogy_index_not_ready")
         result["analogy"] = "ok" if index is not None and index.available else "disabled"
 
     return result

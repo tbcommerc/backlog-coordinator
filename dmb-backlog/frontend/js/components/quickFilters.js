@@ -2,12 +2,12 @@ import { filterChip } from '../ui/primitives.js';
 import { taskStatusTone, taskPriorityTone } from '../taskDisplay.js';
 console.log('[DMB] quickFilters.js v20260910.4 loaded');
 
-import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask } from './filterToolbar.js?v=108';
+import { columnFilters, renderFilterButtons, filterChangeCallbacks, isDeadlinePast, isCurrentTask, isLastQuarterTask } from './filterToolbar.js?v=114';
 import { calculateTaskCv } from '../taskMetrics.js';
 
 const TERMINAL_STATUSES = ['ВЫПОЛНЕНА', 'ОТКЛОНЕНА', 'НЕ АКТУАЛЬНА'];
 
-const QUICK_FILTERS = [
+export const QUICK_FILTERS = [
   {
     key: 'overdue',
     label: 'Просрочено',
@@ -69,7 +69,7 @@ const QUICK_FILTERS = [
   },
 ];
 
-export function renderQuickFilters(scope) {
+export function renderQuickFilters(scope, { loading = false } = {}) {
   const filters = QUICK_FILTERS;
   return `
     <div class="quick-filters-shell">
@@ -80,7 +80,7 @@ export function renderQuickFilters(scope) {
         <i data-lucide="chevron-down" class="quick-filters-toggle-chevron" aria-hidden="true"></i>
       </button>
       <div id="quick-filters" data-scope="${scope}" class="flex gap-2" style="--quick-filter-columns:${filters.length};margin-bottom:var(--space-4);">
-        ${filters.map(f => filterChip({ label: f.label, icon: f.icon, tone: f.tone, count: 0, countId: `qf-${f.key}-count`, attrs: { 'data-filter': f.key } })).join('')}
+        ${filters.map(f => filterChip({ label: f.label, icon: f.icon, tone: f.tone, count: loading ? '—' : 0, countId: `qf-${f.key}-count`, attrs: { 'data-filter': f.key } })).join('')}
       </div>
     </div>`;
 }
@@ -211,3 +211,5 @@ export function syncQuickFilterButtons(scope) {
   }
   toggle?.classList.toggle('has-active-filters', activeCount > 0);
 }
+
+export function disposeQuickFilters(){quickFilterLayoutObserver?.disconnect();quickFilterLayoutObserver=null;if(mobileOutsideHandler)document.removeEventListener('click',mobileOutsideHandler);if(mobileKeyHandler)document.removeEventListener('keydown',mobileKeyHandler);mobileOutsideHandler=null;mobileKeyHandler=null;}

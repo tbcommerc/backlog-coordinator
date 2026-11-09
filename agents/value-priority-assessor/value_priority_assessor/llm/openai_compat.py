@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import time
+import uuid
+from datetime import datetime, timedelta, timezone
+from dmb_agent_contracts.model import ModelRequest, Message, AgentError
+from dmb_agent_contracts.chat import ChatCompletionModel
+from dmb_agent_contracts.operation import bind_request,reserve_model_attempt
 from email.utils import parsedate_to_datetime
 from functools import lru_cache
 from typing import Any
@@ -44,10 +50,13 @@ class OpenAICompatAdapter:
         base_url: str,
         model: str,
         timeout: float = 30.0,
+        protocol: str = "chat_completions",
         retry_attempts: int = 3,
         retry_base_seconds: float = 0.5,
         retry_max_seconds: float = 5.0,
     ) -> None:
+        if protocol != "chat_completions":
+            raise AgentError("model_capability_missing", 422)
         if not api_key.strip():
             raise RuntimeError("не задан PRIORITISER_OPENAI_API_KEY")
         self.api_key = api_key
@@ -58,6 +67,12 @@ class OpenAICompatAdapter:
         self.retry_base_seconds = max(0.0, retry_base_seconds)
         self.retry_max_seconds = max(self.retry_base_seconds, retry_max_seconds)
         self.last_usage: dict[str, int | float | None] = {}
+        self.cache_profile_ref = hashlib.sha256(json.dumps({"base_url":self.base_url,"protocol":protocol},
+            sort_keys=True).encode()).hexdigest()
+        from value_priority_assessor.config import get_settings
+        if get_settings().execution_backend == "opencode":
+            from dmb_agent_contracts.remote_configuration import RemoteProfile
+            self.cache_profile_ref = RemoteProfile.from_settings(get_settings()).profile_ref
 
     def _retry_delay(self, response: httpx.Response | None, attempt: int) -> float:
         retry_after = response.headers.get("Retry-After") if response is not None else None
@@ -84,46 +99,63 @@ class OpenAICompatAdapter:
         max_tokens: int,
         schema: dict[str, Any] | None = None,
     ) -> str:
-        payload: dict[str, Any] = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "temperature": 0.1,
-            "max_tokens": max_tokens,
-        }
-        if schema is not None:
-            # Matches the JSON mode already used by the business-requirements
-            # agent and remains compatible with generic OpenAI gateways.
-            payload["response_format"] = {"type": "json_object"}
+        request = bind_request(ModelRequest(request_id=uuid.uuid4(), run_id=uuid.uuid4(), purpose="factor_assessment",
+            messages=[Message(role="user", content=user)], system_prompt=system, output_schema=schema,
+            model_profile="local-go-direct", deadline_at=datetime.now(timezone.utc)+timedelta(seconds=self.timeout),
+            max_output_tokens=max_tokens, temperature=.1))
+        return self.complete_model(request).text
 
+    def complete_model(self, request):
+        from value_priority_assessor.config import get_settings
+        if get_settings().execution_backend == "opencode":
+            from dmb_agent_contracts.remote_configuration import RemoteProfile
+            result = RemoteProfile.from_settings(get_settings()).model_port().complete(request)
+            self.last_usage = {"tokens_in": result.usage.input_tokens, "tokens_out": result.usage.output_tokens,
+                "reasoning_tokens": result.usage.reasoning_tokens, "cache_tokens": result.usage.cache_tokens,
+                "unavailable_reason": result.usage.unavailable_reason, "latency_ms": result.elapsed_ms}
+            return result
+        request=bind_request(request)
+        if request.conversation_ref is None:
+            role=hashlib.sha256((request.system_prompt+"\0"+json.dumps(request.output_schema,sort_keys=True)).encode()).hexdigest()
+            request=request.model_copy(update={"conversation_ref":f"dmb-assessor:{request.run_id}:{role}"})
+        metadata = {}
+        def transport(path, payload, timeout):
+            return self._post_chat(path, payload, timeout, request, metadata)
+        result = ChatCompletionModel(transport=transport, model=self.model, response_meta=metadata).complete(request)
+        self.last_usage = {"tokens_in": result.usage.input_tokens, "tokens_out": result.usage.output_tokens,
+                           "reasoning_tokens": result.usage.reasoning_tokens, "cache_tokens": result.usage.cache_tokens,
+                           "unavailable_reason": result.usage.unavailable_reason, "latency_ms": result.elapsed_ms}
+        return result
+
+    def _post_chat(self, path, payload, timeout, request, metadata):
         started = time.perf_counter()
         is_opencode_zen = (
             httpx.URL(self.base_url).host == "opencode.ai"
-            and "/zen/" in self.base_url
+            and any(route in self.base_url for route in ("/zen/", "/inference/go/openai/"))
         )
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "User-Agent": (
-                "opencode/latest/1.18.21/cli"
-                if is_opencode_zen
-                else "DMB-Task-Prioritiser/1.0"
-            ),
+            "User-Agent": "DMB-Value-Priority-Assessor/1.0",
         }
         if is_opencode_zen:
-            headers["x-opencode-client"] = "cli"
+            headers["x-opencode-session"] = str(uuid.uuid5(uuid.NAMESPACE_URL, request.conversation_ref or str(request.run_id)))
         response: httpx.Response | None = None
+        deadline = time.monotonic()+timeout
         for attempt in range(self.retry_attempts):
+            remaining = deadline-time.monotonic()
+            if remaining <= 0:
+                raise AgentError("operation_deadline_exceeded", 504)
             try:
+                reserve_model_attempt()
                 response = _http_client().post(
                     f"{self.base_url}/chat/completions",
                     headers=headers,
                     json=payload,
-                    timeout=self.timeout,
+                    timeout=remaining,
                 )
                 response.raise_for_status()
+                metadata["attempt_count"] = attempt+1
                 break
             except httpx.HTTPStatusError as exc:
                 status = exc.response.status_code
@@ -132,31 +164,24 @@ class OpenAICompatAdapter:
                 from value_priority_assessor.service.metrics import record_llm_retry
 
                 record_llm_retry()
-                time.sleep(self._retry_delay(exc.response, attempt))
+                delay = self._retry_delay(exc.response, attempt)
+                if time.monotonic()+delay >= deadline:
+                    raise AgentError("operation_deadline_exceeded", 504) from None
+                time.sleep(delay)
             except (httpx.TimeoutException, httpx.NetworkError):
                 if attempt + 1 >= self.retry_attempts:
                     raise
                 from value_priority_assessor.service.metrics import record_llm_retry
 
                 record_llm_retry()
-                time.sleep(self._retry_delay(None, attempt))
+                delay = self._retry_delay(None, attempt)
+                if time.monotonic()+delay >= deadline:
+                    raise AgentError("operation_deadline_exceeded", 504) from None
+                time.sleep(delay)
 
         if response is None:  # pragma: no cover - loop always attempts at least once
             raise RuntimeError("OpenAI-compatible запрос не был выполнен")
-        data = response.json()
-        usage = data.get("usage") or {}
-        self.last_usage = {
-            "tokens_in": usage.get("prompt_tokens"),
-            "tokens_out": usage.get("completion_tokens"),
-            "latency_ms": int((time.perf_counter() - started) * 1000),
-        }
-        try:
-            return data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise RuntimeError(
-                "OpenAI-compatible провайдер вернул неожиданный ответ: "
-                + json.dumps(data, ensure_ascii=False)[:500]
-            ) from exc
+        return response.json()
 
     def classify(self, task_text: str, team: str | None, team_class: str) -> TaskHints:
         text = self._complete(
@@ -167,5 +192,7 @@ class OpenAICompatAdapter:
         )
         return parse_hints(text, self.name)
 
-    def complete(self, system: str, user: str, schema: dict | None = None) -> str:
+    def complete(self, system: str | ModelRequest, user: str | None = None, schema: dict | None = None):
+        if isinstance(system, ModelRequest):
+            return self.complete_model(system)
         return self._complete(system, user, max_tokens=1024, schema=schema)

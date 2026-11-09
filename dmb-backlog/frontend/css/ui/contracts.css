@@ -31,7 +31,6 @@
 :root input[type=file] { max-width:100%; font:inherit; color:inherit; }
 :root input[type=file]::file-selector-button { min-height:max(var(--control-height-sm),var(--control-target-min)); border:1px solid var(--border-hover); border-radius:var(--radius-md); padding:0 12px; background:var(--bg-secondary); color:var(--text-primary); font:inherit; cursor:pointer; }
 :root input[type=range] { accent-color:var(--accent-solid); min-height:var(--control-target-min); max-width:100%; }
-:root .ui-segmented { display:flex; flex-wrap:wrap; gap:4px; padding:4px; border:1px solid var(--border-color); border-radius:var(--radius-md); }
 :root .ui-progress { font-family:var(--font-family); font-size:var(--text-xs); line-height:var(--type-meta-line); font-weight:var(--font-normal); min-height:0; }
 :root .ui-avatar { min-height:0; }
 :root .ui-tab { font-weight:var(--font-semibold); }

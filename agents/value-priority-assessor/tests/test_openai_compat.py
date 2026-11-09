@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from dmb_agent_contracts.model import AgentError
 
 import httpx
 import pytest
@@ -14,7 +15,7 @@ class _Response:
 
     def json(self):
         return {
-            "choices": [{"message": {"content": '{"kind":"rnd","confident":false}'}}],
+            "choices": [{"message": {"content": '{"kind":"rnd","confident":false}'}, "finish_reason": "stop"}],
             "usage": {"prompt_tokens": 12, "completion_tokens": 7},
         }
 
@@ -80,7 +81,7 @@ def test_factory_passes_shared_openai_compatible_settings(monkeypatch):
     assert adapter.retry_max_seconds == 2.0
 
 
-def test_opencode_zen_uses_same_cli_identity_as_business_agent(monkeypatch):
+def test_opencode_go_uses_product_identity(monkeypatch):
     captured = {}
 
     def fake_post(url, **kwargs):
@@ -99,8 +100,9 @@ def test_opencode_zen_uses_same_cli_identity_as_business_agent(monkeypatch):
 
     adapter.complete("system", "user", {"type": "object"})
 
-    assert captured["headers"]["User-Agent"] == "opencode/latest/1.18.21/cli"
-    assert captured["headers"]["x-opencode-client"] == "cli"
+    assert captured["headers"]["User-Agent"] == "DMB-Value-Priority-Assessor/1.0"
+    assert "x-opencode-client" not in captured["headers"]
+    assert captured["headers"]["x-opencode-session"]
 
 
 def test_transient_http_failure_is_retried(monkeypatch):
@@ -157,7 +159,7 @@ def test_non_transient_http_failure_is_not_retried(monkeypatch):
         model="shared-model",
     )
 
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(AgentError, match="provider_protocol_error"):
         adapter.complete("system", "user", {"type": "object"})
 
     assert len(attempts) == 1

@@ -3,6 +3,10 @@ import asyncio
 import json
 import httpx
 from urllib.parse import urlparse
+from uuid import uuid4
+from datetime import datetime,timedelta,timezone
+from dmb_agent_contracts.deadline_http import DeadlineHTTP
+from dmb_agent_contracts.operation import OperationContext,current_operation,operation_scope,reserve_model_attempt,check_operation,limit_timeout,physical_activity
 
 
 class ModelBroker:
@@ -12,10 +16,15 @@ class ModelBroker:
         self.errors = []
         self.max_input_bytes = 0
         self.provider_error = None
+        self.operation_context=current_operation() or OperationContext(uuid4(),max_model_attempts=4)
         self.lock = asyncio.Lock()
-        self.client = httpx.AsyncClient(timeout=40, trust_env=False, follow_redirects=False, transport=transport)
+        self.client = DeadlineHTTP(transport=transport,trust_env=False)
 
     async def completion(self, body):
+        with operation_scope(context=self.operation_context):
+            return await self._completion(body)
+
+    async def _completion(self, body):
         async with self.lock:
             await self.bridge.check()
             if body.get("model") != self.model:
@@ -31,6 +40,7 @@ class ModelBroker:
             self.max_input_bytes = max(self.max_input_bytes, input_bound)
             if self.requests >= 4 or input_bound > 16000 or self.input_bound + input_bound > 40000 or self.output_reserved + 1500 > 6000:
                 raise ValueError("model_budget_exceeded")
+            reserve_model_attempt()
             self.requests += 1
             self.input_bound += input_bound
             self.output_reserved += 1500  # Reserve before transport; unknown delivery still costs budget.
@@ -42,14 +52,21 @@ class ModelBroker:
             headers = {"Authorization": "Bearer " + self.key, "User-Agent": "agents/backlog-assistant/0.1 (OpenCode runtime)"}
             if urlparse(self.endpoint).hostname == "opencode.ai":
                 headers["x-opencode-session"] = "backlog-assistant-" + self.bridge.execution
-            response = await self.client.post(self.endpoint + "/chat/completions", json=outbound, headers=headers)
-            if response.is_error:
-                self.provider_error = response.text.replace(self.key, "[redacted]")[:1200]
-            response.raise_for_status()
-            result = response.json()
+            with physical_activity():
+                status,raw = await self.client._request("POST",self.endpoint+"/chat/completions",payload=outbound,
+                    headers=headers,deadline_at=datetime.now(timezone.utc)+timedelta(seconds=limit_timeout(40)))
+            check_operation()
+            if status>=400:
+                self.provider_error = f"provider_http_{status}"
+                if status in (401,403):
+                    self.bridge.failure = "provider_auth_failed"
+                elif status == 429:
+                    self.bridge.failure = "provider_quota_exhausted"
+            httpx.Response(status,request=httpx.Request("POST",self.endpoint+"/chat/completions")).raise_for_status()
+            result = json.loads(raw)
             usage = result.get("usage", {})
             actual_in, actual_out = usage.get("prompt_tokens"), usage.get("completion_tokens")
-            if not isinstance(actual_in, int) or not isinstance(actual_out, int) or actual_in > input_bound or not 0 <= actual_out <= 1500:
+            if type(actual_in) is not int or type(actual_out) is not int or not 0 <= actual_in <= input_bound or not 0 <= actual_out <= 1500:
                 raise ValueError("provider_usage_not_qualified")
             self.output_reserved -= 1500 - actual_out
             await self.bridge.check()

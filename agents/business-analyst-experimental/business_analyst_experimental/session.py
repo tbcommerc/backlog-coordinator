@@ -6,6 +6,7 @@ session_id through. Serialization is JSON via dataclass helpers.
 import json
 import threading
 import uuid
+from contextvars import ContextVar
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -256,7 +257,7 @@ def _session_summary_phase(state: DialogueState) -> str:
 class SessionStore:
     """Persistent dialogue store backed by PostgreSQL or SQLite through SQLAlchemy."""
 
-    def __init__(self, path: str = None, database_url: str = None):
+    def __init__(self, path: str = None, database_url: str = None, *, initialize: bool | None = None):
         target = database_url or path or settings.SESSION_DATABASE_URL or settings.SESSION_DB
         if "://" not in target:
             target = f"sqlite:///{Path(target).resolve().as_posix()}"
@@ -274,6 +275,7 @@ class SessionStore:
                 "pool_timeout": settings.DB_POOL_TIMEOUT_SECONDS,
             })
         self._engine = create_engine(target, **engine_options)
+        self._transaction_connection = ContextVar("agent_session_transaction_"+str(id(self)), default=None)
         self._metadata = MetaData()
         self._sessions = Table(
             "sessions",
@@ -293,16 +295,72 @@ class SessionStore:
             Column("response_json", Text, nullable=False),
             Column("created_at", String(64), nullable=False),
         )
+        # Explicit isolated fixtures may bootstrap their own SQLite schema.
+        # The module-level production store never performs DDL during import.
+        if initialize is None:
+            initialize = bool(path or database_url) and target.startswith("sqlite")
+        if initialize:
+            self.migrate_schema()
+
+    @contextmanager
+    def transaction(self, connection):
+        """Stage dialogue writes in the same transaction as the run publication CAS."""
+        if connection.engine is not self._engine or not connection.in_transaction():
+            raise ValueError("active_owned_transaction_required")
+        existing = self._transaction_connection.get()
+        if existing is not None and existing is not connection:
+            raise ValueError("nested_transaction_conflict")
+        token = self._transaction_connection.set(connection)
+        try:
+            yield
+        finally:
+            self._transaction_connection.reset(token)
+
+    @contextmanager
+    def _connection(self, write=False):
+        connection = self._transaction_connection.get()
+        if connection is not None:
+            yield connection
+        else:
+            with (self._engine.begin() if write else self._engine.connect()) as connection:
+                yield connection
+
+    def migrate_schema(self, backup_verified=False):
+        inspector = inspect(self._engine)
+        existing = set(inspector.get_table_names()) - {"agent_runs", "agent_run_events", "agent_runtime_bindings", "agent_runtime_migrations"}
+        expected = {"sessions", "message_receipts"}
+        if existing - expected:
+            raise RuntimeError("Unexpected agent schema; migration refused")
+        if existing:
+            if "sessions" not in existing:
+                raise RuntimeError("Incomplete agent schema; migration refused")
+            columns = {c["name"] for c in inspector.get_columns("sessions")}
+            required = {"session_id", "user_id", "state_json", "updated_at"}
+            for column in inspector.get_columns("sessions"):
+                expected_column = self._sessions.columns.get(column["name"])
+                if expected_column is not None and column["type"]._type_affinity != expected_column.type._type_affinity:
+                    raise RuntimeError("Unexpected sessions column type; migration refused")
+            if inspector.get_pk_constraint("sessions").get("constrained_columns") != ["session_id"]:
+                raise RuntimeError("Unexpected sessions primary key; migration refused")
+            if not required <= columns or columns - set(self._sessions.columns.keys()):
+                raise RuntimeError("Unexpected sessions schema; migration refused")
+            if existing == expected and columns == set(self._sessions.columns.keys()):
+                receipt_columns = {c["name"] for c in inspector.get_columns("message_receipts")}
+                if receipt_columns != set(self._message_receipts.columns.keys()):
+                    raise RuntimeError("Unexpected receipt schema; migration refused")
+                return
+            if not backup_verified:
+                raise RuntimeError("Existing schema needs migration: provide a verified backup file")
         self._metadata.create_all(self._engine)
 
         columns = {col["name"] for col in inspect(self._engine).get_columns("sessions")}
         if "last_message_at" not in columns:
-            with self._engine.begin() as conn:
+            with self._connection(write=True) as conn:
                 conn.execute(text("ALTER TABLE sessions ADD COLUMN last_message_at VARCHAR(64)"))
         if "version" not in columns:
-            with self._engine.begin() as conn:
+            with self._connection(write=True) as conn:
                 conn.execute(text("ALTER TABLE sessions ADD COLUMN version INTEGER NOT NULL DEFAULT 0"))
-        with self._engine.begin() as conn:
+        with self._connection(write=True) as conn:
             conn.execute(
                 update(self._sessions)
                 .where(self._sessions.c.last_message_at.is_(None))
@@ -323,7 +381,7 @@ class SessionStore:
 
     def get(self, session_id: str) -> DialogueState | None:
         with self._lock:
-            with self._engine.connect() as conn:
+            with self._connection() as conn:
                 row = conn.execute(
                     select(self._sessions.c.state_json, self._sessions.c.version).where(
                         self._sessions.c.session_id == session_id
@@ -342,7 +400,7 @@ class SessionStore:
         payload = json.dumps(state_to_dict(state), ensure_ascii=False, default=str)
         now = datetime.now(timezone.utc).isoformat()
         with self._lock:
-            with self._engine.begin() as conn:
+            with self._connection(write=True) as conn:
                 previous = conn.execute(
                     select(
                         self._sessions.c.state_json,
@@ -413,7 +471,13 @@ class SessionStore:
             if self._engine.dialect.name != "postgresql":
                 yield
                 return
-            with self._engine.connect() as conn:
+            ambient = self._transaction_connection.get()
+            if ambient is not None:
+                ambient.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:session_id, 0))"),
+                    {"session_id": session_id})
+                yield
+                return
+            with self._connection() as conn:
                 conn.execute(
                     text("SELECT pg_advisory_lock(hashtextextended(:session_id, 0))"),
                     {"session_id": session_id},
@@ -434,7 +498,7 @@ class SessionStore:
             datetime.now(timezone.utc)
             - timedelta(days=max(1, settings.MESSAGE_RECEIPT_RETENTION_DAYS))
         ).isoformat()
-        with self._engine.connect() as conn:
+        with self._connection() as conn:
             row = conn.execute(
                 select(self._message_receipts.c.response_json).where(
                     self._message_receipts.c.session_id == session_id,
@@ -453,7 +517,7 @@ class SessionStore:
             "response_json": json.dumps(response, ensure_ascii=False, default=str),
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        with self._engine.begin() as conn:
+        with self._connection(write=True) as conn:
             cutoff = (
                 datetime.now(timezone.utc)
                 - timedelta(days=max(1, settings.MESSAGE_RECEIPT_RETENTION_DAYS))
@@ -477,7 +541,7 @@ class SessionStore:
 
     def delete(self, session_id: str):
         with self._lock:
-            with self._engine.begin() as conn:
+            with self._connection(write=True) as conn:
                 conn.execute(
                     delete(self._sessions).where(self._sessions.c.session_id == session_id)
                 )
@@ -504,7 +568,7 @@ class SessionStore:
                     func.json_extract(self._sessions.c.state_json, "$.linked_object_snapshot.object_id") == linked_object_id,
                 ])
         with self._lock:
-            with self._engine.connect() as conn:
+            with self._connection() as conn:
                 rows = conn.execute(
                     select(
                         self._sessions.c.session_id,
@@ -580,4 +644,4 @@ class SessionStore:
         return state
 
 
-session_store = SessionStore()
+session_store = SessionStore(initialize=False)

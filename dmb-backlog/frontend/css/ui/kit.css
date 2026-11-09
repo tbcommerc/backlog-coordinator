@@ -1,6 +1,10 @@
 /* SPA entry: shared components first, explicit legacy/page adapters last. */
-@import url("./core.css?v=7");
-@import url("./adapters.css?v=4");
-@import url("./registry.css?v=1");
+@import url("./core.css?v=12");
+@import url("./adapters.css?v=6");
+@import url("./registry.css?v=2");
+@import url("./filter-catalog.css?v=1");
 
 @import url("./info-chips.css?v=1");
+@import url("./page-compositions.css?v=1");
+@import url("./disclosure-navigation.css?v=1");
+@import url("./registry-tables.css?v=1");

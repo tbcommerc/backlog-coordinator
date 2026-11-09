@@ -1,0 +1,4118 @@
+{
+  "components": {
+    "schemas": {
+      "AgentResponse": {
+        "additionalProperties": false,
+        "description": "Единый конверт ответа для обоих сценариев.",
+        "properties": {
+          "audit": {
+            "$ref": "#/components/schemas/ResponseAudit"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriorityResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_type": {
+            "enum": [
+              "value",
+              "priority"
+            ],
+            "title": "Request Type",
+            "type": "string"
+          },
+          "status": {
+            "default": "ok",
+            "enum": [
+              "ok",
+              "insufficient_data",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValueResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Для сценария value — всегда. Для priority — только если Value не был заполнен человеком и агент рассчитал его сам"
+          },
+          "warnings": {
+            "description": "Что мешало посчитать точнее, но не остановило расчёт",
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "task_id",
+          "request_type",
+          "audit"
+        ],
+        "title": "AgentResponse",
+        "type": "object"
+      },
+      "Analogue": {
+        "description": "Задача с человеческим Value, использованная как аналог.",
+        "properties": {
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "similarity": {
+            "title": "Similarity",
+            "type": "number"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "value_mln": {
+            "title": "Value Mln",
+            "type": "number"
+          }
+        },
+        "required": [
+          "task_id",
+          "title",
+          "value_mln",
+          "similarity"
+        ],
+        "title": "Analogue",
+        "type": "object"
+      },
+      "AttributionIn": {
+        "properties": {
+          "actor": {
+            "default": "methodologist",
+            "title": "Actor",
+            "type": "string"
+          },
+          "front_actual_revenue_mln": {
+            "exclusiveMinimum": 0.0,
+            "title": "Front Actual Revenue Mln",
+            "type": "number"
+          },
+          "only_closed": {
+            "default": true,
+            "title": "Only Closed",
+            "type": "boolean"
+          },
+          "period": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Period",
+            "type": "string"
+          },
+          "task_keys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5000,
+            "minItems": 1,
+            "title": "Task Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "period",
+          "front_actual_revenue_mln",
+          "task_keys"
+        ],
+        "title": "AttributionIn",
+        "type": "object"
+      },
+      "CoordinatorPriorityOut": {
+        "additionalProperties": false,
+        "description": "Ответ сценария приоритета в том виде, в каком его ждёт Координатор.\n\nТри поля шаблона и ничего больше — ответ уходит в чужую систему напрямую.\nРазбор по факторам, овверрайды и аудит остаются внутри агента.",
+        "properties": {
+          "priority_score": {
+            "anyOf": [
+              {
+                "enum": [
+                  "P1",
+                  "P2",
+                  "P3",
+                  "P4",
+                  "P5"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Приоритет для записи в бэклог. null — расчёт не состоялся",
+            "title": "Priority Score"
+          },
+          "priority_score_confidence": {
+            "description": "Уровень уверенности одним словом. Разбор — в logic",
+            "enum": [
+              "низкая",
+              "средняя",
+              "высокая"
+            ],
+            "title": "Priority Score Confidence",
+            "type": "string"
+          },
+          "priority_score_logic": {
+            "description": "Как получен приоритет: вклад факторов, овверрайды, чего не хватило",
+            "title": "Priority Score Logic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "priority_score",
+          "priority_score_confidence",
+          "priority_score_logic"
+        ],
+        "title": "CoordinatorPriorityOut",
+        "type": "object"
+      },
+      "CoordinatorValueOut": {
+        "additionalProperties": false,
+        "description": "Ответ сценария Value в том виде, в каком его ждёт Координатор бэклога.\n\nТри поля шаблона и ничего больше: ответ уходит в чужую систему напрямую, и\nлишние ключи там либо игнорируются, либо ломают разбор. Подробный разбор по\nметодам, драйверы и аудит остаются внутри агента — они нужны для истории\nзапросов и для объяснения человеку, но в шаблон не входят.\n\nПриоритет здесь не считается никогда: на него приходит отдельный запрос.",
+        "properties": {
+          "value_internal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Число для записи в поле Value, млн ₽. null — расчёт не состоялся",
+            "title": "Value Internal"
+          },
+          "value_internal_confidence": {
+            "description": "Уровень уверенности одним словом. Диапазон — в value_internal_logic",
+            "enum": [
+              "низкая",
+              "средняя",
+              "высокая"
+            ],
+            "title": "Value Internal Confidence",
+            "type": "string"
+          },
+          "value_internal_logic": {
+            "description": "Как получено число: методы, расчёты, период, чего не хватило",
+            "title": "Value Internal Logic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value_internal",
+          "value_internal_confidence",
+          "value_internal_logic"
+        ],
+        "title": "CoordinatorValueOut",
+        "type": "object"
+      },
+      "CreateRun": {
+        "additionalProperties": false,
+        "properties": {
+          "contract_version": {
+            "const": "1.0",
+            "enum": [
+              "1.0"
+            ],
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Ref"
+          },
+          "input": {
+            "title": "Input",
+            "type": "object"
+          },
+          "operation": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Operation",
+            "type": "string"
+          },
+          "retry_of": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Of"
+          },
+          "retry_of_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Of Key"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          }
+        },
+        "required": [
+          "contract_version",
+          "operation",
+          "source",
+          "input"
+        ],
+        "title": "CreateRun",
+        "type": "object"
+      },
+      "Dependency": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Reason",
+            "type": "string"
+          },
+          "team": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Team",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "blocking",
+              "coordination",
+              "informational"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team",
+          "type"
+        ],
+        "title": "Dependency",
+        "type": "object"
+      },
+      "DriverUsed": {
+        "description": "Величина, использованная в расчёте, и то, откуда она взялась.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "origin": {
+            "description": "reference — из справочника; substitution — разрешённая замена; assumption — предположение из здравого смысла; attribute — из атрибутов задачи",
+            "enum": [
+              "reference",
+              "substitution",
+              "assumption",
+              "attribute"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "substituted_for": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Какой драйвер заменён, если origin=substitution",
+            "title": "Substituted For"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "enum": [
+                  "measured",
+                  "expert",
+                  "assumed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "title",
+          "value",
+          "unit",
+          "origin"
+        ],
+        "title": "DriverUsed",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "description": "Отказ от расчёта: не хватило данных или сбой.",
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "missing_attributes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Attributes",
+            "type": "array"
+          },
+          "request_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "value",
+                  "priority"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Type"
+          },
+          "status": {
+            "enum": [
+              "insufficient_data",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          }
+        },
+        "required": [
+          "status",
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "FactorResult": {
+        "description": "Один фактор приоритизации в табличном виде для Координатора.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "contribution": {
+            "description": "weight × score × multiplier",
+            "title": "Contribution",
+            "type": "number"
+          },
+          "explanation": {
+            "description": "Почему такое значение",
+            "title": "Explanation",
+            "type": "string"
+          },
+          "multiplier": {
+            "default": 1.0,
+            "description": "Множитель к вкладу. У F1 это уверенность в оценке Value: она уточняет Value, а не является самостоятельным свойством задачи",
+            "title": "Multiplier",
+            "type": "number"
+          },
+          "score": {
+            "description": "Нормализованный балл 0–1",
+            "title": "Score",
+            "type": "number"
+          },
+          "source": {
+            "description": "computed — из атрибутов; assessed — суждение субагента; default — нейтральное значение, данных не было",
+            "enum": [
+              "computed",
+              "assessed",
+              "default"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "title",
+          "weight",
+          "score",
+          "contribution",
+          "explanation",
+          "source"
+        ],
+        "title": "FactorResult",
+        "type": "object"
+      },
+      "GrantRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_evidence": {
+            "items": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 60,
+            "title": "Allowed Evidence",
+            "type": "array"
+          },
+          "role": {
+            "enum": [
+              "strategy-analyst",
+              "dependency-analyst"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "source_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Source Hash",
+            "type": "string"
+          },
+          "subject": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Subject",
+            "type": "string"
+          },
+          "task_key": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Task Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "subject",
+          "role",
+          "task_key",
+          "source_hash"
+        ],
+        "title": "GrantRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Horizon": {
+        "description": "Период получения дохода: три года начиная со следующего после срока.",
+        "properties": {
+          "derived_from": {
+            "description": "Исходное значение срока выполнения",
+            "title": "Derived From",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "years": {
+            "default": 3,
+            "title": "Years",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "derived_from"
+        ],
+        "title": "Horizon",
+        "type": "object"
+      },
+      "MethodResult": {
+        "description": "Результат одного метода расчёта.\n\nОба метода считаются на каждой задаче и возвращаются оба. Раньше наружу\nуходил только победивший, а проигравший оставался в аудите — из-за этого\nнельзя было увидеть, насколько они расходятся, и понять, готов ли доходный\nметод стать основным.",
+        "properties": {
+          "analogues": {
+            "items": {
+              "$ref": "#/components/schemas/Analogue"
+            },
+            "title": "Analogues",
+            "type": "array"
+          },
+          "calculation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "drivers": {
+            "items": {
+              "$ref": "#/components/schemas/DriverUsed"
+            },
+            "title": "Drivers",
+            "type": "array"
+          },
+          "method": {
+            "enum": [
+              "manual",
+              "analogy",
+              "drivers",
+              "blended",
+              "zero"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "missing_inputs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Inputs",
+            "type": "array"
+          },
+          "title": {
+            "description": "Название метода по-русски, для интерфейса",
+            "title": "Title",
+            "type": "string"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему метод не дал числа",
+            "title": "Unavailable Reason"
+          },
+          "value_mln": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — метод неприменим или не хватило величины",
+            "title": "Value Mln"
+          }
+        },
+        "required": [
+          "method",
+          "title",
+          "value_mln"
+        ],
+        "title": "MethodResult",
+        "type": "object"
+      },
+      "OverrideApplied": {
+        "properties": {
+          "priority_after": {
+            "title": "Priority After",
+            "type": "string"
+          },
+          "priority_before": {
+            "title": "Priority Before",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "title",
+          "reason",
+          "priority_before",
+          "priority_after"
+        ],
+        "title": "OverrideApplied",
+        "type": "object"
+      },
+      "PriorityHistoryOut": {
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "new_priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Priority"
+          },
+          "new_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Score"
+          },
+          "old_priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Priority"
+          },
+          "old_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Score"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "created_at",
+          "reason",
+          "actor"
+        ],
+        "title": "PriorityHistoryOut",
+        "type": "object"
+      },
+      "PriorityRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "request_type": {
+            "const": "priority",
+            "default": "priority",
+            "enum": [
+              "priority"
+            ],
+            "title": "Request Type",
+            "type": "string"
+          },
+          "task": {
+            "$ref": "#/components/schemas/TaskAttributes"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "title": "PriorityRequest",
+        "type": "object"
+      },
+      "PriorityResult": {
+        "properties": {
+          "bands": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Bands",
+            "type": "object"
+          },
+          "cost_rub": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Трудозатраты × ставка ч/ч",
+            "title": "Cost Rub"
+          },
+          "cost_to_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cost / Value. Меньше — лучше. В приоритет не входит",
+            "title": "Cost To Value"
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/FactorResult"
+            },
+            "title": "Factors",
+            "type": "array"
+          },
+          "overrides": {
+            "items": {
+              "$ref": "#/components/schemas/OverrideApplied"
+            },
+            "title": "Overrides",
+            "type": "array"
+          },
+          "priority": {
+            "enum": [
+              "P1",
+              "P2",
+              "P3",
+              "P4",
+              "P5"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "score": {
+            "description": "Сырой скор 0–1; нужен для сортировки внутри одного P",
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "priority",
+          "score",
+          "factors",
+          "rationale"
+        ],
+        "title": "PriorityResult",
+        "type": "object"
+      },
+      "RagQueryOut": {
+        "properties": {
+          "corpus_size": {
+            "title": "Corpus Size",
+            "type": "integer"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "type": "object"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "retrieval_mode": {
+            "title": "Retrieval Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "retrieval_mode",
+          "corpus_size",
+          "results"
+        ],
+        "title": "RagQueryOut",
+        "type": "object"
+      },
+      "RecomputeIn": {
+        "properties": {
+          "reason": {
+            "default": "references_changed",
+            "title": "Reason",
+            "type": "string"
+          },
+          "refresh_strategy": {
+            "default": false,
+            "title": "Refresh Strategy",
+            "type": "boolean"
+          },
+          "use_llm": {
+            "default": true,
+            "title": "Use Llm",
+            "type": "boolean"
+          }
+        },
+        "title": "RecomputeIn",
+        "type": "object"
+      },
+      "RecomputeOut": {
+        "properties": {
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "stats": {
+            "title": "Stats",
+            "type": "object"
+          }
+        },
+        "required": [
+          "stats"
+        ],
+        "title": "RecomputeOut",
+        "type": "object"
+      },
+      "ReferenceIn": {
+        "properties": {
+          "actor": {
+            "default": "methodologist",
+            "title": "Actor",
+            "type": "string"
+          },
+          "payload": {
+            "title": "Payload",
+            "type": "object"
+          }
+        },
+        "required": [
+          "payload"
+        ],
+        "title": "ReferenceIn",
+        "type": "object"
+      },
+      "ReferenceOut": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "payload": {
+            "title": "Payload",
+            "type": "object"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "payload"
+        ],
+        "title": "ReferenceOut",
+        "type": "object"
+      },
+      "ResponseAudit": {
+        "description": "След расчёта. Нужен, чтобы результат можно было воспроизвести и оспорить.",
+        "properties": {
+          "cache_key": {
+            "description": "Хеш нормализованных атрибутов",
+            "title": "Cache Key",
+            "type": "string"
+          },
+          "cached": {
+            "description": "Ответ отдан из истории без обращения к модели",
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "llm_calls": {
+            "default": 0,
+            "title": "Llm Calls",
+            "type": "integer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "phase_duration_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Длительность инженерных фаз запроса; на результат расчёта не влияет",
+            "title": "Phase Duration Ms",
+            "type": "object"
+          },
+          "reference_versions": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Версии справочников, на которых считалось",
+            "title": "Reference Versions",
+            "type": "object"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "reused_from_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reused From Request Id"
+          },
+          "snapshot_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Версия зашитого слепка бэклога для поиска аналогов",
+            "title": "Snapshot Version"
+          }
+        },
+        "required": [
+          "request_id",
+          "cache_key",
+          "cached",
+          "computed_at"
+        ],
+        "title": "ResponseAudit",
+        "type": "object"
+      },
+      "Source": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "snapshot_hash": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "title": "Snapshot Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref",
+          "revision",
+          "snapshot_hash"
+        ],
+        "title": "Source",
+        "type": "object"
+      },
+      "TaskAttributes": {
+        "additionalProperties": false,
+        "description": "Атрибуты задачи, приходящие из Координатора.\n\nИмена соответствуют колонкам Единого бэклога; сопоставление —\nв `docs/COORDINATOR-CONTRACT.md`.",
+        "properties": {
+          "business_customer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ФИО бизнес-заказчика. Нужно для уровня заказчика",
+            "title": "Business Customer"
+          },
+          "created_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Дата поступления задачи",
+            "title": "Created Date"
+          },
+          "customer_division": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Подразделение бизнес-заказчика",
+            "title": "Customer Division"
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Срок выполнения в исходном виде: «3Q 2026», «2026», «БЕЗ СРОКА»",
+            "title": "Deadline"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Описание задачи. Заполняется редко",
+            "title": "Description"
+          },
+          "effort_man_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Оценка трудозатрат, ч/д. Нужна для Cost и C/V",
+            "title": "Effort Man Days"
+          },
+          "involved_teams": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Другие вовлечённые команды. Если пусто — определяет субагент",
+            "title": "Involved Teams"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Проект. По гранулярности ближе к стратегии, чем задача, поэтому весомее при оценке стратегического соответствия",
+            "title": "Project"
+          },
+          "task_id": {
+            "description": "ID задачи, например TASK-100-011",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "task_type": {
+            "description": "Тип задачи: цель, AD-HOC, исследование, техдолг",
+            "title": "Task Type",
+            "type": "string"
+          },
+          "team": {
+            "description": "Ответственная команда или кластер",
+            "title": "Team",
+            "type": "string"
+          },
+          "title": {
+            "description": "Наименование задачи / краткая постановка",
+            "title": "Title",
+            "type": "string"
+          },
+          "value_internal_mln": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Value, заполненный человеком. Истина, уверенность 100%",
+            "title": "Value Internal Mln"
+          }
+        },
+        "required": [
+          "task_id",
+          "task_type",
+          "team",
+          "title"
+        ],
+        "title": "TaskAttributes",
+        "type": "object"
+      },
+      "TaskExternalOut": {
+        "description": "Выгрузка для внешнего контура.\n\nUS-7: наружу уходит только доходная методика. Поля value_internal и любых\nпроизводных экономии времени в этой схеме нет физически — так ограничение\nруководства банка выполняется структурой API, а не дисциплиной выгружающего.",
+        "properties": {
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "task_key": {
+            "title": "Task Key",
+            "type": "string"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "value_external_mln": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value External Mln"
+          },
+          "value_external_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value External Status"
+          }
+        },
+        "required": [
+          "task_key"
+        ],
+        "title": "TaskExternalOut",
+        "type": "object"
+      },
+      "TaskOut": {
+        "properties": {
+          "applied_overrides": {
+            "items": {
+              "type": "object"
+            },
+            "title": "Applied Overrides",
+            "type": "array"
+          },
+          "computed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed At"
+          },
+          "cost_rub": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Rub"
+          },
+          "cost_to_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost To Value"
+          },
+          "customer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer"
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline"
+          },
+          "effort_man_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort Man Days"
+          },
+          "factor_contributions": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Factor Contributions",
+            "type": "object"
+          },
+          "factor_scores": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Factor Scores",
+            "type": "object"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "priority_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority Original"
+          },
+          "priority_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority Reason"
+          },
+          "priority_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority Score"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "task_key": {
+            "title": "Task Key",
+            "type": "string"
+          },
+          "task_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Type"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "value_confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Confidence"
+          },
+          "value_external_mln": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value External Mln"
+          },
+          "value_external_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value External Status"
+          },
+          "value_high_mln": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value High Mln"
+          },
+          "value_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Hint"
+          },
+          "value_internal_mln": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Internal Mln"
+          },
+          "value_low_mln": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Low Mln"
+          },
+          "value_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Source"
+          }
+        },
+        "required": [
+          "task_key"
+        ],
+        "title": "TaskOut",
+        "type": "object"
+      },
+      "TaskUpdateIn": {
+        "properties": {
+          "customer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer"
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline"
+          },
+          "effort_man_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort Man Days"
+          },
+          "task_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Type"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "value_manual_mln": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Manual Mln"
+          }
+        },
+        "title": "TaskUpdateIn",
+        "type": "object"
+      },
+      "ToolCall": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxProperties": 60,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answers"
+          },
+          "call_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Call Id",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 60,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "factor": {
+            "anyOf": [
+              {
+                "enum": [
+                  "F5",
+                  "F6"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factor"
+          },
+          "operation": {
+            "enum": [
+              "rubric-read",
+              "assessments-read",
+              "strategy-assess",
+              "dependency-assess"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "rationale": {
+            "default": "",
+            "maxLength": 5000,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "task_key": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Key"
+          },
+          "teams": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Dependency"
+                },
+                "maxItems": 60,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teams"
+          }
+        },
+        "required": [
+          "run_id",
+          "call_id",
+          "operation"
+        ],
+        "title": "ToolCall",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ValueRange": {
+        "description": "Диапазон, в который истинное значение попадает с заявленной вероятностью.\n\nМножители получены конформной калибровкой на фактических ошибках, отдельно\nдля каждого метода и уровня уверенности, поэтому 95% — измеренная величина,\nа не обещание. Ширина диапазона и есть численное выражение уверенности.",
+        "properties": {
+          "calibrated": {
+            "default": true,
+            "description": "false — множители унаследованы от более широкого уровня, наблюдений для собственной калибровки пока мало",
+            "title": "Calibrated",
+            "type": "boolean"
+          },
+          "coverage": {
+            "default": 0.95,
+            "description": "Доля попаданий истины в диапазон",
+            "title": "Coverage",
+            "type": "number"
+          },
+          "high_mln": {
+            "title": "High Mln",
+            "type": "number"
+          },
+          "low_mln": {
+            "title": "Low Mln",
+            "type": "number"
+          },
+          "text": {
+            "description": "Готовая строка для интерфейса, например «88–1 180 млн ₽»",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "low_mln",
+          "high_mln",
+          "text"
+        ],
+        "title": "ValueRange",
+        "type": "object"
+      },
+      "ValueRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Формулировка задания из Координатора; на расчёт не влияет",
+            "title": "Prompt"
+          },
+          "request_type": {
+            "const": "value",
+            "default": "value",
+            "enum": [
+              "value"
+            ],
+            "title": "Request Type",
+            "type": "string"
+          },
+          "task": {
+            "$ref": "#/components/schemas/TaskAttributes"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "title": "ValueRequest",
+        "type": "object"
+      },
+      "ValueResult": {
+        "description": "Ответ сценария Value: три поля для Координатора плюс разбор.\n\nКоординатор записывает в бэклог **одно** число — `value_mln`. Диапазон и\nпояснение показываются рядом с полем, но в него не пишутся.",
+        "properties": {
+          "calculation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Формула расчёта строкой",
+            "title": "Calculation"
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "currency": {
+            "const": "RUB",
+            "default": "RUB",
+            "enum": [
+              "RUB"
+            ],
+            "title": "Currency",
+            "type": "string"
+          },
+          "explanation": {
+            "description": "Готовый текст для поля пояснения",
+            "title": "Explanation",
+            "type": "string"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Horizon"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method": {
+            "enum": [
+              "manual",
+              "analogy",
+              "drivers",
+              "blended",
+              "zero"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "method_divergence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Во сколько раз расходятся методы, давшие число. Больше трёх — повод не доверять ни одному",
+            "title": "Method Divergence"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/MethodResult"
+            },
+            "title": "Methods",
+            "type": "array"
+          },
+          "missing_inputs": {
+            "description": "Что уточнить, чтобы оценка стала надёжнее",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Inputs",
+            "type": "array"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValueRange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null у точных значений: ручного и нуля по методике"
+          },
+          "value_mln": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Значение для записи в поле Value, млн ₽",
+            "title": "Value Mln"
+          },
+          "zero_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему Value равен нулю: техдолг, исследование, регуляторка",
+            "title": "Zero Reason"
+          }
+        },
+        "required": [
+          "value_mln",
+          "explanation",
+          "confidence",
+          "method"
+        ],
+        "title": "ValueResult",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "PrioritiserMethodologistSecret": {
+        "in": "header",
+        "name": "X-Methodologist-Secret",
+        "type": "apiKey"
+      },
+      "PrioritiserServiceSecret": {
+        "in": "header",
+        "name": "X-Prioritiser-Secret",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "Вычисляет приоритет P1–P5 и Value для задач Единого бэклога по единой методике (ТЗ v2.0).",
+    "title": "Агент-приоритизатор инициатив трайба",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/admin/attribution": {
+      "post": {
+        "operationId": "post_attribution_admin_attribution_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttributionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Attribution Admin Attribution Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserMethodologistSecret": []
+          }
+        ],
+        "summary": "Post Attribution"
+      }
+    },
+    "/admin/references/{name}": {
+      "get": {
+        "operationId": "read_reference_admin_references__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserMethodologistSecret": []
+          }
+        ],
+        "summary": "Read Reference"
+      },
+      "put": {
+        "description": "Сохраняет новую версию справочника и пересчитывает бэклог (US-4).",
+        "operationId": "write_reference_admin_references__name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserMethodologistSecret": []
+          }
+        ],
+        "summary": "Write Reference"
+      }
+    },
+    "/agent/priority": {
+      "post": {
+        "operationId": "agent_priority_agent_priority_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-source-revision",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "X-Source-Revision",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriorityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CoordinatorPriorityOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ],
+                  "title": "Response Agent Priority Agent Priority Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Определи приоритет по инициативе"
+      }
+    },
+    "/agent/priority/full": {
+      "post": {
+        "description": "Подробный ответ для отладки и для интерфейса методолога.",
+        "operationId": "agent_priority_full_agent_priority_full_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-source-revision",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "X-Source-Revision",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriorityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AgentResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ],
+                  "title": "Response Agent Priority Full Agent Priority Full Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "То же, но с разбором по факторам, овверрайдами и аудитом"
+      }
+    },
+    "/agent/snapshot": {
+      "get": {
+        "operationId": "agent_snapshot_agent_snapshot_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Agent Snapshot Agent Snapshot Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Версия зашитого слепка исторических Value"
+      }
+    },
+    "/agent/value": {
+      "post": {
+        "description": "Только Value. Приоритет здесь не считается — на него отдельный запрос.",
+        "operationId": "agent_value_agent_value_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-source-revision",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "X-Source-Revision",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CoordinatorValueOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ],
+                  "title": "Response Agent Value Agent Value Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Рассчитай Value(internal) по инициативе"
+      }
+    },
+    "/agent/value/full": {
+      "post": {
+        "description": "Подробный ответ для отладки и для интерфейса методолога.",
+        "operationId": "agent_value_full_agent_value_full_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-source-revision",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "X-Source-Revision",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AgentResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ],
+                  "title": "Response Agent Value Full Agent Value Full Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "То же, но с разбором по методам, драйверами и аудитом"
+      }
+    },
+    "/backlog": {
+      "get": {
+        "operationId": "get_backlog_backlog_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "priority",
+              "pattern": "^(priority|value|cv|key)$",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "team",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team"
+            }
+          },
+          {
+            "in": "query",
+            "name": "priority",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^P[1-5]$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Priority"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskOut"
+                  },
+                  "title": "Response Get Backlog Backlog Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Get Backlog"
+      }
+    },
+    "/backlog/external": {
+      "get": {
+        "description": "Выгрузка для Стратком и внешней отчётности (US-7): только value_external.",
+        "operationId": "get_backlog_external_backlog_external_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 1000,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskExternalOut"
+                  },
+                  "title": "Response Get Backlog External Backlog External Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Get Backlog External"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "health_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Health Health Live Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Check persistence, provider configuration and local RAG artifacts.",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready"
+      }
+    },
+    "/internal/agent/v1/capabilities": {
+      "get": {
+        "operationId": "caps_internal_agent_v1_capabilities_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-prioritiser-secret",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Prioritiser-Secret",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Caps"
+      }
+    },
+    "/internal/agent/v1/runs": {
+      "post": {
+        "operationId": "create_internal_agent_v1_runs_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-deadline",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Agent-Deadline"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-prioritiser-secret",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Prioritiser-Secret",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRun"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create"
+      }
+    },
+    "/internal/agent/v1/runs/cancellations": {
+      "post": {
+        "operationId": "cancel_unknown_internal_agent_v1_runs_cancellations_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-deadline",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Agent-Deadline"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-prioritiser-secret",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Prioritiser-Secret",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRun"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Unknown"
+      }
+    },
+    "/internal/agent/v1/runs/{run_id}": {
+      "get": {
+        "operationId": "status_internal_agent_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-prioritiser-secret",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Prioritiser-Secret",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Status"
+      }
+    },
+    "/internal/agent/v1/runs/{run_id}/acknowledgements": {
+      "post": {
+        "operationId": "acknowledge_internal_agent_v1_runs__run_id__acknowledgements_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-prioritiser-secret",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Prioritiser-Secret",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Acknowledge"
+      }
+    },
+    "/internal/agent/v1/runs/{run_id}/cancel": {
+      "post": {
+        "operationId": "cancel_internal_agent_v1_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-prioritiser-secret",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Prioritiser-Secret",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel"
+      }
+    },
+    "/internal/agent/v1/runs/{run_id}/events": {
+      "get": {
+        "operationId": "stream_internal_agent_v1_runs__run_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "last-event-id",
+            "required": false,
+            "schema": {
+              "default": "0",
+              "title": "Last-Event-Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-prioritiser-secret",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Prioritiser-Secret",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream"
+      }
+    },
+    "/internal/agent/v1/runs/{run_id}/result": {
+      "get": {
+        "operationId": "result_internal_agent_v1_runs__run_id__result_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-read-proof",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Read-Proof",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-prioritiser-secret",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Prioritiser-Secret",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-caller",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Caller",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-actor-ref",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Actor-Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Result"
+      }
+    },
+    "/internal/tools/v1/call": {
+      "post": {
+        "operationId": "call_tool_internal_tools_v1_call_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolCall"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Call Tool",
+        "tags": [
+          "Scoped tools"
+        ]
+      }
+    },
+    "/internal/tools/v1/grants": {
+      "post": {
+        "operationId": "create_grant_internal_tools_v1_grants_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Create Grant",
+        "tags": [
+          "Scoped tools"
+        ]
+      }
+    },
+    "/internal/tools/v1/grants/{grant_id}/revoke": {
+      "post": {
+        "operationId": "revoke_internal_tools_v1_grants__grant_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Revoke",
+        "tags": [
+          "Scoped tools"
+        ]
+      }
+    },
+    "/internal/tools/v1/snapshots/{task_key}": {
+      "get": {
+        "operationId": "snapshot_identity_internal_tools_v1_snapshots__task_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_key",
+            "required": true,
+            "schema": {
+              "title": "Task Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Snapshot Identity",
+        "tags": [
+          "Scoped tools"
+        ]
+      }
+    },
+    "/rag/search": {
+      "get": {
+        "operationId": "rag_search_rag_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top_k",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Top K",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "layer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(knowledge|backlog|methodology)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Layer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RagQueryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Rag Search"
+      }
+    },
+    "/ready": {
+      "get": {
+        "description": "Check persistence, provider configuration and local RAG artifacts.",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready"
+      }
+    },
+    "/recompute-all": {
+      "post": {
+        "operationId": "recompute_everything_recompute_all_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecomputeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecomputeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Recompute Everything"
+      }
+    },
+    "/reports/low-confidence": {
+      "get": {
+        "description": "US-5: где качество оценки Value самое низкое.",
+        "operationId": "low_confidence_report_reports_low_confidence_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskOut"
+                  },
+                  "title": "Response Low Confidence Report Reports Low Confidence Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Low Confidence Report"
+      }
+    },
+    "/stats": {
+      "get": {
+        "operationId": "get_stats_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Stats Stats Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Get Stats"
+      }
+    },
+    "/tasks/{task_key}": {
+      "get": {
+        "operationId": "get_task_tasks__task_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_key",
+            "required": true,
+            "schema": {
+              "title": "Task Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Get Task"
+      },
+      "patch": {
+        "description": "Правка атрибутов с немедленным пересчётом (Ф25, US-2).",
+        "operationId": "update_task_tasks__task_key__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_key",
+            "required": true,
+            "schema": {
+              "title": "Task Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUpdateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Update Task"
+      }
+    },
+    "/tasks/{task_key}/history": {
+      "get": {
+        "operationId": "get_task_history_tasks__task_key__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_key",
+            "required": true,
+            "schema": {
+              "title": "Task Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PriorityHistoryOut"
+                  },
+                  "title": "Response Get Task History Tasks  Task Key  History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Get Task History"
+      }
+    },
+    "/tasks/{task_key}/recompute": {
+      "post": {
+        "operationId": "recompute_one_tasks__task_key__recompute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_key",
+            "required": true,
+            "schema": {
+              "title": "Task Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "use_llm",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Use Llm",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "refresh_strategy",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Refresh Strategy",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "PrioritiserServiceSecret": []
+          }
+        ],
+        "summary": "Recompute One"
+      }
+    }
+  }
+}

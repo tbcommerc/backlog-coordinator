@@ -68,7 +68,7 @@
 .saved-view-rename-editor input { width:100%; }
 .saved-view-dirty { color:var(--warning-text); }
 
-:root .ui-popover.filter-catalog-panel { width:55rem; }
+:root .ui-popover.filter-catalog-panel { width:var(--filter-catalog-width,55rem); }
 .ui-popover .filter-catalog-header { display:flex; align-items:start; justify-content:space-between; flex-wrap:wrap; gap:var(--space-2); padding:var(--space-2); margin-bottom:var(--space-2); border-bottom:1px solid var(--border-color); }
 
 :root .ui-notification-popover { width:24rem; }

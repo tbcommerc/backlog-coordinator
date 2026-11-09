@@ -1,9 +1,7 @@
 import {escapeHtml as esc} from '../htmlUtils.js';
 import {attributes,button} from './primitives.js';
 
-export function segmentedControl({label,items=[],value,attrs={}}={}) {
-  return `<div class="ui-segmented" role="group" aria-label="${esc(label)}">${items.map(item=>button({label:item.label,attrs:{...attrs,...item.attrs,'aria-pressed':item.value===value,disabled:item.disabled}})).join('')}</div>`;
-}
+export { segmentedControl, installSegmentedControls } from './segmented.js';
 
 export function rangeControl({id,label,value=0,min=0,max=100,step=1,disabled=false,attrs={}}={}) {
   if(!id||!label)throw new TypeError('Range requires id and label');

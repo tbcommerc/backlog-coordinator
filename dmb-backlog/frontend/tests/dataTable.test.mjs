@@ -2,6 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { dataTable, tableCell } from '../js/ui/dataTable.js';
 
+test('registry variant is explicit and remains available in empty state', () => {
+  const options={label:'Реестр',columns:[{key:'x',label:'Название'}],rows:[{x:'Запись'}]};
+  assert.match(dataTable({...options,variant:'registry'}),/data-ui-table="registry"[^>]*><caption/);
+  assert.match(dataTable({...options,variant:'registry',rows:[]}),/class="ui-data-table [^"]*"[^>]*data-ui-table="registry"/);
+  assert.doesNotMatch(dataTable({...options,variant:'unknown'}),/data-ui-table="registry"/);
+});
+
 test('cell escaping, safe links, zero, invalid numbers and calendar dates', () => {
   assert.match(tableCell({value:0,type:'number'}),/>0</);
   for (const value of [null,undefined,'',NaN,Infinity,'bad']) assert.match(tableCell({value,type:'number'}),/—/);

@@ -27,6 +27,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -36,7 +38,7 @@ from sqlalchemy.orm import Session
 from value_priority_assessor.config import DATA_DIR, get_settings
 from value_priority_assessor.core.models import Task
 
-INDEX_DIR = DATA_DIR / "index"
+INDEX_DIR = Path(get_settings().rag_index_dir).expanduser() if get_settings().rag_index_dir else DATA_DIR / "index"
 
 # Имя файла индекса зависит от состава задач и модели эмбеддингов. Один общий
 # файл на все наборы приводил бы к постоянной перестройке: расчёт по базе (192
@@ -170,7 +172,10 @@ class AnalogyIndex:
         self.entries: list[dict[str, Any]] = []
         self._matrix = None
         self._model = None
-        self.model_name = get_settings().rag_embedding_model
+        settings=get_settings()
+        self.model_name = settings.rag_embedding_model
+        self.encoder_profile={"model":self.model_name,"revision":settings.rag_embedding_revision,
+            "cache_dir":settings.rag_model_cache_dir,"local_files_only":settings.rag_local_files_only}
 
         if entries is not None:
             self.entries = [e for e in entries if e.get("title")]
@@ -214,7 +219,7 @@ class AnalogyIndex:
         digest = hashlib.sha256()
         # Модель входит в сигнатуру: векторы, посчитанные другой моделью,
         # несопоставимы, и переиспользовать их нельзя.
-        digest.update(self.model_name.encode("utf-8"))
+        digest.update(json.dumps(self.encoder_profile,sort_keys=True,ensure_ascii=False).encode("utf-8"))
         digest.update(b"\0")
         for entry in self.entries:
             digest.update(str(entry.get("task_key") or "").encode("utf-8"))
@@ -226,6 +231,8 @@ class AnalogyIndex:
             digest.update(str(entry.get("project") or "").encode("utf-8"))
             digest.update(b"\0")
             digest.update(str(entry.get("task_type") or "").encode("utf-8"))
+            digest.update(b"\0")
+            digest.update(str(entry.get("description") or "").encode("utf-8"))
             digest.update(b"\0")
             digest.update(str(entry["value_mln"]).encode("utf-8"))
             digest.update(b"\0")
@@ -247,7 +254,7 @@ class AnalogyIndex:
         if path.exists():
             import faiss
 
-            index = faiss.read_index(str(path))
+            index = faiss.deserialize_index(np.frombuffer(path.read_bytes(),dtype="uint8").copy())
             if index.ntotal == len(self.entries):
                 self._matrix = index.reconstruct_n(0, index.ntotal)
                 return
@@ -272,7 +279,7 @@ class AnalogyIndex:
         index = faiss.IndexFlatIP(vectors.shape[1])
         index.add(vectors)
         INDEX_DIR.mkdir(parents=True, exist_ok=True)
-        faiss.write_index(index, str(path))
+        path.write_bytes(faiss.serialize_index(index).tobytes())
         self._matrix = vectors
 
     # --- поиск --------------------------------------------------------------

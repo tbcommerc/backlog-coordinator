@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from models import Task, WorkTask, Project, TaskHistory, TaskStatus, Team, User, Deadline, Priority, ProjectStatus, EventOutbox
+from models import StartShift, ProjectTaskPlan
 from metric_models import Metric, MetricPeriod, MetricMeasurement
 from services import project_workspace as service
 from auth import get_current_user, require_non_business_customer_access
@@ -22,7 +23,7 @@ def user():
 @pytest.fixture
 def db(monkeypatch):
     engine=create_engine('sqlite://',poolclass=StaticPool,connect_args={'check_same_thread':False})
-    for model in (Task,WorkTask,Project,TaskHistory,TaskStatus,Team,User,Deadline,Priority,ProjectStatus,Metric,MetricPeriod,MetricMeasurement,EventOutbox):
+    for model in (Task,WorkTask,Project,TaskHistory,TaskStatus,Team,User,Deadline,Priority,ProjectStatus,Metric,MetricPeriod,MetricMeasurement,EventOutbox,StartShift,ProjectTaskPlan):
         model.__table__.create(engine)
     fake=NS(id=7,code='TEST',name='Направление',description=None,status=None,pl=None,created_at=None)
     monkeypatch.setattr(service,'project',lambda db,id: fake)

@@ -3,8 +3,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-const taskTable = read('js/components/taskTable.js');
-const teamBacklog = read('js/components/teamBacklog.js');
+const taskTable = read('js/components/backlogPage.js');
+const teamBacklog = read('js/components/backlogPage.js');
 const expressEstimate = read('js/components/expressEstimate.js');
 const quickFilters = read('js/components/quickFilters.js');
 const filterToolbar = read('js/components/filterToolbar.js');
@@ -12,10 +12,10 @@ const modal = read('js/components/modal.js');
 const componentsCss = read('css/components.css');
 
 test('оба бэклога используют один набор из восьми быстрых фильтров', () => {
-  assert.match(taskTable, /quickFilters: renderQuickFilters\('backlog'\)/);
-  assert.match(teamBacklog, /quickFilters: renderQuickFilters\('team'\)/);
+  assert.match(taskTable, /quickFilters: renderQuickFilters\('backlog'[,)]/);
+  assert.match(teamBacklog, /quickFilters: renderQuickFilters\('backlog'[,)]/);
   assert.match(taskTable, /initQuickFilters\('backlog', \(\) => tasksCache\?\.items \|\| \[\]\)/);
-  assert.match(teamBacklog, /initQuickFilters\('team', \(\) => teamTasksCache\?\.items \|\| \[\]\)/);
+  assert.match(teamBacklog, /initQuickFilters\('backlog', \(\) => tasksCache\?\.items \|\| \[\]\)/);
   assert.equal((quickFilters.match(/key: '/g) || []).length, 8);
 });
 

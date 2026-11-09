@@ -14,7 +14,7 @@ def populate(db):
         (date(2026, 10, 22), 'done', None, 10),
         (date(2026, 10, 22), 'ready', None, 99),
     ], 1):
-        task = row(status=status, blocked_reason=blocked)
+        task = row(status=status)
         task.id = index
         task.due_date = due
         task.execution_team_id = team
@@ -26,13 +26,13 @@ def populate(db):
     db.commit()
 
 
-@pytest.mark.parametrize('focus,expected', [('today', [2]), ('overdue', [1]), ('blocked', [1])])
+@pytest.mark.parametrize('focus,expected', [('today', [2]), ('overdue', [1])])
 def test_focus_respects_moscow_day_acl_and_active_state(db, focus, expected):
     populate(db)
     selection = Selection(db, user(), Filters(view='all', status='', focus=focus),
                           now=datetime(2026, 10, 21, 22, tzinfo=timezone.utc))
     assert [task.id for task in selection.query.all()] == expected
-    assert selection.focus_counts() == {'today': 1, 'overdue': 1, 'blocked': 1}
+    assert selection.focus_counts() == {'today': 1, 'overdue': 1}
     assert selection.aggregates()[1]['total'] == 1
 
 
@@ -41,7 +41,7 @@ def test_focus_counts_keep_other_filters(db):
     selection = Selection(db, user(), Filters(view='all', status='ready', focus='overdue'),
                           now=datetime(2026, 10, 21, 22, tzinfo=timezone.utc))
     assert selection.query.count() == 0
-    assert selection.focus_counts() == {'today': 1, 'overdue': 0, 'blocked': 0}
+    assert selection.focus_counts() == {'today': 1, 'overdue': 0}
 
 
 def test_invalid_focus_is_rejected():

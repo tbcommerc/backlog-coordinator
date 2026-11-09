@@ -147,3 +147,17 @@ async def test_history_quotes_require_current_evidence_access(setup):
     data.validate = revoked
     denied = send(client, "GET", "/v1/runs/"+row["id"]).json()
     assert "text" not in denied and denied["answer"] is None
+
+
+@pytest.mark.parametrize('audience,ttl', [('another-service',30),('backlog-assistant',-1)])
+def test_wrong_audience_or_expired_attestation_never_reaches_store_or_tools(setup,audience,ttl):
+    from sqlalchemy import func
+    from backlog_assistant.store import nonces
+    store,data,runtime=setup
+    client=TestClient(create_app(store,data,runtime,SECRET,run_workers=False))
+    token=sign(SECRET,'one','GET','/v1/sessions',audience=audience,ttl=ttl)
+    response=client.get('/v1/sessions',headers={'X-Gateway-Attestation':token})
+    assert response.status_code==401
+    with store.engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(nonces))==0
+    assert not data.executions and not runtime.instances

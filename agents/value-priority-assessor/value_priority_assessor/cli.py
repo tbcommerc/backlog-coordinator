@@ -36,6 +36,7 @@ from value_priority_assessor.core.references import (
 from value_priority_assessor.core.scoring import FACTOR_TITLES, PRIORITY_ORDER
 from value_priority_assessor.core.service import (
     REASON_MANUAL,
+    recompute_factor_priority,
     REASON_REFERENCES,
     REASON_WEIGHTS,
     recompute_all,
@@ -309,7 +310,7 @@ def cmd_assess_strategy(args: argparse.Namespace) -> int:
         save_strategy(session, task, assessment, provider="agent", actor=args.actor,
                       model=args.model)
         session.flush()
-        recompute_task(session, task, reason=REASON_MANUAL, use_llm=False)
+        recompute_factor_priority(session, task, reason=REASON_MANUAL)
 
         _emit({
             "ok": True,
@@ -352,7 +353,7 @@ def cmd_assess_dependencies(args: argparse.Namespace) -> int:
         save_dependencies(session, task, assessment, provider="agent", actor=args.actor,
                           model=args.model)
         session.flush()
-        recompute_task(session, task, reason=REASON_MANUAL, use_llm=False)
+        recompute_factor_priority(session, task, reason=REASON_MANUAL)
 
         _emit({
             "ok": True,

@@ -1,0 +1,291 @@
+[
+  {
+    "name": "final metric state",
+    "status": 200,
+    "data": {
+      "id": 10470,
+      "title": "DEV-QA-METRICS-UX-20261103-R2-RANGE",
+      "version": 52,
+      "lifecycle_state": "tracking",
+      "is_archived": false,
+      "periods": [
+        {
+          "id": 40787,
+          "quarter": 3,
+          "state": "completed",
+          "fact": {
+            "id": 40121,
+            "period_id": 40787,
+            "revision_no": 2,
+            "previous_revision_id": 40120,
+            "value": "105",
+            "as_of_date": "2026-09-30",
+            "status": "final",
+            "source": "Синтетический набор UX-ревью R2",
+            "comment": "",
+            "reason": "QA R2: сверка синтетического источника",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T14:27:35.824366+00:00"
+          },
+          "observations": {
+            "count": 0,
+            "latest_date": null,
+            "violation_count": 0,
+            "violation_dates": []
+          }
+        },
+        {
+          "id": 40788,
+          "quarter": 4,
+          "state": "active",
+          "fact": {
+            "id": 40124,
+            "period_id": 40788,
+            "revision_no": 4,
+            "previous_revision_id": 40123,
+            "value": "101",
+            "as_of_date": "2026-11-03",
+            "status": "preliminary",
+            "source": "QA R2",
+            "comment": "",
+            "reason": "QA R2: редактор A",
+            "source_measurement_id": null,
+            "source_measurement_snapshot": null,
+            "numerator": null,
+            "denominator": null,
+            "author_id": 25,
+            "created_at": "2026-11-03T14:45:37.748289+00:00"
+          },
+          "observations": {
+            "count": 26,
+            "latest_date": "2026-11-03",
+            "violation_count": 4,
+            "violation_dates": [
+              "2026-10-22",
+              "2026-10-23",
+              "2026-10-24",
+              "2026-10-25"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "history",
+    "status": 200,
+    "data": {
+      "total": 51,
+      "actions": [
+        {
+          "action": "linked",
+          "reason": ""
+        },
+        {
+          "action": "file_added",
+          "reason": ""
+        },
+        {
+          "action": "plan_created",
+          "reason": ""
+        },
+        {
+          "action": "year_scope_changed",
+          "reason": "QA R2: будущий год"
+        },
+        {
+          "action": "comment",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "period_restored",
+          "reason": "QA R2 restore period"
+        },
+        {
+          "action": "metric_resumed",
+          "reason": "QA R2 resume after restore"
+        },
+        {
+          "action": "metric_restored",
+          "reason": "QA R2 restore"
+        },
+        {
+          "action": "metric_archived",
+          "reason": "QA R2 archive"
+        },
+        {
+          "action": "period_cancelled",
+          "reason": "QA R2 cancel"
+        },
+        {
+          "action": "metric_resumed",
+          "reason": "QA R2 resume"
+        },
+        {
+          "action": "metric_paused",
+          "reason": "QA R2 pause"
+        },
+        {
+          "action": "fact_corrected",
+          "reason": "QA R2: редактор A"
+        },
+        {
+          "action": "fact_corrected",
+          "reason": "QA R2: редактор B"
+        },
+        {
+          "action": "fact_corrected",
+          "reason": "QA R2: numeric and replay checks"
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "period_closed",
+          "reason": "QA R2: сверка синтетического источника"
+        },
+        {
+          "action": "fact_corrected",
+          "reason": "QA R2: сверка синтетического источника"
+        },
+        {
+          "action": "period_closed",
+          "reason": ""
+        },
+        {
+          "action": "fact_recorded",
+          "reason": ""
+        },
+        {
+          "action": "measurement_corrected",
+          "reason": "QA R2: проверка восстановления дубликата"
+        },
+        {
+          "action": "measurement_added",
+          "reason": ""
+        },
+        {
+          "action": "fact_recorded",
+          "reason": ""
+        },
+        {
+          "action": "metric_started",
+          "reason": ""
+        },
+        {
+          "action": "plan_created",
+          "reason": ""
+        },
+        {
+          "action": "plan_created",
+          "reason": ""
+        },
+        {
+          "action": "metric_created",
+          "reason": ""
+        }
+      ]
+    }
+  }
+]

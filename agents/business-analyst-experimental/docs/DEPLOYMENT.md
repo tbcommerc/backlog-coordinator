@@ -149,3 +149,10 @@ retention и централизованный сбор определяет вл
 `requirements-dev.lock`. Для многорепличного допуска нужны
 отдельные smoke проверки PostgreSQL, повторов `message_id`, trace propagation и
 failover; unit-тесты не заменяют стендовую проверку.
+
+
+Проверено 04.11.2026: для Linux/Python 3.12 используются `requirements-linux.lock`
+и `requirements-dev-linux.lock`, для Windows — прежние `.lock`. Linux lock
+собирается pip-tools 7.4.1 в закреплённом Python 3.12 image с ограничениями
+из Windows lock; общие версии не меняются. Linux-only `uvloop==0.23.0`
+соответствует предыдущему проверенному образу. Dockerfile использует Linux lock.

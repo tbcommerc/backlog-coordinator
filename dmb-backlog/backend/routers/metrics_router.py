@@ -12,7 +12,7 @@ from database import get_db
 from auth import get_current_user, require_non_business_customer_access, can_access_task, task_read_scope_clause, get_task_action_scope, is_customer_portal_only
 from models import User, Team, Project, Priority, BusinessCustomer, Department, DidClientGroup, Task, WorkTask, ReportingMeeting, TaskAttachment
 from metric_models import Metric, MetricPeriod, MetricMeasurement, MetricComment, MetricLink, MetricFile, MetricReportingStatus
-from metric_contract import Passport, PassportUpdate, PeriodCommand, MeasurementCommand, Transition, CommentCommand, LinkCommand, ReportCommand, Version, ArchiveCommand
+from metric_contract import MetricCreate, PassportUpdate, PeriodCommand, MeasurementCommand, Transition, CommentCommand, LinkCommand, ReportCommand, Version, ArchiveCommand
 from services import metric_service as service
 from services.metric_rules import today, summarize
 from services import work_tasks
@@ -80,8 +80,11 @@ def listing(period:str=Query('',max_length=30),q:str=Query('',max_length=200),
         numeric=q.upper().removeprefix('MET-')
         user_ids=db.query(User.id).filter(User.name.ilike(pattern,escape='\\'))
         query=query.filter(or_(Metric.title.ilike(pattern,escape='\\'),Metric.owner_id.in_(user_ids),Metric.id==int(numeric) if numeric.isdigit() else False))
+    if scope=='mine':query=query.filter(Metric.owner_id==user.id)
     states=filter_values(state,allowed={'draft','active','completed','cancelled'})
     if states:query=query.filter(or_(MetricPeriod.state.in_(states),and_(MetricPeriod.id.is_(None),'draft' in states)))
+    upgraded=query.filter(Metric.model_version!='legacy_v1').first()
+    if upgraded:service.require_legacy(upgraded[0])
     base=query.all()
     ids=[p.id for m,p in base if p]
     points=db.query(MetricMeasurement).filter(MetricMeasurement.period_id.in_(ids)).all() if ids else []
@@ -129,16 +132,19 @@ def targets(kind:Literal['task','work']='task',q:str=Query('',max_length=200),db
     return {'items':[dict(id=x.id,public_id=x.public_id,title=x.title) for x in query.order_by(model.id.desc()).limit(30)]}
 
 @router.post('',status_code=201)
-def create(req:Passport,idempotency_key:str|None=Header(None,min_length=8,max_length=64),db:Session=Depends(get_db),user:User=Depends(get_current_user)):
-    values=req.model_dump()
+def create(req:MetricCreate,idempotency_key:str|None=Header(None,min_length=8,max_length=64),db:Session=Depends(get_db),user:User=Depends(get_current_user)):
+    values=req.model_dump(exclude={'initial_period'})
     scope=type('Scope',(),{'team_id':req.team_id})()
     service.require(can_access_task('edit',scope,user))
     service.validate_refs(db,values)
-    reservation,fresh=reserve_idempotency(db,operation='metric.create',user_id=user.id,request_key=idempotency_key,request_data=req.model_dump(mode='json'))
+    request_data=req.model_dump(mode='json',exclude={'initial_period'} if req.initial_period is None else set())
+    reservation,fresh=reserve_idempotency(db,operation='metric.create',user_id=user.id,request_key=idempotency_key,request_data=request_data)
     if reservation and not fresh:return service.detail(db,service.get_metric(db,reservation.resource_id,user),user)
     row=Metric(**values,created_by=user.id,version=1)
     db.add(row);db.flush()
     service.record(db,row,user,'created',after=values)
+    if req.initial_period:
+        add_period(db,row,user,req.initial_period)
     if reservation:reservation.resource_type='metric';reservation.resource_id=row.id;reservation.resource_version=row.version
     return saved(db,row,user)
 
@@ -172,23 +178,35 @@ def archive(metric_id:int,req:ArchiveCommand,db:Session=Depends(get_db),user:Use
 @router.post('/{metric_id}/periods',status_code=201)
 def create_period(metric_id:int,req:PeriodCommand,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
     row=service.command(db,metric_id,user,req.version)
-    p=MetricPeriod(metric_id=row.id,state='draft',**req.model_dump(exclude={'version','reason'}))
-    service.validate_period(db,row,p)
+    add_period(db,row,user,req)
+    return saved(db,row,user)
+
+def add_period(db,row,user,req):
+    p=MetricPeriod(metric_id=row.id,state='draft',**req.model_dump(exclude={'version','reason','start_immediately'}))
+    service.validate_period(db,row,p,active=req.start_immediately)
     db.add(p);db.flush()
     service.record(db,row,user,'period_created',after=service.snapshot(p),period=p)
-    return saved(db,row,user)
+    if req.start_immediately:
+        before=service.snapshot(p)
+        p.state='active';p.method_snapshot=row.method;p.source_snapshot=row.source;p.unit_snapshot=row.unit
+        service.record(db,row,user,'activate',before,service.snapshot(p),period=p)
+    return p
 
 @router.patch('/{metric_id}/periods/{period_id}')
 def update_period(metric_id:int,period_id:int,req:PeriodCommand,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
     row=service.command(db,metric_id,user,req.version);p=service.get_period(db,row,period_id)
     service.require(p.state in ('draft','active'),'Закрытый период нельзя редактировать',409)
     if p.state=='active':service.require(bool(req.reason),'Укажите причину изменения цели или графика',422)
-    values=req.model_dump(exclude={'version','reason'});before=service.snapshot(p)
+    values=req.model_dump(exclude={'version','reason','start_immediately'});before=service.snapshot(p)
     points=db.query(MetricMeasurement).filter_by(period_id=p.id).all()
     service.require(all(req.start_date<=x.measured_on<=req.end_date for x in points),'Новые границы исключают существующие измерения',422)
     for key,value in values.items():setattr(p,key,value)
-    service.validate_period(db,row,p,active=p.state=='active',exclude_id=p.id)
+    service.validate_period(db,row,p,active=p.state=='active' or req.start_immediately,exclude_id=p.id)
     service.record(db,row,user,'period_updated',before,values,req.reason,p)
+    if req.start_immediately and p.state=='draft':
+        before=service.snapshot(p)
+        p.state='active';p.method_snapshot=row.method;p.source_snapshot=row.source;p.unit_snapshot=row.unit
+        service.record(db,row,user,'activate',before,service.snapshot(p),period=p)
     return saved(db,row,user)
 
 @router.post('/{metric_id}/periods/{period_id}/transition')
@@ -220,7 +238,10 @@ def measurement_values(db,row,p,req,exclude_id=None):
     query=db.query(MetricMeasurement).filter_by(period_id=p.id,measured_on=req.measured_on)
     if exclude_id:query=query.filter(MetricMeasurement.id!=exclude_id)
     service.require(not query.first(),'На эту дату уже есть измерение. Исправьте существующую запись.',409)
-    return req.model_dump(exclude={'version','reason'})
+    values=req.model_dump(exclude={'version','reason'})
+    values['source']=req.source or (p.source_snapshot if p.source_snapshot is not None else row.source)
+    service.require(bool(values['source'].strip()),'Укажите источник данных',422)
+    return values
 
 @router.post('/{metric_id}/periods/{period_id}/measurements',status_code=201)
 def add_measurement(metric_id:int,period_id:int,req:MeasurementCommand,db:Session=Depends(get_db),user:User=Depends(get_current_user)):

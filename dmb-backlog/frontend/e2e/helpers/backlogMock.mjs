@@ -41,7 +41,7 @@ export async function mockApp(page, { readonly = false, count = 3, conflict = fa
     }
     if (path.includes('/lock')) return json({ locked: false, acquired: true });
     if (path.endsWith('/history') || path.endsWith('/comments') || path.endsWith('/attachments')) return json([]);
-    if (path.endsWith('/reporting-context')) return json({ items: [] });
+    if (path.endsWith('/reporting-context') || path.endsWith('/reporting-statuses/context')) return json({ items: [] });
     if (path === '/notifications/snapshot') return json({ revision: 1, summary: { unread: 0, requires_action: 0, today: 0, by_category: {} }, recent_items: [], recent_total: 0, action_items: [], action_total: 0 });
     if (path === '/admin/display-settings/shared') return json({ settings: {} });
     const key = path.replace(/^\/admin\//, '').replace(/^\//, '').replace(/\/$/, '').replaceAll('-', '_');

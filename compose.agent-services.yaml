@@ -1,0 +1,107 @@
+# Independent artifacts. Provision databases, TLS and per-service env first.
+# No source mounts, implicit key inheritance or startup seed.
+name: dmb-independent-agents
+x-agent-environment: &agent-environment
+  DMB_AGENT_LIMITER_MODE: global
+  DMB_AGENT_LIMITER_REDIS_URL: redis://agent-operation-redis:6379/0
+  DMB_AGENT_LIMITER_NAMESPACE: independent-agents-v1
+  DMB_AGENT_LIMITER_STATE_DIR: /state/agent-limiter
+x-agent-volumes: &agent-volumes
+  - agent-operation-journal:/state/agent-limiter
+x-agent-dependencies: &agent-dependencies
+  agent-operation-redis:
+    condition: service_healthy
+services:
+  agent-operation-redis:
+    image: redis:7-alpine@sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "always"]
+    volumes: ["agent-operation-redis:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    restart: unless-stopped
+  business-analyst:
+    depends_on: *agent-dependencies
+    environment: *agent-environment
+    volumes: *agent-volumes
+    profiles: [business-analyst]
+    build:
+      context: .
+      dockerfile: agents/business-analyst/Dockerfile
+    env_file: agents/business-analyst/.env
+    ports: ["127.0.0.1:9000:9000"]
+    restart: unless-stopped
+  business-analyst-experimental:
+    depends_on: *agent-dependencies
+    environment: *agent-environment
+    volumes: *agent-volumes
+    profiles: [business-analyst-experimental]
+    build:
+      context: .
+      dockerfile: agents/business-analyst-experimental/Dockerfile
+    env_file: agents/business-analyst-experimental/.env
+    ports: ["127.0.0.1:9300:9300"]
+    restart: unless-stopped
+  meeting-migration:
+    profiles: [meeting-analyzer]
+    build:
+      context: .
+      dockerfile: agents/meeting-analyzer/Dockerfile
+    env_file: agents/meeting-analyzer/.env
+    command: ["python", "-m", "meeting_analyzer.migrate"]
+    restart: "no"
+  meeting-analyzer:
+    environment: *agent-environment
+    volumes: *agent-volumes
+    profiles: [meeting-analyzer]
+    build:
+      context: .
+      dockerfile: agents/meeting-analyzer/Dockerfile
+    env_file: agents/meeting-analyzer/.env
+    depends_on:
+      <<: *agent-dependencies
+      meeting-migration:
+        condition: service_completed_successfully
+    ports: ["127.0.0.1:9500:9500"]
+    restart: unless-stopped
+  meeting-worker:
+    environment: *agent-environment
+    volumes: *agent-volumes
+    profiles: [meeting-analyzer]
+    build:
+      context: .
+      dockerfile: agents/meeting-analyzer/Dockerfile
+    env_file: agents/meeting-analyzer/.env
+    command: ["python", "-m", "dmb_agent_contracts.entry", "--module", "meeting_analyzer.worker"]
+    depends_on:
+      <<: *agent-dependencies
+      meeting-migration:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  backlog-assistant:
+    depends_on: *agent-dependencies
+    environment: *agent-environment
+    volumes: *agent-volumes
+    profiles: [backlog-assistant]
+    build:
+      context: .
+      dockerfile: agents/backlog-assistant/deploy/service.Dockerfile
+    env_file: agents/backlog-assistant/.env
+    restart: unless-stopped
+  value-priority-assessor:
+    depends_on: *agent-dependencies
+    environment: *agent-environment
+    volumes: *agent-volumes
+    profiles: [value-priority-assessor]
+    build:
+      context: .
+      dockerfile: agents/value-priority-assessor/Dockerfile
+    env_file: agents/value-priority-assessor/.env
+    ports: ["127.0.0.1:9100:9100"]
+    restart: unless-stopped
+
+volumes:
+  agent-operation-redis:
+  agent-operation-journal:

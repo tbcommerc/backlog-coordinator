@@ -1,7 +1,7 @@
 import { filterMatches } from '../ui/filterValues.js';
 import { progress as kitProgress } from '../ui/dataDisplay.js';
 console.log('[DMB] customerReport.js loaded');
-import { openTaskModal } from './modal.js?v=118';
+import { openTaskModal } from './modal.js?v=125';
 import { formatTaskPublicId } from '../taskPublicId.js';
 import { button as uiButton, control as uiControl, pageHeader as uiPageHeader } from '../ui/primitives.js';
 
@@ -60,7 +60,7 @@ export function renderCustomerReport(app) {
         <h2 class="card-title">Мои задачи</h2>
         <div class="ui-customer-report-actions">
           ${uiControl({ id: 'customer-status-filter', kind: 'select', options: [{ value: '', label: 'Все статусы' }, ...['СБОР ТРЕБОВАНИЙ', 'ПРОВЕРКА ТРЕБОВАНИЙ', 'УТОЧНЕНИЕ ТРЕБОВАНИЙ', 'ЭКСПРЕСС-ОЦЕНКА', 'ПРИНЯТИЕ РЕШЕНИЯ', 'ПРИНЯТА В РАБОТУ', 'ЭСКАЛАЦИЯ НА ЛТ', 'ХОЛД', 'ВЫПОЛНЕНА', 'ОТКЛОНЕНА'].map(value => ({ value, label: value }))], attrs: { 'aria-label': 'Статус задачи' } })}
-          ${uiButton({ label: 'Обновить', icon: 'refresh-cw', iconOnly: true, size: 'small', attrs: { id: 'refresh-tasks-btn' } })}
+          ${uiButton({ label: 'Обновить', icon: 'refresh-cw', iconOnly: true, attrs: { id: 'refresh-tasks-btn' } })}
         </div>
       </div>
       <div class="card-body">

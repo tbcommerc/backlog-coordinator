@@ -35,7 +35,7 @@ export function installFilterSelects(root = document) {
   });
   const labelFor = select => select.getAttribute('aria-label') ||
     select.labels?.[0]?.querySelector('.ui-field-label')?.textContent?.trim() ||
-    select.labels?.[0]?.querySelector('span:not(.ui-icon)')?.textContent?.trim().replace(/:$/, '') || 'Фильтр';
+    select.labels?.[0]?.querySelector('span:not(.ui-icon)')?.textContent?.trim().replace(/:$/, '') || select.labels?.[0]?.textContent?.trim().replace(/:$/, '') || 'Фильтр';
 
   function open(select) {
     if (select.disabled) return;

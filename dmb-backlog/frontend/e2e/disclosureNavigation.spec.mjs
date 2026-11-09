@@ -1,0 +1,27 @@
+import {test,expect} from '@playwright/test';
+import {mkdirSync} from 'node:fs';
+import {setup} from './fixtures/projectManagementSetup.js';
+for(const width of [390,1440])for(const theme of ['light','dark'])test(`navigation and disclosure ${width} ${theme}`,async({page})=>{
+ await page.setViewportSize({width,height:900});
+ await setup(page,'#/work-projects?project=1&section=gantt&year=2026&quarter=4');
+ await page.locator('html').evaluate((el,t)=>el.dataset.theme=t,theme);
+ await expect(page.locator('.project-gantt-bar')).toHaveCount(1);
+ const dir='.runtime/disclosure-images';mkdirSync(dir,{recursive:true});
+ const stage=process.env.DISCLOSURE_CAPTURE==='before'?'before':'after';
+ await page.screenshot({path:`${dir}/${stage}-${width}-${theme}.png`,fullPage:true});
+ if(stage==='before')return;
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ if(width<700)await page.locator('.project-period-disclosure > summary').click();
+ const nav=page.getByRole('navigation',{name:'Смена периода'});
+ await expect(nav.getByRole('link',{name:'Предыдущий квартал'})).toBeVisible();
+ expect(await nav.innerText()).not.toMatch(/[←→]/);
+ const toggle=page.locator('.project-controls > summary');
+ await toggle.focus();await page.keyboard.press('Enter');
+ await expect(page.locator('.project-controls')).toHaveAttribute('open');
+ expect(await toggle.evaluate(el=>getComputedStyle(el).listStyleType)).toBe('none');
+ await page.screenshot({path:`${dir}/after-expanded-${width}-${theme}.png`,fullPage:true});
+ await toggle.focus();await page.keyboard.press('Space');
+ await expect(page.locator('.project-controls')).not.toHaveAttribute('open');
+ await nav.getByRole('link',{name:'Предыдущий квартал'}).click();
+ await expect(page).toHaveURL(/quarter=3/);
+});

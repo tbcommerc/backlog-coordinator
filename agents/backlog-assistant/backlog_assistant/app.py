@@ -4,10 +4,10 @@ import os
 from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, Request, HTTPException, Header, Depends, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, select
 from contracts.models import SessionCreate, MessageCreate, SessionPatch, Feedback
 from backlog_assistant.security import verify
-from backlog_assistant.store import Store, StoreError
+from backlog_assistant.store import Store, StoreError, runs as run_table
 from backlog_assistant.worker import Worker
 
 
@@ -30,6 +30,11 @@ def create_app(store, data, runtime, secret, *, run_workers=True, fixture_regist
 
     @app.exception_handler(StoreError)
     async def store_error(request, exc):
+        if request.url.path.startswith("/internal/agent/v1/"):
+            code = {"not_found": "run_not_found", "capacity_exceeded": "queue_full",
+                "context_conflict": "source_revision_conflict", "run_active": "source_revision_conflict"}.get(exc.code, exc.code)
+            return JSONResponse({"error": {"code": code, "message": code,
+                "retryable": False, "details": {}}}, status_code=exc.status)
         return JSONResponse({"detail": exc.code}, status_code=exc.status)
 
     async def identity(request: Request):
@@ -44,6 +49,18 @@ def create_app(store, data, runtime, secret, *, run_workers=True, fixture_regist
             raise HTTPException(401, "invalid_attestation")
         store.consume_nonce(claims)
         return actor.owner
+
+    from backlog_assistant.runs import build_router
+    from dmb_agent_contracts.run_api import install_error_handlers
+    from dmb_agent_contracts.body_limit import BodyLimit
+    app.include_router(build_router(store, data, identity, runtime))
+    install_error_handlers(app)
+    app.add_middleware(BodyLimit, limit=32000)
+    from dmb_agent_contracts.run_metrics import install as install_run_metrics
+    from backlog_assistant.runs import FacadeStore
+    async def metrics_identity(owner=Depends(identity)):
+        return "dmb", owner
+    install_run_metrics(app, FacadeStore(store), metrics_identity)
 
     def public_session(row):
         return {"id": row["id"], "title": "Разговор о бэклоге", "context_revision": row["revision"],
@@ -67,13 +84,18 @@ def create_app(store, data, runtime, secret, *, run_workers=True, fixture_regist
             raise HTTPException(422, "idempotency_key_required")
         return value
 
+    @app.get("/health/live")
+    async def live():
+        return {"status":"ok"}
+
+    @app.get("/health/ready")
     @app.get("/health")
-    async def health():
+    async def health(request:Request):
         if any(worker.done() for worker in getattr(app.state, "workers", [])):
             raise HTTPException(503, "worker_unavailable")
         with store.engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
-        return {"status": "ok", "contract_version": "1.0"}
+            connection.execute(select(run_table.c.id).limit(1))
+        return {"status": "ready" if request.url.path.endswith("/ready") else "ok", "contract_version": "1.0"}
 
     @app.get("/v1/capabilities")
     async def capabilities(owner=Depends(identity)):

@@ -1,0 +1,373 @@
+{
+  "contract_version": "1.0",
+  "endpoint": "/internal/tools/v1/call",
+  "grant_endpoint": "/internal/tools/v1/grants",
+  "permissions": {
+    "*": "deny",
+    "rubric-read": "grant",
+    "assessments-read": "grant",
+    "strategy-assess": "strategy-analyst",
+    "dependency-assess": "dependency-analyst"
+  },
+  "tools": [
+    {
+      "tool": "rubric-read",
+      "roles": [
+        "strategy-analyst",
+        "dependency-analyst"
+      ],
+      "core": "core.references.get_reference",
+      "writes": false
+    },
+    {
+      "tool": "assessments-read",
+      "roles": [
+        "strategy-analyst",
+        "dependency-analyst"
+      ],
+      "core": "strategy.store.assessment_summary",
+      "writes": false
+    },
+    {
+      "tool": "strategy-assess",
+      "roles": [
+        "strategy-analyst"
+      ],
+      "core": "strategy.rubric.score_strategy + strategy.store.save_strategy + core.service.recompute_factor_priority",
+      "writes": "F5 only"
+    },
+    {
+      "tool": "dependency-assess",
+      "roles": [
+        "dependency-analyst"
+      ],
+      "core": "strategy.rubric.score_dependencies + strategy.store.save_dependencies + core.service.recompute_factor_priority",
+      "writes": "F6 only"
+    }
+  ],
+  "input_schema": {
+    "$defs": {
+      "Dependency": {
+        "additionalProperties": false,
+        "properties": {
+          "team": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Team",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "blocking",
+              "coordination",
+              "informational"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team",
+          "type"
+        ],
+        "title": "Dependency",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "run_id": {
+        "format": "uuid",
+        "title": "Run Id",
+        "type": "string"
+      },
+      "call_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "title": "Call Id",
+        "type": "string"
+      },
+      "operation": {
+        "enum": [
+          "rubric-read",
+          "assessments-read",
+          "strategy-assess",
+          "dependency-assess"
+        ],
+        "title": "Operation",
+        "type": "string"
+      },
+      "task_key": {
+        "anyOf": [
+          {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Task Key"
+      },
+      "factor": {
+        "anyOf": [
+          {
+            "enum": [
+              "F5",
+              "F6"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Factor"
+      },
+      "answers": {
+        "anyOf": [
+          {
+            "additionalProperties": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxProperties": 60,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Answers"
+      },
+      "teams": {
+        "anyOf": [
+          {
+            "items": {
+              "$ref": "#/$defs/Dependency"
+            },
+            "maxItems": 60,
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Teams"
+      },
+      "rationale": {
+        "default": "",
+        "maxLength": 5000,
+        "title": "Rationale",
+        "type": "string"
+      },
+      "evidence": {
+        "items": {
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 60,
+        "title": "Evidence",
+        "type": "array"
+      }
+    },
+    "required": [
+      "run_id",
+      "call_id",
+      "operation"
+    ],
+    "title": "ToolCall",
+    "type": "object"
+  },
+  "grant_schema": {
+    "additionalProperties": false,
+    "properties": {
+      "run_id": {
+        "format": "uuid",
+        "title": "Run Id",
+        "type": "string"
+      },
+      "subject": {
+        "maxLength": 128,
+        "minLength": 1,
+        "title": "Subject",
+        "type": "string"
+      },
+      "role": {
+        "enum": [
+          "strategy-analyst",
+          "dependency-analyst"
+        ],
+        "title": "Role",
+        "type": "string"
+      },
+      "task_key": {
+        "maxLength": 64,
+        "minLength": 1,
+        "title": "Task Key",
+        "type": "string"
+      },
+      "source_hash": {
+        "pattern": "^[a-f0-9]{64}$",
+        "title": "Source Hash",
+        "type": "string"
+      },
+      "allowed_evidence": {
+        "items": {
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 60,
+        "title": "Allowed Evidence",
+        "type": "array"
+      }
+    },
+    "required": [
+      "run_id",
+      "subject",
+      "role",
+      "task_key",
+      "source_hash"
+    ],
+    "title": "GrantRequest",
+    "type": "object"
+  },
+  "assessment_output_schemas": {
+    "F5": {
+      "properties": {
+        "raw_score": {
+          "title": "Raw Score",
+          "type": "number"
+        },
+        "normalised": {
+          "title": "Normalised",
+          "type": "number"
+        },
+        "answers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Answers",
+          "type": "object"
+        },
+        "breakdown": {
+          "items": {
+            "type": "object"
+          },
+          "title": "Breakdown",
+          "type": "array"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "string"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "rubric_version": {
+          "default": 1,
+          "title": "Rubric Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "raw_score",
+        "normalised",
+        "answers",
+        "breakdown",
+        "confidence",
+        "rationale"
+      ],
+      "title": "StrategyAssessment",
+      "type": "object"
+    },
+    "F6": {
+      "properties": {
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "teams": {
+          "items": {
+            "type": "object"
+          },
+          "title": "Teams",
+          "type": "array"
+        },
+        "blocking_count": {
+          "title": "Blocking Count",
+          "type": "integer"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "rubric_version": {
+          "default": 1,
+          "title": "Rubric Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "score",
+        "teams",
+        "blocking_count",
+        "rationale"
+      ],
+      "title": "DependencyAssessment",
+      "type": "object"
+    }
+  },
+  "excluded": [
+    "attribution-run",
+    "reference-write",
+    "admin",
+    "shell",
+    "python-cli",
+    "rag-k3"
+  ],
+  "model_calls": 0,
+  "retrieval_initializations": 0,
+  "max_calls_per_grant": 12,
+  "grant_ttl_seconds": 180,
+  "real_remote": "not_verified",
+  "publication": {
+    "parent_operations": [
+      "value.estimate",
+      "priority.estimate"
+    ],
+    "required_parent_status": "running",
+    "tool_result": "staged",
+    "active_write": "parent_final_cas_transaction",
+    "token_can_publish": false
+  }
+}

@@ -86,7 +86,7 @@ function renderRows() {
       <td data-label="Попыток">${counter({value:item.attempts,tone:attemptTone(item.attempts),label:'Попыток доставки',className:'outbox-attempts'})}</td>
       <td data-label="Дата сбоя"><time class="outbox-date" datetime="${escapeHtml(item.dead_lettered_at || '')}">${escapeHtml(formatDate(item.dead_lettered_at))}</time></td>
       <td data-label="Причина"><div class="outbox-error-message" title="${escapeHtml(item.last_error || '')}">${icon('alert-circle')}<span>${escapeHtml(item.last_error || 'Причина не указана')}</span></div></td>
-      <td data-label="Данные"><details class="outbox-details"><summary class="btn btn-secondary btn-sm"><i data-lucide="braces" aria-hidden="true"></i><span>JSON</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary><pre class="outbox-payload">${eventPayload(item)}</pre></details></td>
+      <td data-label="Данные"><details class="outbox-details"><summary class="ui-disclosure-text btn btn-secondary btn-sm"><i data-lucide="braces" aria-hidden="true"></i><span>JSON</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary><pre class="outbox-payload">${eventPayload(item)}</pre></details></td>
       <td data-label="Действие">${button({ label: 'Отправить снова', icon: 'rotate-ccw', variant: 'primary', size: 'small', className: 'outbox-requeue', attrs: { 'data-requeue-id': item.id, 'data-attempts': item.attempts } })}</td>
     </tr>`).join('');
 }

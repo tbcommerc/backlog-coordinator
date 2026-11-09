@@ -1,5 +1,5 @@
 import { filterValues, filterMatches, setFilterValue, encodeFilterValues } from '../ui/filterValues.js';
-import { filterChip } from '../ui/primitives.js';
+import { filterChip, button, field, icon, pageHeader, routeTabs } from '../ui/primitives.js';
 import { loadMore } from '../ui/specialized.js';
 import { renderViewState } from './viewState.js';
 console.log('[DMB] reviewPage.js loaded');
@@ -51,33 +51,31 @@ let reviewRetryAppend = false;
 
 export function renderReviewPage() {
   const requirements = new URLSearchParams(globalThis.window?.location?.hash?.split('?')[1] || '').get('tab') === 'requirements';
-  const subjects = `<nav class="review-subject-tabs" aria-label="Предмет ревью"><a class="btn ${requirements ? 'btn-secondary' : 'btn-primary'}" href="#/review" ${requirements ? '' : 'aria-current="page"'}>Запросы пользователей</a><a class="btn ${requirements ? 'btn-primary' : 'btn-secondary'}" href="#/review?tab=requirements" ${requirements ? 'aria-current="page"' : ''}>Редакции БТ</a></nav>`;
+  const subjects = routeTabs({label:'Предмет ревью',selected:requirements?'requirements':'requests',items:[{id:'requests',label:'Запросы',href:'#/review'},{id:'requirements',label:'Редакции БТ',href:'#/review?tab=requirements'}]});
   if (requirements) return subjects + renderRequirementReviews();
-  return `${subjects}<div class="review-queue-card request-list-panel animate-fade-in" id="review-queue-card">
-    <div class="customer-request-toolbar review-request-toolbar">
-      <div class="toolbar-title-row request-list-title-row">
-        <div class="toolbar-title-wrap"><h1 class="toolbar-title" id="review-list-title">Запросы заказчиков</h1><p class="toolbar-subtitle">Все поступившие потребности, решения и результаты. Ревью — один из этапов запроса.</p></div>
-        <div class="request-list-title-meta"><span class="text-secondary" id="review-count" role="status" aria-live="polite">Загрузка…</span></div>
-      </div>
-      <div class="filter-panel customer-request-filter-panel"><div class="filter-toolbar-row customer-request-controls">
-        <label class="relative filter-search-wrap customer-request-search"><span class="sr-only">Поиск</span><i data-lucide="search"></i><input class="input ui-control" id="review-search" type="search" placeholder="Номер, название, автор или команда" aria-label="Поиск по номеру, названию, автору, команде или ответственному"></label>
-        <div class="customer-request-main-filters review-filter-grid">
-          <label><span>Режим работы</span><select id="review-mode-filter" class="input"><option value="action">Требуют моего действия</option><option value="active">Все активные</option><option value="history">История решений</option><option value="my_review">Моё ревью</option><option value="my_work">Моё сопровождение</option><option value="all">Все доступные</option><option value="confirmation">Ожидают подтверждения</option><option value="verification">Нужна сверка</option><option value="due">Пора пересмотреть</option></select></label>
-          <label><span>Стадия</span><select id="review-status-filter" class="input"><option value="any">Любая стадия</option><option value="submitted">Ожидает ревью</option><option value="in_review">На ревью</option><option value="returned">Ожидает уточнения</option><option value="in_progress">В проработке</option><option value="completed">Выполнен</option><option value="not_relevant">Не актуален</option><option value="task_rejected">Задача отклонена</option><option value="task_deleted">Задача удалена</option><option value="approved">Проработка завершена</option><option value="rejected">Отклонён</option><option value="accepted">Принят в бэклог</option><option value="deferred">Отложен</option><option value="withdrawn">Отозван</option><option value="queued">Ожидает исполнения</option><option value="awaiting_confirmation">Ожидает подтверждения</option><option value="needs_verification">Требует сверки</option><option value="fulfilled">Результат подтверждён</option></select></label>
-          <label><span>Команда</span><select id="review-team_ids" class="input"><option value="">Все команды</option></select></label>
-          <label><span>Бизнес-заказчик</span><select id="review-customer_ids" class="input"><option value="">Все заказчики</option></select></label>
-          <label><span>Ответственный за запрос</span><select id="review-coordinator_ids" class="input"><option value="">Все ответственные</option></select></label>
-          <label><span>Порядок</span><select id="review-sort" class="input"><option value="stage_oldest">Дольше на текущем этапе</option><option value="signals">Больше замечаний</option><option value="quality">Низкое качество</option><option value="newest">Недавно обновлённые</option></select></label>
-          <label class="review-signals-toggle"><input id="review-signals-only" type="checkbox">Только с замечаниями</label>
-        </div>
-      </div></div>
-      <div class="customer-request-quick-filters review-request-quick-filters" id="review-summary" aria-label="Быстрые фильтры">
+  return `<div class="review-queue-card request-list-panel animate-fade-in" id="review-queue-card">
+    ${pageHeader({title:'Запросы заказчиков',id:'review-list-title',className:'ui-registry-header',titleAccessory:'<span class="text-secondary" id="review-count" role="status" aria-live="polite">Загрузка…</span>'})}
+    ${subjects}
+    <div class="ui-registry-toolbar ui-registry-search-row">
+      <label class="ui-registry-search ui-search-field"><span class="sr-only">Поиск</span>${icon('search')}<input class="input ui-control" id="review-search" type="search" placeholder="Номер, название, автор или команда" aria-label="Поиск по номеру, названию, автору, команде или ответственному"></label>
+      ${button({label:'Все фильтры',icon:'sliders-horizontal',attrs:{id:'review-filters-toggle','aria-expanded':false,'aria-controls':'review-filters-panel'}})}
+      ${button({label:'Сброс',icon:'rotate-ccw',attrs:{id:'review-reset'}})}
+    </div>
+    <div id="review-filters-panel" class="ui-registry-filter-panel" hidden><div class="ui-registry-filter-grid">${field({id:"review-mode-filter",label:"Режим работы",kind:"select",className:"ui-field-fluid",attrs:{"data-ui-filter-select":true},options:[{"value": "action", "label": "Требуют моего действия"}, {"value": "active", "label": "Все активные"}, {"value": "history", "label": "История решений"}, {"value": "my_review", "label": "Моё ревью"}, {"value": "my_work", "label": "Моё сопровождение"}, {"value": "all", "label": "Все доступные"}, {"value": "confirmation", "label": "Ожидают подтверждения"}, {"value": "verification", "label": "Нужна сверка"}, {"value": "due", "label": "Пора пересмотреть"}]})}
+${field({id:"review-status-filter",label:"Стадия",kind:"select",className:"ui-field-fluid",attrs:{"data-ui-filter-select":true},options:[{"value": "any", "label": "Любая стадия"}, {"value": "submitted", "label": "Ожидает ревью"}, {"value": "in_review", "label": "На ревью"}, {"value": "returned", "label": "Ожидает уточнения"}, {"value": "in_progress", "label": "В проработке"}, {"value": "completed", "label": "Выполнен"}, {"value": "not_relevant", "label": "Не актуален"}, {"value": "task_rejected", "label": "Задача отклонена"}, {"value": "task_deleted", "label": "Задача удалена"}, {"value": "approved", "label": "Проработка завершена"}, {"value": "rejected", "label": "Отклонён"}, {"value": "accepted", "label": "Принят в бэклог"}, {"value": "deferred", "label": "Отложен"}, {"value": "withdrawn", "label": "Отозван"}, {"value": "queued", "label": "Ожидает исполнения"}, {"value": "awaiting_confirmation", "label": "Ожидает подтверждения"}, {"value": "needs_verification", "label": "Требует сверки"}, {"value": "fulfilled", "label": "Результат подтверждён"}]})}
+${field({id:"review-team_ids",label:"Команда",kind:"select",className:"ui-field-fluid",attrs:{"data-ui-filter-select":true},options:[{"value": "", "label": "Все команды"}]})}
+${field({id:"review-customer_ids",label:"Бизнес-заказчик",kind:"select",className:"ui-field-fluid",attrs:{"data-ui-filter-select":true},options:[{"value": "", "label": "Все заказчики"}]})}
+${field({id:"review-coordinator_ids",label:"Ответственный за запрос",kind:"select",className:"ui-field-fluid",attrs:{"data-ui-filter-select":true},options:[{"value": "", "label": "Все ответственные"}]})}</div></div>
+    <input id="review-signals-only" type="checkbox" hidden aria-label="Только с замечаниями">
+    <div id="review-active-filters" class="ui-registry-conditions" aria-label="Применённые условия"></div>
+    <div class="ui-registry-secondary">
+      <div class="ui-registry-conditions" id="review-summary" aria-label="Быстрые фильтры">
         ${quickFilter('status', 'submitted', 'inbox', 'Новые', 'review-new-count')}
         ${quickFilter('mode', 'my_review', 'user-check', 'Моё ревью', 'review-mine-count')}
         ${quickFilter('mode', 'action', 'user-x', 'Требуют действия', 'review-action-count')}
         ${quickFilter('aged', 'true', 'clock-3', 'Долго на этапе', 'review-aged-count')}
         ${quickFilter('signals', 'true', 'alert-circle', 'С замечаниями', 'review-risk-count')}
-      </div>
+      </div><div class="ui-registry-sort">${field({id:"review-sort",label:"Сортировка:",kind:"select",className:"ui-field-inline",options:[{"value": "stage_oldest", "label": "Дольше на текущем этапе"}, {"value": "signals", "label": "Больше замечаний"}, {"value": "quality", "label": "Низкое качество"}, {"value": "newest", "label": "Недавно обновлённые"}]})}</div>
     </div>
     <div class="review-table-body review-list-scroll" id="review-list-content" tabindex="0" aria-label="Список запросов на ревью. Область прокручивается">${renderListLoading()}</div>
   </div>`;
@@ -94,6 +92,12 @@ export async function initReviewPage(app) {
   reviewApp = app;
   reviewCurrentUser = app.store.get('currentUser') || null;
   restoreQueueControls();
+  const panel=document.getElementById('review-filters-panel'), toggle=document.getElementById('review-filters-toggle');
+  toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));});
+  panel.addEventListener('keydown',event=>{if(event.key==='Escape'){panel.hidden=true;toggle.setAttribute('aria-expanded','false');toggle.focus();}});
+  document.getElementById('review-reset').addEventListener('click',()=>{window.clearTimeout(reviewSearchTimer);setQueueControls(DEFAULT_QUEUE_STATE);saveQueueState(DEFAULT_QUEUE_STATE);syncReviewConditions();loadReviewQueue(app);});
+  document.getElementById('review-active-filters').addEventListener('click',event=>{const key=event.target.closest('[data-review-clear]')?.dataset.reviewClear;if(!key)return;const state={...queueStateFromControls(),[key]:DEFAULT_QUEUE_STATE[key]};setQueueControls(state);saveQueueState(state);syncReviewConditions();loadReviewQueue(app);toggle.focus();});
+  syncReviewConditions();
   ['team_ids','customer_ids','coordinator_ids'].forEach(key=>document.getElementById('review-'+key)?.addEventListener('change',()=>handleQueueControlsChange(true)));
   document.getElementById('review-search')?.addEventListener('input', () => { window.clearTimeout(reviewSearchTimer); reviewSearchTimer = window.setTimeout(() => handleQueueControlsChange(true), 180); });
   document.getElementById('review-mode-filter')?.addEventListener('change', () => handleQueueControlsChange(true));
@@ -139,6 +143,7 @@ async function loadReviewQueue(app, { append = false } = {}) {
     reviewLoadError = '';
     reviewRetryAppend = false;
     updateSummary();
+    syncReviewConditions();
     renderReviewList({ restoreScroll: !append });
     if (append) {
       const firstNew = [...content.querySelectorAll('.review-request-card-link')].find(link => !previousIds.has(link.dataset.reviewId));
@@ -163,8 +168,20 @@ function updateSummary() {
   for(const [name,key] of [['new','new'],['mine','mine'],['action','action'],['aged','aged'],['risk','risk']])setText(`review-${name}-count`,counts[key]||0);
 }
 
+function syncReviewConditions() {
+  const state=queueStateFromControls(), host=document.getElementById('review-active-filters');if(!host)return;
+  const controls={mode:'review-mode-filter',status:'review-status-filter',team_ids:'review-team_ids',customer_ids:'review-customer_ids',coordinator_ids:'review-coordinator_ids'};
+  const active=Object.keys(controls).filter(key=>state[key]!==DEFAULT_QUEUE_STATE[key]);
+  host.innerHTML=[...active.map(key=>{const el=document.getElementById(controls[key]);const text=filterValues(state[key]).map(value=>[...el.options].find(o=>o.value===value)?.textContent||value).join(', ');return button({label:`${el.closest('.ui-field')?.querySelector('label')?.textContent}: ${text}`,icon:'x',variant:'ghost',attrs:{'data-review-clear':key,'aria-label':`Снять условие: ${text}`}});}),...['signals','aged'].filter(key=>state[key]).map(key=>button({label:key==='signals'?'С замечаниями':'Долго на этапе',icon:'x',variant:'ghost',attrs:{'data-review-clear':key}}))].join('');
+  const count=active.length+Number(state.signals)+Number(state.aged);
+  document.getElementById('review-filters-toggle').querySelector('span').textContent='Все фильтры'+(count?' · '+count:'');
+  document.getElementById('review-reset').disabled=!count&&!state.search&&state.sort===DEFAULT_QUEUE_STATE.sort;
+  window.lucide?.createIcons();
+}
+
 function handleQueueControlsChange(resetScroll) {
   saveQueueState({ scrollTop: resetScroll ? 0 : currentQueueScroll() });
+  syncReviewConditions();
   if(reviewApp)loadReviewQueue(reviewApp);
 }
 
@@ -184,7 +201,7 @@ function renderReviewList({ restoreScroll = true } = {}) {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   });
-  const trulyEmpty = reviewRows.length === 0 && !state.search && state.mode==='all' && state.status==='any' && !state.team_ids && !state.customer_ids && !state.coordinator_ids;
+  const trulyEmpty = reviewRows.length === 0 && !state.search && state.mode==='all' && state.status==='any' && !state.team_ids && !state.customer_ids && !state.coordinator_ids && !state.signals && !state.aged;
   document.getElementById('review-queue-card')?.classList.remove('is-empty');
   setText('review-count', `Показано ${rows.length} из ${reviewMeta.total || 0}`);
   const stale = reviewLoadState === 'stale' ? renderViewState({kind:'stale',scope:'partial',title:'Показаны ранее загруженные данные.',message:reviewLoadError,actionLabel:'Повторить',actionId:'retry-review-list'}) : '';
@@ -248,8 +265,8 @@ function renderReviewCard(request) {
   const product = [draft.product, draft.module].filter(Boolean).map(value => esc(value)).join(' · ');
   const timing = stageAgeText(request);
   const tags = `${draft.priority ? `<span class="request-priority-chip"><i data-lucide="flag"></i>${esc(draft.priority)}</span>` : ''}${product ? `<span class="review-card-secondary"><i data-lucide="boxes"></i>${product}</span>` : ''}${regulated ? '<span class="is-regulated"><i data-lucide="shield-alert"></i>Регуляторные требования</span>' : ''}`;
-  const reason = issues ? `${issues} ${plural(issues, 'замечание', 'замечания', 'замечаний')}: ${groups.slice(0, 2).map(([label]) => label.toLocaleLowerCase('ru')).join(', ')}` : cardAction(request);
-  return `<article class="customer-request-card review-request-card ${priority}"><div class="customer-request-card-main"><div class="customer-request-card-heading"><div><span class="customer-request-card-id">Запрос #${esc(request.id)}</span><h3><a class="review-request-card-link" href="#/review/${esc(request.id)}" data-review-id="${esc(request.id)}" aria-label="Запрос #${esc(request.id)}: ${esc(request.title || 'Без названия')} — открыть">${esc(request.title || 'Без названия')}</a></h3></div>${renderRequestStatusBadge(request)}</div>${tags ? `<div class="review-card-tags">${tags}</div>` : ''}<p class="review-card-reason">${esc(reason)}</p><div class="customer-request-card-meta"><span><i data-lucide="user"></i>${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')}</span><span class="${unassigned ? 'is-attention' : ''}"><i data-lucide="user-check"></i>${esc(owner)}</span><span class="${aged ? 'is-attention' : ''}" title="Текущий этап начат ${date(request.stage_started_at || request.updated_at || request.created_at)}"><i data-lucide="clock-3"></i>${esc(timing)}</span></div></div><div class="customer-request-card-next review-request-card-next"><span>Следующее действие</span><strong class="review-card-action">${esc(cardAction(request))}</strong><a class="review-card-open" href="#/review/${esc(request.id)}">Открыть <i data-lucide="arrow-right"></i></a></div></article>`;
+  const reason = issues ? `${issues} ${plural(issues, 'замечание', 'замечания', 'замечаний')}: ${groups.slice(0, 2).map(([label]) => label.toLocaleLowerCase('ru')).join(', ')}` : '';
+  return `<article class="customer-request-card review-request-card ${priority}"><div class="customer-request-card-main"><div class="customer-request-card-heading"><div><span class="customer-request-card-id">Запрос #${esc(request.id)}</span><h3><a class="review-request-card-link" href="#/review/${esc(request.id)}" data-review-id="${esc(request.id)}" aria-label="Запрос #${esc(request.id)}: ${esc(request.title || 'Без названия')} — открыть">${esc(request.title || 'Без названия')}</a></h3></div>${renderRequestStatusBadge(request)}</div>${tags ? `<div class="review-card-tags">${tags}</div>` : ''}${reason ? `<p class="review-card-reason">${esc(reason)}</p>` : ''}<div class="customer-request-card-meta"><span><i data-lucide="user"></i>${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')}</span>${owner !== request.team_name ? `<span class="${unassigned ? 'is-attention' : ''}"><i data-lucide="user-check"></i>${esc(owner)}</span>` : ''}<span class="${aged ? 'is-attention' : ''}" title="Текущий этап начат ${date(request.stage_started_at || request.updated_at || request.created_at)}"><i data-lucide="clock-3"></i>${esc(timing)}</span></div></div><div class="customer-request-card-next review-request-card-next"><span>Следующее действие</span><strong class="review-card-action">${esc(cardAction(request))}</strong><a class="review-card-open" href="#/review/${esc(request.id)}">Открыть <i data-lucide="arrow-right"></i></a></div></article>`;
 }
 
 export async function renderReviewDetailPage(app, requestId) {
@@ -269,7 +286,7 @@ export async function renderReviewDetailPage(app, requestId) {
   const v2 = app.features?.agent_v2;
   const workspaceEntry = !linkedRevision && v2?.enabled && v2?.pilot_allowed && v2?.operator_role ? `<a class="btn ui-btn btn-ai" href="#/agent-v2?object_type=request&object_id=${encodeURIComponent(request.id)}"><i data-lucide="sparkles" aria-hidden="true"></i>Проработать БТ в Агенте V2</a>` : '';
   const snapshotNotice = linkedRevision ? `<section class="review-snapshot-notice" role="status"><i data-lucide="archive"></i><div><strong>Снимок принятой редакции ${esc(revisionLabel)}</strong><span>Содержимое зафиксировано и открыто только для чтения. <a href="#/review/${esc(request.id)}">Перейти к актуальной карточке</a></span></div></section>` : '';
-  return `${feedback ? renderActionFeedback(feedback) : ''}<div class="page-header review-detail-header"><a href="#/review" class="review-back"><i data-lucide="arrow-left"></i>Все запросы</a><div class="review-title-line"><h1>${esc(linkedRevision?.title || request.title)}</h1>${renderRequestStatusBadge(request)}</div><p>#${request.id} · редакция ${esc(revisionLabel)} · ${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')} · ${date(linkedRevision?.created_at || request.created_at)}</p></div>${snapshotNotice}${workspaceEntry}${renderRequestJourney(request)}${renderRequestSummary(request)}${['returned','rejected'].includes(request.status) && request.reject_reason ? `<section class="review-return-note${request.status === 'rejected' ? ' is-rejected' : ''}"><i data-lucide="${request.status === 'rejected' ? 'x-circle' : 'message-circle'}"></i><div><strong>${request.status === 'rejected' ? 'Причина отклонения' : 'Комментарий к уточнению'}</strong><span>${esc(request.reject_reason)}</span></div></section>` : ''}<div class="review-detail-layout"><div class="review-detail-main">${renderReviewOutline(draft)}${linkedRevision ? '' : renderLatestRevisionDiff(request)}${renderAttentionPanel(draft)}${requirementContent}${renderRequestHistory(request)}<details class="card review-more review-ai-assessment"><summary>Оценка подготовки запроса <span>Справочные сигналы ИИ</span><i data-lucide="chevron-down"></i></summary><div class="card-body"><div class="review-metrics">${metric('Полнота', completeness, 'Насколько заполнены обязательные разделы требования', draft.completeness_assessed_at || draft.assessed_at)}${metric('Качество', quality, 'Насколько формулировки конкретны, непротиворечивы и проверяемы', draft.quality_assessed_at || draft.assessed_at)}<div><span>Уверенность ИИ</span><strong>${confidence(draft.confidence)}</strong><small>Надёжность автоматической интерпретации</small></div><div><span>Тип обращения</span><strong>${esc(INTENTS[draft.intent] || draft.intent || 'Не определён')}</strong><small>Определён ассистентом по содержанию</small></div></div><p class="review-score-help"><i data-lucide="info"></i><span><strong>75–100%</strong> — высокая оценка, <strong>50–74%</strong> — требуется проверка, <strong>до 49%</strong> — существенные пробелы. Проценты помогают при ревью, но не заменяют решение специалиста.</span></p></div></details></div><aside class="review-detail-aside">${linkedRevision ? '' : `<section class="card review-decision-card"><div class="card-header"><h2 class="card-title">Следующий шаг</h2></div><div class="card-body">${nextStep(request, actions)}</div></section>`}${renderRequestParticipants(request)}</aside></div>`;
+  return `${feedback ? renderActionFeedback(feedback) : ''}<div class="page-header review-detail-header"><a href="#/review" class="review-back"><i data-lucide="arrow-left"></i>Все запросы</a><div class="review-title-line"><h1>${esc(linkedRevision?.title || request.title)}</h1>${renderRequestStatusBadge(request)}</div><p>#${request.id} · редакция ${esc(revisionLabel)} · ${esc(request.author_name || 'Автор не указан')} · ${esc(request.team_name || 'Без команды')} · ${date(linkedRevision?.created_at || request.created_at)}</p></div>${snapshotNotice}${workspaceEntry}${renderRequestJourney(request)}${renderRequestSummary(request)}${['returned','rejected'].includes(request.status) && request.reject_reason ? `<section class="review-return-note${request.status === 'rejected' ? ' is-rejected' : ''}"><i data-lucide="${request.status === 'rejected' ? 'x-circle' : 'message-circle'}"></i><div><strong>${request.status === 'rejected' ? 'Причина отклонения' : 'Комментарий к уточнению'}</strong><span>${esc(request.reject_reason)}</span></div></section>` : ''}<div class="review-detail-layout"><div class="review-detail-main">${renderReviewOutline(draft)}${linkedRevision ? '' : renderLatestRevisionDiff(request)}${renderAttentionPanel(draft)}${requirementContent}${renderRequestHistory(request)}<details class="card review-more review-ai-assessment"><summary class="ui-disclosure-text">Оценка подготовки запроса <span>Справочные сигналы ИИ</span><i data-lucide="chevron-down"></i></summary><div class="card-body"><div class="review-metrics">${metric('Полнота', completeness, 'Насколько заполнены обязательные разделы требования', draft.completeness_assessed_at || draft.assessed_at)}${metric('Качество', quality, 'Насколько формулировки конкретны, непротиворечивы и проверяемы', draft.quality_assessed_at || draft.assessed_at)}<div><span>Уверенность ИИ</span><strong>${confidence(draft.confidence)}</strong><small>Надёжность автоматической интерпретации</small></div><div><span>Тип обращения</span><strong>${esc(INTENTS[draft.intent] || draft.intent || 'Не определён')}</strong><small>Определён ассистентом по содержанию</small></div></div><p class="review-score-help"><i data-lucide="info"></i><span><strong>75–100%</strong> — высокая оценка, <strong>50–74%</strong> — требуется проверка, <strong>до 49%</strong> — существенные пробелы. Проценты помогают при ревью, но не заменяют решение специалиста.</span></p></div></details></div><aside class="review-detail-aside">${linkedRevision ? '' : `<section class="card review-decision-card"><div class="card-header"><h2 class="card-title">Следующий шаг</h2></div><div class="card-body">${nextStep(request, actions)}</div></section>`}${renderRequestParticipants(request)}</aside></div>`;
 }
 
 export async function initReviewDetailPage(app, requestId) {

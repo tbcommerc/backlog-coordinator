@@ -4,14 +4,15 @@ import { mockApp } from './helpers/backlogMock.mjs';
 async function open(page, scope = 'backlog', options = {}) {
   const data = await mockApp(page, options);
   await page.goto(`/#/${scope === 'team' ? 'team-backlog' : 'backlog'}`);
-  await expect(page.locator(scope === 'team' ? '#team-tasks-table tbody tr[data-task-id]' : '#tasks-table tbody tr[data-task-id]')).not.toHaveCount(0);
+  await expect(page.locator(scope === 'team' ? '#tasks-table tbody tr[data-task-id]' : '#tasks-table tbody tr[data-task-id]')).not.toHaveCount(0);
+  await expect(page.locator('#tasks-content')).toHaveAttribute('data-ready','true');
   return data;
 }
 
 for (const scope of ['backlog', 'team']) {
-  const table = scope === 'team' ? '#team-tasks-table' : '#tasks-table';
-  const container = scope === 'team' ? '#team-tasks-container' : '#tasks-container';
-  const pagination = scope === 'team' ? '#team-pagination' : '#pagination';
+  const table = scope === 'team' ? '#tasks-table' : '#tasks-table';
+  const container = scope === 'team' ? '#tasks-container' : '#tasks-container';
+  const pagination = scope === 'team' ? '#pagination' : '#pagination';
 
   test(`UX-01 ${scope}: mobile pagination reveals the first row below the toolbar`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -33,8 +34,8 @@ for (const scope of ['backlog', 'team']) {
       return y >= 0 && y < innerHeight - 100;
     })).toBe(true);
     await page.locator('.main-content').evaluate(el => { el.scrollTop = 0; });
-    await page.locator(`#${scope}-btn-column-settings`).click();
-    await page.locator(`#${scope}-col-select-all`).click();
+    await page.locator(`#backlog-btn-column-settings`).click();
+    await page.locator(`#backlog-col-select-all`).click();
     await page.getByRole('button', { name: 'Закрыть настройки колонок' }).click();
     const copy = page.locator(`${table} tbody [data-copy-task-id]`).first();
     const id = await copy.getAttribute('data-copy-task-id');
@@ -59,8 +60,8 @@ for (const scope of ['backlog', 'team']) {
 
   test(`UX-13/15 ${scope}: keyboard sort and resize`,async({page})=>{
     await open(page,scope,{count:205});
-    await page.locator(`#${scope}-btn-column-settings`).click();
-    await page.locator(`#${scope}-col-select-all`).click();
+    await page.locator(`#backlog-btn-column-settings`).click();
+    await page.locator(`#backlog-col-select-all`).click();
     await page.getByRole('button',{name:'Закрыть настройки колонок'}).click();
     const sort = page.locator(`${table} th[data-sort="title"] .table-sort-button`);
     await sort.focus();
@@ -81,9 +82,9 @@ for (const scope of ['backlog', 'team']) {
   test(`UX-11/12/14 ${scope}: mobile columns keep ID and cards open using the keyboard`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page, scope);
-    await page.locator(`#${scope}-btn-column-settings`).click();
-    await page.locator(`#${scope}-col-clear-all`).click();
-    await expect(page.locator(`#${scope}-column-settings-list input[data-col="id"]`)).toBeChecked();
+    await page.locator(`#backlog-btn-column-settings`).click();
+    await page.locator(`#backlog-col-clear-all`).click();
+    await expect(page.locator(`#backlog-column-settings-list input[data-col="id"]`)).toBeChecked();
     await page.getByRole('button', { name: 'Закрыть настройки колонок' }).click();
     await expect(page.locator(`${table} th[data-sort]`)).toHaveCount(1);
     await expect(page.locator(`${table} th[data-sort="id"]`)).toBeVisible();
@@ -100,10 +101,10 @@ for (const scope of ['backlog', 'team']) {
   test(`UX-04 ${scope}: short screen leaves useful table area in quick edit`, async ({ page }) => {
     await page.setViewportSize({ width: 844, height: 390 });
     await open(page, scope, { count: 205 });
-    await page.locator(`#${scope}-inline-edit`).click();
+    await page.locator(`#backlog-inline-edit`).click();
     await page.locator('.main-content').evaluate(el => { el.scrollTop = 800; });
     await expect.poll(async () => page.locator('.sticky-toolbar').evaluate(el => el.getBoundingClientRect().bottom)).toBeLessThan(0);
-    await expect.poll(async () => page.locator(`#qe-toolbar-${scope}`).evaluate(el => el.getBoundingClientRect().bottom)).toBeLessThan(64);
+    await expect.poll(async () => page.locator(`#qe-toolbar-backlog`).evaluate(el => el.getBoundingClientRect().bottom)).toBeLessThan(64);
     const visibleInputs = await page.locator(`${table} input[data-field="title"]`).evaluateAll(inputs => inputs.filter(el => {
       const r = el.getBoundingClientRect();
       return r.top > 120 && r.bottom < innerHeight && document.elementFromPoint(r.x + 10, r.y + 10) === el;
@@ -115,14 +116,14 @@ for (const scope of ['backlog', 'team']) {
   test(`C02/UX-19 ${scope}: pending quick edits guard view switching and expose field errors`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 }); // Progress is hidden by the DMB default layout at <=1280px.
     const { writes } = await open(page, scope);
-    await page.locator(`#${scope}-inline-edit`).click();
+    await page.locator(`#backlog-inline-edit`).click();
     const progress = page.locator(`${table} input[data-field="progress"]`).first();
     await expect(progress).toHaveAccessibleName(/Прогресс.*TASK-/);
     await progress.fill('101');
     await expect(progress).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator(`#qe-error-${scope}`)).not.toBeEmpty();
+    await expect(page.locator(`#qe-error-backlog`)).not.toBeEmpty();
     await progress.fill('15');
-    await expect(page.locator(`#qe-undo-${scope}`)).toHaveAccessibleName('Отменить последнее изменение');
+    await expect(page.locator(`#qe-undo-backlog`)).toHaveAccessibleName('Отменить последнее изменение');
     await page.getByRole('button', { name: 'Карточное представление', exact: true }).click();
     await page.getByRole('button', { name: 'Продолжить редактирование', exact: true }).click();
     await expect(page.locator(table)).toBeVisible();
@@ -130,7 +131,7 @@ for (const scope of ['backlog', 'team']) {
     await page.getByRole('button', { name: 'Карточное представление', exact: true }).click();
     await page.getByRole('button', { name: 'Сохранить и выйти', exact: true }).click();
     await expect(page.locator(`${container} .task-card`)).not.toHaveCount(0);
-    await expect(page.locator(`#qe-toolbar-${scope}`)).toBeHidden();
+    await expect(page.locator(`#qe-toolbar-backlog`)).toBeHidden();
     expect(writes).toHaveLength(1);
   });
 }
@@ -207,8 +208,8 @@ test('C01: a 409 without conflict details leaves a visible error and retains dra
 
 test('UX-19: bulk selection and progress have names, empty changes have a persistent error', async ({ page }) => {
   await open(page, 'team');
-  await page.locator('#team-bulk-open').click();
-  await page.locator('[data-team-operation="bulk"]').click();
+  await page.locator('#backlog-bulk-open').click();
+  await page.locator('[data-backlog-operation="bulk"]').click();
   const bulk = page.locator('#bulk-modal-overlay');
   await expect(bulk.locator('.bc-cb').first()).toHaveAccessibleName(/Выбрать TASK-/);
   await bulk.locator('#bc-next').click();
@@ -220,9 +221,7 @@ test('UX-19: bulk selection and progress have names, empty changes have a persis
 });
 
 test('C02: saved card view asks about pending changes and discard does not write', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('dmb_saved_views_v1_backlog', JSON.stringify({ items: [{
-    id: 'cards', name: 'Карточки для аудита', state: { toolbar: { search: '', filters: {} }, page: { view: 'cards' } },
-  }] })));
+  await page.addInitScript(() => localStorage.setItem('dmb_backlog_workspace_v2:101',JSON.stringify({schemaVersion:2,userId:101,contexts:{all:{columns:{},views:{items:[{id:'cards',name:'Карточки для аудита',state:{toolbar:{search:'',filters:{}},page:{view:'cards'}}}],defaultId:null}}}})));
   const { writes } = await open(page);
   await page.locator('#backlog-inline-edit').click();
   await page.locator('#tasks-table input[data-field="title"]').first().fill('Несохранённый заголовок');

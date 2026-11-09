@@ -1,0 +1,29 @@
+{
+  "verified": "2026-11-04",
+  "criteria": 166,
+  "pass": 166,
+  "unique_ids_match_test_plan": true,
+  "markdown_files": 15,
+  "local_links": 1061,
+  "missing_targets": 0,
+  "source_hashes_match": false,
+  "artifact_types": [
+    "sanitized JSON",
+    "mock UI PNG"
+  ],
+  "credentials_included": false,
+  "unit_repair_hashes_match": true,
+  "unit": {
+    "pass": 498,
+    "fail": 0
+  },
+  "final_density": {
+    "pass": 18,
+    "fail": 0
+  },
+  "outstanding_broader_browser_scenarios": 21,
+  "historical_source_snapshot_changed_since_original_run": [
+    "dmb-backlog/frontend/js/app.js"
+  ],
+  "ui_review_structure": "PASS"
+}

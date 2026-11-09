@@ -14,7 +14,7 @@ import {
     openNotificationTarget,
     recordNotificationUxEvent,
 } from '../notificationUtils.js?v=12';
-import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=21';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=22';
 
 const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 const MONTH_NAMES_SHORT = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
@@ -710,7 +710,7 @@ export async function initDashboard(app) {
 
         await initTeamDashboard(app);
 
-        const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=118');
+        const { openTaskModal, setOnTaskSaved } = await import('./modal.js?v=125');
         setOnTaskSaved(() => initDashboard(app));
 
     } catch (e) {

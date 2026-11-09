@@ -1,0 +1,1 @@
+import {defineConfig} from '@playwright/test';import base from './playwright.backlog-unification.config.mjs';export default defineConfig({...base,workers:1,maxFailures:1,outputDir:'../.runtime/backlog-performance-playwright',reporter:[['line'],['json',{outputFile:'../.runtime/backlog-performance-results.json'}]],testMatch:['**/unifiedBacklogPerformance.spec.mjs'],testIgnore:[]});

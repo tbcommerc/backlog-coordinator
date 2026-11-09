@@ -7,7 +7,7 @@ from auth import task_read_scope_clause, can_access_task, check_permission, is_c
 from services.work_tasks import read_scope
 
 FIELDS = ('id', 'title', 'status', 'execution_team_id', 'requester_id', 'assignee_id', 'acceptor_id',
-          'major_task_id', 'direct_project_id', 'due_date', 'blocked_reason', 'assignment_state', 'result_text', 'version')
+          'major_task_id', 'direct_project_id', 'due_date', 'assignment_state', 'result_text', 'version')
 
 def serialize(row):
     values = {key: getattr(row, key) for key in FIELDS}
@@ -30,7 +30,6 @@ def metrics(items, as_of):
     active = [x for x in items if x['status'] not in {'done', 'cancelled'}]
     return {'total':len(items), 'active':len(active), 'done':sum(x['status']=='done' for x in items),
         'overdue':sum(bool(x['due_date'] and x['due_date'] < as_of) for x in active),
-        'blocked':sum(bool(x['blocked_reason']) for x in active),
         'in_acceptance':sum(x['status']=='in_acceptance' for x in active),
         'proposals':sum(x['assignment_state']=='proposed' for x in active)}
 
@@ -46,7 +45,7 @@ def report(db, user, meeting_id=None, team_id=None):
             return {'available':False, 'message':'Для этой встречи снимок рабочих задач не зафиксирован', 'items':[], 'summary':None}
         ids = {x.id for x in visible}
         global_read = check_permission(user, 'backlog_dmb', 'read')
-        items = [dict(x) for x in snapshot.payload['items'] if x['id'] in ids and (global_read or
+        items = [{k: v for k, v in x.items() if k != 'blocked_reason'} for x in snapshot.payload['items'] if x['id'] in ids and (global_read or
             user.id in (x['requester_id'], x['assignee_id'], x['acceptor_id']) or
             (user.team_id is not None and user.team_id == x['execution_team_id']))]
         as_of = snapshot.payload['as_of']

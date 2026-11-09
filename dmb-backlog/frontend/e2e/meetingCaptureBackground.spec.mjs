@@ -34,7 +34,7 @@ async function backgroundAPI(page) {
             row.analysis_status = 'completed'; row.analysis_finished_at = new Date().toISOString(); row.version++;
             row.items = empty ? [] : [{ id: 'ai-one', title: 'Подготовить отчёт', description: '', kind: 'action', owner_text: 'Анна', due_date: null, due_text: 'к пятнице', quote: 'Анна: подготовлю отчёт к пятнице.', origin: 'ai', selected: false, link_choice: null, task_id: null }];
         },
-        fail: () => { row.analysis_status = 'failed'; row.analysis_error_code = 'interrupted'; row.analysis_error_message = 'Обработка прервана. Можно запустить новый анализ.'; row.version++; },
+        fail: (code = 'interrupted', message = 'Обработка прервана. Можно запустить новый анализ.') => { row.analysis_status = 'failed'; row.analysis_error_code = code; row.analysis_error_message = message; row.version++; },
         failNextPoll: () => { nextPollFailure = true; },
         hold: promise => { holdPoll = promise; },
         loseAcceptance: () => { loseAcceptance = true; },
@@ -187,4 +187,31 @@ test('slow history never blocks accepted work, navigation or restored status', a
     expect(await page.evaluate(() => window.testApp.router.onBeforeNavigate('/backlog'))).toBe(true);
     expect(api.starts()).toBe(1);
     release();
+});
+
+
+test('quota failure survives refresh and never restarts analysis automatically', async ({ page }) => {
+    const api = await backgroundAPI(page);
+    await begin(page);
+    api.fail('meeting_ai_quota', 'Провайдер AI ограничил доступный лимит. Черновик сохранён.');
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Проверьте лимит AI' })).toBeVisible();
+    await expect(page.getByText('Провайдер AI ограничил доступный лимит. Черновик сохранён.', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Или вставьте текст')).toHaveValue('Анна: подготовлю отчёт к пятнице.');
+    expect(api.starts()).toBe(1);
+    await page.getByRole('button', { name: 'Повторить после проверки лимита', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Анализ в очереди' })).toBeVisible();
+    expect(api.starts()).toBe(2);
+});
+
+
+test('service auth failure explains connection configuration without provider details', async ({ page }) => {
+    const api = await backgroundAPI(page);
+    await begin(page);
+    api.fail('meeting_service_auth', 'Не удалось авторизовать подключение к сервису анализа. Черновик сохранён.');
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Нужно проверить настройки AI' })).toBeVisible();
+    await expect(page.getByText('Не удалось авторизовать подключение к сервису анализа. Черновик сохранён.', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Или вставьте текст')).toHaveValue('Анна: подготовлю отчёт к пятнице.');
+    expect(api.starts()).toBe(1);
 });

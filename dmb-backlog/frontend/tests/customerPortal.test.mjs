@@ -15,7 +15,7 @@ assert.match(portal, /class="review-queue-card customer-request-list request-lis
 assert.doesNotMatch(portal, /class="card review-queue-card customer-request-list/);
 assert.doesNotMatch(portal, /class="card-header customer-request-toolbar"/);
 assert.match(markup, /<h1 class="toolbar-title" id="customer-requests-title">Мои запросы<\/h1>/);
-assert.doesNotMatch(portal, /customer-requests-count|customer-requests-updated|lastLoadedAt|Обновлено/);
+assert.doesNotMatch(portal, /customer-requests-updated|lastLoadedAt|Обновлено/);
 assert.doesNotMatch(portal, /class="page-header customer-request-header animate-fade-in"/);
 assert.doesNotMatch(portal, /<h[12]>Мои задачи<\/h[12]>/);
 assert.match(presentation, /returned: \{ label: 'Требуется уточнение'/);
@@ -57,9 +57,9 @@ assert.match(portal, /role="region" aria-label="Список моих запро
 assert.match(portal, /\/customer\/task\/\$\{escapeHtml\(item\.task_id\)\}/);
 assert.match(portal, /renderCustomerTaskPage/);
 assert.match(portal, /Название или номер запроса/);
-assert.match(portal, /id="customer-request-sort"/);
+assert.match(markup, /id="customer-request-sort"/);
 assert.doesNotMatch(portal, /id="customer-request-filter"/);
-assert.match(portal, /class="filter-panel customer-request-filter-panel"/);
+assert.match(markup, /class="ui-registry-toolbar ui-registry-search-row"/);
 assert.match(markup, /class="quick-filter-btn ui-filter-chip/);
 assert.match(portal, /`#\/customer\/request\/\$\{escapeHtml\(item\.id\)\}`/);
 assert.match(css, /\.customer-request-controls\{display:flex;align-items:center;gap:8px;width:100%\}/);
@@ -72,7 +72,7 @@ assert.match(css, /\.request-list-title-row\{width:100%;min-height:40px;flex-wra
 assert.match(css, /\.customer-request-toolbar>\.request-list-title-row\{display:flex!important\}/);
 assert.match(css, /\.customer-request-main-filters\{display:flex;align-items:center;gap:8px;flex:1 1 0;min-width:0\}/);
 assert.match(css, /\.customer-request-list\.review-queue-card \{[\s\S]*?overflow: visible !important;/);
-assert.match(css, /\.customer-request-cards \{[\s\S]*?grid-auto-rows: 1fr;/);
+assert.match(css, /\.customer-request-cards \{[\s\S]*?grid-auto-rows: auto;/);
 assert.match(css, /\.customer-request-card-context \{/);
 assert.match(css, /\.request-summary \{[\s\S]*?repeat\(auto-fit, minmax\(220px, 1fr\)\)/);
 assert.match(css, /\.request-history\{display:grid/);

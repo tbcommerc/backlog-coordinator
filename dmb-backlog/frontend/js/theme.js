@@ -1,4 +1,4 @@
-// The application shell and settings share one system-theme subscription.
+// The application shell owns one subscription for a saved system-theme preference.
 let systemThemeMedia = null;
 let systemThemeListener = null;
 

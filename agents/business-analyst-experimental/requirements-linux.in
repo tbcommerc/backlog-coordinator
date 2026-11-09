@@ -1,0 +1,2 @@
+-c requirements.lock
+-r requirements.txt

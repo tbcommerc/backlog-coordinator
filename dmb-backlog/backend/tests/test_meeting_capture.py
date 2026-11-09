@@ -12,22 +12,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from meeting_contract import MeetingDraft, MeetingItem, DraftUpdate, VersionRequest, confirmed_items
-from models import MeetingCapture, MeetingAction, Notification, EventOutbox
+from models import MeetingDeliveryIntent, MeetingCapture, MeetingAction, Notification, EventOutbox, MeetingApplicationReceipt
 from routers import meeting_capture_router as api
 from services.meeting_matching import rank_tasks
+from meeting_pg_fixture import technical_engine
 
 
 @pytest.fixture
 def capture_db():
-    engine = create_engine('sqlite:///:memory:')
     # Deliberately no users, roles, teams or dictionaries, even in fixtures.
-    MeetingCapture.__table__.create(engine)
-    MeetingAction.__table__.create(engine)
-    Notification.__table__.create(engine)
-    EventOutbox.__table__.create(engine)
-    with Session(engine) as session:
-        yield session
-    engine.dispose()
+    with technical_engine((MeetingApplicationReceipt.__table__,MeetingDeliveryIntent.__table__,
+            MeetingCapture.__table__,MeetingAction.__table__,Notification.__table__,EventOutbox.__table__)) as engine:
+        with Session(engine) as session:
+            yield session
 
 
 def user(user_id=1):
@@ -268,7 +265,7 @@ def test_extractor_validates_quotes_and_never_confirms():
         module.extract_meeting(module.ExtractionInput(transcript='Исходный текст'), llm)
 
 
-@pytest.mark.parametrize('status,expected', [(401, True), (403, True), (429, False), (500, False)])
+@pytest.mark.parametrize('status,expected', [(401, True), (403, True), (429, True), (500, False)])
 def test_extraction_failure_only_exposes_safe_provider_category(status, expected):
     from urllib.error import HTTPError
     path = Path(__file__).resolve().parents[3] / 'agents/business-analyst' / 'business_analyst' / 'meeting_task_extractor.py'
@@ -279,11 +276,11 @@ def test_extraction_failure_only_exposes_safe_provider_category(status, expected
     detail = module.extraction_failure_detail(error)
     assert bool(detail) is expected
     if detail:
-        assert detail['code'] == 'meeting_ai_auth'
+        assert detail['code'] == ('meeting_ai_quota' if status == 429 else 'meeting_ai_auth')
         assert 'untrusted-provider-detail' not in str(detail)
 
 
-def test_gateway_preserves_allowlisted_meeting_failure_without_provider_message(monkeypatch):
+def test_gateway_preserves_allowlisted_meeting_failure_without_provider_message(monkeypatch, caplog):
     from io import BytesIO
     from urllib.error import HTTPError
     from routers import agent_router
@@ -295,3 +292,237 @@ def test_gateway_preserves_allowlisted_meeting_failure_without_provider_message(
     assert exc.value.status_code == 503
     assert exc.value.detail['code'] == 'meeting_ai_auth'
     assert 'untrusted-provider-detail' not in exc.value.detail['message']
+    assert 'untrusted-provider-detail' not in caplog.text
+
+
+def test_service_delivery_commit_before_ack(capture_db, monkeypatch):
+    from services.meeting_service_delivery import deliver_one
+    from services.meeting_analysis import now
+    key = uuid4()
+    api.create_session(key, MeetingDraft(title="Synthetic", transcript="Подготовить отчёт."), capture_db, user())
+    row = capture_db.get(MeetingCapture, str(key))
+    row.analysis_backend = "meeting-analyzer"
+    row.analysis_status = "queued"
+    row.analysis_run_id = str(uuid4())
+    row.analysis_requested_at = now()
+    capture_db.commit()
+    calls = []
+    def call(method, path, record, payload=None):
+        calls.append((method,path))
+        if path.endswith("acknowledgements"):
+            return {"acknowledged": True}
+        if method == "POST":
+            assert payload["source"]["revision"] == 1
+            return {"run_id": "service-run"}
+        if path.endswith("/result"):
+            return {"result": {"items": [{"id": "stable-item", "kind": "action", "title": "Отчёт", "quote": "Подготовить отчёт.", "origin": "ai", "selected": False}]}}
+        return {"status": "completed"}
+    factory = lambda: Session(capture_db.bind)
+    assert deliver_one(factory, call, authorize=lambda *_: True)
+    capture_db.expire_all()
+    row = capture_db.get(MeetingCapture, str(key))
+    assert row.analysis_ack_pending and row.analysis_status == "completed"
+    assert row.items[0]["id"] == "stable-item"
+    receipt = capture_db.get(MeetingApplicationReceipt, "service-run")
+    assert receipt.decision == "applied" and receipt.ack_pending
+    assert receipt.consumer_operation_id == row.analysis_run_id
+    assert receipt.source_revision == 1 and receipt.committed_at is not None
+    assert receipt.applied_object_refs == [{"kind": "meeting_capture", "ref": str(key), "revision": 2}]
+    assert capture_db.query(MeetingAction).count() == 0
+    assert deliver_one(factory, call, authorize=lambda *_: True)
+    capture_db.expire_all()
+    assert not capture_db.get(MeetingCapture, str(key)).analysis_ack_pending
+    assert not deliver_one(factory, call, authorize=lambda *_: True)
+    assert sum(path.endswith("/runs") for _,path in calls) == 1
+    assert capture_db.query(Notification).count() == 1
+
+
+def test_service_delivery_retries_lost_acceptance_with_same_key(capture_db):
+    from services.meeting_service_delivery import deliver_one
+    from services.meeting_analysis import now
+    key = uuid4()
+    api.create_session(key, MeetingDraft(title="Synthetic", transcript="Нет решений"), capture_db, user())
+    row = capture_db.get(MeetingCapture, str(key))
+    row.analysis_backend, row.analysis_status = "meeting-analyzer", "queued"
+    row.analysis_run_id, row.analysis_requested_at = str(uuid4()), now()
+    capture_db.commit()
+    requests = []
+    def lost(method, path, record, payload=None):
+        requests.append((record["analysis_run_id"],payload))
+        raise TimeoutError()
+    for _ in range(2):
+        with pytest.raises(TimeoutError):
+            deliver_one(lambda: Session(capture_db.bind), lost, authorize=lambda *_: True)
+    assert requests[0] == requests[1]
+
+
+@pytest.mark.parametrize("existing_run",[False,True])
+def test_service_revocation_fences_before_dispatch(capture_db,existing_run):
+    from services.meeting_service_delivery import deliver_one
+    from services.meeting_analysis import now
+    key=uuid4()
+    api.create_session(key,MeetingDraft(title="Synthetic",transcript="Synthetic"),capture_db,user())
+    row=capture_db.get(MeetingCapture,str(key))
+    row.analysis_backend="meeting-analyzer"
+    row.analysis_status="running" if existing_run else "queued"
+    row.analysis_run_id=str(uuid4())
+    row.analysis_service_run_id="service-run" if existing_run else None
+    row.analysis_requested_at=now()
+    capture_db.commit()
+    calls=[]
+    def call(method,path,record,payload=None):
+        calls.append(path)
+        assert method=="POST" and (path.endswith('/cancel') or path.endswith('/acknowledgements'))
+        return {"acknowledged":True}
+    factory=lambda:Session(capture_db.bind)
+    assert deliver_one(factory,call,authorize=lambda *_:False)
+    capture_db.expire_all()
+    row=capture_db.get(MeetingCapture,str(key))
+    assert row.analysis_status=="failed" and row.analysis_error_code=="operation_forbidden"
+    assert row.version==2 and len(calls)==int(existing_run)
+    if existing_run:
+        assert row.analysis_ack_pending
+        assert deliver_one(factory,call,authorize=lambda *_:False)
+        capture_db.expire_all()
+        assert not capture_db.get(MeetingCapture,str(key)).analysis_ack_pending
+    assert capture_db.query(MeetingAction).count()==0
+
+
+def test_expired_result_and_ack_never_restart_analysis(capture_db):
+    from services.meeting_service_delivery import deliver_one,MeetingServiceError,PREFIX
+    from services.meeting_analysis import now
+    key=uuid4()
+    preserved=[item().model_dump(mode="json")]
+    api.create_session(key,MeetingDraft(title="Synthetic",transcript="Synthetic",items=preserved),capture_db,user())
+    row=capture_db.get(MeetingCapture,str(key))
+    row.analysis_backend,row.analysis_status="meeting-analyzer","running"
+    row.analysis_run_id,row.analysis_service_run_id=str(uuid4()),"expired-service-run"
+    row.analysis_requested_at=now()
+    capture_db.commit()
+    calls=[]
+    def call(method,path,record,payload=None):
+        calls.append((method,path))
+        assert not (method=="POST" and path==PREFIX)
+        if path.endswith('/result'): raise MeetingServiceError("result_expired",410)
+        if path.endswith('/acknowledgements'): raise MeetingServiceError("result_expired",404)
+        return {"status":"completed"}
+    factory=lambda:Session(capture_db.bind)
+    assert deliver_one(factory,call,authorize=lambda *_:True)
+    capture_db.expire_all()
+    row=capture_db.get(MeetingCapture,str(key))
+    assert row.analysis_status=="failed" and row.analysis_error_code=="result_expired"
+    assert row.items==preserved and row.analysis_ack_pending
+    assert deliver_one(factory,call,authorize=lambda *_:True)
+    capture_db.expire_all()
+    assert not capture_db.get(MeetingCapture,str(key)).analysis_ack_pending
+    assert not deliver_one(factory,call,authorize=lambda *_:True)
+    assert capture_db.query(Notification).count()==0
+
+
+@pytest.mark.parametrize("provider_code,expected",[
+    ("provider_auth_failed","meeting_ai_auth"),("provider_quota_exhausted","meeting_ai_quota"),
+    ("local_budget_exceeded","operation_limit"),("operation_deadline_exceeded","interrupted"),
+    ("invalid_model_result","invalid_result"),("synthetic-untrusted-body","unavailable")])
+def test_service_terminal_failure_preserves_actionable_safe_code(capture_db,provider_code,expected):
+    from services.meeting_service_delivery import deliver_one
+    from services.meeting_analysis import now,analysis_info
+    identifier=uuid4()
+    api.create_session(identifier,MeetingDraft(title="Synthetic",transcript="Synthetic"),capture_db,user())
+    row=capture_db.get(MeetingCapture,str(identifier))
+    row.analysis_backend,row.analysis_status="meeting-analyzer","running"
+    row.analysis_run_id,row.analysis_service_run_id=str(uuid4()),str(uuid4())
+    row.analysis_requested_at=now()
+    capture_db.commit()
+    assert deliver_one(lambda:Session(capture_db.bind),lambda *a:{"status":"failed","error":provider_code},authorize=lambda *_:True)
+    capture_db.expire_all()
+    row=capture_db.get(MeetingCapture,str(identifier))
+    assert row.analysis_status=="failed" and row.analysis_error_code==expected and row.analysis_ack_pending
+    assert analysis_info(row)["analysis_error_message"] and row.transcript=="Synthetic"
+    assert capture_db.query(MeetingAction).count()==0 and capture_db.query(Notification).count()==0
+
+
+@pytest.mark.parametrize("status,code,expected",[
+    (401,"meeting_service_auth","meeting_service_auth"),(403,"operation_forbidden","operation_forbidden"),
+    (409,"source_conflict","source_conflict"),(410,"result_expired","result_expired"),
+    (422,"invalid_input","invalid_input"),(302,"meeting_service_configuration","meeting_service_configuration"),
+    (401,"synthetic-private-provider-body","unavailable")])
+def test_permanent_service_rejection_fences_projection_without_retry(capture_db,status,code,expected):
+    from services.meeting_service_delivery import deliver_one,MeetingServiceError
+    from services.meeting_analysis import now
+    identifier=uuid4()
+    api.create_session(identifier,MeetingDraft(title="Synthetic",transcript="Synthetic"),capture_db,user())
+    row=capture_db.get(MeetingCapture,str(identifier))
+    row.analysis_backend,row.analysis_status="meeting-analyzer","queued"
+    row.analysis_run_id,row.analysis_requested_at=str(uuid4()),now()
+    capture_db.commit()
+    calls=[]
+    def fail(*args):
+        calls.append(args)
+        raise MeetingServiceError(code,status)
+    factory=lambda:Session(capture_db.bind)
+    assert deliver_one(factory,fail,authorize=lambda *_:True)
+    assert not deliver_one(factory,fail,authorize=lambda *_:True)
+    capture_db.expire_all()
+    row=capture_db.get(MeetingCapture,str(identifier))
+    assert row.analysis_status=="failed" and row.analysis_error_code==expected and row.version==2
+    assert row.transcript=="Synthetic" and not row.analysis_ack_pending and len(calls)==1
+
+
+def test_full_service_queue_retries_only_the_same_delivery_intent(capture_db):
+    from services.meeting_service_delivery import deliver_one,MeetingServiceError
+    from services.meeting_analysis import now
+    identifier=uuid4()
+    api.create_session(identifier,MeetingDraft(title="Synthetic",transcript="Synthetic"),capture_db,user())
+    row=capture_db.get(MeetingCapture,str(identifier))
+    row.analysis_backend,row.analysis_status="meeting-analyzer","queued"
+    row.analysis_run_id,row.analysis_requested_at=str(uuid4()),now()
+    capture_db.commit()
+    calls=[]
+    def full(method,path,record,payload=None):
+        calls.append((record["analysis_run_id"],payload))
+        raise MeetingServiceError("queue_full",429)
+    for _ in range(2):assert deliver_one(lambda:Session(capture_db.bind),full,authorize=lambda *_:True)
+    capture_db.expire_all()
+    assert calls[0]==calls[1]
+    row=capture_db.get(MeetingCapture,str(identifier))
+    assert row.analysis_status=="queued" and row.version==1 and row.analysis_service_run_id is None
+
+
+@pytest.mark.parametrize("foreign,bad_hash",[(False,False),(True,False),(False,True)])
+def test_delivery_checks_run_identity_and_payload_hash(monkeypatch,foreign,bad_hash):
+    import hashlib
+    import httpx
+    from services import meeting_service_delivery as delivery
+    identifier=str(uuid4())
+    result={"items":[]}
+    digest=hashlib.sha256(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+    data={"run_id":str(uuid4()) if foreign else identifier,"payload_hash":"0"*64 if bad_hash else digest,"result":result}
+    original=httpx.Client
+    monkeypatch.setattr(delivery.httpx,"Client",lambda *a,**kw:original(*a,transport=httpx.MockTransport(lambda r:httpx.Response(200,json=data)),**kw))
+    monkeypatch.setattr(delivery.settings,"MEETING_ANALYZER_SECRET","synthetic")
+    monkeypatch.setattr(delivery.settings,"MEETING_ANALYZER_BASE_URL","http://synthetic.invalid")
+    row={"owner_id":1,"analysis_run_id":str(uuid4())}
+    if foreign or bad_hash:
+        with pytest.raises(delivery.MeetingServiceError,match="invalid_result"):
+            delivery.request("GET",delivery.PREFIX+f"/{identifier}/result",row)
+    else:assert delivery.request("GET",delivery.PREFIX+f"/{identifier}/result",row)==data
+
+
+def test_delivery_sends_original_absolute_deadline(monkeypatch):
+    from datetime import timedelta
+    import httpx
+    from services import meeting_service_delivery as delivery
+    from services.meeting_analysis import now
+    identifier=str(uuid4())
+    requested=now()-timedelta(seconds=15)
+    seen=[]
+    def transport(request):
+        seen.append(request.headers["x-agent-deadline"])
+        return httpx.Response(202,json={"run_id":identifier,"status":"queued",
+            "status_url":delivery.PREFIX+"/"+identifier,"events_url":delivery.PREFIX+"/"+identifier+"/events"})
+    original=httpx.Client
+    monkeypatch.setattr(delivery.httpx,"Client",lambda *a,**kw:original(*a,transport=httpx.MockTransport(transport),**kw))
+    monkeypatch.setattr(delivery.settings,"MEETING_ANALYZER_SECRET","synthetic")
+    monkeypatch.setattr(delivery.settings,"MEETING_ANALYZER_BASE_URL","http://synthetic.invalid")
+    delivery.request("POST",delivery.PREFIX,{"owner_id":1,"analysis_run_id":str(uuid4()),"analysis_requested_at":requested},{})
+    assert seen==[(requested+timedelta(seconds=600)).isoformat()]

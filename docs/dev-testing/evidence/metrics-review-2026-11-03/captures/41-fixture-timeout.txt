@@ -1,0 +1,189 @@
+- main:
+  - heading "Метрики" [level=1]
+  - paragraph: Квартальные планы, факты и подтверждённые итоги
+  - button "Новая метрика"
+  - text: Поиск
+  - textbox "Поиск"
+  - text: Год
+  - spinbutton "Год": "2026"
+  - text: Квартал
+  - combobox "Квартал":
+    - option "1 квартал"
+    - option "2 квартал"
+    - option "3 квартал"
+    - option "4 квартал" [selected]
+  - text: Представление
+  - combobox "Представление":
+    - option "За квартал" [selected]
+    - option "За год"
+  - text: Команды
+  - combobox "Команды":
+    - option "Все" [selected]
+    - option "Fixture"
+  - text: Владельцы
+  - combobox "Владельцы":
+    - option "Все" [selected]
+    - option "Fixture"
+  - text: Проекты
+  - combobox "Проекты":
+    - option "Все" [selected]
+  - text: Состояние метрики
+  - combobox "Состояние метрики":
+    - option "Все" [selected]
+    - option "Черновик"
+    - option "Ведётся"
+    - option "Приостановлена"
+  - text: Состояние периода
+  - combobox "Состояние периода":
+    - option "Все" [selected]
+    - option "Черновик"
+    - option "В работе"
+    - option "Закрыт"
+    - option "Отменён"
+  - text: Область
+  - combobox "Область":
+    - option "Все метрики" [selected]
+    - option "Мои метрики"
+  - text: Сортировка
+  - combobox "Сортировка":
+    - option "По названию" [selected]
+    - option "По изменению"
+    - option "По сроку замера"
+    - option "По числовому прогрессу"
+  - checkbox "Архив"
+  - text: Архив
+  - button "Сброс"
+  - button "Колонки"
+  - button "Нет факта · 1"
+  - button "Ожидают итога · 0"
+  - button "Цель не достигнута · 0"
+  - button "Просрочен замер · 0"
+  - region "Квартальный реестр — таблица":
+    - table "Квартальный реестр":
+      - caption: Квартальный реестр
+      - rowgroup:
+        - row "Метрика План Факт Результат Владелец Состояние":
+          - columnheader "Метрика"
+          - columnheader "План"
+          - columnheader "Факт"
+          - columnheader "Результат"
+          - columnheader "Владелец"
+          - columnheader "Состояние"
+      - rowgroup:
+        - row "Изолированный сценарий timeout QA-FIXTURE · шт 100 —Нет факта Нет факта Fixture Ведётся · В работе":
+          - cell "Изолированный сценарий timeout QA-FIXTURE · шт":
+            - link "Изолированный сценарий timeout":
+              - /url: "#/metrics/1?year=2026&quarter=4"
+            - generic: QA-FIXTURE · шт
+          - cell "100"
+          - cell "—Нет факта":
+            - link "—Нет факта":
+              - /url: "#/metrics/1?year=2026&quarter=4&period_id=7&action=fact"
+              - strong: —
+              - text: Нет факта
+          - cell "Нет факта"
+          - cell "Fixture":
+            - generic: Fixture
+          - cell "Ведётся · В работе"
+  - status: "Найдено: 1 · Страница 1 из 1"
+  - button "Назад" [disabled]
+  - button "Далее" [disabled]
+  - dialog "QA-FIXTURE · Изолированный сценарий timeout":
+    - heading "QA-FIXTURE · Изолированный сценарий timeout" [level=2]
+    - button "Внести факт"
+    - button "Закрыть"
+    - paragraph: шт · Fixture · Ведётся
+    - navigation "Разделы карточки":
+      - button "Показатели" [pressed]
+      - button "Обсуждение"
+      - button "История"
+    - heading "4 квартал 2026" [level=2]
+    - text: План
+    - strong: "100"
+    - text: Факт
+    - strong: —
+    - text: Нет факта
+    - text: Результат
+    - strong: Нет факта
+    - paragraph: Замеров нет
+    - paragraph: "Срок замера: Без расписания"
+    - heading "График квартала" [level=2]
+    - img "Замеры и отдельный факт выбранного квартала":
+      - generic: "План: 100"
+      - generic: 2026-10-01
+      - generic: 2026-12-31
+    - paragraph: Круги — замеры, квадрат — отдельный факт. Точные значения доступны в таблице и сводке. Линии показывают план, границы и базу.
+    - heading "Квартальные факты за год" [level=2]
+    - paragraph: Фактов нет. Незаполненные кварталы не считаются нулём.
+    - heading "Планы и периоды" [level=2]
+    - button "Редактировать планы"
+    - table:
+      - rowgroup:
+        - row "Квартал Состояние План Факт Выбор":
+          - columnheader "Квартал"
+          - columnheader "Состояние"
+          - columnheader "План"
+          - columnheader "Факт"
+          - columnheader "Выбор"
+      - rowgroup:
+        - row "1 квартал Не ведётся — — —":
+          - rowheader "1 квартал"
+          - cell "Не ведётся"
+          - cell "—"
+          - cell "—"
+          - cell "—"
+        - row "2 квартал Не ведётся — — —":
+          - rowheader "2 квартал"
+          - cell "Не ведётся"
+          - cell "—"
+          - cell "—"
+          - cell "—"
+        - row "3 квартал Не ведётся — — —":
+          - rowheader "3 квартал"
+          - cell "Не ведётся"
+          - cell "—"
+          - cell "—"
+          - cell "—"
+        - row "4 квартал В работе 100 — Выбрать":
+          - rowheader "4 квартал"
+          - cell "В работе"
+          - cell "100"
+          - cell "—"
+          - cell "Выбрать":
+            - button "Выбрать"
+    - heading "Годовой итог" [level=2]
+    - paragraph: "Нет данных · Область ведения: 4 кварталы"
+    - text: Подтверждено
+    - strong: —
+    - text: Предварительная оценка
+    - strong: —
+    - text: Итог
+    - strong: —
+    - paragraph: "План области: — · Отклонение: —"
+    - paragraph: "Нет факта: 4 · Отменены: нет"
+    - button "Область и правило года"
+    - heading "Замеры выбранного квартала" [level=2]
+    - button "Добавить замер"
+    - paragraph: Замеров нет
+    - button "Предыдущие"
+    - button "Следующие" [disabled]
+    - generic "Паспорт и методика"
+    - generic "Действия с метрикой и периодом"
+  - dialog "Внести факт":
+    - heading "Внести факт" [level=2]
+    - button "Закрыть"
+    - paragraph: Изолированный сценарий timeout · 4 квартал 2026
+    - text: Значение
+    - textbox "Значение": "99.9999999999"
+    - text: Дата актуальности
+    - textbox "Дата актуальности": 2026-11-03
+    - text: Источник
+    - textbox "Источник": Синтетический источник
+    - text: Комментарий
+    - textbox "Комментарий"
+    - text: Причина исправления
+    - textbox "Причина исправления"
+    - alert [active]: "QA: время ожидания истекло"
+    - button "Сохранить"
+    - button "Отмена"
+- generic: "[ { \"method\": \"PUT\", \"path\": \"/metrics/1/periods/7/fact\", \"body\": { \"version\": 1, \"value\": \"99.9999999999\", \"as_of_date\": \"2026-11-03\", \"source\": \"Синтетический источник\", \"comment\": \"\", \"reason\": \"\" }, \"key\": \"6f4d75d9-03b3-4fe4-90e8-19667e70ebc4\" } ]"

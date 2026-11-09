@@ -1,0 +1,1 @@
+import {defineConfig} from '@playwright/test';import base from './playwright.backlog-unification.config.mjs';export default defineConfig({...base,testMatch:['**/unifiedBacklogCompact.spec.mjs','**/unifiedBacklogNavigation.spec.mjs'],outputDir:'../.runtime/backlog-compact',reporter:[['line'],['json',{outputFile:'../.runtime/backlog-compact-results.json'}]]});

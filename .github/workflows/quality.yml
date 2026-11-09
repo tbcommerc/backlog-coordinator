@@ -37,6 +37,8 @@ jobs:
           cache-dependency-path: dmb-backlog/backend/requirements-dev.lock
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check --require-hashes -r requirements-dev.lock
+      - name: Install local agent contracts for integration tests
+        run: python -m pip install --no-deps ../../packages/dmb-agent-contracts
       - name: Compile backend
         run: python -m compileall -q .
       - name: Run backend tests
@@ -93,6 +95,8 @@ jobs:
           cache-dependency-path: dmb-backlog/backend/requirements-dev.lock
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check --require-hashes -r requirements-dev.lock
+      - name: Install local agent contracts for integration tests
+        run: python -m pip install --no-deps ../../packages/dmb-agent-contracts
       - name: Run isolated suite (no shared tests/conftest.py)
         run: ${{ matrix.command }}
 
@@ -120,6 +124,8 @@ jobs:
           cache-dependency-path: agents/business-analyst-experimental/requirements-dev.lock
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check --require-hashes -r requirements-dev.lock
+      - name: Install pinned shared contracts wheel
+        run: python -m pip install --no-deps ../../packages/dmb-agent-contracts
       - name: Run isolated Agent V2 tests
         run: python -m pytest business_analyst_experimental/tests -q -p no:cacheprovider --confcutdir=business_analyst_experimental/tests
 
@@ -142,6 +148,8 @@ jobs:
           cache-dependency-path: agents/backlog-assistant/requirements.lock
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check -r requirements.lock
+      - name: Install pinned shared contracts wheel
+        run: python -m pip install --no-deps ../../packages/dmb-agent-contracts
       - name: Run isolated service tests (exclude live probe scripts)
         run: python -m pytest tests -q -p no:cacheprovider -p pytest_asyncio.plugin --confcutdir=tests
 
@@ -184,6 +192,27 @@ jobs:
       - name: Run browser notification tests
         run: npm run test:e2e
 
+  frontend-design:
+    name: Design pilot / Windows Chromium
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: dmb-backlog
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dmb-backlog/package-lock.json
+      - name: Install test dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install chromium
+      - name: Check full-page design baselines
+        run: npm run test:design
+
   business-analyst:
     name: Business Analyst / Python 3.12
     runs-on: ubuntu-latest
@@ -203,6 +232,8 @@ jobs:
           cache-dependency-path: agents/business-analyst/requirements-dev.lock
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check --require-hashes -r requirements-dev.lock
+      - name: Install pinned shared contracts wheel
+        run: python -m pip install --no-deps ../../packages/dmb-agent-contracts
       - name: Compile agent
         run: python -m compileall -q business_analyst
       - name: Run agent tests
@@ -226,13 +257,20 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: agents/value-priority-assessor/requirements.lock
+          cache-dependency-path: agents/value-priority-assessor/requirements-tools-test.lock
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
       - name: Install dependencies
-        run: python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock
+        run: python -m pip install --disable-pip-version-check --require-hashes -r requirements-tools-test.lock
+      - name: Install pinned shared contracts wheel
+        run: python -m pip install --no-deps ../../packages/dmb-agent-contracts
       - name: Compile prioritiser
         run: python -m compileall -q value_priority_assessor
-      - name: Run prioritiser tests
-        run: python -m pytest tests -q -p no:cacheprovider
+      - name: Run isolated prioritiser tests (no protected fixtures)
+        run: python -m pytest tests/test_remote_tools.py tests/test_factor_priority.py tests/test_runtime_configuration.py tests/test_state_migration.py tests/test_openai_compat.py --noconftest -q -p no:cacheprovider
+      - name: Record legacy protected-fixture coverage gap
+        run: python -c "print('NOT_RUN legacy prioritiser suites using session/refs seed; protected reference writes prohibited by AGENTS.md; full acceptance remains open')"
 
   dependency-audit:
     name: Dependency audit

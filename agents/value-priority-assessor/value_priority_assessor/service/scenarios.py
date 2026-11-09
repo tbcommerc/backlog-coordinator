@@ -20,6 +20,7 @@ from __future__ import annotations
 import datetime as dt
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dmb_agent_contracts.operation import model_operation,submit_in_operation
 from threading import Lock
 from typing import Any
 
@@ -542,6 +543,7 @@ def handle_priority(
     return handle_request(attrs, "priority", session)
 
 
+@model_operation
 def handle_request(
     attrs: TaskAttributes,
     request_type: str,
@@ -785,10 +787,10 @@ def _compute(
     assessment_started = time.perf_counter()
     try:
         executor = _assessment_executor()
-        strategy_future = executor.submit(
+        strategy_future = submit_in_operation(executor,
             strategy_analyst.assess, strategy_text, task.team, refs.strategy_rubric
         )
-        dependency_future = executor.submit(
+        dependency_future = submit_in_operation(executor,
             analyst.assess,
             text,
             task.team,

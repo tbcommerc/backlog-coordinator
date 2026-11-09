@@ -1,5 +1,8 @@
 // A filter's cardinality is a product decision, independent of its HTML widget.
 export const FILTER_POLICIES = [
+ {selector:'[data-backlog-scope]',mode:'single',reason:'Одна область данных all/team; team закрепляет свою команду, all допускает множественный командный фильтр'},
+ {selector:'#quarterly-filters [name=team_id],#quarterly-filters [name=owner_id],#quarterly-filters [name=project_id],#quarterly-filters [name=metric_state],#quarterly-filters [name=period_state]',mode:'multiple',reason:'ИЛИ внутри категорий квартального реестра; И между полями'},
+ {selector:'#quarterly-filters [name=year],#quarterly-filters [name=quarter],#quarterly-filters [name=view],#quarterly-filters [name=scope]',mode:'single',reason:'Единый календарный контекст и область реестра'},
  {selector:'#metric-filters select:not([name=period]), select[form=metric-filters][name=sort]',exclude:'[name=q],[name=sort]',mode:'multiple',reason:'Отбор метрик по любому из выбранных значений'},
  {selector:'#work-status,#work-priority,#work-direction,#work-team,#work-assignee,#work-filter-project,#work-focus',mode:'multiple',reason:'Объединение выбранных статусов, приоритетов, направлений, команд, исполнителей, проектов и быстрых выборок'},
  {selector:'.admin-user-filter,.admin-list-filter,.audit-filter,[id^=audit-filter-]',mode:'multiple',reason:'Сопоставление нескольких категорий записей в одном реестре'},

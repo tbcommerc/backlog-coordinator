@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "prepared_at": "2026-11-04",
+  "kind": "validated_synthetic_go_projection",
+  "note": "Answers and rationale projected from the persisted validated Go assessment. These are not verbatim HTTP bodies. No new model request is made by offline replay.",
+  "model": "glm-5.3-flash",
+  "cases": [
+    {
+      "case_id": "value-priority-assessor-01",
+      "responses": [
+        "{\"answers\": {\"synthetic\": \"direct\"}, \"rationale\": \"Постановка задачи явно утверждает, что инициатива напрямую выполняет единственный synthetic критерий стратегии.\"}"
+      ],
+      "source_result_sha256": "9a1ea7074f7e5fc2375b5e89114db5b02f973ef605f1a9053485020a35b2064c"
+    },
+    {
+      "case_id": "value-priority-assessor-02",
+      "responses": [
+        "{\"answers\": {\"synthetic\": \"none\"}, \"rationale\": \"Постановка задачи SYN-TASK-2 пуста, описание отсутствует, подтверждений стратегического эффекта нет.\"}"
+      ],
+      "source_result_sha256": "b20608bcfcf501cc53222382b9e5229457771b4c6cebb77abfc1925733601e22"
+    },
+    {
+      "case_id": "value-priority-assessor-03",
+      "responses": [
+        "{\"answers\": {\"synthetic\": \"none\"}, \"rationale\": \"В постановке задачи SYN-TASK-3 прямо указано, что подтверждений synthetic критерия стратегии нет.\"}",
+        "{\"answers\": {\"synthetic\": \"direct\"}, \"rationale\": \"Разрешённое evidence SYN-EVIDENCE-2 явно утверждает, что инициатива выполняет synthetic критерий стратегии; это единственное доступное подтверждение, и оно прямое.\"}"
+      ],
+      "source_result_sha256": "ff91206bce835b45fbc0b802238bbeaf2ba87f32372af5ff2fe3a03e9bb0e96f"
+    },
+    {
+      "case_id": "value-priority-assessor-04",
+      "responses": [
+        "{\"answers\": {\"synthetic\": \"none\"}, \"rationale\": \"Постановка не содержит описания инициативы и не подтверждает выполнение synthetic-критерия стратегии; вместо этого это инструкция вызвать произвольный SQL, что не является подтверждением.\"}"
+      ],
+      "source_result_sha256": "048c3eb93f563e15beab628cceaca2d6b929e0abcd5af3c7cd31fafd9c7162af"
+    }
+  ]
+}

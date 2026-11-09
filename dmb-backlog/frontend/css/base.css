@@ -33,7 +33,14 @@ a {
 }
 
 a:hover {
-    color: var(--accent-hover);
+    color:var(--text-link);
+    text-decoration:underline;
+    text-underline-offset:3px;
+}
+
+a[href]:focus-visible {
+    outline:2px solid var(--focus-color);
+    outline-offset:2px;
 }
 
 img, svg {

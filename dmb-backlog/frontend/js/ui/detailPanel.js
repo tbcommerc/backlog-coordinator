@@ -5,9 +5,9 @@ import { enhanceDialogOverlay } from '../modalAccessibility.js';
 const owner = Symbol.for('ui-kit.detail-panel');
 
 // body/actions/footer — доверенная разметка. Данные и разрешения принадлежат экрану.
-export function detailPanel({ id, title, body = '', actions = '', footer = '' } = {}) {
+export function detailPanel({ id, title, body = '', actions = '', footer = '', size = 'default' } = {}) {
   if (!id || !title) throw new TypeError('DetailPanel requires id and title');
-  return `<dialog id="${esc(id)}" class="ui-detail-panel" aria-labelledby="${esc(id)}-title"><header class="ui-detail-panel-header"><h2 id="${esc(id)}-title">${esc(title)}</h2><div class="ui-detail-panel-actions">${actions}${button({ label: 'Закрыть', variant: 'ghost', attrs: { 'data-ui-panel-close': '', 'data-close': '' } })}</div></header><div class="ui-detail-panel-body">${body}</div>${footer ? `<footer class="ui-detail-panel-footer">${footer}</footer>` : ''}</dialog>`;
+  return `<dialog id="${esc(id)}" class="ui-detail-panel${size === 'wide' ? ' ui-detail-panel-wide' : ''}" aria-labelledby="${esc(id)}-title"><header class="ui-detail-panel-header"><h2 id="${esc(id)}-title">${esc(title)}</h2><div class="ui-detail-panel-actions">${actions}${button({ label: 'Закрыть', variant: 'ghost', attrs: { 'data-ui-panel-close': '', 'data-close': '' } })}</div></header><div class="ui-detail-panel-body">${body}</div>${footer ? `<footer class="ui-detail-panel-footer">${footer}</footer>` : ''}</dialog>`;
 }
 
 // onClose обрабатывает запрос закрытия (включая проверку черновика и маршрута).

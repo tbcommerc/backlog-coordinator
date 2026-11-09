@@ -16,39 +16,39 @@
   --ai-action-solid:#7C3AED;
   --ai-action-solid-hover:#6D28D9;
 }
-/* The ID alternatives match legacy modal nesting without page-owned styles. */
-:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary) {
+/* Semantic action styles; legacy page specificity belongs to adapters.css. */
+:root :is(.btn.btn-ai,.btn.btn-ai-primary) {
   background:var(--ai-action-bg);
   color:var(--ai-action-text);
   border:1px solid var(--ai-action-border);
   box-shadow:none;
   background-image:none;
 }
-:root :is(body,#task-detail-overlay,#create-task-overlay) .btn.btn-ai-primary {
+:root .btn.btn-ai-primary {
   background:var(--ai-action-solid);
   color:var(--ai-action-solid-text);
   border-color:var(--ai-action-solid);
 }
-:root :is(body,#task-detail-overlay,#create-task-overlay) .btn.btn-ai:not(:disabled):not([aria-disabled="true"]):hover {
+:root .btn.btn-ai:not(:disabled):not([aria-disabled="true"]):hover {
   background:var(--ai-action-hover);
   border-color:var(--ai-action-text);
 }
-:root :is(body,#task-detail-overlay,#create-task-overlay) .btn.btn-ai-primary:not(:disabled):not([aria-disabled="true"]):hover {
+:root .btn.btn-ai-primary:not(:disabled):not([aria-disabled="true"]):hover {
   background:var(--ai-action-solid-hover);
   border-color:var(--ai-action-solid-hover);
 }
-:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary):focus-visible {
+:root :is(.btn.btn-ai,.btn.btn-ai-primary):focus-visible {
   outline:2px solid var(--ai-action-text);
   outline-offset:3px;
 }
-:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary):is(:disabled,[aria-disabled="true"]) {
+:root :is(.btn.btn-ai,.btn.btn-ai-primary):is(:disabled,[aria-disabled="true"]) {
   background:var(--ai-action-bg);
   color:var(--ai-action-text);
   border-color:var(--ai-action-border);
   opacity:.6;
   cursor:not-allowed;
 }
-:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary)[aria-busy="true"] {
+:root :is(.btn.btn-ai,.btn.btn-ai-primary)[aria-busy="true"] {
   cursor:progress;
 }
 :root :is(.btn-ai,.btn-ai-primary)[aria-busy="true"]:not(:has(.ui-button-spinner))::before {

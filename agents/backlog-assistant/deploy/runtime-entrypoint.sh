@@ -9,6 +9,12 @@ iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -A OUTPUT -d "$bridge_ip" -p tcp --dport "$BRIDGE_PORT" -j ACCEPT
 ip6tables -P OUTPUT DROP
 mkdir -p /state/home /state/config /state/data /state/state /state/cache /state/workspace
+if [ -n "${OPENCODE_CONFIG_CONTENT:-}" ]; then
+    umask 077
+    printf '%s' "$OPENCODE_CONFIG_CONTENT" > /state/config/opencode.json
+    unset OPENCODE_CONFIG_CONTENT
+    export OPENCODE_CONFIG=/state/config/opencode.json
+fi
 chown -R 10001:10001 /state
 cd /state/workspace
 # Hard lifetime remains effective if the controlling worker dies.

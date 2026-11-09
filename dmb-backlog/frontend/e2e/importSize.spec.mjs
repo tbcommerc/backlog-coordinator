@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {mockApp} from './helpers/backlogMock.mjs';
 const limit=10*1024*1024;
-async function open(page){await mockApp(page);await page.goto('/#/team-backlog');await page.locator('#team-import-excel').click();}
+async function open(page){await mockApp(page);await page.goto('/#/team-backlog');await expect(page.locator('#tasks-content')).toHaveAttribute('data-ready','true');await page.locator('#backlog-import-excel').click();}
 for(const ext of ['csv','xlsx','xls'])test('size boundary before read: '+ext,async({page})=>{
  await open(page);
  await page.evaluate(()=>{window.readSizes=[];FileReader.prototype.readAsArrayBuffer=function(file){window.readSizes.push(file.size);};});

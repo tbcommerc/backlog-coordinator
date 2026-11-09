@@ -25,6 +25,13 @@ class Metric(Base):
     legacy_snapshot = Column(JSON)
     is_archived = Column(Boolean, nullable=False, default=False, server_default='false')
     version = Column(Integer, nullable=False, default=1, server_default='1')
+    model_version = Column(String(16), nullable=False, default='legacy_v1', server_default='legacy_v1')
+    lifecycle_state = Column(String(16), nullable=False, default='draft', server_default='draft')
+    preferred_result_type = Column(String(16))
+    default_direction = Column(String(10))
+    annual_aggregation = Column(String(10), nullable=False, default='none', server_default='none')
+    aggregation_scale = Column(Integer, nullable=False, default=100, server_default='100')
+    display_precision = Column(Integer, nullable=False, default=2, server_default='2')
     created_by = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -56,13 +63,21 @@ class MetricPeriod(Base):
     closing_note = Column(Text)
     closed_at = Column(DateTime(timezone=True))
     legacy_fact = Column(Numeric(30, 10))
+    model_version = Column(String(16), nullable=False, default='legacy_v1', server_default='legacy_v1')
+    calendar_year = Column(Integer)
+    quarter = Column(Integer)
+    result_type = Column(String(16))
+    current_plan_revision_id = Column(Integer)
+    current_fact_revision_id = Column(Integer)
+    closure_revision_id = Column(Integer)
     __table_args__ = (
         CheckConstraint('start_date <= end_date', name='ck_kr_period_dates'),
         CheckConstraint("state IN ('draft','active','completed','cancelled')", name='ck_kr_period_state'),
         CheckConstraint("direction IS NULL OR direction IN ('up','down','range')", name='ck_kr_period_direction'),
-        CheckConstraint("cadence IN ('daily','weekly','monthly','quarterly','interval')", name='ck_kr_period_cadence'),
+        CheckConstraint("cadence IN ('none','daily','weekly','monthly','quarterly','interval')", name='ck_kr_period_cadence'),
         CheckConstraint("interval_days IS NULL OR interval_days BETWEEN 1 AND 366", name='ck_kr_period_interval'),
         UniqueConstraint('metric_id', 'start_date', 'end_date', name='uq_kr_period_dates'),
+        UniqueConstraint('metric_id', 'calendar_year', 'quarter', name='uq_kr_period_quarter'),
     )
 
 
@@ -97,6 +112,7 @@ class MetricComment(Base):
     __tablename__ = 'kr_comments'
     id = Column(Integer, primary_key=True)
     metric_id = Column(Integer, ForeignKey('kr_metrics.id'), nullable=False, index=True)
+    period_id = Column(Integer, ForeignKey('kr_periods.id'))
     author_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -122,6 +138,7 @@ class MetricFile(Base):
     id = Column(Integer, primary_key=True)
     metric_id = Column(Integer, ForeignKey('kr_metrics.id'), nullable=False, index=True)
     measurement_id = Column(Integer, ForeignKey('kr_measurements.id'))
+    period_id = Column(Integer, ForeignKey('kr_periods.id'))
     author_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     filename = Column(String(255), nullable=False)
     storage_key = Column(String(80), nullable=False, unique=True)

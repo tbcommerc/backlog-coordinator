@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [switch]$KeepInfrastructure,
     [switch]$Quiet
@@ -7,21 +7,31 @@ param(
 $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $runtimeDir = Join-Path $projectRoot ".runtime"
+. (Join-Path $PSScriptRoot 'agent-common.ps1')
+foreach ($independentAgent in @('business-analyst','business-analyst-experimental','meeting-analyzer','value-priority-assessor','backlog-assistant')) {
+    & (Join-Path $PSScriptRoot 'stop-agent.ps1') -Agent $independentAgent
+}
 $perUserDockerBin = Join-Path $env:LOCALAPPDATA "Programs\DockerDesktop\resources\bin"
 if (-not (Get-Command docker -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $perUserDockerBin "docker.exe"))) {
     $env:Path = "$perUserDockerBin;$env:Path"
 }
 
-foreach ($service in @("backend", "agent", "prioritiser", "agent-v2", "backlog-assistant", "backlog-assistant-data")) {
-    $pidPath = Join-Path $runtimeDir "$service.pid"
-    if (-not (Test-Path $pidPath)) { continue }
-    $processId = [int](Get-Content -Raw $pidPath)
-    $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
-    if ($process) {
-        Stop-Process -Id $processId -Force
-        if (-not $Quiet) { Write-Host "Stopped process: $service" }
+$backendPath = Join-Path $runtimeDir 'backend.process.json'
+if (Test-Path -LiteralPath $backendPath) {
+    $record = Get-Content -Raw -LiteralPath $backendPath | ConvertFrom-Json
+    if (Stop-AgentOwnedProcess $record.api) {
+        Remove-Item -LiteralPath $backendPath
+        if (-not $Quiet) { Write-Host 'Stopped process: backend' }
+    } else { throw 'Backend ownership mismatch; process retained.' }
+}
+foreach ($service in @('backend','agent','prioritiser','agent-v2','backlog-assistant','backlog-assistant-data')) {
+    $legacyPath = Join-Path $runtimeDir "$service.pid"
+    if (Test-Path -LiteralPath $legacyPath) {
+        $legacyId = [int](Get-Content -Raw -LiteralPath $legacyPath)
+        if (Get-Process -Id $legacyId -ErrorAction SilentlyContinue) {
+            Write-Warning "Legacy PID-only record for $service cannot prove ownership; process retained."
+        } else { Remove-Item -LiteralPath $legacyPath }
     }
-    Remove-Item -LiteralPath $pidPath -Force
 }
 
 if (-not $KeepInfrastructure -and (Get-Command docker -ErrorAction SilentlyContinue)) {

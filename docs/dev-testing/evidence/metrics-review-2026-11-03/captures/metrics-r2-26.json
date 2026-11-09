@@ -1,0 +1,26 @@
+[
+  {
+    "name": "add 26th",
+    "status": 201,
+    "data": {
+      "version": 47,
+      "error": null
+    }
+  },
+  {
+    "name": "page 1",
+    "status": 200,
+    "data": {
+      "total": 26,
+      "items": 25
+    }
+  },
+  {
+    "name": "page 2",
+    "status": 200,
+    "data": {
+      "total": 26,
+      "items": 1
+    }
+  }
+]

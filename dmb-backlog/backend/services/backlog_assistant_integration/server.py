@@ -1,6 +1,7 @@
 """Separate private listener: TLS client verification cannot be disabled by a header."""
 import ssl
-import uvicorn
+import os
+from dmb_agent_contracts.serve import serve
 from fastapi import FastAPI
 from config import settings
 from routers.backlog_assistant_data_router import router
@@ -18,6 +19,11 @@ def health():
     return {"status": "ok"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=9450, access_log=False,
+    try:
+        port=int(os.environ.get("BACKLOG_ASSISTANT_DATA_API_PORT","9450"))
+        if not 1<=port<=65535: raise ValueError()
+    except ValueError:
+        raise ValueError("invalid_BACKLOG_ASSISTANT_DATA_API_PORT") from None
+    serve(app, host="127.0.0.1", port=port, access_log=False,
         ssl_certfile=settings.BACKLOG_ASSISTANT_TLS_CERT, ssl_keyfile=settings.BACKLOG_ASSISTANT_TLS_KEY,
         ssl_ca_certs=settings.BACKLOG_ASSISTANT_TLS_CA, ssl_cert_reqs=ssl.CERT_REQUIRED)

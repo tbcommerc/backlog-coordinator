@@ -3,6 +3,10 @@ import logging
 import time
 import uuid
 from contextlib import suppress
+from dmb_agent_contracts.runtime import AsyncRuntimePort
+from dmb_agent_contracts.operation import operation_scope,current_operation
+from dmb_agent_contracts.model import AgentError
+from datetime import datetime,timedelta,timezone
 from sqlalchemy import select, update, delete
 from contracts.models import Answer, Context, DataBlock
 from bridge.tools import ToolBridge
@@ -18,11 +22,56 @@ def fallback_candidate(bridge, context):
 
 
 class Worker:
-    def __init__(self, store, data, runtime):
+    def __init__(self, store, data, runtime: AsyncRuntimePort):
         self.store, self.data, self.runtime = store, data, runtime
         self.id = str(uuid.uuid4())
 
     async def execute(self, row):
+        from dmb_agent_contracts.run_store import Store as TechnicalStore
+        from .runs import execution_profile
+        try:
+            technical = TechnicalStore(self.store.engine).get(row["id"])
+        except AgentError as error:
+            if error.code != "run_not_found":
+                raise
+            technical = None  # Transitional legacy runs have no common envelope.
+        if technical is not None and technical["profile"] != execution_profile(self.runtime):
+            self.store.save(row["id"], self.id, status="failed",stage="failed",error_code="runtime_profile_changed")
+            return
+        queue_deadline=datetime.fromtimestamp(row["created"]+15,timezone.utc)
+        deadline=datetime.fromtimestamp(row["created"]+75,timezone.utc)
+        try:
+            with operation_scope(run_id=row["id"],deadline_at=deadline,max_model_attempts=4,
+                    actor_ref=row["owner"],queue_deadline_at=queue_deadline,acquire_gate=False) as context:
+                async def waiting_heartbeat():
+                    while True:
+                        self.store.heartbeat(row["id"],self.id)
+                        await asyncio.sleep(1)
+                pulse=asyncio.create_task(waiting_heartbeat())
+                acquire=asyncio.create_task(asyncio.to_thread(context.acquire_slot))
+                try:
+                    done,_=await asyncio.wait({pulse,acquire},return_when=asyncio.FIRST_COMPLETED)
+                    for finished in done:
+                        await finished
+                finally:
+                    pulse.cancel()
+                    with suppress(asyncio.CancelledError,Exception):
+                        await pulse
+                    if not acquire.done():
+                        context.cancel()
+                        with suppress(asyncio.CancelledError,Exception):
+                            await acquire
+                context.tighten(datetime.now(timezone.utc)+timedelta(seconds=60))
+                self.store.save(row["id"], self.id, stage="preparing")
+                cleanup_token = context.hold_slot_for_cleanup()
+                return await self._execute(row, cleanup_token=cleanup_token)
+        except AgentError as error:
+            if error.code.startswith(("global_limiter_","operation_queue_")) or error.code=="actor_queue_full":
+                self.store.defer(row["id"],self.id,error.code)
+                return "deferred"
+            raise
+
+    async def _execute(self, row, cleanup_token=None):
         rid, execution = row["id"], row["execution_ref"]
         handle, grant, bridge, answer, error = None, None, None, None, None
         deadline = time.monotonic() + 60
@@ -36,9 +85,9 @@ class Worker:
             grant = await self.data.activate(execution, self.id)
             catalog = await self.data.catalog(execution, grant)
             bridge = ToolBridge(self.data, execution, grant, catalog, deadline=deadline, request_text=row["input"]["text"])
-            self.store.save(rid, self.id, handle={"instance": execution, "session": None})
-            handle = await self.runtime.prepare({"execution_ref": execution, "deadline": deadline,
-                "tool_hash": bridge.catalog_hash}, bridge, Answer.model_json_schema())
+            self.store.save(rid, self.id, handle={"instance": execution, "session": None, "run_id":rid})
+            handle = await self.runtime.prepare({"execution_ref": execution, "deadline": deadline, "run_id":str(current_operation().run_id),
+                "tool_hash": bridge.catalog_hash, "profile_ref":getattr(self.runtime,"profile_ref",None)}, bridge, Answer.model_json_schema())
             dispatch = str(uuid.uuid4())
             # Durable intent precedes sending; only sanitized refs, no credentials.
             self.store.save(rid, self.id, handle=handle, dispatch_ref=dispatch, dispatch_state="dispatching")
@@ -87,10 +136,12 @@ class Worker:
             logging.getLogger("backlog.worker").error("Run failed: %s%s", type(exc).__name__, ": " + str(exc) if type(exc) is ValueError else "")
             error = "failed"
         finally:
+            if error:
+                current_operation().cancel()
             task.cancel()
             with suppress(asyncio.CancelledError, Exception):
                 await task
-            if error in {"failed", "interrupted", "expired"} and bridge and bridge.failure != "source_access_denied" and bridge.results and time.monotonic() < deadline:
+            if error in {"failed", "interrupted", "expired"} and bridge and bridge.failure not in {"source_access_denied", "provider_auth_failed", "provider_quota_exhausted"} and bridge.results and time.monotonic() < deadline:
                 # Deterministic fallback from server results only; no second LLM planner.
                 try:
                     await self.data.check(execution, grant)
@@ -117,16 +168,19 @@ class Worker:
             elif bridge:
                 # prepare may have been interrupted after a process was created.
                 try:
-                    await self.runtime.dispose({"instance": execution, "session": None})
+                    await self.runtime.dispose({"instance": execution, "session": None, "run_id":rid})
                 except Exception:
                     cleanup_ok = False
             pulse.cancel()
             with suppress(asyncio.CancelledError, Exception):
                 await pulse
+            if cleanup_ok:
+                current_operation().confirm_cleanup(cleanup_token)
             try:
                 self.store.save(rid, self.id, status=error or ("partial" if answer.get("kind") == "partial" else "completed"),
                     stage="done", answer=None if error else answer, receipts=bridge.receipts if bridge else [],
-                    error_code=error, cleanup_pending=not cleanup_ok)
+                    error_code=(bridge.failure if error and bridge and bridge.failure in
+                        {"provider_auth_failed","provider_quota_exhausted"} else error), cleanup_pending=not cleanup_ok)
             except StoreError:
                 # A concurrent cancellation always wins over publication.
                 with self.store.engine.begin() as c:
@@ -135,6 +189,16 @@ class Worker:
                         error_code="interrupted", cleanup_pending=not cleanup_ok))
 
     async def janitor(self):
+        from dmb_agent_contracts.run_store import Store as RunStore, runs as facade_runs
+        RunStore(self.store.engine).expire()
+        with self.store.engine.begin() as c:
+            expired = c.execute(select(runs).join(facade_runs, facade_runs.c.id == runs.c.id).where(
+                facade_runs.c.result_expired == 1, runs.c.status.not_in(("queued", "running", "cancelling")),
+                runs.c.answer.is_not(None)).with_for_update()).mappings().all()
+            for row in expired:
+                if row["receipts"]:
+                    c.execute(outbox.insert().values(id=str(uuid.uuid4()), owner=row["owner"], receipts=row["receipts"]))
+                c.execute(update(runs).where(runs.c.id == row["id"]).values(answer=None, input={}, receipts=[]))
         with self.store.engine.connect() as c:
             dirty = [dict(r) for r in c.execute(select(runs).where(runs.c.cleanup_pending.is_(True))).mappings()]
             pending = [dict(r) for r in c.execute(select(outbox)).mappings()]
@@ -144,7 +208,11 @@ class Worker:
                 # Service-auth may revoke its own execution even after grant expiry.
                 await self.data.revoke(row["execution_ref"], "")
                 if row["handle"]:
-                    await self.runtime.dispose(row["handle"])
+                    await self.runtime.dispose({**row["handle"], "run_id":row["id"]})
+                from dmb_agent_contracts.limiter import from_environment
+                limiter=from_environment()
+                if limiter is not None:
+                    limiter.confirm_run_cleanup(row["id"])
                 with self.store.engine.begin() as c:
                     c.execute(update(runs).where(runs.c.id == row["id"]).values(cleanup_pending=False))
             except Exception:
@@ -165,6 +233,7 @@ class Worker:
             await self.janitor()
             row = self.store.claim(self.id)
             if row:
-                await self.execute(row)
+                if await self.execute(row)=="deferred":
+                    await asyncio.sleep(1)
             else:
                 await asyncio.sleep(0.5)

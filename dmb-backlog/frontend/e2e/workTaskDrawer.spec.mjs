@@ -14,7 +14,7 @@ test('activity loads all 250 comments and 150 history events through cursors', a
  });
  await page.locator('[data-close]').click();
  await page.getByRole('button',{name:'WRK-1 · Подготовить сценарии приёмки'}).click();
- await page.getByRole('tab',{name:'Активность',exact:true}).click();
+ await page.locator('#work-card-activity-panel > summary').click();
  await expect(page.locator('.work-comment').last()).toContainText('Сообщение 250');
  await page.getByRole('button',{name:'Предыдущие комментарии'}).click();
  await page.getByRole('button',{name:'Предыдущие комментарии'}).click();
@@ -55,9 +55,9 @@ async function setup(page, overrides = {}) {
  });
  await page.goto('/e2e/fixtures/workTasks.html?presentation=modal');
  await page.getByRole('button',{name:'WRK-1 · Подготовить сценарии приёмки'}).click();
- await expect(page.locator('.work-card-title')).toBeVisible();if(row.can_edit&&!['done','cancelled'].includes(row.status)&&!(await page.locator('#wf-title').isVisible()))await page.getByRole('button',{name:'Редактировать',exact:true}).click();return writes;
+ await expect(page.locator('.work-card-title:visible, .work-card-title-editor')).toBeVisible();if(row.can_edit&&!['done','cancelled'].includes(row.status)&&!(await page.locator('#wf-title').isVisible()))await page.getByRole('button',{name:'Редактировать',exact:true}).click();return writes;
 }
-test('compact drawer, keyboard tabs and fixed footer at desktop/mobile in both themes',async({page})=>{
+test('compact single page, keyboard sections and fixed footer at desktop/mobile in both themes',async({page})=>{
  await setup(page);
  for(const width of [1440,390])for(const theme of ['light','dark']){
   await page.setViewportSize({width,height:700});await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
@@ -72,12 +72,12 @@ test('compact drawer, keyboard tabs and fixed footer at desktop/mobile in both t
   expect(await page.locator('dialog').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
   // Productivity fields may scroll; the modal and its fixed footer must fit the viewport.
   if(width===1440){const box=await page.locator('dialog').boundingBox();expect(box.width).toBeLessThanOrEqual(600);expect(box.height).toBeLessThanOrEqual(668);}
-  await page.getByRole('tab',{name:'Задача',exact:true}).focus();await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab',{name:'Активность'})).toBeFocused();
-  await expect(page.getByRole('tab',{name:'Задача',exact:true})).toHaveAttribute('aria-selected','true');
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('tab',{name:'Активность'})).toHaveAttribute('aria-selected','true');
-  await expect(page.locator('#wf-comment')).toBeVisible();await page.keyboard.press('Home');await page.keyboard.press('Enter');await expect(page.locator('#wf-title')).toBeVisible();
+  await expect(page.locator('.work-dialog [role="tab"]')).toHaveCount(0);
+  const activity=page.locator('#work-card-activity-panel > summary');
+  await activity.focus();await page.keyboard.press('Enter');
+  await expect(page.locator('#wf-comment')).toBeVisible();
+  await expect(page.locator('#wf-title')).toBeVisible();
+  await activity.focus();await page.keyboard.press('Enter');
   await page.screenshot({path:`test-results/work-card-${width}-${theme}.png`});
  }
 });
@@ -87,14 +87,14 @@ test('return feedback is immediately visible and opens history',async({page})=>{
  await expect(page.locator('.work-return-feedback')).toContainText('Добавить контрольный пример');
  await expect(page.locator('.work-return-feedback')).toContainText('Мария Петрова');
  await page.getByRole('button',{name:'Показать историю',exact:true}).click();
- await expect(page.getByRole('tab',{name:'Активность'})).toHaveAttribute('aria-selected','true');
+ await expect(page.locator('#work-card-activity-panel')).toHaveAttribute('open','');
  await expect(page.locator('[data-work-history]')).toHaveAttribute('open','');
 });
 test('result draft survives task save and transition submits result',async({page})=>{
  const writes=await setup(page);
  await page.getByRole('button',{name:'Передать на приёмку',exact:true}).click();await expect(page.locator('#wf-reason')).toHaveCount(0);
  await page.locator('#wf-result_text').fill('Все сценарии проверены');await page.getByRole('button',{name:'Назад',exact:true}).click();
- await page.locator('#wf-title').fill('Проверить сценарии приёмки');await page.keyboard.press('Control+s');await expect(page.locator('.work-card-title')).toHaveText('Проверить сценарии приёмки');await page.getByRole('button',{name:'Закрыть',exact:true}).click();await expect(page.locator('dialog')).toHaveCount(0);
+ await page.locator('#wf-title').fill('Проверить сценарии приёмки');await page.keyboard.press('Control+s');await expect(page.locator('#wf-title')).toHaveValue('Проверить сценарии приёмки');await page.getByRole('button',{name:'Закрыть',exact:true}).click();await expect(page.locator('dialog')).toHaveCount(0);
  expect(writes[0].body.title).toBe('Проверить сценарии приёмки');expect(writes[0].body).not.toHaveProperty('result_text');
  await page.getByRole('button',{name:'WRK-1 · Проверить сценарии приёмки'}).click();await page.getByRole('button',{name:'Передать на приёмку',exact:true}).click();
  await expect(page.locator('#wf-result_text')).toHaveValue('Все сценарии проверены');await page.getByRole('button',{name:'Передать на приёмку',exact:true}).click();
@@ -106,18 +106,18 @@ test('cancel requires reason and Ctrl+Enter confirms chosen action',async({page}
  await expect(page.locator('dialog')).toHaveCount(1);await expect(page.locator('.work-dialog-heading')).toContainText('Отменена');expect(writes[0].body).toMatchObject({reason:'Потребность снята',status:'cancelled'});
 });
 test('comment and file stay open, preserve edits and update version for dependencies/save',async({page})=>{
- const writes=await setup(page);await page.locator('#wf-title').fill('Мой несохранённый текст');await page.getByRole('tab',{name:'Активность'}).click();
+ const writes=await setup(page);await page.locator('#wf-title').fill('Мой несохранённый текст');await page.locator('#work-card-activity-panel > summary').click();
  await page.locator('#wf-comment').fill('Проверка завершена');await page.getByRole('button',{name:'Отправить комментарий'}).click();
  await expect(page.locator('.work-comment')).toContainText('Проверка завершена');await expect(page.locator('#wf-comment')).toHaveValue('');
  await page.locator('#wf-comment').fill('Второе сообщение');await page.keyboard.press('Control+Enter');await expect(page.locator('.work-comment')).toHaveCount(2);expect(writes[1].body.version).toBe(2);
- await page.getByRole('tab',{name:'Материалы'}).click();await page.locator('[data-work-upload]').setInputFiles({name:'result.txt',mimeType:'text/plain',buffer:Buffer.from('test results')});await expect(page.getByRole('button',{name:'result.txt'})).toBeVisible();
+ await page.locator('#work-card-resources-panel > summary').click();await page.locator('[data-work-upload]').setInputFiles({name:'result.txt',mimeType:'text/plain',buffer:Buffer.from('test results')});await expect(page.getByRole('button',{name:'result.txt'})).toBeVisible();
  await page.getByText('Зависимости',{exact:true}).click();await page.getByRole('searchbox',{name:'Связанная работа',exact:true}).fill('WRK-2');await page.getByRole('searchbox',{name:'Связанная работа',exact:true}).press('Enter');await page.getByRole('combobox',{name:'Связанная работа: выбор',exact:true}).selectOption('2');await page.getByRole('button',{name:'Добавить зависимость'}).click();await expect.poll(()=>writes.length).toBe(4);expect(writes[3].body.source_version).toBe(4);
  await page.getByRole('button',{name:'Сохранить изменения'}).click();await page.getByRole('button',{name:'Закрыть',exact:true}).click();await expect(page.locator('dialog')).toHaveCount(0);expect(writes.at(-1).body).toMatchObject({version:4,title:'Мой несохранённый текст'});await expect(page.getByRole('button',{name:'WRK-1 · Мой несохранённый текст'})).toBeFocused();
 });
 test('completed readonly card has result without unavailable editing controls and restores focus',async({page})=>{
  await setup(page,{status:'done',result_text:'Результат принят',available_actions:[],can_edit:true,can_block:false,can_collaborate:false,can_place:false,can_reassign:false});
  await expect(page.locator('#wf-title')).toBeDisabled();await expect(page.getByRole('button',{name:'Сохранить изменения'})).toHaveCount(0);await expect(page.getByText('Результат принят',{exact:true})).toBeVisible();await expect(page.locator('#wf-result_text')).toHaveCount(0);
- await page.getByRole('tab',{name:'Активность'}).click();await expect(page.locator('#wf-comment')).toHaveCount(0);await page.getByRole('tab',{name:'Материалы'}).click();await expect(page.locator('[data-work-upload]')).toHaveCount(0);await expect(page.locator('[data-dependency]')).toHaveCount(0);
+ await page.locator('#work-card-activity-panel > summary').click();await expect(page.locator('#wf-comment')).toHaveCount(0);await page.locator('#work-card-resources-panel > summary').click();await expect(page.locator('[data-work-upload]')).toHaveCount(0);await expect(page.locator('[data-dependency]')).toHaveCount(0);
  await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'WRK-1 · Подготовить сценарии приёмки'})).toBeFocused();
 });
 for(const [label,status,actions,target] of [
@@ -154,12 +154,10 @@ for(const [status,target,label] of [
  await expect.poll(()=>writes.at(-1)?.body.status).toBe(target);await expect(page.locator('dialog')).toHaveCount(1);
 });
 
-test('assignee records obstacle without editing requirements',async({page})=>{
- const writes=await setup(page,{can_edit:false,can_block:true});
- await expect(page.locator('#wf-description')).toBeDisabled();
- await page.getByRole('button',{name:'Указать препятствие',exact:true}).click();await page.locator('#wf-blocked_reason').fill('Ожидаем решение');
- await page.getByRole('button',{name:'Сохранить препятствие',exact:true}).click();
- await page.getByRole('button',{name:'Закрыть',exact:true}).click();await expect(page.locator('dialog')).toHaveCount(0);expect(writes.at(-1).body).toEqual({version:1,blocked_reason:'Ожидаем решение'});
+test('retired obstacle stays absent with legacy response fields',async({page})=>{
+ await setup(page,{can_block:true,blocked_reason:'legacy'});
+ await expect(page.locator('#wf-blocked_reason')).toHaveCount(0);
+ await expect(page.locator('[data-work-action="edit-blocker"]')).toHaveCount(0);
 });
 
 test('declining assignment requires reason and does not change team attributes',async({page})=>{

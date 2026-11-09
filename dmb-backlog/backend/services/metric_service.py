@@ -32,6 +32,7 @@ def get_period(db,row,period_id):
 
 def command(db,metric_id,user,version,action='edit',allow_archived=False):
     row=get_metric(db,metric_id,user,lock=True)
+    require_legacy(row)
     require(can_access_task(action,row,user))
     require(allow_archived or not row.is_archived,'Метрика в архиве',409)
     require(row.version==version,'Метрика изменена другим пользователем. Обновите карточку; введённые данные сохранены в форме.',409)
@@ -70,14 +71,15 @@ def validate_period(db,row,period,active=False,exclude_id=None):
     if period.baseline_date:
         require(period.baseline_date<=period.start_date and period.baseline_date<=today(),'Дата базы должна быть не позже начала периода и сегодняшнего дня',422)
     if not active: return
-    require(bool(row.title and row.unit and row.method.strip() and row.source.strip() and row.owner_id),'Заполните единицу, владельца, методику и источник метрики',422)
+    require(bool(row.title and row.unit and row.source.strip() and row.owner_id),'Заполните единицу, владельца и источник метрики',422)
     owner=db.get(User,row.owner_id)
     require(owner and owner.is_active and not is_customer_portal_only(owner),'Владелец метрики неактивен',422)
-    require(period.direction and period.target is not None and period.first_due_date,'Заполните направление, цель и график измерений',422)
+    require(period.direction and period.target is not None,'Заполните условие и цель',422)
+    require(period.cadence == 'none' or period.first_due_date is not None,'Укажите первый плановый замер',422)
     if period.direction=='range':
         require(period.upper is not None and period.upper>=period.target,'Укажите допустимые границы',422)
-    else:
-        require(period.baseline is not None and period.baseline_date is not None,'Укажите исходное значение и его дату',422)
+    elif period.baseline is not None or period.baseline_date is not None:
+        require(period.baseline is not None and period.baseline_date is not None,'Для расчёта прогресса укажите исходное значение и его дату',422)
         require((period.direction=='up' and period.target>period.baseline) or (period.direction=='down' and period.target<period.baseline),'Цель должна соответствовать направлению улучшения',422)
     require(period.cadence!='interval' or bool(period.interval_days),'Укажите интервал',422)
 
@@ -103,6 +105,7 @@ def file_response(f):
     return dict(id=f.id,filename=f.filename,size=f.size,measurement_id=f.measurement_id,created_at=f.created_at)
 
 def detail(db,row,user):
+    require_legacy(row)
     data=passport(db,row,user)
     periods=db.query(MetricPeriod).filter_by(metric_id=row.id).order_by(MetricPeriod.start_date.desc()).all()
     points=db.query(MetricMeasurement).filter(MetricMeasurement.period_id.in_([p.id for p in periods])).order_by(MetricMeasurement.measured_on.desc()).all() if periods else []
@@ -127,7 +130,17 @@ def detail(db,row,user):
             if not target: continue
             item=dict(kind='work',target_id=target.id,public_id=target.public_id,title=target.title,state=target.status,team=name(db,Team,target.execution_team_id))
         data['links'].append(dict(id=x.id,**item))
-    data['legacy']=None
+    data['legacy']=legacy_materials(db,row)
+    return jsonable_encoder(data)
+
+
+def require_legacy(row):
+    if row.model_version != 'legacy_v1':
+        raise HTTPException(409, {'code':'model_upgrade_required', 'message':'Используйте квартальный API v2', 'contract':'/api/v2/metrics'})
+
+
+def legacy_materials(db,row):
+    data={};data['legacy']=None
     if row.legacy_task_id:
         original=db.get(Task,row.legacy_task_id)
         data['legacy']={'task_id':row.legacy_task_id,'public_id':original.public_id if original else None,'snapshot':row.legacy_snapshot,
@@ -135,4 +148,4 @@ def detail(db,row,user):
             'history':[dict(id=x.id,action=x.field_name,before=x.old_value,after=x.new_value,created_at=x.changed_at,author=name(db,User,x.changed_by)) for x in db.query(TaskHistory).filter_by(task_id=row.legacy_task_id).order_by(TaskHistory.id.desc())],
             'files':[dict(id=x.id,filename=x.original_name,size=x.file_size,created_at=x.created_at) for x in db.query(TaskAttachment).filter_by(task_id=row.legacy_task_id)],
             'reports':[{**snapshot(x),'revisions':[snapshot(r) for r in x.revisions]} for x in db.query(TaskReportingStatus).filter_by(task_id=row.legacy_task_id)]}
-    return jsonable_encoder(data)
+    return jsonable_encoder(data['legacy'])

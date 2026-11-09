@@ -9,7 +9,7 @@ def test_encoder_warmup_is_single_flight(monkeypatch):
     loaded = []
     result = object()
 
-    def load(model_name):
+    def load(model_name, profile=None):
         loaded.append(model_name)
         return result
 

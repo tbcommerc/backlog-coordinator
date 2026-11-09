@@ -8,6 +8,7 @@ from typing import Any
 
 from auth import get_request_review_access, get_task_action_scope
 from config import settings
+from services.agent_recovery import trusted_headers
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -82,6 +83,7 @@ def proxy_request(
         "Accept": "application/json",
         "Content-Type": "application/json",
         "X-Agent-Secret": settings.AGENT_V2_SECRET,
+        **trusted_headers(),
         "X-Request-ID": request_id or "unknown",
         "X-Trace-ID": trace_id or request_id or "unknown",
     }

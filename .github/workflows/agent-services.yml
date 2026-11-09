@@ -1,0 +1,275 @@
+name: Agent service contracts
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  meeting-and-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --require-hashes -r agents/meeting-analyzer/requirements-dev.lock
+      - run: python -m pip install --no-deps --no-build-isolation ./packages/dmb-agent-contracts ./agents/meeting-analyzer
+      - run: python -m pytest agents/meeting-analyzer/tests packages/dmb-agent-contracts/tests --ignore=packages/dmb-agent-contracts/tests/test_service_remote_product.py --ignore=packages/dmb-agent-contracts/tests/test_legacy_compatibility.py --ignore=packages/dmb-agent-contracts/tests/test_assessor_legacy_queue.py --ignore=packages/dmb-agent-contracts/tests/test_recovery_products.py -q
+      - run: python -m pytest 'packages/dmb-agent-contracts/tests/test_recovery_products.py::test_product_recovery_keeps_history_and_cannot_dispatch[meeting-analyzer]' --noconftest -q -p no:cacheprovider
+      - run: python scripts/check-agent-corpus.py
+      - run: python scripts/check-agent-requirements.py
+      - run: python scripts/summarize-agent-acceptance.py
+  product-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: business-analyst
+            lock: agents/business-analyst/requirements-dev-linux.lock
+          - service: business-analyst-experimental
+            lock: agents/business-analyst-experimental/requirements-dev-linux.lock
+          - service: value-priority-assessor
+            lock: agents/value-priority-assessor/requirements-tools-test.lock
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --require-hashes -r ${{ matrix.lock }}
+      - run: python -m pip install --no-deps ./packages/dmb-agent-contracts
+      - name: Product workflow over the independent HTTP reference fixture
+        run: python -m pytest 'packages/dmb-agent-contracts/tests/test_service_remote_product.py::test_service_remote_profile_preserves_product_workflow[${{ matrix.service }}]' -q -p no:cacheprovider
+      - name: Legacy chat and documents share one durable run
+        if: matrix.service != 'value-priority-assessor'
+        run: python -m pytest 'packages/dmb-agent-contracts/tests/test_legacy_compatibility.py::test_legacy_chat_reconnect_reads_original_run[${{ matrix.service }}]' -q -p no:cacheprovider
+      - name: Legacy assessment preserves actor and delivery key
+        if: matrix.service == 'value-priority-assessor'
+        run: python -m pytest packages/dmb-agent-contracts/tests/test_assessor_legacy_queue.py -q -p no:cacheprovider
+      - name: Read-only application recovery in a fresh process
+        run: python -m pytest 'packages/dmb-agent-contracts/tests/test_recovery_products.py::test_product_recovery_keeps_history_and_cannot_dispatch[${{ matrix.service }}]' --noconftest -q -p no:cacheprovider
+      - name: Product OpenAPI stays in sync
+        run: python scripts/export-agent-openapi.py --check --service ${{ matrix.service }}
+      - name: Frozen offline product corpus with external network denied
+        run: python scripts/replay-agent-corpus-offline.py --service ${{ matrix.service }} --output .runtime/corpus-${{ matrix.service }}
+
+  backlog-product-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --require-hashes -r agents/backlog-assistant/requirements.lock
+      - run: python -m pip install --no-deps ./packages/dmb-agent-contracts
+      - name: Product workflow, corpus and isolation boundaries without live inference
+        env:
+          PYTHONPATH: agents/backlog-assistant
+        run: python -m pytest agents/backlog-assistant/tests --noconftest -q -p no:cacheprovider
+      - run: python -m pytest 'packages/dmb-agent-contracts/tests/test_recovery_products.py::test_product_recovery_keeps_history_and_cannot_dispatch[backlog-assistant]' --noconftest -q -p no:cacheprovider
+      - run: python scripts/export-agent-openapi.py --check --service backlog-assistant
+
+  meeting-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      MEETING_TEST_POSTGRES_URL: postgresql+psycopg://postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --require-hashes -r agents/meeting-analyzer/requirements-dev.lock
+      - run: python -m pip install --no-deps --no-build-isolation ./packages/dmb-agent-contracts ./agents/meeting-analyzer
+      - run: python -m pytest agents/meeting-analyzer/integration -q
+  meeting-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      redis:
+        image: redis:7-alpine@sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+      postgres:
+        image: postgres:16-alpine@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - run: docker build -f agents/meeting-analyzer/Dockerfile -t meeting-analyzer:ci .
+      - run: docker run --rm --network none meeting-analyzer:ci python -c "from meeting_analyzer.api import create_app; from dmb_agent_contracts.remote import RemoteOpenCode"
+      - name: Verify actual container API and worker without source mounts
+        run: python scripts/qualify-meeting-container.py --image meeting-analyzer:ci --postgres-container-id ${{ job.services.postgres.id }} --redis-container-id ${{ job.services.redis.id }} --output .runtime/meeting-container/manifest.json
+
+  assessor-remote-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: agents/value-priority-assessor
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      ASSESSOR_TOOL_TEST_DATABASE_URL: postgresql+psycopg://postgres@127.0.0.1:5432/postgres
+      ASSESSOR_RUN_TEST_DATABASE_URL: postgresql+psycopg://postgres@127.0.0.1:5432/postgres
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - run: python -m pip install --require-hashes -r requirements-tools-test.lock
+      - run: python -m pip install --no-deps ../../packages/dmb-agent-contracts
+      - run: python -m pytest tests/test_remote_tools.py tests/test_factor_priority.py tests/test_runtime_configuration.py tests/test_state_migration.py tests/test_corpus_tools.py tests/test_corpus_recorded_go.py --noconftest -q
+      - run: node --test tests/remote-tools.test.mjs
+      - run: python -m pytest remote_tool_tests --noconftest -q
+
+  windows-launcher:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Check aliases without real credentials
+        shell: pwsh
+        run: ./scripts/test-agent-config.ps1
+      - name: Check ownership using a synthetic HTTP process
+        shell: pwsh
+        run: ./scripts/test-agent-lifecycle.ps1 -Python (Get-Command python).Source
+
+      - name: Install local graceful-control test dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --require-hashes -r agents/meeting-analyzer/requirements.lock
+          python -m pip install --no-deps --no-build-isolation ./packages/dmb-agent-contracts
+      - name: Verify real lifespan drain without touching product services
+        shell: pwsh
+        run: ./scripts/test-agent-graceful.ps1 -Python (Get-Command python).Source
+
+  independent-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [business-analyst, business-analyst-experimental, meeting-analyzer, value-priority-assessor, backlog-assistant]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Build and verify offline imports and filesystem
+        run: python scripts/qualify-agent-artifacts.py --service ${{ matrix.service }} --output .runtime/artifact-check/manifest.json
+
+  agent-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: dmb-backlog
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - run: npm ci --ignore-scripts
+      - run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+      - run: node --test frontend/tests/meetingCapture*.test.mjs
+      - name: Dialogue and backlog client invariants
+        run: >-
+          node --test frontend/tests/backlogAssistant.test.mjs
+          frontend/tests/agentV2Retirement.test.mjs frontend/tests/agentV2Journey.test.mjs
+          frontend/tests/agentV2Generation.test.mjs frontend/tests/agentV2Fork.test.mjs
+          frontend/tests/agentCoreProgress.test.mjs frontend/tests/agentChatWorkflow.test.mjs
+          frontend/tests/agentChatUx.test.mjs
+      - run: node node_modules/@playwright/test/cli.js test --config playwright.agent-migration.config.mjs
+
+  meeting-dmb-receipts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      DEBUG: "true"
+      RUN_STARTUP_SEED: "false"
+      RUN_STARTUP_MAINTENANCE: "false"
+      RUN_NOTIFICATION_SCHEDULER: "false"
+      PYTHONPATH: dmb-backlog/backend
+      MEETING_RECEIPT_TEST_POSTGRES_URL: postgresql+psycopg://postgres@127.0.0.1:5432/agent_dmb_meeting_ci
+      MEETING_TEST_DATABASE_URL: postgresql+psycopg://postgres@127.0.0.1:5432/agent_dmb_meeting_ci
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --require-hashes -r dmb-backlog/backend/requirements-dev.lock
+      - run: python -m pip install --no-deps ./packages/dmb-agent-contracts
+      - name: Create disposable technical meeting database
+        run: |
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect('postgresql://postgres@127.0.0.1:5432/postgres', autocommit=True) as connection:
+              connection.execute('CREATE DATABASE agent_dmb_meeting_ci')
+          PY
+      - run: python -m pytest dmb-backlog/backend/tests/test_meeting_capture.py dmb-backlog/backend/tests/test_meeting_receipts.py dmb-backlog/backend/tests/test_meeting_receipt_migration.py dmb-backlog/backend/tests/test_meeting_intent_api.py dmb-backlog/backend/tests/test_agent_recovery_gateway.py --noconftest -q -p no:cacheprovider
+
+  limiter-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      redis:
+        image: redis:7-alpine@sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c
+        ports: [6379:6379]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      AGENT_LIMITER_TEST_REDIS_URL: redis://127.0.0.1:6379/0
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --require-hashes -r agents/meeting-analyzer/requirements-dev.lock
+      - run: python -m pip install --no-deps --no-build-isolation ./packages/dmb-agent-contracts
+      - run: python -m pytest packages/dmb-agent-contracts/tests/test_limiter.py packages/dmb-agent-contracts/tests/test_operation.py packages/dmb-agent-contracts/tests/test_deadline_http.py -q -p no:cacheprovider

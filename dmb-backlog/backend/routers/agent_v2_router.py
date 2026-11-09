@@ -32,7 +32,9 @@ from services.agent_v2_gateway import (
 from services.agent_v2_documents import publication_package, render_source_document
 
 
-router = APIRouter()
+from services.agent_recovery import bind_actor,guard_v2
+
+router = APIRouter(dependencies=[Depends(bind_actor),Depends(guard_v2)])
 
 
 def _deny_unless_pilot(user: User) -> None:

@@ -1,0 +1,330 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - generic: Управление бэклогом
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Метрики":
+      - /url: "#/metrics"
+      - generic: Метрики
+    - link "Проекты":
+      - /url: "#/work-projects"
+      - generic: Проекты
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link "Запросы заказчиков":
+      - /url: "#/review"
+      - generic: Запросы заказчиков
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - generic: ИИ-агенты
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - 'generic "Непрочитанных уведомлений: 62"': "62"
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - link "Главная":
+      - /url: "#/dashboard"
+    - generic: /
+    - link "Метрики":
+      - /url: "#/metrics"
+    - generic: /
+    - generic: Карточка метрики
+  - combobox "Поиск задач"
+  - 'button "Уведомления: 62 непрочитанных"':
+    - 'generic "Непрочитанных уведомлений: 62"': "62"
+  - button "Переключить тему":
+  - button "Q.ba-a":
+    - generic: QB
+    - generic: Q.ba-a
+- main:
+  - heading "Метрики" [level=1]
+  - paragraph: Цели, измерения и результаты команд
+  - button "Новая метрика":
+    - generic: Новая метрика
+  - button "Обновить":
+  - form "Фильтры метрик":
+    - searchbox "Поиск метрик"
+    - generic: "Период:"
+    - combobox "Период":
+      - option "4 квартал 2026" [selected]
+      - option "3 квартал 2026"
+      - option "2 квартал 2026"
+      - option "2026 год"
+      - option "1 квартал 2026"
+      - option "4 квартал 2025"
+      - option "3 квартал 2025"
+      - option "2 квартал 2025"
+      - option "1 квартал 2025"
+    - generic: "Команда:"
+    - combobox "Команда":
+      - option "Все" [selected]
+      - option "AI"
+      - option "Core"
+      - option "Delivery"
+      - option "IB"
+      - option "Methodology"
+      - option "Post-Trade (Finance)"
+      - option "Post-Trade (Products & Service)"
+      - option "Pre-Trade"
+      - option "QA Team A"
+      - option "QA Team B"
+      - option "ИТ ЛТ"
+      - option "Проектный офис"
+    - generic: "Владелец:"
+    - combobox "Владелец":
+      - option "Все" [selected]
+      - option "QA admin"
+      - option "QA ba-a"
+      - option "QA ba-a-peer"
+      - option "QA ba-b"
+      - option "QA ba-no-team"
+      - option "QA cl-a"
+      - option "QA invited"
+      - option "QA it-pl-a"
+      - option "QA it-pl-b"
+      - option "QA no-access"
+      - option "QA pl-a"
+      - option "QA po-a"
+      - option "QA po-b"
+      - option "QA reset-required"
+      - option "QA tribe-lead"
+      - option "UX тест — без команды"
+      - option "А. Коптелов"
+      - option "А. Мазунин"
+      - option "А. Нуждин"
+      - option "В. Баклушин"
+      - option "В. Гусев"
+      - option "В. Лемце"
+      - option "В. Стодольский"
+      - option "Д. Андреев"
+      - option "Д. Козлов"
+      - option "Д. Маркус"
+      - option "Д. Орлова"
+      - option "Д. Фомин"
+      - option "И. Мишутин"
+      - option "И. Яковлев"
+      - option "Л. Куликов"
+      - option "М. Первак"
+      - option "Р. Хачатрян"
+      - option "Тимофей Бабяк"
+      - option "Ю. Шилов"
+    - generic: "Состояние:"
+    - combobox "Состояние":
+      - option "Все" [selected]
+      - option "Черновик"
+      - option "Активен"
+      - option "Завершён"
+      - option "Отменён"
+    - generic: "Проект:"
+    - combobox "Проект":
+      - option "Все" [selected]
+      - option "AI ПОМОЩНИК IB"
+      - option "AI-СПРАВКА ПО КЛИЕНТУ"
+      - option "BI"
+      - option "DATA"
+      - option "IB"
+      - option "MIS"
+      - option "АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ"
+      - option "ВЕНДОРОЗАМЕЩЕНИЕ"
+      - option "ВЫВОД PM В СИГМУ"
+      - option "ДАШБОРДЫ"
+      - option "ДЕСК НЕДВИЖИМОСТИ"
+      - option "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ"
+      - option "ИМПОРТОЗАМЕЩЕНИЕ"
+      - option "КАРТОЧКА КЛИЕНТА"
+      - option "ЛИДЫ ДЛЯ КМ"
+      - option "ЛИДЫ ОТ КМ"
+      - option "МАРШРУТИЗАЦИЯ"
+      - option "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД"
+      - option "ПАЙПЛАЙН-СКАНЕР СДЕЛОК"
+      - option "ПРОЧИЕ ЦЕЛИ"
+      - option "РЕАЛИЗОВАН ПОИСК ПОТЕНЦИАЛОВ ДЛЯ НОВЫХ ВЫПУСКОВ ОБЛИГАЦИЙ"
+      - option "СДЕЛКИ МАРШРУТИЗАЦИИ"
+      - option "ЦЕЛИ ЛПР"
+      - option "ЦИФРОВОЙ МЕТОДОЛОГ"
+      - option "ЦКП"
+    - button "Сброс":
+      - generic: Сброс
+  - group "Быстрые выборки метрик":
+    - button "Активные · —":
+      - generic: Активные
+      - generic: ·
+      - strong: —
+    - button "Цель достигнута · —":
+      - generic: Цель достигнута
+      - generic: ·
+      - strong: —
+    - button "Просрочен замер · —":
+      - generic: Просрочен замер
+      - generic: ·
+      - strong: —
+    - button "Без измерений · —":
+      - generic: Без измерений
+      - generic: ·
+      - strong: —
+  - group "Область метрик":
+    - button "Все метрики" [pressed]:
+      - generic: Все метрики
+    - button "Мои метрики":
+      - generic: Мои метрики
+  - checkbox "Архив метрик"
+  - generic: Архив метрик
+  - generic: Сортировка
+  - combobox "Сортировка":
+    - option "По названию" [selected]
+    - option "Недавно изменённые"
+    - option "По сроку замера"
+    - option "По прогрессу"
+  - status: "Найдено: 0"
+  - generic "Реестр метрик":
+    - status:
+      - heading "Метрики не найдены" [level=3]
+      - paragraph: Измените фильтры или создайте новую метрику.
+  - status: Показано 0–0 из 0
+  - dialog "DEV-QA-UI-REVIEW-20261027":
+    - paragraph:
+      - text: Прежняя модель.
+      - button "Перейти на кварталы"
+    - generic: Карточка метрики · MET-071
+    - button "Закрыть карточку метрики":
+      - generic: Закрыть
+    - heading "DEV-QA-UI-REVIEW-20261027" [level=1]
+    - paragraph: QA Team A · QA ba-a
+    - button "Внести значение":
+      - generic: Внести значение
+    - generic "Действия с метрикой": ⋯
+    - generic: Период
+    - combobox "Период":
+      - option "QA-период 27.10.2026" [selected]
+    - generic: 01.10.2026–31.12.2026
+    - generic: Активен
+    - generic: Текущее значение
+    - strong: 100 %
+    - generic: Обновлено 27.10.2026
+    - generic: Цель
+    - strong: ≥ 100
+    - generic: "%"
+    - generic: Отклонение от цели
+    - strong: На уровне цели
+    - generic: 100%
+    - progressbar "Прогресс метрики"
+    - status: Последнее обновление 27.10.2026 · следующий замер 03.11.2026
+    - navigation "Карточка метрики":
+      - link "Обзор":
+        - /url: "#/metrics/71?period_id=58&section=overview"
+      - link "Обсуждение":
+        - /url: "#/metrics/71?period_id=58&section=discussion"
+      - link "История":
+        - /url: "#/metrics/71?period_id=58&section=history"
+    - heading "Динамика" [level=2]
+    - img "Динамика измерений; точные значения в таблице замеров ниже":
+      - generic: "-12"
+      - generic: 29,3333
+      - generic: 70,6667
+      - generic: "112"
+      - 'generic "27.10.2026: 100"'
+      - generic: 01.10.2026
+      - generic: 31.12.2026
+    - paragraph: Сплошная линия — факт · пунктир — цель
+    - heading "Последние замеры" [level=2]
+    - region "Измерения метрики — таблица":
+      - table "Измерения метрики":
+        - caption: Измерения метрики
+        - rowgroup:
+          - row "Дата Значение Источник и комментарий Автор Действия":
+            - columnheader "Дата"
+            - columnheader "Значение"
+            - columnheader "Источник и комментарий"
+            - columnheader "Автор"
+            - columnheader "Действия"
+        - rowgroup:
+          - row "27.10.2026 100 % Синтетический QA-набор QA ba-a Исправить замер от 27.10.2026":
+            - cell "27.10.2026":
+              - time: 27.10.2026
+            - cell "100 %":
+              - generic: "100"
+              - generic: "%"
+            - cell "Синтетический QA-набор":
+              - generic: Синтетический QA-набор
+            - cell "QA ba-a":
+              - generic: QA ba-a
+            - cell "Исправить замер от 27.10.2026":
+              - button "Исправить замер от 27.10.2026":
+                - generic: Исправить
+    - generic "О метрике и способе расчёта"
+    - generic "Связанные задачи"
+- dialog "Переход на квартальную модель":
+  - banner:
+    - heading "Переход на квартальную модель" [level=2]
+    - button "Закрыть" [active]:
+      - generic: Закрыть
+  - paragraph: Прежние ID, история и закрытия сохраняются. Замеры станут фактом только после явного выбора. Годовые и произвольные периоды сохраняются отдельно. Для них можно вручную задать новые квартальные планы без переноса фактов.
+  - group "QA-период 27.10.2026":
+    - generic: QA-период 27.10.2026
+    - paragraph: 2026-10-01–2026-12-31 · active · План 100
+    - checkbox "Перевести 4 квартал"
+    - text: Перевести 4 квартал
+    - text: Тип результата
+    - combobox "Тип результата":
+      - option "Объём"
+      - option "Изменение" [selected]
+      - option "Порог"
+      - option "Диапазон"
+    - checkbox "Сохранить явно выбранный факт"
+    - text: Сохранить явно выбранный факт
+    - text: Факт
+    - textbox "Факт": "100"
+    - text: Достоверная дата
+    - textbox "Достоверная дата": 2026-10-27
+    - text: Источник
+    - textbox "Источник": Синтетический QA-набор
+  - text: Причина перехода
+  - textbox "Причина перехода"
+  - alert
+  - button "Подтвердить переход"

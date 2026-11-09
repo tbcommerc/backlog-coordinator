@@ -1,3 +1,5 @@
+import { safeBacklogReturn } from '../backlogRouteState.js';
+import { segmentedControl } from '../ui/segmented.js';
 import {setButtonBusy} from '../ui/controls.js';
 import {loadMore as kitLoadMore} from '../ui/specialized.js';
 console.log('[DMB] expressEstimate.js v20260910.2 loaded');
@@ -325,7 +327,7 @@ function renderTopSection() {
         <span><i data-lucide="calendar-range"></i> Расчётный период: квартал</span>
         <span><i data-lucide="ruler"></i> Единица: чел./дн.</span>
         <details class="qe-resource-help">
-            <summary><i data-lucide="info"></i> Как считается</summary>
+            <summary class="ui-disclosure-text"><i data-lucide="info"></i> Как считается</summary>
             <div class="qe-resource-help-popover">
                 <strong>Capacity — доступный ресурс</strong>
                 <code>(Sr × РД × ${CAPACITY_COEFFS.senior} + Md × РД × ${CAPACITY_COEFFS.middle} + Jr × РД × ${CAPACITY_COEFFS.junior}) × ${CAPACITY_COEFFS.lossFactor} − Отп.</code>
@@ -439,10 +441,7 @@ function renderResourceCockpit() {
     container.innerHTML = `
         <div class="qe-cockpit-head">
             <div><strong>Ресурсный баланс</strong><span>Demand / Capacity · чел./дн.</span></div>
-            <div class="qe-cockpit-switch" role="group" aria-label="Режим диаграммы">
-                <button class="btn btn-secondary btn-sm ui-btn" data-mode="util" aria-pressed="${!balanceAxis}">Утилизация</button>
-                <button class="btn btn-secondary btn-sm ui-btn" data-mode="balance" aria-pressed="${balanceAxis}">Баланс</button>
-            </div>
+            ${segmentedControl({label:'Режим диаграммы',className:'qe-cockpit-switch',size:'small',value:resourceChartMode,items:[{value:'util',label:'Утилизация',attrs:{'data-mode':'util'}},{value:'balance',label:'Баланс',attrs:{'data-mode':'balance'}}]})}
         </div>
         <div class="qe-cockpit-column-head">
             <div class="qe-cockpit-summary"><span class="over"><b>${counts.over}</b> дефицит</span><span class="good"><b>${counts.good}</b> в норме</span><span class="under"><b>${counts.under}</b> резерв</span></div>
@@ -540,15 +539,11 @@ function renderHierarchyBlock() {
                 <i data-lucide="search" aria-hidden="true"></i>
                 <input class="input ui-control" id="qe-task-search-input" type="search" value="${escAttr(expressTaskSearch)}" placeholder="Поиск по ID или названию" aria-label="Поиск задач экспресс-оценки">
             </label>
-            <div class="qe-estimate-filters" role="group" aria-label="Фильтр по готовности оценки">
-                <button class="btn btn-secondary btn-sm ui-btn qe-estimate-filter${expressTaskFilter === 'all' ? ' active' : ''}" data-filter="all" aria-pressed="${expressTaskFilter === 'all'}">Все</button>
-                <button class="btn btn-secondary btn-sm ui-btn qe-estimate-filter${expressTaskFilter === 'blocked' ? ' active' : ''}" data-filter="blocked" aria-pressed="${expressTaskFilter === 'blocked'}">Требуют внимания</button>
-                <button class="btn btn-secondary btn-sm ui-btn qe-estimate-filter${expressTaskFilter === 'ready' ? ' active' : ''}" data-filter="ready" aria-pressed="${expressTaskFilter === 'ready'}">Готовые</button>
-            </div>
+            ${segmentedControl({label:'Фильтр по готовности оценки',className:'qe-estimate-filters',value:expressTaskFilter,items:[['all','Все'],['blocked','Требуют внимания'],['ready','Готовые']].map(([value,label])=>({value,label,className:'qe-estimate-filter',attrs:{'data-filter':value}}))})}
             <span id="qe-filtered-count" class="qe-filtered-count"></span>
             <div class="qe-collapse-actions">
-                <button class="btn btn-xs btn-secondary" id="qe-collapse-all-btn" title="Свернуть все задачи и эпики"><i data-lucide="chevrons-up"></i> Свернуть всё</button>
-                <button class="btn btn-xs btn-secondary" id="qe-expand-all-btn" title="Развернуть все задачи и эпики"><i data-lucide="chevrons-down"></i> Развернуть всё</button>
+                <button class="btn btn-secondary" id="qe-collapse-all-btn" title="Свернуть все задачи и эпики"><i data-lucide="chevrons-up"></i> Свернуть всё</button>
+                <button class="btn btn-secondary" id="qe-expand-all-btn" title="Развернуть все задачи и эпики"><i data-lucide="chevrons-down"></i> Развернуть всё</button>
             </div>
         </div>
         <div class="qe-task-list-scroll">
@@ -1850,7 +1845,7 @@ function showCompleteEstimateModal() {
             </div>
             <h4>Ключевые отклонения</h4>
             <ul class="qe-deviation-list">${deviationItems || '<li class="balanced">Потребность сбалансирована с Capacity по всем компетенциям.</li>'}</ul>
-            <details class="qe-complete-details"><summary>Показать сводку по компетенциям</summary>
+            <details class="qe-complete-details"><summary class="ui-disclosure-text">Показать сводку по компетенциям</summary>
                 <div class="qe-complete-table-wrap"><table class="ui-table ui-table-data"><thead><tr><th>Компетенция</th><th>Demand</th><th>Capacity</th><th>Утилизация</th><th>Отклонение</th></tr></thead><tbody>${tableRows}</tbody></table></div>
             </details>
             </div>
@@ -1875,8 +1870,8 @@ function showEstimateHandoffModal(taskCount, detail) {
         || (permissions.reports && permissions.reports !== 'none');
     const destination = canOpenPip
         ? `/reports/detail?r=pip&source=express-estimate&transferred=${taskCount}`
-        : '/team-backlog';
-    const actionLabel = canOpenPip ? 'Перейти к PI-планированию' : 'Вернуться в бэклог команды';
+        : safeBacklogReturn(new URLSearchParams(window.location.hash.split('?')[1]||'').get('return_to'),'#/backlog?scope=team').slice(1);
+    const actionLabel = canOpenPip ? 'Перейти к PI-планированию' : 'Вернуться в бэклог';
     const actionIcon = canOpenPip ? 'arrow-right' : 'list-tree';
     const accessNote = canOpenPip
         ? 'Очередь PI уже обновлена. Там можно проверить контекст и принять решение по каждой задаче.'

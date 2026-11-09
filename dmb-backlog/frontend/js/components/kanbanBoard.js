@@ -3,7 +3,7 @@ import { canEditTask } from '../taskCardPermissions.js';
 import { button, pageHeader, badge } from '../ui/primitives.js';
 import { renderViewState } from './viewState.js';
 console.log('[DMB] kanbanBoard.js v20260626.7 loaded');
-import { renderTaskCard } from './modal.js?v=118';
+import { renderTaskCard } from './modal.js?v=125';
 import { formatTaskPublicId } from '../taskPublicId.js';
 
 let kanbanCurrentTasks = [];
@@ -104,7 +104,7 @@ export async function initKanban(app) {
         state.hidden = true;
         board.hidden = false;
 
-        const { openCreateTaskModal, setOnTaskSaved } = await import('./modal.js?v=118');
+        const { openCreateTaskModal, setOnTaskSaved } = await import('./modal.js?v=125');
         setOnTaskSaved(() => initKanban(app));
 
         if (addButton?.isConnected) {
@@ -325,7 +325,7 @@ function renderKanbanCards(app, tasks) {
                 if (e.target.closest('.btn-icon, .btn')) return;
                 const t = tasks.find(x => String(x.id) === String(card.dataset.id));
                 if (t) {
-                    import('./modal.js?v=118').then(mod => mod.openTaskModal(t));
+                    import('./modal.js?v=125').then(mod => mod.openTaskModal(t));
                 }
             });
             card.addEventListener('dragstart', (e) => {

@@ -8,7 +8,7 @@ for(const theme of ['light','dark'])for(const width of [1440,390])test(`metrics 
   await import('/e2e/fixtures/spaStyles.js');
   (await import('/js/modalAccessibility.js')).initModalAccessibility();
   document.documentElement.dataset.theme=theme;
-  const mod=await import('/js/components/metrics.js');
+  const legacy=await import('/js/components/metrics.js'); const mod={renderMetrics:legacy.renderLegacyMetrics,initMetrics:legacy.initLegacyMetrics};
   const options={user_id:1,team_id:1,can_create:true,edit_scope:'all',current_period:'2026-Q4',periods:[],teams:[{id:1,name:'QA'}],users:[{id:1,name:'QA'}],projects:[],priorities:[],business_customers:[],departments:[],did_client_groups:[],meetings:[]};
   const registry={items:[{id:1,title:'Показатель качества',public_id:'MET-1',unit:'%',owner:'QA',team:'Команда'}],summary:{active:1,achieved:0,overdue:0,missing:1},page:1,pages:1,total:1};
   const card={id:1,title:'Показатель качества',public_id:'MET-1',permissions:{edit:false,comment:false},periods:[],measurements:[],links:[{id:1,kind:'major',target_id:1,public_id:'DMB-1',title:'Связанная задача'}],files:[{id:1,filename:'Описание.txt',size:100,created_at:'2026-10-26'}],reports:[],comments:[],history:[]};
@@ -32,7 +32,7 @@ for(const theme of ['light','dark'])for(const width of [1440,390])test(`metrics 
  await page.getByRole('button',{name:'Новая метрика',exact:true}).click();
  await page.getByRole('textbox',{name:'Название *',exact:true}).fill('Сохраняемый черновик');await page.getByRole('textbox',{name:'Единица измерения *',exact:true}).fill('%');
  await page.evaluate(()=>{window.metricApp.api.request=()=>new Promise((resolve,reject)=>window.rejectMetric=()=>reject(Object.assign(Error('HTTP 422'),{status:422,data:[{loc:['body','title'],msg:'Недопустимое название'}]})));});
- await page.getByRole('button',{name:'Сохранить',exact:true}).click();
+ await page.getByRole('button',{name:'Сохранить черновик',exact:true}).click();
  await expect(page.locator('#metric-editor')).toHaveAttribute('aria-busy','true');await expect(page.getByRole('textbox',{name:'Название *',exact:true})).toBeDisabled();
  await page.evaluate(()=>window.rejectMetric());
  await expect(page.getByRole('textbox',{name:'Название *',exact:true})).toHaveAttribute('aria-invalid','true');await expect(page.getByRole('textbox',{name:'Название *',exact:true})).toBeFocused();
@@ -68,12 +68,13 @@ for(const theme of ['light','dark'])for(const width of [1440,390])test(`metrics 
    await window.metricsTest.show('overview');
  });
  await expect(page.locator('#metric-card .ui-section-card')).toHaveCount(3);
- await expect(page.locator('#metric-card .ui-description-list')).toContainText(['Описание','Владелец']);
+ await expect(page.locator('#metric-card .ui-description-list')).toContainText(['Описание']);
+ await expect(page.locator('#metric-card .ui-description-list')).toContainText(['Владелец']);
  await expect(page.locator('#metrics-root > #metric-card.ui-detail-panel')).toBeVisible();
  await page.evaluate(async()=>{
    const card=window.metricsTest.card;
    card.unit='%';
-   card.periods=[{id:7,label:'IV квартал',state:'active',start_date:'2026-10-01',end_date:'2026-12-31',direction:'up',baseline:0,target:100,legacy_fact:null,summary:{fact:0,progress:0,freshness:'current'}}];
+   card.periods=[{id:7,label:'IV квартал',state:'active',start_date:'2026-10-01',end_date:'2026-12-31',direction:'up',baseline:0,baseline_date:'2026-10-01',cadence:'weekly',first_due_date:'2026-10-01',target:100,legacy_fact:null,summary:{fact:0,progress:0,freshness:'current'}}];
    card.measurements=[{id:12,period_id:7,measured_on:'2026-10-29',value:0,source:'<script>источник</script>',comment:'Комментарий',author:'QA'}];
    window.metricsTest.options.today='2026-10-29';
    await window.metricsTest.show('measurements');
@@ -91,6 +92,7 @@ for(const theme of ['light','dark'])for(const width of [1440,390])test(`metrics 
  await expect(page.locator('#metric-editor [name=value]')).toHaveValue('0');
  await page.getByRole('button',{name:'Закрыть форму',exact:true}).click();
  await expect(page.locator('#metric-editor')).toHaveCount(0);
+ await page.getByLabel('Действия с метрикой',{exact:true}).click();
  await page.getByRole('button',{name:'Настроить период',exact:true}).click();
  await page.locator('#metric-editor [name=reason]').fill('Проверка диапазона');
  await page.locator('#metric-editor [name=direction]').selectOption('range');
@@ -130,7 +132,7 @@ for(const theme of ['light','dark'])for(const width of [1440,390])test(`metrics 
   await action.focus();await expect(action).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
  }
- await page.getByRole('link',{name:'Файлы',exact:true}).click();
+ await page.getByRole('link',{name:'Обсуждение',exact:true}).click();
  await expect(page.locator('#metric-card')).toBeVisible();
  await expect(page.locator('#metric-card')).toContainText('Описание.txt');
  const geometry=await page.locator('#metric-card').evaluate(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,overflow:el.scrollWidth-el.clientWidth}));

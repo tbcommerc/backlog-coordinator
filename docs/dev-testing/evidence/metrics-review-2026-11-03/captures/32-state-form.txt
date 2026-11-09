@@ -1,0 +1,672 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - generic: Управление бэклогом
+    - link "Бэклог DMB":
+      - /url: "#/backlog"
+      - generic: Бэклог DMB
+    - link "Бэклог команды":
+      - /url: "#/team-backlog"
+      - generic: Бэклог команды
+    - link "Метрики":
+      - /url: "#/metrics"
+      - generic: Метрики
+    - link "Проекты":
+      - /url: "#/work-projects"
+      - generic: Проекты
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link "Запросы заказчиков":
+      - /url: "#/review"
+      - generic: Запросы заказчиков
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - generic: ИИ-агенты
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - 'generic "Непрочитанных уведомлений: 62"': "62"
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - link "Главная":
+      - /url: "#/dashboard"
+    - generic: /
+    - link "Метрики":
+      - /url: "#/metrics"
+    - generic: /
+    - generic: Карточка метрики
+  - combobox "Поиск задач"
+  - 'button "Уведомления: 62 непрочитанных"':
+    - 'generic "Непрочитанных уведомлений: 62"': "62"
+  - button "Переключить тему":
+  - button "Q.ba-a":
+    - generic: QB
+    - generic: Q.ba-a
+- main:
+  - heading "Метрики" [level=1]
+  - paragraph: Квартальные планы, факты и подтверждённые итоги
+  - button "Новая метрика":
+    - generic: Новая метрика
+  - generic: Поиск
+  - textbox "Поиск"
+  - generic: Год
+  - spinbutton "Год": "2025"
+  - generic: Квартал
+  - combobox "Квартал":
+    - option "1 квартал" [selected]
+    - option "2 квартал"
+    - option "3 квартал"
+    - option "4 квартал"
+  - generic: Представление
+  - combobox "Представление":
+    - option "За квартал" [selected]
+    - option "За год"
+  - generic: Команды
+  - combobox "Команды":
+    - option "Все" [selected]
+    - option "AI"
+    - option "Core"
+    - option "Delivery"
+    - option "IB"
+    - option "Methodology"
+    - option "Post-Trade (Finance)"
+    - option "Post-Trade (Products & Service)"
+    - option "Pre-Trade"
+    - option "QA Team A"
+    - option "QA Team B"
+    - option "ИТ ЛТ"
+    - option "Проектный офис"
+  - generic: Владельцы
+  - combobox "Владельцы":
+    - option "Все" [selected]
+    - option "QA admin"
+    - option "QA ba-a"
+    - option "QA ba-a-peer"
+    - option "QA ba-b"
+    - option "QA ba-no-team"
+    - option "QA cl-a"
+    - option "QA invited"
+    - option "QA it-pl-a"
+    - option "QA it-pl-b"
+    - option "QA no-access"
+    - option "QA pl-a"
+    - option "QA po-a"
+    - option "QA po-b"
+    - option "QA reset-required"
+    - option "QA tribe-lead"
+    - option "UX тест — без команды"
+    - option "А. Коптелов"
+    - option "А. Мазунин"
+    - option "А. Нуждин"
+    - option "В. Баклушин"
+    - option "В. Гусев"
+    - option "В. Лемце"
+    - option "В. Стодольский"
+    - option "Д. Андреев"
+    - option "Д. Козлов"
+    - option "Д. Маркус"
+    - option "Д. Орлова"
+    - option "Д. Фомин"
+    - option "И. Мишутин"
+    - option "И. Яковлев"
+    - option "Л. Куликов"
+    - option "М. Первак"
+    - option "Р. Хачатрян"
+    - option "Тимофей Бабяк"
+    - option "Ю. Шилов"
+  - generic: Проекты
+  - combobox "Проекты":
+    - option "Все" [selected]
+    - option "AI ПОМОЩНИК IB"
+    - option "AI-СПРАВКА ПО КЛИЕНТУ"
+    - option "BI"
+    - option "DATA"
+    - option "IB"
+    - option "MIS"
+    - option "АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ"
+    - option "ВЕНДОРОЗАМЕЩЕНИЕ"
+    - option "ВЫВОД PM В СИГМУ"
+    - option "ДАШБОРДЫ"
+    - option "ДЕСК НЕДВИЖИМОСТИ"
+    - option "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ"
+    - option "ИМПОРТОЗАМЕЩЕНИЕ"
+    - option "КАРТОЧКА КЛИЕНТА"
+    - option "ЛИДЫ ДЛЯ КМ"
+    - option "ЛИДЫ ОТ КМ"
+    - option "МАРШРУТИЗАЦИЯ"
+    - option "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД"
+    - option "ПАЙПЛАЙН-СКАНЕР СДЕЛОК"
+    - option "ПРОЧИЕ ЦЕЛИ"
+    - option "РЕАЛИЗОВАН ПОИСК ПОТЕНЦИАЛОВ ДЛЯ НОВЫХ ВЫПУСКОВ ОБЛИГАЦИЙ"
+    - option "СДЕЛКИ МАРШРУТИЗАЦИИ"
+    - option "ЦЕЛИ ЛПР"
+    - option "ЦИФРОВОЙ МЕТОДОЛОГ"
+    - option "ЦКП"
+  - generic: Состояние метрики
+  - combobox "Состояние метрики":
+    - option "Все" [selected]
+    - option "Черновик"
+    - option "Ведётся"
+    - option "Приостановлена"
+  - generic: Состояние периода
+  - combobox "Состояние периода":
+    - option "Все" [selected]
+    - option "Черновик"
+    - option "В работе"
+    - option "Закрыт"
+    - option "Отменён"
+  - generic: Область
+  - combobox "Область":
+    - option "Все метрики" [selected]
+    - option "Мои метрики"
+  - generic: Сортировка
+  - combobox "Сортировка":
+    - option "По названию" [selected]
+    - option "По изменению"
+    - option "По сроку замера"
+    - option "По числовому прогрессу"
+  - checkbox "Архив"
+  - text: Архив
+  - button "Сброс":
+    - generic: Сброс
+  - button "Колонки":
+    - generic: Колонки
+  - button "Нет факта · 0":
+    - generic: Нет факта · 0
+  - button "Ожидают итога · 0":
+    - generic: Ожидают итога · 0
+  - button "Цель не достигнута · 1":
+    - generic: Цель не достигнута · 1
+  - button "Просрочен замер · 0":
+    - generic: Просрочен замер · 0
+  - region "Квартальный реестр — таблица":
+    - table "Квартальный реестр":
+      - caption: Квартальный реестр
+      - rowgroup:
+        - row "Метрика План Факт Результат Владелец Состояние":
+          - columnheader "Метрика"
+          - columnheader "План"
+          - columnheader "Факт"
+          - columnheader "Результат"
+          - columnheader "Владелец"
+          - columnheader "Состояние"
+      - rowgroup:
+        - row "DEV-QA-QUARTERLY-LIVE-20261103 MET-7324 · шт 100 80 Итоговый · 2025-03-31 Цель не достигнута · 80% QA ba-a Ведётся · Закрыт":
+          - cell "DEV-QA-QUARTERLY-LIVE-20261103 MET-7324 · шт":
+            - link "DEV-QA-QUARTERLY-LIVE-20261103":
+              - /url: "#/metrics/7324?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-7324 · шт
+          - cell "100"
+          - cell "80 Итоговый · 2025-03-31":
+            - link "80 Итоговый · 2025-03-31":
+              - /url: "#/metrics/7324?year=2025&quarter=1&view=quarter&period_id=28475&section=discussion"
+              - strong: "80"
+              - generic: Итоговый · 2025-03-31
+          - cell "Цель не достигнута · 80%"
+          - cell "QA ba-a":
+            - generic: QA ba-a
+          - cell "Ведётся · Закрыт"
+        - row "DEV-QA-UI-REVIEW-20261027 MET-071 · % · Прежняя модель — — Нет факта Не запланирован QA ba-a Прежняя модель":
+          - cell "DEV-QA-UI-REVIEW-20261027 MET-071 · % · Прежняя модель":
+            - link "DEV-QA-UI-REVIEW-20261027":
+              - /url: "#/metrics/71?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-071 · % · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/71?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "QA ba-a":
+            - generic: QA ba-a
+          - cell "Прежняя модель"
+        - row "Автоматизация интеграционного тестирования MET-002 · дней · Прежняя модель — — Нет факта Не запланирован Л. Куликов Прежняя модель":
+          - cell "Автоматизация интеграционного тестирования MET-002 · дней · Прежняя модель":
+            - link "Автоматизация интеграционного тестирования":
+              - /url: "#/metrics/2?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-002 · дней · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/2?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Л. Куликов":
+            - generic: Л. Куликов
+          - cell "Прежняя модель"
+        - row "Автоматизация отчётов о доступности MET-014 · ч.-дн · Прежняя модель — — Нет факта Не запланирован В. Баклушин Прежняя модель":
+          - cell "Автоматизация отчётов о доступности MET-014 · ч.-дн · Прежняя модель":
+            - link "Автоматизация отчётов о доступности":
+              - /url: "#/metrics/14?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-014 · ч.-дн · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/14?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "В. Баклушин":
+            - generic: В. Баклушин
+          - cell "Прежняя модель"
+        - row "Аудит качества данных в задачах MET-032 · % · Прежняя модель — — Нет факта Не запланирован И. Яковлев Прежняя модель":
+          - cell "Аудит качества данных в задачах MET-032 · % · Прежняя модель":
+            - link "Аудит качества данных в задачах":
+              - /url: "#/metrics/32?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-032 · % · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/32?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "И. Яковлев":
+            - generic: И. Яковлев
+          - cell "Прежняя модель"
+        - row "Внедрение SLA для расчётных операций MET-010 · ед. · Прежняя модель — — Нет факта Не запланирован Д. Маркус Прежняя модель":
+          - cell "Внедрение SLA для расчётных операций MET-010 · ед. · Прежняя модель":
+            - link "Внедрение SLA для расчётных операций":
+              - /url: "#/metrics/10?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-010 · ед. · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/10?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Д. Маркус":
+            - generic: Д. Маркус
+          - cell "Прежняя модель"
+        - row "Внедрение пайплайн-отчётности MET-019 · млн ₽ · Прежняя модель — — Нет факта Не запланирован Ю. Шилов Прежняя модель":
+          - cell "Внедрение пайплайн-отчётности MET-019 · млн ₽ · Прежняя модель":
+            - link "Внедрение пайплайн-отчётности":
+              - /url: "#/metrics/19?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-019 · млн ₽ · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/19?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Ю. Шилов":
+            - generic: Ю. Шилов
+          - cell "Прежняя модель"
+        - row "Генеративная аналитика для руководства MET-033 · шт. · Прежняя модель — — Нет факта Не запланирован И. Мишутин Прежняя модель":
+          - cell "Генеративная аналитика для руководства MET-033 · шт. · Прежняя модель":
+            - link "Генеративная аналитика для руководства":
+              - /url: "#/metrics/33?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-033 · шт. · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/33?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "И. Мишутин":
+            - generic: И. Мишутин
+          - cell "Прежняя модель"
+        - row "Дашборд P&L Pre-Trade MET-004 · ч.-дн · Прежняя модель — — Нет факта Не запланирован Д. Фомин Прежняя модель":
+          - cell "Дашборд P&L Pre-Trade MET-004 · ч.-дн · Прежняя модель":
+            - link "Дашборд P&L Pre-Trade":
+              - /url: "#/metrics/4?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-004 · ч.-дн · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/4?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Д. Фомин":
+            - generic: Д. Фомин
+          - cell "Прежняя модель"
+        - row "Дашборд P&L для казначейства MET-007 · ч.-дн · Прежняя модель — — Нет факта Не запланирован Д. Андреев Прежняя модель":
+          - cell "Дашборд P&L для казначейства MET-007 · ч.-дн · Прежняя модель":
+            - link "Дашборд P&L для казначейства":
+              - /url: "#/metrics/7?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-007 · ч.-дн · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/7?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Д. Андреев":
+            - generic: Д. Андреев
+          - cell "Прежняя модель"
+        - row "Дашборд активностей КМ MET-012 · % · Прежняя модель — — Нет факта Не запланирован Ю. Шилов Прежняя модель":
+          - cell "Дашборд активностей КМ MET-012 · % · Прежняя модель":
+            - link "Дашборд активностей КМ":
+              - /url: "#/metrics/12?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-012 · % · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/12?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Ю. Шилов":
+            - generic: Ю. Шилов
+          - cell "Прежняя модель"
+        - row "Дашборд контрольных точек расчётов MET-009 · ед. · Прежняя модель — — Нет факта Не запланирован Д. Козлов Прежняя модель":
+          - cell "Дашборд контрольных точек расчётов MET-009 · ед. · Прежняя модель":
+            - link "Дашборд контрольных точек расчётов":
+              - /url: "#/metrics/9?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-009 · ед. · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/9?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Д. Козлов":
+            - generic: Д. Козлов
+          - cell "Прежняя модель"
+        - row "Дашборд портфеля для руководства MET-038 · дней · Прежняя модель — — Нет факта Не запланирован В. Стодольский Прежняя модель":
+          - cell "Дашборд портфеля для руководства MET-038 · дней · Прежняя модель":
+            - link "Дашборд портфеля для руководства":
+              - /url: "#/metrics/38?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-038 · дней · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/38?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "В. Стодольский":
+            - generic: В. Стодольский
+          - cell "Прежняя модель"
+        - row "Дашборд статуса проектов MET-034 · ч.-дн · Прежняя модель — — Нет факта Не запланирован В. Стодольский Прежняя модель":
+          - cell "Дашборд статуса проектов MET-034 · ч.-дн · Прежняя модель":
+            - link "Дашборд статуса проектов":
+              - /url: "#/metrics/34?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-034 · ч.-дн · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/34?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "В. Стодольский":
+            - generic: В. Стодольский
+          - cell "Прежняя модель"
+        - row "Дашборд стоимости фондирования MET-022 · млн ₽ · Прежняя модель — — Нет факта Не запланирован Д. Андреев Прежняя модель":
+          - cell "Дашборд стоимости фондирования MET-022 · млн ₽ · Прежняя модель":
+            - link "Дашборд стоимости фондирования":
+              - /url: "#/metrics/22?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-022 · млн ₽ · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/22?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Д. Андреев":
+            - generic: Д. Андреев
+          - cell "Прежняя модель"
+        - row "Дашборд финансовых метрик деска MET-018 · % · Прежняя модель — — Нет факта Не запланирован Д. Андреев Прежняя модель":
+          - cell "Дашборд финансовых метрик деска MET-018 · % · Прежняя модель":
+            - link "Дашборд финансовых метрик деска":
+              - /url: "#/metrics/18?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-018 · % · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/18?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Д. Андреев":
+            - generic: Д. Андреев
+          - cell "Прежняя модель"
+        - row "Дашборд экономической прибыли MET-024 · ч.-дн · Прежняя модель — — Нет факта Не запланирован Д. Андреев Прежняя модель":
+          - cell "Дашборд экономической прибыли MET-024 · ч.-дн · Прежняя модель":
+            - link "Дашборд экономической прибыли":
+              - /url: "#/metrics/24?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-024 · ч.-дн · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/24?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Д. Андреев":
+            - generic: Д. Андреев
+          - cell "Прежняя модель"
+        - row "Единый портфель проектов MET-029 · ед. · Прежняя модель — — Нет факта Не запланирован Тимофей Бабяк Прежняя модель":
+          - cell "Единый портфель проектов MET-029 · ед. · Прежняя модель":
+            - link "Единый портфель проектов":
+              - /url: "#/metrics/29?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-029 · ед. · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/29?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Тимофей Бабяк":
+            - generic: Тимофей Бабяк
+          - cell "Прежняя модель"
+        - row "Интеграция PMO с бэклогом команд MET-037 · ч.-дн · Прежняя модель — — Нет факта Не запланирован В. Стодольский Прежняя модель":
+          - cell "Интеграция PMO с бэклогом команд MET-037 · ч.-дн · Прежняя модель":
+            - link "Интеграция PMO с бэклогом команд":
+              - /url: "#/metrics/37?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-037 · ч.-дн · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/37?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "В. Стодольский":
+            - generic: В. Стодольский
+          - cell "Прежняя модель"
+        - row "Контроль бюджета проектов MET-035 · млн ₽ · Прежняя модель — — Нет факта Не запланирован В. Стодольский Прежняя модель":
+          - cell "Контроль бюджета проектов MET-035 · млн ₽ · Прежняя модель":
+            - link "Контроль бюджета проектов":
+              - /url: "#/metrics/35?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-035 · млн ₽ · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/35?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "В. Стодольский":
+            - generic: В. Стодольский
+          - cell "Прежняя модель"
+        - row "Контроль исполнения стратегических целей MET-030 · ч.-дн · Прежняя модель — — Нет факта Не запланирован А. Коптелов Прежняя модель":
+          - cell "Контроль исполнения стратегических целей MET-030 · ч.-дн · Прежняя модель":
+            - link "Контроль исполнения стратегических целей":
+              - /url: "#/metrics/30?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-030 · ч.-дн · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/30?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "А. Коптелов":
+            - generic: А. Коптелов
+          - cell "Прежняя модель"
+        - row "Метрики DORA MET-017 · тыс. руб · Прежняя модель — — Нет факта Не запланирован Л. Куликов Прежняя модель":
+          - cell "Метрики DORA MET-017 · тыс. руб · Прежняя модель":
+            - link "Метрики DORA":
+              - /url: "#/metrics/17?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-017 · тыс. руб · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/17?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Л. Куликов":
+            - generic: Л. Куликов
+          - cell "Прежняя модель"
+        - row "Метрики зрелости команд MET-025 · дней · Прежняя модель — — Нет факта Не запланирован И. Яковлев Прежняя модель":
+          - cell "Метрики зрелости команд MET-025 · дней · Прежняя модель":
+            - link "Метрики зрелости команд":
+              - /url: "#/metrics/25?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-025 · дней · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/25?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "И. Яковлев":
+            - generic: И. Яковлев
+          - cell "Прежняя модель"
+        - row "Модуль отчётов для Нац. расчётного депозитария MET-008 · тыс. руб · Прежняя модель — — Нет факта Не запланирован Д. Козлов Прежняя модель":
+          - cell "Модуль отчётов для Нац. расчётного депозитария MET-008 · тыс. руб · Прежняя модель":
+            - link "Модуль отчётов для Нац. расчётного депозитария":
+              - /url: "#/metrics/8?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-008 · тыс. руб · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/8?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Д. Козлов":
+            - generic: Д. Козлов
+          - cell "Прежняя модель"
+        - row "Модуль экспорта данных в BI MET-013 · шт. · Прежняя модель — — Нет факта Не запланирован Р. Хачатрян Прежняя модель":
+          - cell "Модуль экспорта данных в BI MET-013 · шт. · Прежняя модель":
+            - link "Модуль экспорта данных в BI":
+              - /url: "#/metrics/13?year=2025&quarter=1&view=quarter&section=discussion"
+            - generic: MET-013 · шт. · Прежняя модель
+          - cell "—"
+          - cell "— Нет факта":
+            - link "— Нет факта":
+              - /url: "#/metrics/13?year=2025&quarter=1&view=quarter&section=discussion"
+              - strong: —
+              - generic: Нет факта
+          - cell "Не запланирован"
+          - cell "Р. Хачатрян":
+            - generic: Р. Хачатрян
+          - cell "Прежняя модель"
+  - status: "Найдено: 40 · Страница 1 из 2"
+  - button "Назад" [disabled]:
+    - generic: Назад
+  - button "Далее":
+    - generic: Далее
+  - dialog "MET-7324 · DEV-QA-QUARTERLY-LIVE-20261103":
+    - heading "MET-7324 · DEV-QA-QUARTERLY-LIVE-20261103" [level=2]
+    - button "Исправить итог":
+      - generic: Исправить итог
+    - button "Закрыть":
+      - generic: Закрыть
+    - paragraph: шт · QA ba-a · Ведётся
+    - navigation "Разделы карточки":
+      - button "Показатели":
+        - generic: Показатели
+      - button "Обсуждение" [pressed]:
+        - generic: Обсуждение
+      - button "История":
+        - generic: История
+    - heading "Обсуждение" [level=2]
+    - generic: Показывать
+    - combobox "Показывать":
+      - option "Все обсуждения" [selected]
+      - option "Выбранный квартал"
+    - button "Добавить комментарий":
+      - generic: Добавить комментарий
+    - paragraph: Комментариев нет
+    - button "Предыдущие комментарии" [disabled]:
+      - generic: Предыдущие комментарии
+    - button "Следующие комментарии" [disabled]:
+      - generic: Следующие комментарии
+    - heading "Файлы" [level=2]
+    - button "Прикрепить файл":
+      - generic: Прикрепить файл
+    - paragraph: Файлов нет
+    - heading "Связанные задачи" [level=2]
+    - button "Связать задачу":
+      - generic: Связать задачу
+    - paragraph: Связей нет
+    - heading "Снимки встреч" [level=2]
+    - button "Подготовить статус встречи":
+      - generic: Подготовить статус встречи
+    - paragraph: Снимков нет
+    - generic "Действия с метрикой и периодом"
+    - button "Изменить состояние":
+      - generic: Изменить состояние
+    - button "Архивировать":
+      - generic: Архивировать
+    - button "Пересмотреть закрытый план":
+      - generic: Пересмотреть закрытый план
+  - dialog "Состояние метрики":
+    - heading "Состояние метрики" [level=2]
+    - button "Закрыть":
+      - generic: Закрыть
+    - paragraph: DEV-QA-QUARTERLY-LIVE-20261103 · 1 квартал 2025
+    - generic: Действие
+    - combobox "Действие" [active]:
+      - option "Приостановить" [selected]
+    - generic: Причина
+    - textbox "Причина"
+    - alert
+    - button "Сохранить"
+    - button "Отмена":
+      - generic: Отмена

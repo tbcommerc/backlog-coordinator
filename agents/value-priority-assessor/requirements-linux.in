@@ -1,0 +1,4 @@
+-r requirements.txt
+-c requirements.lock
+# CPU execution; preserve the locked torch release and embedding model/revision.
+torch==2.14.0+cpu

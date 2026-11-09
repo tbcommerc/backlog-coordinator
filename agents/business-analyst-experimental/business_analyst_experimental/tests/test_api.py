@@ -12,7 +12,7 @@ from business_analyst_experimental.session import SessionStore
 from business_analyst_experimental.v2.orchestrator import V2Orchestrator
 
 
-SECRET = {"X-Agent-Secret": "dmb-agent-v2-local-secret-2026"}
+SECRET = {"X-Agent-Secret": 'synthetic-v2-api-test-secret'}
 
 
 def _context(user_id=5, role="BA"):
@@ -42,11 +42,14 @@ def _new_session(client, user_id=5, mode="assignment_capture", idempotency_key="
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "AGENT_SECRET", 'synthetic-v2-api-test-secret')
     previous = (settings.ENABLED, settings.KILL_SWITCH, settings.AGENT_SECRET)
     settings.ENABLED = True
     settings.KILL_SWITCH = False
     settings.AGENT_SECRET = SECRET["X-Agent-Secret"]
     api_router._orchestrator = V2Orchestrator(SessionStore(str(tmp_path / "api-v2.db")))
+    import business_analyst_experimental.main as main_module
+    monkeypatch.setattr(main_module, "session_store", api_router._orchestrator.store)
 
     def decision(state, text):
         missing = state.get_missing_mandatory_hard()
@@ -257,3 +260,14 @@ def test_import_requirement_document_is_owned_and_idempotent(client):
     )
     assert foreign.status_code == 200
     assert foreign.json()["action"] == "error"
+
+
+def test_standard_health_aliases_use_isolated_storage(client):
+    assert client.get("/health/live").status_code==200
+    response=client.get("/health/ready")
+    assert response.status_code==200 and response.json()["status"]=="ready"
+
+
+def test_disabled_service_is_not_reported_ready(client,monkeypatch):
+    monkeypatch.setattr(settings,"ENABLED",False)
+    assert client.get("/health/ready").json()["status"]=="disabled"

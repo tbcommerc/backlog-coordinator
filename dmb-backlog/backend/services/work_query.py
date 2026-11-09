@@ -28,7 +28,6 @@ class Filters(BaseModel):
     priority: str | None = None
     done_period: Literal['all', '7d', '30d'] = 'all'
     overdue: bool = False
-    blocked: bool = False
     unassigned: bool = False
     focus: str = ''
     sort: Literal['attention', 'priority', 'due', 'newest'] = 'attention'
@@ -43,7 +42,7 @@ class Filters(BaseModel):
     @field_validator('status','work_direction','priority','focus')
     @classmethod
     def category_selections(cls,value,info):
-        allowed={'status':{'active','active_done',*STATUSES},'work_direction':{'product','organizational'},'priority':{'low','normal','high','urgent'},'focus':{'today','overdue','blocked'}}
+        allowed={'status':{'active','active_done',*STATUSES},'work_direction':{'product','organizational'},'priority':{'low','normal','high','urgent'},'focus':{'today','overdue'}}
         try: filter_values(value,allowed=allowed[info.field_name])
         except HTTPException as exc: raise ValueError('Недопустимое значение фильтра') from exc
         return value
@@ -79,7 +78,6 @@ class Selection:
                 ('WRK-' + cast(W.id, String)).ilike(pattern, escape='\\')))
         self.active = W.status.notin_(['done','cancelled'])
         self.late = self.active & (W.due_date < self.today)
-        self.blocked = self.active & W.blocked_reason.isnot(None) & (W.blocked_reason != '')
         self.unassigned = self.active & W.assignee_id.is_(None)
         selected_statuses=filter_values(f.status)
         expanded=set()
@@ -89,7 +87,7 @@ class Selection:
         if f.done_period != 'all':
             start = datetime.combine(self.today - timedelta(days=int(f.done_period[:-1])-1), time.min, MOSCOW).astimezone(timezone.utc)
             query = query.filter(or_(W.status != 'done', (W.completed_at >= start) & (W.completed_at <= self.now.astimezone(timezone.utc))))
-        for key in ('overdue','blocked','unassigned'):
+        for key in ('overdue','unassigned'):
             if getattr(f, key): query = query.filter(getattr(self, 'late' if key == 'overdue' else key))
         self.collections = {'mine':W.assignee_id == user.id,
             'team':W.execution_team_id.in_(filter_values(f.execution_team_id,numeric=True) or [user.team_id or -1]),
@@ -98,10 +96,10 @@ class Selection:
         self.base = query
         self.query = query.filter(self.collections[f.view]) if f.view in self.collections else query
         self.focus_base = self.query
-        self.focus_clauses = {'today': self.active & (W.due_date == self.today), 'overdue': self.late, 'blocked': self.blocked}
+        self.focus_clauses = {'today': self.active & (W.due_date == self.today), 'overdue': self.late}
         if f.focus:
             self.query = self.query.filter(or_(*(self.focus_clauses[value] for value in filter_values(f.focus))))
-        self.attention = case((self.late,0),(W.status=='in_acceptance',1),(self.blocked,2),(self.unassigned,3),(self.active,4),else_=5)
+        self.attention = case((self.late,0),(W.status=='in_acceptance',1),(self.unassigned,3),(self.active,4),else_=5)
         self.keys = []
         if f.sort == 'attention': self.keys.append(self.attention)
         if f.sort == 'priority': self.keys.append(case((W.priority=='urgent',0),(W.priority=='high',1),(W.priority=='normal',2),else_=3))
@@ -115,9 +113,9 @@ class Selection:
     def aggregates(self):
         counts = self.base.with_entities(func.count(W.id), *[func.sum(case((x,1),else_=0)) for x in self.collections.values()]).one()
         stats = self.query.with_entities(func.count(W.id), *[func.sum(case((x,1),else_=0)) for x in
-            (W.status=='done',W.status=='in_acceptance',self.late,self.blocked,self.unassigned,self.active,W.assignment_state=='proposed')]).one()
+            (W.status=='done',W.status=='in_acceptance',self.late,self.unassigned,self.active,W.assignment_state=='proposed')]).one()
         return (dict(zip(('all',*self.collections),[int(x or 0) for x in counts])),
-                dict(zip(('total','done','in_acceptance','overdue','blocked','unassigned','active','proposals'),[int(x or 0) for x in stats])))
+                dict(zip(('total','done','in_acceptance','overdue','unassigned','active','proposals'),[int(x or 0) for x in stats])))
 
     def included(self, status):
         f = self.filters

@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [switch]$WithoutAgents,
     [switch]$SkipDependencyInstall,
@@ -16,6 +16,7 @@ Set-StrictMode -Version Latest
 $IncludeBusinessAnalystExperimental = [switch](-not $WithoutAgents)
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. (Join-Path $PSScriptRoot "agent-common.ps1")
 if (Test-Path (Join-Path $projectRoot 'agents/backlog-assistant/.env')) { $IncludeBacklogAssistant = [switch]$true }
 if ($WithoutAgents) {
     $IncludeValuePriorityAssessor = [switch]$false
@@ -43,9 +44,15 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue) -and (Test-Path (Joi
 }
 
 if ($IncludeBacklogAssistant) { & (Join-Path $PSScriptRoot 'start-backlog-assistant.ps1') -CheckOnly }
+$env:MEETING_ANALYSIS_WORKER_ENABLED = $(if ($WithoutAgents) { 'false' } else { 'true' })
+$env:MEETING_ANALYZER_ENABLED = $(if ($WithoutAgents) { 'false' } else { 'true' })
+
 
 function Set-EnvValue {
-    param([string]$Path, [string]$Name, [string]$Value)
+    param([string]$Path, [string]$Name, [string]$Value, [switch]$InitializeBlank)
+    if (Test-AgentEnvSetting -Path $Path -Name $Name) {
+        if (-not $InitializeBlank -or (Get-EnvValue -Path $Path -Name $Name)) { return }
+    }
     $line = "$Name=$Value"
     $content = if (Test-Path $Path) { @(Get-Content -LiteralPath $Path -Encoding UTF8) } else { @() }
     $pattern = "^$([regex]::Escape($Name))="
@@ -64,12 +71,7 @@ function Set-EnvValue {
 
 function Get-EnvValue {
     param([string]$Path, [string]$Name)
-    if (-not (Test-Path $Path)) { return "" }
-    $pattern = "^$([regex]::Escape($Name))=(.*)$"
-    foreach ($entry in Get-Content -LiteralPath $Path -Encoding UTF8) {
-        if ($entry -match $pattern) { return $Matches[1].Trim() }
-    }
-    return ""
+    return Get-AgentEnvValue -Path $Path -Name $Name
 }
 
 function Wait-HttpHealth {
@@ -157,18 +159,18 @@ if (-not (Get-EnvValue -Path $dmbEnv -Name "AUTH_RATE_HMAC_KEY").Trim('"', "'"))
     $authRateKeyGenerator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     try { $authRateKeyGenerator.GetBytes($authRateKeyBytes) }
     finally { $authRateKeyGenerator.Dispose() }
-    Set-EnvValue $dmbEnv "AUTH_RATE_HMAC_KEY" ([Convert]::ToBase64String($authRateKeyBytes))
+    Set-EnvValue $dmbEnv "AUTH_RATE_HMAC_KEY" ([Convert]::ToBase64String($authRateKeyBytes)) -InitializeBlank
 }
-Set-EnvValue $dmbEnv "RUN_STARTUP_SEED" "false"
-Set-EnvValue $dmbEnv "RUN_STARTUP_MAINTENANCE" "false"
+$env:RUN_STARTUP_SEED = "false"
+$env:RUN_STARTUP_MAINTENANCE = "false"
 Set-EnvValue $dmbEnv "RUN_NOTIFICATION_SCHEDULER" "true"
 Set-EnvValue $dmbEnv "AGENT_BASE_URL" "http://127.0.0.1:9000"
 Set-EnvValue $dmbEnv "AGENT_SECRET" $sharedSecret
 Set-EnvValue $dmbEnv "PRIORITISER_BASE_URL" "http://127.0.0.1:9100"
 Set-EnvValue $dmbEnv "PRIORITISER_SECRET" $prioritiserSecret
 Set-EnvValue $dmbEnv "PRIORITISER_TIMEOUT_SECONDS" "180"
-Set-EnvValue $dmbEnv "PRIORITISER_ENABLED" ($(if ($IncludeValuePriorityAssessor) { "true" } else { "false" }))
-Set-EnvValue $dmbEnv "AGENT_V2_ENABLED" ($(if ($IncludeBusinessAnalystExperimental) { "true" } else { "false" }))
+$env:PRIORITISER_ENABLED = $(if ($IncludeValuePriorityAssessor) { "true" } else { "false" })
+$env:AGENT_V2_ENABLED = $(if ($IncludeBusinessAnalystExperimental) { "true" } else { "false" })
 Set-EnvValue $agentEnv "DEBUG" "true"
 Set-EnvValue $agentEnv "AGENT_PORT" "9000"
 Set-EnvValue $agentEnv "SESSION_DATABASE_URL" "postgresql+psycopg://dmb:dmb_local_dev@127.0.0.1:5432/agent_sessions"
@@ -187,14 +189,12 @@ if (-not $sharedOpenAiModel) { $sharedOpenAiModel = "gpt-4o-mini" }
 if ($IncludeValuePriorityAssessor) {
     $methodologistSecret = Get-EnvValue -Path $prioritiserEnv -Name "PRIORITISER_METHODOLOGIST_SECRET"
     if (-not $methodologistSecret) { $methodologistSecret = "dmb-prioritiser-methodologist-local-secret-2026" }
-    Set-EnvValue $prioritiserEnv "PRIORITISER_DB_URL" "sqlite:///var/prioritiser.db"
-    Set-EnvValue $prioritiserEnv "PRIORITISER_SERVICE_SECRET" $prioritiserSecret
-    Set-EnvValue $prioritiserEnv "PRIORITISER_METHODOLOGIST_SECRET" $methodologistSecret
-    Set-EnvValue $prioritiserEnv "PRIORITISER_RAG_MODEL_CACHE_DIR" $prioritiserModelCache
-    Set-EnvValue $prioritiserEnv "PRIORITISER_LLM_PROVIDER" $sharedLlmProvider
-    Set-EnvValue $prioritiserEnv "PRIORITISER_OPENAI_API_KEY" (Get-EnvValue -Path $agentEnv -Name "OPENAI_API_KEY")
-    Set-EnvValue $prioritiserEnv "PRIORITISER_OPENAI_BASE_URL" $sharedOpenAiBaseUrl
-    Set-EnvValue $prioritiserEnv "PRIORITISER_OPENAI_MODEL" $sharedOpenAiModel
+    foreach ($required in @("PRIORITISER_DB_URL", "PRIORITISER_SERVICE_SECRET", "PRIORITISER_OPENAI_API_KEY", "PRIORITISER_OPENAI_BASE_URL", "PRIORITISER_OPENAI_MODEL")) {
+        if (-not (Get-EnvValue -Path $prioritiserEnv -Name $required)) { throw "$required must be configured independently." }
+    }
+    if ((Get-EnvValue -Path $prioritiserEnv -Name "PRIORITISER_DB_URL") -notlike 'postgresql*') {
+        throw "PRIORITISER_DB_URL must use PostgreSQL; SQLite is test-only."
+    }
 }
 if ($IncludeBusinessAnalystExperimental) {
     Set-EnvValue $dmbEnv "AGENT_V2_BASE_URL" "http://127.0.0.1:9300"
@@ -205,22 +205,23 @@ if ($IncludeBusinessAnalystExperimental) {
     Set-EnvValue $agentV2Env "AGENT_V2_SESSION_DATABASE_URL" "postgresql+psycopg://agent_v2:agent_v2_local_dev@127.0.0.1:5432/agent_v2_sessions"
     $agentV2InheritV1Llm = (Get-EnvValue -Path $agentV2Env -Name "AGENT_V2_INHERIT_V1_LLM").Trim().ToLowerInvariant()
     if ($agentV2InheritV1Llm -notin @("", "true", "false")) {
-        throw "AGENT_V2_INHERIT_V1_LLM must be true or false (empty defaults to true)."
+        throw "AGENT_V2_INHERIT_V1_LLM must be true or false (empty defaults to false)."
     }
-    if ($agentV2InheritV1Llm -ne "false") {
-        Set-EnvValue $agentV2Env "AGENT_V2_LLM_PROVIDER" $sharedLlmProvider
-        Set-EnvValue $agentV2Env "AGENT_V2_OPENAI_API_KEY" (Get-EnvValue -Path $agentEnv -Name "OPENAI_API_KEY")
-        Set-EnvValue $agentV2Env "AGENT_V2_OPENAI_BASE_URL" $sharedOpenAiBaseUrl
-        Set-EnvValue $agentV2Env "AGENT_V2_OPENAI_MODEL" $sharedOpenAiModel
-    } else {
-        $agentV2LlmProvider = Get-EnvValue -Path $agentV2Env -Name "AGENT_V2_LLM_PROVIDER"
-        if ($agentV2LlmProvider.Trim().ToLowerInvariant() -ne "openai_compat") {
-            throw "AGENT_V2_LLM_PROVIDER must be openai_compat when AGENT_V2_INHERIT_V1_LLM=false."
+    if ($agentV2InheritV1Llm -eq "true") {
+        # Explicit inheritance is process-local, never copied to .env.
+        Set-AgentV2InheritedModelEnvironment @{
+            LLM_PROVIDER=$sharedLlmProvider
+            OPENAI_API_KEY=(Get-EnvValue -Path $agentEnv -Name 'OPENAI_API_KEY')
+            OPENAI_BASE_URL=$sharedOpenAiBaseUrl
+            OPENAI_MODEL=$sharedOpenAiModel
         }
-        foreach ($agentV2RequiredLlmSetting in @("AGENT_V2_OPENAI_API_KEY", "AGENT_V2_OPENAI_BASE_URL", "AGENT_V2_OPENAI_MODEL")) {
-            if (-not (Get-EnvValue -Path $agentV2Env -Name $agentV2RequiredLlmSetting)) {
-                throw "$agentV2RequiredLlmSetting must be configured when AGENT_V2_INHERIT_V1_LLM=false."
-            }
+    } else {
+        Remove-Item Env:AGENT_V2_EXPLICIT_INHERITANCE -ErrorAction SilentlyContinue
+        foreach ($required in @("AGENT_V2_LLM_PROVIDER", "AGENT_V2_OPENAI_API_KEY", "AGENT_V2_OPENAI_BASE_URL", "AGENT_V2_OPENAI_MODEL")) {
+            if (-not (Get-EnvValue -Path $agentV2Env -Name $required)) { throw "$required must be configured independently." }
+        }
+        if ((Get-EnvValue -Path $agentV2Env -Name 'AGENT_V2_LLM_PROVIDER') -ne 'openai_compat') {
+            throw 'AGENT_V2_LLM_PROVIDER must be openai_compat.'
         }
     }
 }
@@ -314,6 +315,26 @@ if ($IncludeBusinessAnalystExperimental) {
     }
 }
 
+if (-not $WithoutAgents) {
+    $sdkTargets = @($pythonExe, $agentV2PythonExe)
+    if ($IncludeValuePriorityAssessor) { $sdkTargets += $prioritiserPythonExe }
+    if ($IncludeBacklogAssistant) { $sdkTargets += (Join-Path $projectRoot 'agents/backlog-assistant/.venv/Scripts/python.exe') }
+    & (Join-Path $PSScriptRoot 'install-agent-contracts.ps1') -BuildPython $pythonExe -TargetPython $sdkTargets -CheckOnly:$SkipDependencyInstall
+    if (-not $SkipDependencyInstall) {
+        & $pythonExe -m pip install --no-deps --no-build-isolation (Join-Path $projectRoot './agents/meeting-analyzer')
+        if ($LASTEXITCODE -ne 0) { throw 'Meeting service package installation failed.' }
+    }
+}
+
+if (-not $WithoutAgents) {
+    $env:DMB_AGENT_LIMITER_MODE = 'global'
+    $env:DMB_AGENT_LIMITER_NAMESPACE = 'platform-local'
+    $env:DMB_AGENT_LIMITER_STATE_DIR = Join-Path $runtimeDir 'agent-limiter/platform-local'
+    Assert-PlatformLimiterCutover -Namespace $env:DMB_AGENT_LIMITER_NAMESPACE -StateDirectory $env:DMB_AGENT_LIMITER_STATE_DIR
+    $env:DMB_AGENT_LIMITER_REDIS_URL = Get-EnvValue $dmbEnv 'REDIS_URL'
+    if (-not $env:DMB_AGENT_LIMITER_REDIS_URL) { throw 'REDIS_URL is required for the global operation limit.' }
+}
+
 Write-Host "Applying PostgreSQL migrations..."
 Push-Location (Join-Path $projectRoot "dmb-backlog\backend")
 try {
@@ -324,65 +345,74 @@ try {
 }
 
 
-& (Join-Path $PSScriptRoot "stop-project.ps1") -KeepInfrastructure -Quiet
-
-$agentOut = Join-Path $runtimeDir "agent.out.log"
-$agentErr = Join-Path $runtimeDir "agent.err.log"
-$prioritiserOut = Join-Path $runtimeDir "prioritiser.out.log"
-$prioritiserErr = Join-Path $runtimeDir "prioritiser.err.log"
-$backendOut = Join-Path $runtimeDir "backend.out.log"
-$backendErr = Join-Path $runtimeDir "backend.err.log"
-$agentV2Out = Join-Path $runtimeDir "agent-v2.out.log"
-$agentV2Err = Join-Path $runtimeDir "agent-v2.err.log"
-
+# Existing owned services are reused; occupied unowned ports are never reclaimed.
 if (-not $WithoutAgents) {
-Write-Host "Starting Business Analyst..."
-$agentProcess = Start-Process -FilePath $pythonExe `
-    -ArgumentList @("-m", "uvicorn", "business_analyst.main:app", "--host", "127.0.0.1", "--port", "9000") `
-    -WorkingDirectory (Join-Path $projectRoot "agents/business-analyst") `
-    -RedirectStandardOutput $agentOut -RedirectStandardError $agentErr `
-    -WindowStyle Hidden -PassThru
-Set-Content -LiteralPath (Join-Path $runtimeDir "agent.pid") -Value $agentProcess.Id -Encoding ascii
-Wait-HttpHealth "http://127.0.0.1:9000/api/agent/ready" "Business Analyst"
+    Push-Location (Join-Path $projectRoot 'agents/business-analyst')
+    try {
+        & $pythonExe -m business_analyst.migrate
+        if ($LASTEXITCODE -ne 0) { throw 'Business Analyst schema migration failed.' }
+    } finally { Pop-Location }
+    Push-Location (Join-Path $projectRoot 'agents/business-analyst-experimental')
+    try {
+        & $agentV2PythonExe -m business_analyst_experimental.migrate
+        if ($LASTEXITCODE -ne 0) { throw 'Experimental Business Analyst schema migration failed.' }
+    } finally { Pop-Location }
+    Push-Location (Join-Path $projectRoot 'agents/meeting-analyzer')
+    try {
+        & $pythonExe -m meeting_analyzer.migrate
+        if ($LASTEXITCODE -ne 0) { throw 'Meeting Analyzer schema migration failed.' }
+    } finally { Pop-Location }
+    & (Join-Path $PSScriptRoot 'start-agent.ps1') -Agent 'meeting-analyzer'
+    . (Join-Path $PSScriptRoot 'agent-common.ps1')
+    $meetingValues = Read-AgentEnvironment (Get-AgentDefinition 'meeting-analyzer')
+    $env:MEETING_ANALYZER_SECRET = $meetingValues['MEETING_ANALYZER_SERVICE_SECRET']
+    $meetingValues.Clear()
 }
 
+
+$backendOut = Join-Path $runtimeDir "backend.out.log"
+$backendErr = Join-Path $runtimeDir "backend.err.log"
+if (-not $WithoutAgents) {
+    & (Join-Path $PSScriptRoot 'start-agent.ps1') -Agent 'business-analyst'
+}
 if ($IncludeValuePriorityAssessor) {
-    Write-Host "Starting Value/Priority Assessor..."
-    $prioritiserProcess = Start-Process -FilePath $prioritiserPythonExe `
-        -ArgumentList @("-m", "uvicorn", "value_priority_assessor.api.main:app", "--host", "127.0.0.1", "--port", "9100") `
-        -WorkingDirectory (Join-Path $projectRoot "agents/value-priority-assessor") `
-        -RedirectStandardOutput $prioritiserOut -RedirectStandardError $prioritiserErr `
-        -WindowStyle Hidden -PassThru
-    Set-Content -LiteralPath (Join-Path $runtimeDir "prioritiser.pid") -Value $prioritiserProcess.Id -Encoding ascii
-    Wait-HttpHealth "http://127.0.0.1:9100/ready" "Value/Priority Assessor" -TimeoutSeconds 900
+    Push-Location (Join-Path $projectRoot 'agents/value-priority-assessor')
+    try {
+        & $prioritiserPythonExe -m alembic upgrade head
+        if ($LASTEXITCODE -ne 0) { throw 'Value/Priority schema migration failed.' }
+    } finally { Pop-Location }
+    & (Join-Path $PSScriptRoot 'start-agent.ps1') -Agent 'value-priority-assessor'
 } else {
     Write-Host "Skipping task prioritiser (use -IncludeValuePriorityAssessor to enable it)."
 }
-
 if ($IncludeBusinessAnalystExperimental) {
-    Write-Host "Starting Experimental Business Analyst..."
-    $agentV2Process = Start-Process -FilePath $agentV2PythonExe `
-        -ArgumentList @("-m", "uvicorn", "business_analyst_experimental.main:app", "--host", "127.0.0.1", "--port", "9300") `
-        -WorkingDirectory (Join-Path $projectRoot "agents/business-analyst-experimental") `
-        -RedirectStandardOutput $agentV2Out -RedirectStandardError $agentV2Err `
-        -WindowStyle Hidden -PassThru
-    Set-Content -LiteralPath (Join-Path $runtimeDir "agent-v2.pid") -Value $agentV2Process.Id -Encoding ascii
-    Wait-HttpHealth "http://127.0.0.1:9300/api/agent-v2/ready" "Experimental Business Analyst"
-} else {
-    Write-Host "Skipping Experimental Business Analyst (use -IncludeBusinessAnalystExperimental to enable it)."
+    & (Join-Path $PSScriptRoot 'start-agent.ps1') -Agent 'business-analyst-experimental'
 }
 
 Write-Host "Starting DMB Backlog..."
 if ($IncludeBacklogAssistant) {
     & (Join-Path $PSScriptRoot 'start-backlog-assistant.ps1')
 }
-$backendProcess = Start-Process -FilePath $pythonExe `
-    -ArgumentList @("-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8000") `
-    -WorkingDirectory (Join-Path $projectRoot "dmb-backlog\backend") `
-    -RedirectStandardOutput $backendOut -RedirectStandardError $backendErr `
-    -WindowStyle Hidden -PassThru
-Set-Content -LiteralPath (Join-Path $runtimeDir "backend.pid") -Value $backendProcess.Id -Encoding ascii
-Wait-HttpHealth "http://127.0.0.1:8000/api/v1/health" "DMB Backlog"
+$backendRecordPath = Join-Path $runtimeDir 'backend.process.json'
+$backendRecord = if (Test-Path -LiteralPath $backendRecordPath) { Get-Content -Raw -LiteralPath $backendRecordPath | ConvertFrom-Json } else { $null }
+if ($backendRecord) { Assert-AgentRecordReusable $backendRecord.api }
+if ($backendRecord -and (Test-AgentOwnedProcess $backendRecord.api)) {
+    Write-Host 'DMB Backlog is already owned; checking readiness.'
+} else {
+    if (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue) {
+        throw 'Backend port 8000 is occupied without matching ownership; no process was stopped.'
+    }
+    $backendProcess = Start-Process -FilePath $pythonExe `
+        -ArgumentList @('-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', '8000') `
+        -WorkingDirectory (Join-Path $projectRoot 'dmb-backlog/backend') `
+        -RedirectStandardOutput $backendOut -RedirectStandardError $backendErr `
+        -WindowStyle Hidden -PassThru
+    $backendRecord = @{api=(Get-AgentProcessRecord $backendProcess.Id 'main:app'); worker=$null}
+    $backendRecord | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $backendRecordPath -Encoding UTF8
+}
+Wait-HttpHealth 'http://127.0.0.1:8000/api/v1/health' 'DMB Backlog'
+$backendRecord.api = Confirm-AgentListenerOwnership $backendRecord.api 8000
+$backendRecord | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $backendRecordPath -Encoding UTF8
 
 Write-Host ""
 Write-Host "Project is fully running."

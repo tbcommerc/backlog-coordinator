@@ -130,7 +130,7 @@ export function renderDictionaryForm(data, helpers) {
     <div id="dict-search-result" role="status" hidden><span></span><button type="button" class="btn btn-ghost btn-sm" id="dict-search-reset">Сбросить поиск</button></div>
     <div class="dict-validation-summary" id="dict-validation-summary" role="alert" hidden></div>
     <div id="dict-items-container" class="dict-editor-list">${list || '<p class="dict-empty-state">Нет активных значений</p>'}</div>
-    <details class="dict-archive"${data.archiveOpen ? ' open' : ''}${archivedItems.length ? '' : ' hidden'} id="dict-archive"><summary>Архив <span id="dict-archive-summary-count">${archivedItems.length}</span></summary><div id="dict-archive-container" class="dict-editor-list">${archive}</div></details>`;
+    <details class="dict-archive"${data.archiveOpen ? ' open' : ''}${archivedItems.length ? '' : ' hidden'} id="dict-archive"><summary class="ui-disclosure-text">Архив <span id="dict-archive-summary-count">${archivedItems.length}</span></summary><div id="dict-archive-container" class="dict-editor-list">${archive}</div></details>`;
 }
 
 export function renderCompetencyCostDictionaryForm(data, escapeHtml = String) {

@@ -93,8 +93,8 @@ const tableDemo = document.getElementById('demo-data-table');
 const demoRows = [{title:'Качество данных',value:0,date:'2026-10-29',state:'В работе'}, {title:'Скорость обработки',value:1250.5,date:null,state:'Черновик'}];
 function renderTableDemo(sort = {key:'title',direction:'asc'}) {
   const rows = [...demoRows].sort((a,b)=>(sort.key==='value' ? a.value-b.value : a.title.localeCompare(b.title,'ru'))*(sort.direction==='desc'?-1:1));
-  tableDemo.innerHTML = dataTable({label:'Пример показателей',rows,sort,responsive:'cards',className:'ui-table-surface',columns:[
-    {key:'title',label:'Показатель',sortable:true},
+  tableDemo.innerHTML = dataTable({variant:'registry',label:'Пример показателей',rows,sort,responsive:'cards',columns:[
+    {key:'title',label:'Показатель',sortable:true,render:row=>tableCell({markup:`<a class="ui-table-title" href="#data-tables">${row.title}</a>`})},
     {key:'value',label:'Значение',type:'number',sortable:true},
     {key:'date',label:'Дата',type:'date'},
     {key:'state',label:'Состояние',render:row=>tableCell({value:row.state,type:'badge',tone:row.state==='В работе'?'info':'neutral'})},

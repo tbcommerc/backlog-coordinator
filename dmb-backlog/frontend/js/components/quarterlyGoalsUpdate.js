@@ -1,3 +1,5 @@
+import { safeBacklogReturn } from '../backlogRouteState.js';
+import { segmentedControl } from '../ui/segmented.js';
 import { notificationReturnHref } from '../notificationUtils.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { confirmAction, formatErrorMessage } from '../uiFeedback.js';
@@ -43,6 +45,9 @@ function routeSource() {
 }
 
 function backLink(source) {
+  const raw=new URLSearchParams(globalThis.window?.location?.hash?.split('?')[1]||'').get('return_to');
+  if(raw){const target=safeBacklogReturn(raw,null);if(target)return [target,'В бэклог'];}
+
   if (source === 'backlog') return ['#/backlog', 'В бэклог DMB'];
   if (source === 'team-backlog') return ['#/team-backlog', 'В бэклог команды'];
   if (source === 'notification') return [notificationReturnHref(), 'К уведомлениям'];
@@ -95,10 +100,8 @@ function draftFor(item) {
 
 function shiftControl(item) {
   const selectedId = draftFor(item).start_shift_id ?? defaultShiftId();
-  const taskLabel = escapeHtml(`${item.public_id || item.task_id}: ${item.title || 'Без названия'}`);
-  return `<div class="quarterly-shift-control" role="group" aria-label="Месяц старта для ${taskLabel}">
-    ${(state.data.start_shifts || []).map(shift => `<button type="button" class="ui-surface-action quarterly-shift-option ${selectedId === shift.id ? 'is-selected' : ''}" data-quarterly-shift="${item.task_id}" data-shift-id="${shift.id}" aria-pressed="${selectedId === shift.id}" title="${escapeHtml(shift.name)}" ${item.can_edit ? '' : 'disabled'}><span>${shift.month_number}</span><small>месяц</small></button>`).join('')}
-  </div>`;
+  const taskLabel = `${item.public_id || item.task_id}: ${item.title || 'Без названия'}`;
+  return segmentedControl({label:`Месяц старта для ${taskLabel}`,className:'quarterly-shift-control ui-segmented-fill',size:'small',value:selectedId,disabled:!item.can_edit,items:(state.data.start_shifts||[]).map(shift=>({value:shift.id,label:`${shift.month_number} мес.`,attrs:{'data-quarterly-shift':item.task_id,'data-shift-id':shift.id,title:shift.name}}))});
 }
 
 function factControl(item) {

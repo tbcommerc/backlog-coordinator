@@ -140,6 +140,10 @@ def _cache_bound_action(scope: str, action: str, req, response):
 
 @router.post("/chat", response_model=AgentResponse)
 def chat(req: ChatRequest, _=Depends(_check_secret)):
+    from dmb_agent_contracts.operation import current_operation
+    if not settings.UNIT_TEST_MODE and current_operation() is None:
+        from ..compatibility import chat_request
+        return chat_request(req)
     _require_mutations_enabled()
     with _session_scope(req.session_id):
         if not req.session_id or _orchestrator.store.get(req.session_id) is None:
@@ -197,6 +201,13 @@ def chat_stream(req: ChatRequest, _=Depends(_check_secret)):
 
     def work() -> None:
         try:
+            if not settings.UNIT_TEST_MODE:
+                from ..compatibility import chat_request
+                payload = chat_request(req, on_status=lambda stage: emit("status", {"stage":stage}))
+                if payload.get("message"):
+                    emit("delta", {"text":payload["message"]})
+                emit("result", payload)
+                return
             with _session_scope(req.session_id):
                 cached = _orchestrator.store.get_cached_response(req.session_id, req.message_id)
                 if cached is not None:
@@ -437,6 +448,10 @@ def import_requirement_document(
 @router.post("/document-action", response_model=AgentResponse)
 def document_action(req: DocumentActionRequest, _=Depends(_check_secret)):
     _require_mutations_enabled()
+    from dmb_agent_contracts.operation import current_operation
+    if not settings.UNIT_TEST_MODE and current_operation() is None and req.action in {"review","draft","create_draft","propose_change"}:
+        from ..compatibility import document_request
+        return document_request(req)
     with _session_scope(req.session_id):
         _owned_session(req.session_id, req.user_id)
         action_key = "document_" + req.action

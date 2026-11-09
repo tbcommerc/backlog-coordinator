@@ -32,3 +32,22 @@ test('loads every page in order with at most two concurrent requests', async () 
   assert.deepEqual(result.items, [1, 2, 3, 4, 5, 6]);
   assert.equal(peak, 2);
 });
+
+
+test('changing context on the same route cancels the old snapshot', async () => {
+ globalThis.window = new EventTarget();
+ window.location = {hash:'#/backlog?scope=team'};
+ let key='team';
+ const pending=loadBacklogTaskPages({api:{get:(_url,{signal})=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason)))}},'', '/backlog',{contextKey:()=>key});
+ key='all'; window.location.hash='#/backlog?scope=all';
+ window.dispatchEvent(new Event('hashchange'));
+ await assert.rejects(pending,{name:'AbortError'});
+});
+
+test('external disposal cancels a pending request', async () => {
+ globalThis.window=new EventTarget(); window.location={hash:'#/backlog'};
+ const controller=new AbortController();
+ const pending=loadBacklogTaskPages({api:{get:(_url,{signal})=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason)))}},'', '/backlog',{signal:controller.signal});
+ controller.abort();
+ await assert.rejects(pending,{name:'AbortError'});
+});

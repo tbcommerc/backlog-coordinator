@@ -5,6 +5,8 @@ versions. Existing AI-assisted text changes require explicit selective apply.
 """
 from __future__ import annotations
 
+from dmb_agent_contracts.operation import model_operation
+
 import hashlib
 import json
 import re
@@ -168,6 +170,8 @@ def _context(state, instruction: str, field: str) -> dict:
 def _model_action(state, action: str, instruction: str, field: str, *, extra: dict | None = None,
                   deadline: float | None = None) -> tuple[dict, dict]:
     provider = get_llm()
+    if hasattr(provider, "model_purpose"):
+        provider.model_purpose = "document_review" if action == "review" else "document_generation"
     prompt = {"review": _REVIEW_PROMPT, "create": _GUARD + INITIAL_PROMPT,
               "repair": _GUARD + INITIAL_PROMPT, "transfer": _GUARD + TRANSFER_PROMPT}.get(action, _WRITE_PROMPT)
     meta = {"model": getattr(provider, "model", getattr(settings, "OPENAI_MODEL", "")),
@@ -249,6 +253,7 @@ def _finding(state, raw: dict, review: dict, method: str) -> dict:
             "status": "open", "reason": "", "created_at": now()}
 
 
+@model_operation
 def review_document(state, instruction: str = "") -> dict:
     deadline = time.monotonic() + 150
     draft = deepcopy(state.draft)
@@ -325,6 +330,7 @@ def _operation(state, raw: dict, field_limit: str) -> dict:
             "source_refs": _references(state, raw.get("source_refs", [])), "status": "proposed"}
 
 
+@model_operation
 def propose_document(state, action: str, instruction: str = "", field: str = "") -> dict:
     if field and field not in EDITABLE_FIELDS:
         raise ValueError("Неизвестный раздел документа.")
@@ -401,6 +407,7 @@ def save_sections(state, sections: dict) -> None:
                       provenance=[{"kind": "human_decision", "confirmed": True, "decision_type": "manual_edit"}])
 
 
+@model_operation
 def check_transfer(state, document: dict, *, deadline: float | None = None) -> dict:
     facts, parsing = analyze_sources(state.document_sources, FIELD_SLOTS)
     try:
@@ -463,6 +470,7 @@ def _initial_candidate(state, answer: dict, facts: list[dict]) -> tuple[dict, di
     return payload, checked
 
 
+@model_operation
 def create_initial_draft(state, instruction: str) -> None:
     if state.draft:
         raise ValueError("Черновик уже существует. Запросите предложение правок.")
@@ -654,6 +662,7 @@ def response_metadata(state) -> dict:
             "document_generation": generation}
 
 
+@model_operation
 def execute(state, request: dict) -> tuple[str, str]:
     action = request["action"]
     current = (state.draft or {}).get("fingerprint", "")

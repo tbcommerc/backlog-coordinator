@@ -5,6 +5,6 @@ for(const [route,scope] of [['backlog','backlog'],['team-backlog','team']])test(
  await page.goto('/#/'+route);
  const rows=page.locator('tbody tr[data-task-id]');await expect(rows.first()).toBeVisible();
  await expect(rows.first()).not.toContainText('СБОР ТРЕБОВАНИЙ');await expect(rows.first()).not.toContainText('СРЕДНИЙ');
- await page.locator('#'+scope+'-view-toggle-group [data-view="cards"]').click();
+ await page.locator('#backlog-view-toggle-group [data-view="cards"]').click();
  await expect(page.locator('.task-card').first()).toBeVisible();await expect(page.locator('.task-card').first()).not.toContainText('СРЕДНИЙ');await expect(page.locator('.task-card').first()).not.toContainText('СБОР ТРЕБОВАНИЙ');
 });

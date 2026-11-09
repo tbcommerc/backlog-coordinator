@@ -1,0 +1,323 @@
+{
+  "business-analyst": {
+    "LLM_PROVIDER": [
+      "AGENT_LLM_PROVIDER",
+      "LLM_PROVIDER"
+    ],
+    "OPENAI_API_KEY": [
+      "AGENT_MODEL_API_KEY",
+      "OPENAI_API_KEY"
+    ],
+    "OPENAI_BASE_URL": [
+      "AGENT_MODEL_BASE_URL",
+      "OPENAI_BASE_URL"
+    ],
+    "OPENAI_MODEL": [
+      "AGENT_MODEL_NAME",
+      "OPENAI_MODEL"
+    ],
+    "SESSION_DATABASE_URL": [
+      "AGENT_DATABASE_URL",
+      "SESSION_DATABASE_URL"
+    ],
+    "AGENT_SECRET": [
+      "AGENT_SERVICE_SECRET",
+      "AGENT_SECRET"
+    ],
+    "EXECUTION_BACKEND": [
+      "AGENT_EXECUTION_BACKEND"
+    ],
+    "MODEL_PROVIDER": [
+      "AGENT_MODEL_PROVIDER"
+    ],
+    "MODEL_PROTOCOL": [
+      "AGENT_MODEL_PROTOCOL"
+    ],
+    "RUNTIME_LOCATION": [
+      "AGENT_RUNTIME_LOCATION"
+    ],
+    "RUNTIME_CONTRACT_VERSION": [
+      "AGENT_RUNTIME_CONTRACT_VERSION"
+    ],
+    "REMOTE_ENABLED": [
+      "AGENT_REMOTE_ENABLED"
+    ],
+    "REMOTE_BASE_URL": [
+      "AGENT_REMOTE_BASE_URL"
+    ],
+    "REMOTE_CONFIG_FILE": [
+      "AGENT_REMOTE_CONFIG_FILE"
+    ],
+    "REMOTE_PROVIDER_ID": [
+      "AGENT_REMOTE_PROVIDER_ID"
+    ],
+    "REMOTE_MODEL_ID": [
+      "AGENT_REMOTE_MODEL_ID"
+    ],
+    "REMOTE_AGENT": [
+      "AGENT_REMOTE_AGENT"
+    ],
+    "REMOTE_CREDENTIAL": [
+      "AGENT_REMOTE_CREDENTIAL"
+    ],
+    "REMOTE_USERNAME": [
+      "AGENT_REMOTE_USERNAME"
+    ],
+    "REMOTE_AUTH_SCHEME": [
+      "AGENT_REMOTE_AUTH_SCHEME"
+    ]
+  },
+  "business-analyst-experimental": {
+    "OPENAI_API_KEY": [
+      "AGENT_V2_MODEL_API_KEY",
+      "AGENT_V2_OPENAI_API_KEY"
+    ],
+    "OPENAI_BASE_URL": [
+      "AGENT_V2_MODEL_BASE_URL",
+      "AGENT_V2_OPENAI_BASE_URL"
+    ],
+    "OPENAI_MODEL": [
+      "AGENT_V2_MODEL_NAME",
+      "AGENT_V2_OPENAI_MODEL"
+    ],
+    "SESSION_DATABASE_URL": [
+      "AGENT_V2_DATABASE_URL",
+      "AGENT_V2_SESSION_DATABASE_URL"
+    ],
+    "AGENT_V2_SECRET": [
+      "AGENT_V2_SERVICE_SECRET",
+      "AGENT_V2_SECRET"
+    ],
+    "LLM_PROVIDER": [
+      "AGENT_V2_LLM_PROVIDER"
+    ],
+    "EXECUTION_BACKEND": [
+      "AGENT_V2_EXECUTION_BACKEND"
+    ],
+    "MODEL_PROVIDER": [
+      "AGENT_V2_MODEL_PROVIDER"
+    ],
+    "MODEL_PROTOCOL": [
+      "AGENT_V2_MODEL_PROTOCOL"
+    ],
+    "RUNTIME_LOCATION": [
+      "AGENT_V2_RUNTIME_LOCATION"
+    ],
+    "RUNTIME_CONTRACT_VERSION": [
+      "AGENT_V2_RUNTIME_CONTRACT_VERSION"
+    ],
+    "REMOTE_ENABLED": [
+      "AGENT_V2_REMOTE_ENABLED"
+    ],
+    "REMOTE_BASE_URL": [
+      "AGENT_V2_REMOTE_BASE_URL"
+    ],
+    "REMOTE_CONFIG_FILE": [
+      "AGENT_V2_REMOTE_CONFIG_FILE"
+    ],
+    "REMOTE_PROVIDER_ID": [
+      "AGENT_V2_REMOTE_PROVIDER_ID"
+    ],
+    "REMOTE_MODEL_ID": [
+      "AGENT_V2_REMOTE_MODEL_ID"
+    ],
+    "REMOTE_AGENT": [
+      "AGENT_V2_REMOTE_AGENT"
+    ],
+    "REMOTE_CREDENTIAL": [
+      "AGENT_V2_REMOTE_CREDENTIAL"
+    ],
+    "REMOTE_USERNAME": [
+      "AGENT_V2_REMOTE_USERNAME"
+    ],
+    "REMOTE_AUTH_SCHEME": [
+      "AGENT_V2_REMOTE_AUTH_SCHEME"
+    ]
+  },
+  "meeting-analyzer": {
+    "database_url": [
+      "MEETING_ANALYZER_DATABASE_URL"
+    ],
+    "service_secret": [
+      "MEETING_ANALYZER_SERVICE_SECRET"
+    ],
+    "model_api_key": [
+      "MEETING_ANALYZER_MODEL_API_KEY",
+      "MEETING_ANALYZER_OPENAI_API_KEY"
+    ],
+    "model_base_url": [
+      "MEETING_ANALYZER_MODEL_BASE_URL",
+      "MEETING_ANALYZER_OPENAI_BASE_URL"
+    ],
+    "model_name": [
+      "MEETING_ANALYZER_MODEL_NAME",
+      "MEETING_ANALYZER_OPENAI_MODEL"
+    ],
+    "execution_backend": [
+      "MEETING_ANALYZER_EXECUTION_BACKEND"
+    ],
+    "model_provider": [
+      "MEETING_ANALYZER_MODEL_PROVIDER"
+    ],
+    "model_protocol": [
+      "MEETING_ANALYZER_MODEL_PROTOCOL"
+    ],
+    "runtime_location": [
+      "MEETING_ANALYZER_RUNTIME_LOCATION"
+    ],
+    "runtime_contract_version": [
+      "MEETING_ANALYZER_RUNTIME_CONTRACT_VERSION"
+    ],
+    "remote_enabled": [
+      "MEETING_ANALYZER_REMOTE_ENABLED"
+    ],
+    "remote_base_url": [
+      "MEETING_ANALYZER_REMOTE_BASE_URL"
+    ],
+    "remote_config_file": [
+      "MEETING_ANALYZER_REMOTE_CONFIG_FILE"
+    ],
+    "remote_provider_id": [
+      "MEETING_ANALYZER_REMOTE_PROVIDER_ID"
+    ],
+    "remote_model_id": [
+      "MEETING_ANALYZER_REMOTE_MODEL_ID"
+    ],
+    "remote_agent": [
+      "MEETING_ANALYZER_REMOTE_AGENT"
+    ],
+    "remote_credential": [
+      "MEETING_ANALYZER_REMOTE_CREDENTIAL"
+    ],
+    "remote_username": [
+      "MEETING_ANALYZER_REMOTE_USERNAME"
+    ],
+    "remote_auth_scheme": [
+      "MEETING_ANALYZER_REMOTE_AUTH_SCHEME"
+    ]
+  },
+  "value-priority-assessor": {
+    "db_url": [
+      "PRIORITISER_DATABASE_URL",
+      "PRIORITISER_DB_URL"
+    ],
+    "openai_api_key": [
+      "PRIORITISER_MODEL_API_KEY",
+      "PRIORITISER_OPENAI_API_KEY"
+    ],
+    "openai_base_url": [
+      "PRIORITISER_MODEL_BASE_URL",
+      "PRIORITISER_OPENAI_BASE_URL"
+    ],
+    "openai_model": [
+      "PRIORITISER_MODEL_NAME",
+      "PRIORITISER_OPENAI_MODEL"
+    ],
+    "llm_provider": [
+      "PRIORITISER_LLM_PROVIDER"
+    ],
+    "service_secret": [
+      "PRIORITISER_SERVICE_SECRET"
+    ],
+    "execution_backend": [
+      "PRIORITISER_EXECUTION_BACKEND"
+    ],
+    "model_provider": [
+      "PRIORITISER_MODEL_PROVIDER"
+    ],
+    "model_protocol": [
+      "PRIORITISER_MODEL_PROTOCOL"
+    ],
+    "runtime_location": [
+      "PRIORITISER_RUNTIME_LOCATION"
+    ],
+    "runtime_contract_version": [
+      "PRIORITISER_RUNTIME_CONTRACT_VERSION"
+    ],
+    "remote_enabled": [
+      "PRIORITISER_REMOTE_ENABLED"
+    ],
+    "remote_base_url": [
+      "PRIORITISER_REMOTE_BASE_URL"
+    ],
+    "remote_config_file": [
+      "PRIORITISER_REMOTE_CONFIG_FILE"
+    ],
+    "remote_provider_id": [
+      "PRIORITISER_REMOTE_PROVIDER_ID"
+    ],
+    "remote_model_id": [
+      "PRIORITISER_REMOTE_MODEL_ID"
+    ],
+    "remote_agent": [
+      "PRIORITISER_REMOTE_AGENT"
+    ],
+    "remote_credential": [
+      "PRIORITISER_REMOTE_CREDENTIAL"
+    ],
+    "remote_username": [
+      "PRIORITISER_REMOTE_USERNAME"
+    ],
+    "remote_auth_scheme": [
+      "PRIORITISER_REMOTE_AUTH_SCHEME"
+    ]
+  },
+  "backlog-assistant": {
+    "ASSISTANT_DATABASE_URL": [
+      "BACKLOG_ASSISTANT_DATABASE_URL",
+      "ASSISTANT_DATABASE_URL"
+    ],
+    "ASSISTANT_MODEL_KEY": [
+      "BACKLOG_ASSISTANT_MODEL_API_KEY",
+      "ASSISTANT_MODEL_KEY"
+    ],
+    "ASSISTANT_MODEL_URL": [
+      "BACKLOG_ASSISTANT_MODEL_BASE_URL",
+      "ASSISTANT_MODEL_URL"
+    ],
+    "ASSISTANT_MODEL": [
+      "BACKLOG_ASSISTANT_MODEL_NAME",
+      "ASSISTANT_MODEL"
+    ],
+    "ASSISTANT_GATEWAY_SECRET": [
+      "BACKLOG_ASSISTANT_SERVICE_SECRET",
+      "ASSISTANT_GATEWAY_SECRET"
+    ],
+    "ASSISTANT_MODEL_PROVIDER": [
+      "BACKLOG_ASSISTANT_MODEL_PROVIDER",
+      "ASSISTANT_MODEL_PROVIDER"
+    ],
+    "ASSISTANT_MODEL_PROTOCOL": [
+      "BACKLOG_ASSISTANT_MODEL_PROTOCOL",
+      "ASSISTANT_MODEL_PROTOCOL"
+    ],
+    "ASSISTANT_RUNTIME_LOCATION": [
+      "BACKLOG_ASSISTANT_RUNTIME_LOCATION",
+      "ASSISTANT_RUNTIME_LOCATION"
+    ],
+    "ASSISTANT_RUNTIME_CONTRACT_VERSION": [
+      "BACKLOG_ASSISTANT_RUNTIME_CONTRACT_VERSION",
+      "ASSISTANT_RUNTIME_CONTRACT_VERSION"
+    ],
+    "ASSISTANT_RUNTIME": [
+      "BACKLOG_ASSISTANT_EXECUTION_BACKEND",
+      "ASSISTANT_RUNTIME"
+    ],
+    "ASSISTANT_PORT": [
+      "BACKLOG_ASSISTANT_PORT",
+      "ASSISTANT_PORT"
+    ],
+    "ASSISTANT_DATA_API_PORT": [
+      "BACKLOG_ASSISTANT_DATA_API_PORT",
+      "ASSISTANT_DATA_API_PORT"
+    ],
+    "ASSISTANT_REMOTE_ENABLED": [
+      "BACKLOG_ASSISTANT_REMOTE_ENABLED",
+      "ASSISTANT_REMOTE_ENABLED"
+    ],
+    "ASSISTANT_REMOTE_DEPLOYMENT_FACTORY": [
+      "BACKLOG_ASSISTANT_REMOTE_DEPLOYMENT_FACTORY",
+      "ASSISTANT_REMOTE_DEPLOYMENT_FACTORY"
+    ]
+  }
+}

@@ -5,9 +5,9 @@ test('compact inspector, fullscreen and sequential navigation preserve queue con
  await first(page).click();
  const box=await page.locator('.work-inspector-host').boundingBox();
  expect(box.y,JSON.stringify(await page.locator('.work-workspace-layout').evaluate(el=>({layout:el.className,columns:getComputedStyle(el).gridTemplateColumns,parent:el.parentElement.className,filters:getComputedStyle(el.parentElement.querySelector('.work-filter-panel')).display,children:[...el.children].map(x=>({class:x.className,hidden:x.hidden,y:x.getBoundingClientRect().y}))})))).toBeLessThanOrEqual(200);
- await page.getByRole('button',{name:'Показать условия',exact:true}).click();
+ await page.getByRole('button',{name:'Показать фильтры',exact:true}).click();
  await expect(page.locator('#work-search')).toBeVisible();
- await page.getByRole('button',{name:'Свернуть условия',exact:true}).click();
+ await page.getByRole('button',{name:'Скрыть фильтры',exact:true}).click();
  await page.getByRole('button',{name:'На весь экран',exact:true}).click();
  await expect(page.locator('dialog:modal')).toHaveClass(/is-fullscreen/);
  await page.getByRole('button',{name:'Обычный размер',exact:true}).click();
@@ -115,7 +115,7 @@ for(const width of [320,390,1024,1440])for(const theme of ['light','dark'])test(
   if(width<=1024)await expect(card).toHaveJSProperty('tagName','DIALOG');
  else await expect(second(page)).toBeInViewport();
  await page.screenshot({path:info.outputPath('list-card.png'),fullPage:true});
- await page.getByRole('button',{name:'К списку',exact:true}).click();
+ await page.getByRole('button',{name:'Закрыть',exact:true}).click();
  await expect(first(page)).toBeVisible();
  if(width<=390) {
   const due=page.locator('.work-queue-due').first();

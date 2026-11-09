@@ -43,6 +43,22 @@ def test_schedule_late_measurement_does_not_cover_missed_slot():
     s=summarize(p,[point(5,12)],date(2026,1,18))
     assert s['missed_count']==1 and s['next_due']==date(2026,1,10)
 
+def test_manual_schedule_and_optional_baseline():
+    p=base(cadence='none',baseline=None,first_due_date=date(2026,1,1))
+    assert due_dates(p)==[]
+    empty=summarize(p,[],date(2026,2,1))
+    assert empty['fact'] is None and empty['freshness']=='missing'
+    s=summarize(p,[point(220)],date(2026,2,1))
+    assert s['progress'] is None and s['achieved'] and s['deviation']==20
+    assert s['next_due'] is None and s['missed_count']==0 and s['freshness']=='current'
+
+def test_manual_range_cannot_confirm_whole_period():
+    p=base(cadence='none',direction='range',baseline=None,target=90,upper=110)
+    s=summarize(p,[point(100)],date(2026,4,1))
+    assert s['achieved'] and s['outcome']=='unconfirmed' and s['deviation']==0
+    s=summarize(p,[point(120,30),point(100)],date(2026,4,1))
+    assert s['achieved'] and s['outcome']=='violated' and s['violation_count']==1
+
 @pytest.fixture
 def api(tmp_path,monkeypatch):
     assert engine.dialect.name=='postgresql','Integration suite requires PostgreSQL'
@@ -104,6 +120,79 @@ def test_create_and_idempotency(api):
     first=c.post('/api/v1/metrics',json=payload,headers=headers);assert first.status_code==201,first.text
     second=c.post('/api/v1/metrics',json=payload,headers=headers);assert second.status_code==201,second.text
     assert first.json()['id']==second.json()['id']
+
+def simple_period(**kw):
+    return dict(label='Простая цель',start_date=str(today()-timedelta(days=7)),
+                end_date=str(today()+timedelta(days=7)),direction='down',target=0,
+                cadence='none',start_immediately=True,**kw)
+
+def test_combined_creation_manual_measurement_and_history(api):
+    c,db,_,user,team=api
+    payload={**passport(user,team),'method':'','initial_period':simple_period()}
+    headers={'Idempotency-Key':'simple-metric-test-creation'}
+    response=c.post('/api/v1/metrics',json=payload,headers=headers)
+    assert response.status_code==201,response.text
+    m=response.json();p=m['periods'][0]
+    assert p['state']=='active' and p['baseline'] is None and p['method_snapshot']==''
+    assert {h['action'] for h in m['history']}=={'created','period_created','activate'}
+    retry=c.post('/api/v1/metrics',json=payload,headers=headers).json()
+    assert retry['id']==m['id'] and len(retry['periods'])==1 and len(retry['history'])==3
+    # An omitted measurement source inherits the period snapshot, even after passport edits.
+    m=command(api,m,'',{**passport(user,team),'source':'Новый источник'},method='patch')
+    m=command(api,m,f"/periods/{p['id']}/measurements",dict(value=0,measured_on=str(today())),201)
+    assert m['measurements'][0]['source']=='QA'
+    summary=m['periods'][0]['summary']
+    assert summary['achieved'] and summary['progress'] is None and summary['deviation']==0
+    assert summary['next_due'] is None and summary['missed_count']==0
+    point=m['measurements'][0]
+    m=command(api,m,'/measurements/'+str(point['id']),dict(value=2,measured_on=str(today()),reason='Уточнение'),method='patch')
+    assert any(h['action']=='measurement_corrected' and h['before']['value']==0 for h in m['history'])
+    persisted=c.get('/api/v1/metrics/'+str(m['id'])).json()
+    assert persisted['measurements'][0]['value']==2
+    assert len(persisted['history'])==len(m['history'])
+
+def test_combined_creation_failure_is_atomic_and_retryable(api):
+    c,db,_,user,team=api
+    title='QA atomic simple metric'
+    payload={**passport(user,team),'title':title,'initial_period':{**simple_period(),'direction':'range','target':10,'upper':5}}
+    headers={'Idempotency-Key':'simple-metric-atomic-test'}
+    response=c.post('/api/v1/metrics',json=payload,headers=headers)
+    assert response.status_code==422,response.text
+    assert not db.query(Metric).filter_by(title=title).first()
+    payload['initial_period']['upper']=10
+    response=c.post('/api/v1/metrics',json=payload,headers=headers)
+    assert response.status_code==201,response.text
+    assert response.json()['periods'][0]['state']=='active'
+
+def test_combined_draft_and_start_with_optional_method(api):
+    c,_,_,user,team=api
+    period={**simple_period(),'target':None,'start_immediately':False}
+    response=c.post('/api/v1/metrics',json={**passport(user,team),'method':'','initial_period':period})
+    assert response.status_code==201,response.text
+    m=response.json();p=m['periods'][0]
+    assert p['state']=='draft'
+    m=command(api,m,f"/periods/{p['id']}",{**simple_period(),'target':10},method='patch')
+    assert m['periods'][0]['state']=='active'
+    assert any(h['action']=='activate' for h in m['history'])
+
+def test_optional_baseline_pair_and_required_schedule(api):
+    c,_,_,user,team=api
+    for updates in [{'baseline':10},{'baseline_date':str(today()-timedelta(days=7))},
+                    {'cadence':'weekly'},{'cadence':'interval','interval_days':3}]:
+        response=c.post('/api/v1/metrics',json={**passport(user,team),'initial_period':{**simple_period(),**updates}})
+        assert response.status_code==422,response.text
+
+def test_new_active_period_preserves_previous_period_and_history(api):
+    m,p,_=active(api)
+    m=command(api,m,f"/periods/{p['id']}/measurements",dict(value=150,measured_on=str(today()),source='QA'),201)
+    previous=m['periods'][0];points=m['measurements'];history_ids={h['id'] for h in m['history']}
+    new_period={**simple_period(), 'start_date':str(today()+timedelta(days=21)),
+                'end_date':str(today()+timedelta(days=40))}
+    m=command(api,m,'/periods',new_period,201)
+    assert len(m['periods'])==2 and m['periods'][0]['state']=='active'
+    assert next(x for x in m['periods'] if x['id']==p['id'])==previous
+    assert m['measurements']==points
+    assert history_ids.issubset({h['id'] for h in m['history']})
 def test_measurement_correction_close_reopen(api):
     m,p,_=active(api);pid=p['id'];url=f'/periods/{pid}/measurements'
     m=command(api,m,url,dict(value=0,measured_on=str(today()),source='QA'),201)

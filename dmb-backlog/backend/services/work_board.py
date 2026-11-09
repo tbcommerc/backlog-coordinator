@@ -118,7 +118,7 @@ def cards(db, rows, user, today):
         elif project: context={'kind':'project','id':project,'title':projects.get(project,'Проект')}
         options=transition_options(row,user)
         can_edit=work.editor(user,row.execution_team_id) or row.requester_id==user.id and row.status=='new'
-        can_block=active and (can_edit or row.assignee_id==user.id)
+        can_check=active and (can_edit or row.assignee_id==user.id)
         h=history.get(row.id)
         data={key:getattr(row,key) for key in ('id','title','version','status','work_direction','execution_team_id',
             'assignee_id','acceptor_id','assignment_state','acceptance_required','priority','due_date','completed_at')}
@@ -126,13 +126,11 @@ def cards(db, rows, user, today):
             execution_team_name=teams.get(row.execution_team_id),assignee_name=people.get(row.assignee_id),
             acceptor_name=people.get(row.acceptor_id),
             next_actor_label=('Принимает: '+people.get(row.acceptor_id,'Не назначен')) if row.status=='in_acceptance' else people.get(row.assignee_id,'Не назначен'),
-            blocked=active and bool(row.blocked_reason),blocked_reason_preview=(row.blocked_reason or '')[:160] if active else '',
-            blocked_reason_truncated=active and len(row.blocked_reason or '')>160,
             is_overdue=active and bool(row.due_date and row.due_date<today),
             return_feedback_present=bool(active and h and h.before.get('status')=='in_acceptance' and h.after.get('status')=='in_progress'),
             checklist_progress={'done':sum(bool(x['completed']) for x in row.checklist or []),'total':len(row.checklist or [])},
             available_actions=[x['target'] for x in options if x['enabled']],transition_options=options,
-            can_edit=can_edit and active,can_block=can_block,can_check=can_block,
+            can_edit=can_edit and active,can_check=can_check,
             can_decide_assignment=row.status=='new' and row.assignment_state=='proposed' and work.editor(user,row.execution_team_id))
         data['next_step'] = next_step(row, data, people, teams.get(row.execution_team_id))
         data['readiness'] = readiness(row)

@@ -1,0 +1,66 @@
+{
+  "corpus_id": "agent-services-synthetic",
+  "version": "1.0.0",
+  "synthetic_only": true,
+  "baseline_status": "NOT_RUN",
+  "candidate_status": "NOT_RUN",
+  "services": {
+    "business-analyst": {
+      "file": "business-analyst.json",
+      "cases": 12,
+      "live_cases": 4,
+      "sha256": "d3d996f353b29a7388daf45feb42e0bce9162df48ce3a11493d18f874ce96dcc"
+    },
+    "business-analyst-experimental": {
+      "file": "business-analyst-experimental.json",
+      "cases": 12,
+      "live_cases": 4,
+      "sha256": "ff02ce45357901cf20c0bbd3da0c46acfa622444d0778cc106b23190116efa9f"
+    },
+    "meeting-analyzer": {
+      "file": "meeting-analyzer.json",
+      "cases": 12,
+      "live_cases": 4,
+      "sha256": "181c1abdf4414a1a5c9543aa0e0e1aed979d6c9960064b8fde499e09a69a3201"
+    },
+    "value-priority-assessor": {
+      "file": "value-priority-assessor.json",
+      "cases": 12,
+      "live_cases": 4,
+      "sha256": "c574bb44a45046399f7666e455f7e7f0defe5aa179363bedbd2605b7aea87c07"
+    },
+    "backlog-assistant": {
+      "file": "backlog-assistant.json",
+      "cases": 12,
+      "live_cases": 4,
+      "sha256": "b9557b8b80f8ea984d8744eaf7c789bebbc339059c0af8652888a86ddcd663c9"
+    }
+  },
+  "denominator": 60,
+  "offline_fixtures": {
+    "meeting-analyzer": {
+      "file": "offline/meeting-responses.json",
+      "sha256": "c097881ad09711d9fc9a55498d530d6c3c98a8a0ac940a157ed89c23e445b593",
+      "prepared_at": "2026-11-04",
+      "kind": "manually_authored_offline_responses"
+    },
+    "value-priority-assessor": {
+      "file": "offline/assessor-go-responses.json",
+      "sha256": "9a9ff3bb5217e187737ebc22f290629a7ce67d1daf6846f16d5d8ef84a5462b5",
+      "prepared_at": "2026-11-04",
+      "kind": "validated_synthetic_go_projection"
+    },
+    "business-analyst-experimental": {
+      "file": "offline/v2-document-responses.json",
+      "sha256": "cb7e5e763e08ae603a36196a4b3b12c1e0f387ac48cfe1971c4d61006e918b9c",
+      "prepared_at": "2026-11-05",
+      "kind": "document_model_fixtures"
+    },
+    "business-analyst": {
+      "file": "offline/v1-dialogue-responses.json",
+      "sha256": "02f2781849e5c8ab8ca9294d6a7bd11828bb53cf2cd03d36cb82f47bfc638dee",
+      "prepared_at": "2026-11-05",
+      "kind": "dialogue_model_fixtures"
+    }
+  }
+}

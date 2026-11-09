@@ -1,0 +1,292 @@
+- link "Перейти к содержимому":
+  - /url: "#page-content"
+- complementary:
+  - generic: Backlog Coordinator
+  - navigation:
+    - link "Главная":
+      - /url: "#/dashboard"
+      - generic: Главная
+    - generic: Управление бэклогом
+    - link "Бэклог":
+      - /url: "#/backlog?scope=team"
+      - generic: Бэклог
+    - link "Метрики":
+      - /url: "#/metrics"
+      - generic: Метрики
+    - link "Проекты":
+      - /url: "#/work-projects"
+      - generic: Проекты
+    - link "Рабочие задачи":
+      - /url: "#/work-tasks"
+      - generic: Рабочие задачи
+    - link "Запросы заказчиков":
+      - /url: "#/review"
+      - generic: Запросы заказчиков
+    - link "Экспресс-оценка":
+      - /url: "#/express-estimate"
+      - generic: Экспресс-оценка
+      - generic "В разработке":
+    - generic: Аналитика
+    - link "Статусы для встреч":
+      - /url: "#/reports"
+      - generic: Статусы для встреч
+    - link "Аналитика ЛТ":
+      - /url: "#/analytics/tribe"
+      - generic: Аналитика ЛТ
+    - link "Аналитика PO/PL":
+      - /url: "#/analytics/po-pl"
+      - generic: Аналитика PO/PL
+    - link "Аналитика для ИТ":
+      - /url: "#/analytics/it"
+      - generic: Аналитика для ИТ
+      - generic "В разработке":
+    - generic: Бизнес-заказчику
+    - link "Мои запросы":
+      - /url: "#/customer"
+      - generic: Мои запросы
+    - generic: ИИ-агенты
+    - link "ИИ-ассистент":
+      - /url: "#/customer/create"
+      - generic: ИИ-ассистент
+    - link "ИИ-ассистент V2":
+      - /url: "#/agent-v2"
+      - generic: ИИ-ассистент V2
+    - link "Помощник по бэклогу":
+      - /url: "#/backlog-assistant"
+      - generic: Помощник по бэклогу
+    - link "Поручения из встреч":
+      - /url: "#/meeting-capture"
+      - generic: Поручения из встреч
+    - generic: Настройки и администрирование
+    - link "Мои уведомления":
+      - /url: "#/notifications"
+      - generic: Мои уведомления
+      - 'generic "Непрочитанных уведомлений: 62"': "62"
+  - button "Свернуть или развернуть боковую панель":
+- banner:
+  - navigation "Хлебные крошки":
+    - link "Главная":
+      - /url: "#/dashboard"
+    - generic: /
+    - generic: Метрики
+  - combobox "Поиск задач"
+  - 'button "Уведомления: 62 непрочитанных"':
+    - 'generic "Непрочитанных уведомлений: 62"': "62"
+  - button "Переключить тему":
+  - button "Q.ba-a":
+    - generic: QB
+    - generic: Q.ba-a
+- main:
+  - heading "Метрики" [level=1]
+  - paragraph: Квартальные планы, факты и подтверждённые итоги
+  - button "Новая метрика":
+    - generic: Новая метрика
+  - generic: Поиск
+  - textbox "Поиск" [active]: DEV-QA-METRICS-UX-20261103-R2
+  - generic: Год
+  - spinbutton "Год": "2026"
+  - generic: Квартал
+  - combobox "Квартал":
+    - option "1 квартал"
+    - option "2 квартал"
+    - option "3 квартал"
+    - option "4 квартал" [selected]
+  - generic: Представление
+  - combobox "Представление":
+    - option "За квартал" [selected]
+    - option "За год"
+  - generic: Команды
+  - combobox "Команды":
+    - option "Все" [selected]
+    - option "AI"
+    - option "Core"
+    - option "Delivery"
+    - option "IB"
+    - option "Methodology"
+    - option "Post-Trade (Finance)"
+    - option "Post-Trade (Products & Service)"
+    - option "Pre-Trade"
+    - option "QA Team A"
+    - option "QA Team B"
+    - option "ИТ ЛТ"
+    - option "Проектный офис"
+  - generic: Владельцы
+  - combobox "Владельцы":
+    - option "Все" [selected]
+    - option "QA admin"
+    - option "QA ba-a"
+    - option "QA ba-a-peer"
+    - option "QA ba-b"
+    - option "QA ba-no-team"
+    - option "QA cl-a"
+    - option "QA invited"
+    - option "QA it-pl-a"
+    - option "QA it-pl-b"
+    - option "QA no-access"
+    - option "QA pl-a"
+    - option "QA po-a"
+    - option "QA po-b"
+    - option "QA reset-required"
+    - option "QA tribe-lead"
+    - option "UX тест — без команды"
+    - option "А. Коптелов"
+    - option "А. Мазунин"
+    - option "А. Нуждин"
+    - option "В. Баклушин"
+    - option "В. Гусев"
+    - option "В. Лемце"
+    - option "В. Стодольский"
+    - option "Д. Андреев"
+    - option "Д. Козлов"
+    - option "Д. Маркус"
+    - option "Д. Орлова"
+    - option "Д. Фомин"
+    - option "И. Мишутин"
+    - option "И. Яковлев"
+    - option "Л. Куликов"
+    - option "М. Первак"
+    - option "Р. Хачатрян"
+    - option "Тимофей Бабяк"
+    - option "Ю. Шилов"
+  - generic: Проекты
+  - combobox "Проекты":
+    - option "Все" [selected]
+    - option "AI ПОМОЩНИК IB"
+    - option "AI-СПРАВКА ПО КЛИЕНТУ"
+    - option "BI"
+    - option "DATA"
+    - option "IB"
+    - option "MIS"
+    - option "АВТОМАТИЗИРОВАНА ПЕРЕОЦЕНКА ОПЦИОНОВ СБИ"
+    - option "ВЕНДОРОЗАМЕЩЕНИЕ"
+    - option "ВЫВОД PM В СИГМУ"
+    - option "ДАШБОРДЫ"
+    - option "ДЕСК НЕДВИЖИМОСТИ"
+    - option "ДОРАБОТКА ЯДРА И ИНТЕГРАЦИЙ ПЛАТФОРМЫ"
+    - option "ИМПОРТОЗАМЕЩЕНИЕ"
+    - option "КАРТОЧКА КЛИЕНТА"
+    - option "ЛИДЫ ДЛЯ КМ"
+    - option "ЛИДЫ ОТ КМ"
+    - option "МАРШРУТИЗАЦИЯ"
+    - option "НОВАЯ СТРАТЕГИЧЕСКАЯ ИНИЦИАТИВА ДИД"
+    - option "ПАЙПЛАЙН-СКАНЕР СДЕЛОК"
+    - option "ПРОЧИЕ ЦЕЛИ"
+    - option "РЕАЛИЗОВАН ПОИСК ПОТЕНЦИАЛОВ ДЛЯ НОВЫХ ВЫПУСКОВ ОБЛИГАЦИЙ"
+    - option "СДЕЛКИ МАРШРУТИЗАЦИИ"
+    - option "ЦЕЛИ ЛПР"
+    - option "ЦИФРОВОЙ МЕТОДОЛОГ"
+    - option "ЦКП"
+  - generic: Состояние метрики
+  - combobox "Состояние метрики":
+    - option "Все" [selected]
+    - option "Черновик"
+    - option "Ведётся"
+    - option "Приостановлена"
+  - generic: Состояние периода
+  - combobox "Состояние периода":
+    - option "Все" [selected]
+    - option "Черновик"
+    - option "В работе"
+    - option "Закрыт"
+    - option "Отменён"
+  - generic: Область
+  - combobox "Область":
+    - option "Все метрики" [selected]
+    - option "Мои метрики"
+  - generic: Сортировка
+  - combobox "Сортировка":
+    - option "По названию" [selected]
+    - option "По изменению"
+    - option "По сроку замера"
+    - option "По числовому прогрессу"
+  - checkbox "Архив"
+  - text: Архив
+  - button "Сброс":
+    - generic: Сброс
+  - button "Колонки":
+    - generic: Колонки
+  - button "Нет факта · 0":
+    - generic: Нет факта · 0
+  - button "Ожидают итога · 0":
+    - generic: Ожидают итога · 0
+  - button "Цель не достигнута · 0":
+    - generic: Цель не достигнута · 0
+  - button "Просрочен замер · 0":
+    - generic: Просрочен замер · 0
+  - region "Квартальный реестр — таблица":
+    - table "Квартальный реестр":
+      - caption: Квартальный реестр
+      - rowgroup:
+        - row "Метрика План Факт Результат Владелец Состояние":
+          - columnheader "Метрика"
+          - columnheader "План"
+          - columnheader "Факт"
+          - columnheader "Результат"
+          - columnheader "Владелец"
+          - columnheader "Состояние"
+      - rowgroup:
+        - row "DEV-QA-METRICS-UX-20261103-R2-CHANGE MET-10472 · шт 80 90 Предварительный · 2026-11-03 Пока не достигнута · 50% QA ba-a Ведётся · В работе":
+          - cell "DEV-QA-METRICS-UX-20261103-R2-CHANGE MET-10472 · шт":
+            - link "DEV-QA-METRICS-UX-20261103-R2-CHANGE":
+              - /url: "#/metrics/10472?year=2026&quarter=4&view=quarter&q=DEV-QA-METRICS-UX-20261103-R2&scope=all&sort=title"
+            - generic: MET-10472 · шт
+          - cell "80"
+          - cell "90 Предварительный · 2026-11-03":
+            - link "90 Предварительный · 2026-11-03":
+              - /url: "#/metrics/10472?year=2026&quarter=4&view=quarter&q=DEV-QA-METRICS-UX-20261103-R2&scope=all&sort=title&period_id=40792&action=fact"
+              - strong: "90"
+              - generic: Предварительный · 2026-11-03
+          - cell "Пока не достигнута · 50%"
+          - cell "QA ba-a":
+            - generic: QA ba-a
+          - cell "Ведётся · В работе"
+        - 'row "DEV-QA-METRICS-UX-20261103-R2-RANGE MET-10470 · % 90 999 999 999 999 999,9999999999 Предварительный · 2026-11-03 Вне диапазона · Отклонение: 999 999 999 999 890 QA ba-a Ведётся · В работе"':
+          - cell "DEV-QA-METRICS-UX-20261103-R2-RANGE MET-10470 · %":
+            - link "DEV-QA-METRICS-UX-20261103-R2-RANGE":
+              - /url: "#/metrics/10470?year=2026&quarter=4&view=quarter&q=DEV-QA-METRICS-UX-20261103-R2&scope=all&sort=title"
+            - generic: MET-10470 · %
+          - cell "90"
+          - cell "999 999 999 999 999,9999999999 Предварительный · 2026-11-03":
+            - link "999 999 999 999 999,9999999999 Предварительный · 2026-11-03":
+              - /url: "#/metrics/10470?year=2026&quarter=4&view=quarter&q=DEV-QA-METRICS-UX-20261103-R2&scope=all&sort=title&period_id=40788&action=fact"
+              - strong: 999 999 999 999 999,9999999999
+              - generic: Предварительный · 2026-11-03
+          - 'cell "Вне диапазона · Отклонение: 999 999 999 999 890"'
+          - cell "QA ba-a":
+            - generic: QA ba-a
+          - cell "Ведётся · В работе"
+        - 'row "DEV-QA-METRICS-UX-20261103-R2-THRESHOLD MET-10473 · шт 0 -5 Предварительный · 2026-11-03 Цель достигнута · Отклонение: -5 QA ba-a Ведётся · В работе"':
+          - cell "DEV-QA-METRICS-UX-20261103-R2-THRESHOLD MET-10473 · шт":
+            - link "DEV-QA-METRICS-UX-20261103-R2-THRESHOLD":
+              - /url: "#/metrics/10473?year=2026&quarter=4&view=quarter&q=DEV-QA-METRICS-UX-20261103-R2&scope=all&sort=title"
+            - generic: MET-10473 · шт
+          - cell "0"
+          - cell "-5 Предварительный · 2026-11-03":
+            - link "-5 Предварительный · 2026-11-03":
+              - /url: "#/metrics/10473?year=2026&quarter=4&view=quarter&q=DEV-QA-METRICS-UX-20261103-R2&scope=all&sort=title&period_id=40793&action=fact"
+              - strong: "-5"
+              - generic: Предварительный · 2026-11-03
+          - 'cell "Цель достигнута · Отклонение: -5"'
+          - cell "QA ba-a":
+            - generic: QA ba-a
+          - cell "Ведётся · В работе"
+        - row "DEV-QA-METRICS-UX-20261103-R2-VOLUME MET-10471 · шт 100 100,25 Предварительный · 2026-11-03 Цель достигнута · 100,3% QA ba-a Ведётся · В работе":
+          - cell "DEV-QA-METRICS-UX-20261103-R2-VOLUME MET-10471 · шт":
+            - link "DEV-QA-METRICS-UX-20261103-R2-VOLUME":
+              - /url: "#/metrics/10471?year=2026&quarter=4&view=quarter&q=DEV-QA-METRICS-UX-20261103-R2&scope=all&sort=title"
+            - generic: MET-10471 · шт
+          - cell "100"
+          - cell "100,25 Предварительный · 2026-11-03":
+            - link "100,25 Предварительный · 2026-11-03":
+              - /url: "#/metrics/10471?year=2026&quarter=4&view=quarter&q=DEV-QA-METRICS-UX-20261103-R2&scope=all&sort=title&period_id=40791&action=fact"
+              - strong: 100,25
+              - generic: Предварительный · 2026-11-03
+          - cell "Цель достигнута · 100,3%"
+          - cell "QA ba-a":
+            - generic: QA ba-a
+          - cell "Ведётся · В работе"
+  - status: "Найдено: 4 · Страница 1 из 1"
+  - button "Назад" [disabled]:
+    - generic: Назад
+  - button "Далее" [disabled]:
+    - generic: Далее

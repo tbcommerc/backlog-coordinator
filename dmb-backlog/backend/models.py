@@ -39,7 +39,6 @@ class WorkTask(Base):
     status = Column(String(20), nullable=False, default="new", index=True)
     assignment_state = Column(String(16), nullable=False, default="accepted")
     acceptance_required = Column(Boolean, nullable=False, default=False)
-    blocked_reason = Column(Text)
     result_text = Column(Text, nullable=False, default="")
     result_revision = Column(Integer, nullable=False, default=1, server_default=text("1"))
     return_reason = Column(Text)
@@ -101,6 +100,47 @@ class WorkAttachment(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class MeetingDeliveryIntent(Base):
+    """Immutable request envelope until acceptance is durably known."""
+    __tablename__ = "meeting_delivery_intents"
+    operation_id = Column(String(36), primary_key=True)
+    capture_id = Column(String(36), nullable=False)
+    owner_id = Column(Integer, nullable=False)
+    source_revision = Column(Integer, nullable=False)
+    payload = Column(JSON, nullable=True)
+    phase = Column(String(16), nullable=False, default="queued")
+    attempts = Column(Integer, nullable=False, default=0, server_default="0")
+    next_attempt_at = Column(DateTime(timezone=True), nullable=True)
+    error_code = Column(String(64), nullable=True)
+    requested_at = Column(DateTime(timezone=True), nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
+    __table_args__ = (CheckConstraint("phase IN ('queued','unknown','resolved')", name="ck_meeting_intent_phase"),)
+
+
+class MeetingApplicationReceipt(Base):
+    """Technical delivery history; deliberately independent of mutable drafts."""
+    __tablename__ = "meeting_application_receipts"
+    __table_args__ = (
+        CheckConstraint("decision IN ('pending','applied','discarded')", name="ck_meeting_receipt_decision"),
+        Index("ix_meeting_receipt_pending", "ack_pending", "updated_at"),
+    )
+    service_run_id = Column(String(36), primary_key=True)
+    consumer_operation_id = Column(String(36), nullable=False)
+    capture_id = Column(String(36), nullable=False)
+    owner_id = Column(Integer, nullable=False)
+    source_hash = Column(String(64), nullable=False)
+    payload_hash = Column(String(64))
+    source_revision = Column(Integer, nullable=True)
+    applied_object_refs = Column(JSON, nullable=False, default=list, server_default=text("'[]'"))
+    committed_at = Column(DateTime(timezone=True), nullable=True)
+    decision = Column(String(16), nullable=False)
+    ack_pending = Column(Boolean, nullable=False, default=True, server_default="true")
+    ack_attempts = Column(Integer, nullable=False, default=0, server_default="0")
+    next_attempt_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
+
+
 class MeetingCapture(Base):
     __tablename__ = "meeting_captures"
     id = Column(String(36), primary_key=True)
@@ -111,12 +151,9 @@ class MeetingCapture(Base):
     items = Column(JSON, nullable=False, default=list)
     version = Column(Integer, nullable=False, default=1)
     status = Column(String(16), nullable=False, default="draft")
-    analysis_status = Column(String(16), nullable=False, default="idle", server_default="idle", index=True)
-    analysis_run_id = Column(String(36), nullable=True)
-    analysis_requested_at = Column(DateTime(timezone=True), nullable=True)
-    analysis_started_at = Column(DateTime(timezone=True), nullable=True)
-    analysis_finished_at = Column(DateTime(timezone=True), nullable=True)
-    analysis_error_code = Column(String(32), nullable=True)
+    analysis_backend = Column(String(32), nullable=False, default="legacy", server_default="legacy")
+    analysis_service_run_id = Column(String(36), nullable=True)
+    analysis_ack_pending = Column(Boolean, nullable=False, default=False, server_default="false")
     analysis_status = Column(String(16), nullable=False, default="idle", server_default="idle", index=True)
     analysis_run_id = Column(String(36), nullable=True)
     analysis_requested_at = Column(DateTime(timezone=True), nullable=True)
@@ -696,6 +733,22 @@ class FieldLabel(Base):
     is_required = Column(Boolean, default=False, comment='Обязательность поля при импорте задач из CSV (Обязательность = Да)')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ProjectTaskPlan(Base):
+    """Optional exact schedule and milestone for an ordinary backlog task."""
+    __tablename__ = "project_task_plans"
+    __table_args__ = (
+        CheckConstraint("(starts_on IS NULL AND ends_on IS NULL) OR (starts_on IS NOT NULL AND ends_on IS NOT NULL AND starts_on <= ends_on)", name="ck_project_plan_dates"),
+    )
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True)
+    starts_on = Column(Date)
+    ends_on = Column(Date)
+    baseline_start = Column(Date)
+    baseline_end = Column(Date)
+    is_milestone = Column(Boolean, nullable=False, default=False, server_default="false")
+    expected_result = Column(Text, nullable=False, default="", server_default="")
+    change_reason = Column(Text, nullable=False, default="", server_default="")
 
 
 class TaskHistory(Base):
@@ -1549,3 +1602,4 @@ event.listen(_ResultSession, "before_flush", _synchronize_customer_result)
 
 # Separate metric domain shares the same metadata and migration lifecycle.
 from metric_models import Metric, MetricPeriod, MetricMeasurement, MetricHistory, MetricComment, MetricLink, MetricFile, MetricReportingStatus  # noqa: E402,F401
+from metric_quarterly_models import PlanRevision, FactRevision, ClosureRevision, YearSettings, PauseInterval  # noqa: E402,F401

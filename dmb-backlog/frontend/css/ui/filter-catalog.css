@@ -1,0 +1,67 @@
+/* Named registry variants: stacked toolbar and compact filter catalog. */
+:root .ui-filter-toolbar-stacked { grid-template-columns:minmax(0,1fr) auto; }
+.ui-filter-toolbar-stacked .filter-search-wrap { grid-column:1; grid-row:1; }
+.ui-filter-toolbar-stacked .filter-toolbar-controls { grid-column:2; grid-row:1; }
+:root .ui-pinned-filters {
+  display:grid; grid-column:1/-1; grid-row:2;
+  grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--space-2);
+  overflow:visible;
+}
+:root .ui-pinned-filters .filter-btn { width:100%; }
+.ui-pinned-filters-empty { grid-column:1/-1; color:var(--text-secondary); font-size:var(--text-sm); }
+:root .ui-filter-catalog {
+  --filter-catalog-width:48rem;
+  display:flex; flex-direction:column;
+  height:min(600px,calc(100dvh - 220px)); overflow:hidden; padding:0;
+}
+.ui-filter-catalog .filter-catalog-header {
+  flex:none; padding:var(--space-4); margin:0; border-bottom:0;
+}
+.ui-filter-catalog .filter-catalog-header strong { font-size:var(--text-base); }
+.ui-filter-catalog .filter-catalog-header span { color:var(--text-secondary); }
+.ui-filter-catalog .filter-catalog-search-wrap { flex:none; margin:0 var(--space-4) var(--space-3); }
+.ui-filter-catalog-summary {
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:var(--space-1) var(--space-3);
+  padding:0 var(--space-4) var(--space-3); font-size:var(--text-xs); color:var(--text-secondary);
+  border-bottom:1px solid var(--border-color);
+}
+.ui-filter-catalog-summary [role=status] { font-weight:var(--font-semibold); color:var(--text-primary); }
+.ui-filter-catalog-scroll { min-height:0; flex:1; overflow:auto; overscroll-behavior:contain; padding:var(--space-3) var(--space-4); }
+.ui-filter-catalog .filter-catalog-groups { gap:var(--space-4); }
+.ui-filter-catalog .filter-catalog-group { gap:var(--space-1); }
+.ui-filter-catalog .filter-catalog-group + .filter-catalog-group { padding-top:var(--space-3); }
+.ui-filter-catalog .filter-catalog-group > h3 {
+  text-transform:none; letter-spacing:normal; font-size:var(--text-sm);
+  font-weight:var(--font-semibold); color:var(--text-primary); margin-bottom:var(--space-1);
+}
+.ui-filter-catalog .filter-catalog-grid { gap:var(--space-1) var(--space-4); }
+.ui-filter-catalog-item { border:0; border-radius:0; padding:0; background:transparent; gap:var(--space-1); }
+:root .ui-filter-catalog-field {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto auto;
+  text-align:left; gap:0 var(--space-2); padding:var(--space-1) var(--space-2);
+  border-color:transparent; background:transparent; min-height:max(44px,var(--control-target-min));
+}
+.ui-filter-catalog-label { grid-column:1; grid-row:1; white-space:normal; overflow-wrap:anywhere; color:var(--text-primary); }
+.ui-filter-catalog-value { grid-column:1; grid-row:2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-secondary); font-size:var(--text-xs); }
+.ui-filter-catalog-chevron { grid-column:2; grid-row:1/3; color:var(--text-muted); }
+:root .ui-filter-catalog-field.has-value { background:var(--accent-light); border-color:transparent; }
+.ui-filter-catalog-field.has-value .ui-filter-catalog-value { color:var(--accent-text); font-weight:var(--font-semibold); }
+.ui-filter-catalog-context { margin:0 0 var(--space-3); color:var(--text-secondary); font-size:var(--text-sm); }
+.ui-filter-catalog .filter-pin[aria-pressed=true] { background:var(--accent-light); color:var(--accent-text); }
+.ui-filter-catalog-footer {
+  flex:none; display:flex; align-items:center; justify-content:space-between; gap:var(--space-2);
+  padding:var(--space-3) var(--space-4); border-top:1px solid var(--border-color);
+}
+@container (max-width:760px) {
+  :root .ui-pinned-filters { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@media (max-width:640px) {
+  :root .ui-filter-toolbar-stacked { grid-template-columns:minmax(0,1fr); }
+  .ui-filter-toolbar-stacked .filter-toolbar-controls { grid-column:1; grid-row:3; justify-content:flex-end; }
+  :root .ui-pinned-filters { grid-template-columns:minmax(0,1fr); }
+  :root .ui-filter-catalog { height:calc(100dvh - 16px); }
+  .ui-filter-catalog .filter-catalog-grid { grid-template-columns:minmax(0,1fr); }
+  .ui-filter-catalog .filter-catalog-header { flex-wrap:nowrap; }
+  .ui-filter-catalog-item { grid-template-columns:minmax(0,1fr) var(--control-touch); }
+  .ui-filter-catalog-footer { flex-wrap:wrap; }
+}

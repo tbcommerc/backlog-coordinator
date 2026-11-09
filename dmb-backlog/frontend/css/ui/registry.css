@@ -1,6 +1,5 @@
 :root .filter-catalog-panel .filter-label { overflow:visible; white-space:normal; text-overflow:clip; }
 :root .filter-catalog-panel .filter-btn { height:auto; min-height:36px; flex-wrap:wrap; }
-:root .filter-panel[data-filter-scope=backlog] .pinned-filters-row { display:none; }
 :root .sticky-toolbar:has([data-filter-scope=backlog]) .toolbar-title-row { align-items:flex-start; }
 :root .sticky-toolbar:has([data-filter-scope=backlog]) .toolbar-actions { flex-wrap:wrap; gap:6px; }
 :root .table-container:has(#tasks-tbody) { background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--registry-radius); }
@@ -9,7 +8,4 @@
 @media(max-width:640px) {
  :root { --registry-padding:12px; }
  :root .ui-filter-chip { min-height:44px; }
- :root .filter-panel[data-filter-scope=backlog] .filter-toolbar-row { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; }
- :root .filter-panel[data-filter-scope=backlog] .filter-search-wrap { width:100%; min-width:0; grid-column:1; grid-row:1; }
- :root .filter-panel[data-filter-scope=backlog] .filter-toolbar-controls { display:flex; position:static; justify-content:flex-end; grid-column:1; grid-row:2; }
 }

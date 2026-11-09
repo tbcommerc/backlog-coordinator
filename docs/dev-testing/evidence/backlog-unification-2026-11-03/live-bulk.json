@@ -1,0 +1,77 @@
+{
+  "mode": "live PostgreSQL; only ordinary QA Tasks; no protected preparation",
+  "results": [
+    {
+      "check": "Authenticated on authorized origin",
+      "status": "PASS"
+    },
+    {
+      "check": "Existing references and cleanup authority available",
+      "status": "PASS"
+    },
+    {
+      "check": "Bulk preview includes exactly both QA Tasks",
+      "status": "PASS"
+    },
+    {
+      "check": "Bulk rejects a version changed after preview",
+      "status": "PASS"
+    },
+    {
+      "check": "Conflict rolls back the whole bulk; second Task unchanged",
+      "status": "PASS"
+    },
+    {
+      "check": "Fresh bulk commits both Tasks with operation ID",
+      "status": "PASS"
+    },
+    {
+      "check": "Only the requested progress value is applied",
+      "status": "PASS"
+    },
+    {
+      "check": "An old-version update cannot execute a second time",
+      "status": "PASS"
+    },
+    {
+      "check": "Rejected replay does not advance versions",
+      "status": "PASS"
+    },
+    {
+      "check": "Authenticated on authorized origin",
+      "status": "PASS"
+    },
+    {
+      "check": "Existing distinct teams available for object-policy negatives",
+      "status": "PASS"
+    },
+    {
+      "check": "Team editor cannot mutate a foreign ordinary QA Task",
+      "status": "PASS"
+    },
+    {
+      "check": "Team editor cannot transfer its QA Task to another team",
+      "status": "PASS"
+    },
+    {
+      "check": "Rejected transfer preserves the original responsible team",
+      "status": "PASS"
+    },
+    {
+      "check": "Only a Task created by this run was removed",
+      "status": "PASS"
+    },
+    {
+      "check": "Only a Task created by this run was removed",
+      "status": "PASS"
+    },
+    {
+      "check": "Only a Task created by this run was removed",
+      "status": "PASS"
+    },
+    {
+      "check": "Only a Task created by this run was removed",
+      "status": "PASS"
+    }
+  ]
+}

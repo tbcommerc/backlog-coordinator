@@ -1,0 +1,27 @@
+{
+  "global_unit": {
+    "tests": 498,
+    "passed": 492,
+    "failed": 6,
+    "failures": [
+      "✖ U28 core boundary follows every transitive CSS import (50.0244ms)",
+      "✖ U01 U28 all active CSS and inline JS token references are declared (440.513ms)",
+      "✖ real panel tabs use the shared navigation; URL navigation remains links (18.185ms)",
+      "✖ page CSS cannot set vertical dimensions on shared buttons and fields (49.8489ms)",
+      "✖ active table templates declare a kit recipe and cannot redefine cell typography or density inline (755.4119ms)",
+      "✖ active styles and templates cannot reintroduce tiny text or private weights (767.4628ms)"
+    ]
+  },
+  "safe_backend": {
+    "policy_tests": 3,
+    "import_tests": 1,
+    "import_subcases": 8,
+    "database_used": false
+  },
+  "final_targeted": {
+    "snapshot_and_preferences": 23,
+    "passed": 23
+  },
+  "ui_review": "discovery/coverage structure PASS; not complete UI acceptance",
+  "ui_kit_receipt": "STALE; no fabricated refreshed global receipt"
+}

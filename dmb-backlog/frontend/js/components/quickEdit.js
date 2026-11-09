@@ -1,8 +1,8 @@
 import { quickSaveConfirmation } from '../taskDisplay.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
 import { escapeHtml } from '../htmlUtils.js';
-import { showConfirmModal, showErrorModal } from './modal.js?v=118';
-import { updateStickyOffsets } from './filterToolbar.js?v=108';
+import { showConfirmModal, showErrorModal } from './modal.js?v=125';
+import { updateStickyOffsets } from './filterToolbar.js?v=114';
 
 console.log('[DMB] quickEdit.js v20260804 loaded');
 
@@ -35,6 +35,10 @@ const EDITABLE_FIELDS = {
 };
 
 const states = {};
+function syncQuickEditToggle(scope) {
+  document.getElementById(`${scope}-inline-edit`)?.setAttribute('aria-pressed', String(!!states[scope]?.mode));
+}
+let saveLifecycle=0;
 const scopeOpts = {};
 const ACTUAL_EFFORT_FIELDS = new Set(['actual_effort_days', 'actual_effort_designee', 'actual_effort_analytics', 'actual_effort_be', 'actual_effort_python_be', 'actual_effort_fe', 'actual_effort_test', 'actual_effort_test_auto', 'actual_effort_delivery']);
 const NON_NEGATIVE_FIELDS = new Set(['effort_days', 'effort_rub', 'effort_designee', 'effort_analytics', 'effort_be', 'effort_python_be', 'effort_fe', 'effort_test', 'effort_test_auto', 'effort_delivery', ...ACTUAL_EFFORT_FIELDS, 'financial_effect']);
@@ -80,7 +84,9 @@ export function renderQuickEditToolbar(scope) {
 export function initQuickEdit(scope, opts = {}) {
   scopeOpts[scope] = opts;
   const st = getState(scope);
+  st.saving = false;
   st.mode = false;
+  syncQuickEditToggle(scope);
   st.changes = {};
   st.errors = {};
   st.validationErrors = {};
@@ -156,6 +162,7 @@ function bindStickySupport(scope) {
 export function enterQuickEdit(scope) {
   const st = getState(scope);
   st.mode = true;
+  syncQuickEditToggle(scope);
   const toolbar = document.getElementById(`qe-toolbar-${scope}`);
   if (toolbar) toolbar.style.display = 'block';
   updateStickyOffsets();
@@ -166,6 +173,7 @@ export function enterQuickEdit(scope) {
 export function exitQuickEdit(scope) {
   const st = getState(scope);
   st.mode = false;
+  syncQuickEditToggle(scope);
   st.changes = {};
   st.errors = {};
   st.validationErrors = {};
@@ -435,6 +443,7 @@ function redo(scope) {
 
 async function confirmAndSave(scope) {
   const st = getState(scope);
+  if(st.saving)return;
   if (hasValidationErrors(scope)) { focusFirstValidationError(scope); return; }
   const count = Object.keys(st.changes).reduce((acc, tid) => acc + Object.keys(st.changes[tid]).length, 0);
   if (count === 0) {
@@ -465,9 +474,14 @@ async function cancelAll(scope) {
 
 async function saveQuickEditChanges(scope) {
   const st = getState(scope);
+  if(st.saving)return false;
   if (hasValidationErrors(scope)) { focusFirstValidationError(scope); return false; }
   const opts = scopeOpts[scope] || {};
   const tasks = opts.getTasks ? opts.getTasks() : [];
+  const epoch=saveLifecycle,owner=opts.app?.store?.get('currentUser')?.id;
+  const isCurrent=()=>epoch===saveLifecycle&&scopeOpts[scope]===opts&&owner===opts.app?.store?.get('currentUser')?.id;
+  st.saving=true;
+  try{
   const saveBtn = document.getElementById(`qe-save-${scope}`);
   if (saveBtn) {
     saveBtn.textContent = 'Сохраняю…';
@@ -479,6 +493,7 @@ async function saveQuickEditChanges(scope) {
   const pendingEntries = Object.entries(st.changes);
   st.errors = {};
   for (const [taskId, fields] of pendingEntries) {
+    if(!isCurrent())return false;
     const task = tasks.find(t => t.id == taskId);
     if (!task) continue;
     const data = {};
@@ -490,13 +505,16 @@ async function saveQuickEditChanges(scope) {
     }
     data.version = task.version;
     try {
+      if(opts.canEditTask&&!opts.canEditTask(task))throw Object.assign(new Error('Право изменения этой задачи отозвано. Ввод сохранён.'),{status:403});
       const resp = await opts.app.api.put(`/tasks/${taskId}`, data);
+      if(!isCurrent())return false;
       saved++;
       if (resp && resp.version !== undefined) {
         task.version = resp.version;
       }
       delete st.changes[taskId];
     } catch (e) {
+      if(!isCurrent())return false;
       errors++;
       const errorMsg = e.message || String(e);
       errorDetails.push({
@@ -507,8 +525,10 @@ async function saveQuickEditChanges(scope) {
         error: errorMsg,
       });
       st.errors[taskId] = errorMsg;
+      if(e.status===403)await opts.onAccessDenied?.();
     }
   }
+  if(!isCurrent())return false;
   if (saveBtn) {
     saveBtn.textContent = 'Сохранить';
     saveBtn.disabled = false;
@@ -517,6 +537,7 @@ async function saveQuickEditChanges(scope) {
     st.history = [];
     st.historyIndex = -1;
     await showErrorModal(saved, errors, errorDetails);
+    if(!isCurrent())return false;
     updateQuickEditCount(scope);
     if (opts.renderView) opts.renderView();
   } else {
@@ -528,6 +549,7 @@ async function saveQuickEditChanges(scope) {
     exitQuickEdit(scope);
     if (opts.afterSave) await opts.afterSave();
   }
+  }finally{if(isCurrent())st.saving=false;}
 }
 
 export function getQuickEditError(scope, taskId) {
@@ -669,8 +691,11 @@ export async function confirmDiscardChanges(okText = 'Продолжить', mes
 }
 
 export function clearQuickEditState() {
+  saveLifecycle++;
   Object.keys(states).forEach(s => {
+    states[s].saving = false;
     states[s].mode = false;
+    syncQuickEditToggle(s);
     states[s].changes = {};
     states[s].errors = {};
     states[s].validationErrors = {};

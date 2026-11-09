@@ -39,13 +39,13 @@ export function bindReadOnlyFields(root, { writeText = value => navigator.clipbo
   return () => { disposed = true; root.removeEventListener('click', handle); };
 }
 
-export function sectionCard({ title, content = '', description = '', actions = '', footer = '', collapsible = false, open = true, state = 'default', message = '', className = '', attrs = {}, level = 3 } = {}) {
+export function sectionCard({ title, content = '', description = '', actions = '', footer = '', collapsible = false, open = true, state = 'default', message = '', className = '', attrs = {}, level = 3, variant = 'card' } = {}) {
   const heading = [2, 3, 4].includes(level) ? `h${level}` : 'h3';
   state = ['loading', 'empty', 'error'].includes(state) ? state : 'default';
   const body = state === 'default' ? content : `<p class="ui-section-state" role="${state === 'error' ? 'alert' : 'status'}">${esc(message || ({ loading: 'Загрузка…', empty: 'Данных пока нет', error: 'Не удалось загрузить раздел' })[state])}</p>`;
   const header = `<${heading}>${esc(title)}</${heading}>${description ? `<p>${esc(description)}</p>` : ''}`;
   const tag = collapsible ? 'details' : 'section';
-  return `<${tag} class="ui-section-card ${esc(className)}" data-ui-state="${state}"${collapsible && open ? ' open' : ''}${attributes(attrs)}${state === 'loading' ? ' aria-busy="true"' : ''}>
-    ${collapsible ? `<summary class="ui-section-header">${header}</summary>` : `<header class="ui-section-header"><div>${header}</div>${actions ? `<div class="ui-section-actions">${actions}</div>` : ''}</header>`}
+  return `<${tag} class="ui-section-card${variant === 'plain' ? ' ui-section-plain' : ''} ${esc(className)}" data-ui-state="${state}"${collapsible && open ? ' open' : ''}${attributes(attrs)}${state === 'loading' ? ' aria-busy="true"' : ''}>
+    ${collapsible ? `<summary class="ui-disclosure-text ui-section-header">${header}</summary>` : `<header class="ui-section-header"><div>${header}</div>${actions ? `<div class="ui-section-actions">${actions}</div>` : ''}</header>`}
     <div class="ui-section-body">${collapsible && actions ? `<div class="ui-section-actions">${actions}</div>` : ''}${body}</div>${footer ? `<footer class="ui-section-footer">${footer}</footer>` : ''}</${tag}>`;
 }

@@ -6,7 +6,7 @@ let statusCardSequence = 0;
 import { escapeHtml } from '../htmlUtils.js';
 import { formatErrorMessage } from '../uiFeedback.js';
 import { button as uiButton, field as uiField } from '../ui/primitives.js';
-import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=21';
+import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=22';
 
 const ENDPOINT = '/reports/directorate-report';
 const TEAM_COLORS = ['#5b5bd6', '#087e8b', '#b35c19', '#8b4fb3', '#26734d', '#b23a48', '#3267a8', '#7a5b12'];
@@ -156,7 +156,7 @@ function renderFilters(team, shownCount) {
     <div class="directorate-filters">
       ${uiField({ id: 'directorate-project', label: 'Проект', kind: 'select', value: state.project, options: [{ value: '', label: 'Все проекты' }, ...projects.map(value => ({ value, label: value }))], attrs: { 'data-directorate-filter': 'project' } })}
       ${uiField({ id: 'directorate-type', label: 'Тип', kind: 'select', value: state.type, options: [{ value: '', label: 'Все типы задач' }, ...types.map(value => ({ value, label: value }))], attrs: { 'data-directorate-filter': 'type' } })}
-      ${uiButton({ label: 'Сбросить', icon: 'rotate-ccw', variant: 'ghost', size: 'small', className: 'directorate-filter-reset', attrs: { 'data-directorate-reset': '', disabled: !active, 'aria-label': 'Сбросить фильтры' } })}
+      ${uiButton({ label: 'Сбросить', icon: 'rotate-ccw', variant: 'ghost', className: 'directorate-filter-reset', attrs: { 'data-directorate-reset': '', disabled: !active, 'aria-label': 'Сбросить фильтры' } })}
     </div>
   </div>`;
 }

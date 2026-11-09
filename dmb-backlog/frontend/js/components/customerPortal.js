@@ -16,7 +16,7 @@ import {
   renderRequirementSections,
 } from './requestPresentation.js';
 import { formatTaskPublicId } from '../taskPublicId.js';
-import { button, filterChip, pageHeader } from '../ui/primitives.js';
+import { button, filterChip, pageHeader, field, icon } from '../ui/primitives.js';
 import { setButtonBusy } from '../ui/controls.js';
 import { renderViewState } from './viewState.js';
 
@@ -36,19 +36,16 @@ const CUSTOMER_SORTS = new Set(['newest', 'oldest']);
 export function renderCustomerPortal() {
   return `
     <section class="review-queue-card customer-request-list request-list-panel animate-fade-in" aria-labelledby="customer-requests-title">
-      <div class="customer-request-toolbar">
-        ${pageHeader({ title: 'Мои запросы', id: 'customer-requests-title', description: 'Ваши личные запросы и черновики, а также общие задачи вашего бизнес-заказчика', className: 'request-list-title-row', actions: `<div class="toolbar-actions customer-request-toolbar-actions">${button({ label: 'Новый запрос', variant: 'ai', size: 'small', attrs: { id: 'customer-new-request-btn', hidden: true } })}${button({ label: 'Создать запрос', variant: 'ai-primary', size: 'small', attrs: { id: 'customer-primary-action' } })}</div>` })}
-        <div class="filter-panel customer-request-filter-panel">
-          <div class="filter-toolbar-row customer-request-controls">
-            <label class="relative filter-search-wrap customer-request-search"><span class="sr-only">Поиск</span><i data-lucide="search"></i><input class="input ui-control" id="customer-request-search" type="search" maxlength="200" placeholder="Название или номер запроса" aria-label="Поиск по названию или номеру"></label>
-            <div class="customer-request-main-filters"><select id="customer-request-sort" class="input" aria-label="Сортировка запросов"><option value="newest">Сначала обновлённые</option><option value="oldest">Сначала старые</option></select></div>
-            <div class="filter-toolbar-controls"><button class="btn btn-secondary btn-sm square-icon customer-request-refresh" id="refresh-requests-btn" aria-label="Обновить запросы" title="Обновить"><i data-lucide="refresh-cw"></i></button></div>
-          </div>
-        </div>
-        <div class="customer-request-quick-filters" aria-label="Быстрые фильтры">
-          ${statCard('', 'layout-list', 'Все')}${statCard('action', 'alert-circle', 'Нужно мне')}${statCard('draft', 'file-pen-line', 'Черновики')}${statCard('review', 'search-check', 'На ревью')}${statCard('work', 'workflow', 'В работе')}${statCard('complete', 'check-circle-2', 'Завершены')}
-        </div>
+      ${pageHeader({title:'Мои запросы',id:'customer-requests-title',className:'ui-registry-header',titleAccessory:'<span id="customer-requests-count" class="text-secondary"></span>',actions:`<div class="ui-registry-actions">${button({label:'Обновить запросы',icon:'refresh-cw',iconOnly:true,attrs:{id:'refresh-requests-btn'}})}${button({label:'Новый запрос',variant:'ai',attrs:{id:'customer-new-request-btn',hidden:true}})}${button({label:'Создать запрос',variant:'ai-primary',attrs:{id:'customer-primary-action'}})}</div>`})}
+      <div class="ui-registry-collections ui-registry-collections-responsive" aria-label="Подборки запросов">
+        ${statCard('', 'layout-list', 'Все')}${statCard('action', 'alert-circle', 'Нужно мне')}${statCard('draft', 'file-pen-line', 'Черновики')}${statCard('review', 'search-check', 'На ревью')}${statCard('work', 'workflow', 'В работе')}${statCard('complete', 'check-circle-2', 'Завершены')}
       </div>
+      <div class="ui-registry-mobile-collection">${field({id:'customer-collection',label:'Подборка запросов',kind:'select',className:'ui-field-fluid ui-field-label-hidden',attrs:{'data-ui-native-select':true},options:[{value:'',label:'Все'},{value:'action',label:'Нужно мне'},{value:'draft',label:'Черновики'},{value:'review',label:'На ревью'},{value:'work',label:'В работе'},{value:'complete',label:'Завершены'}]})}</div>
+      <div class="ui-registry-toolbar ui-registry-search-row">
+        <label class="ui-registry-search ui-search-field"><span class="sr-only">Поиск</span>${icon('search')}<input class="input ui-control" id="customer-request-search" type="search" maxlength="200" placeholder="Название или номер запроса" aria-label="Поиск по названию или номеру"></label>
+        ${button({label:'Сброс',icon:'rotate-ccw',attrs:{id:'customer-reset'}})}
+      </div>
+      <div class="ui-registry-secondary"><span class="text-secondary">Личные запросы и общие задачи вашего заказчика</span><div class="ui-registry-sort">${field({id:'customer-request-sort',label:'Сортировка:',kind:'select',className:'ui-field-inline',options:[{value:'newest',label:'Сначала обновлённые'},{value:'oldest',label:'Сначала старые'}]})}</div></div>
       <p class="sr-only" id="customer-results-status" role="status" aria-live="polite">Загружаем запросы…</p>
       <div class="review-table-body" id="customer-requests-content" role="region" aria-label="Список моих запросов" aria-busy="true">${renderViewState({ kind: 'loading', title: 'Загружаем запросы…' })}</div>
       <div id="customer-pagination" class="toolbar-actions" aria-label="Страницы моих запросов" hidden></div>
@@ -57,7 +54,7 @@ export function renderCustomerPortal() {
 
 function statCard(key, icon, label) {
   const id = key || 'all';
-  return filterChip({ label, icon, countId: `customer-stat-${id}`, selected: !key, attrs: { 'data-stat-filter': key } });
+  return filterChip({ label, icon, countId: `customer-stat-${id}`, selected: !key, variant: 'navigation', attrs: { 'data-stat-filter': key } });
 }
 
 export async function initCustomerPortal(app) {
@@ -86,6 +83,8 @@ function bindPortalControls(app) {
   };
   document.getElementById('customer-request-search')?.addEventListener('input', () => reload(250));
   document.getElementById('customer-request-sort')?.addEventListener('change', () => reload());
+  document.getElementById('customer-collection')?.addEventListener('change',event=>{setPortalFilter(event.target.value);reload();});
+  document.getElementById('customer-reset')?.addEventListener('click',()=>{document.getElementById('customer-request-search').value='';document.getElementById('customer-request-sort').value='newest';setPortalFilter('');reload();});
   document.querySelectorAll('[data-stat-filter]').forEach(button => button.addEventListener('click', () => {
     setPortalFilter(button.dataset.statFilter || '');
     reload();
@@ -205,6 +204,10 @@ function getStage(item) {
 
 function updateStats() {
   const counts = portalMeta.counts;
+  const select=document.getElementById('customer-collection');
+  if(select)for(const option of select.options){option.dataset.label ||= option.textContent;option.textContent=option.dataset.label+' · '+(counts[option.value||'all']||0);}
+  const count=document.getElementById('customer-requests-count');if(count)count.textContent='Найдено: '+portalMeta.total;
+  const reset=document.getElementById('customer-reset');if(reset){const state=readPortalState();reset.disabled=!state.search&&!state.filter&&state.sort==='newest';}
   Object.entries(counts).forEach(([key, value]) => { const el = document.getElementById(`customer-stat-${key}`); if (el) el.textContent = value; });
 }
 
@@ -246,7 +249,7 @@ function renderRequestCard(item) {
     : ` href="${item.legacy_task ? `#/customer/task/${escapeHtml(item.task_id)}` : `#/customer/request/${escapeHtml(item.id)}`}"`;
   const actionLabel = item.draft_session ? 'Продолжить в ассистенте' : item.legacy_task ? 'Открыть карточку задачи' : item.status === 'returned' ? 'Уточнить запрос' : 'Открыть запрос';
   const contextLabel = item.draft_session ? 'Следующее действие' : item.status === 'returned' ? 'Требуется ваше действие' : item.status === 'rejected' ? 'Решение по запросу' : ['done', 'closed'].includes(stage.group) ? 'Результат' : 'Следующий шаг';
-  const itemLabel = item.draft_session ? `Личный черновик${item.active ? ' · активный' : ''}` : item.legacy_task ? `Задача ${formatTaskPublicId({ id: item.task_id, public_id: item.task_public_id })} · общая задача бизнес-заказчика` : `Личный запрос #${escapeHtml(item.id)}`;
+  const itemLabel = item.draft_session ? `Личный черновик${item.active ? ' · активный' : ''}` : item.legacy_task ? `${formatTaskPublicId({ id: item.task_id, public_id: item.task_public_id })} · Общая задача` : `Личный запрос #${escapeHtml(item.id)}`;
   const owner = customerCardOwner(item, stage), date = reliableDate(item);
   return `<${tag}${href} class="customer-request-card customer-role-card is-stage-${stage.group}${actionable ? ' needs-action' : ''}${item.draft_session ? ' is-draft' : ''}${item.legacy_task ? ' is-legacy' : ''}"><div class="customer-request-card-main"><div class="customer-request-card-heading"><div><span class="customer-request-card-id">${itemLabel}</span>${item.unread_event_count > 0 ? `<span class="badge badge-info">${item.status === 'returned' ? 'Новое замечание' : ['done', 'closed'].includes(stage.group) ? 'Есть результат' : 'Новые события'} · ${Number(item.unread_event_count)}</span>` : ''}<h3>${escapeHtml(item.title || 'Без названия')}</h3></div><span class="badge ${stage.badge}">${escapeHtml(stage.label)}</span></div><div class="customer-request-card-meta"><span title="Ответственный"><i data-lucide="user-check"></i>${escapeHtml(owner)}</span><span title="Последнее значимое обновление: ${escapeHtml(formatDate(item.updated_at || item.created_at))}"><i data-lucide="history"></i>${escapeHtml(customerEventLabel(item, stage))} · ${escapeHtml(formatRelativeDate(item.updated_at || item.created_at))}</span>${date ? `<span title="${escapeHtml(date.label)}"><i data-lucide="calendar-clock"></i>${escapeHtml(date.label)}: ${escapeHtml(date.value)}</span>` : ''}</div></div><div class="customer-request-card-next"><span>${contextLabel}</span><strong>${escapeHtml(nextStepText(item, stage))}</strong>${renderCardContext(item, stage)}<small>${actionLabel} <i data-lucide="arrow-right"></i></small></div></${tag}>`;
 }
@@ -257,18 +260,7 @@ function renderCardContext(item, stage) {
   }
   const progress = taskProgress(item);
   if (progress) return progress;
-  const fallback = item.draft_session
-    ? ['save', 'Черновик сохранён в ассистенте']
-    : stage.group === 'review'
-      ? ['clock-3', 'Ожидает решения продуктовой команды']
-      : stage.group === 'done'
-        ? ['check-circle', 'Результат по запросу зафиксирован']
-        : stage.group === 'closed'
-          ? ['circle-minus', 'Рассмотрение запроса завершено']
-          : stage.group === 'action'
-            ? ['alert-circle', 'Ожидается действие по запросу']
-            : ['workflow', 'Запрос принят в проработку'];
-  return `<div class="customer-request-card-context customer-request-card-note"><i data-lucide="${fallback[0]}"></i><span>${fallback[1]}</span></div>`;
+  return ''; // The next-step heading already communicates this stage.
 }
 
 function customerCardOwner(item, stage) {
@@ -334,6 +326,7 @@ function customerFilterGroup(item) {
 
 function setPortalFilter(filter) {
   const safeFilter = CUSTOMER_FILTERS.has(filter) ? filter : '';
+  const mobile=document.getElementById('customer-collection');if(mobile)mobile.value=safeFilter;
   document.querySelectorAll('[data-stat-filter]').forEach(button => {
     const active = button.dataset.statFilter === safeFilter;
     button.classList.toggle('active', active);

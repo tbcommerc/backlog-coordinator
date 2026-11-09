@@ -13,11 +13,10 @@
 
 from __future__ import annotations
 
-import hmac
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Security
+from fastapi import Depends, FastAPI, HTTPException, Query, Security, Header
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.security import APIKeyHeader
 from sqlalchemy import func, select, text
@@ -46,6 +45,7 @@ from value_priority_assessor.api.contract import (
     to_coordinator_priority,
 )
 from value_priority_assessor.config import get_settings
+from value_priority_assessor.service_auth import verify_secret
 from value_priority_assessor.core.attribution import AttributionError, run_attribution
 from value_priority_assessor.core.db import get_engine, get_session_factory, init_db
 from value_priority_assessor.core.models import PriorityHistory, Reference, Task
@@ -94,11 +94,7 @@ methodologist_secret_header = APIKeyHeader(
 
 
 def _verify_secret(provided: str | None, expected: str, capability: str) -> str:
-    if not expected:
-        raise HTTPException(status_code=503, detail=f"{capability} secret is not configured")
-    if not provided or not hmac.compare_digest(provided, expected):
-        raise HTTPException(status_code=401, detail="invalid service credentials")
-    return capability
+    return verify_secret(provided, expected, capability, debug=get_settings().debug)
 
 
 def require_service(
@@ -118,7 +114,20 @@ ServiceCaller = Annotated[str, Depends(require_service)]
 
 
 def _startup() -> None:
+    get_settings().validate_service_runtime()
+    if not get_settings().unit_test_mode:
+        from dmb_agent_contracts.limiter import require_runtime_limiter
+        require_runtime_limiter()
     init_db()
+    if not get_settings().unit_test_mode:
+        from dmb_agent_contracts.run_migration import validate as validate_run_schema
+        from value_priority_assessor.core.models import Base
+        validate_run_schema(get_engine(), allowed_existing=set(Base.metadata.tables) | {"alembic_version", "agent_runtime_bindings", "agent_runtime_migrations"})
+        if get_settings().execution_backend == "opencode":
+            from dmb_agent_contracts.runtime_records import validate as validate_runtime_bindings
+            from dmb_agent_contracts.remote_configuration import RemoteProfile
+            validate_runtime_bindings(get_engine())
+            RemoteProfile.from_settings(get_settings()).preflight()
     settings = get_settings()
     if settings.rag_vector or settings.value_analogy:
         from value_priority_assessor.rag.embeddings import start_encoder_warmup
@@ -150,9 +159,13 @@ def _shutdown() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     _startup()
+    from value_priority_assessor.runs import worker
+    if not get_settings().unit_test_mode:
+        worker.start()
     try:
         yield
     finally:
+        worker.stop()
         _shutdown()
 
 
@@ -167,6 +180,14 @@ app = FastAPI(
 )
 
 
+from value_priority_assessor.runs import api as run_api
+from dmb_agent_contracts.run_api import install_error_handlers
+from dmb_agent_contracts.body_limit import BodyLimit
+app.include_router(run_api)
+install_error_handlers(app)
+app.add_middleware(BodyLimit)
+
+
 def _get_task(session: Session, task_key: str) -> Task:
     task = session.scalar(select(Task).where(Task.task_key == task_key))
     if task is None:
@@ -177,23 +198,20 @@ def _get_task(session: Session, task_key: str) -> Task:
 # --- бэклог ------------------------------------------------------------------
 
 
+@app.get("/health/live")
 @app.get("/health")
 def health() -> dict[str, Any]:
-    settings = get_settings()
-    return {
-        "ok": True,
-        "llm_provider": settings.llm_provider,
-        "strategy_provider": settings.strategy_provider,
-    }
+    return {"ok": True}
 
 
 @app.get("/metrics", response_class=PlainTextResponse, include_in_schema=False)
-def metrics() -> str:
+def metrics(_: ServiceCaller) -> str:
     from value_priority_assessor.service.metrics import render_prometheus
 
     return render_prometheus()
 
 
+@app.get("/health/ready")
 @app.get("/ready")
 def ready() -> JSONResponse:
     """Check persistence, provider configuration and local RAG artifacts."""
@@ -201,8 +219,15 @@ def ready() -> JSONResponse:
     checks: dict[str, str] = {}
     is_ready = True
     try:
+        settings.validate_service_runtime()
+        checks["profile"] = "ok"
+    except Exception:
+        is_ready = False
+        checks["profile"] = "configuration_invalid"
+    try:
         with get_engine().connect() as connection:
-            connection.execute(text("SELECT 1"))
+            connection.execute(text("SELECT id FROM agent_runs LIMIT 1"))
+            connection.execute(text("SELECT run_id FROM agent_run_events LIMIT 1"))
         checks["database"] = "ok"
     except Exception as exc:
         is_ready = False
@@ -269,7 +294,7 @@ def ready() -> JSONResponse:
 
     return JSONResponse(
         status_code=200 if is_ready else 503,
-        content={"status": "ready" if is_ready else "not_ready", "checks": checks},
+        content={"status": "ready" if is_ready else "not_ready"},
     )
 
 
@@ -484,14 +509,27 @@ def rag_search(
 # зашитого слепка. Контракт — docs/COORDINATOR-CONTRACT.md.
 
 
+
+
+def _coordinator_request(task, kind, session, caller, actor, key, revision):
+    if get_settings().unit_test_mode:
+        return handle_request(task, kind, session)
+    from value_priority_assessor.compatibility import estimate
+    from pydantic import TypeAdapter
+    return TypeAdapter(AgentResponse | ErrorResponse).validate_python(
+        estimate(task,kind,caller=caller,actor=actor,key=key,revision=revision))
+
+
 @app.post(
     "/agent/value",
     response_model=CoordinatorValueOut | ErrorResponse,
     summary="Рассчитай Value(internal) по инициативе",
 )
-def agent_value(request: ValueRequest, session: DbSession, _: ServiceCaller):
+def agent_value(request: ValueRequest, session: DbSession, _: ServiceCaller,
+    x_agent_caller: str = Header(default=""), x_actor_ref: str = Header(default=""),
+    idempotency_key: str = Header(default=""), x_source_revision: int = Header(default=0,ge=0)):
     """Только Value. Приоритет здесь не считается — на него отдельный запрос."""
-    response = handle_request(request.task, "value", session)
+    response = _coordinator_request(request.task, "value", session, x_agent_caller, x_actor_ref, idempotency_key, x_source_revision)
     if isinstance(response, ErrorResponse) or response.value is None:
         return response
     return to_coordinator(response.value)
@@ -502,9 +540,11 @@ def agent_value(request: ValueRequest, session: DbSession, _: ServiceCaller):
     response_model=AgentResponse | ErrorResponse,
     summary="То же, но с разбором по методам, драйверами и аудитом",
 )
-def agent_value_full(request: ValueRequest, session: DbSession, _: ServiceCaller):
+def agent_value_full(request: ValueRequest, session: DbSession, _: ServiceCaller,
+    x_agent_caller: str = Header(default=""), x_actor_ref: str = Header(default=""),
+    idempotency_key: str = Header(default=""), x_source_revision: int = Header(default=0,ge=0)):
     """Подробный ответ для отладки и для интерфейса методолога."""
-    return handle_request(request.task, "value", session)
+    return _coordinator_request(request.task, "value", session, x_agent_caller, x_actor_ref, idempotency_key, x_source_revision)
 
 
 @app.post(
@@ -512,8 +552,10 @@ def agent_value_full(request: ValueRequest, session: DbSession, _: ServiceCaller
     response_model=CoordinatorPriorityOut | ErrorResponse,
     summary="Определи приоритет по инициативе",
 )
-def agent_priority(request: PriorityRequest, session: DbSession, _: ServiceCaller):
-    response = handle_request(request.task, "priority", session)
+def agent_priority(request: PriorityRequest, session: DbSession, _: ServiceCaller,
+    x_agent_caller: str = Header(default=""), x_actor_ref: str = Header(default=""),
+    idempotency_key: str = Header(default=""), x_source_revision: int = Header(default=0,ge=0)):
+    response = _coordinator_request(request.task, "priority", session, x_agent_caller, x_actor_ref, idempotency_key, x_source_revision)
     if isinstance(response, ErrorResponse) or response.priority is None:
         return response
     return to_coordinator_priority(response.priority, response.value)
@@ -524,11 +566,18 @@ def agent_priority(request: PriorityRequest, session: DbSession, _: ServiceCalle
     response_model=AgentResponse | ErrorResponse,
     summary="То же, но с разбором по факторам, овверрайдами и аудитом",
 )
-def agent_priority_full(request: PriorityRequest, session: DbSession, _: ServiceCaller):
+def agent_priority_full(request: PriorityRequest, session: DbSession, _: ServiceCaller,
+    x_agent_caller: str = Header(default=""), x_actor_ref: str = Header(default=""),
+    idempotency_key: str = Header(default=""), x_source_revision: int = Header(default=0,ge=0)):
     """Подробный ответ для отладки и для интерфейса методолога."""
-    return handle_request(request.task, "priority", session)
+    return _coordinator_request(request.task, "priority", session, x_agent_caller, x_actor_ref, idempotency_key, x_source_revision)
 
 
 @app.get("/agent/snapshot", summary="Версия зашитого слепка исторических Value")
 def agent_snapshot(_: ServiceCaller) -> dict[str, Any]:
     return get_snapshot().describe()
+
+
+# The tool token is deliberately independent from coordinator/admin credentials.
+from value_priority_assessor.remote_tools import create_router as create_tool_router
+app.include_router(create_tool_router(get_db, require_service))

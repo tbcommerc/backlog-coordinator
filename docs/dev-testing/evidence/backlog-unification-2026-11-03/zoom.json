@@ -1,0 +1,32 @@
+[
+  {
+    "scope": "all",
+    "status": "PASS",
+    "method": "chrome.tabs.setZoom; getZoom=2",
+    "before": {
+      "dpr": 1,
+      "width": 1440
+    },
+    "after": {
+      "dpr": 2,
+      "width": 720,
+      "overflow": 0,
+      "search": 354.1875
+    }
+  },
+  {
+    "scope": "team",
+    "status": "PASS",
+    "method": "chrome.tabs.setZoom; getZoom=2",
+    "before": {
+      "dpr": 1,
+      "width": 1440
+    },
+    "after": {
+      "dpr": 2,
+      "width": 720,
+      "overflow": 0,
+      "search": 355.4921875
+    }
+  }
+]

@@ -3,14 +3,13 @@
 :root .work-task-workplace > .ui-page-header { gap:16px; margin:0 0 4px; align-items:center; }
 :root .work-task-workplace .toolbar-title { font-size:var(--type-page-size); line-height:var(--type-page-line); font-weight:var(--font-semibold); letter-spacing:normal; }
 :root .work-task-workplace .toolbar-subtitle { margin:3px 0 0; font-size:var(--text-sm); line-height:20px; color:var(--work-muted); }
-:root .work-task-workplace .work-workspace-nav { padding:3px; border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-secondary); gap:2px; }
 :root .work-task-workplace .work-workspace { gap:0; min-width:0; }
 :root .work-task-workplace .work-collections { margin:0 0 4px; padding:0; gap:24px; min-width:0; max-width:100%; overflow-x:auto; border-bottom:1px solid var(--border-color); }
 :root .work-task-workplace .work-focus-nav { display:flex; gap:var(--space-3); margin:0 0 var(--space-3); padding:0; min-height:0; flex-wrap:wrap; }
 :root .work-task-workplace .work-focus-nav[hidden] { display:none; }
 :root .work-task-workplace .work-filter-chips:empty { display:none; }
 :root .work-task-workplace .work-filter-chips { margin:0 0 12px; }
-:root .work-task-workplace .work-filter-panel { margin:0 0 4px; padding:0; border:0; background:transparent; }
+:root .work-task-workplace .work-filter-panel { margin:0 0 4px; }
 :root .work-task-workplace .work-queue-panel { border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-secondary); box-shadow:none; }
 :root .work-task-workplace .work-queue caption { position:static; display:table-caption; caption-side:top; width:auto; max-width:none; padding:0 var(--space-3); height:auto; overflow:visible; clip-path:none; text-align:left; }
 :root .work-task-workplace .work-queue-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:22px; }
@@ -25,11 +24,11 @@
 :root .work-task-workplace .work-queue thead th:nth-child(3) { width:16%; }
 :root .work-task-workplace .work-queue thead th:nth-child(4) { width:17%; }
 :root .work-task-workplace .work-queue thead th:nth-child(5) { width:38px; }
-:root .work-task-workplace .work-queue > tbody > tr[data-work-row] > td { padding:var(--table-cell-padding-y) var(--space-3); height:auto; box-sizing:border-box; font-size:var(--text-control-sm); line-height:1.4; }
-:root .work-task-workplace .work-queue-title { font-size:var(--control-font); line-height:18px; font-weight:500; }
+:root .work-task-workplace .work-queue > tbody > tr[data-work-row] > td { box-sizing:border-box; }
 :root .work-task-workplace .work-queue-context { font-size:var(--text-xs); line-height:16px; margin-top:4px; gap:4px 6px; flex-wrap:wrap; }
 /* Keep task signals readable even when the context name is long. */
-:root .work-task-workplace .work-queue-context .work-context-name { flex:1 1 0; min-width:0; max-width:100%; }
+:root .work-task-workplace .work-queue-context .work-context-name { flex:0 1 auto; min-width:0; max-width:100%; }
+:root .work-task-workplace .work-queue-signals { display:flex; flex-wrap:wrap; gap:4px 6px; flex-basis:100%; min-width:0; grid-column:1/-1; }
 :root .work-task-workplace .work-queue-context :is(.work-priority,.work-queue-note) { display:inline-flex; align-items:center; flex:0 0 auto; max-width:100%; box-sizing:border-box; padding:1px 6px; margin:0; border:1px solid currentColor; border-radius:var(--radius-sm); background:var(--warning-light); color:var(--warning-text); font-size:var(--text-xs); line-height:16px; white-space:normal; overflow:visible; overflow-wrap:anywhere; }
 :root .work-task-workplace .work-queue-context .work-priority[data-priority=urgent] { background:var(--danger-light); color:var(--danger-text); }
 :root .work-task-workplace .work-context-name::before { content:'·'; margin-right:8px; }
@@ -118,18 +117,12 @@
 .work-card-width input { width:100%; }
 :root .work-task-workplace > .ui-page-header { margin-bottom:var(--space-3); }
 :root .work-task-workplace .work-collections { margin-bottom:var(--space-3); gap:var(--space-4); }
-:root .work-task-workplace .work-collections .ui-filter-chip { border-color:transparent; border-radius:0; background:transparent; box-shadow:none; color:var(--text-secondary); }
-:root .work-task-workplace .work-collections .ui-filter-chip:not(:focus-visible) { outline:none; }
-:root .work-task-workplace .work-collections .ui-filter-chip[aria-pressed=true] { border-bottom-color:var(--accent); color:var(--text-primary); }
-:root .work-task-workplace .work-collections .ui-filter-chip[aria-pressed=true] .quick-filter-count { background:var(--accent-light); color:var(--accent-text); }
-:root .work-task-workplace .work-toolbar { display:flex; flex-direction:column; align-items:stretch; gap:var(--space-2); padding:0; margin:0 0 var(--space-3); border:0; border-radius:0; background:transparent; }
+:root .work-task-workplace .work-toolbar { display:flex; flex-direction:column; align-items:stretch; margin:0 0 var(--space-3); }
 :root .work-task-workplace .work-toolbar-search { display:flex; align-items:center; gap:var(--space-2); min-width:0; }
 :root .work-task-workplace .work-toolbar .work-search-field { display:block; flex:1; width:auto; max-width:none; min-width:0; }
 :root .work-task-workplace .work-toolbar-search .work-filter-tools { display:flex; gap:var(--space-2); flex-wrap:wrap; }
 :root .work-task-workplace .work-toolbar .work-filters { display:none; }
 :root .work-task-workplace .work-toolbar .work-toolbar-primary { display:flex; flex-wrap:wrap; gap:var(--space-2); align-items:center; }
-:root .work-task-workplace .work-toolbar-primary .ui-field { width:180px; margin:0; }
-:root .work-task-workplace .work-toolbar-primary .form-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 :root .work-task-workplace .work-toolbar-primary .ui-filter-slot,
 :root .work-task-workplace .work-toolbar-primary .ui-filter-select { width:100%; }
 :root .work-task-workplace .work-toolbar .work-search-field .form-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
@@ -207,8 +200,6 @@
 .work-search-field { position:relative; }
 .work-inspector-context { display:none; margin:0; color:var(--text-secondary); font-size:12px; line-height:20px; overflow-wrap:anywhere; }
 .has-work-inspector > .work-inspector-context { display:block; }
-:root .work-task-workplace .work-toolbar-primary .form-label { position:static; width:auto; height:auto; overflow:visible; clip-path:none; display:block; font-size:12px; margin:0; }
-:root .work-task-workplace .work-toolbar-primary .ui-field { width:auto; flex:1 1 145px; max-width:210px; }
 :root .work-task-workplace .work-toolbar .work-extra-filters:not([hidden]) { position:fixed; inset:80px 16px 16px auto; width:min(580px,calc(100vw - 32px)); max-height:calc(100dvh - 96px); overflow:auto; grid-template-columns:repeat(2,minmax(0,1fr)); padding:20px; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-secondary); box-shadow:var(--shadow-lg); z-index:1100; align-content:start; }
 :root .work-task-workplace .work-toolbar .work-filter-apply { position:sticky; bottom:-20px; background:var(--bg-secondary); }
 :root .work-task-workplace .work-toolbar .work-extra-filters .ui-field { min-width:0; }
@@ -216,15 +207,15 @@
 
 
 @media(min-width:1080px) {
- :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 8px; padding:6px 10px; }
- :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > td:first-child { grid-column:1; grid-row:1/3; padding:0 4px 0 0; }
+ :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] { display:grid; grid-template-columns:minmax(0,1fr) 156px 28px; gap:4px 12px; padding:6px 12px; align-items:start; }
+ :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > td:first-child { grid-column:1; grid-row:1/3; padding:0; }
  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-person { display:none; }
- :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-status { grid-column:2; grid-row:1; padding:0 32px 0 0; }
- :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-state { grid-column:2; grid-row:2; padding:0; }
- :root .work-task-workplace .has-work-inspector .work-queue-context { flex-wrap:nowrap; }
- :root .work-task-workplace .has-work-inspector .work-queue-context .work-queue-note { border:0; background:transparent; padding:0; width:14px; overflow:hidden; white-space:nowrap; }
- :root .work-task-workplace .has-work-inspector .work-queue-context .work-queue-note::before { content:'⚠'; }
- :root .work-task-workplace .has-work-inspector .work-queue-status .work-checklist-summary { display:none; }
+ :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-status { grid-column:2; grid-row:1; padding:0; justify-self:stretch; text-align:left; }
+ :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-state { grid-column:2; grid-row:2; padding:0; justify-self:stretch; text-align:left; }
+ :root .work-task-workplace .has-work-inspector .work-queue-context { display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px; align-items:start; }
+ :root .work-task-workplace .has-work-inspector .work-queue-context :is(.work-priority,.work-queue-note) { width:auto; max-width:100%; justify-self:start; white-space:normal; overflow:visible; }
+ :root .work-task-workplace .has-work-inspector .work-queue-context .work-queue-note::before { content:none; }
+ :root .work-task-workplace .has-work-inspector .work-queue-status .work-checklist-summary { display:flex; margin:4px 0 0; }
 }
 @media(max-width:900px) {
  :root .work-task-workplace > .ui-page-header { flex-wrap:nowrap!important; margin-bottom:4px; gap:8px; }
@@ -242,10 +233,7 @@
  :root .work-task-workplace .search-open .work-toolbar .work-search-field,
  :root .work-task-workplace .has-work-search .work-toolbar .work-search-field { display:block; }
  :root .work-task-workplace .work-mobile-collection { margin:0; }
- :root .work-task-workplace .work-focus-nav { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; overflow:visible; margin:0 0 4px; }
- :root .work-task-workplace .work-focus-nav .ui-filter-chip { min-width:0; width:100%; white-space:normal; padding:4px; gap:3px; font-size:var(--type-meta-size); }
- :root .work-task-workplace .work-focus-nav svg { display:none; }
- :root .work-task-workplace .work-focus-nav .quick-filter-count { min-width:16px; }
+ :root .work-task-workplace .work-focus-nav { display:flex; flex-wrap:wrap; gap:var(--space-2); overflow:visible; margin:0 0 var(--space-2); }
  :root .work-task-workplace .work-toolbar .work-extra-filters:not([hidden]) { inset:0; width:auto; max-height:100dvh; grid-template-columns:minmax(0,1fr); border-radius:0; padding:16px; }
  :root .work-task-workplace .work-toolbar .work-filter-apply { bottom:-16px; }
  :root .work-task-workplace .work-queue-panel .work-task-link { min-height:44px; display:flex; align-items:center; }
@@ -264,7 +252,7 @@
 }
 .work-dialog .work-card-properties .ui-readonly-field { display:flex; flex-direction:column; gap:4px; align-items:stretch; }
 .work-focus-semantics { align-self:center; font-size:12px; color:var(--text-secondary); }
-@media(max-width:900px) { .work-focus-semantics { grid-column:1/-1; font-size:var(--type-meta-size); line-height:var(--type-meta-line); } }
+@media(max-width:900px) { .work-focus-semantics { flex-basis:100%; font-size:var(--type-meta-size); line-height:var(--type-meta-line); } }
 @media(max-width:900px) {
  :root .work-task-workplace .work-toolbar .work-filters { flex-wrap:nowrap; }
  :root .work-task-workplace .work-toolbar .work-filters .work-mobile-collection { flex:1 1 100px; width:auto; }
@@ -287,43 +275,46 @@
  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > td { display:block; width:auto; min-width:0; height:auto; box-sizing:border-box; border:0; }
  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > td::before { display:none; }
  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-person { display:none; }
- :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-menu { position:absolute; top:2px; right:2px; padding:0; }
+ :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-menu { position:static; grid-column:3; grid-row:1/3; padding:0; }
+}
+/* Use the queue's available width, including when the inspector is resized. */
+@container workqueue (min-width:760px) {
+ @media(min-width:1080px) {
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] { grid-template-columns:minmax(0,1fr) 128px 144px 28px; gap:12px; align-items:start; }
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > td:first-child { grid-column:1; grid-row:1; }
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-status { grid-column:2; grid-row:1; }
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-state { grid-column:3; grid-row:1; }
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-menu { grid-column:4; grid-row:1; }
+ }
+}
+/* Use the queue's available width, including when the inspector is resized. */
+@container workqueue (min-width:760px) {
+ @media(min-width:1080px) {
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] { grid-template-columns:minmax(0,1fr) 128px 144px 28px; gap:12px; align-items:start; }
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > td:first-child { grid-column:1; grid-row:1; }
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-status { grid-column:2; grid-row:1; }
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-state { grid-column:3; grid-row:1; }
+  :root .work-task-workplace .has-work-inspector .work-queue tr[data-work-row] > .work-queue-menu { grid-column:4; grid-row:1; }
+ }
 }
 .work-dialog [data-work-history].is-timeline > summary,
 .work-dialog [data-work-history].is-timeline > .work-muted { display:none; }
 .work-dialog [data-work-history].is-timeline { border:0; padding:0; }
-@media(max-width:900px) {
- :root .work-task-workplace .work-focus-nav .quick-filter-info { flex:1 1 auto; min-width:0; gap:3px; }
- :root .work-task-workplace .work-focus-nav .quick-filter-label { white-space:normal; overflow:visible; text-overflow:clip; line-height:14px; overflow-wrap:normal; }
-}
-@media(max-width:900px) {
- :root .work-task-workplace .work-focus-nav .quick-filter-info { flex-direction:column; gap:0; }
- :root .work-task-workplace .work-focus-nav .quick-filter-count { margin-left:0; }
-}
 .work-metric[data-ui-state=filtered] > span:first-child { color:var(--text-link); text-decoration:underline; }
 .work-metric[data-ui-state=unavailable] strong { color:var(--text-secondary); }
 /* Same framed, inline-labelled filter composition as the backlog registries. */
-:root .work-task-workplace .work-toolbar { box-sizing:border-box; border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary); padding:8px 12px; gap:8px; }
 :root .work-task-workplace .work-toolbar > .work-filter-tools { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
 :root .work-task-workplace .work-toolbar .work-extra-filters .work-inline-filter-label > span { display:none; }
 @media(min-width:901px) {
- :root .work-task-workplace .work-toolbar { display:grid; grid-template-columns:minmax(220px,1fr) minmax(500px,1.7fr) auto; align-items:center; }
+ :root .work-task-workplace .work-toolbar { display:grid; grid-template-columns:minmax(280px,1fr) minmax(170px,auto) auto; align-items:center; }
  :root .work-task-workplace .work-toolbar-search { grid-column:1; grid-row:1; }
  :root .work-task-workplace .work-toolbar-primary { grid-column:2; grid-row:1; flex-wrap:nowrap; gap:6px; }
  :root .work-task-workplace .work-toolbar > .work-filter-tools { grid-column:3; grid-row:1; }
- :root .work-task-workplace .work-toolbar-primary .ui-field { display:flex; flex:1 1 0; align-items:center; gap:4px; min-width:0; max-width:none; height:32px; padding-left:8px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-secondary); }
- :root .work-task-workplace .work-toolbar-primary .form-label { display:inline-flex; align-items:center; flex:none; gap:0; font-size:12px; line-height:18px; color:var(--text-secondary); }
- :root .work-task-workplace .work-toolbar-primary .ui-control { flex:1 1 0; min-width:0; width:0; height:30px; min-height:30px; border:0; border-radius:0 8px 8px 0; background-color:transparent; padding-left:0; font-size:13px; box-shadow:none; }
- :root .work-task-workplace .work-toolbar-primary .ui-field:focus-within { outline:2px solid var(--focus-color,var(--accent)); outline-offset:2px; }
- :root .work-task-workplace .work-toolbar-primary .ui-control:focus { outline:none; box-shadow:none; }
  :root .work-task-workplace .work-toolbar .work-search-field { min-width:0; margin:0; }
- :root .work-task-workplace .work-toolbar #work-search { min-height:32px; height:32px; font-size:13px; padding-left:28px; background-position:8px center; background-size:14px; }
- :root .work-task-workplace .work-toolbar .work-filter-tools > .ui-btn { min-height:32px; height:32px; font-size:12px; padding:6px 10px; }
- :root .work-task-workplace .work-toolbar .work-filter-tools > [data-work-action=board-refresh] { width:32px; padding:0; }
  :root .work-task-workplace .work-toolbar .work-extra-filters { grid-column:auto; grid-row:auto; }
  :root .work-task-workplace .work-toolbar [data-work-action=toggle-search] { display:none; }
 }
-@container (max-width:1120px) {
+@container (max-width:760px) {
  @media(min-width:901px) {
   :root .work-task-workplace .work-toolbar { grid-template-columns:minmax(0,1fr) auto; }
   :root .work-task-workplace .work-toolbar-primary { grid-column:1/-1; grid-row:2; }
@@ -336,7 +327,7 @@
  :root .work-task-workplace .work-toolbar > .work-filter-tools { grid-column:2; grid-row:1; gap:0; }
  :root .work-task-workplace .work-toolbar .work-filters { grid-column:1; grid-row:1; }
  :root .work-task-workplace .work-toolbar > .work-filter-tools > [data-work-action=board-refresh] { display:none; }
- :root .work-task-workplace .work-toolbar > .work-filter-tools > [data-work-action=reset] { width:44px; min-width:44px; padding:0; font-size:11px; }
+ :root .work-task-workplace .work-toolbar > .work-filter-tools > [data-work-action=reset] { width:44px; min-width:44px; padding:0; font-size:var(--text-control-sm); }
  :root .work-task-workplace .work-toolbar > .work-filter-tools > [data-work-action=reset]:disabled { display:none; }
  :root .work-task-workplace .search-open .work-toolbar-search,
  :root .work-task-workplace .has-work-search .work-toolbar-search { display:flex; grid-column:1/-1; grid-row:2; }
@@ -346,3 +337,20 @@
 @media(max-width:900px) {
  :root .work-task-workplace .work-queue-panel .work-queue tr[data-work-row] > .work-queue-person:has(.has-obstacle) { display:none; }
 }
+
+/* Roomy queue: reserve room for signals; long context remains available in title. */
+@container workqueue (min-width:460px) {
+ :root .work-task-workplace .work-queue-context { flex-wrap:nowrap; }
+ :root .work-task-workplace .work-queue-context .work-context-name { flex:1 1 auto; }
+ :root .work-task-workplace .work-queue-context .work-queue-signals { flex:0 0 auto; max-width:60%; }
+}
+
+@container workqueue (min-width:460px) {
+ :root .work-task-workplace .has-work-inspector .work-queue-context .work-queue-signals { max-width:100%; }
+}
+
+/* Registry tools: ordering only; field appearance belongs to UI Kit. */
+.work-secondary-toolbar .work-sort-slot { flex:0 1 280px; min-width:0; margin-left:auto; }
+:root .work-task-workplace .work-secondary-toolbar .work-focus-nav { margin:0; }
+:root .work-task-workplace .has-work-inspector .work-secondary-toolbar { display:none; }
+@media(max-width:900px) { .work-secondary-toolbar .work-sort-slot:empty { display:none; } }

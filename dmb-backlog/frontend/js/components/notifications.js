@@ -1,3 +1,4 @@
+import { renderNotificationPreferences, initNotificationPreferences } from './notificationPreferences.js';
 import {filterValues,toggleFilterValues as toggleChoice} from '../ui/filterValues.js';
 import { counter } from '../ui/dataDisplay.js';
 import { loadMore } from '../ui/specialized.js';
@@ -226,13 +227,15 @@ export function renderNotifications() {
   const importanceFilters = IMPORTANCE_FILTERS.map(([key,label]) => filter(label, { 'data-filter-importance': key })).join('');
   const stateFilters = [['all','Все'],['action','Требуют действия'],['unread','Непрочитанные'],['resolved','Закрытые']].map(([key,label]) => filter(label, { 'data-view': key }, key === 'all')).join('');
   const stats = '<div class="notification-stats" aria-label="Сводка уведомлений"><span><strong id="notif-stat-action">—</strong> требуют действия</span><span><strong id="notif-stat-unread">—</strong> непрочитанных</span><span><strong id="notif-stat-today">—</strong> сегодня</span></div>';
-  const actions = `<div class="notification-header-actions"><a class="btn btn-secondary btn-sm" href="#/settings?section=notifications">${icon('settings')} Настроить</a>${button({ label: 'Прочитать все', icon: 'check-check', size: 'small', attrs: { id: 'mark-all-read', title: 'Во всех категориях, независимо от фильтров. Обязательные действия остаются до выполнения.' } })}</div>`;
+  const actions = `<div class="notification-header-actions">${button({ label: 'Прочитать все', icon: 'check-check', size: 'small', attrs: { id: 'mark-all-read', title: 'Во всех категориях, независимо от фильтров. Обязательные действия остаются до выполнения.' } })}</div>`;
   return `<section class="notification-center animate-fade-in"><header class="page-header">${pageHeader({ title: 'Мои уведомления', description: 'Назначения, отчётные статусы и обсуждения команды', className: 'notification-hero', actions: stats + actions })}</header>
+  ${renderNotificationPreferences()}
   <div class="notification-workspace"><div class="notification-toolbar" aria-label="Фильтры уведомлений"><div class="notification-filter-group notification-state-filter" role="group" aria-labelledby="notification-state-label"><span class="notification-filter-group-label" id="notification-state-label">Состояние</span><div class="notification-filter-options">${stateFilters}</div></div>${button({ label: 'Сбросить', size: 'small', attrs: { id: 'notification-reset', disabled: true } })}<div class="notification-quick-filters"><div class="notification-filter-group" role="group" aria-labelledby="notification-category-label"><span class="notification-filter-group-label" id="notification-category-label">Категория</span><div class="notification-filter-options">${categoryFilters}</div></div><div class="notification-filter-group" role="group" aria-labelledby="notification-importance-label"><span class="notification-filter-group-label" id="notification-importance-label">Приоритет</span><div class="notification-filter-options">${importanceFilters}</div></div></div></div>
   <section class="notification-feed" aria-labelledby="notifications-heading"><div class="notification-feed-header"><div><h2 id="notifications-heading">Уведомления</h2><p id="notification-results-count" role="status" aria-live="polite">Загрузка…</p></div>${button({ label: 'Появились новые — показать', size: 'small', attrs: { id: 'notifications-newer', hidden: true } })}</div><div id="notifications-list" role="list">${renderViewState({kind:'loading',title:'Загружаем уведомления…'})}</div><div class="notification-load-more">${loadMore({ attrs: { id: 'notifications-load-more', hidden: true } })}</div></section></div></section>`;
 }
 
 export async function initNotifications(app) {
+  initNotificationPreferences(app);
   page=1;hasMore=true;loading=false;category='';importance='';view='all';requestId+=1;
   readRouteState();
   syncControlState();

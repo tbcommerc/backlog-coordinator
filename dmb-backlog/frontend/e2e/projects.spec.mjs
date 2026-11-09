@@ -13,7 +13,7 @@ async function setup(page, hash='#/work-projects') {
   }
   if(url.pathname.endsWith('/projects')) {
    const filtered=projects.filter(p=>p.name.toLowerCase().includes((url.searchParams.get('q')||'').toLowerCase()));
-   return route.fulfill({json:{items:filtered.map(p=>({...p,code:'P'+p.id,backlog_count:1})),total:filtered.length,page:1}});
+   return route.fulfill({json:{items:filtered.map(p=>({...p,code:'P'+p.id,backlog_count:1})),total:filtered.length,page:1,filter_options:{teams:['Команда А'],owners:['Владелец А']}}});
   }
   const items=[{id:1,public_id:'WRK-1',title:'Прямая задача',status:'new',context:{title:'Проект'}},{id:2,public_id:'WRK-2',title:'Дочерняя задача',status:'done',context:{title:'Обязательство'}}];
   const selected = url.searchParams.has('major_task_id') ? items.slice(1) : url.searchParams.has('direct_project_id') ? items.slice(0,1) : items;
@@ -36,6 +36,40 @@ async function choose(page,name){
  if(!await disclosure.evaluate(x=>x.open))await disclosure.locator('summary').click();
  await page.getByRole('navigation',{name:'Выбор работ проекта'}).getByRole('link',{name,exact:true}).click();
 }
+
+test('catalog view switches immediately and preserves filter drafts',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await setup(page,'#/work-projects?cview=table');
+ await expect(page.getByRole('table',{name:'Каталог проектов'})).toBeVisible();
+ await page.screenshot({path:'test-results/catalog-before.png',fullPage:true});
+ await page.getByRole('button',{name:'Все фильтры',exact:true}).click();
+ await page.getByLabel('Команда задач бэклога',{exact:true}).selectOption('Команда А');
+ await page.getByRole('button',{name:'Карточки',exact:true}).click();
+ await expect(page.locator('.project-direction-card')).toHaveCount(2);
+ await expect(page).toHaveURL(/cview=cards/);
+ await expect(page.getByLabel('Команда задач бэклога',{exact:true})).toHaveValue('Команда А');
+ await expect(page).not.toHaveURL(/cteam=/);
+ await page.screenshot({path:'test-results/catalog-cards.png',fullPage:true});
+ await page.getByRole('button',{name:'Таблица',exact:true}).click();
+ await expect(page.getByRole('table',{name:'Каталог проектов'})).toBeVisible();
+ await page.getByRole('button',{name:'Отмена',exact:true}).click();
+ await page.getByRole('button',{name:'Все фильтры',exact:true}).click();
+ await expect(page.getByLabel('Команда задач бэклога',{exact:true})).toHaveValue('');
+ await page.getByLabel('Команда задач бэклога',{exact:true}).selectOption('Команда А');
+ await page.getByRole('button',{name:'Применить фильтры',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Снять фильтр: Команда задач бэклога'})).toBeVisible();
+ await page.getByRole('button',{name:'Сброс',exact:true}).click();
+ await expect(page).toHaveURL(/cview=table/);
+ await expect(page).not.toHaveURL(/cteam=/);
+});
+
+test('catalog search applies after typing without a submit button',async({page})=>{
+ const queries=await setup(page);
+ await page.getByLabel('Поиск проекта',{exact:true}).fill('Второй');
+ await expect(page.getByRole('link',{name:'Первый проект',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('link',{name:'Второй проект',exact:true})).toBeVisible();
+ expect(queries.filter(u=>u.pathname.endsWith('/projects')).at(-1).searchParams.get('q')).toBe('Второй');
+});
 test('real router switches scope, back and direct link without duplicate lists',async({page})=>{
  const queries=await setup(page,'#/work-projects?project=1');
  await page.evaluate(async()=>{
@@ -89,9 +123,9 @@ test('empty project scope preserves placement and readonly access',async({page})
  await page.route('**/api/v1/work-tasks/options',route=>route.fulfill({json:{can_create:false,teams:[],users:[],projects:[{id:1,name:'Первый проект'}]}}));
  await page.route('**/api/v1/work-tasks?*',route=>route.fulfill({json:{items:[],total:0,summary:{total:0,done:0,overdue:0,in_acceptance:0}}}));
  await page.evaluate(()=>window.renderProjects());
- await expect(page.getByText('В выбранном разделе пока нет доступных рабочих задач.')).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Нет активных рабочих задач'})).toBeVisible();
  await expect(page.getByRole('button',{name:'Создать задачу',exact:true})).toBeHidden();
- await expect(page.getByRole('button',{name:'Показать все доступные'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Показать все доступные'})).toBeVisible();
  await expect(page.locator('#project-work-title')).toHaveText('Напрямую в проекте');
 });
 test('obligation pagination is independent and selection survives another page',async({page})=>{
@@ -114,6 +148,7 @@ test('failed navigation does not hide available project work',async({page})=>{
  await setup(page,'#/work-projects?project=1');
  await page.route('**/api/v1/projects/1/major-tasks?*',route=>route.fulfill({status:503,json:{detail:'Временно недоступно'}}));
  await page.evaluate(()=>window.renderProjects());
+ await page.locator('.project-structure-disclosure > summary').click();
  await expect(page.locator('#work-project-major').getByRole('button',{name:'Повторить'})).toBeVisible();
  await expect(page.locator('.work-table')).toContainText('Прямая задача');
  await page.unroute('**/api/v1/projects/1/major-tasks?*');
@@ -125,14 +160,14 @@ test('projects search, navigation, complete selection and creation context',asyn
  const queries=await setup(page);
  await page.getByLabel('Поиск проекта').fill('Второй');await page.getByLabel('Поиск проекта').press('Enter');
  await expect(page.getByRole('link',{name:'Первый проект'})).toHaveCount(0);
- await page.getByRole('button',{name:'Сбросить',exact:true}).click();
+ await page.getByRole('button',{name:'Сброс',exact:true}).click();
  await expect(page.getByLabel('Поиск проекта')).toHaveValue('');
  await expect(page.getByRole('link',{name:'Первый проект'})).toBeVisible();
  expect(new URLSearchParams(new URL(page.url()).hash.split('?')[1]).has('cq')).toBe(false);
  await expect(page.getByLabel('Поиск проекта')).toBeFocused();
  await page.getByRole('link',{name:'Первый проект'}).click();
  await expect(page.getByRole('heading',{name:'Первый проект',exact:true})).toBeVisible();
- await page.getByRole('tab',{name:'Рабочие задачи',exact:true}).click();
+ if(await page.getByLabel('Раздел проекта',{exact:true}).isVisible())await page.getByLabel('Раздел проекта',{exact:true}).selectOption('execution');else await page.getByRole('tab',{name:'Рабочие задачи',exact:true}).click();
  await expect(page.locator('#work-project-direct')).toContainText('Дочерняя задача');
  expect(queries.some(u=>u.searchParams.get('effective_project_id')==='1'&&!u.searchParams.has('direct_project_id'))).toBe(true);
  await choose(page,'TASK-7 Обязательство');
@@ -199,19 +234,19 @@ for(const theme of ['light','dark']) for(const width of [390,1440]) test(`catalo
  const overflowing=await page.locator('.project-catalog').evaluate(list=>[...list.querySelectorAll('.project-card-name,.project-card-description,.project-card-owner')].some(el=>el.getBoundingClientRect().height>parseFloat(getComputedStyle(el).lineHeight)*(el.classList.contains('project-card-owner')?1:2)+1));
  expect(overflowing).toBe(false);
  await expect(page.locator('.project-card-name').first()).toHaveAttribute('title','Развитие цифровой платформы');
- const spacing=await page.locator('.project-catalog-toolbar').evaluate(form=>{const input=form.querySelector('input').getBoundingClientRect(),button=form.querySelector('button').getBoundingClientRect();return button.left-input.right;});
+ const spacing=await page.locator('.project-catalog-toolbar').evaluate(form=>{const input=form.querySelector('input').getBoundingClientRect(),button=form.querySelector('button').getBoundingClientRect();return button.top>=input.bottom?button.top-input.bottom:button.left-input.right;});
  expect(spacing).toBeGreaterThanOrEqual(0);expect(spacing).toBeLessThanOrEqual(12);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:`test-results/project-catalogue-${theme}-${width}.png`,fullPage:true});
  await page.getByLabel('Поиск проекта').fill('Черновик поиска');
- await expect(page.getByRole('button',{name:'Сбросить',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Сброс',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.getByRole('button',{name:'Сбросить',exact:true}).click();
+ await page.getByRole('button',{name:'Сброс',exact:true}).click();
  await expect(page.getByLabel('Поиск проекта')).toHaveValue('');
  await page.locator('.project-card').first().focus();
  await page.keyboard.press('Enter');
  await expect(page.getByRole('heading',{name:'Развитие цифровой платформы',exact:true})).toBeVisible();
- await page.getByRole('tab',{name:'Рабочие задачи',exact:true}).click();
+ if(await page.getByLabel('Раздел проекта',{exact:true}).isVisible())await page.getByLabel('Раздел проекта',{exact:true}).selectOption('execution');else await page.getByRole('tab',{name:'Рабочие задачи',exact:true}).click();
  if(!await page.locator('.project-structure-disclosure').evaluate(x=>x.open)){
   await page.locator('summary').focus();await page.keyboard.press('Enter');
  }

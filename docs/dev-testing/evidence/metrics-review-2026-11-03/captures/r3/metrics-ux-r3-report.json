@@ -1,0 +1,144 @@
+{
+  "round": "R3",
+  "date": "2026-11-03",
+  "checks": [
+    {
+      "name": "readiness",
+      "status": 200,
+      "result": {
+        "status": "ready",
+        "checks": {
+          "database": "ok",
+          "outbox_pending": 0,
+          "outbox_dead_lettered": 0,
+          "outbox_oldest_seconds": 0,
+          "redis": "ok",
+          "attachment_storage": "ok",
+          "prioritiser": "disabled",
+          "agent": "ok",
+          "agent_v2": "ok"
+        }
+      }
+    },
+    {
+      "name": "existing references checked",
+      "status": 200,
+      "result": {
+        "team_id": 11,
+        "team": "QA Team A",
+        "owner_id": 25,
+        "owner": "QA ba-a"
+      }
+    },
+    {
+      "name": "report status",
+      "status": 200,
+      "result": {
+        "meeting": {
+          "id": 11,
+          "kind": "directorate",
+          "scheduled_date": "2026-11-09",
+          "state": "planned"
+        },
+        "error": null
+      }
+    },
+    {
+      "name": "report readback",
+      "status": 200,
+      "result": {
+        "items": [
+          {
+            "id": 23,
+            "metric_id": 10470,
+            "period_id": 40788,
+            "meeting_id": 11,
+            "text": "QA R3: синтетический статус для UX-проверки, не рабочая отчётность.",
+            "snapshot": {
+              "id": 40788,
+              "year": 2026,
+              "quarter": 4,
+              "state": "active",
+              "availability": "active",
+              "model_version": "quarterly_v2",
+              "start_date": "2026-10-01",
+              "end_date": "2026-12-31",
+              "plan": {
+                "revision_id": 40629,
+                "result_type": "range",
+                "direction": "range",
+                "target": "90",
+                "upper": "110",
+                "baseline": null,
+                "baseline_date": null,
+                "cadence": "none",
+                "interval_days": null,
+                "first_due_date": null,
+                "source_snapshot": "Синтетический набор UX-ревью R2",
+                "method_snapshot": "",
+                "unit_snapshot": "%"
+              },
+              "fact": {
+                "id": 40161,
+                "period_id": 40788,
+                "revision_no": 5,
+                "previous_revision_id": 40124,
+                "value": "999999999999999.9999999999",
+                "as_of_date": "2026-11-03",
+                "status": "preliminary",
+                "source": "QA R3",
+                "comment": "",
+                "reason": "QA R3: большое точное число",
+                "source_measurement_id": null,
+                "source_measurement_snapshot": null,
+                "numerator": null,
+                "denominator": null,
+                "author_id": 25,
+                "created_at": "2026-11-03T17:20:19.838281+00:00"
+              },
+              "result": {
+                "outcome": "outside_range",
+                "is_final": false,
+                "progress": null,
+                "deviation": "999999999999889.9999999999"
+              },
+              "observations": {
+                "count": 26,
+                "latest_date": "2026-11-03",
+                "violation_count": 4,
+                "violation_dates": [
+                  "2026-10-22",
+                  "2026-10-23",
+                  "2026-10-24",
+                  "2026-10-25"
+                ]
+              },
+              "capabilities": {
+                "write_fact": true,
+                "add_measurement": true,
+                "close": false,
+                "correct_final": false
+              },
+              "disabled_reasons": {
+                "close": "period_not_ended",
+                "correct_final": "operation_unavailable"
+              },
+              "source_measurement_changed": false,
+              "closure_revision_id": null,
+              "closed_at": null,
+              "cancellation_reason": null,
+              "schedule": {
+                "missed_count": 0,
+                "overdue": false,
+                "next_due": null
+              }
+            },
+            "author_id": 25,
+            "updated_at": "2026-11-03T17:21:48.318305+00:00"
+          }
+        ]
+      }
+    }
+  ],
+  "metrics": {}
+}

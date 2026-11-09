@@ -57,7 +57,7 @@
 [конфигурация](../dmb-backlog/backend/config.py),
 [вход UI](../dmb-backlog/frontend/js/components/login.js),
 [администрирование UI](../dmb-backlog/frontend/js/components/admin.js),
-[настройки UI](../dmb-backlog/frontend/js/components/settings.js),
+[настройки безопасности аккаунта UI](../dmb-backlog/frontend/js/components/accountSecurity.js),
 [router UI](../dmb-backlog/frontend/js/router.js),
 [auth клиента](../dmb-backlog/frontend/js/auth.js),
 [API клиента](../dmb-backlog/frontend/js/api.js).

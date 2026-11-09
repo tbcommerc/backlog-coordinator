@@ -1,5 +1,11 @@
 # AI Business Analyst Agent — запуск и эксплуатация
 
+Проверка 02.11.2026: до standalone старта выполнить `python -m business_analyst.migrate`.
+Импорт глобального session store не создаёт и не изменяет таблицы. Неполная старая
+схема требует `--verified-backup-file`; неожиданные структуры отклоняются.
+Go использует собственный User-Agent, непрозрачный ID разговора и запрещает
+provider redirects. [Статус миграции](../../../docs/dev-testing/agent-services/IMPLEMENTATION.md).
+
 > AS-IS проверено по `run.py`, `business_analyst/main.py`, `business_analyst/config.py`, Dockerfile,
 > корневым Compose/scripts и runtime tests 01.09.2026.
 
@@ -149,3 +155,25 @@ retention и централизованный сбор определяет вл
 `requirements-dev.lock`. Для многорепличного допуска нужны
 отдельные smoke проверки PostgreSQL, повторов `message_id`, trace propagation и
 failover; unit-тесты не заменяют стендовую проверку.
+
+## Сервисный профиль — проверено 03.11.2026
+
+Конфигурация использует [SDK 1.3 и каталог aliases](../../CONFIGURATION.md).
+Обычный запуск требует PostgreSQL, собственного service secret и Go
+Chat Completions; DEBUG без явного UNIT_TEST_MODE не включает mock.
+`/health/live` проверяет процесс, `/health/ready` — настройки и существующие
+таблицы sessions/message_receipts без DDL или вызова модели.
+V1/V2 embeddings выключены до отдельной квалификации endpoint.
+`start-agent.ps1 -Agent business-analyst -Instance <имя> -Port <порт>`
+создаёт отдельную запись владения и graceful control-файл в `.runtime/`.
+Instance не выделяет БД автоматически; DSN задаётся отдельно.
+
+Проверено 03.11.2026: [логический контекст SDK 1.3](../../CONFIGURATION.md). Вложенные вызовы и retries учитываются в одном run; числовые
+лимиты текущего профиля сохранены. Полная миграционная приёмка ещё открыта.
+
+
+Проверено 04.11.2026: для Linux/Python 3.12 используются `requirements-linux.lock`
+и `requirements-dev-linux.lock`, для Windows — прежние `.lock`. Linux lock
+собирается pip-tools 7.4.1 в закреплённом Python 3.12 image с ограничениями
+из Windows lock; общие версии не меняются. Linux-only `uvloop==0.23.0`
+соответствует предыдущему проверенному образу. Dockerfile использует Linux lock.

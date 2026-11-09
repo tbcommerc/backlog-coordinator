@@ -35,7 +35,7 @@ class Passport(Command):
 class PassportUpdate(Passport, Version):
     reason: str = Field(default='', max_length=2000)
 
-class PeriodCommand(Version):
+class PeriodSetup(Command):
     label: str = Field(min_length=1, max_length=120)
     start_date: date
     end_date: date
@@ -44,12 +44,13 @@ class PeriodCommand(Version):
     baseline_date: Optional[date] = None
     target: Optional[FiniteFloat] = Field(default=None, ge=-1e15, le=1e15)
     upper: Optional[FiniteFloat] = Field(default=None, ge=-1e15, le=1e15)
-    cadence: Literal['daily','weekly','monthly','quarterly','interval'] = 'weekly'
+    cadence: Literal['none','daily','weekly','monthly','quarterly','interval'] = 'weekly'
     interval_days: Optional[int] = Field(default=None, ge=1, le=366)
     first_due_date: Optional[date] = None
     weight: Optional[FiniteFloat] = Field(default=None, ge=0, le=100)
     forecast: Optional[FiniteFloat] = Field(default=None, ge=0, le=100)
     reason: str = Field(default='', max_length=2000)
+    start_immediately: bool = False
 
     @model_validator(mode='after')
     def period_dates(self):
@@ -61,10 +62,16 @@ class PeriodCommand(Version):
             raise ValueError('Укажите интервал измерений')
         return self
 
+class PeriodCommand(PeriodSetup, Version):
+    pass
+
+class MetricCreate(Passport):
+    initial_period: Optional[PeriodSetup] = None
+
 class MeasurementCommand(Version):
     value: FiniteFloat = Field(ge=-1e15, le=1e15)
     measured_on: date
-    source: str = Field(min_length=1, max_length=2000)
+    source: str = Field(default='', max_length=2000)
     comment: str = Field(default='', max_length=5000)
     reason: str = Field(default='', max_length=2000)
 

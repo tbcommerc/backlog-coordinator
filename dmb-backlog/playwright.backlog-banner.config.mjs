@@ -1,0 +1,1 @@
+import{defineConfig}from'@playwright/test';import base from './playwright.backlog-unification.config.mjs';export default defineConfig({...base,testMatch:['**/unifiedBacklogInventory.spec.mjs'],reporter:[['line'],['json',{outputFile:'../.runtime/backlog-no-banner-results.json'}]]});

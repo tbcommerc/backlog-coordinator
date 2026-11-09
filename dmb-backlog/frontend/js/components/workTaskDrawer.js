@@ -1,20 +1,20 @@
+import { segmentedControl } from '../ui/segmented.js';
 import { bindActionMenu } from '../ui/actionMenu.js';
 import { showFormErrors, clearFormErrors } from '../ui/validation.js';
-import { tabNavigationTarget } from '../ui/controls.js';
 import { formatFileSize } from '../ui/dataDisplay.js';
 import { fileUpload, setUploadState } from '../ui/specialized.js';
 import { descriptionList, sectionCard } from '../ui/detailComponents.js';
 import { bindDetailPanel } from '../ui/detailPanel.js';
 import { transitionWork } from './workActions.js';
-import { button, field, tabs, collapseSection } from '../ui/primitives.js';
+import { button, field, collapseSection } from '../ui/primitives.js';
 import { escapeHtml as esc } from '../htmlUtils.js';
 import { formatErrorMessage } from '../uiFeedback.js';
 import { enhanceDialogOverlay } from '../modalAccessibility.js';
 import { WORK_STATUSES, workStatus } from './workUi.js?v=2';
-import { mountRelations } from './workRelations.js?v=2';
+import { mountRelations } from './workRelations.js?v=3';
 import { mountWorkPicker } from './workPicker.js';
 import { workDueLabel, workIsLate } from './workQueue.js?v=9';
-import { WORK_PRIORITIES, priorityBadge, checklistValue, checklistCount, checklistView, mountChecklistEditor, mountWorkTemplates } from './workProductivity.js';
+import { WORK_PRIORITIES, priorityBadge, checklistValue, checklistCount, checklistProgress, checklistView, mountChecklistEditor, mountWorkTemplates } from './workProductivity.js';
 
 const HISTORY = { checklist: 'Изменён чек-лист', created: 'Создана', updated: 'Изменена', transition: 'Изменён статус', placement: 'Изменено размещение', assignment: 'Решение команды', reassignment: 'Предложена другой команде', comment: 'Добавлен комментарий', attachment: 'Добавлен файл' };
 const action = (label, name, extra = {}) => button({ label, ...extra, attrs: { 'data-work-action': name, ...extra.attrs } });
@@ -85,7 +85,6 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
             const nextInline=!!container, focus=document.activeElement, inside=dialog.contains(focus);
             dialog.classList.toggle('is-fullscreen',fullscreen);dialog.classList.toggle('work-board-detail',board);
             presentation.returnLabel=returnLabel;
-            const label=dialog.querySelector('[data-close] span');if(label)label.textContent=returnLabel;
             if(nextInline===inline){detailController.present({container,fullscreen});return;}
             inline=nextInline;dialog.classList.toggle('work-dialog-inline',inline);
             detailController.present({container,fullscreen});
@@ -112,14 +111,13 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
         draft.priority ||= 'normal';
         draft.checklist = JSON.stringify(checklistValue(draft.checklist));
         const editable = row ? row.can_edit && !['done', 'cancelled'].includes(row.status) : options.can_create;
-        let editing = !overview || !row || !!row.can_decide_assignment || !!recovered;
+        let editing = editable || !row || !!row.can_decide_assignment;
         const f = (name, label, extra = {}) => field({ id: 'wf-' + name, label, value: draft[name] ?? '', disabled: !editable, ...extra, attrs: { 'data-work-field': name, ...(extra.kind === 'textarea' ? { rows: 3 } : {}), ...extra.attrs } });
         const transitionLabel = target => ({ new: 'Восстановить задачу', ready: row?.status === 'done' ? 'Переоткрыть' : 'Передать исполнителю', in_progress: row?.status === 'in_acceptance' ? 'Вернуть на доработку' : 'Начать работу', in_acceptance: 'Передать на приёмку', done: row?.status === 'in_acceptance' ? 'Принять результат' : 'Завершить', cancelled: 'Отменить задачу' })[target];
         const actions = row?.available_actions || [];
         const primary = actions.find(s => s !== 'cancelled' && !(row.status === 'in_acceptance' && s === 'in_progress'));
         const person = id => options.users.find(u => u.id === id)?.name;
         const activeWork = row && !['done', 'cancelled'].includes(row.status);
-        const blockerIsNext = activeWork && row.blocked_reason && (row.next_step ? row.next_step.kind==='blocker' : row.status!=='in_acceptance'&&row.assignment_state!=='proposed');
         const defaultNextStep = !row ? '' : activeWork && row.assignment_state === 'proposed' ? 'Команда выполнения должна принять поручение и назначить исполнителя и срок.' : activeWork && row.assignment_state === 'declined' ? 'Команда отклонила поручение. Постановщику нужно уточнить задачу или предложить её другой команде.' : ({
             new: 'Постановщику нужно указать ожидаемый результат, исполнителя и срок, затем передать задачу исполнителю.',
             ready: `${person(row.assignee_id) || 'Исполнитель'}: следующий шаг — начать работу.`,
@@ -128,18 +126,18 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
             done: 'Задача выполнена. Результат сохранён.',
             cancelled: 'Задача отменена. Причина доступна в истории изменений.'
         })[row.status] || '';
-        const nextStep = activeWork && row.blocked_reason ? `${person(row.assignee_id) || 'Ответственный'}: требуется устранить препятствие.` : row?.next_step?.label ? `${row.next_step.actor_name || person(row.assignee_id) || 'Ответственный'}: ${row.next_step.label}.` : activeWork && row.blocked_reason ? `${person(row.assignee_id) || 'Ответственный'}: снять препятствие.` : defaultNextStep;
-        const tabItems = [{ id: 'task', label: 'Задача' }, { id: 'activity', label: 'Активность' }, { id: 'resources', label: 'Материалы' }];
-        const panel = (name, content) => `<section id="work-card-${name}-panel" ${row ? `role="tabpanel" aria-labelledby="work-card-${name}-tab" tabindex="0"` : ''}${name !== 'task' ? ' hidden' : ''}>${content}</section>`;
+        const nextStep = row?.next_step?.label ? `${row.next_step.actor_name || person(row.assignee_id) || 'Ответственный'}: ${row.next_step.label}.` : defaultNextStep;
+        const panel = (name, content) => name === 'task'
+            ? `<section id="work-card-task-panel">${content}</section>`
+            : `<details id="work-card-${name}-panel" class="ui-collapse-section work-page-section"><summary class="ui-disclosure-text">${name === 'activity' ? 'Активность' : 'Материалы'}</summary>${content}</details>`;
         const hadFocus = dialog.contains(document.activeElement);
         dialog.innerHTML = `
             <header class="work-dialog-head">
                 <div class="work-dialog-heading"><h2 id="work-drawer-title">${row ? esc(row.public_id) : 'Новая рабочая задача'}</h2>${row ? workStatus(row.status, WORK_STATUSES) + (['high','urgent'].includes(row.priority)?priorityBadge(row.priority):'') : ''}</div>
-                ${row?`<nav class="work-card-navigation" aria-label="Просмотр очереди">${presentation.onNavigate ? action('Предыдущая задача','previous-task',{variant:'ghost',icon:'chevron-left',iconOnly:true})+`<span class="work-card-position">${esc(presentation.position || '')}</span>`+action('Следующая задача','next-task',{variant:'ghost',icon:'chevron-right',iconOnly:true}) : ''}${action(userFullscreen ? 'Обычный размер' : 'На весь экран','fullscreen',{variant:'ghost',icon:'maximize',iconOnly:true})}</nav>${action('Ещё','card-menu',{variant:'ghost',attrs:{'data-card-menu-trigger':''}})}<div class="work-card-menu" data-card-menu hidden>${presentation.onWidth ? '<label class="work-card-width">Ширина карточки<input type="range" min="440" max="760" step="1" value="'+(presentation.width || 560)+'" data-card-width></label>' : ''}${action('Скопировать ссылку','copy-link',{variant:'ghost'})}${row.can_place?action('Переместить','show-placement',{variant:'ghost'}):''}${row.can_reassign?action('Предложить другой команде','show-reassignment',{variant:'ghost'}):''}${options.can_create?action('Сохранить как шаблон','show-template',{variant:'ghost'}):''}</div>`:''}
-                ${action(presentation.returnLabel || (inline ? 'К списку' : 'Закрыть'), 'close', { variant: 'ghost', attrs: { 'data-close': '' } })}
+                ${row?`<div class="work-card-navigation">${action(userFullscreen ? 'Обычный размер' : 'На весь экран','fullscreen',{variant:'ghost',icon:'maximize',iconOnly:true})}</div>${action('Ещё','card-menu',{variant:'ghost',attrs:{'data-card-menu-trigger':''}})}<div class="work-card-menu" data-card-menu hidden>${presentation.onWidth ? '<label class="work-card-width">Ширина карточки<input type="range" min="440" max="760" step="1" value="'+(presentation.width || 560)+'" data-card-width></label>' : ''}${action('Скопировать ссылку','copy-link',{variant:'ghost'})}${row.can_place?action('Переместить','show-placement',{variant:'ghost'}):''}${row.can_reassign?action('Предложить другой команде','show-reassignment',{variant:'ghost'}):''}${options.can_create?action('Сохранить как шаблон','show-template',{variant:'ghost'}):''}</div>`:''}
+                ${action('Закрыть', 'close', { icon: 'x', iconOnly: true, variant: 'ghost', attrs: { 'data-close': '' } })}
                 ${row ? `<p class="work-dialog-context">${esc(row.context?.title || 'Самостоятельная задача')} · ${esc(options.teams.find(t => t.id === row.execution_team_id)?.name || 'Команда не указана')}</p>` : ''}
             </header>
-            ${row ? tabs({ id: 'work-card', label: 'Разделы рабочей задачи', items: tabItems }) : ''}
             <div class="work-dialog-notices"><div class="work-error" role="alert" tabindex="-1"></div><p class="work-draft-notice" ${recovered ? '' : 'hidden'}>Восстановлен несохранённый черновик. Проверьте изменения.</p></div>
             <div class="work-dialog-body">
                 ${panel('task', `
@@ -148,40 +146,40 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
                         {label:'Срок',valueMarkup:row.due_date ? `<span>${esc(new Date(row.due_date+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}))}</span><small class="work-due-relative">${esc(workDueLabel(row))}</small>` : 'Без срока',className:workIsLate(row)?'work-warning':''},
                         {label:'Постановщик',value:person(row.requester_id) || row.requester_name || 'Не указан'},
                         {label:'Приёмщик',value:person(row.acceptor_id) || (row.acceptance_required?'Не назначен':'Не требуется')}
-                    ]})}${sectionCard({title:'Ожидаемый результат',level:4,className:'work-card-description',content:`<p>${esc(row.description || 'Пока не описан')}</p>`})}${editable ? action('Редактировать', 'edit', {variant:'ghost'}) : ''}</section>` : ''}
-                    ${row ? `<p class="work-next-step" role="note">${esc(nextStep)}${activeWork && row.blocked_reason ? ` Есть препятствие: ${esc(row.blocked_reason)}` : ''}</p>` : ''}
+                    ]})}${sectionCard({title:'Ожидаемый результат',variant:'plain',level:4,className:'work-card-description',content:`<p>${esc(row.description || 'Пока не описан')}</p>`})}</section>` : ''}
+                    ${row ? `<p class="work-next-step" role="note">${esc(nextStep)}</p>` : ''}
                     ${row?.return_feedback ? `<section class="work-return-feedback" role="note"><h3>Возвращено на доработку</h3><p>${esc(row.return_feedback.reason)}</p><p class="work-muted">${esc(row.return_feedback.actor_name)} · ${esc(dateTime(row.return_feedback.created_at))}</p>${action('Показать историю', 'show-history', {variant:'ghost'})}</section>` : ''}
-                    ${row ? checklistView(row) : ''}
+                    ${row && !editable ? checklistView(row) : ''}
                     ${!row ? `<p class="work-create-context">Команда: ${esc(options.teams.find(t=>t.id===Number(draft.execution_team_id))?.name || 'Не выбрана')} · ${draft.major_task_id?'Связана с задачей № '+esc(draft.major_task_id):draft.direct_project_id?'Проект: '+esc(options.projects.find(p=>p.id===Number(draft.direct_project_id))?.name || draft.direct_project_id):'Самостоятельная задача'}</p>` : ''}${!row && options.can_create ? '<div data-work-templates></div>' : ''}
-                    <form novalidate class="work-form"${editing ? '' : ' hidden'}>
+                    <form novalidate id="work-card-form" class="work-form"${editing ? '' : ' hidden'}>
                         ${f('title', 'Название', { className: 'work-title-field', required: true, attrs: { maxlength: 255 } })}
                         ${f('description', 'Ожидаемый результат', { kind: 'textarea' })}
                         ${row && ['in_progress','in_acceptance'].includes(row.status) ? f('change_reason','Причина изменения условий или приёмщика',{kind:'textarea',hint:'Обязательна при изменении ожиданий или приёмщика. Предъявленный результат будет возвращён на доработку.'}) : ''}
                         ${f('priority', 'Приоритет', {kind:'select',options:Object.entries(WORK_PRIORITIES).map(([value,label])=>({value,label}))})}
-                        <details class="ui-collapse-section work-card-details" ${checklistValue(draft.checklist).length ? 'open' : ''}><summary>Состав чек-листа</summary><input type="hidden" id="wf-checklist" data-work-field="checklist" value="${esc(draft.checklist)}"><div data-checklist-editor></div></details>
+                        <details class="ui-collapse-section work-card-details" ${checklistValue(draft.checklist).length ? 'open' : ''}><summary class="ui-disclosure-text">Состав чек-листа</summary><input type="hidden" id="wf-checklist" data-work-field="checklist" value="${esc(draft.checklist)}"><div data-checklist-editor></div></details>
                         <div class="work-two work-assignment-fields">${f('assignee_id', 'Исполнитель', { kind: 'select', disabled: !editable && !row?.can_decide_assignment, options: opt(options.users.filter(u => u.team_id === Number(draft.execution_team_id)), 'Не назначен') })}${f('due_date', 'Срок', { type: 'date', disabled: !editable && !row?.can_decide_assignment })}</div><p class="work-muted" data-work-assignment-note hidden>Исполнителя назначит принимающая команда после принятия поручения.</p>
-                        <div class="work-card-options"><details class="ui-collapse-section work-card-details"><summary>Команда и связь с проектом</summary><div class="work-two">
+                        <div class="work-card-options"><details class="ui-collapse-section work-card-details"><summary class="ui-disclosure-text">Команда и связь с проектом</summary><div class="work-two">
                             ${f('execution_team_id', 'Команда выполнения', { kind: 'select', options: opt(options.teams), disabled: !!row || !editable })}
                             ${f('work_direction', 'Направление', { kind: 'select', options: [{ value: 'organizational', label: 'Организационное' }, { value: 'product', label: 'Продуктовое' }], disabled: !!row || !editable })}
                             ${f('acceptor_id', 'Приёмщик', { kind: 'select', options: opt(options.users) })}
                             ${!row ? f('acceptance_required', 'Приёмка результата', { kind: 'select', value: String(draft.acceptance_required === true || draft.acceptance_required === 'true'), options: [{ value: 'false', label: 'Не обязательна для своей команды' }, { value: 'true', label: 'Обязательна' }] }) : `<p class="work-muted work-acceptance-note">Приёмка ${row.acceptance_required ? 'обязательна' : 'не обязательна'}</p>`}
                         </div>${!row ? `<div class="work-two">${f('direct_project_id', 'Прямой проект', { kind: 'select', options: opt(options.projects, 'Самостоятельная или в задаче') })}${f('major_task_id', 'Номер текущей задачи', { type: 'number', hint: 'Укажите проект или задачу; пустые поля — самостоятельная работа.' })}</div>` : ''}</details>
-                        ${row && (row.can_block || row.blocked_reason) ? `<details class="ui-collapse-section work-card-details work-blocker" ${draft.blocked_reason ? 'open' : ''}><summary>${draft.blocked_reason ? 'Есть препятствие' : 'Указать препятствие'}</summary>${f('blocked_reason', 'Что мешает выполнению', { kind: 'textarea', disabled: !row.can_block, attrs: { rows: 2 } })}</details>` : ''}
                         </div>
                     </form>
-                    ${row?.result_text ? sectionCard({title:'Результат работы',className:'work-saved-result',content:`<p class="work-result-text">${esc(row.result_text)}</p>`}) : ''}
-                    ${actions.length || row?.can_decide_assignment ? `<section class="work-execution"><div class="work-actions" data-status-actions>${actions.filter(s => s !== 'cancelled').map(s => action(transitionLabel(s), 'transition:' + s, { variant: s === primary && !row.can_decide_assignment ? 'primary' : 'secondary' })).join('')}${actions.includes('cancelled') ? `<details class="work-more-actions"><summary>Ещё</summary>${action('Отменить задачу', 'transition:cancelled', {variant:'ghost'})}</details>` : ''}${row.can_decide_assignment ? action('Принять назначение', 'accept-assignment', { variant: 'primary' }) + action('Отклонить назначение', 'decline-assignment') : ''}</div><form class="work-transition-form" hidden><h3 data-transition-title></h3><div data-transition-fields></div><div class="work-actions">${button({ label: 'Подтвердить', variant: 'primary', attrs: { type: 'submit', 'data-confirm-transition': '' } })}${action('Назад', 'cancel-transition', { variant: 'ghost' })}</div></form></section>` : ''}
+                    ${row?.result_text ? sectionCard({title:'Результат работы',variant:'plain',className:'work-saved-result',content:`<p class="work-result-text">${esc(row.result_text)}</p>`}) : ''}
+                    ${actions.length || row?.can_decide_assignment ? `<section class="work-execution"><div class="work-actions" data-status-actions>${actions.filter(s => s !== 'cancelled').map(s => action(transitionLabel(s), 'transition:' + s, { variant: s === primary && !row.can_decide_assignment ? 'primary' : 'secondary' })).join('')}${actions.includes('cancelled') ? `<details class="work-more-actions"><summary class="ui-disclosure-text">Ещё</summary>${action('Отменить задачу', 'transition:cancelled', {variant:'ghost'})}</details>` : ''}${row.can_decide_assignment ? action('Принять назначение', 'accept-assignment', { variant: 'primary' }) + action('Отклонить назначение', 'decline-assignment') : ''}</div><form class="work-transition-form" hidden><h3 data-transition-title></h3><div data-transition-fields></div><div class="work-actions">${button({ label: 'Подтвердить', variant: 'primary', attrs: { type: 'submit', 'data-confirm-transition': '' } })}${action('Назад', 'cancel-transition', { variant: 'ghost' })}</div></form></section>` : ''}
                 `)}
                 ${row ? panel('activity', `${row.can_collaborate ? `<form class="work-comment-form">${f('comment', 'Комментарий', { kind: 'textarea', disabled: false, attrs: { rows: 1, placeholder: 'Обсудите задачу или уточните результат' } })}${button({ label: 'Отправить комментарий', variant: 'primary', attrs: { type: 'submit' } })}</form>` : ''}<div class="work-collaboration" aria-live="polite">Загрузка…</div>`) : ''}
-                ${row ? panel('resources', `<section class="work-files"><h3>Файлы</h3><div data-work-files>Загрузка…</div>${row.can_collaborate ? fileUpload({id:'work-attachment-file-'+id,label:'Добавить файл',hint:'До 50 МБ',className:'work-upload',inputAttrs:{class:'ui-file-input','data-work-upload':''}}) : ''}</section><div data-work-relations></div>${row.can_place ? `<details class="ui-collapse-section work-card-details"><summary>Переместить или отвязать</summary><p class="work-muted">Выберите один новый контекст. Пустые поля сделают задачу самостоятельной.</p><div class="work-two">${f('move-major', 'Номер текущей задачи', { type: 'number', disabled: false })}${f('move-project', 'Прямой проект', { kind: 'select', options: opt(options.projects), disabled: false })}</div>${f('move-reason', 'Причина переноса', { kind: 'textarea', disabled: false })}${action('Подтвердить перенос', 'move')}</details>` : ''}${row.can_reassign ? `<details class="ui-collapse-section work-card-details"><summary>Предложить другой команде</summary><p class="work-muted">Исполнитель будет снят; новая команда должна принять назначение.</p>${f('reassign-team', 'Новая команда', { kind: 'select', options: opt(options.teams), disabled: false })}${f('reassign-reason', 'Причина передачи', { kind: 'textarea', disabled: false })}${action('Предложить команде', 'reassign')}</details>` : ''}`) : ''}
+                ${row ? panel('resources', `<section class="work-files"><h3>Файлы</h3><div data-work-files>Загрузка…</div>${row.can_collaborate ? fileUpload({id:'work-attachment-file-'+id,label:'Добавить файл',hint:'До 50 МБ',className:'work-upload',inputAttrs:{class:'ui-file-input','data-work-upload':''}}) : ''}</section><div data-work-relations></div>${row.can_place ? `<details class="ui-collapse-section work-card-details"><summary class="ui-disclosure-text">Переместить или отвязать</summary><p class="work-muted">Выберите один новый контекст. Пустые поля сделают задачу самостоятельной.</p><div class="work-two">${f('move-major', 'Номер текущей задачи', { type: 'number', disabled: false })}${f('move-project', 'Прямой проект', { kind: 'select', options: opt(options.projects), disabled: false })}</div>${f('move-reason', 'Причина переноса', { kind: 'textarea', disabled: false })}${action('Подтвердить перенос', 'move')}</details>` : ''}${row.can_reassign ? `<details class="ui-collapse-section work-card-details"><summary class="ui-disclosure-text">Предложить другой команде</summary><p class="work-muted">Исполнитель будет снят; новая команда должна принять назначение.</p>${f('reassign-team', 'Новая команда', { kind: 'select', options: opt(options.teams), disabled: false })}${f('reassign-reason', 'Причина передачи', { kind: 'textarea', disabled: false })}${action('Предложить команде', 'reassign')}</details>` : ''}`) : ''}
             </div>
-            <footer class="work-dialog-footer"><span class="work-save-status" role="status">${editable ? '' : row?.can_block ? 'Можно указать препятствие' : 'Просмотр задачи'}</span><div class="work-actions" data-edit-actions${editing ? '' : ' hidden'}>${editable ? action(row ? 'Сохранить изменения' : 'Создать', 'save', { variant: row ? 'secondary' : 'primary' }) : row?.can_block ? action('Сохранить препятствие', 'save-blocker', { variant: 'primary' }) : ''}${overview && row ? action('К просмотру', 'view', {variant:'ghost'}) : ''}</div></footer>`;
+            <footer class="work-dialog-footer"><span class="work-save-status" role="status">${editable ? '' : 'Просмотр задачи'}</span><div class="work-actions" data-edit-actions${editing ? '' : ' hidden'}>${editable ? action(row ? 'Сохранить изменения' : 'Создать', 'save', { variant: row ? 'secondary' : 'primary' }) : ''}</div></footer>`;
 
         const savedResult = dialog.querySelector('.work-saved-result');
         window.lucide?.createIcons();
         const cardTitle=dialog.querySelector('.work-card-title');
         if(cardTitle){
             dialog.querySelector('.work-dialog-context').before(cardTitle);
+            cardTitle.hidden = !!editable;
             cardTitle.tabIndex=0;
             cardTitle.setAttribute('aria-label',row.title);
         }
@@ -198,16 +196,20 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
                 {label:'Приоритет',value:WORK_PRIORITIES[row.priority||'normal']}
             ]});
             properties.append(...extra.querySelector('dl').children);
-            const details=document.createElement('details');details.className='ui-collapse-section work-card-details';details.innerHTML='<summary>Дополнительные сведения</summary><dl class="ui-description-list work-card-properties"></dl>';
+            const details=document.createElement('details');details.className='ui-collapse-section work-card-details';details.innerHTML='<summary class="ui-disclosure-text">Дополнительные сведения</summary><dl class="ui-description-list work-card-properties"></dl>';
             [...properties.children].filter((_,i)=>[2,4,5,6].includes(i)).forEach(el=>details.querySelector('dl').append(el));
             dialog.querySelector('.work-card-overview').append(details);
-            if(savedResult && row.status==='in_acceptance'){
+            if (!editable) {
+                properties.classList.replace('work-card-properties','ui-detail-summary');
+                dialog.querySelector('#work-card-task-panel').prepend(properties);
+            }
+            if(savedResult && row.status==='in_acceptance' && !editable){
                 const expected=dialog.querySelector('.work-card-description');
                 savedResult.after(expected);
                 const checklist=dialog.querySelector('.work-checklist-view');
                 if(checklist)expected.after(checklist);
             }
-            if(activeWork&&(row.return_feedback||row.blocked_reason)){
+            if(activeWork&&row.return_feedback){
                 const feedback=dialog.querySelector('.work-return-feedback')||dialog.querySelector('.work-next-step');
                 if(feedback){
                     if(savedResult && row.status==='in_acceptance')savedResult.after(feedback);
@@ -219,15 +221,6 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
             const missing=row.readiness?.missing_fields||['description','assignee_id','due_date'].filter(name=>!row[name]);
             const labels={description:'ожидаемый результат',assignee_id:'исполнитель',due_date:'срок'};
             dialog.querySelector('.work-card-title').insertAdjacentHTML('afterend',`<p class="work-readiness">${missing.length?'Для готовности нужны: '+missing.map(x=>labels[x]||x).join(', '):'Обязательные сведения заполнены'}${row.assignment_state==='proposed'?'. Ожидается принятие назначения командой':''}</p>`);
-        }
-        if(row?.can_block){
-            const block=dialog.querySelector('.work-blocker');
-            if(block){block.hidden=true;block.open=true;block.insertAdjacentHTML('beforeend',action('Сохранить препятствие','save-blocker',{variant:'primary'}));dialog.querySelector('#work-card-task-panel').append(block);}
-            (row.blocked_reason ? dialog.querySelector('.work-next-step') : dialog.querySelector('.work-card-overview')).insertAdjacentHTML('beforeend',action(row.blocked_reason?'Изменить препятствие':'Указать препятствие','edit-blocker',{variant:'ghost'}));
-            if(activeWork && row.blocked_reason){
-                const notice=dialog.querySelector('.work-next-step');notice.classList.add('work-blocked-notice');
-                notice.insertAdjacentHTML('beforeend',action('Снять препятствие','clear-blocker',{variant:blockerIsNext?'primary':'secondary'}));
-            }
         }
         for(const [id,name] of [['#wf-move-major','placement'],['#wf-reassign-team','reassignment']]){
             const section=dialog.querySelector(id)?.closest('details');if(section){section.hidden=true;section.open=true;section.dataset.contextAction=name;dialog.querySelector('#work-card-task-panel').append(section);}
@@ -245,10 +238,42 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
         if (statusActions) dialog.querySelector('.work-dialog-footer').append(statusActions);
         const editButton=dialog.querySelector('[data-work-action=edit]');if(editButton)dialog.querySelector('.work-dialog-footer').prepend(editButton);
         if(row)cardMenu=bindActionMenu({trigger:dialog.querySelector('[data-card-menu-trigger]'),panel:dialog.querySelector('[data-card-menu]'),label:'Дополнительные действия',align:'end'});
-        if(blockerIsNext)statusActions?.querySelectorAll('.btn-primary').forEach(el=>{el.classList.remove('btn-primary');el.classList.add('btn-secondary');});
         if (!inline) enhanceDialogOverlay(dialog, origin);
         const q = selector => dialog.querySelector(selector);
-        const checklistEditor = mountChecklistEditor(q('[data-checklist-editor]'), q('#wf-checklist'), editable);
+        const checklistEditor = mountChecklistEditor(q('[data-checklist-editor]'), q('#wf-checklist'), editable, {
+            completion: !!row && !!editable, canCheck: !!row?.can_check, savedIds: (row?.checklist || []).map(item => item.id)
+        });
+        if (row && editable) {
+            const checklist = q('#wf-checklist').closest('details');
+            checklist.replaceWith(q('#wf-checklist'), q('[data-checklist-editor]'));
+            const title = q('#wf-title').closest('.ui-field');
+            q('.work-card-title').remove();
+            title.classList.add('work-card-title-editor');
+            // One editable representation; the read-only overview is only for viewers.
+            q('.work-card-overview').remove();
+            const primaryFields = document.createElement('div');
+            primaryFields.className = 'work-primary-fields';
+            primaryFields.append(q('.work-assignment-fields'), q('#wf-priority').closest('.ui-field'));
+            q('#wf-description').closest('.ui-field').before(primaryFields);
+            q('#wf-acceptor_id').closest('.work-two').insertAdjacentHTML('beforeend', `<p class="work-muted">Постановщик: ${esc(person(row.requester_id) || row.requester_name || 'Не указан')}</p>`);
+        }
+        if (!row || editable) {
+            const title = q('#wf-title').closest('.ui-field');
+            title.classList.add('work-card-title-editor');
+            q('#wf-title').setAttribute('form', 'work-card-form');
+            const context = q('.work-dialog-context');
+            if (context) context.before(title);
+            else q('.work-dialog-head').append(title);
+        }
+        if (row && !editable) q('#wf-checklist').closest('details').hidden = true;
+        const syncChangeReason = () => {
+            const reason = q('#wf-change_reason');
+            if (!reason) return;
+            reason.closest('.ui-field').hidden = !reason.value && q('#wf-description').value === (row.description || '') && String(q('#wf-acceptor_id').value) === String(row.acceptor_id || '');
+        };
+        listen(dialog, 'input', syncChangeReason);
+        listen(dialog, 'change', syncChangeReason);
+        syncChangeReason();
         const setEditing = value => {
             editing = value;
             q('.work-form').hidden = !value;
@@ -288,7 +313,7 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
         if(!row)listen(q('#wf-acceptance_required'),'change',syncAssignment);
         const read = () => ({ ...pendingDraft, ...Object.fromEntries([...dialog.querySelectorAll('[data-work-field]')].map(el => [el.dataset.workField, el.value])) });
         let pendingDraft = { result_text: draft.result_text || '', reason: draft.reason || '' };
-        const savedValues = Object.fromEntries([...q('.work-form').querySelectorAll('[data-work-field]')].map(el => [el.dataset.workField, el.dataset.workField === 'checklist' ? JSON.stringify(base.checklist || []) : el.dataset.workField === 'priority' ? base.priority || 'normal' : String(base[el.dataset.workField] ?? '')]));
+        const savedValues = Object.fromEntries([...q('.work-form').elements].filter(el => el.matches('[data-work-field]')).map(el => [el.dataset.workField, el.dataset.workField === 'checklist' ? JSON.stringify(base.checklist || []) : el.dataset.workField === 'priority' ? base.priority || 'normal' : String(base[el.dataset.workField] ?? '')]));
         const saveStatus = text => { q('.work-save-status').textContent = text; };
         const storeDraft = value => {
             const delta = Object.fromEntries(Object.entries(value).filter(([name, text]) => row && name in savedValues ? String(text ?? '') !== savedValues[name] : name === 'result_text' ? text !== (row?.result_text || '') : text !== ''));
@@ -304,15 +329,9 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
             try { storeDraft(value); } catch { /* Saving on server succeeded. */ }
         };
         const showError = text => { q('.work-error').textContent = text; q('.work-error').focus(); };
-        const selectTab = (name, focus = false) => {
-            dialog.querySelectorAll('[role="tab"]').forEach(tab => {
-                const selected = tab.id === `work-card-${name}-tab`;
-                tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1;
-                document.getElementById(tab.getAttribute('aria-controls')).hidden = !selected;
-                if (selected && focus) tab.focus();
-            });
-            if (statusActions) statusActions.hidden = name !== 'task' || !!selectedAction;
-            q('.work-dialog-body').scrollTop = 0;
+        const revealSection = (name) => {
+            const section = q(`#work-card-${name}-panel`);
+            if (section?.matches('details')) { section.open = true; section.scrollIntoView({block:'nearest'}); }
         };
         listen(dialog, 'input', e => { if (e.target.matches('[data-work-field]')) { if (e.target.dataset.workField === 'title') e.target.setCustomValidity(''); persist(); } });
         listen(dialog, 'change', e => { if (e.target.matches('[data-work-field]')) persist(); });
@@ -345,7 +364,7 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
                 const {comments, history} = activityPages;
                 const composer=q('.work-comment-form');if(composer)q('.work-collaboration').after(composer);
                 const displayChange = (field,value) => field==='status' ? WORK_STATUSES[value] || value : field==='assignment_state' ? ({proposed:'Предложено',accepted:'Принято',declined:'Отклонено'}[value] || value) : value;
-                q('.work-collaboration').innerHTML = `<h3>Комментарии · ${comments.length}</h3>${comments.map(c => `<article class="work-comment" data-event-time="${esc(c.created_at || '')}"><div class="work-activity-meta"><strong>${esc(options.users.find(u => u.id === c.author_id)?.name || 'Участник')}</strong><time>${esc(dateTime(c.created_at))}</time></div><p>${esc(c.body)}</p></article>`).join('') || '<p class="work-muted">Комментариев пока нет.</p>'}<details class="ui-collapse-section work-card-details" data-work-history><summary>История изменений · ${history.length}</summary>${history.map(h => `<article class="work-history-item" data-event-time="${esc(h.created_at || '')}"><div class="work-activity-meta"><strong>${esc(HISTORY[h.action] || ({dependency_added:'Добавлена зависимость',dependency_removed:'Снята зависимость'}[h.action]) || 'Изменение')}</strong><span>${esc(h.actor_name || 'Участник')}</span><time>${esc(dateTime(h.created_at))}</time></div><details class="work-history-details"><summary>Подробности изменения</summary>${(h.changes || []).map(c=>`<p>${esc(c.label)}: ${esc(displayChange(c.field,c.before))} → ${esc(displayChange(c.field,c.after))}</p>`).join('')}${h.reason ? `<p>${esc(h.reason)}</p>` : ''}${h.previous_result ? `<p>Предыдущий результат: ${esc(h.previous_result)}</p>` : ''}</details></article>`).join('') || '<p class="work-muted">История пуста.</p>'}</details>`;
+                q('.work-collaboration').innerHTML = `<h3>Комментарии · ${comments.length}</h3>${comments.map(c => `<article class="work-comment" data-event-time="${esc(c.created_at || '')}"><div class="work-activity-meta"><strong>${esc(options.users.find(u => u.id === c.author_id)?.name || 'Участник')}</strong><time>${esc(dateTime(c.created_at))}</time></div><p>${esc(c.body)}</p></article>`).join('') || '<p class="work-muted">Комментариев пока нет.</p>'}<details class="ui-collapse-section work-card-details" data-work-history><summary class="ui-disclosure-text">История изменений · ${history.length}</summary>${history.map(h => `<article class="work-history-item" data-event-time="${esc(h.created_at || '')}"><div class="work-activity-meta"><strong>${esc(HISTORY[h.action] || ({dependency_added:'Добавлена зависимость',dependency_removed:'Снята зависимость'}[h.action]) || 'Изменение')}</strong><span>${esc(h.actor_name || 'Участник')}</span><time>${esc(dateTime(h.created_at))}</time></div><details class="work-history-details"><summary class="ui-disclosure-text">Подробности изменения</summary>${(h.changes || []).map(c=>`<p>${esc(c.label)}: ${esc(displayChange(c.field,c.before))} → ${esc(displayChange(c.field,c.after))}</p>`).join('')}${h.reason ? `<p>${esc(h.reason)}</p>` : ''}${h.previous_result ? `<p>Предыдущий результат: ${esc(h.previous_result)}</p>` : ''}</details></article>`).join('') || '<p class="work-muted">История пуста.</p>'}</details>`;
                 const activity=q('.work-collaboration');
                 for (const kind of ['comments','history']) {
                     if (!activityCursors[kind]) continue;
@@ -356,7 +375,7 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
                     el.disabled = true;
                     await loadActivity(el.dataset.olderActivity);
                 });
-                activity.insertAdjacentHTML('afterbegin', '<div class="work-activity-filters" role="group" aria-label="Вид активности">'+[['all','Всё'],['comments','Комментарии'],['history','Изменения']].map(([mode,label])=>button({label,variant:'ghost',attrs:{'data-activity-mode':mode,'aria-pressed':String(mode==='all')}})).join('')+'</div>'+field({id:'work-activity-mode',label:'Показать',kind:'select',options:[{value:'comments',label:'Комментарии'},{value:'history',label:'История'},{value:'all',label:'Всё'}]}));
+                activity.insertAdjacentHTML('afterbegin', segmentedControl({label:'Вид активности',className:'work-activity-filters',size:'small',value:'all',items:[['all','Всё'],['comments','Комментарии'],['history','Изменения']].map(([mode,label])=>({value:mode,label,attrs:{'data-activity-mode':mode}}))})+field({id:'work-activity-mode',label:'Показать',kind:'select',options:[{value:'comments',label:'Комментарии'},{value:'history',label:'История'},{value:'all',label:'Всё'}]}));
                 const timeline=document.createElement('div');timeline.className='work-activity-timeline';activity.querySelector('[data-work-history]').before(timeline);
                 const commentNodes=[...activity.querySelectorAll('.work-comment')],eventNodes=[...activity.querySelectorAll('.work-history-item')];
                 const filterActivity=()=>{
@@ -414,7 +433,7 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
                         if(!dialog.isConnected)return;
                         q('[data-work-conflict]')?.remove();
                         const conflict=document.createElement('section');conflict.dataset.workConflict='';conflict.className='work-conflict';
-                        const labels={title:'Название',description:'Ожидаемый результат',due_date:'Срок',priority:'Приоритет',result_text:'Результат работы',blocked_reason:'Препятствие',status:'Статус'};
+                        const labels={title:'Название',description:'Ожидаемый результат',due_date:'Срок',priority:'Приоритет',result_text:'Результат работы',status:'Статус'};
                         conflict.innerHTML='<h3>Задача изменена другим участником</h3><p>Ваш ввод сохранён. Сравните значения перед повтором.</p>'+Object.entries(labels).filter(([name])=>String(row[name]??'')!==String(fresh[name]??'')).map(([name,label])=>`<dl><dt>${label}</dt><dd>Было: ${esc(row[name]||'—')}</dd><dd>Сейчас: ${esc(fresh[name]||'—')}</dd><dd>Мой ввод: ${esc(read()[name]||'—')}</dd></dl>`).join('')+action('Загрузить актуальную версию и мой черновик','resolve-conflict');
                         conflict.onclick=async event=>{if(event.target.closest('[data-work-action=resolve-conflict]')){persist();await render();saveStatus('Актуальная версия загружена. Проверьте черновик и явно сохраните изменения.');}};
                         q('.work-dialog-body').prepend(conflict);conflict.scrollIntoView({block:'nearest'});
@@ -448,9 +467,14 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
                     const items = checklistValue(q('#wf-checklist').value).map(item => item.id === itemId ? {...item,completed} : item);
                     checklistEditor.replace(items);
                     try {storeDraft(read());} catch { /* Keep the existing draft if storage is unavailable. */ }
-                    checkbox.checked = completed;
-                    q('[data-checklist-count]').textContent = checklistCount(result.checklist);
-                    q('.work-checklist-view progress').value = result.checklist.filter(x=>x.completed).length;
+                    if (!editable) {
+                        checkbox.checked = completed;
+                        q('[data-checklist-count]').textContent = checklistCount(result.checklist);
+                        q('.work-checklist-view .ui-progress').outerHTML = checklistProgress(result.checklist);
+                    }
+                    dialog.querySelectorAll('[data-check-item]').forEach(control => {
+                        if (control.dataset.checkItem === itemId) control.focus({preventScroll:true});
+                    });
                 }
             });
         });
@@ -476,14 +500,13 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
         q('.work-form').onsubmit = e => {
             e.preventDefault(); if (!editable) return;
             const v = read();
-            clearFormErrors(q('.work-form'));const errors={};
+            clearFormErrors(dialog);const errors={};
             if(!v.title.trim())errors['wf-title']='Укажите название задачи';
-            q('.work-form').querySelectorAll(':invalid').forEach(el=>{errors[el.id] ||= el.validationMessage;});
-            if(Object.keys(errors).length){showFormErrors(q('.work-form'),errors);return;}
+            [...q('.work-form').elements].filter(el=>el.matches(':invalid')).forEach(el=>{errors[el.id] ||= el.validationMessage;});
+            if(Object.keys(errors).length){showFormErrors(dialog,errors);q('.work-form').prepend(q('[data-ui-error-summary]'));return;}
             const values = { title: v.title.trim(), description: v.description, priority:v.priority, checklist:checklistValue(v.checklist), assignee_id: number(v.assignee_id), due_date: v.due_date || null, acceptor_id: number(v.acceptor_id) };
             if (row) {
                 const patch = Object.fromEntries(Object.entries(values).filter(([name, value]) => name === 'checklist' ? JSON.stringify(value) !== JSON.stringify(row.checklist || []) : name === 'priority' ? value !== (row.priority || 'normal') : String(value ?? '') !== String(row[name] ?? '')));
-                if (row.can_block) patch.blocked_reason = v.blocked_reason || null;
                 if (v.change_reason?.trim()) patch.reason = v.change_reason.trim();
                 send(() => app.api.patch('/work-tasks/' + id, { ...patch, version: row.version }), { clear: Object.keys(savedValues) });
             } else {
@@ -492,7 +515,7 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
         };
         const save = () => {
             if (busy || !editable) return;
-            selectTab('task');
+            revealSection('task');
             if (inline) setEditing(true);
             q('.work-form').querySelectorAll(':invalid').forEach(el => { const details = el.closest('details'); if (details) details.open = true; });
             q('.work-form').requestSubmit();
@@ -543,53 +566,39 @@ export async function openWork(app, id = null, majorId = null, changed = () => {
         });
         dialog.onclick = async e => {
             if (busy) return;
-            const tab = e.target.closest('[role="tab"]');
-            if (tab) { selectTab(tab.id.replace('work-card-', '').replace('-tab', '')); return; }
             const download = e.target.closest('[data-download]');
             if (download) { try { await app.api.download(`/work-tasks/${id}/attachments/${download.dataset.download}/download`, download.dataset.filename); } catch (err) { showError(message(err)); } return; }
             const a = e.target.closest('[data-work-action]')?.dataset.workAction;
             if(a && a!=='card-menu')cardMenu?.close({restoreFocus:false});
             if (a === 'fullscreen') {userFullscreen=!userFullscreen;controller.layout(lastLayout);const control=e.target.closest('button'),label=control?.querySelector('span'),text=userFullscreen?'Обычный размер':'На весь экран';if(label)label.textContent=text;control?.setAttribute('aria-label',text);control?.setAttribute('title',text);}
-            if (a === 'previous-task' || a === 'next-task') presentation.onNavigate?.(a === 'previous-task' ? -1 : 1);
             if (a === 'close') close();
             if (a === 'save') save();
             if (a === 'edit') {
                 setEditing(true);
-                if (!editable && q('.work-blocker')) q('.work-blocker').open = true;
                 (q('.work-form input:not(:disabled)') || q('.work-form textarea:not(:disabled)'))?.focus();
             }
             if (a === 'view') { setEditing(false); q('[data-work-action=edit]')?.focus(); }
-            if (a === 'show-history') { selectTab('activity'); const history=q('[data-work-history]'); if(history){if(q('#work-activity-mode')){q('#work-activity-mode').value='history';q('#work-activity-mode').onchange();}history.hidden=false;history.open=true;history.scrollIntoView({block:'nearest'});} }
+            if (a === 'show-history') { revealSection('activity'); const history=q('[data-work-history]'); if(history){if(q('#work-activity-mode')){q('#work-activity-mode').value='history';q('#work-activity-mode').onchange();}history.hidden=false;history.open=true;history.scrollIntoView({block:'nearest'});} }
             if (!row) return;
             if(a==='copy-link'){try{await navigator.clipboard.writeText(location.origin+location.pathname+'#/work-tasks/'+row.id);saveStatus('Ссылка скопирована');}catch{showError('Не удалось скопировать ссылку. Скопируйте адрес страницы.');}}
             if(a==='show-template'){
-                selectTab('task');let host=q('[data-save-template]');if(!host){host=document.createElement('div');host.dataset.saveTemplate='';q('#work-card-task-panel').append(host);mountWorkTemplates(host,app,{canApply:false,isBusy:()=>busy,getContent:()=>({title:row.title,description:row.description,priority:row.priority||'normal',work_direction:row.work_direction,acceptance_required:row.acceptance_required,checklist:(row.checklist||[]).map(x=>x.title)}),apply:()=>{}});host.querySelector('details').open=true;}host.scrollIntoView({block:'nearest'});
+                revealSection('task');let host=q('[data-save-template]');if(!host){host=document.createElement('div');host.dataset.saveTemplate='';q('#work-card-task-panel').append(host);mountWorkTemplates(host,app,{canApply:false,isBusy:()=>busy,getContent:()=>({title:row.title,description:row.description,priority:row.priority||'normal',work_direction:row.work_direction,acceptance_required:row.acceptance_required,checklist:(row.checklist||[]).map(x=>x.title)}),apply:()=>{}});host.querySelector('details').open=true;}host.scrollIntoView({block:'nearest'});
             }
-            if(a==='show-placement'||a==='show-reassignment'){selectTab('task');const section=q(`[data-context-action="${a.slice(5)}"]`);section.hidden=false;section.scrollIntoView({block:'nearest'});section.querySelector('input:not([type=hidden]),select,textarea')?.focus();}
+            if(a==='show-placement'||a==='show-reassignment'){revealSection('task');const section=q(`[data-context-action="${a.slice(5)}"]`);section.hidden=false;section.scrollIntoView({block:'nearest'});section.querySelector('input:not([type=hidden]),select,textarea')?.focus();}
             if(a?.startsWith('show-'))q('[data-card-menu]').open=false;
-            if(a==='edit-blocker'){selectTab('task');q('.work-blocker').hidden=false;q('#wf-blocked_reason').focus();}
-            if(a==='clear-blocker')send(()=>app.api.patch(`/work-tasks/${id}`,{version:row.version,blocked_reason:null}),{clear:['blocked_reason']});
             const v = read();
             if (a?.startsWith('transition:') || ['accept-assignment', 'decline-assignment'].includes(a)) chooseTransition(a);
             if (a === 'cancel-transition') cancelTransition();
-            if (a === 'save-blocker') send(() => app.api.patch(`/work-tasks/${id}`, { version: row.version, blocked_reason: v.blocked_reason || null }), { clear: ['blocked_reason'] });
             if (a === 'reassign') send(() => app.api.post(`/work-tasks/${id}/reassignment`, { version: row.version, execution_team_id: number(v['reassign-team']), reason: v['reassign-reason'] || '' }), { clear: ['reassign-team', 'reassign-reason'] });
             if (a === 'move') send(() => app.api.post(`/work-tasks/${id}/placement`, { version: row.version, major_task_id: number(v['move-major']), direct_project_id: number(v['move-project']), reason: v['move-reason'] || '' }), { clear: ['move-major', 'move-project', 'move-reason'] });
         };
         listen(dialog, 'keydown', e => {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); e.stopPropagation(); save(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (!busy) { const form = e.target.closest('form'); if (form) form.requestSubmit(); else save(); } }
-            const tablist = e.target.closest('[role="tablist"]');
-            const next = tablist && tabNavigationTarget(tablist, e);
-            if (next) {
-                e.preventDefault();
-                tablist.querySelectorAll('[role="tab"]').forEach(tab => { tab.tabIndex = tab === next ? 0 : -1; });
-                next.focus();
-            }
         });
         controller.action = name => {
             if(busy)return;
-            if(name==='edit'){setEditing(true);q('.work-blocker')?.setAttribute('open','');q('#wf-title')?.focus();return;}
+            if(name==='edit'){setEditing(true);q('#wf-title')?.focus();return;}
             if(name.startsWith('transition:') && !row?.available_actions?.includes(name.split(':')[1])){showError('Действие больше недоступно. Проверьте актуальные данные.');return;}
             if(['accept-assignment','decline-assignment'].includes(name)&&!row?.can_decide_assignment)return;
             chooseTransition(name);

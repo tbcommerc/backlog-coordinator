@@ -48,7 +48,7 @@ assert.match(reports, /uiProgress\(\{ value: completionPercent/);
 assert.match(reports, /meeting-progress-detail/);
 assert.match(reports, /meeting-fill-cta/);
 assert.doesNotMatch(reports, /class="meeting-action is-primary" data-meeting-action="prepare"/);
-assert.match(reports, /data-meeting-view="timeline"/);
+assert.match(reports, /'data-meeting-view':'timeline'/);
 assert.match(reports, /meeting-timeline-item meeting-tone--\$\{meta\.tone\} is-\$\{timelineState\}/);
 assert.match(reports, /class="meeting-timeline-kind-icon"/);
 assert.match(reports, /data-lucide="\$\{meta\.icon \|\| 'calendar-days'\}"/);

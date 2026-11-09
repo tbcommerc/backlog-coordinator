@@ -1,0 +1,13 @@
+{
+  "captured_at": "2026-11-02",
+  "revision": "ce713019e097edde267c3e909e685c061e16a57e",
+  "source_sha256": {
+    "scripts/start-project.ps1": "2c6676f633c979d703bbc9380978abc4c1cba33cee198c2597abac6aeda8765c",
+    "agents/business-analyst/business_analyst/meeting_task_extractor.py": "65bb3c08af2c27dbf3d8a71b5b8a0c19b718f515e939675f4c5beaae9863eae6",
+    "agents/business-analyst/business_analyst/session.py": "4b38413cc76bd9b27c9fdb6969fdcd62757afe7ff6800efdb21005031f0e6861",
+    "agents/business-analyst-experimental/business_analyst_experimental/session.py": "6412a1f09fab6d9abefe18ec4a57950fbdd60ef6730615d6787ee7eb8c28a6f6"
+  },
+  "live_go": "NOT_RUN",
+  "real_remote": "NOT_RUN",
+  "database_baseline": "NOT_RUN: no database changes performed"
+}

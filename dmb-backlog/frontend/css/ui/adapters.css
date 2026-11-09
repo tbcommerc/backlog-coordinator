@@ -1,7 +1,7 @@
 /* Existing SPA consumers only. New reusable components belong in core.css.
    ID specificity bridges legacy task-dialog styles. */
 @import url("./login.css?v=4");
-@import url("./dialog-bridges.css?v=2");
+@import url("./dialog-bridges.css?v=3");
 /* Typography ownership: page, dialog and document headings are distinct roles. */
 :root :is(.page-header h1, .toolbar-title, .notification-hero h1, .agent-v2-header h1,
   .an-page h1, .ba-header h1, .mc-page h1, .work-page h1, .directorate-page-heading h1,
@@ -179,3 +179,39 @@
 :root .work-extra-filters .ui-filter-slot,
 :root .audit-filter-grid .ui-filter-slot { width:100%; }
 :root .metric-filter-control.ui-filter-slot select { flex:1 1 0; width:0; }
+
+/* Legacy modal button specificity; semantic AI tokens and behavior live in ai-actions.css. */
+:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary) {
+  background:var(--ai-action-bg);
+  color:var(--ai-action-text);
+  border:1px solid var(--ai-action-border);
+  box-shadow:none;
+  background-image:none;
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) .btn.btn-ai-primary {
+  background:var(--ai-action-solid);
+  color:var(--ai-action-solid-text);
+  border-color:var(--ai-action-solid);
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) .btn.btn-ai:not(:disabled):not([aria-disabled="true"]):hover {
+  background:var(--ai-action-hover);
+  border-color:var(--ai-action-text);
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) .btn.btn-ai-primary:not(:disabled):not([aria-disabled="true"]):hover {
+  background:var(--ai-action-solid-hover);
+  border-color:var(--ai-action-solid-hover);
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary):focus-visible {
+  outline:2px solid var(--ai-action-text);
+  outline-offset:3px;
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary):is(:disabled,[aria-disabled="true"]) {
+  background:var(--ai-action-bg);
+  color:var(--ai-action-text);
+  border-color:var(--ai-action-border);
+  opacity:.6;
+  cursor:not-allowed;
+}
+:root :is(body,#task-detail-overlay,#create-task-overlay) :is(.btn.btn-ai,.btn.btn-ai-primary)[aria-busy="true"] {
+  cursor:progress;
+}

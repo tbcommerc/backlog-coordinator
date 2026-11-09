@@ -15,7 +15,7 @@ export function workStatus(status, labels = WORK_STATUSES) {
 }
 
 export function workMetrics(summary, extended = false) {
-    const items = [['total', 'Всего', 'neutral'], ...(extended ? [['active', 'В работе', 'info']] : []), ['done', 'Выполнено', 'success'], ['overdue', 'Просрочено', 'danger'], ...(extended ? [['blocked', 'С блокером', 'danger']] : []), ['in_acceptance', 'На приёмке', 'warning'], ...(extended ? [['proposals', 'Предложено командам', 'neutral']] : [])];
+    const items = [['total', 'Всего', 'neutral'], ...(extended ? [['active', 'В работе', 'info']] : []), ['done', 'Выполнено', 'success'], ['overdue', 'Просрочено', 'danger'], ['in_acceptance', 'На приёмке', 'warning'], ...(extended ? [['proposals', 'Предложено командам', 'neutral']] : [])];
     return `<dl class="work-metrics" aria-label="Сводка по текущим условиям">${items.map(([key, label, tone]) => `<div class="work-metric" data-tone="${summary[key] ? tone : 'neutral'}"><dt>${label}</dt><dd>${esc(summary[key] ?? 0)}</dd></div>`).join('')}</dl>`;
 }
 

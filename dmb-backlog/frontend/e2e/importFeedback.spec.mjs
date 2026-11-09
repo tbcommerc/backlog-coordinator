@@ -4,8 +4,8 @@ import { mockApp } from './helpers/backlogMock.mjs';
 test('global import failure gets focus and replacement clears old report', async ({ page }) => {
  await mockApp(page);
  await page.route('**/api/v1/tasks/import', route => route.fulfill({json:{total:1,created:0,skipped:1,errors:[{row:null,message:'Изменения отменены',fatal:true}]}}));
- await page.goto('/#/team-backlog');
- await page.locator('#team-import-excel').click();
+ await page.goto('/#/team-backlog');await expect(page.locator('#tasks-content')).toHaveAttribute('data-ready','true');
+ await page.locator('#backlog-import-excel').click();
  const input=page.locator('#import-file-input');
  await input.setInputFiles({name:'first.csv',mimeType:'text/csv',buffer:Buffer.from('title;team_id\nЗадача;Продукт')});
  await page.locator('#import-submit-btn').click();
@@ -21,7 +21,7 @@ test('global import failure gets focus and replacement clears old report', async
 });
 
 test('missing headers explain the header position without CSV-only wording', async ({ page }) => {
- await mockApp(page);await page.goto('/#/team-backlog');await page.locator('#team-import-excel').click();
+ await mockApp(page);await page.goto('/#/team-backlog');await expect(page.locator('#tasks-content')).toHaveAttribute('data-ready','true');await page.locator('#backlog-import-excel').click();
  await page.locator('#import-file-input').setInputFiles({name:'headers.csv',mimeType:'text/csv',buffer:Buffer.from('description\nОписание')});
  await expect(page.getByText('Не найдена обязательная колонка "Название задачи"', {exact:false})).toContainText('первая строка файла или первого листа Excel');
  await expect(page.locator('#import-submit-btn')).toBeDisabled();
@@ -31,7 +31,7 @@ for (const partial of [false, true]) {
  test('result and downloadable report persist until explicit close: partial=' + partial, async ({page}) => {
   await mockApp(page);
   await page.route('**/api/v1/tasks/import', route => route.fulfill({json:{total:partial?2:1,created:1,skipped:partial?1:0,errors:partial?[{row:3,message:'Нет команды',fatal:true}]:[]}}));
-  await page.goto('/#/team-backlog');await page.locator('#team-import-excel').click();
+  await page.goto('/#/team-backlog');await expect(page.locator('#tasks-content')).toHaveAttribute('data-ready','true');await page.locator('#backlog-import-excel').click();
   await expect(page.locator('#import-drop-zone')).toContainText('только первый лист');
   await page.locator('#import-file-input').setInputFiles({name:'tasks.csv',mimeType:'text/csv',buffer:Buffer.from('title;team_id\nЗадача;Продукт')});
   await page.locator('#import-submit-btn').click();

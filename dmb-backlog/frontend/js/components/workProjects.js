@@ -1,4 +1,4 @@
-import { initProjectWorkspace } from './projectWorkspace.js?v=11';
+import { initProjectWorkspace } from './projectWorkspace.js?v=12';
 import { getTaskEditPermission } from '../taskCardPermissions.js';
 import { field, pageHeader, badge } from '../ui/primitives.js';
 import { escapeHtml as esc } from '../htmlUtils.js';
@@ -11,7 +11,14 @@ const folderIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const arrowIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
 
 export function renderWorkProjects() {
-    return `<section class="work-page" id="work-projects-page">${pageHeader({title:'Проекты'})}<div id="work-project-body"></div></section>`;
+    const id=new URLSearchParams(location.hash.split('?')[1]||'').get('project')||'';
+    const old=document.getElementById('work-projects-page');
+    const same=id&&old?.dataset.projectId===id;
+    const header=same?old.querySelector('.ui-page-header')?.outerHTML:pageHeader({title:'Проекты'});
+    const nav=same?old.querySelector('.project-navigation')?.outerHTML||'':'';
+    const focus=same?document.activeElement?.id||'':'';
+    const height=same?old.querySelector('#work-project-body')?.clientHeight||320:320;
+    return `<section class="work-page" id="work-projects-page" data-project-id="${esc(id)}" data-restore-focus="${esc(focus)}">${header}<div id="work-project-body" style="min-height:${height}px">${nav}</div></section>`;
 }
 
 export async function initWorkProjects(app) {
@@ -53,9 +60,12 @@ export async function initProjectExecution(app, body) {
                 }
                 root.querySelector('h1').textContent = project.name;
 
-                body.innerHTML = `<div class="project-workspace"><aside class="project-structure" aria-label="Состав проекта"><details class="project-structure-disclosure" open><summary>Состав проекта ${arrowIcon}</summary><nav aria-label="Выбор работ проекта"><div class="project-scope-overview">${navItem(href(), 'Все рабочие задачи', !majorId && !directOnly)}${navItem(href(null,true), 'Напрямую в проекте', directOnly)}</div><div class="project-structure-heading"><h2>Задачи бэклога</h2><span id="work-major-count"></span></div><div id="work-project-major"></div></nav></details></aside><section class="project-work-area" aria-labelledby="project-work-title"><header class="work-section-head project-section-heading"><div><p id="project-work-context" class="project-work-context"></p><h2 id="project-work-title" tabindex="-1">${majorId ? 'Рабочие задачи выбранной задачи бэклога' : directOnly ? 'Напрямую в проекте' : 'Все рабочие задачи'}</h2><p id="project-work-description" class="project-section-note"></p><div id="project-major-card-link"></div></div><div data-work-create-slot></div></header><div id="work-project-direct"></div></section></div>`;
+                body.innerHTML = `<div class="project-workspace"><aside class="project-structure" aria-label="Состав проекта"><details class="project-structure-disclosure" open><summary class="ui-disclosure-text">Состав проекта ${arrowIcon}</summary><nav aria-label="Выбор работ проекта"><div class="project-scope-overview">${navItem(href(), 'Все рабочие задачи', !majorId && !directOnly)}${navItem(href(null,true), 'Напрямую в проекте', directOnly)}</div><div class="project-structure-heading"><h2>Задачи бэклога</h2><span id="work-major-count"></span></div><div id="work-project-major"></div></nav></details></aside><section class="project-work-area" aria-labelledby="project-work-title"><header class="work-section-head project-section-heading"><div><p id="project-work-context" class="project-work-context"></p><h2 id="project-work-title" tabindex="-1">${majorId ? 'Рабочие задачи выбранной задачи бэклога' : directOnly ? 'Напрямую в проекте' : 'Рабочие задачи проекта'}</h2><p id="project-work-description" class="project-section-note"></p><div id="project-major-card-link"></div></div><div data-work-create-slot></div></header><div id="work-project-direct"></div></section></div>`;
                 const disclosure = body.querySelector('.project-structure-disclosure');
-                disclosure.open = !matchMedia('(max-width: 900px)').matches;
+                const narrow=matchMedia('(max-width: 900px)');
+                disclosure.open = Boolean(majorId);
+                const adapt=()=>{if(!live()){narrow.removeEventListener('change',adapt);return;}if(narrow.matches)disclosure.open=false;};
+                narrow.addEventListener('change',adapt);
                 const host = body.querySelector('#work-project-direct');
                 const description = body.querySelector('#project-work-description');
                 if (majorId) {
@@ -72,7 +82,7 @@ export async function initProjectExecution(app, body) {
                         body.querySelector('#project-work-context').textContent = selectedMajor.public_id;
                         body.querySelector('#project-work-title').textContent = selectedMajor.title;
                         description.textContent = 'Рабочие задачи выбранной задачи бэклога. Новая рабочая задача будет связана с ней.';
-                        body.querySelector('#project-major-card-link').innerHTML = `<a class="ui-link" href="${href(majorId)}&task=${majorId}">Карточка задачи →</a>`;
+                        body.querySelector('#project-major-card-link').innerHTML = `<a class="ui-nav-action" href="${href(majorId)}&task=${majorId}">Карточка задачи</a>`;
                         // Keep a deep-linked obligation visible even when it belongs to another page.
                         showSelectedMajor();
                         await mountWorkList(host, app, majorId, null, false, false, {canCreate:getTaskEditPermission(app.store.get('currentUser'),selectedMajor).allowed});

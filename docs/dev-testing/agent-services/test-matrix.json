@@ -1,0 +1,821 @@
+{
+  "date": "2026-11-05",
+  "scope": "Implemented subset only; whole migration is incomplete",
+  "real_remote": "NOT_RUN",
+  "local_status": "not_accepted",
+  "remote_contract_status": "partially_tested",
+  "tests": [
+    {
+      "test_id": "T-L01",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-L02",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-L03",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-L04",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-L05",
+      "status": "PASS",
+      "evidence": "SDK test_settings and test_service_settings: five actual service configs; scripts/test-agent-config.ps1 safe alias conflict",
+      "reason": null
+    },
+    {
+      "test_id": "T-L06",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-L07",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/explicit-inheritance-20261105.junit.xml and scripts/test-agent-config.ps1: complete process aliases, frozen inheritance origin, explicit override preserved, no file writes",
+      "reason": null
+    },
+    {
+      "test_id": "T-L08",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/go-contracts-20261105.junit.xml",
+      "reason": "Responses and Messages protocol profiles, and unsupported reasoning capability, fail with model_capability_missing before the synthetic transport can be invoked."
+    },
+    {
+      "test_id": "T-L09",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/go-contracts-20261105.junit.xml",
+      "reason": "Actual GoModel headers captured by synthetic provider: own User-Agent, same conversation keeps session across request IDs, different conversations have different sessions."
+    },
+    {
+      "test_id": "T-L10",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/go-contracts-20261105.junit.xml",
+      "reason": "401/403/429/302/500 normalize to safe codes; exactly one transport call, foreign Location never followed, synthetic secret absent from error."
+    },
+    {
+      "test_id": "T-L11",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-L12",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/live-minimum-semantic-review-20261104.json: one substantive actual Go candidate scenario per service, exact source hashes and checks; not full 20-case live acceptance",
+      "reason": null
+    },
+    {
+      "test_id": "T-R01",
+      "status": "PASS",
+      "evidence": "SDK test_remote_http::test_complete_http_lifecycle; tools unsupported",
+      "reason": null
+    },
+    {
+      "test_id": "T-R02",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/remote-preflight-20261104.junit.xml: independent HTTP reference emulator; empty/unknown version and permission/provider/enabled_providers/MCP/plugin/instructions overrides fail before session create and dispatch; real_remote NOT_RUN",
+      "reason": null
+    },
+    {
+      "test_id": "T-R03",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/remote-preflight-20261104.junit.xml: independent HTTP reference emulator; empty/unknown version and permission/provider/enabled_providers/MCP/plugin/instructions overrides fail before session create and dispatch; real_remote NOT_RUN",
+      "reason": null
+    },
+    {
+      "test_id": "T-R04",
+      "status": "PASS",
+      "evidence": "SDK test_remote_http::test_unknown_delivery_no_second_submit",
+      "reason": null
+    },
+    {
+      "test_id": "T-R05",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-R06",
+      "status": "PASS",
+      "evidence": "SDK test_remote_http::test_result_boundary foreign_session",
+      "reason": null
+    },
+    {
+      "test_id": "T-R07",
+      "status": "PASS",
+      "evidence": "SDK test_remote_http::test_result_boundary foreign_parent_message",
+      "reason": null
+    },
+    {
+      "test_id": "T-R08",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/structured-wire-20261105.junit.xml: truncated wire JSON, unexpected fields, length/unknown finish rejected before result; remote repair retryCount=0; no second submit",
+      "reason": null
+    },
+    {
+      "test_id": "T-R09",
+      "status": "PASS",
+      "evidence": "SDK test_remote_http::test_result_boundary unexpected_permission",
+      "reason": null
+    },
+    {
+      "test_id": "T-R10",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-R11",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/cleanup-release-20261105.junit.xml: actual HTTP abort success plus DELETE failure holds actual Redis slot; persisted cleanup failed; only later owned DELETE confirmation releases it",
+      "reason": null
+    },
+    {
+      "test_id": "T-R12",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-R13",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-R14",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/cleanup-release-20261105.junit.xml: missing tool capability rejected before runtime factory/checkpoint/model attempt",
+      "reason": null
+    },
+    {
+      "test_id": "T-R15",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-R16",
+      "status": "PASS",
+      "evidence": "SDK test_remote_http::test_reference_hash_and_dispatch_schema",
+      "reason": null
+    },
+    {
+      "test_id": "T-D01",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D02",
+      "status": "PASS",
+      "evidence": "meeting test_contract::test_idempotency_and_actor_scope",
+      "reason": null
+    },
+    {
+      "test_id": "T-D03",
+      "status": "PASS",
+      "evidence": "meeting test_contract::test_idempotency_and_actor_scope",
+      "reason": null
+    },
+    {
+      "test_id": "T-D04",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D05",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D06",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D07",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D08",
+      "status": "PASS",
+      "evidence": "meeting integration::test_cancel_completion_race",
+      "reason": null
+    },
+    {
+      "test_id": "T-D09",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D10",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/dmb-delivery-pg-20261105.junit.xml",
+      "reason": "Real PostgreSQL technical meeting schemas: application receipt commits before ack; lost ack is retried with same service run/consumer operation, stable item ID and no repeated application. External identity FKs are omitted only in test metadata; production metadata unchanged."
+    },
+    {
+      "test_id": "T-D11",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D12",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D13",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D14",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-D15",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/dmb-intent-pg-20261105.junit.xml; .runtime/agent-services-evidence/dmb-delivery-pg-20261105.junit.xml",
+      "reason": "Real PG intent commit, immutable delivery/retry ancestry and same-key recovery after lost acceptance; separate application receipt survives replacement and lost ack across new database sessions. Controlled failure-boundary injection, no protected fixtures."
+    },
+    {
+      "test_id": "T-D16",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S01",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S02",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S03",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S04",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S05",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/backlog-attestation-final-20261105.junit.xml",
+      "scope": "Actual ASGI authentication with explicit synthetic SQLite technical fixture: same nonce replay, wrong signed audience, expired attestation; rejected before tools/runtime and invalid audience/expiry before nonce write."
+    },
+    {
+      "test_id": "T-S06",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S07",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S08",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S09",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S10",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S11",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-S12",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-B01",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-B02",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/v1-correction-restart-20261105.junit.xml",
+      "reason": "Correction fixture runs through actual strict planner/guards and persistence; a fresh SessionStore reopens the file and preserves Friday rule, provenance, replaced daily history and conversation. No model quality claim."
+    },
+    {
+      "test_id": "T-B03",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-B04",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-B05",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-B06",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/v1-container-functional-20261105/manifest.json",
+      "reason": "V1 starts and completes grounded chat in an isolated container namespace without meeting service/source code; outbound HTTP is restricted to own loopback. Authored model fixture; no claim of new live Go extraction."
+    },
+    {
+      "test_id": "T-B07",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-B08",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V01",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V02",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V03",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V04",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V05",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V06",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V07",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V08",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V09",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-V10",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-M01",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-M02",
+      "status": "PASS",
+      "evidence": "meeting-live meeting-empty; completed/no_results",
+      "reason": null
+    },
+    {
+      "test_id": "T-M03",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-M04",
+      "status": "PASS",
+      "evidence": "meeting test_contract::test_quote_invalidates_entire_candidate",
+      "reason": null
+    },
+    {
+      "test_id": "T-M05",
+      "status": "PASS",
+      "evidence": "meeting test_contract::test_dedup_no_resolution",
+      "reason": null
+    },
+    {
+      "test_id": "T-M06",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/meeting-boundaries-final-20261105.junit.xml",
+      "scope": "Strict product validator: 60000/60001 characters, 60/61 items before dedup, exact field maxima and maximum+1; whole invalid candidate rejected without truncation."
+    },
+    {
+      "test_id": "T-M07",
+      "status": "PASS",
+      "evidence": "meeting-live four cases; stable replay payload/hash/item IDs",
+      "reason": null
+    },
+    {
+      "test_id": "T-M08",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-M09",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/meeting-ui-fixture-20261105.json; .runtime/agent-services-evidence/dmb-receipts-final-20261105.junit.xml",
+      "reason": "Browser fixture tests cover explicit selection/link choice/manual correction, edits invalidate review and counters; backend tests require explicit human decisions and never auto-confirm AI items. Fixture UI, not live QA acceptance."
+    },
+    {
+      "test_id": "T-M10",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/meeting-ui-fixture-20261105.json",
+      "reason": "Actual browser component tests: accepted job survives refresh/navigation, lost acceptance recovers same run, status retries do not repeat extraction, late results cannot overwrite newer edits. Synthetic HTTP routes, not provider-quality evidence."
+    },
+    {
+      "test_id": "T-M11",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-M12",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-A01",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-A02",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-A03",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-A04",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/backlog-full-20261104.junit.xml: actual Worker rejects unknown server_result_ref; fallback reauthorizes all retained receipts and contains only verified server facts; revoked access blocks publication; no second planner",
+      "reason": null
+    },
+    {
+      "test_id": "T-A05",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-A06",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/backlog-full-20261104.junit.xml: actual Worker rejects unknown server_result_ref; fallback reauthorizes all retained receipts and contains only verified server facts; revoked access blocks publication; no second planner",
+      "reason": null
+    },
+    {
+      "test_id": "T-A07",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-A08",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-A09",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-A10",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-P01",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/assessor-formula-comparison-20261105/manifest.json",
+      "reason": "Six fixed Task snapshots run in separate frozen baseline/candidate source processes on the same interpreter/date/read-only reference configuration. Scores, priority, factors, multipliers, contributions, overrides and reasons match exactly; no database/model connections."
+    },
+    {
+      "test_id": "T-P02",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-P03",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-P04",
+      "status": "PASS",
+      "evidence": "value-priority-assessor tests/test_remote_tools.py::test_node_bridge_calls_actual_python_http_kernel; Node runtime has nonexistent Python path; real loopback HTTP -> Python kernel",
+      "reason": null
+    },
+    {
+      "test_id": "T-P05",
+      "status": "PASS",
+      "evidence": "value-priority-assessor tests/test_remote_tools.py: cross-scope F5/F6, strict admin operation rejection, token cannot mint/revoke; PostgreSQL grant/receipt transactions",
+      "reason": null
+    },
+    {
+      "test_id": "T-P06",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-P07",
+      "status": "PASS",
+      "evidence": "value-priority-assessor remote_tool_tests/test_postgres.py::test_sqlite_history_to_postgres_preserves_hashes_scores_and_sequences; actual owned history 23 requests + 8 llm audit copied/verified; SQLite retained; protected_reference_writes=0",
+      "reason": null
+    },
+    {
+      "test_id": "T-P08",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-P09",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-P10",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-O01",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/lifecycle-all-five-20261105.json: five services, ten current SDK native cycles PASS; real assessor CPU encoder/RAG, unchanged history/config fingerprints, owned processes stopped; initial failed RAG-path attempt retained",
+      "reason": null
+    },
+    {
+      "test_id": "T-O02",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-O03",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-O04",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-O05",
+      "status": "PASS",
+      "evidence": "qualify-agent-artifacts.py: artifacts-final/manifest.json, five builds/offline import/final FS/synthetic sentinels PASS; SDK 1.2.0",
+      "reason": null
+    },
+    {
+      "test_id": "T-O06",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-O07",
+      "status": "BLOCKED",
+      "evidence": ".runtime/agent-services-evidence/sdk-parts-resource-retest-20261105.junit.xml",
+      "reason": "Current host: 566 MiB available RAM, CPU 100%; concurrent Redis check times out even after own builder stopped. User cannot free resources now. Earlier global-limiter evidence is preserved, but current full workload is not accepted; fail-closed semantics were not weakened."
+    },
+    {
+      "test_id": "T-O08",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-O09",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-O10",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-O11",
+      "status": "PASS",
+      "evidence": [
+        ".runtime/agent-services-evidence/application-recovery-two-releases-20261105/manifest.json",
+        ".runtime/agent-services-evidence/application-recovery-restored-20261105/manifest.json"
+      ],
+      "scope": "Synthetic PostgreSQL histories: pinned old + current writer for V1/V2/VPA/BKL; current read-only bridge for new meeting service; verified combined dump/restore and hashed compatible read-only readers. Working deployment not switched."
+    },
+    {
+      "test_id": "T-O12",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-U01",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-U02",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-U03",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-U04",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-U05",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-U06",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-U07",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-U08",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-Q01",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-Q02",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/corpus-offline-all-20261105/manifest.json",
+      "reason": "60/60 frozen product cases, five isolated service processes, external network denied, zero blocked attempts and unchanged live budget. Authored fixtures and validated projections prove invariants only, not model quality; V1 uncertainty conservatism is explicit."
+    },
+    {
+      "test_id": "T-Q03",
+      "status": "FAIL",
+      "evidence": ".runtime/agent-services-evidence/v1-instrumentation-retest-20261105/manifest.json",
+      "reason": "Live comparison has unresolved mandatory quality assertions: V1-01 candidate populates only role, baseline role/as_is; CSV/Friday remain assumptions. Baseline assessor requests returned 400, so complete equivalent comparison is unavailable. Original results and all charges are retained; HTTP/JSON success does not imply semantic PASS."
+    },
+    {
+      "test_id": "T-Q04",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/replay-stop2-20261105.junit.xml",
+      "reason": "Fault injection on the actual live-suite controller with synthetic workers and a private ledger: exhausted calls/time prevent next DB/worker; full selected denominator retains NOT_RUN; unknown outcome is fenced before launch and not replayed on continuation. Unknown transport remains fully charged. Fourteen tests, zero real Go calls, production ledger unchanged."
+    },
+    {
+      "test_id": "T-Q05",
+      "status": "PASS",
+      "evidence": ".runtime/agent-services-evidence/acceptance-summary-20261105.junit.xml",
+      "reason": "Six report tests preserve PASS/FAIL/BLOCKED/NOT_RUN and denominator; reject missing/duplicate IDs, SKIP, PASS without evidence and open cases without reasons."
+    },
+    {
+      "test_id": "T-Q06",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-Q07",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    },
+    {
+      "test_id": "T-Q08",
+      "status": "NOT_RUN",
+      "evidence": null,
+      "reason": "Complete scenario not executed; see IMPLEMENTATION.md gaps"
+    }
+  ],
+  "counts": {
+    "NOT_RUN": 106,
+    "PASS": 28
+  },
+  "denominator": 134
+}

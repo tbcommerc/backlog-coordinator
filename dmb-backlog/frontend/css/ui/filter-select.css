@@ -30,3 +30,6 @@
  :root .ui-filter-slot, :root .ui-filter-select { width:100%; flex-basis:100%; }
  :root .filter-toolbar-row .filter-btn, :root .pinned-filters-row .filter-btn { width:100%; }
 }
+
+/* Fluid fields fill their composition track instead of imposing 240px. */
+:root .ui-filter-slot.ui-field-fluid { width:100%; max-width:none; flex-basis:auto; }

@@ -52,3 +52,8 @@ graphify-out/
 
 # Local test workspaces carried with relocated agent services
 .test-*/
+
+/agents/meeting-analyzer/build/
+/agents/value-priority-assessor/build/
+/packages/dmb-agent-contracts/build/
+**/*.egg-info/

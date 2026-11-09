@@ -1,0 +1,29 @@
+{
+  "mode": "live PostgreSQL; only two invalid CSV rows; no protected preparation",
+  "results": [
+    {
+      "check": "Authenticated on authorized origin",
+      "status": "PASS"
+    },
+    {
+      "check": "Existing dictionaries support both negative import cases",
+      "status": "PASS"
+    },
+    {
+      "check": "Neither forbidden-team nor unknown-reference row creates a Task",
+      "status": "PASS"
+    },
+    {
+      "check": "Foreign-team row is explicitly rejected by object policy",
+      "status": "PASS"
+    },
+    {
+      "check": "Unknown task-type row has a fatal reference error",
+      "status": "PASS"
+    },
+    {
+      "check": "Invalid import does not add dictionary or user entries",
+      "status": "PASS"
+    }
+  ]
+}

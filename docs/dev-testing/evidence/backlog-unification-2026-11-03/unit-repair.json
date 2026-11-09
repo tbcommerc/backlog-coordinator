@@ -1,0 +1,76 @@
+{
+  "verified": "2026-11-04",
+  "unit": {
+    "total": 498,
+    "passed": 498,
+    "failed": 0,
+    "skipped": 0
+  },
+  "targeted_ownership": {
+    "passed": 20,
+    "failed": 0
+  },
+  "browser": {
+    "total": 181,
+    "passed": 154,
+    "failed": 27,
+    "skipped": 0
+  },
+  "final_density_browser": {
+    "passed": 18,
+    "failed": 0
+  },
+  "remaining_browser_findings": {
+    "workQueueAlignment.spec.mjs": 2,
+    "workSplitWorkspace.spec.mjs": 12,
+    "workToolbar.spec.mjs": 7
+  },
+  "additional_browser_fix": "Tablet queue context: prevent forced signal row at 460px and above; long context title retained",
+  "fixes": [
+    {
+      "issue": "Core CSS depended on modal/page IDs",
+      "source": "dmb-backlog/frontend/css/ui/ai-actions.css",
+      "fix": "Semantic AI selectors remain page-independent; legacy specificity moved to adapters.css"
+    },
+    {
+      "issue": "Undefined danger-color token",
+      "source": "dmb-backlog/frontend/css/metrics.css",
+      "fix": "Use declared danger-text for both themes"
+    },
+    {
+      "issue": "Stale tab assertion for section-only WorkTask drawer",
+      "source": "dmb-backlog/frontend/js/components/workTaskDrawer.js",
+      "fix": "Remove dead tab-handler; revealSection opens native details; test asserts section contract and no phantom tabs"
+    },
+    {
+      "issue": "Consumer forced shared control height",
+      "source": "dmb-backlog/frontend/css/work-workplace.css",
+      "fix": "Remove field height override; wrapper adapts to shared control geometry"
+    },
+    {
+      "issue": "Four unclassified quarterly tables",
+      "source": "dmb-backlog/frontend/js/components/metricsQuarterly.js",
+      "fix": "Add ui-table-data recipe to measurements, periods, chart values and version comparison"
+    },
+    {
+      "issue": "Mobile reset used 11px text",
+      "source": "dmb-backlog/frontend/css/work-workplace.css",
+      "fix": "Use shared text-control-sm token"
+    }
+  ],
+  "sha256": {
+    "dmb-backlog/frontend/css/metrics.css": "d716635ee276e1aa2317fdd0edc660ec9eada73bf73c4b067955fd3585730e95",
+    "dmb-backlog/frontend/index.html": "2c9d1c8b0c5b61d579de1ad13abc50039a0ca3e7634c79ad51dc8bb147d1e083",
+    "dmb-backlog/frontend/js/components/metricsQuarterly.js": "dc66b5e158248ae42555f515a5556f20e4257790fcefc4a2fce8d5eea83accee",
+    "dmb-backlog/frontend/js/components/workTaskDrawer.js": "7020f404bc10c46071a312cde77dd2bbf383ec133e8a5a09427dae7f684cc30e",
+    "dmb-backlog/frontend/css/ui/adapters.css": "6025a406641cb2bb701f8519442774e3b33a2f935a19d76795d369850301ac4b",
+    "dmb-backlog/playwright.ui-regression.config.mjs": "ffc98a579c6f048a65e9b75c39bde785dc51034d703b63d93425d38fc551d52f",
+    "dmb-backlog/frontend/tests/uiPaginationOwnership.test.mjs": "1dbc15b0f75ac8e39c509af7d135001361775b94d89ba7ae4a1d2e60f18076a3",
+    "dmb-backlog/frontend/css/ui/kit.css": "7949e716b4d3ae434dce6325ebe3d056a929644f80bfe1d129cd130cf745e5f1",
+    "dmb-backlog/frontend/css/ui/ai-actions.css": "220f0ab9d76068462630615e336eded5e2115a31a9880bfd653d024f446b6706",
+    "dmb-backlog/frontend/js/components/workTasks.js": "93861a34263b0d11d94460f5abc024642778a314d612940345aa81c4dde5aa9c",
+    "dmb-backlog/frontend/e2e/workListDensity.spec.mjs": "7b7ace3f184ae2971b4dc7f88cdc557fcbfcac4a00b3ccb814432f15e3fffa8f",
+    "dmb-backlog/frontend/css/ui/core.css": "44a1534f929eeacaa02becfd76b07498acf103c0fc4981fc255def8480f0e419",
+    "dmb-backlog/frontend/css/work-workplace.css": "99a64e8aa745b9758b5a0fa1f544ad076368a15af925bc471e8008b5c15bba19"
+  }
+}

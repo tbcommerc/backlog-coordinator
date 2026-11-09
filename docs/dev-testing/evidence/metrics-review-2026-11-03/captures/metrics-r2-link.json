@@ -1,0 +1,192 @@
+[
+  {
+    "name": "QA work target lookup",
+    "status": 200,
+    "data": {
+      "targets": [
+        {
+          "id": 108,
+          "public_id": "WRK-108",
+          "title": "DEV-QA-UIKIT-271026 — проверка формы и материалов"
+        },
+        {
+          "id": 107,
+          "public_id": "WRK-107",
+          "title": "DEV-QA-20261024-LIVE — Проверить полный цикл поручения, возврат результата с замечаниями и повторную приёмку при длинном названии на настольном и мобильном экране"
+        },
+        {
+          "id": 72,
+          "public_id": "WRK-72",
+          "title": "DEV-QA-BOARD-1792573638669-no-acceptance-conflict"
+        },
+        {
+          "id": 71,
+          "public_id": "WRK-71",
+          "title": "DEV-QA-BOARD-1792573232150-cross"
+        },
+        {
+          "id": 70,
+          "public_id": "WRK-70",
+          "title": "DEV-QA-BOARD-1792573232150-cycle"
+        },
+        {
+          "id": 69,
+          "public_id": "WRK-69",
+          "title": "DEV-QA-BOARD-1792573005133-cross"
+        },
+        {
+          "id": 68,
+          "public_id": "WRK-68",
+          "title": "DEV-QA-BOARD-1792573005133-cycle"
+        },
+        {
+          "id": 67,
+          "public_id": "WRK-67",
+          "title": "DEV-QA-BOARD-1792572908896-cycle"
+        },
+        {
+          "id": 66,
+          "public_id": "WRK-66",
+          "title": "DEV-QA-BOARD-1792572469149-cycle"
+        },
+        {
+          "id": 65,
+          "public_id": "WRK-65",
+          "title": "DEV-QA-BOARD-1792572396240-cycle"
+        },
+        {
+          "id": 64,
+          "public_id": "WRK-64",
+          "title": "DEV-QA-BOARD-1792572338487-cycle"
+        },
+        {
+          "id": 63,
+          "public_id": "WRK-63",
+          "title": "DEV-QA-ROLES-20261021 SSE"
+        },
+        {
+          "id": 62,
+          "public_id": "WRK-62",
+          "title": "DEV-QA-STAGE2-20261021-1792569863488-copy"
+        },
+        {
+          "id": 61,
+          "public_id": "WRK-61",
+          "title": "DEV-QA-STAGE2-20261021-1792569863488"
+        },
+        {
+          "id": 60,
+          "public_id": "WRK-60",
+          "title": "DEV-QA-STAGE2-20261021-1792569840492"
+        },
+        {
+          "id": 59,
+          "public_id": "WRK-59",
+          "title": "DEV-QA-ROLES-20261021 cross-team"
+        },
+        {
+          "id": 58,
+          "public_id": "WRK-58",
+          "title": "DEV-QA-ROLES-20261021 ACL matrix"
+        },
+        {
+          "id": 57,
+          "public_id": "WRK-57",
+          "title": "DEV-QA-ROLES-20261021 мобильная приёмка"
+        },
+        {
+          "id": 56,
+          "public_id": "WRK-56",
+          "title": "DEV-QA-FINAL-20261021 контроль карточки"
+        },
+        {
+          "id": 55,
+          "public_id": "WRK-55",
+          "title": "DEV-QA-FIX-20261020 выбор родителя"
+        },
+        {
+          "id": 54,
+          "public_id": "WRK-54",
+          "title": "DEV-QA-FIX-20261020 сохранённый черновик"
+        },
+        {
+          "id": 53,
+          "public_id": "WRK-53",
+          "title": "DEV-QA-FIX-20261020 межкомандное"
+        },
+        {
+          "id": 52,
+          "public_id": "WRK-52",
+          "title": "DEV-QA-FIX-20261020 пример отчёта"
+        },
+        {
+          "id": 51,
+          "public_id": "WRK-51",
+          "title": "DEV-QA-FIX-20261020 инструкция"
+        },
+        {
+          "id": 50,
+          "public_id": "WRK-50",
+          "title": "DEV-QA-FIX-20261020 зависимость"
+        },
+        {
+          "id": 49,
+          "public_id": "WRK-49",
+          "title": "DEV-QA-FIX-20261020 приёмка"
+        },
+        {
+          "id": 48,
+          "public_id": "WRK-48",
+          "title": "DEV-QA-REVIEW-20261020 внутри крупной задачи"
+        },
+        {
+          "id": 47,
+          "public_id": "WRK-47",
+          "title": "DEV-QA-REVIEW-20261020 повтор создания"
+        },
+        {
+          "id": 46,
+          "public_id": "WRK-46",
+          "title": "DEV-QA-REVIEW-20261020 задача проекта"
+        },
+        {
+          "id": 45,
+          "public_id": "WRK-45",
+          "title": "DEV-QA-REVIEW-20261020 межкомандное поручение"
+        }
+      ]
+    }
+  },
+  {
+    "name": "link synthetic target",
+    "status": 200,
+    "data": {
+      "version": 52,
+      "error": null
+    }
+  },
+  {
+    "name": "duplicate link",
+    "status": 409,
+    "data": {
+      "code": "duplicate_link",
+      "message": "Связь уже существует",
+      "fields": {}
+    }
+  },
+  {
+    "name": "links read",
+    "status": 200,
+    "data": {
+      "items": [
+        {
+          "id": 23,
+          "kind": "work",
+          "target_id": 108,
+          "title": "DEV-QA-UIKIT-271026 — проверка формы и материалов",
+          "public_id": "WRK-108"
+        }
+      ]
+    }
+  }
+]

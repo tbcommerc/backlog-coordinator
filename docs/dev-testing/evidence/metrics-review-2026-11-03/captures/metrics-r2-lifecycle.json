@@ -1,0 +1,233 @@
+[
+  {
+    "name": "/lifecycle {'action': 'pause', 'reason': 'QA R2 pause'}",
+    "status": 200,
+    "data": {
+      "lifecycle_state": "paused",
+      "archived": false,
+      "periods": [
+        {
+          "quarter": 3,
+          "state": "completed",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": true
+          }
+        },
+        {
+          "quarter": 4,
+          "state": "active",
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "/lifecycle {'action': 'resume', 'reason': 'QA R2 resume'}",
+    "status": 200,
+    "data": {
+      "lifecycle_state": "tracking",
+      "archived": false,
+      "periods": [
+        {
+          "quarter": 3,
+          "state": "completed",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": true
+          }
+        },
+        {
+          "quarter": 4,
+          "state": "active",
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "/archive {'archive': True, 'reason': 'QA R2 invalid active archive'}",
+    "status": 409,
+    "data": {
+      "lifecycle_state": null,
+      "archived": null,
+      "periods": [],
+      "error": {
+        "code": "invalid_transition",
+        "message": "Сначала закройте или отмените активные периоды",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "/periods/40788/cancel {'reason': 'QA R2 cancel'}",
+    "status": 200,
+    "data": {
+      "lifecycle_state": "tracking",
+      "archived": false,
+      "periods": [
+        {
+          "quarter": 3,
+          "state": "completed",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": true
+          }
+        },
+        {
+          "quarter": 4,
+          "state": "cancelled",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "/archive {'archive': True, 'reason': 'QA R2 archive'}",
+    "status": 200,
+    "data": {
+      "lifecycle_state": "tracking",
+      "archived": true,
+      "periods": [
+        {
+          "quarter": 3,
+          "state": "completed",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          }
+        },
+        {
+          "quarter": 4,
+          "state": "cancelled",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "/archive {'archive': False, 'reason': 'QA R2 restore'}",
+    "status": 200,
+    "data": {
+      "lifecycle_state": "paused",
+      "archived": false,
+      "periods": [
+        {
+          "quarter": 3,
+          "state": "completed",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": true
+          }
+        },
+        {
+          "quarter": 4,
+          "state": "cancelled",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "/lifecycle {'action': 'resume', 'reason': 'QA R2 resume after restore'}",
+    "status": 200,
+    "data": {
+      "lifecycle_state": "tracking",
+      "archived": false,
+      "periods": [
+        {
+          "quarter": 3,
+          "state": "completed",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": true
+          }
+        },
+        {
+          "quarter": 4,
+          "state": "cancelled",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": false
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "/periods/40788/restore {'reason': 'QA R2 restore period'}",
+    "status": 200,
+    "data": {
+      "lifecycle_state": "tracking",
+      "archived": false,
+      "periods": [
+        {
+          "quarter": 3,
+          "state": "completed",
+          "capabilities": {
+            "write_fact": false,
+            "add_measurement": false,
+            "close": false,
+            "correct_final": true
+          }
+        },
+        {
+          "quarter": 4,
+          "state": "active",
+          "capabilities": {
+            "write_fact": true,
+            "add_measurement": true,
+            "close": false,
+            "correct_final": false
+          }
+        }
+      ],
+      "error": null
+    }
+  }
+]

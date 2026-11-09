@@ -1,3 +1,4 @@
+import { backlogMenuHref } from '../backlogContext.js';
 import { counter } from '../ui/dataDisplay.js';
 /**
  * Backlog Coordinator - Sidebar Component
@@ -60,29 +61,30 @@ export function renderSidebar() {
         
         <nav class="sidebar-nav">
             <div class="sidebar-section">
-                <div class="sidebar-section-title">Управление бэклогом</div>
                 <a href="#/dashboard" class="sidebar-item active" aria-label="Главная">
                     <i data-lucide="layout-dashboard"></i>
                     <span>Главная</span>
                 </a>
-                <a href="#/backlog" class="sidebar-item" aria-label="Бэклог DMB">
-                    <i data-lucide="list"></i>
-                    <span>Бэклог DMB</span>
-                </a>
-                <a href="#/team-backlog" class="sidebar-item" aria-label="Бэклог команды">
-                    <i data-lucide="users"></i>
-                    <span>Бэклог команды</span>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Управление бэклогом</div>
+                <a href="${backlogMenuHref(user)}" class="sidebar-item" aria-label="Бэклог">
+                    <i data-lucide="layers"></i><span>Бэклог</span>
                 </a>
                 <a href="#/metrics" class="sidebar-item" aria-label="Метрики"><i data-lucide="trending-up"></i><span>Метрики</span></a>
                 <a href="#/work-projects" class="sidebar-item" aria-label="Проекты"><i data-lucide="folder"></i><span>Проекты</span></a>
                 <a href="#/work-tasks" class="sidebar-item" aria-label="Рабочие задачи"><i data-lucide="list-checks"></i><span>Рабочие задачи</span></a>
+                <a href="#/review" class="sidebar-item" aria-label="Запросы заказчиков">
+                    <i data-lucide="file-input"></i>
+                    <span>Запросы заказчиков</span>
+                </a>
                 <a href="#/express-estimate" class="sidebar-item" aria-label="Экспресс-оценка">
                     <i data-lucide="zap"></i>
                     <span>Экспресс-оценка</span>
                     ${developmentBadge}
                 </a>
                 <a href="#/kanban" class="sidebar-item" aria-label="Канбан-доска">
-                    <i data-lucide="columns"></i>
+                    <i data-lucide="kanban-square"></i>
                     <span>Канбан-доска</span>
                 </a>
             </div>
@@ -94,7 +96,7 @@ export function renderSidebar() {
                     <span>Статусы для встреч</span>
                 </a>
                 <a href="#/analytics/tribe" class="sidebar-item" aria-label="Аналитика ЛТ">
-                    <i data-lucide="trending-up"></i>
+                    <i data-lucide="line-chart"></i>
                     <span>Аналитика ЛТ</span>
                 </a>
                 <a href="#/analytics/po-pl" class="sidebar-item" aria-label="Аналитика PO/PL">
@@ -102,7 +104,7 @@ export function renderSidebar() {
                     <span>Аналитика PO/PL</span>
                 </a>
                 <a href="#/analytics/it" class="sidebar-item" aria-label="Аналитика для ИТ">
-                    <i data-lucide="loader2"></i>
+                    <i data-lucide="monitor"></i>
                     <span>Аналитика для ИТ</span>
                     ${developmentBadge}
                 </a>
@@ -111,32 +113,28 @@ export function renderSidebar() {
             <div class="sidebar-section">
                 <div class="sidebar-section-title">Бизнес-заказчику</div>
                 <a href="#/customer" class="sidebar-item" aria-label="Мои запросы">
-                    <i data-lucide="briefcase"></i>
+                    <i data-lucide="clipboard-signature"></i>
                     <span>Мои запросы</span>
                 </a>
-                <a href="#/customer/create" class="sidebar-item sidebar-item-sub" aria-label="ИИ-ассистент">
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">ИИ-агенты</div>
+                <a href="#/customer/create" class="sidebar-item" aria-label="ИИ-ассистент">
                     <i data-lucide="bot"></i>
                     <span>ИИ-ассистент</span>
                 </a>
                 ${agentV2Link}
                 <a href="#/backlog-assistant" class="sidebar-item" aria-label="Помощник по бэклогу"><i data-lucide="messages-square"></i><span>Помощник по бэклогу</span></a>
                 ${meetingCaptureLink}
-                <a href="#/review" class="sidebar-item" aria-label="Запросы заказчиков">
-                    <i data-lucide="clipboard-check"></i>
-                    <span>Запросы заказчиков</span>
-                </a>
             </div>
 
             <div class="sidebar-section">
-                <div class="sidebar-section-title">Настройки и администрирование</div>
+                <div class="sidebar-section-title">Уведомления и управление</div>
                 <a href="#/notifications" class="sidebar-item" aria-label="Мои уведомления">
                     <i data-lucide="bell"></i>
                     <span>Мои уведомления</span>
                     ${counter({loading:true,cap:99,tone:'unread',label:'Непрочитанных уведомлений',id:'notification-count',className:'item-badge'})}
-                </a>
-                <a href="#/settings" class="sidebar-item" aria-label="Настройки">
-                    <i data-lucide="settings"></i>
-                    <span>Настройки</span>
                 </a>
                 ${adminLinks}
             </div>
@@ -201,7 +199,6 @@ export function initSidebar() {
             'Аналитика для ИТ': 'analytics',
             'Мои запросы': 'customer',
             'ИИ-ассистент': 'customer',
-            'Настройки': 'settings',
             'Администрирование': 'admin',
             'Аудит действий': 'admin',
             'Dead-letter outbox': 'admin',
@@ -210,6 +207,7 @@ export function initSidebar() {
         document.querySelectorAll('.sidebar-item').forEach(el => {
             const label = el.getAttribute('aria-label');
             const perm = map[label];
+            if(label==='Бэклог'&&(perms.backlog_dmb||'none')==='none'&&(perms.backlog_team||'none')==='none')el.style.display='none';
             const hasFullAdminAssistantAccess = adminAccess === 'full' && fullAdminAssistantLabels.has(label);
             if (perm && (perms[perm] || 'none') === 'none' && !hasFullAdminAssistantAccess) {
                 el.style.display = 'none';

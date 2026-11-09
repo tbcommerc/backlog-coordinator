@@ -15,6 +15,8 @@
 
 from __future__ import annotations
 
+from dmb_agent_contracts.operation import model_operation
+
 import datetime as dt
 from dataclasses import dataclass, field
 from typing import Any, Iterable
@@ -209,6 +211,7 @@ def _apply_score(task: Task, refs: ReferenceBundle, ctx: ScoringContext, reason:
     return changed
 
 
+@model_operation
 def recompute_all(
     session: Session,
     reason: str = REASON_ATTRIBUTES,
@@ -263,6 +266,7 @@ def recompute_all(
     return stats
 
 
+@model_operation
 def recompute_task(
     session: Session,
     task: Task,
@@ -287,6 +291,21 @@ def recompute_task(
     session.flush()
 
     siblings: Iterable[Task] = session.scalars(select(Task)).all()
+    ctx = ScoringContext.from_tasks(siblings, today=today)
+    _apply_score(task, refs, ctx, reason)
+    return task
+
+
+def recompute_factor_priority(session: Session, task: Task, reason: str = REASON_MANUAL,
+                              today: dt.date | None = None) -> Task:
+    """Rescore persisted factor inputs without model/retrieval or Value changes.
+
+    Used identically by CLI and remote factor tools. Formula and priority
+    thresholds remain score_task/_apply_score; only orchestration is bounded.
+    """
+    refs = ReferenceBundle(session)
+    hydrate_task(session, task)
+    siblings = session.scalars(select(Task)).all()
     ctx = ScoringContext.from_tasks(siblings, today=today)
     _apply_score(task, refs, ctx, reason)
     return task

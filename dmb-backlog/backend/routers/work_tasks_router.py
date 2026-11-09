@@ -99,7 +99,7 @@ def list_work(view: Literal['all', 'mine', 'team', 'requested', 'acceptance'] = 
               status: str | None = None, q: str = '', execution_team_id: str | None = None,
               assignee_id: str | None = None, major_task_id: int | None = None,
               direct_project_id: int | None = None, work_direction: str | None = None,
-              overdue: bool = False, blocked: bool = False, unassigned: bool = False, focus: str = '',
+              overdue: bool = False, unassigned: bool = False, focus: str = '',
               sort: Literal['newest', 'due', 'attention', 'priority'] = 'newest', priority: str | None = None,
               page: int = Query(1, ge=1), per_page: int = Query(30, ge=1, le=100),
               db: Session = Depends(get_db), user: User = Depends(get_current_user),
@@ -107,7 +107,7 @@ def list_work(view: Literal['all', 'mine', 'team', 'requested', 'acceptance'] = 
     filters = validated_filters(view=view,status=status or '',q=q,execution_team_id=execution_team_id,
         assignee_id=assignee_id,major_task_id=major_task_id,direct_project_id=direct_project_id,
         effective_project_id=effective_project_id,work_direction=work_direction,priority=priority,
-        overdue=overdue,blocked=blocked,unassigned=unassigned,focus=focus,sort=sort,done_period=done_period)
+        overdue=overdue,unassigned=unassigned,focus=focus,sort=sort,done_period=done_period)
     selection = Selection(db,user,filters)
     collections,summary = selection.aggregates()
     rows = selection.query.order_by(*selection.keys).offset((page-1)*per_page).limit(per_page).all()

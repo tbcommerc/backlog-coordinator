@@ -1,6 +1,6 @@
 // Public UI kit entry point. These adapters reuse the application's real
 // dialog, state and feedback implementations, including their lifecycle.
-export { attributes, icon, button, checkbox, badge, control, fieldFrame, field, filterChip, kpiCard, collapseSection, pageHeader, tab, tabs } from './primitives.js';
+export { attributes, icon, button, checkbox, badge, control, fieldFrame, field, filterChip, kpiCard, collapseSection, pageHeader, tab, tabs, routeTabs } from './primitives.js';
 export { setButtonBusy, mountTabs, tabNavigationTarget } from './controls.js';
 export { toggleSwitch } from './switch.js';
 export { avatar, tag, progress, counter } from './dataDisplay.js';
@@ -17,7 +17,7 @@ export { filterValues, filterMatches, encodeFilterValues, setFilterValue, toggle
 export { bindActionMenu } from './actionMenu.js';
 export { bindTooltip } from './tooltip.js';
 export { pagination, radioGroup, alert } from './forms.js';
-export { segmentedControl, rangeControl, fileUpload, setUploadState, loadMore, cursorPagination } from './specialized.js';
+export { segmentedControl, installSegmentedControls, rangeControl, fileUpload, setUploadState, loadMore, cursorPagination } from './specialized.js';
 export { showFormErrors, clearFormErrors } from './validation.js';
 export { readOnlyField, descriptionList, bindReadOnlyFields, sectionCard } from './detailComponents.js';
 export { detailPanel, bindDetailPanel } from './detailPanel.js';

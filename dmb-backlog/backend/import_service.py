@@ -20,6 +20,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
+from auth import can_edit_task
 from services.task_metrics import calculate_cost_value_ratio
 
 from models import (
@@ -575,6 +576,13 @@ def import_tasks_from_csv(db: Session, raw: bytes, current_user: User) -> dict:
         result['errors'].extend(errors)
 
         if task is None:
+            result['skipped'] += 1
+            continue
+        if not can_edit_task(current_user, task.team_id):
+            result['errors'].append(make_error(
+                row_num, 'team_id', db_key_to_label, '', 'permission_denied',
+                'Нет права создавать задачу для указанной команды.', fatal=True,
+            ))
             result['skipped'] += 1
             continue
 

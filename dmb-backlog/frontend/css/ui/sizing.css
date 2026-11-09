@@ -94,3 +94,9 @@ input.ui-number-cell::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .ui-responsive-icon-extra { display:none; }
 }
 .metric-applied-filters .btn { height:auto; min-height:var(--control-height-sm,32px); }
+
+/* Equal text actions; compact icon actions retain their responsive recipe. */
+:root { --control-action-width:190px; }
+@media (min-width:1025px) {
+ :root .btn.ui-action-equal { width:var(--control-action-width); min-width:var(--control-action-width); max-width:var(--control-action-width); flex:0 0 var(--control-action-width); }
+}

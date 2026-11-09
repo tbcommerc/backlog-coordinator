@@ -22,7 +22,7 @@ def test_workspace_counts_filters_and_access(monkeypatch):
     today = datetime.now(ZoneInfo('Europe/Moscow')).date()
     with Session(engine) as db:
         for i, values in enumerate([
-            dict(assignee_id=1, status='in_progress', blocked_reason='Зависимость', due_date=today-timedelta(days=1)),
+            dict(assignee_id=1, status='in_progress', due_date=today-timedelta(days=1)),
             dict(assignee_id=None, status='new'),
             dict(assignee_id=2, acceptor_id=1, status='in_acceptance', execution_team_id=20),
             dict(assignee_id=1, status='done', due_date=today-timedelta(days=1)),
@@ -37,22 +37,17 @@ def test_workspace_counts_filters_and_access(monkeypatch):
         data=listing(view='all')
         assert data['total']==4
         assert data['collection_counts']==dict(all=4,mine=2,team=3,requested=4,acceptance=1)
-        assert data['summary']==dict(total=4,done=1,in_acceptance=1,overdue=1,blocked=1,unassigned=1,active=3,proposals=0)
+        assert data['summary']==dict(total=4,done=1,in_acceptance=1,overdue=1,unassigned=1,active=3,proposals=0)
         assert listing(view='mine')['total']==2
         assert listing(view='acceptance')['items']==[{'id':3}]
         assert listing(view='team',execution_team_id=20)['items']==[{'id':3}]
         assert listing(view='all',unassigned=True)['items']==[{'id':2}]
         assert listing(view='all',overdue=True)['items']==[{'id':1}]
-        assert listing(view='requested',blocked=True)['items']==[{'id':1}]
         assert listing(view='all',q='нет совпадений')['summary']['total']==0
         assert listing(view='all',status='active')['total']==3
         assert listing(view='all',execution_team_id=99)['total']==0
-        # Historic obstacles and missing assignees on closed work are not attention items.
-        db.get(WorkTask, 4).blocked_reason = 'Старое препятствие'
         db.get(WorkTask, 2).status = 'cancelled'
         db.commit()
-        assert listing(view='all')['summary']['blocked']==1
         assert listing(view='all')['summary']['unassigned']==0
-        assert listing(view='all',blocked=True)['items']==[{'id':1}]
         assert listing(view='all',unassigned=True)['items']==[]
     engine.dispose()

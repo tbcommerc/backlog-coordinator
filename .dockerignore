@@ -29,3 +29,23 @@ outputs/local-artifacts
 **/node_modules
 **/.runtime
 **/.test-*
+
+**/*.egg-info
+**/build
+**/dist
+**/*.log
+**/data/k3/plaintext
+**/data/k3/decrypted
+**/var
+**/.opencode/node_modules
+
+# Private classified packages and certificate keys are runtime inputs, never image source.
+**/data/knowledge/k3
+**/data/knowledge/k3/**
+**/RAG/package
+**/RAG/package/**
+**/*.age
+**/*.pem
+**/*.key
+**/*.pfx
+**/*.p12

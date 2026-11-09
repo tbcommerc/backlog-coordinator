@@ -152,7 +152,7 @@ export function renderAgentChat(app) {
             </div>
 
             <details class="chat-context-disclosure" id="chat-context-disclosure">
-              <summary><span id="chat-context-summary">Диалог: стандартный · без внешних источников</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+              <summary class="ui-disclosure-text"><span id="chat-context-summary">Диалог: стандартный · без внешних источников</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
               <div class="chat-context-details" id="chat-context-details"><strong>Как ассистент ведёт диалог</strong><p>Ассистент последовательно уточняет сведения, необходимые для качественного черновика.</p><strong>Источники ответа</strong><p>Ответ основан на сообщениях этого диалога. Внешние справочные материалы не использованы.</p></div>
             </details>
 
@@ -1465,7 +1465,7 @@ function updateRequirementWorkspace(resp = {}) {
         : `${filledInGroup} из ${group.slots.length}`;
       const rows = group.slots.map(key => renderRequirementMapField(key, fieldStates.get(key))).join('');
       return `<details class="requirement-map-group" data-map-group="${group.key}"${(expanded.get(group.key) ?? group.open) ? ' open' : ''}>
-        <summary><span>${escapeHtml(group.label)}</span><span class="requirement-map-group-status">${group.key === 'minimum' ? '' : (filledInGroup ? 'Есть сведения' : 'По необходимости')}</span></summary>
+        <summary class="ui-disclosure-text"><span>${escapeHtml(group.label)}</span><span class="requirement-map-group-status">${group.key === 'minimum' ? '' : (filledInGroup ? 'Есть сведения' : 'По необходимости')}</span></summary>
         <div class="requirement-map-group-fields">${rows}</div>
       </details>`;
     }).join('');
@@ -1668,7 +1668,7 @@ function renderRequirementMapField(key, state = getRequirementFieldState(key)) {
     ${valueMarkup}
     ${draftChanges.has(MAP_TO_DRAFT_FIELD[key] || key) ? renderDraftChangeSummary(draftChanges.get(MAP_TO_DRAFT_FIELD[key] || key)) : lastDraftChange && (DRAFT_TO_MAP_SLOT[lastDraftChange.field] || lastDraftChange.field) === key ? renderDraftChangeSummary(lastDraftChange) : ''}
     ${getDraftBlockingIssues(currentDraft).filter(item => item.slot === key).map(item => `<p class="requirement-map-warning">${escapeHtml(item.text)}</p>`).join('')}
-    ${getRequirementFieldEvidence(key) ? `<details class="requirement-field-source"><summary>Источник формулировки</summary>${getRequirementFieldEvidence(key)}</details>` : ''}
+    ${getRequirementFieldEvidence(key) ? `<details class="requirement-field-source"><summary class="ui-disclosure-text">Источник формулировки</summary>${getRequirementFieldEvidence(key)}</details>` : ''}
     ${review ? '<div class="requirement-map-warning"><i data-lucide="alert-circle" aria-hidden="true"></i> Ассистент не уверен — проверьте формулировку</div>' : ''}
   </article>`;
 }
@@ -1996,7 +1996,7 @@ function renderDraftReviewDetails(draft) {
   ].map(([label, items]) => [label, [...new Set(items)].filter(text => !getDraftBlockingIssues(draft).some(item => item.text === text))]).filter(([, items]) => items.length);
   if (!groups.length) return '';
   return `<section class="chat-review-details" aria-label="Замечания к требованию">
-    ${groups.map(([label, items]) => `<details class="chat-review-detail"><summary>${escapeHtml(label)} · ${items.length}</summary><ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></details>`).join('')}
+    ${groups.map(([label, items]) => `<details class="chat-review-detail"><summary class="ui-disclosure-text">${escapeHtml(label)} · ${items.length}</summary><ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></details>`).join('')}
   </section>`;
 }
 
@@ -2154,7 +2154,7 @@ export function getDraftChanges(before, after) {
 export function renderDraftChangeSummary(change) {
   if (!change?.label || change.before === change.after) return '';
   return `<details class="chat-draft-change" open>
-    <summary><i data-lucide="git-compare" aria-hidden="true"></i><span><strong>Раздел «${escapeHtml(change.label)}» обновлён</strong><small>Сравните формулировки перед отправкой</small></span></summary>
+    <summary class="ui-disclosure-text"><i data-lucide="git-compare" aria-hidden="true"></i><span><strong>Раздел «${escapeHtml(change.label)}» обновлён</strong><small>Сравните формулировки перед отправкой</small></span></summary>
     <div class="chat-draft-change-grid">
       <div><span>Было</span><p>${escapeHtml(change.before || 'Не заполнено')}</p></div>
       <div><span>Стало</span><p>${escapeHtml(change.after || 'Не заполнено')}</p></div>

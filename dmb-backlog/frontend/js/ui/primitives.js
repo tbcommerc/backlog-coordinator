@@ -33,7 +33,7 @@ export const ICON_ALIASES = {
 // Only presentation attributes are accepted. No event handlers, style or URLs.
 export function attributes(values = {}) {
   return Object.entries(values).filter(([key, value]) =>
-    /^(id|title|name|value|type|role|tabindex|hidden|disabled|required|readonly|autofocus|autocomplete|list|maxlength|min|max|step|rows|placeholder|aria-[a-z-]+|data-[a-z-]+)$/.test(key)
+    /^(id|title|name|value|type|role|form|tabindex|hidden|disabled|required|readonly|autofocus|autocomplete|list|maxlength|min|max|step|rows|placeholder|aria-[a-z-]+|data-[a-z-]+)$/.test(key)
     && value != null && (value !== false || /^(aria-|data-)/.test(key))
   ).map(([key, value]) => value === true && BOOLEAN_ATTRIBUTES.has(key) ? ` ${key}` : ` ${key}="${esc(value)}"`).join('');
 }
@@ -52,29 +52,30 @@ export function button({ label, icon: iconName, iconMarkup = '', variant = 'seco
 }
 
 // actions is trusted markup composed by the caller, never user-provided text.
-export function pageHeader({ title, description = '', actions = '', id, className = '', level = 1 } = {}) {
+export function pageHeader({ title, description = '', actions = '', titleAccessory = '', id, className = '', level = 1 } = {}) {
   const heading = level === 2 ? 'h2' : 'h1';
-  return `<div class="toolbar-title-row ui-page-header ${esc(className)}"><div class="toolbar-title-wrap"><${heading} class="toolbar-title"${attributes({ id })}>${esc(title)}</${heading}>${description ? `<p class="toolbar-subtitle">${esc(description)}</p>` : ''}</div>${actions}</div>`;
+  const titleHtml = `<${heading} class="toolbar-title"${attributes({ id })}>${esc(title)}</${heading}>`;
+  return `<div class="toolbar-title-row ui-page-header ${esc(className)}"><div class="toolbar-title-wrap">${titleAccessory ? `<div class="ui-page-heading">${titleHtml}${titleAccessory}</div>` : titleHtml}${description ? `<p class="toolbar-subtitle">${esc(description)}</p>` : ''}</div>${actions}</div>`;
 }
 
-export function filterChip({ label, icon: iconName, count = '—', countId, selected = false, tone = 'neutral', attrs = {}, className = '' } = {}) {
+export function filterChip({ label, icon: iconName, count = '—', countId, selected = false, tone = 'neutral', attrs = {}, className = '', variant = 'chip' } = {}) {
   const { type: ignoredType, ...rest } = attrs;
-  return `<button type="button" class="quick-filter-btn ui-filter-chip ${esc(className)}${selected ? ' active' : ''}"${attributes({ ...rest, 'aria-pressed': String(selected), 'data-ui-tone': TONES.has(tone) ? tone : 'neutral' })}>${iconName ? `<span class="quick-filter-icon">${icon(iconName)}</span>` : ''}<span class="quick-filter-info"><span class="quick-filter-label">${esc(label)}</span>${count == null ? '' : `<span class="sr-only"> · </span><strong class="quick-filter-count ui-counter"${attributes({ id: countId })}>${esc(count)}</strong>`}</span></button>`;
+  return `<button type="button" class="quick-filter-btn ui-filter-chip ${esc(className)}${selected ? ' active' : ''}${variant === 'navigation' ? ' ui-filter-navigation' : ''}"${attributes({ ...rest, 'aria-pressed': String(selected), 'data-ui-tone': TONES.has(tone) ? tone : 'neutral' })}>${iconName ? `<span class="quick-filter-icon">${icon(iconName)}</span>` : ''}<span class="quick-filter-info"><span class="quick-filter-label">${esc(label)}</span>${count == null ? '' : `<span class="sr-only"> · </span><strong class="quick-filter-count ui-counter"${attributes({ id: countId })}>${esc(count)}</strong>`}</span></button>`;
 }
 
 export function kpiCard({ label, value = '—', variant = 'metric', interactive = true, attrs = {}, className = '' } = {}) {
   const tag = interactive ? 'button' : 'div';
-  return `<${tag}${interactive ? ' type="button"' : ''} class="ui-kpi-card ${esc(className)}"${attributes(attrs)}><span>${esc(label)}</span><span class="sr-only"> · </span><strong${variant === 'text' ? ' class="ui-kpi-text"' : ''}>${esc(value)}</strong></${tag}>`;
+  return `<${tag}${interactive ? ' type="button"' : ''} class="ui-kpi-card${variant === 'inline' ? ' ui-kpi-inline' : ''} ${esc(className)}"${attributes(attrs)}><span>${esc(label)}</span><span class="sr-only"> · </span><strong${variant === 'text' ? ' class="ui-kpi-text"' : ''}>${esc(value)}</strong></${tag}>`;
 }
 
 // content is trusted markup composed by the caller. Native details owns keyboard state.
 export function collapseSection({ label, content = '', open = false, attrs = {}, className = '' } = {}) {
-  return `<details class="ui-collapse-section ${esc(className)}"${open ? ' open' : ''}${attributes(attrs)}><summary>${esc(label)}</summary>${content}</details>`;
+  return `<details class="ui-collapse-section ${esc(className)}"${open ? ' open' : ''}${attributes(attrs)}><summary class="ui-disclosure-text">${esc(label)}</summary>${content}</details>`;
 }
 
-export function badge({ label, tone = 'neutral', icon: iconName = '', className = '', attrs = {} } = {}) {
+export function badge({ label, tone = 'neutral', icon: iconName = '', className = '', attrs = {}, wrap = false } = {}) {
   const { 'data-ui-tone': ignoredTone, ...rest } = attrs;
-  return `<span class="badge ui-badge${className ? ` ${esc(className)}` : ''}" data-ui-tone="${TONES.has(tone) ? tone : 'neutral'}"${attributes(rest)}>${iconName ? icon(iconName) : ''}<span>${esc(label)}</span></span>`;
+  return `<span class="badge ui-badge${wrap ? ' ui-badge-wrap' : ''}${className ? ` ${esc(className)}` : ''}" data-ui-tone="${TONES.has(tone) ? tone : 'neutral'}"${attributes(rest)}>${iconName ? icon(iconName) : ''}<span>${esc(label)}</span></span>`;
 }
 
 // Native checkbox keeps browser keyboard behavior and a full-size label target.
@@ -115,8 +116,13 @@ export function tab({ id, label, panelId, selected = false, disabled = false, ic
 }
 
 // The renderers own appearance, callers own selection and business transitions.
-export function tabs({ id, label, items = [], selected, orientation = 'horizontal' } = {}) {
+export function tabs({ id, label, items = [], selected, orientation = 'horizontal', variant = 'default' } = {}) {
   selected = items.find(item => item.id === selected && !item.disabled)?.id
     ?? items.find(item => !item.disabled)?.id;
-  return `<div class="ui-tabs" role="tablist" aria-orientation="${orientation === 'vertical' ? 'vertical' : 'horizontal'}" aria-label="${esc(label)}">${items.map(item => tab({ id: `${id}-${item.id}-tab`, panelId: `${id}-${item.id}-panel`, label: item.label, selected: item.id === selected, disabled: item.disabled })).join('')}</div>`;
+  return `<div class="ui-tabs${variant === 'fit' ? ' ui-tabs-fit' : ''}" role="tablist" aria-orientation="${orientation === 'vertical' ? 'vertical' : 'horizontal'}" aria-label="${esc(label)}">${items.map(item => tab({ id: `${id}-${item.id}-tab`, panelId: `${id}-${item.id}-panel`, label: item.label, selected: item.id === selected, disabled: item.disabled })).join('')}</div>`;
+}
+
+// Route links preserve native navigation semantics.
+export function routeTabs({label, items = [], selected} = {}) {
+  return `<nav class="ui-tabs ui-route-tabs" aria-label="${esc(label)}">${items.map(item => `<a class="ui-tab" href="${esc(String(item.href).startsWith('#/') ? item.href : '#/')}"${item.id === selected ? ' aria-current="page"' : ''}>${esc(item.label)}</a>`).join('')}</nav>`;
 }

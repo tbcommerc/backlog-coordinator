@@ -6,7 +6,7 @@ const read = path => readFile(new URL(path, import.meta.url), 'utf8');
 
 test('legacy greenfield V2 route redirects to the canonical fork-based V2 page', async () => {
   const router = await read('../js/router.js');
-  assert.ok(router.includes("history.replaceState(null, '', '#/agent-v2')"));
+  assert.ok(router.includes("history.replaceState(this.historyStateFor('replaceState',{}), '', '#/agent-v2')"));
   assert.equal(router.includes("import('./assistant-v2/routes.js"), false);
   assert.equal(router.includes("from './assistant-v2/"), false);
 });

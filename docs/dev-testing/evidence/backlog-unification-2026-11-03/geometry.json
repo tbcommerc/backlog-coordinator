@@ -1,0 +1,730 @@
+{
+  "all-dark-1024x580": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 659.484375
+  },
+  "all-dark-1024x768": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 659.484375
+  },
+  "all-dark-1440x900": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 285,
+        "right": 462.46875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 466.46875,
+        "right": 589.921875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 867.484375
+  },
+  "all-dark-1920x1080": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 285,
+        "right": 462.46875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 466.46875,
+        "right": 589.921875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 460.578125
+  },
+  "all-dark-320x780": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 44,
+        "left": 17,
+        "right": 194.46875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 44,
+        "left": 17,
+        "right": 140.453125,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 278
+  },
+  "all-dark-390x844": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 44,
+        "left": 17,
+        "right": 194.46875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 44,
+        "left": 198.46875,
+        "right": 321.921875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 348
+  },
+  "all-dark-768x1024": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 403.484375
+  },
+  "all-light-1024x580": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 659.484375
+  },
+  "all-light-1024x768": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 659.484375
+  },
+  "all-light-1440x900": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 285,
+        "right": 462.46875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 466.46875,
+        "right": 589.921875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 867.484375
+  },
+  "all-light-1920x1080": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 285,
+        "right": 462.46875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 466.46875,
+        "right": 589.921875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 460.578125
+  },
+  "all-light-320x780": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 44,
+        "left": 17,
+        "right": 194.46875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 44,
+        "left": 17,
+        "right": 140.453125,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 278
+  },
+  "all-light-390x844": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 44,
+        "left": 17,
+        "right": 194.46875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 44,
+        "left": 198.46875,
+        "right": 321.921875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 348
+  },
+  "all-light-768x1024": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 403.484375
+  },
+  "team-dark-1024x580": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 659.484375
+  },
+  "team-dark-1024x768": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 659.484375
+  },
+  "team-dark-1440x900": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 285,
+        "right": 462.46875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 466.46875,
+        "right": 589.921875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 867.484375
+  },
+  "team-dark-1920x1080": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 285,
+        "right": 462.46875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 466.46875,
+        "right": 589.921875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 460.578125
+  },
+  "team-dark-320x780": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 44,
+        "left": 17,
+        "right": 194.46875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 44,
+        "left": 17,
+        "right": 140.453125,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 278
+  },
+  "team-dark-390x844": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 44,
+        "left": 17,
+        "right": 194.46875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 44,
+        "left": 198.46875,
+        "right": 321.921875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 348
+  },
+  "team-dark-768x1024": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(165, 180, 252)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(26, 26, 46)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 403.484375
+  },
+  "team-light-1024x580": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 659.484375
+  },
+  "team-light-1024x768": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 659.484375
+  },
+  "team-light-1440x900": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 285,
+        "right": 462.46875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 466.46875,
+        "right": 589.921875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 867.484375
+  },
+  "team-light-1920x1080": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 285,
+        "right": 462.46875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 466.46875,
+        "right": 589.921875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 460.578125
+  },
+  "team-light-320x780": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 44,
+        "left": 17,
+        "right": 194.46875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 44,
+        "left": 17,
+        "right": 140.453125,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 278
+  },
+  "team-light-390x844": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 44,
+        "left": 17,
+        "right": 194.46875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 44,
+        "left": 198.46875,
+        "right": 321.921875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 348
+  },
+  "team-light-768x1024": {
+    "overflow": 0,
+    "buttons": [
+      {
+        "width": 177.46875,
+        "height": 32,
+        "left": 89,
+        "right": 266.46875,
+        "color": "rgb(79, 70, 229)",
+        "background": "rgba(99, 102, 241, 0.12)",
+        "label": "Моя команда · Продукт",
+        "font": "13px"
+      },
+      {
+        "width": 123.453125,
+        "height": 32,
+        "left": 270.46875,
+        "right": 393.921875,
+        "color": "rgb(30, 41, 59)",
+        "background": "rgb(255, 255, 255)",
+        "label": "Все доступные",
+        "font": "13px"
+      }
+    ],
+    "search": 403.484375
+  }
+}

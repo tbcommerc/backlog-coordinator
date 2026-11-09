@@ -65,7 +65,6 @@ class WorkUpdate(Version):
     assignee_id: int | None = Field(None, gt=0)
     due_date: date | None = None
     acceptor_id: int | None = Field(None, gt=0)
-    blocked_reason: str | None = Field(None, max_length=5000)
 
     @model_validator(mode="after")
     def non_null_text(self):

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from copy import deepcopy
 from pathlib import Path
 import httpx
+from dmb_agent_contracts.runtime import AsyncRuntimePort, RuntimeCapabilities
 from contracts.models import Answer
 from contracts.catalog import compact_schema
 
@@ -49,7 +50,25 @@ def generation_schema(schema):
     return result
 
 
-class OpenCodeRuntime:
+def assemble_candidate(candidate, bridge, context):
+    clarification = candidate.get("clarification")
+    if isinstance(clarification, dict) and isinstance(clarification.get("options"), list):
+        # Provider grammar omits array bounds; bound UI choices before strict validation.
+        clarification["options"] = clarification["options"][:5]
+    candidate.setdefault("context", context)
+    candidate.setdefault("sources", list({s.source_id: s.model_dump(mode="json") for r in bridge.results for s in r.sources}.values()))
+    candidate.setdefault("coverage", bridge.results[-1].coverage.model_dump() if bridge.results else {})
+    candidate.setdefault("as_of", bridge.results[-1].observed_at if bridge.results else datetime.now(timezone.utc))
+    answer = Answer.model_validate(candidate)
+    known = {result.snapshot_ref for result in bridge.results}
+    if any(block.server_result_ref not in known for block in answer.data_blocks):
+        raise ValueError("unknown_result_reference")
+    if answer.kind in {"answer", "partial", "no_results"} and not bridge.results:
+        raise ValueError("evidence_missing")
+    return answer
+
+
+class OpenCodeRuntime(AsyncRuntimePort[dict, Answer]):
     def __init__(self, launcher, *, model, client_factory=None):
         self.launcher, self.model = launcher, model
         self.client_factory = client_factory or (lambda instance: httpx.AsyncClient(
@@ -57,6 +76,10 @@ class OpenCodeRuntime:
             timeout=15, trust_env=False, follow_redirects=False))
         self.clients = {}
         self.bridges = {}
+
+    def capabilities(self):
+        # The prepare handshake verifies these capabilities against the pinned instance.
+        return RuntimeCapabilities(VERSION, True, True, True, True, True, True, True, False)
 
     async def prepare(self, context, bridge, schema):
         instance = await self.launcher.launch(context, bridge, self.model)
@@ -180,25 +203,10 @@ class OpenCodeRuntime:
                 else:
                     text = "".join(p.get("text", "") for p in message.get("parts", []) if p.get("type") == "text")
                     candidate = json.loads(text)
-                clarification = candidate.get("clarification")
-                if isinstance(clarification, dict) and isinstance(clarification.get("options"), list):
-                    # Provider grammar omits array bounds; bound UI choices before strict validation.
-                    clarification["options"] = clarification["options"][:5]
-                bridge = self.bridges[handle["instance"]]
-                candidate.setdefault("context", handle["context"])
-                candidate.setdefault("sources", list({s.source_id: s.model_dump(mode="json") for r in bridge.results for s in r.sources}.values()))
-                candidate.setdefault("coverage", bridge.results[-1].coverage.model_dump() if bridge.results else {})
-                candidate.setdefault("as_of", bridge.results[-1].observed_at if bridge.results else datetime.now(timezone.utc))
-                answer = Answer.model_validate(candidate)
-                known = {result.snapshot_ref for result in bridge.results}
-                if any(block.server_result_ref not in known for block in answer.data_blocks):
-                    raise ValueError("unknown_result_reference")
-                if answer.kind in {"answer", "partial", "no_results"} and not bridge.results:
-                    raise ValueError("evidence_missing")
-                return answer
+                return assemble_candidate(candidate, self.bridges[handle["instance"]], handle["context"])
         raise ValueError("candidate_missing")
 
-    async def cancel(self, handle):
+    async def cancel(self, handle, reason="user_cancel"):
         if handle.get("session"):
             await self._request(handle, "POST", f"/session/{handle['session']}/abort")
 

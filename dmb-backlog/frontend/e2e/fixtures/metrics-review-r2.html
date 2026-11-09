@@ -1,0 +1,33 @@
+<!doctype html><html lang="ru" data-theme="light"><meta charset="utf-8"><title>Изолированная проверка метрик R2</title>
+<body><main></main><script type="module">
+// Deliberately synthetic transport. This page never requests the live API.
+import './spaStyles.js';
+import {initModalAccessibility} from '../../js/modalAccessibility.js';
+import {renderQuarterlyMetrics,initQuarterlyMetrics} from '../../js/components/metricsQuarterly.js';
+initModalAccessibility();
+const mode=new URLSearchParams(location.search).get('mode')||'503';
+const period={id:7,year:2026,quarter:4,state:'active',availability:'active',start_date:'2026-10-01',end_date:'2026-12-31',plan:{target:'100',result_type:'volume',direction:'up',source_snapshot:'Синтетический источник',cadence:'none'},fact:null,result:{outcome:'no_data',progress:null,is_final:false},observations:{count:0,violation_count:null},schedule:{next_due:null},capabilities:{write_fact:true,add_measurement:true,close:false,correct_final:false}};
+const metric={id:1,version:1,public_id:'QA-FIXTURE',title:'Изолированный сценарий '+mode,unit:'шт',team_id:1,owner_id:1,team:'Fixture',owner:'Fixture',model_version:'quarterly_v2',lifecycle_state:'tracking',source:'Синтетический источник',method:'Сумма',preferred_result_type:'volume',default_direction:'up',annual_aggregation:'sum',display_precision:2,year:2026,year_settings:{expected_quarters:[4],aggregation:'sum',scale:100},permissions:{edit:true,comment:true},periods:[period],quarters:[1,2,3].map(quarter=>({quarter,availability:'outside_scope'})).concat(period),legacy_periods:[],annual:{completeness:'empty',scope_adjusted:true,coverage:{expected:[4],missing:[4],cancelled:[]},confirmed_value:null,preliminary_value:null,final_value:null}};
+const options={user_id:1,team_id:1,can_create:true,business_date:'2026-11-03',teams:[{id:1,name:'Fixture'}],users:[{id:1,name:'Fixture'}],projects:[],meetings:[]};
+let writes=0,failedRead=false;const calls=[];
+const app={router:{},api:{request:async(method,path,body,opts)=>{
+ if(method!=='GET'){
+  calls.push({method,path,body,key:opts.idempotencyKey});writes++;
+  let log=document.querySelector('#transport-log');if(!log){log=document.createElement('pre');log.id='transport-log';document.body.append(log);}log.textContent=JSON.stringify(calls,null,2);
+  if(writes===1){
+   if(mode==='503')throw Object.assign(new Error('QA: сервис временно недоступен'),{status:503});
+   if(mode==='timeout')throw Object.assign(new Error('QA: время ожидания истекло'),{name:'TimeoutError'});
+   if(mode==='401')throw Object.assign(new Error('QA: сессия истекла'),{status:401});
+   if(mode==='422')throw Object.assign(new Error('QA: проверьте дату'),{status:422,fields:{as_of_date:'QA: некорректная дата'}});
+  }
+  period.fact={value:body.value,as_of_date:body.as_of_date,status:'preliminary'};period.result={outcome:'achieved',progress:'100',is_final:false};metric.version++;return metric;
+ }
+ if(mode==='partial' && path.includes('/files') && !failedRead){failedRead=true;throw Object.assign(new Error('QA: файлы недоступны'),{status:503});}
+ if(path.endsWith('/options'))return options;
+ if(path.startsWith('/metrics?'))return {items:[{...metric,period}],total:1,page:1,pages:1,summary:{missing_fact:1,awaiting_close:0,not_achieved:0,overdue:0}};
+ if(/\/(observation-chart|measurements|history|comments|files|links|reports)(?:\?|$)/.test(path))return {items:[],total:0};
+ return metric;
+}}};
+location.hash='#/metrics/1?year=2026&quarter=4';
+document.querySelector('main').innerHTML=await renderQuarterlyMetrics(app);initQuarterlyMetrics(app);
+</script></body></html>

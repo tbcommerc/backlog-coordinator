@@ -36,7 +36,9 @@ from requirement_artifacts import (
 )
 
 logger = logging.getLogger("agent_integration")
-router = APIRouter()
+from services.agent_recovery import bind_actor,guard_v1,trusted_headers
+
+router = APIRouter(dependencies=[Depends(bind_actor),Depends(guard_v1)])
 
 # Serialises submissions for the same dialogue inside a worker. The database
 # constraint on RequirementRequest is the cross-worker safety net.
@@ -151,6 +153,7 @@ def _agent_headers() -> dict:
     return {
         "Content-Type": "application/json",
         "X-Agent-Secret": settings.AGENT_SECRET,
+        **trusted_headers(),
     }
 
 
@@ -177,17 +180,18 @@ def _call_agent(method: str, path: str, payload: dict | None = None) -> dict:
         return json.loads(body.decode("utf-8"))
     except urllib.error.HTTPError as e:
         outcome = f"http_{e.code}"
-        body = e.read().decode("utf-8", errors="replace")[:300]
-        logger.error("agent %s %s -> %s: %s", method, path, e.code, body)
+        body = e.read(4096).decode("utf-8", errors="replace")[:300]
+        logger.error("agent %s %s -> %s", method, path, e.code)
         if path == "/api/agent/meetings/extract" and e.code == 503:
             try:
                 detail = json.loads(body).get("detail")
             except json.JSONDecodeError:
                 detail = None
-            if isinstance(detail, dict) and detail.get("code") == "meeting_ai_auth":
+            from services.meeting_analysis import ERROR_MESSAGES
+            code = detail.get("code") if isinstance(detail, dict) else None
+            if isinstance(code, str) and code in {"meeting_ai_auth", "meeting_ai_quota", "interrupted", "operation_limit", "invalid_result"}:
                 raise HTTPException(status_code=503, detail={
-                    "code": "meeting_ai_auth",
-                    "message": "Анализ недоступен: провайдер AI отклонил авторизацию. Администратору нужно проверить ключ и доступ к модели.",
+                    "code": code, "message": ERROR_MESSAGES[code],
                 }) from None
         if e.code == 409:
             try:

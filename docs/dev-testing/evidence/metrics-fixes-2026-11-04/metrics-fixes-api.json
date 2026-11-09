@@ -1,0 +1,33 @@
+[
+  {
+    "metric": "MET-10472",
+    "annual_matches_detail": true,
+    "plans_match_detail": true
+  },
+  {
+    "metric": "MET-10470",
+    "annual_matches_detail": true,
+    "plans_match_detail": true
+  },
+  {
+    "metric": "MET-10473",
+    "annual_matches_detail": true,
+    "plans_match_detail": true
+  },
+  {
+    "metric": "MET-10471",
+    "annual_matches_detail": true,
+    "plans_match_detail": true
+  },
+  {
+    "file_add_remove": true,
+    "metric": "MET-10471",
+    "filename": "QA-METRICS-FIXES-20261104.txt"
+  },
+  {
+    "link_add_remove": true,
+    "linked_task_still_exists": true,
+    "metric": "MET-10471",
+    "task": "WRK-108"
+  }
+]

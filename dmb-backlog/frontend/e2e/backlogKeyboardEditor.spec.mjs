@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {mockApp} from './helpers/backlogMock.mjs';
 for(const route of ['backlog','team-backlog'])test('table task opens using keyboard: '+route,async({page})=>{
- const {writes}=await mockApp(page);await page.goto('/#/'+route);const link=page.locator('tr[data-task-id="41"] a[href="#/'+route+'?task=41"]');await expect(link).toHaveAccessibleName(/Открыть задачу:/);await link.focus();await expect(link).toBeFocused();await page.keyboard.press('Enter');await expect(page.locator('#task-detail-overlay')).toBeVisible();expect(writes).toHaveLength(0);
+ const {writes}=await mockApp(page);await page.goto('/#/'+route);const link=page.locator('tr[data-task-id="41"] a[href*="task=41"]');await expect(link).toHaveAccessibleName(/Открыть задачу:/);await link.focus();await expect(link).toBeFocused();await page.keyboard.press('Enter');await expect(page.locator('#task-detail-overlay')).toBeVisible();expect(writes).toHaveLength(0);
 });
 async function open(page){await page.goto('/e2e/fixtures/taskCardIncrement.html#/tasks?task=42');await expect(page.locator('html')).toHaveAttribute('data-fixture-ready','true');}
 test('full editor names department, DID client and financial effect',async({page})=>{
