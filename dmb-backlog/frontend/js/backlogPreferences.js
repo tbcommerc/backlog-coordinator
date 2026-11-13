@@ -8,7 +8,7 @@ export function emptyPreferences(id){return {schemaVersion:2,userId:id,revision:
 export function normalizeColumns(raw={}) {
  const settings={}; for(const k of columns)if(typeof raw.settings?.[k]==='boolean')settings[k]=raw.settings[k]; settings.id=true;
  const order=['id',...new Set([...(Array.isArray(raw.order)?raw.order:[]),...columns].filter(k=>columns.includes(k)&&k!=='id'))];
- const widths={},fixed={}; for(const k of columns){ const w=raw.widths?.[k];if(Number.isFinite(w)&&w>=32&&w<=3000)widths[k]=w;if(raw.fixed?.[k]===true)fixed[k]=true; }
+ const widths={},fixed={}; for(const k of columns){ const w=raw.widths?.[k];if(Number.isFinite(w)&&w>=32&&w<=3000)widths[k]=w;const f=raw.fixed?.[k];if(f===true)fixed[k]=true;else if(Number.isFinite(f)&&f>=32&&f<=3000)fixed[k]=f; }
  const sort=columns.includes(raw.sort?.key)?{key:raw.sort.key,dir:raw.sort.dir==='desc'?'desc':'asc'}:{key:null,dir:'asc'};
  return {settings,order,widths,fixed,sort};
 }

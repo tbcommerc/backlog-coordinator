@@ -8,7 +8,7 @@ export const families = [
  ['Checkbox','checkbox','.ui-checkbox','checked unchecked disabled touch','uiKitComposites.spec.mjs'],
  ['Switch','toggleSwitch','.ui-switch','checked unchecked disabled keyboard','uiKitComposites.spec.mjs'],
  ['RadioGroup','radioGroup','.ui-choice-group','selected disabled required keyboard','uiKitComposites.spec.mjs'],
- ['Tabs','tab tabs mountTabs tabNavigationTarget','.ui-tab','selected disabled keyboard horizontal vertical','uiKitCore.spec.mjs'],
+ ['Tabs','tab tabs mountTabs tabNavigationTarget routeTabs','.ui-tab','selected disabled keyboard horizontal vertical','uiKitCore.spec.mjs'],
  ['InfoChip','badge tag','.ui-badge .ui-tag .ui-info-chip','neutral info success warning danger accent hidden long','infoChips.spec.mjs'],
  ['Counter','counter','.ui-counter .quick-filter-count','zero unknown loading capped selected unread warning danger hidden','uiKitDeepContracts.spec.mjs'],
  ['Avatar','avatar','.ui-avatar','initials fallback color size','uiKitDataDisplay.spec.mjs'],

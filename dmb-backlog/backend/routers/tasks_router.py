@@ -1336,8 +1336,8 @@ def update_task(
                     task_id=task.id,
                     changed_by=current_user.id,
                     field_name=field,
-                    old_value=str(old_value) if old_value else None,
-                    new_value=str(new_value) if new_value else None
+                    old_value=str(old_value) if old_value is not None else None,
+                    new_value=str(new_value) if new_value is not None else None
                 )
                 db.add(history)
             setattr(task, field, new_value)

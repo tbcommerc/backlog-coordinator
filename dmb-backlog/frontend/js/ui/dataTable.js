@@ -1,5 +1,5 @@
 import { escapeHtml as esc } from '../htmlUtils.js';
-import { attributes, badge, button } from './primitives.js';
+import { attributes, badge } from './primitives.js';
 import { safeExternalUrl } from '../urlUtils.js';
 import { renderViewState } from '../components/viewState.js';
 
@@ -37,8 +37,8 @@ export function dataTable({ label, columns = [], rows = [], sort = null, state =
   state = ['loading','error','empty'].includes(state) ? state : rows.length ? 'default' : 'empty';
   const header = columns.map(col => {
     const direction = sort?.key === col.key && ['asc','desc'].includes(sort.direction) ? sort.direction : null;
-    const title = col.sortable ? button({ label: col.label, variant: 'ghost', className: 'ui-table-sort', attrs: { 'data-ui-sort': col.key, 'aria-label': `${col.label}: сортировать по ${direction === 'asc' ? 'убыванию' : 'возрастанию'}`, disabled: state === 'loading' } }) + `<span aria-hidden="true">${direction === 'asc' ? '↑' : direction === 'desc' ? '↓' : '↕'}</span>` : esc(col.label);
-    return `<th scope="col"${col.sortable ? ` aria-sort="${direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}"` : ''}>${title}</th>`;
+    const title = col.sortable ? `<button type="button" class="btn btn-ghost btn-sm ui-btn ui-table-sort table-sort-button"${attributes({ 'data-ui-sort': col.key, title: col.label, 'aria-label': `${col.label}: сортировать по ${direction === 'asc' ? 'убыванию' : 'возрастанию'}`, disabled: state === 'loading' })}><span class="th-label">${esc(col.label)}</span><span class="sort-icon" aria-hidden="true">${direction === 'asc' ? '↑' : direction === 'desc' ? '↓' : '↕'}</span></button>` : `<span class="ui-table-heading" title="${esc(col.label)}"><span class="th-label">${esc(col.label)}</span></span>`;
+    return `<th scope="col" data-column-key="${esc(col.key)}"${col.resizable === false ? ' data-ui-resizable="false"' : ''}${col.sortable ? ` aria-sort="${direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}"` : ''}>${title}</th>`;
   }).join('');
   const body = state === 'default' ? rows.map((row, index) => `<tr>${columns.map(col => `<td data-label="${esc(col.label)}">${col.render ? col.render(row, index) : tableCell({ value: row[col.key], type: col.type })}</td>`).join('')}</tr>`).join('') : '';
   return `<div class="ui-data-table ${esc(className)}"${attributes({ ...attrs, 'data-ui-state': state, 'data-ui-responsive': responsive === 'cards' ? 'cards' : 'scroll', 'data-ui-table': variant === 'registry' ? 'registry' : 'default' })}>

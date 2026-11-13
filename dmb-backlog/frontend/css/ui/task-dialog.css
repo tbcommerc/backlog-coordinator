@@ -1,0 +1,44 @@
+/* Task dialog — approved task-card proposal, 09.11.2026. */
+.ui-task-dialog-overlay{--task-overlay-background:rgba(15,23,42,.34);--task-overlay-blur:none}
+.ui-task-dialog{box-sizing:border-box;--control-font:12px;width:min(1160px,100%);height:min(790px,calc(100dvh - 48px));max-width:1160px;max-height:calc(100dvh - 48px);display:flex;flex-direction:column;overflow:hidden;position:relative;background:var(--bg-secondary);border:0;border-radius:var(--radius-lg);box-shadow:0 20px 64px rgb(15 23 42 / 22%);font-family:var(--font-family);font-size:14px;line-height:1.5;color:var(--text-primary)}
+.ui-task-dialog-head{padding:20px 28px 16px;border-bottom:1px solid var(--border-color);flex:none}
+.ui-task-dialog-head-row,.ui-task-dialog-meta,.ui-task-dialog-actions{display:flex;align-items:center;gap:10px;min-width:0}
+.ui-task-dialog-head-row{justify-content:space-between}
+.ui-task-dialog-actions{gap:4px;margin-left:auto;flex:none}
+.ui-task-dialog-id{font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap}
+.ui-task-dialog-project{font-size:12px;color:var(--text-secondary)}
+.ui-task-dialog-title{margin:10px 0 0;font-size:20px;line-height:28px;font-weight:600;letter-spacing:-.02em;overflow-wrap:anywhere}
+.ui-task-dialog-title-row{display:flex;align-items:center;gap:20px}
+.ui-task-dialog-title-row>.ui-task-dialog-title{min-width:0}
+.ui-task-dialog-edit-badge{margin-top:10px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:1}
+.ui-task-dialog-body{padding:24px 28px;overflow:auto;min-height:0;flex:1;background:var(--bg-secondary)}
+.ui-task-dialog-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 28px;border-top:1px solid var(--border-color);background:var(--bg-secondary);flex:none}
+.ui-task-dialog-foot .fmeta{min-width:0;font-size:12px;line-height:18px;color:var(--text-secondary);overflow-wrap:anywhere}
+.ui-task-dialog-foot .factions{display:flex;align-items:center;gap:8px;flex:none}
+.ui-task-dialog-tabs-shell{position:relative;flex:none;border-bottom:1px solid var(--border-color);background:var(--bg-secondary);min-width:0}
+.ui-task-dialog-tabs{display:flex;padding:0 24px;gap:8px;border:0;white-space:nowrap;overflow-x:auto;scrollbar-width:thin}
+.ui-task-dialog-tab{flex:none}
+.ui-task-dialog-tabs-shell>.ui-task-dialog-scroll{display:none}
+.ui-task-dialog-tabs-shell.has-overflow>.ui-task-dialog-scroll{display:flex;position:absolute;top:0;bottom:0;z-index:2;background:var(--bg-secondary)}
+.ui-task-dialog-tabs-shell.has-overflow .ui-task-dialog-tabs{padding-right:40px;padding-left:40px}
+.ui-task-dialog-tabs-shell>.ui-task-dialog-scroll-left{left:0}
+.ui-task-dialog-tabs-shell>.ui-task-dialog-scroll-right{right:0}
+.ui-task-dialog-tabs-shell>.ui-task-dialog-scroll:disabled{display:none}
+@media(max-width:700px){
+ .ui-task-dialog-overlay{--task-overlay-mobile-padding:0px}
+ .ui-task-dialog{box-sizing:border-box;--control-font:12px;width:100%;height:100dvh;max-height:100dvh;border-radius:0}
+ .ui-task-dialog-head{padding:14px 16px 12px}
+ .ui-task-dialog-title{font-size:18px;line-height:24px;margin-top:8px}
+ .ui-task-dialog-meta>.ui-badge,.ui-task-dialog-project{display:none}
+ .ui-task-dialog-body{padding:18px 16px}
+ .ui-task-dialog-tabs{padding:0 12px}
+ .ui-task-dialog-foot{padding:12px 16px;gap:12px}
+ .ui-task-dialog-foot .fmeta{flex:1}
+ .ui-task-dialog-foot .factions{flex-wrap:nowrap;justify-content:flex-end;gap:6px}
+ .ui-task-dialog-foot .fmeta{max-width:45%;font-size:12px}
+}
+
+.ui-task-dialog-scroll{position:absolute;display:none;width:32px;border:0;color:var(--text-secondary);align-items:center;justify-content:center;font:inherit;cursor:pointer}
+.ui-task-dialog-scroll:focus-visible{outline:2px solid var(--focus-color);outline-offset:-3px}
+.ui-task-dialog-foot .edit-change-summary{display:grid;gap:2px}
+.ui-task-dialog-foot .edit-change-summary strong{font-weight:400}

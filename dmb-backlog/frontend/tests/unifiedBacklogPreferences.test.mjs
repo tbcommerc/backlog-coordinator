@@ -2,6 +2,13 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {createBacklogPreferences,importLegacyPreferences,preferenceKey,normalizeColumns,LEGACY_CLAIM} from '../js/backlogPreferences.js';
 const storage=()=>{const data=new Map();return {data,getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};};
 const locks=()=>{const queues=new Map();return {request:(key,fn)=>{const p=(queues.get(key)||Promise.resolve()).then(fn);queues.set(key,p.catch(()=>{}));return p;}};};
+test('manual column pixels survive preference round-trip and legacy flags remain readable',async()=>{
+ const s=storage(),u={id:101},r=createBacklogPreferences(u,{storage:s,locks:locks()});
+ const value=normalizeColumns({widths:{id:170,title:220},fixed:{id:230,title:true,owner:-1}});
+ await r.update(d=>{d.contexts.all.columns=value;});
+ const reloaded=createBacklogPreferences(u,{storage:s,locks:locks()}).context('all').columns;
+ assert.equal(reloaded.fixed.id,230);assert.equal(reloaded.fixed.title,true);assert.equal(reloaded.fixed.owner,undefined);
+});
 test('BU-M01/M05/M07/M08/M11/M15: import is lossless, idempotent, and leaves legacy untouched',async()=>{
  const s=storage(),l=locks(),u={id:1,team_id:7};const old={items:[{id:'same',name:'Русское имя',state:{toolbar:{search:'поиск',filters:{status_name:['А','Б']}},page:{view:'cards'}}}],defaultId:'same'};
  for(const scope of ['backlog','team'])s.setItem('dmb_saved_views_v1_'+scope,JSON.stringify(old));

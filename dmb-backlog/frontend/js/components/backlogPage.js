@@ -7,7 +7,7 @@ import { configureToolbarPreferences, refreshToolbarViews, clearToolbarDirectori
 import { openCreateTaskModal } from './modal.js?v=125';
 import { canUseReportingStatusWorkspace, reportingStatusHref } from './reportingStatuses.js?v=22';
 import { loadBacklogTaskPages } from '../backlogTaskLoader.js';
-import { pagination as kitPagination } from '../ui/forms.js';
+import { pagination as kitPagination, alert as uiAlert } from '../ui/forms.js';
 import { badge as uiBadge } from '../ui/primitives.js';
 import { taskStatusTone, taskPriorityTone } from '../taskDisplay.js';
 import { formatCreatedDate, supplementalTaskValue } from '../taskDisplay.js';
@@ -106,7 +106,7 @@ export function renderBacklogPage(app) {
   return `
     ${renderToolbar('backlog', {
       title: 'Бэклог',
-      titleAccessory:scopeMarkup(),
+      actionsPrefix:scopeMarkup(),
       keepTitleContextInline: true,
       subtitle: '',
       canWrite: canCreate(),
@@ -127,7 +127,7 @@ export function renderBacklogPage(app) {
 
     <div id="tasks-content" data-ready="false">
     <p id="backlog-storage-warning" role="status" hidden></p>
-    <p id="backlog-stale" role="status" hidden>Данные изменились — обновить после завершения</p>
+    <div id="backlog-stale" class="ui-registry-notice" role="status" aria-live="polite" hidden></div>
       <div id="backlog-bulk-actions" class="flex items-center gap-3" style="margin-bottom:var(--space-4);display:none;">
         <span class="text-secondary">Выбрано: <strong id="backlog-selected-count">0</strong></span>
         <button class="btn btn-secondary btn-sm" id="backlog-bulk-selected">Массовые операции (0)</button>
@@ -298,7 +298,7 @@ export async function initBacklogPage(app) {
   const deferredTimer=setInterval(()=>{if(deferredRefresh&&!document.hidden&&!isBacklogInteractionActive()&&!tasksLoadInProgress){deferredRefresh=false;refreshBacklogPage();}},1000);activeCleanup.push(()=>clearInterval(deferredTimer));
   const onVisibility=()=>{if(!document.hidden&&stale)refreshBacklogPage();};
   document.addEventListener('visibilitychange',onVisibility);activeCleanup.push(()=>document.removeEventListener('visibilitychange',onVisibility));
-  const onStorage=e=>{if(e.key===`dmb_backlog_workspace_v2:${user.id}`){document.getElementById('backlog-stale')?.removeAttribute('hidden');if(!document.activeElement?.closest('.saved-view-rename-editor'))refreshToolbarViews('backlog');}};
+  const onStorage=e=>{if(e.key===`dmb_backlog_workspace_v2:${user.id}`){if(!stale)showBacklogNotice('preferences');if(!document.activeElement?.closest('.saved-view-rename-editor'))refreshToolbarViews('backlog');}};
   window.addEventListener('storage',onStorage);activeCleanup.push(()=>window.removeEventListener('storage',onStorage));
 }
 
@@ -330,7 +330,7 @@ function loadBacklogColumnState() {
   }
   if (st.fixed) {
     Object.keys(columnFixed).forEach(k => delete columnFixed[k]);
-    Object.keys(st.fixed).forEach(k => { if (st.fixed[k]) columnFixed[k] = st.fixed[k]; });
+    Object.keys(st.fixed).forEach(k => { if (st.fixed[k]) columnFixed[k] = st.fixed[k] === true ? (columnWidths[k] || 90) : st.fixed[k]; });
   }
   if (st.sort && st.sort.key) {
     columnSort.key = st.sort.key;
@@ -356,12 +356,38 @@ function renderSkeletonRows(count) {
   `).join('');
 }
 
+function showBacklogNotice(kind = 'error') {
+  const notice = document.getElementById('backlog-stale');
+  if (!notice) return;
+  const states = {
+    error: ['Данные могут быть неактуальны', 'Не удалось обновить список задач.', 'warning', true],
+    deferred: ['Обновление отложено', 'Список обновится после завершения редактирования и снятия выделения задач.', 'info', false],
+    unknown: ['Результат операции не подтверждён', 'Обновите список задач перед повтором массовой операции.', 'warning', true],
+    preferences: ['Настройки изменились в другой вкладке', 'Список сохранённых представлений обновлён.', 'info', false],
+    access: ['Не удалось проверить доступ', 'Данные могут быть неактуальны. Повторите обновление списка.', 'warning', true],
+  };
+  const [title, message, tone, actionable] = states[kind] || states.error;
+  notice.innerHTML = uiAlert({ title, message, tone, variant: 'inline', action: actionable ? { label: 'Обновить', attrs: { 'data-backlog-retry': '' } } : null });
+  notice.hidden = false;
+  notice.querySelector('[data-backlog-retry]')?.addEventListener('click', () => refreshBacklogPage());
+  window.lucide?.createIcons();
+}
+
+function setBacklogNoticeLoading(loading) {
+  const button = document.querySelector('#backlog-stale [data-backlog-retry]');
+  if (!button) return;
+  button.disabled = loading;
+  button.setAttribute('aria-busy', String(loading));
+  button.querySelector('span').textContent = loading ? 'Обновляем…' : 'Обновить';
+}
+
 async function loadTasks(app) {
   if (tasksLoadInProgress) {
     tasksReloadQueued = true;
     return;
   }
   tasksLoadInProgress = true;
+  setBacklogNoticeLoading(true);
   const requestGeneration=generation;
   const existingContainer = document.getElementById('tasks-container');
   if (!tasksCache || existingContainer?.querySelector('.view-state-error')) {
@@ -372,14 +398,17 @@ async function loadTasks(app) {
   try {
     const data = await loadAllTaskPages(app, dataScope==='team'?`team_id=${encodeURIComponent(user.team_id)}`:'');
     if(requestGeneration!==generation)return;
-    tasksCache = data; stale=false;document.getElementById('backlog-stale')?.setAttribute('hidden','');
+    tasksCache = data; stale=false;
+    const notice = document.getElementById('backlog-stale');
+    if (notice?.contains(document.activeElement)) document.getElementById('backlog-btn-refresh')?.focus({ preventScroll: true });
+    notice?.setAttribute('hidden','');
     renderCurrentView();
 
   } catch (e) {
     if(requestGeneration!==generation||e?.name === 'AbortError')return;
     stale=true;
     const container = document.getElementById('tasks-container');
-    if(tasksCache){const notice=document.getElementById('backlog-stale');if(notice){notice.innerHTML='Не удалось обновить. Показаны ранее загруженные данные. <button type="button" class="btn btn-secondary">Повторить</button>';notice.hidden=false;notice.querySelector('button').addEventListener('click',()=>loadTasks(app));}renderCurrentView();return;}
+    if(tasksCache){const retryFocused=document.getElementById('backlog-stale')?.contains(document.activeElement);showBacklogNotice('error');if(retryFocused)document.querySelector('[data-backlog-retry]')?.focus({preventScroll:true});renderCurrentView();return;}
     if (container) {
       renderTasksTableState({
         kind: 'error',
@@ -395,6 +424,7 @@ async function loadTasks(app) {
   } finally {
     if(requestGeneration!==generation)return;
     tasksLoadInProgress = false;
+    setBacklogNoticeLoading(false);
     if (tasksReloadQueued) {
       tasksReloadQueued = false;
       if (isBacklogRouteActive()) await loadTasks(app);
@@ -429,7 +459,7 @@ function applyBacklogSavedViewState(state = {}) {
   }
   columnSettings.id=true;columnOrder.splice(0,columnOrder.length,'id',...columnOrder.filter(k=>k!=='id'));
   if(state.widths)columnWidths = { ...state.widths };
-  if(state.fixed){Object.keys(columnFixed).forEach(key => delete columnFixed[key]);Object.assign(columnFixed,state.fixed);}
+  if(state.fixed){Object.keys(columnFixed).forEach(key => delete columnFixed[key]);Object.entries(state.fixed).forEach(([key,value])=>{if(value)columnFixed[key]=value===true?(columnWidths[key]||90):value;});}
   columnSort.key = state.columnSort?.key || null;
   columnSort.dir = state.columnSort?.dir || 'asc';
   document.querySelectorAll('#backlog-view-toggle-group [data-view]').forEach(button => {button.classList.toggle('active', button.dataset.view === currentView);button.setAttribute('aria-pressed',String(button.dataset.view === currentView));});
@@ -744,7 +774,7 @@ async function openBacklogBulkOps(app) {
   const selected = getBacklogSelectedTasks();
   const editable = getFilteredList().filter(task => canEditTaskForScope('backlog', task));
   const result = await showBulkOpsModal(app, 'backlog', selected.length > 0 ? selected : editable);
-  if(result?.outcomeUnknown){stale=true;const notice=document.getElementById('backlog-stale');if(notice){notice.textContent='Результат массовой операции не подтверждён. Обновите список перед повтором.';notice.hidden=false;}renderCurrentView();}
+  if(result?.outcomeUnknown){stale=true;showBacklogNotice('unknown');renderCurrentView();}
   if (result?.success) {
     backlogSelectedTaskIds.clear();
     await loadTasks(app);
@@ -1013,7 +1043,7 @@ export function refreshBacklogPage(){
  if(!initialized||workspaceError)return;
  const activeUser=currentApp?.store.get('currentUser');
  if(activeUser?.id!==user.id||activeUser?.team_id!==user.team_id||!backlogContexts(activeUser).includes(dataScope)){if(activeUser?.id===user.id&&activeUser?.team_id!==user.team_id&&dataScope==='team'){history.replaceState(history.state,'','#/backlog?scope=team');window.toast?.('Команда изменилась. Условия прежней команды сброшены.','info');}disposeBacklogPage();return currentApp?.router.handleRoute();}
- if(document.hidden||isBacklogInteractionActive()){stale=true;deferredRefresh=true;document.getElementById('backlog-stale')?.removeAttribute('hidden');return;}
+ if(document.hidden||isBacklogInteractionActive()){stale=true;deferredRefresh=true;showBacklogNotice('deferred');return;}
  deferredRefresh=false;return loadTasks(currentApp);
 }
 export function disposeBacklogPage(event){
@@ -1030,7 +1060,7 @@ async function recheckBacklogAccess(){
  try{const fresh=await currentApp.api.get('/auth/me');if(token!==generation||fresh.id!==owner)return;currentApp.store.set('currentUser',fresh);
  if(!backlogContexts(fresh).includes(dataScope)){document.dispatchEvent(new CustomEvent('dmb:session-ended'));currentApp.router.clearTaskRoute({replace:true});return currentApp.router.handleRoute();}
  user=fresh;renderCurrentView();
- }catch{stale=true;document.getElementById('backlog-stale')?.removeAttribute('hidden');}
+ }catch{stale=true;showBacklogNotice('access');}
 }
 
 function emptyBacklogMessage(){return tasksCache?.items?.length?'Измените условия поиска или сбросьте фильтры.':canCreate()?'Измените фильтры или создайте новую задачу.':'Измените фильтры. Создание задач для вашей роли недоступно.';}

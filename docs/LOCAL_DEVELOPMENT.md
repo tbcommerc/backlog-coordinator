@@ -1,23 +1,28 @@
 # Локальный запуск Backlog coordinator
 
-> AS-IS проверено по `scripts/start-project.ps1`, status/stop scripts и
-> `compose.yaml` 03.11.2026. Полная приёмка нового состава открыта;
+> Правило локального запуска сверено по `scripts/start-project.ps1`, status/stop scripts и
+> `compose.yaml` 12.11.2026. Полная приёмка нового состава открыта;
 > [фактический статус миграции](dev-testing/agent-services/IMPLEMENTATION.md).
 
 ## Что запускается
 
-Единый сценарий по умолчанию поднимает основной локальный контур:
+Единый сценарий по умолчанию поднимает основной локальный контур без отдельных AI-сервисов:
 
 - PostgreSQL 16 для Backlog coordinator на `127.0.0.1:5432/dmb_backlog`;
-- отдельную PostgreSQL-базу сессий AI-агента `agent_sessions`;
 - Redis на `127.0.0.1:6379`;
 - Alembic-миграции основной схемы;
-- AI-агента на `http://127.0.0.1:9000`;
 - backend и frontend на `http://127.0.0.1:8000`.
+
+Агентские сервисы V1, fork-based V2, meeting-analyzer и помощник по бэклогу
+по умолчанию не запускаются. Если они уже работают под управлением проекта,
+обычный запуск штатно останавливает их перед запуском backend. Чтобы явно
+включить стандартный комплект агентов, используйте `-IncludeAgents`. Неизвестные
+или неподтверждённые процессы скрипт не завершает.
 
 Старый самостоятельный прототип удалён из кода и запуска 02.11.2026. Единственный экспериментальный V2 — `agents/business-analyst-experimental/`; [результаты сравнения](AGENT_V2_RETIREMENT_2026-11-02.md).
 
-Целевой fork-based Assistant V2 обязателен при стандартном запуске. Скрипт создаёт отдельную PostgreSQL DB/роль `agent_v2_sessions` /
+При `-IncludeAgents` целевой fork-based Assistant V2 включается вместе с комплектом.
+Скрипт создаёт отдельную PostgreSQL DB/роль `agent_v2_sessions` /
 `agent_v2`, окружение `.venv-agent-v2` и процесс на порту 9300. Он не заменяет
 Старый самостоятельный прототип удалён из кода.
 
@@ -26,8 +31,8 @@
 `-IncludeValuePriorityAssessor`.
 
 Для анализа встреч добавлен самостоятельный [meeting-analyzer](../agents/meeting-analyzer/README.md)
-на порту 9500 с собственным профилем и PostgreSQL-БД. Новый стандартный launcher
-включает его и DMB delivery adapter. Старые capture runs сохраняют legacy backend;
+на порту 9500 с собственным профилем и PostgreSQL-БД. Launcher включает его
+только с флагом `-IncludeAgents` вместе с DMB delivery adapter. Старые capture runs сохраняют legacy backend;
 они не переотправляются новому исполнителю. Перед стартом необходимы настройки
 сервиса и техническая миграция. UI остаётся `#/meeting-capture`.
 Миграция, API и worker запускаются из `agents/meeting-analyzer`: установленный
@@ -69,7 +74,7 @@ email и паролю. bcrypt проверяется без нормализац
 
 ## Запуск
 
-Запуск без всех отдельных AI-сервисов (проверено 22.10.2026):
+Запуск без всех отдельных AI-сервисов (повторно сверено 12.11.2026):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1 -WithoutAgents
@@ -78,8 +83,10 @@ powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1 -WithoutAgent
 Флаг отключает запуск V1, V2, legacy Assistant V2, Task Prioritiser и помощника
 по бэклогу, включая его автоматическое включение по наличию `.env`.
 PostgreSQL, Redis, миграции и backend со встроенным frontend запускаются;
-ранее запущенные процессы агентов останавливаются штатным stop-скриптом.
-Флаг имеет приоритет над `-Include*`. AI-функции без сервисов недоступны.
+ранее запущенные, принадлежащие проекту процессы агентов останавливаются штатным
+stop-скриптом. Неизвестные процессы остаются нетронутыми. Этот режим теперь
+используется по умолчанию, поэтому `-WithoutAgents` можно опускать. AI-функции
+без сервисов недоступны.
 
 Из корня проекта:
 
@@ -87,16 +94,16 @@ PostgreSQL, Redis, миграции и backend со встроенным fronten
 powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 ```
 
-Полный запуск, включая Task Prioritiser:
+Запуск стандартного комплекта агентов:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1 -IncludeValuePriorityAssessor
+powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1 -IncludeAgents
 ```
 
-Стандартный запуск включает целевой fork-based Assistant V2 для BA/PO:
+Полный запуск вместе с Task Prioritiser (дорогая embedding-модель):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
+powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1 -IncludeAgents -IncludeValuePriorityAssessor
 ```
 
 Настройка LLM V2 проверена 02.11.2026: собственные provider/key/base/model

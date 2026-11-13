@@ -85,12 +85,15 @@ function handleKeydown(event) {
   if (!dialog) return;
 
   if (event.key === 'Escape') {
+    // Карточка сначала отменяет inline-редактирование; её собственный обработчик
+    // решает, нужно ли показывать подтверждение или закрывать всю карточку.
+    if (overlay.id === 'task-detail-overlay') return;
     event.preventDefault();
     const detailPanel = overlay[Symbol.for('ui-kit.detail-panel')];
-    if (detailPanel) { detailPanel.requestClose('escape'); return; }
+    if (detailPanel) { event.stopImmediatePropagation(); detailPanel.requestClose('escape'); return; }
     const close = dialog.querySelector(CLOSE_SELECTOR);
-    if (close) close.click();
-    else if (dialog.matches('dialog')) dialog.close();
+    if (close) { event.stopImmediatePropagation(); close.click(); }
+    else if (dialog.matches('dialog')) { event.stopImmediatePropagation(); dialog.close(); }
     return;
   }
   if (event.key !== 'Tab') return;

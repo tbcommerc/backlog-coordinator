@@ -5,7 +5,9 @@ import { renderAgentV2 } from '../js/agent-v2/workspace.js?v=10';
 import { renderComments } from '../js/components/taskComments.js?v=4';
 import { renderAttachments } from '../js/components/taskAttachments.js?v=3';
 import { readOnlyField, descriptionList, bindReadOnlyFields, sectionCard, detailPanel, bindDetailPanel } from '../js/ui/index.js';
-import { dataTable, tableCell, bindDataTable } from '../js/ui/index.js';
+import { dataTable, tableCell, bindDataTable, installRegistryColumns } from '../js/ui/index.js';
+installRegistryColumns();
+import { installStickyTableHeaders } from '../js/ui/stickyTableHeader.js';
 import { entityPicker, bindEntityPicker } from '../js/ui/index.js';
 import { dateRange, numberRange, validateRanges, showFormErrors, clearFormErrors } from '../js/ui/index.js';
 import { stepForm, bindStepForm, splitPane, bindSplitPane } from '../js/ui/index.js';
@@ -18,6 +20,8 @@ document.getElementById('catalog-controls').innerHTML =
   field({ id:'kit-accent', label:'Акцент', kind:'select', value:'indigo', options:accents.map(([value,label])=>({value,label})) });
 
 document.getElementById('catalog-main').innerHTML = [
+  section('pinned-filters','Закреплённые фильтры','Stacked toolbar · Filter catalog',
+    '<p>Поиск и действия — первая строка, пять закреплённых фильтров — вторая. На телефоне компактный вариант занимает две колонки; зоны нажатия остаются не меньше 44 px.</p><p>Варианты: <code>ui-filter-toolbar-stacked</code>, <code>ui-pinned-filters</code>, <code>ui-filter-catalog</code>. Каталог использует общую раскрывающуюся панель, отдельные состояния условий и закреплений.</p><p><a href="../index.html#/backlog?bv=2&scope=all">Открыть рабочий образец: Бэклог</a></p>'),
   section('workflow-components','Шаги и разделённая область','StepForm · SplitPane',`<form id="demo-step-form">${stepForm({id:'demo-steps',navigation:true,steps:[{id:'details',label:'Описание',content:field({id:'demo-step-name',label:'Название',required:true,attrs:{name:'title'}})+button({label:'Далее',attrs:{'data-step-next':true}})},{id:'review',label:'Проверка',content:'<p>Данные первого шага сохраняются при возврате.</p>'+button({label:'Назад',attrs:{'data-step-back':true}})+button({label:'Завершить пример',attrs:{type:'submit'}})}]})}<p id="demo-step-result" role="status"></p></form>${splitPane({id:'demo-split',label:'Ширина области деталей',primary:'<p>Список записей</p>',secondary:'<p>Детали выбранной записи</p><p>Разделитель работает мышью и стрелками. Home/End задают границы.</p>'})}`,true),
   section('intervals','Диапазоны','DateRange · NumberRange',`<form id="demo-intervals" class="catalog-stack">${dateRange({id:'demo-dates',label:'Период',required:true,from:{name:'from',value:'2026-10-01'},to:{name:'to',value:'2026-12-31'}})}${numberRange({id:'demo-numbers',label:'Допустимые значения',from:{name:'min',value:0},to:{name:'max',value:100},hint:'Ноль и равные границы допустимы.'})}${button({label:'Проверить диапазоны',attrs:{type:'submit'}})}<span id="demo-interval-result" role="status"></span></form>`),
   section('entity-pickers','Выбор сущности','EntityPicker · серверный или локальный поиск',entityPicker({id:'demo-entity',name:'task_id',label:'Задача',searchLabel:'Поиск задачи',required:true,hint:'Найдите задачу по коду или названию и выберите её из списка.'})),
@@ -29,6 +33,7 @@ document.getElementById('catalog-main').innerHTML = [
     button({label:'Открыть панель деталей',attrs:{id:'demo-detail-panel'}}) + '</div>'),
   section('registry-composition','Реестры','KpiCard · CollapseSection · FilterChip', kpiCard({label:'Активные задачи',value:12}) + collapseSection({label:'Дополнительные условия',content:filterChip({label:'В работе',count:12,selected:true})+filterChip({label:'Все категории',count:null})})),
   section('alerts','Сообщения','Alert · все тона', ['neutral','info','success','warning','danger'].map(tone=>alert({title:tone,message:'Сообщение с безопасным текстовым содержимым.',tone})).join('')),
+  section('inline-alert','Контекстное предупреждение','Alert · inline', alert({variant:'inline',tone:'warning',title:'Данные могут быть неактуальны',message:'Не удалось обновить список задач.',action:{label:'Обновить'}})),
   section('choices','Выбор и страницы','RadioGroup · Pagination', radioGroup({id:'demo-radio',label:'Плотность списка',value:'normal',options:[{value:'normal',label:'Обычная'},{value:'compact',label:'Компактная'}]}) + pagination({page:2,pages:5})),
   section('vertical-tabs','Вертикальные вкладки','Стрелки вверх/вниз, Home/End', tabs({id:'vertical',label:'Вертикальные вкладки',orientation:'vertical',items:[{id:'one',label:'Первая'},{id:'two',label:'Вторая'}]})+'<div id="vertical-one-panel" role="tabpanel" aria-labelledby="vertical-one-tab">Первая панель</div><div id="vertical-two-panel" role="tabpanel" aria-labelledby="vertical-two-tab" hidden>Вторая панель</div>'),
   section('popover-widths','Ширина панелей','Small · Default · Wide', ['small','default','wide'].map(width=>button({label:width,attrs:{'data-width-demo':width}})+`<div id="width-${width}" hidden>Панель ${width}; ширина ограничивается окном.</div>`).join('')),
@@ -93,7 +98,7 @@ const tableDemo = document.getElementById('demo-data-table');
 const demoRows = [{title:'Качество данных',value:0,date:'2026-10-29',state:'В работе'}, {title:'Скорость обработки',value:1250.5,date:null,state:'Черновик'}];
 function renderTableDemo(sort = {key:'title',direction:'asc'}) {
   const rows = [...demoRows].sort((a,b)=>(sort.key==='value' ? a.value-b.value : a.title.localeCompare(b.title,'ru'))*(sort.direction==='desc'?-1:1));
-  tableDemo.innerHTML = dataTable({variant:'registry',label:'Пример показателей',rows,sort,responsive:'cards',columns:[
+  tableDemo.innerHTML = dataTable({stickyHeader:true,variant:'registry',label:'Пример показателей',rows,sort,responsive:'cards',columns:[
     {key:'title',label:'Показатель',sortable:true,render:row=>tableCell({markup:`<a class="ui-table-title" href="#data-tables">${row.title}</a>`})},
     {key:'value',label:'Значение',type:'number',sortable:true},
     {key:'date',label:'Дата',type:'date'},
@@ -101,6 +106,7 @@ function renderTableDemo(sort = {key:'title',direction:'asc'}) {
   ]});
 }
 renderTableDemo();
+installStickyTableHeaders();
 const disposeTableDemo = bindDataTable(tableDemo, {onSort:(sort)=>{renderTableDemo(sort);tableDemo.querySelector(`[data-ui-sort="${sort.key}"]`)?.focus();}});
 window.addEventListener('pagehide',disposeTableDemo,{once:true});
 

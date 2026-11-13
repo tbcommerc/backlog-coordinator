@@ -27,11 +27,13 @@ for (const theme of ['light', 'dark']) for (const [width, height] of [[1440, 900
     if (width >= 1366) {
       const search = await page.locator('#work-search').boundingBox();
       const status = await page.locator('#work-status').boundingBox();
-      expect(Math.abs(search.y - status.y)).toBeLessThan(4);
-      expect((await page.locator('[data-work-row]').first().boundingBox()).y).toBeLessThan(380);
+      expect(status.y).toBeGreaterThanOrEqual(search.y + search.height + 4);
+      // Approved two-row panel: the first row starts at ~393px in the reference.
+      expect((await page.locator('[data-work-row]').first().boundingBox()).y).toBeLessThan(405);
     }
     await page.locator('[data-work-id="77"]').click();
     await expect(page.locator('.work-card-title')).toBeVisible();
+    if(await page.locator('.has-work-inspector').count())await expect(page.locator('.work-toolbar')).toBeHidden();
     await expect(page.locator('.work-checklist-view [data-checklist-count]')).toHaveText('1 из 2');
     const summary = await page.locator('.ui-detail-summary').boundingBox();
     const result = await page.locator('.work-saved-result').boundingBox();

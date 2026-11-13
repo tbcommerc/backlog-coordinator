@@ -1,9 +1,17 @@
 import { escapeHtml } from '../htmlUtils.js';
 import { avatar } from '../ui/dataDisplay.js';
 
-function commentTime(dateStr) {
+function commentTime(dateStr, absolute = false) {
   if (!dateStr) return '';
   const date = new Date(dateStr);
+  if (absolute) {
+    const today = new Date(), yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const time = date.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+    if (date.toDateString() === today.toDateString()) return 'Сегодня, ' + time;
+    if (date.toDateString() === yesterday.toDateString()) return 'Вчера, ' + time;
+    return date.toLocaleDateString('ru-RU', {day:'numeric',month:'short'}) + ', ' + time;
+  }
   const diff = Date.now() - date;
   const mins = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
@@ -15,7 +23,7 @@ function commentTime(dateStr) {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-function renderComment(comment, users, canReply, depth = 0) {
+function renderComment(comment, users, canReply, depth = 0, variant = '') {
   const name = comment.user_name || 'Пользователь';
   const commentId = Number(comment.id) || 0;
   let text = escapeHtml(comment.text);
@@ -26,13 +34,13 @@ function renderComment(comment, users, canReply, depth = 0) {
       text = text.replace(pattern, `<span class="comment-mention">@${escapedName}</span>`);
     }
   }
-  const replies = (comment.replies || []).map(reply => renderComment(reply, users, canReply, depth + 1)).join('');
+  const replies = (comment.replies || []).map(reply => renderComment(reply, users, canReply, depth + 1, variant)).join('');
   return `<article class="comment-item${depth ? ' comment-item-reply' : ''}" id="task-comment-${commentId}" data-comment-id="${commentId}" tabindex="-1" aria-label="Комментарий пользователя ${escapeHtml(name)}">
-    ${avatar({ name, className: 'task-detail-avatar' })}
+    ${avatar({ name, size: 32, className: 'task-detail-avatar' })}
     <div class="comment-body">
-      <div class="comment-header"><span class="comment-author">${escapeHtml(name)}</span><span class="comment-time">${escapeHtml(commentTime(comment.created_at))}</span></div>
+      <div class="comment-header"><span class="comment-author">${escapeHtml(name)}</span><span class="comment-time">${escapeHtml(commentTime(comment.created_at, variant === 'task-detail'))}</span></div>
       <div class="comment-text">${text}</div>
-      ${canReply ? `<div class="comment-actions"><button type="button" class="btn btn-secondary btn-sm ui-btn comment-reply-btn" data-reply-id="${commentId}" data-reply-name="${escapeHtml(name)}" aria-label="Ответить пользователю ${escapeHtml(name)}">Ответить</button></div>` : ''}
+      ${canReply ? `<div class="comment-actions"><button type="button" class="ui-surface-action ${variant === 'task-detail' ? 'ui-link ui-task-comment-reply' : 'btn btn-secondary btn-sm ui-btn comment-reply-btn'}" data-reply-id="${commentId}" data-reply-name="${escapeHtml(name)}" aria-label="Ответить пользователю ${escapeHtml(name)}">Ответить</button></div>` : ''}
       ${replies ? `<div class="comment-replies">${replies}</div>` : ''}
     </div>
   </article>`;
@@ -43,7 +51,7 @@ export function renderComments(container, comments, users, options = {}) {
   const items = Array.isArray(comments) ? comments : [];
   const canReply = options.canReply !== false;
   container.innerHTML = items.length
-    ? `<div class="comments-feed" role="feed" aria-label="Комментарии задачи">${items.map(item => renderComment(item, users || [], canReply)).join('')}</div>`
+    ? `<div class="comments-feed" role="feed" aria-label="Комментарии задачи">${items.map(item => renderComment(item, users || [], canReply, 0, options.variant)).join('')}</div>`
     : '<div class="ui-component-empty" role="status">Комментариев пока нет</div>';
   container.querySelectorAll('[data-reply-id]').forEach(button => {
     button.addEventListener('click', () => {

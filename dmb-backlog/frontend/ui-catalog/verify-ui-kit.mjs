@@ -23,7 +23,7 @@ if(process.argv.includes('--check')){
 }else{
  const before=digest();
  const suites=readdirSync(new URL('../e2e/',import.meta.url)).filter(n=>n.endsWith('.spec.mjs')).map(n=>n.replace('.spec.mjs','')).sort();
- const commands=[['--test',...readdirSync(new URL('../tests/',import.meta.url)).filter(n=>n.endsWith('.test.mjs')).map(n=>'frontend/tests/'+n)],['node_modules/@playwright/test/cli.js','test',...suites.map(n=>'frontend/e2e/'+n+'.spec.mjs'),'--workers=2','--reporter=line']];
+ const commands=[['--test','--test-concurrency=1',...readdirSync(new URL('../tests/',import.meta.url)).filter(n=>n.endsWith('.test.mjs')).map(n=>'frontend/tests/'+n)],['node_modules/@playwright/test/cli.js','test',...suites.map(n=>'frontend/e2e/'+n+'.spec.mjs'),'--workers=2','--reporter=line']];
  for(const args of commands){const run=spawnSync(process.execPath,args,{cwd,stdio:'inherit'});if(run.status!==0)process.exit(run.status||1);}
  if(before!==digest())throw Error('Sources changed during verification; no receipt created');
  writeFileSync(new URL('./family-inventory.json',import.meta.url),JSON.stringify(buildInventory(),null,2)+'\n');

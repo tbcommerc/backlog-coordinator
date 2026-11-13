@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const root = new URL('../css/ui/', import.meta.url);
-const scope = ':is(#task-detail-overlay, #create-task-overlay)';
+const scope = ':is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay)';
 // This is a specificity adapter, not a second implementation of sizing.
 // Keep at-rules intact so responsive rules cannot escape their media query.
 function scoped(css, selected) {

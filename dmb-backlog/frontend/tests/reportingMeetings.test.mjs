@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 const reports = await readFile(new URL('../js/components/reports.js', import.meta.url), 'utf8');
 const modal = await readFile(new URL('../js/components/modal.js', import.meta.url), 'utf8');
 const pagesCss = await readFile(new URL('../css/pages.css', import.meta.url), 'utf8');
+const taskSecondaryCss = await readFile(new URL('../css/ui/task-secondary-composition.css', import.meta.url), 'utf8');
 const router = await readFile(new URL('../js/router.js', import.meta.url), 'utf8');
 const sidebar = await readFile(new URL('../js/components/sidebar.js', import.meta.url), 'utf8');
 
@@ -133,12 +134,14 @@ assert.doesNotMatch(meetingActionSource, /window\.prompt|window\.confirm/);
 
 assert.match(modal, /\/reporting-statuses\/context/);
 assert.match(modal, /save-reporting-status/);
-assert.match(modal, /Статус прошлой встречи/);
+assert.match(modal, /item\.previous_meeting\?\.scheduled_date/);
+assert.match(modal, /Статус к ближайшей встрече/);
 assert.match(modal, /item\.edit_reason/);
 assert.match(modal, /Несохранённые отчётные статусы будут потеряны/);
-assert.equal((modal.match(/field reporting-status-field/g) || []).length, 2);
-assert.match(pagesCss, /\.reporting-status-field \.fval \{[^}]*height:132px;[^}]*overflow:auto;/);
-assert.match(pagesCss, /\.reporting-status-field textarea\.task-detail-input \{[^}]*height:100%;[^}]*resize:none;/);
+assert.match(modal, /ui-task-report-body/);
+assert.match(modal, /data-action': 'cancel-reporting-status'/);
+assert.match(taskSecondaryCss, /\.ui-task-report-body\{[^}]*grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/);
+assert.match(taskSecondaryCss, /\.ui-task-report-body textarea\{[^}]*min-height:92px;resize:vertical/);
 
 const payloadSource = modal.slice(modal.indexOf('function cardPayload'), modal.indexOf('function cardPatchPayload'));
 assert.doesNotMatch(payloadSource, /directorate_status|did_status|key_project_status|did_demo/);

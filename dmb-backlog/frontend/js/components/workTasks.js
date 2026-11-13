@@ -1,3 +1,4 @@
+import { mountRegistryPanel } from '../ui/registryPanel.js';
 import { segmentedControl } from '../ui/segmented.js';
 import { filterValues, setFilterValue, encodeFilterValues } from '../ui/filterValues.js';
 import { mountWorkBoard } from './workBoard.js?v=4';
@@ -21,6 +22,11 @@ const opt = (rows, empty = 'Не выбран') => [{ value: '', label: empty },
 const error = e => Number(e?.status) === 409 ? 'Данные изменены другим участником. Черновик сохранён. Закройте панель и откройте задачу снова для сверки.' : formatErrorMessage(e);
 const late = row => row.due_date && !['done','cancelled'].includes(row.status) && row.due_date < new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'});
 const nextWorkStep = row => row.status === 'in_acceptance' ? 'Принять результат' : row.assignment_state === 'proposed' ? 'Принять назначение' : !row.assignee_id ? 'Назначить исполнителя' : row.status === 'new' ? 'Передать исполнителю' : row.status === 'ready' ? 'Начать работу' : 'Подготовить результат';
+const taskDetailWorkCount = count => {
+    const n = Math.abs(count), last = n % 10, lastTwo = n % 100;
+    const form = last === 1 && lastTwo !== 11 ? 'рабочая задача' : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? 'рабочие задачи' : 'рабочих задач';
+    return `${count} ${form}`;
+};
 
 export function renderWorkTasks() {
     return `<section class="work-page work-task-workplace">${pageHeader({ title: 'Рабочие задачи', className:'ui-registry-header', actions: '<div class="ui-registry-actions"><div data-work-display-slot></div><div data-work-refresh-slot></div><div data-work-create-slot></div></div>' })}<div id="work-list"></div></section>`;
@@ -35,11 +41,13 @@ export async function initWorkTasks(app) {
 const listCleanups = new WeakMap();
 export function disposeWorkList(root) { listCleanups.get(root)?.(); }
 
-export async function mountWorkList(root, app, majorId = null, projectId = null, workspace = false, allProjectWork = false, { canCreate = true } = {}) {
+export async function mountWorkList(root, app, majorId = null, projectId = null, workspace = false, allProjectWork = false, { canCreate = true, composition = '' } = {}) {
     if (!root) return;
     disposeWorkList(root);
     root.classList.add('work-list-surface');
     root.classList.toggle('work-workspace',workspace);
+    const taskDetail = composition === 'task-detail' && Boolean(majorId) && !workspace;
+    root.classList.toggle('ui-task-work-list', taskDetail);
     const projectContext = Boolean(root.closest('#work-projects-page'));
     const prefix = majorId ? `work-${majorId}-` : 'work-';
     const controlId = id => id.replace(/^work-/, prefix);
@@ -127,6 +135,19 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     createSlot.innerHTML = action('Создать задачу', 'create', { variant: 'primary', iconMarkup:'<svg class="work-create-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>', attrs: { hidden: true, 'aria-label':'Создать задачу', title:'Создать задачу' } });
     const createButton = createSlot.querySelector('button');
     createButton.onclick = () => { if(!canCreate || createButton.hidden)return; return workspace ? openSelected(null) : openWork(app, null, majorId, load, projectId); };
+    if (taskDetail) {
+        root.insertAdjacentHTML('afterbegin', '<div class="ui-task-secondary-head"><div><h2>Исполнение задачи</h2><p class="ui-task-secondary-meta" data-task-work-count>Загружаем связанные работы</p></div><div class="ui-task-secondary-actions" data-task-work-actions></div></div>');
+        const actions = query('[data-task-work-actions]');
+        if (canCreate) actions.innerHTML = button({ label: 'Привязать', icon: 'link', attrs: { 'data-task-link-work': '' } });
+        actions.append(createButton);
+        createButton.querySelector('span')?.replaceChildren('Создать');
+        query('[data-task-link-work]')?.addEventListener('click', () => {
+            const panel = root.parentElement.querySelector('[data-task-placement]');
+            if (!panel) return;
+            panel.hidden = false; panel.open = true; panel.scrollIntoView({ block:'nearest' });
+            panel.querySelector('input')?.focus();
+        });
+    }
     let filterSnapshot = null, searchTimer = null;
     if(workspace){
         form.insertAdjacentHTML('beforebegin','<p class="work-inspector-context" data-inspector-context></p>');
@@ -170,6 +191,18 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     query('#work-search').insertAdjacentHTML('afterend','<small class="work-search-help">По ID, названию, описанию и результату в выбранной очереди</small>');
     query('.work-filter-tools').insertAdjacentHTML('afterbegin',action('Поиск','toggle-search',{variant:'ghost',icon:'search',attrs:{'aria-expanded':false,'aria-label':'Поиск в этой очереди',title:'Поиск в этой очереди'}})+action('×','clear-search',{variant:'ghost',attrs:{'aria-label':'Очистить поиск'}}));
     query('.work-filters').append(query('[data-work-action=toggle-search]'));
+    // A linked task list already exposes its search field and filters on input.
+    if (majorId && !workspace) {
+        query('[data-work-action=toggle-search]').hidden = true;
+        query('.work-filters button[type=submit]')?.remove();
+        query('#work-search').setAttribute('placeholder', 'Поиск среди связанных задач');
+    }
+    if (taskDetail) {
+        query('#work-search').setAttribute('aria-label','Поиск среди связанных задач');
+        query('.work-search-help')?.remove();
+        for (const selector of ['#work-search', '#work-status']) query(selector)?.closest('.ui-field')?.querySelector('label')?.classList.add('sr-only');
+        query('.work-filter-tools').hidden = true;
+    }
     const closeFilters = (apply = false) => {
         const wasOpen=!filterPanel.hidden;
         if (!apply && filterSnapshot) {
@@ -179,7 +212,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
         filterSnapshot=null;filterPanel.hidden=true;query('.work-toolbar-primary')?.style.removeProperty('min-height');root.dataset.filtersOpen='false';
         query('#work-done-period').closest('.ui-field').hidden=!(!query('#work-status').value||filterValues(query('#work-status').value).some(status=>['done','active_done'].includes(status)));
         filterPanel.removeAttribute('role');filterPanel.removeAttribute('aria-modal');
-        if(workspace)placePrimaryFields(filterMedia.matches);
+        if(workspace)placePrimaryFields(false);
         query('[data-work-action=filters]').setAttribute('aria-expanded','false');
         if(wasOpen)query('[data-work-action=filters]').focus();
     };
@@ -238,11 +271,11 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     }
     const filterMedia=matchMedia('(max-width:900px)');
     function placePrimaryFields(inPanel){
-        const fields=['work-status','work-priority','work-team','work-assignee','work-done-period','work-sort'].map(id=>query('#'+id)?.closest('.ui-field')).filter(Boolean);
+        const fields=['work-status','work-priority','work-team','work-assignee','work-filter-project','work-done-period','work-sort'].map(id=>query('#'+id)?.closest('.ui-field')).filter(Boolean);
         fields.forEach(el=>el.classList.remove('ui-field-inline'));
         if(inPanel)query('.work-filter-heading').after(...fields);
         else {
-            const secondary=fields.filter(el=>el.querySelector('#work-team,#work-assignee,#work-priority'));
+            const secondary=fields.filter(el=>el.querySelector('#work-team,#work-done-period'));
             query('.work-filter-heading').after(...secondary);
             query('.work-toolbar-primary').append(...fields.filter(el=>!secondary.includes(el)&&el!==sortField));
             query('.work-sort-slot').append(sortField);
@@ -251,7 +284,8 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     }
     const placeFilters=()=>{
         if(workspace){
-            placePrimaryFields(filterMedia.matches || !filterPanel.hidden);
+            placePrimaryFields(!filterPanel.hidden);
+            mountRegistryPanel(root.parentElement,'work');
             if(!filterPanel.hidden){
                 if(workspace || filterMedia.matches){filterPanel.setAttribute('role','dialog');filterPanel.setAttribute('aria-modal','true');filterPanel.setAttribute('aria-label','Фильтры рабочих задач');}
                 else {filterPanel.removeAttribute('role');filterPanel.removeAttribute('aria-modal');}
@@ -444,6 +478,12 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
             const constrained = ['work-search','work-direction','work-team','work-assignee','work-priority','work-focus','work-filter-project','work-parent'].some(id=>value(id)) || attention.size>0 || !['active',''].includes(value('work-status'));
             const emptyContext = !workspace && (majorId || projectId) && value('work-view') === 'all' && !constrained && value('work-status') !== 'active';
             const emptyQueue = value('work-view')==='mine' ? 'Вам пока не назначены задачи' : value('work-view')==='acceptance' ? 'Нет результатов, ожидающих вашей приёмки' : value('work-view')==='requested' ? 'Вы пока не поручили задач' : 'Рабочих задач пока нет';
+            if (taskDetail) {
+                query('[data-task-work-count]').textContent = `${taskDetailWorkCount(data.total || 0)}${Number.isFinite(data.summary?.done) ? ' · выполнено: ' + data.summary.done : ''}`;
+                result.innerHTML = data.items.length ? data.items.map(row => `<article class="ui-task-work-row"><div class="ui-task-work-row-head"><div><span class="ui-task-secondary-meta">${esc(row.public_id || '')}</span><h3><button type="button" class="ui-link ui-task-work-title" data-work-id="${Number(row.id)}">${esc(row.title)}</button></h3></div>${workStatus(row.status,WORK_STATUSES)}</div><div class="ui-task-work-row-foot"><span class="ui-task-secondary-meta">${esc(row.assignee_name || 'Исполнитель не назначен')} · ${row.due_date ? 'до ' + esc(workDate(row.due_date)) : 'Срок не указан'}</span>${button({ label:'Зависимости', variant:'ghost', icon:'git-branch', attrs:{'data-work-id':Number(row.id)} })}</div></article>`).join('') + (data.total > 30 ? workPager(page, data.total) : '') : renderViewState({ kind:'empty', title:constrained ? 'По запросу ничего не найдено' : 'Разбейте задачу на конкретные работы', message:constrained ? 'Попробуйте другое название или очистите поиск.' : 'Создайте рабочую задачу или привяжите существующую. Срок и исполнитель определяются для каждой работы.', actionLabel:constrained ? 'Сбросить поиск' : '', actionAttrs:{'data-work-action':'reset'} });
+                window.lucide?.createIcons();
+                return;
+            }
             const filtered = value('work-view') !== 'all' || ['work-status', 'work-search', 'work-direction', 'work-attention', 'work-team', 'work-assignee', 'work-priority'].some(id => value(id));
             result.innerHTML = `${workspace ? '' : workMetrics(data.summary)}<div class="work-panel">${data.items.length ? `<div class="work-table-wrap"><table data-ui-sticky-header="page" data-ui-density="compact" class="ui-table ui-table-data work-table"><caption class="sr-only">Рабочие задачи</caption><thead><tr><th scope="col">Задача</th><th scope="col">Исполнитель</th><th scope="col">Срок</th><th scope="col">Статус</th><th scope="col">Контекст</th></tr></thead><tbody>${data.items.map(x => `<tr><td data-label="Задача"><button class="ui-link work-task-link" data-work-id="${x.id}">${esc(x.public_id)} · ${esc(x.title)}</button></td><td data-label="Исполнитель">${esc(x.assignee_name || 'Не назначен')}</td><td data-label="Срок">${esc(workDate(x.due_date))}</td><td data-label="Статус">${workStatus(x.status, WORK_STATUSES)}${!['done','cancelled'].includes(x.status) && x.assignment_state === 'proposed' ? '<small>Ожидает принятия командой</small>' : !['done','cancelled'].includes(x.status) && x.assignment_state === 'declined' ? '<small>Назначение отклонено</small>' : ''}</td><td data-label="Контекст">${esc(x.context?.title || 'Самостоятельная')}</td></tr>`).join('')}</tbody></table></div>` : renderViewState({ title: constrained ? 'Задачи не найдены по условиям' : projectContext&&value('work-status')==='active' ? 'Нет активных рабочих задач' : emptyQueue, message: emptyContext ? 'В выбранном разделе пока нет доступных рабочих задач.' : constrained ? 'Измените поиск или сбросьте условия, сохранив выбранную очередь.' : 'Откройте все доступные задачи или выберите другую очередь.', actionLabel: emptyContext ? undefined : constrained ? 'Сбросить условия' : 'Показать все доступные', actionAttrs: { 'data-work-action': constrained ? 'reset' : 'clear' } })}${workPager(page, data.total)}</div>`;
             for (const item of data.items.filter(late)) {
@@ -556,7 +596,7 @@ export async function mountWorkList(root, app, majorId = null, projectId = null,
     document.addEventListener('dmb:work-changed', refresh);
     listCleanups.set(root, () => { if(disposed)return;disposed = true; generation++;layoutObserver.disconnect();splitController?.destroy();parentPicker?.destroy();window.removeEventListener('scroll',fitInspector,true);window.removeEventListener('resize',fitInspector);stopResponsive();clearTimeout(searchTimer);clearQueueMenus();clearTimeout(refreshTimer);clearTimeout(maxTimer);board?.destroy(); inspector?.close(false); window.removeEventListener('hashchange',navigation);document.removeEventListener('dmb:work-changed', refresh); createButton.remove(); });
     await loadOptions();
-    if (live()) await load();
+    if (live()) {await load();if(workspace)mountRegistryPanel(root.parentElement,'work');}
     if(workspace&&!openingId){try{const saved=JSON.parse(sessionStorage.getItem(`work-list-position:${app.store.get('currentUser')?.id}:${location.hash.split('?')[1]||''}`));if(saved){scrollTo(0,saved.windowY);const main=document.querySelector('.main-content');if(main)main.scrollTop=saved.mainY;root.querySelector(`[data-work-id="${Number(saved.id)}"]`)?.focus({preventScroll:true});}}catch{}}
     if(workspace && sessionStorage.getItem('work-board-redirect-notice')){
         sessionStorage.removeItem('work-board-redirect-notice');

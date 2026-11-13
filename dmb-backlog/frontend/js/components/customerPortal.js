@@ -1,3 +1,4 @@
+import { mountRegistryPanel } from '../ui/registryPanel.js';
 import { escapeHtml } from '../htmlUtils.js';
 import { progress as kitProgress } from '../ui/dataDisplay.js';
 import { pagination as kitPagination } from '../ui/forms.js';
@@ -54,7 +55,7 @@ export function renderCustomerPortal() {
 
 function statCard(key, icon, label) {
   const id = key || 'all';
-  return filterChip({ label, icon, countId: `customer-stat-${id}`, selected: !key, variant: 'navigation', attrs: { 'data-stat-filter': key } });
+  return filterChip({ label, icon, countId: `customer-stat-${id}`, selected: !key, attrs: { 'data-stat-filter': key } });
 }
 
 export async function initCustomerPortal(app) {
@@ -62,6 +63,7 @@ export async function initCustomerPortal(app) {
   restorePortalControls();
   bindPortalControls(app);
   await loadRequests(app);
+  mountRegistryPanel(document.querySelector('.customer-request-list'),'customer');
   if (window.lucide) window.lucide.createIcons();
 }
 
@@ -193,7 +195,7 @@ function updatePrimaryActions(drafts) {
   primary.dataset.sessionId = preferred?.session_id || '';
   primary.innerHTML = preferred
     ? '<i data-lucide="sparkles"></i><span>Продолжить черновик</span>'
-    : '<i data-lucide="sparkles"></i><span>Создать запрос</span>';
+    : '<i data-lucide="plus"></i><span>Создать запрос</span>';
   create.hidden = !preferred;
   window.lucide?.createIcons();
 }

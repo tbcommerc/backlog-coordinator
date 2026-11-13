@@ -4,7 +4,7 @@ import { setupWorkDesignPilot } from './helpers/workDesignPilot.mjs';
 const options = { user_id:101, team_id:7, can_create:false, business_date:'2026-11-04', teams:[{id:7,name:'Продукт'}], users:[{id:101,name:'Мария Соколова'}], projects:[], meetings:[] };
 const period = { id:7, year:2026, quarter:4, state:'active', availability:'active', plan:{target:'100',result_type:'volume',direction:'up'}, fact:{value:'90',as_of_date:'2026-11-03'}, result:{outcome:'not_achieved',progress:90,is_final:false}, capabilities:{} };
 const titles = ['Сократить время согласования требований', 'Повысить долю задач с согласованным результатом', 'Обеспечить доступность сервиса'];
-const metrics = Array.from({length:25},(_,i)=>({id:i+1,public_id:`MET-${i+1}`,title:titles[i%3],unit:'%',owner:'Мария Соколова',model_version:'quarterly_v2',lifecycle_state:'tracking',period,display_precision:0}));
+const metrics = Array.from({length:25},(_,i)=>({id:i+1,public_id:`MET-${i+1}`,title:titles[i%3],unit:'%',owner:'Мария Соколова',model_version:'quarterly_v2',lifecycle_state:'tracking',period,quarters:[period,period,period,period],display_precision:0}));
 
 export async function setup(page, surface, theme) {
   if (surface === 'work') {

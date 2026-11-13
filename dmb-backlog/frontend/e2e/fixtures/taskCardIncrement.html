@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/css/responsive.css">
   <link rel="stylesheet" href="/css/modal-system.css">
   <link rel="stylesheet" href="/css/ui/kit.css?v=8">
+  <script src="/js/lib/lucide.min.js"></script>
 </head>
 <body>
   <script type="module">
@@ -153,6 +154,31 @@
       ],
     };
 
+    // Visual comparison uses the approved prototype's synthetic data only.
+    // The default functional fixture and API IDs remain unchanged.
+    if (fixtureParams.get('profile') === 'proposal') {
+      const description = 'Клиент должен видеть актуальный этап заявки и следующий шаг в личном кабинете. Сейчас статус приходится уточнять через поддержку; после изменения он будет доступен на странице заявки.';
+      Object.assign(task, {
+        public_id: 'TASK-000-327', title: 'Единый статус заявки в клиентском портале',
+        description: description + '\n\n**Ожидаемый результат:** статус, дата обновления и следующий шаг доступны без обращения в поддержку.',
+        comment: '', team_name: 'Клиентский опыт', business_customer_name: 'Елена Орлова', project_name: 'Клиентский портал',
+        task_type_name: 'Развитие', status_name: 'Принята в работу', deadline_name: '20 ноября 2026', progress: 40,
+        involved_team_names: ['Core', 'Поддержка'], tags: [{id:21,name:'Клиентский опыт'}, {id:22,name:'Портал'}],
+        priority_score: 72, financial_effect: null, financial_effect_justification: '', cv: null,
+        hard_score: null, soft_score: null, effort_days:12, assessment_weight:80, completion_forecast:90,
+        metric_kr_plan:80, metric_kr_fact:null, department_name:'Розничный бизнес',
+      });
+      for (const key of Object.keys(task)) if (/^(actual_)?effort_/.test(key) && key !== 'effort_days') task[key] = 0;
+      task.effort_analytics=4; task.effort_be=8; task.actual_effort_analytics=4;
+      reference.teams = [{id:1,name:'Клиентский опыт'},{id:13,name:'Core'},{id:14,name:'Поддержка'}];
+      reference.business_customers = [{id:11,name:'Елена Орлова',department_id:3}];
+      reference.projects = [{id:5,name:'Клиентский портал'}];
+      reference.task_types = [{id:6,name:'Развитие'}];
+      reference.statuses = [{id:8,name:'Принята в работу'},{id:9,name:'ВЫПОЛНЕНА'}];
+      reference.deadlines = [{id:9,name:'20 ноября 2026'}];
+      reference.tags = task.tags;
+    }
+
     const competencyCosts = [
       ['Designee', 10000],
       ['Аналитика', 11000],
@@ -165,7 +191,7 @@
     ].map(([competency, rate], index) => ({
       id: index + 1,
       competency,
-      rate,
+      rate: fixtureParams.get('profile') === 'proposal' ? 30000 : rate,
       year: 2026,
       is_active: true,
     }));
@@ -282,6 +308,32 @@
       ],
     };
 
+    const workItems = [];
+    const externalLinks = [];
+    // Synthetic proposal comparison profile. These records never reach the API.
+    if (fixtureParams.get('profile') === 'proposal') {
+      Object.assign(attachments[0], { original_name:'Требования к статусам заявки.pdf', file_size:253952, user_name:'Мария Соколова', created_at:'2026-11-08T13:20:00Z' });
+      Object.assign(attachments[1], { original_name:'Схема обмена статусами.png', file_size:1258291, user_name:'Дмитрий Волков', created_at:'2026-11-09T06:10:00Z' });
+      Object.assign(comments[0], { user_name:'Мария Соколова', text:'Коллеги, давайте согласуем, что показывать клиенту, если источник статуса временно недоступен.', created_at:'2026-11-09T06:15:00Z' });
+      Object.assign(comments[0].replies[0], { user_name:'Анна Смирнова', text:'Предлагаю оставить последнее известное значение с датой обновления и сообщением о задержке.', created_at:'2026-11-09T06:28:00Z' });
+      Object.assign(comments[1], { user_name:'Дмитрий Волков', text:'@Анна Смирнова, это поддерживается контрактом. Добавлю сценарий в интеграционные тесты.', mentioned_user_ids:[10], created_at:'2026-11-09T07:02:00Z' });
+      history.splice(0, history.length,
+        {id:55,field_name:'progress',field_label:'Обновила прогресс',old_value:'20%',new_value:'40%',changed_at:'2026-11-09T07:42:00Z',changed_by_name:'Анна Смирнова'},
+        {id:54,field_name:'priority',field_label:'Изменила приоритет',old_value:'Средний',new_value:'Высокий',changed_at:'2026-11-09T07:20:00Z',changed_by_name:'Анна Смирнова'},
+        {id:53,field_name:'attachment',field_label:'Добавил файл',old_value:null,new_value:'Схема обмена статусами.png',changed_at:'2026-11-09T06:10:00Z',changed_by_name:'Дмитрий Волков'},
+        {id:52,field_name:'description',field_label:'Обновила описание',old_value:null,new_value:'Уточнены критерии приёмки',changed_at:'2026-11-08T13:20:00Z',changed_by_name:'Мария Соколова'},
+        {id:51,field_name:'created',field_label:'Создала задачу',old_value:null,new_value:null,changed_at:'2026-11-05T11:30:00Z',changed_by_name:'Мария Соколова'});
+      reportingContext.items.forEach(item => {item.can_edit=!readOnly;item.edit_reason='';});
+      Object.assign(reportingContext.items[0], {title:'Директорская встреча',current_meeting:{id:61,scheduled_date:'2026-11-16'},previous_status:{text:''},current_status:{text:'Работы идут по плану. Первый этап будет доступен 20 ноября.',version:2,updated_at:'2026-11-09T07:42:00Z'}});
+      Object.assign(reportingContext.items[1], {current_meeting:{id:63,scheduled_date:'2026-11-17'},previous_status:{text:''},current_status:{text:'',version:3,did_demo:false}});
+      Object.assign(reportingContext.items[2], {current_meeting:{id:65,scheduled_date:'2026-11-18'},previous_status:{text:''},current_status:{text:'',version:4}});
+      workItems.push(
+        {id:111,public_id:'WRK-111',title:'Согласовать модель статусов заявки',status:'done',assignee_name:'Анна Смирнова',due_date:'2026-11-10'},
+        {id:112,public_id:'WRK-112',title:'Реализовать обмен статусами с порталом',status:'in_progress',assignee_name:'Дмитрий Волков',due_date:'2026-11-18'},
+        {id:113,public_id:'WRK-113',title:'Проверить сценарии недоступности источника',status:'new',assignee_name:'Ольга Петрова',due_date:'2026-11-20'});
+      externalLinks.push({url:'https://jira.example/PORTAL-248'});
+    }
+
     const currentUser = {
       id: 99,
       name: 'E2E Редактор',
@@ -312,6 +364,14 @@
     const api = {
       async get(path) {
         window.__apiCalls.push(['get', path]);
+        if (path === '/work-tasks/options') return { can_create: !readOnly, teams: reference.teams, users: reference.users, projects: [] };
+        if (path.startsWith('/work-tasks?')) {
+          const params = new URLSearchParams(path.split('?')[1]);
+          const items = workItems.filter(row => (!params.get('q') || (row.title+' '+row.public_id).toLowerCase().includes(params.get('q').toLowerCase())) && (!params.get('status') || row.status===params.get('status')));
+          return { items, total: items.length, page: 1, pages: 1, summary:{done:items.filter(row=>row.status==='done').length} };
+        }
+        if (path.startsWith('/work-dependencies/')) return [];
+        if (path === '/tasks/42/external-links') return externalLinks;
         if (path === '/admin/competency-costs') return competencyCosts;
         if (path === '/tasks/reference') return reference;
         if (path === '/admin/task-types') return reference.task_types;
@@ -334,7 +394,15 @@
       },
       async delete(path) { window.__apiCalls.push(['delete', path]); return {}; },
       async patch(path, payload) { window.__apiCalls.push(['patch', path, payload]); return saveTaskFixture(payload); },
-      async put(path) { window.__apiCalls.push(['put', path]); return task; },
+      async put(path, payload) {
+        window.__apiCalls.push(['put', path, payload]);
+        if (path.startsWith('/tasks/42/reporting-statuses/')) {
+          const item = reportingContext.items.find(item => String(item.current_meeting.id)===path.split('/').pop());
+          if (item) item.current_status = {...item.current_status,...payload,version:Number(item.current_status.version)+1,updated_at:new Date().toISOString()};
+          return item?.current_status;
+        }
+        return task;
+      },
       async upload(path) { window.__apiCalls.push(['upload', path]); return {}; },
       async download(path) { window.__apiCalls.push(['download', path]); },
     };

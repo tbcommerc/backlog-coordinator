@@ -63,9 +63,11 @@ for (const scope of ['backlog', 'team']) {
     const fail = request => failure === 'server' ? request.fulfill({ status: 503, contentType: 'application/json', body: '{"detail":"temporary failure"}' }) : request.abort(failure === 'timeout' ? 'timedout' : 'internetdisconnected');
     await page.route(pattern, fail);
     await page.locator(`#backlog-btn-refresh`).click();
-    await expect(page.getByRole('button', { name: 'Повторить', exact: true })).toBeVisible();
+    const retry = page.locator('#backlog-stale [data-backlog-retry]');
+    await expect(retry).toBeVisible();
+    await expect(page.locator(`${table} tbody tr[data-task-id]`)).toHaveCount(1);
     await page.unroute(pattern, fail);
-    await page.getByRole('button', { name: 'Повторить', exact: true }).click();
+    await retry.click();
     await expect(page.locator(`${table} tbody tr[data-task-id]`)).toHaveCount(1);
     await expect(page.locator(`#f-backlog-search`)).toHaveValue('уникальное описание');
   });

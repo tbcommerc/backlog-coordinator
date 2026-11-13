@@ -474,6 +474,7 @@
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/notifications.js",
         "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
@@ -483,7 +484,6 @@
         "js/components/reports.js",
         "js/components/requestPresentation.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
@@ -630,9 +630,7 @@
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/projectWorkspace.js",
-        "js/components/reportingStatuses.js",
-        "js/components/reviewPage.js",
-        "js/components/settings.js"
+        "js/components/reportingStatuses.js"
       ],
       "codeEvidence": [
         {
@@ -785,6 +783,7 @@
         "js/components/metricsMigration.js",
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/outboxDeadLetters.js",
         "js/components/projectManagement.js",
         "js/components/projectUi.js",
@@ -797,7 +796,6 @@
         "js/components/requestPresentation.js",
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
         "js/components/workProjects.js",
@@ -918,6 +916,7 @@
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
         "js/components/projectManagement.js",
@@ -929,7 +928,6 @@
         "js/components/reports.js",
         "js/components/requestLifecycle.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/viewState.js",
         "js/components/workBoard.js",
@@ -1204,6 +1202,7 @@
         "js/components/directorateReport.js",
         "js/components/expressEstimate.js",
         "js/components/filterToolbar.js",
+        "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/navbar.js",
         "js/components/outboxDeadLetters.js",
@@ -1272,6 +1271,7 @@
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/navbar.js",
+        "js/components/notificationPreferences.js",
         "js/components/notifications.js",
         "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
@@ -1280,7 +1280,6 @@
         "js/components/reports.js",
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/workProjects.js",
         "js/components/workReports.js",
@@ -1360,7 +1359,6 @@
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/reports.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/taskAttachments.js",
         "js/components/workProjects.js",
@@ -1378,7 +1376,6 @@
         "js/app.js",
         "js/components/admin.js",
         "js/components/modal.js",
-        "js/components/settings.js",
         "js/components/taskComments.js",
         "js/components/workQueue.js"
       ],
@@ -1529,6 +1526,7 @@
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
         "js/components/quarterlyGoalsUpdate.js",
@@ -1536,7 +1534,6 @@
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/viewState.js",
         "js/components/workBoard.js",
         "js/components/workRelations.js",
@@ -1568,13 +1565,13 @@
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/viewState.js",
         "js/components/workProjects.js",
@@ -1599,10 +1596,10 @@
         "js/components/directorateReport.js",
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
+        "js/components/modal.js",
         "js/components/projectManagement.js",
         "js/components/reports.js",
         "js/components/requestPresentation.js",
-        "js/components/settings.js",
         "js/components/workTaskDrawer.js"
       ],
       "codeEvidence": [],
@@ -1618,6 +1615,8 @@
       "consumers": [
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
+        "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/projectManagement.js",
         "js/components/workTaskDrawer.js"
       ],
@@ -1648,6 +1647,7 @@
       "consumers": [
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
+        "js/components/modal.js",
         "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/workReports.js"
@@ -3742,5 +3742,140 @@
       "counter",
       "upload"
     ]
-  }
+  },
+  "discoveryReview20261109": [
+    {
+      "family": "readOnlyField",
+      "added": [
+        "js/components/modal.js"
+      ],
+      "removed": [
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "sectionCard",
+      "added": [
+        "js/components/modal.js",
+        "js/components/notificationPreferences.js"
+      ],
+      "removed": [],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "dataTable",
+      "added": [
+        "js/components/modal.js"
+      ],
+      "removed": [],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "status",
+      "added": [
+        "js/components/notificationPreferences.js"
+      ],
+      "removed": [
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "tabs",
+      "added": [],
+      "removed": [
+        "js/components/reviewPage.js",
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "field",
+      "added": [
+        "js/components/notificationPreferences.js"
+      ],
+      "removed": [
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "viewState",
+      "added": [
+        "js/components/notificationPreferences.js"
+      ],
+      "removed": [
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "tooltip",
+      "added": [
+        "js/components/metricsQuarterly.js"
+      ],
+      "removed": [],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "navigation",
+      "added": [
+        "js/components/notificationPreferences.js"
+      ],
+      "removed": [
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "chart",
+      "added": [],
+      "removed": [
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "avatar",
+      "added": [],
+      "removed": [
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "busy",
+      "added": [
+        "js/components/notificationPreferences.js"
+      ],
+      "removed": [
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    },
+    {
+      "family": "permissions",
+      "added": [
+        "js/components/notificationPreferences.js"
+      ],
+      "removed": [
+        "js/components/settings.js"
+      ],
+      "disposition": "discovery-reviewed",
+      "reason": "Карточка использует общие ReadOnlyField/SectionCard и scroll-таблицу; настройки перенесены в notificationPreferences; удаления отражают текущие импорты. Статус общей live-приёмки не повышается."
+    }
+  ]
 }

@@ -6962,9 +6962,9 @@ input[type=number].effort-input {
 .reporting-status-help { margin-bottom:14px; padding:10px 12px; border-radius:10px; background:var(--bg-secondary); color:var(--text-secondary); font-size:var(--text-xs); }
 .reporting-status-card .rc-head > div:last-child { min-width:0; }
 .reporting-status-date { margin-top:3px; }
-.reporting-status-field .fval { height:132px; overflow:auto; }
+.reporting-status-field .fval { height:auto; overflow:auto; }
 .reporting-status-field .fval > .txt { display:block; width:100%; }
-.reporting-status-field textarea.task-detail-input { height:100%; min-height:0; resize:none; }
+.reporting-status-field textarea.task-detail-input { min-height:132px; resize:vertical; }
 .reporting-status-meta { margin-top:4px; }
 .reporting-status-save { align-self:flex-start; margin-top:4px; }
 .reporting-status-note,.card-reporting-loading { padding:12px; border-radius:10px; background:var(--bg-secondary); color:var(--text-secondary); font-size:var(--text-xs); }

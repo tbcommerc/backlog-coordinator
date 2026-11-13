@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import { test, expect, chromium } from '@playwright/test';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { mockApp } from './helpers/backlogMock.mjs';
 
 const evidence = 'artifacts/backlog-filters-2026-11-08';
@@ -7,6 +7,41 @@ async function ready(page, scope = 'all') {
   await page.goto(`/#/backlog?bv=2&scope=${scope}`);
   await expect(page.locator('#tasks-content')).toHaveAttribute('data-ready', 'true');
 }
+
+for (const theme of ['light','dark']) test(`real browser zoom 200 percent ${theme}`, async ({}, info) => {
+  const extension = info.outputPath('zoom-extension');
+  mkdirSync(extension,{recursive:true});
+  writeFileSync(`${extension}/manifest.json`,JSON.stringify({manifest_version:3,name:'Isolated filter zoom test',version:'1.0',permissions:['tabs'],background:{service_worker:'background.js'}}));
+  writeFileSync(`${extension}/background.js`,'chrome.runtime.onInstalled.addListener(()=>{});');
+  const context = await chromium.launchPersistentContext(info.outputPath('zoom-profile'), {
+    channel:'chromium',headless:true,viewport:{width:1280,height:800},
+    args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`],
+  });
+  try {
+    let worker = context.serviceWorkers()[0];
+    if (!worker) worker = await context.waitForEvent('serviceworker');
+    const page = context.pages()[0];
+    await mockApp(page);
+    await page.addInitScript(t => localStorage.setItem('dmb_theme',t),theme);
+    await page.goto('http://127.0.0.1:4173/#/backlog?bv=2&scope=team');
+    await expect(page.locator('#tasks-content')).toHaveAttribute('data-ready','true');
+    const initialDpr = await page.evaluate(() => devicePixelRatio);
+    const zoom = await worker.evaluate(async () => {
+      const tabs = await chrome.tabs.query({url:'http://127.0.0.1:4173/*'});
+      if (tabs.length !== 1) throw Error('Expected one isolated test tab');
+      await chrome.tabs.setZoom(tabs[0].id,2);
+      return chrome.tabs.getZoom(tabs[0].id);
+    });
+    expect(zoom).toBe(2);
+    await expect.poll(() => page.evaluate(() => devicePixelRatio)).toBe(initialDpr * 2);
+    await page.locator('#btn-ext-backlog').click();
+    await expect(page.locator('#f-backlog-catalog-search')).toBeInViewport();
+    await expect(page.locator('#f-backlog-ext-filters [data-key="id"]')).toBeInViewport();
+    await expect(page.getByRole('button',{name:'Готово',exact:true})).toBeInViewport();
+    // Full-page capture in Chromium at tab zoom crops the physical viewport.
+    await page.screenshot({path:`${evidence}/fixture-after-${theme}-zoom200-team-catalog.png`,fullPage:false});
+  } finally { await context.close(); }
+});
 
 test('custom pins persist after reload, stay independent by scope, and reset without clearing conditions', async ({ page }) => {
   await mockApp(page);
@@ -45,7 +80,7 @@ test('custom pins persist after reload, stay independent by scope, and reset wit
 for (const theme of ['light', 'dark']) for (const width of [1440, 1366, 390, 320]) {
   test(`filter composition ${theme} ${width}`, async ({ page }) => {
     await mockApp(page, { count: 25 });
-    await page.setViewportSize({ width, height: width === 1366 ? 768 : 900 });
+    await page.setViewportSize({ width, height: width <= 390 ? 844 : width === 1366 ? 768 : 900 });
     await page.addInitScript(t => localStorage.setItem('dmb_theme', t), theme);
     await ready(page);
     mkdirSync(evidence, { recursive: true });
@@ -59,6 +94,7 @@ for (const theme of ['light', 'dark']) for (const width of [1440, 1366, 390, 320
       const boxes = await pins.evaluateAll(es => es.map(e => { const r = e.getBoundingClientRect(); return { x:r.x, y:r.y, width:r.width }; }));
       expect(boxes.every(b => b.y >= search.y + search.height)).toBe(true);
       if (width >= 1280) expect(new Set(boxes.map(b => b.y)).size).toBe(1);
+      else expect(new Set(boxes.map(b => b.y)).size).toBe(3);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     }
     await page.locator('#btn-ext-backlog').click();
@@ -76,3 +112,31 @@ for (const theme of ['light', 'dark']) for (const width of [1440, 1366, 390, 320
     await expect(page.locator('#btn-ext-backlog')).toBeFocused();
   });
 }
+
+for (const theme of ['light','dark']) test(`short viewport keeps catalog usable ${theme}`, async ({ page }) => {
+  await mockApp(page);
+  await page.setViewportSize({ width:1280, height:400 });
+  await page.addInitScript(t => localStorage.setItem('dmb_theme',t),theme);
+  await ready(page);
+  await page.locator('#btn-ext-backlog').click();
+  await expect(page.locator('#f-backlog-catalog-search')).toBeInViewport();
+  await expect(page.locator('#f-backlog-ext-filters [data-key="id"]')).toBeInViewport();
+  await expect(page.getByRole('button',{name:'Готово',exact:true})).toBeInViewport();
+  await page.screenshot({path:`${evidence}/fixture-after-${theme}-short-catalog.png`,fullPage:true});
+});
+
+for (const theme of ['light','dark']) test(`long mobile values retain full names ${theme}`, async ({ page }) => {
+  const { tasks } = await mockApp(page);
+  const longName = 'Проект развития клиентского сервиса и внутренних процессов';
+  tasks.forEach(task => { task.project_name = longName; });
+  await page.setViewportSize({width:390,height:844});
+  await page.addInitScript(t => localStorage.setItem('dmb_theme',t),theme);
+  await ready(page);
+  await page.locator('#f-backlog-main-filters [data-key="project_name"]').click();
+  await page.locator('.filter-dropdown').getByText(longName,{exact:true}).click();
+  await page.locator('.filter-dropdown .fd-apply').click();
+  await expect(page.locator('#f-backlog-main-filters [data-key="project_name"]')).toHaveAttribute('aria-label',`Проект: ${longName}`);
+  await expect(page.locator('#f-backlog-main-filters [data-key="project_name"]')).toHaveAttribute('title',`Проект: ${longName}`);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({path:`${evidence}/fixture-after-${theme}-390-long-page.png`,fullPage:true});
+});

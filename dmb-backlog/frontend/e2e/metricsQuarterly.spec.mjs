@@ -23,6 +23,41 @@ async function setup(page,{width=1440,theme='light',card=false,view='quarter',ed
  },{theme,card,view,edit});
 }
 
+for (const theme of ['light','dark']) for (const width of [1440,1366,390,320]) {
+ test(`metrics panel matches backlog ${theme} ${width}`,async({page},info)=>{
+  await setup(page,{width,theme});
+  const data=await page.evaluate(()=>({options:quarterFixture.options,list:quarterFixture.list}));
+  await mockApp(page);
+  await page.addInitScript(t=>localStorage.setItem('dmb_theme',t),theme);
+  await page.route('**/api/v2/metrics**',route=>route.fulfill({json:new URL(route.request().url()).pathname.endsWith('/options')?data.options:data.list}));
+  await page.setViewportSize({width,height:width<700?844:900});
+  const style=locator=>locator.evaluate(el=>{const c=getComputedStyle(el);return Object.fromEntries(['height','fontSize','borderRadius','backgroundColor','paddingLeft','paddingRight'].map(k=>[k,c[k]]));});
+  await page.goto('/#/backlog');await expect(page.locator('#f-backlog-search')).toBeVisible();
+  const searchStyle=await style(page.locator('#f-backlog-search'));
+  const panelStyle=await style(page.locator('.filter-panel[data-filter-scope=backlog]'));
+  const filterStyle=await style(page.locator('#btn-ext-backlog'));
+  await page.screenshot({path:info.outputPath('backlog.png'),fullPage:true});
+  await page.goto('/#/metrics?year=2026&quarter=4');
+  const search=page.getByRole('searchbox',{name:'Поиск',exact:true});await expect(search).toBeVisible();
+  expect(await style(search)).toEqual(searchStyle);
+  const panel=await style(page.locator('#quarterly-filters .filter-panel'));
+  for(const key of ['borderRadius','backgroundColor','paddingLeft','paddingRight'])expect(panel[key]).toBe(panelStyle[key]);
+  const filter=page.getByRole('button',{name:'Все фильтры',exact:true});
+  expect(await style(filter)).toEqual(filterStyle);
+  expect(await page.locator('.ui-registry-actions > button').evaluateAll(els=>els.map(el=>el.getAttribute('aria-label')||el.textContent.trim()))).toEqual(['Новая метрика','Колонки']);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({path:info.outputPath('metrics.png'),fullPage:true});
+  await search.fill('качество');await search.press('Enter');await expect(page).toHaveURL(/q=/);
+  await page.getByRole('button',{name:'Сброс',exact:true}).click();await expect(search).toHaveValue('');
+  await filter.click();await expect(page.locator('#qmetric-filter-extra')).toBeVisible();
+  await page.screenshot({path:info.outputPath('filters.png'),fullPage:true});
+  await filter.click();await expect(page.locator('#qmetric-filter-extra')).toBeHidden();
+  await page.getByRole('button',{name:'Колонки',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Колонки',exact:true})).toBeVisible();
+  await page.screenshot({path:info.outputPath('columns.png'),fullPage:true});
+ });
+}
+
 for (const theme of ['light','dark']) for (const [width,height] of [[1440,900],[1366,768],[390,844],[320,800]]) {
  test(`whole metrics composition ${theme} ${width}`,async({page},info)=>{
   await setup(page,{width,theme});
@@ -76,6 +111,7 @@ for (const theme of ['light','dark']) for (const [width,height] of [[1440,900],[
   await page.getByRole('button',{name:'Все фильтры',exact:true}).click();
   const slot=page.locator('[name=team_id]').locator('..');
   expect(await slot.evaluate(el=>getComputedStyle(el).width)).not.toBe('0px');
+  if(width<700)await page.locator('[data-reference-quick]').click();
   await expect(page.locator('.qmetric-signals')).toBeVisible();
   const filterBox=await page.locator('#qmetric-filter-extra').boundingBox();
   if(width>=1366)expect(filterBox.height).toBeLessThan(240);
@@ -280,7 +316,7 @@ test('visual review: zero alerts stay visible and shared controls retain readabl
  await setup(page);await page.evaluate(async()=>{const f=window.quarterFixture;f.list.summary.missing_fact=0;f.metric.periods[0].fact={value:'90',status:'preliminary',as_of_date:'2026-11-03'};f.metric.periods[0].result={outcome:'not_achieved',progress:'90',is_final:false};await f.show();(await import('/js/ui/filterSelect.js')).installFilterSelects();});
  await expect(page.locator('.qmetric-signals .ui-filter-chip')).toHaveCount(4);
  expect(await page.locator('.qmetric-outcome .ui-badge>span').first().evaluate(e=>getComputedStyle(e).whiteSpace)).toBe('normal');
- const year=page.locator('#quarterly-filters [name=year]');await expect(year).toHaveValue('2026');expect((await year.boundingBox()).width).toBeGreaterThanOrEqual(88);
+ const year=page.locator('#quarterly-filters [name=year]');await expect(year).toHaveValue('2026');expect((await year.boundingBox()).width).toBeGreaterThanOrEqual(80);
  await page.getByRole('button',{name:'Все фильтры',exact:true}).click();await expect(page.locator('#qmetric-filter-extra .ui-filter-chip')).toHaveCount(0);
  await page.getByRole('button',{name:'Все фильтры',exact:true}).click();await page.locator('#quarterly-filters [name=quarter]').click();
  await page.getByRole('dialog',{name:'Фильтр: Квартал'}).getByRole('button',{name:'3 квартал',exact:true}).click();

@@ -21,7 +21,7 @@
   #admin-confirm-title, #edit-exit-title, #create-duplicate-title) {
   font-size:var(--type-confirm-size); font-weight:var(--font-semibold); line-height:var(--type-confirm-line);
 }
-:root :is(#task-detail-title, #create-task-title, #chat-edit-title) {
+:root :is(#task-detail-title:not(.ui-task-dialog-title), #create-task-title, #chat-edit-title) {
   font-size:var(--type-workspace-size); font-weight:var(--font-semibold); line-height:var(--type-workspace-line);
   overflow-wrap:anywhere; white-space:normal;
 }
@@ -65,38 +65,38 @@
 #admin-content .ui-table-surface:has(.admin-unified-table:not(.admin-role-matrix)) { border: 0; border-radius: 0; background: transparent; overflow: visible; }
 }
 @media (max-width: 640px) {
-:is(#task-detail-overlay, #create-task-overlay) .work-table.ui-table > tbody > tr > td { padding: var(--space-1) var(--space-2); border-bottom: 0; vertical-align: top; }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .work-table.ui-table > tbody > tr > td { padding: var(--space-1) var(--space-2); border-bottom: 0; vertical-align: top; }
 }
 @media (max-width: 1100px) {
-:is(#task-detail-overlay, #create-task-overlay) .outbox-table.ui-table > tbody > tr > td { padding: 0; border: 0; }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .outbox-table.ui-table > tbody > tr > td { padding: 0; border: 0; }
 }
 /* Compatibility extracted from core.css */
-:is(#task-detail-overlay, #create-task-overlay) .ui-btn.btn-primary,
-:is(#task-detail-overlay, #create-task-overlay) .btn.primary {
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-btn.btn-primary,
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .btn.primary {
   background: var(--action-primary-bg);
   color: var(--action-primary-text);
   border: 1px solid transparent;
 }
-:is(#task-detail-overlay, #create-task-overlay) .ui-btn.btn-primary:hover,
-:is(#task-detail-overlay, #create-task-overlay) .btn.primary:hover { background: var(--action-primary-hover); transform: none; }
-:is(#task-detail-overlay, #create-task-overlay) .ui-btn.btn-secondary { color: var(--text-primary); background: var(--bg-secondary); border: 1px solid var(--border-hover); }
-:is(#task-detail-overlay, #create-task-overlay) .ui-btn.btn-secondary:hover { background: var(--bg-tertiary); }
-:is(#task-detail-overlay, #create-task-overlay) .ui-control {
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-btn.btn-primary:hover,
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .btn.primary:hover { background: var(--action-primary-hover); transform: none; }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-btn.btn-secondary { color: var(--text-primary); background: var(--bg-secondary); border: 1px solid var(--border-hover); }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-btn.btn-secondary:hover { background: var(--bg-tertiary); }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-control {
   border-radius: var(--radius-md);
   color: var(--text-primary);
   background: var(--bg-secondary);
   border-color: var(--border-hover);
 }
-:is(#task-detail-overlay, #create-task-overlay) .ui-control { width: 100%; padding-inline: 10px; }
-:is(#task-detail-overlay, #create-task-overlay) textarea.ui-control { min-height: 104px; resize: vertical; }
-:is(#task-detail-overlay, #create-task-overlay) .ui-control[aria-invalid="true"] { border-color: var(--danger-text); }
-:is(#task-detail-overlay, #create-task-overlay) :is(.ui-btn, .ui-control, .ui-tab):focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
-:is(#task-detail-overlay, #create-task-overlay) .ui-field { display: grid; align-content: start; gap: 6px; }
-:is(#task-detail-overlay, #create-task-overlay) .ui-field .form-label { color: var(--text-secondary); font-size: var(--type-meta-size); line-height:var(--type-meta-line); font-weight:var(--font-medium); }
-:is(#task-detail-overlay, #create-task-overlay) .ui-field .form-error { color: var(--danger-text); font-size:var(--type-body-size); line-height:var(--type-body-line); }
-:is(#task-detail-overlay, #create-task-overlay) .task-readonly-value { display: flex; gap: 7px; align-items: center; color: var(--text-secondary); }
-#task-detail-overlay .editing .field-modified { background: var(--warning-light); box-shadow: 0 0 0 2px var(--warning-light); }
-#task-detail-overlay .editing .field-modified .flt::after { color: var(--warning-text); }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-control { width: 100%; padding-inline: 10px; }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) textarea.ui-control { min-height: 104px; resize: vertical; }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-control[aria-invalid="true"] { border-color: var(--danger-text); }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) :is(.ui-btn, .ui-control, .ui-tab):focus-visible { outline: 2px solid var(--focus-color); outline-offset: 3px; }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-field { display: grid; align-content: start; gap: 6px; }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-field .form-label { color: var(--text-secondary); font-size: var(--type-meta-size); line-height:var(--type-meta-line); font-weight:var(--font-medium); }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .ui-field .form-error { color: var(--danger-text); font-size:var(--type-body-size); line-height:var(--type-body-line); }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .task-readonly-value { display: flex; gap: 7px; align-items: center; color: var(--text-secondary); }
+#task-detail-overlay:not(:has(> .ui-task-dialog)) .editing .field-modified { background: var(--warning-light); box-shadow: 0 0 0 2px var(--warning-light); }
+#task-detail-overlay:not(:has(> .ui-task-dialog)) .editing .field-modified .flt::after { color: var(--warning-text); }
 #admin-modal-overlay #modal-form-body:has(> .ui-field) { display: grid; gap: var(--space-4); }
 .report-step-panel > .ui-field + .ui-field,
 .meeting-management-dialog .modal-body > .ui-field + .ui-field { margin-top: var(--space-4); }
@@ -105,9 +105,9 @@
 .admin-tab.ui-tab { display: inline-flex; align-items: center; gap: var(--space-2); }
 .admin-tab.ui-tab[aria-selected="true"],
 .report-step.ui-tab[aria-selected="true"] { color: var(--accent-text); border-color: var(--accent); background: var(--accent-light); }
-#task-detail-overlay .ui-tab { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; white-space: nowrap; color: var(--text-secondary); }
-#task-detail-overlay .ui-tab[aria-selected="true"] { color: var(--accent-text); border-bottom-color: var(--accent); font-weight: var(--font-semibold); }
-#task-detail-overlay .ui-tab:hover { background: var(--bg-hover); }
+#task-detail-overlay:not(:has(> .ui-task-dialog)) .ui-tab { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; white-space: nowrap; color: var(--text-secondary); }
+#task-detail-overlay:not(:has(> .ui-task-dialog)) .ui-tab[aria-selected="true"] { color: var(--accent-text); border-bottom-color: var(--accent); font-weight: var(--font-semibold); }
+#task-detail-overlay:not(:has(> .ui-task-dialog)) .ui-tab:hover { background: var(--bg-hover); }
 .directorate-filters .ui-field { min-width: 0; }
 .admin-modal-overlay { z-index: var(--z-modal-backdrop); }
 .role-form-workspace,
@@ -163,8 +163,8 @@
 .an-page .an-report-toolbar .an-filter-button,
 .an-page .p360-project-search,
 .an-page .p360-flow-toolbar .ui-control { width: 100%; min-width: 0; max-width: none; }
-:is(#task-detail-overlay, #create-task-overlay) .mfoot .factions { min-width: 0; flex-wrap: wrap; }
-:is(#task-detail-overlay, #create-task-overlay) .mfoot .factions .ui-btn { flex: 1 1 auto; }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .mfoot .factions { min-width: 0; flex-wrap: wrap; }
+:is(#task-detail-overlay:not(:has(> .ui-task-dialog)), #create-task-overlay) .mfoot .factions .ui-btn { flex: 1 1 auto; }
 #create-task-overlay .mfoot .factions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 #create-task-overlay #create-save-btn { grid-column: 1 / -1; }
 #create-task-overlay .create-draft-saved-status { grid-column: 1 / -1; order: 4; }

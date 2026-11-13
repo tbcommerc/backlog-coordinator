@@ -34,12 +34,63 @@
   text-transform: uppercase;
   letter-spacing: .04em;
   line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 :root .ui-table:is(.ui-table-data, .ui-table-admin, .ui-table-editor) > tbody > tr:last-child > td { border-bottom: 0; }
-:root .ui-table:is(.ui-table-data, .ui-table-admin):not(.ui-table-matrix) > tbody > tr:not(.selected):hover > td { background-color: var(--bg-hover); }
+:root .ui-table:is(.ui-table-data, .ui-table-admin):not(.ui-table-matrix) > tbody > tr:not(.selected):hover > td { background-color: var(--ui-table-hover-bg, var(--bg-hover)); }
 :root .ui-table :is(.table-sort-button, .did-sort) {
   font-size: inherit; font-weight: inherit; line-height: inherit;
   letter-spacing: inherit; text-transform: inherit;
+}
+/* Sortable header variant: the label can wrap; the indicator owns its space.
+   Shared by the source header and its fixed projection. */
+:root .ui-table :is(.table-sort-button, .ui-table-heading) {
+  display: flex;
+  justify-content: flex-start;
+  text-align: left;
+  min-width: 0;
+  box-sizing: border-box;
+  width: calc(100% + 2 * var(--space-2));
+  margin-inline: calc(-1 * var(--space-2));
+  padding: var(--space-2);
+  align-items: center;
+  gap: var(--space-2);
+  white-space: normal;
+}
+:root .ui-table :is(.table-sort-button, .ui-table-heading) .th-label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: clip;
+  letter-spacing: normal;
+}
+:root .ui-table .ui-table-heading { min-height: max(var(--control-height-sm), var(--control-target-min)); }
+.ui-table :where(thead > tr > th) { position: relative; }
+.ui-table .th-resize-handle {
+  position: absolute; inset: 0 0 0 auto; width: 6px; height: 100%;
+  cursor: col-resize; touch-action: none; z-index: 3;
+  border-right: 1px solid transparent;
+}
+.ui-table .th-resize-handle:hover,
+.ui-table .th-resize-handle:focus-visible {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-right-color: var(--accent);
+}
+.ui-table .th-resize-handle:focus-visible { outline: 2px solid var(--focus-color); outline-offset: -2px; }
+:root .ui-table .table-sort-button .sort-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 var(--control-icon-sm);
+  width: var(--control-icon-sm);
+  margin: 0;
 }
 :root .ui-table.ui-table-prose { border-collapse: collapse; }
 :root .ui-table.ui-table-prose > :is(thead, tbody) > tr > :is(th, td) {

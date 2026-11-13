@@ -6,7 +6,7 @@ async function openTaskCard(page, { tab = 'main', theme = 'light' } = {}) {
   await page.goto(`/e2e/fixtures/taskCardIncrement.html?theme=${theme}#/tasks?task=42&tab=${tab}`);
   await expect(page.locator('html')).toHaveAttribute('data-fixture-ready', 'true');
   await expect(page.getByRole('tab')).toHaveCount(6);
-  await expect(page.getByRole('tab', { name: /Комментарии · 2/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Комментарии · 3/ })).toBeVisible();
   await expect(page.getByRole('tab', { name: /Ссылки и файлы · 2/ })).toBeVisible();
 }
 
@@ -26,41 +26,45 @@ test('полная API fixture проходит через все шесть в�
   expect(tabNames).toEqual([
     'Основное',
     'Отчётные статусы',
-    'Комментарии · 2',
+    'Комментарии · 3',
     'Ссылки и файлы · 2',
     'Лог изменений · 2',
     'Рабочие задачи',
   ]);
 
   const main = page.locator('#mbody');
-  await expect(main).toContainText('Карточка для проверки');
+  await expect(page.getByRole('heading', { level: 1, name: 'Карточка для проверки' })).toBeVisible();
+  await expect(main).not.toContainText('Карточка для проверки');
   await expect(main).toContainText('Только для рабочей группы');
   await expect(main).toContainText('Data Platform');
   await expect(main).toContainText('Mobile Experience');
   await expect(main).toContainText('Клиентский путь');
   await expect(main).toContainText('Q4');
+  await page.locator('[data-action="toggle-card-attributes"]').click();
+  await expect(page.locator('#task-extra-attributes')).toBeVisible();
   await expect(main).toContainText('План: 100 %');
   await expect(main).toContainText('Факт: 63 %');
   await expect(main).toContainText('Priority Score');
   await expect(main).toContainText('82 / 100');
   await expect(main).toContainText('125,5 млн ₽');
+  await page.locator('.effort-disclosure > summary').click();
+  await expect(main.locator('.ui-task-detail-grid.assessment')).toBeVisible();
   await expect(main).toContainText('Экономия за счёт автоматизации клиентского пути');
   await expect(main).toContainText('Высокий клиентский эффект и достижимый срок');
-  await expect(main).toContainText('Hard B');
-  await expect(main).toContainText('Soft A');
+  await expect(main.locator('.ui-readonly-field').filter({ hasText: 'Оценка завершённости (Hard)' })).toContainText('B');
+  await expect(main.locator('.ui-readonly-field').filter({ hasText: 'Оценка взаимодействия (Soft)' })).toContainText('A');
   const effortTotals = main.locator('.effort-disclosure tfoot td');
   await expect(effortTotals.nth(2)).toHaveText('36');
   await expect(effortTotals.nth(3)).toHaveText('40');
 
   const reporting = await activateTab(page, 'rep');
-  await expect(reporting.locator('.reporting-status-card')).toHaveCount(3);
+  await expect(reporting.locator('.ui-task-report')).toHaveCount(3);
   await expect(reporting).toContainText('Директорская оперативка');
   await expect(reporting).toContainText('Идём по плану для директората');
   await expect(reporting).toContainText('Готовим демонстрацию ДИД');
   await expect(reporting).toContainText('Ключевой релиз в графике');
-  const didDemo = reporting.locator('[data-reporting-demo="did"]');
-  await expect(didDemo).toBeChecked();
-  await expect(didDemo).toBeDisabled();
+  await expect(reporting.locator('[data-reporting-kind="did"]')).toContainText('Демо для ДИД: да');
+  await expect(reporting.locator('[data-reporting-demo="did"]')).toHaveCount(0);
   await expect(reporting.locator('[data-action="save-reporting-status"]')).toHaveCount(0);
 
   const comments = await activateTab(page, 'com');
@@ -73,15 +77,20 @@ test('полная API fixture проходит через все шесть в�
   const files = await activateTab(page, 'sys');
   await expect(files.getByRole('list', { name: 'Вложения задачи' })).toBeVisible();
   await expect(files.getByRole('listitem')).toHaveCount(2);
-  await expect(files.getByRole('button', { name: 'Скачать ux-audit.pdf' })).toBeVisible();
-  await expect(files.getByRole('button', { name: 'Скачать customer-flow.png' })).toBeVisible();
+  for (const filename of ['ux-audit.pdf', 'customer-flow.png']) {
+    const controls = files.getByRole('button', { name: `Скачать ${filename}`, exact: true });
+    await expect(controls).toHaveCount(2);
+    await expect(controls.filter({hasText:filename})).toBeVisible();
+    await expect(controls.filter({has:page.locator('svg')})).toBeVisible();
+  }
   await expect(files.getByRole('link', { name: 'https://design.example.test/tasks/42' })).toBeVisible();
   await expect(files.getByRole('link', { name: 'https://jira.example.test/browse/DMB-42' })).toBeVisible();
   await expect(files.getByRole('link', { name: 'https://jira.example.test/browse/DMB-43' })).toBeVisible();
   await expect(files.getByRole('link', { name: 'https://docs.example.test/requirements/task-42' })).toBeVisible();
 
   const log = await activateTab(page, 'log');
-  await expect(log).toContainText('История изменений (лог) · 2');
+  await expect(log.getByRole('heading', {name:'История изменений'})).toBeVisible();
+  await expect(log).toContainText('2 записи');
   await expect(log).toContainText('Прогресс');
   await expect(log).toContainText('25');
   await expect(log).toContainText('35');
@@ -152,7 +161,7 @@ test('на ширине 390px все вкладки остаются внутр�
 
   for (const tab of TAB_IDS) {
     await activateTab(page, tab);
-    if (tab === 'rep') await expect(page.locator('.reporting-status-card')).toHaveCount(3);
+    if (tab === 'rep') await expect(page.locator('.ui-task-report')).toHaveCount(3);
     if (tab === 'com') await expect(page.getByRole('feed', { name: 'Комментарии задачи' })).toBeVisible();
     if (tab === 'sys') await expect(page.getByRole('list', { name: 'Вложения задачи' })).toBeVisible();
 

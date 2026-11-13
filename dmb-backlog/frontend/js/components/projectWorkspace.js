@@ -1,3 +1,4 @@
+import { mountRegistryPanel } from '../ui/registryPanel.js';
 import { compactPeriod, projectSections, periodFields, periodLinks, applyControls, markDraft, projectEmpty } from './projectUi.js';
 import { mountProjectManagement } from './projectManagement.js?v=1';
 import { dataTable, tableCell } from '../ui/dataTable.js';
@@ -76,12 +77,14 @@ export async function initProjectWorkspace(app, mountExecution) {
                 if(!live() || token!==generation)return;
                 const pick=(id,label,key,values)=>field({id,label,kind:'select',value:params.get(key)||'',options:[{value:'',label:'Все'},...(values||[]).map(value=>({value,label:value}))]});
                 const draft=filterPanel.hidden?null:Object.fromEntries(fields.map(([key,id])=>[key,form.querySelector('#'+id)?.value]));
+                form.querySelector('.ui-reference-pins')?.replaceChildren();
                 form.querySelector('.project-catalog-extra').innerHTML=pick('catalog-team','Команда задач бэклога','cteam',data.filter_options?.teams)+pick('catalog-owner','Ответственный PL','cowner',data.filter_options?.owners);
                 if(draft)fields.forEach(([key,id])=>{if(draft[key]!=null)form.querySelector('#'+id).value=draft[key];});
                 root.querySelector('#project-search-count').textContent = `Найдено: ${data.total}`;
-                currentData=data;renderList(data);
+                currentData=data;renderList(data);mountRegistryPanel(root,'projects');
             } catch(e){if(live()&&token===generation)list.innerHTML=failure(e);}
         };
+        form.addEventListener('change',event=>{if(event.target.closest('.ui-reference-pins'))form.requestSubmit();});
         form.onsubmit = e => {e.preventDefault();clearTimeout(searchTimer);const q=search.value.trim();q?params.set('cq',q):params.delete('cq');for(const [key,id] of fields){const value=form.querySelector('#'+id)?.value||'';value?params.set(key,value):params.delete(key);}params.delete('cp');history.replaceState(null,'',href({}));closeFilters();syncReset();load();};
         form.onreset = e => {e.preventDefault();clearTimeout(searchTimer);search.value='';for(const key of ['cq','cteam','cowner','cp'])params.delete(key);history.replaceState(null,'',href({}));restoreFilters();syncReset();load();search.focus();};
         reload=load; await load(); return;

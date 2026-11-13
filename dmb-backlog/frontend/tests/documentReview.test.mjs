@@ -78,7 +78,7 @@ test('every raw snapshot field is readable, including unknown preserved V2 field
   assert.ok(metadataStart > html.indexOf('custom_preserved_context'));
   assert.ok(html.indexOf('private-hash') > metadataStart);
   assert.ok(html.indexOf('prompt-version') > metadataStart);
-  assert.match(html, /<summary>Сведения о редакции<\/summary>/);
+  assert.match(html, /<summary class="ui-disclosure-text">Сведения о редакции<\/summary>/);
 });
 
 test('multiple sources retain separate labels, versions and content', () => {

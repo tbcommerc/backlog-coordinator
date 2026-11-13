@@ -1,5 +1,5 @@
 import { escapeHtml as esc } from '../htmlUtils.js';
-import { button } from './primitives.js';
+import { button, icon } from './primitives.js';
 
 // Native radios provide arrow-key selection and form submission without JS.
 export function radioGroup({ id, name = id, label, options = [], value, disabled = false, required = false } = {}) {
@@ -7,8 +7,12 @@ export function radioGroup({ id, name = id, label, options = [], value, disabled
   return `<fieldset class="ui-choice-group" id="${esc(id)}"${disabled ? ' disabled' : ''}><legend>${esc(label)}</legend>${options.map((option, index) => `<label class="ui-checkbox" for="${esc(id)}-${index}"><input type="radio" id="${esc(id)}-${index}" name="${esc(name)}" value="${esc(option.value)}"${String(value) === String(option.value) ? ' checked' : ''}${option.disabled ? ' disabled' : ''}${required ? ' required' : ''}><span>${esc(option.label)}</span></label>`).join('')}</fieldset>`;
 }
 
-export function alert({ title = '', message = '', tone = 'info', live = false } = {}) {
+export function alert({ title = '', message = '', tone = 'info', live = false, variant = '', action = null } = {}) {
   const safeTone = ['neutral', 'info', 'success', 'warning', 'danger'].includes(tone) ? tone : 'info';
+  if (variant === 'inline') {
+    const symbol = safeTone === 'warning' || safeTone === 'danger' ? 'alert-triangle' : 'info';
+    return `<div class="ui-alert" data-ui-variant="inline" data-ui-tone="${safeTone}"${live ? ` role="${safeTone === 'danger' ? 'alert' : 'status'}"` : ''}>${icon(symbol)}<div class="ui-alert-content">${title ? `<strong>${esc(title)}</strong>` : ''}<p>${esc(message)}</p></div>${action ? `<div class="ui-alert-action">${button({ ...action, variant: 'secondary' })}</div>` : ''}</div>`;
+  }
   return `<div class="ui-alert" data-ui-tone="${safeTone}"${live ? ` role="${safeTone === 'danger' ? 'alert' : 'status'}"` : ''}>${title ? `<strong>${esc(title)}</strong>` : ''}<p>${esc(message)}</p></div>`;
 }
 

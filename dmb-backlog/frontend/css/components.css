@@ -2828,7 +2828,7 @@ body.resizing-table {
 
 /* Modal Overlay */
 #task-detail-overlay {
-    position: fixed; inset: 0; background: rgba(28, 25, 23, 0.6); backdrop-filter: blur(4px);
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.34); backdrop-filter: none;
     z-index: var(--z-modal-backdrop); display: flex; align-items: center; justify-content: center;
     opacity: 0; visibility: hidden; transition: all 0.2s ease;
 }
@@ -4643,7 +4643,7 @@ textarea.task-detail-input { resize: vertical; min-height:60px; }
    ============================================================ */
 :is(#task-detail-overlay,#create-task-overlay) {
   inset:0; position:fixed; padding:20px; display:flex; align-items:center; justify-content:center;
-  background:rgba(15,23,42,.45); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px);
+  background:var(--task-overlay-background,rgba(15,23,42,.45)); backdrop-filter:var(--task-overlay-blur,blur(5px)); -webkit-backdrop-filter:var(--task-overlay-blur,blur(5px));
   box-sizing:border-box;
   --bg:var(--bg-primary); --surface:var(--bg-secondary); --body:var(--bg-primary); --ink:var(--text-primary);
   --muted:var(--text-secondary); --faint:var(--text-muted); --line:var(--border-color); --line2:var(--border-hover);
@@ -4656,7 +4656,8 @@ textarea.task-detail-input { resize: vertical; min-height:60px; }
 
 
 
-*{box-sizing:border-box;margin:0;padding:0}
+/* The named task composition owns its spacing through the UI Kit. */
+*:not(:where(.ui-task-dialog, .ui-task-dialog *)){box-sizing:border-box;margin:0;padding:0}
 body{
   font:14px/1.45 'Inter',system-ui,sans-serif;
   background:var(--bg);
@@ -5038,7 +5039,7 @@ summary:focus-visible{
   color:var(--muted);
   margin-bottom:6px;
 }
-.task-desc textarea{
+.task-desc textarea:not(:where(.ui-task-dialog .ui-control)){
   min-height:84px;
 }
 .task-desc .txt{
@@ -5251,10 +5252,10 @@ summary:focus-visible{
   min-height:22px;
 }
 .ival .txt{color:#33415C;font-weight:500}
-.ival select,
-.ival input[type=text],
-.ival input[type=number],
-.ival input[type=date]{
+.ival select:not(:where(.ui-task-dialog .ui-control)),
+.ival input[type=text]:not(:where(.ui-task-dialog .ui-control)),
+.ival input[type=number]:not(:where(.ui-task-dialog .ui-control)),
+.ival input[type=date]:not(:where(.ui-task-dialog .ui-control)){
   flex:1;
   min-width:0;
   background:#F8FAFC;
@@ -5270,7 +5271,7 @@ summary:focus-visible{
   min-width:0;
 }
 .dict-native-select{display:none!important}
-.dict-combobox-trigger{
+.dict-combobox-trigger:not(:where(.ui-task-dialog .ui-control)){
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -5408,7 +5409,7 @@ summary:focus-visible{
   min-height:40px;
   align-content:center;
 }
-.task-detail-modal .ival.customer-row-field select,
+.task-detail-modal .ival.customer-row-field select:not(:where(.ui-task-dialog .ui-control)),
 .task-detail-modal .ival.customer-row-field .dict-combobox-trigger{
   box-sizing:border-box;
   height:40px;
@@ -5429,7 +5430,7 @@ summary:focus-visible{
   min-height:40px;
   align-content:center;
 }
-.task-detail-modal .ival.classification-inline-field select,
+.task-detail-modal .ival.classification-inline-field select:not(:where(.ui-task-dialog .ui-control)),
 .task-detail-modal .ival.classification-inline-field .dict-combobox-trigger{
   box-sizing:border-box;
   height:40px;
@@ -5490,13 +5491,13 @@ summary:focus-visible{
   border-radius:99px;
 }
 
-input[type=text],
-input[type=number],
-input[type=date],
-input[type=datetime-local],
-input[type=url],
-select,
-textarea{
+input[type=text]:not(:where(.ui-task-dialog .ui-control)),
+input[type=number]:not(:where(.ui-task-dialog .ui-control)),
+input[type=date]:not(:where(.ui-task-dialog .ui-control)),
+input[type=datetime-local]:not(:where(.ui-task-dialog .ui-control)),
+input[type=url]:not(:where(.ui-task-dialog .ui-control)),
+select:not(:where(.ui-task-dialog .ui-control)),
+textarea:not(:where(.ui-task-dialog .ui-control)){
   width:100%;
   border:1px solid var(--line);
   border-radius:9px;
@@ -5509,14 +5510,14 @@ textarea{
   color:var(--ink);
   transition:border-color .15s,box-shadow .15s;
 }
-input:focus,
-select:focus,
-textarea:focus{
+input:focus:not(:where(.ui-task-dialog .ui-control)),
+select:focus:not(:where(.ui-task-dialog .ui-control)),
+textarea:focus:not(:where(.ui-task-dialog .ui-control)){
   border-color:var(--accent);
   box-shadow:0 0 0 3px var(--ring);
   background:#fff;
 }
-textarea{resize:vertical;line-height:1.45}
+textarea:not(:where(.ui-task-dialog .ui-control)){resize:vertical;line-height:1.45}
 input[type=range]{
   flex:1;
   min-width:70px;
@@ -5729,7 +5730,7 @@ input[type=range]{
   text-transform:uppercase;
   color:var(--muted);
 }
-.bc-head .btn.ai{margin-left:auto}
+.bc-head .btn:not(:where(.ui-task-dialog .ui-btn)).ai{margin-left:auto}
 .bc-head .agent-check-wrap,
 .kl .agent-check-wrap{margin-left:auto}
 .bc-value{
@@ -5823,7 +5824,7 @@ input[type=range]{
   color:var(--muted);
 }
 
-.btn.ai{
+.btn:not(:where(.ui-task-dialog .ui-btn)).ai{
   border:1px solid var(--violet-bg);
   background:var(--surface);
   color:var(--ai);
@@ -5837,7 +5838,7 @@ input[type=range]{
   gap:6px;
   transition:.15s;
 }
-.btn.ai:hover{
+.btn:not(:where(.ui-task-dialog .ui-btn)).ai:hover{
   background:var(--violet-bg);
   border-color:var(--violet-bg);
 }
@@ -5847,7 +5848,7 @@ input[type=range]{
   display:inline-flex;
   flex:none;
 }
-.agent-check-wrap>.btn.ai{margin-left:0}
+.agent-check-wrap>.btn:not(:where(.ui-task-dialog .ui-btn)).ai{margin-left:0}
 
 .agent-check-tooltip.ui-tooltip{
   width:400px;
@@ -6019,7 +6020,7 @@ input[type=range]{
   flex-wrap:nowrap;
   gap:8px;
 }
-.ai-suggestion-actions .btn.mini{
+.ai-suggestion-actions .btn:not(:where(.ui-task-dialog .ui-btn)).mini{
   box-sizing:border-box;
   flex:0 0 148px;
   width:148px;
@@ -6028,22 +6029,22 @@ input[type=range]{
   margin-left:0;
   justify-content:center;
 }
-.ai-suggestion-actions .btn.mini.ghost{
+.ai-suggestion-actions .btn:not(:where(.ui-task-dialog .ui-btn)).mini.ghost{
   background:color-mix(in srgb,var(--violet) 16%,#fff);
   border:1px solid color-mix(in srgb,var(--violet) 58%,#fff);
   color:var(--violet);
 }
-.ai-suggestion-actions .btn.mini.ghost:hover{
+.ai-suggestion-actions .btn:not(:where(.ui-task-dialog .ui-btn)).mini.ghost:hover{
   background:color-mix(in srgb,var(--violet) 25%,#fff);
   border-color:var(--violet);
 }
-.ai-suggestion-actions .btn.mini.primary{
+.ai-suggestion-actions .btn:not(:where(.ui-task-dialog .ui-btn)).mini.primary{
   background:var(--violet);
   border:1px solid var(--violet);
   color:#fff;
   box-shadow:0 5px 14px color-mix(in srgb,var(--violet) 32%,transparent);
 }
-.ai-suggestion-actions .btn.mini.primary:hover{
+.ai-suggestion-actions .btn:not(:where(.ui-task-dialog .ui-btn)).mini.primary:hover{
   background:color-mix(in srgb,var(--violet) 84%,#111827);
   border-color:color-mix(in srgb,var(--violet) 84%,#111827);
   box-shadow:0 7px 18px color-mix(in srgb,var(--violet) 42%,transparent);
@@ -6101,7 +6102,7 @@ table.tbl td.rolecell{
   font-weight:600;
   margin-top:2px;
 }
-table.tbl input[type=number]{
+table.tbl input[type=number]:not(:where(.ui-task-dialog .ui-control)){
   max-width:84px;
   text-align:right;
   margin-left:auto;
@@ -6376,7 +6377,7 @@ table.tbl input[type=number]{
   border-radius:50%;
   background:var(--warn);
 }
-.mfoot .btn:disabled{
+.mfoot .btn:not(:where(.ui-task-dialog .ui-btn)):disabled{
   cursor:not-allowed;
   opacity:.5;
 }
@@ -6475,18 +6476,18 @@ table.tbl input[type=number]{
 }
 
 .character-count-wrap{position:relative;width:100%}
-.character-count-wrap textarea{padding-bottom:24px}
+.character-count-wrap textarea:not(:where(.ui-task-dialog .ui-control)){padding-bottom:24px}
 .task-character-counter{display:block;margin-top:4px;color:var(--faint);font-size:var(--type-meta-size);line-height:var(--type-meta-line);font-variant-numeric:tabular-nums;text-align:right}
 .character-count-wrap .task-character-counter{position:absolute;right:9px;bottom:6px;margin:0;padding:1px 4px;border-radius:4px;background:var(--bg-primary)}
 .task-character-counter.near-limit{color:var(--warning);font-weight:700}
 
-.editing .field-modified{
+.editing .field-modified:not(:where(.ui-task-dialog *)){
   border-radius:8px;
   border-color:rgba(245,158,11,.72) !important;
   box-shadow:0 0 0 2px rgba(245,158,11,.12);
   background:linear-gradient(0deg,rgba(255,251,235,.58),rgba(255,251,235,.58)),var(--bg-secondary);
 }
-.editing .field-modified .flt::after{
+.editing .field-modified:not(:where(.ui-task-dialog *)) .flt::after{
   content:'Изменено';
   margin-left:7px;
   color:#b45309;
@@ -6602,7 +6603,7 @@ table.tbl input[type=number]{
 .create-duplicate-item span{font-size:13px;line-height:1.35}
 .create-duplicate-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 
-.btn{
+.btn:not(:where(.ui-task-dialog .ui-btn)){
   position:relative;
   border:none;
   border-radius:10px;
@@ -6615,33 +6616,33 @@ table.tbl input[type=number]{
   gap:8px;
   transition:.15s;
 }
-.btn svg{width:14px;height:14px}
-.btn.primary{
+.btn:not(:where(.ui-task-dialog .ui-btn)) svg{width:14px;height:14px}
+.btn:not(:where(.ui-task-dialog .ui-btn)).primary{
   background:var(--accent);
   color:#fff;
   box-shadow:0 4px 12px rgba(22,163,74,.25);
 }
-.btn.primary:hover{background:var(--accent-h)}
-.btn.ghost{
+.btn:not(:where(.ui-task-dialog .ui-btn)).primary:hover{background:var(--accent-h)}
+.btn:not(:where(.ui-task-dialog .ui-btn)).ghost{
   background:#fff;
   border:1px solid var(--line);
   color:var(--muted);
 }
-.btn.ghost:hover{
+.btn:not(:where(.ui-task-dialog .ui-btn)).ghost:hover{
   border-color:var(--line2);
   color:var(--ink);
 }
-.btn.mini{
+.btn:not(:where(.ui-task-dialog .ui-btn)).mini{
   height:26px;
   padding:0 10px;
   font-size:var(--type-meta-size);line-height:var(--type-meta-line);
   margin-left:auto;
 }
-.btn.loading{
+.btn:not(:where(.ui-task-dialog .ui-btn)).loading{
   color:transparent;
   pointer-events:none;
 }
-.btn.loading::after{
+.btn:not(:where(.ui-task-dialog .ui-btn)).loading::after{
   content:'';
   position:absolute;
   width:16px;
@@ -6729,7 +6730,7 @@ table.tbl input[type=number]{
 }
 
 @media(max-width:960px){
-  &#task-detail-overlay{padding:12px}
+  &#task-detail-overlay{padding:var(--task-overlay-mobile-padding,12px)}
   .task-detail-modal.modal{max-height:calc(100dvh - 24px)}
   .task-detail-modal .mhead{padding:12px 16px}
   .task-detail-modal .tabs{padding-right:16px;padding-left:16px}
@@ -6747,7 +6748,7 @@ table.tbl input[type=number]{
 }
 
 @media(max-width:720px){
-  &#task-detail-overlay{padding:8px}
+  &#task-detail-overlay{padding:var(--task-overlay-mobile-padding,8px)}
   .task-detail-modal.modal{max-height:calc(100dvh - 16px);border-radius:12px}
   .task-detail-modal .mhead{padding:10px 12px}
   .task-detail-modal .head-row1{
@@ -6788,7 +6789,7 @@ table.tbl input[type=number]{
     width:100%;
     justify-content:flex-end;
   }
-  .mfoot .factions .btn{
+  .mfoot .factions .btn:not(:where(.ui-task-dialog .ui-btn)){
     flex:1 1 0;
     justify-content:center;
   }
@@ -6814,7 +6815,7 @@ table.tbl input[type=number]{
 .mhead,.tabs-shell,.tabs,.mfoot{background:var(--bg-secondary);border-color:var(--border-color)}
 .mbody{background:var(--bg-primary)}
 .task-title-card,.task-desc,.cl,.repcard,.citem,
-table.tbl,.composer textarea{background:var(--bg-secondary);border-color:var(--border-color)}
+table.tbl,.composer textarea:not(:where(.ui-task-dialog .ui-control)){background:var(--bg-secondary);border-color:var(--border-color)}
 .field,.stats,.bigcard{background:var(--bg-secondary);border-color:transparent}
 .cl:hover,.repcard:hover{border-color:var(--border-hover)}
 .iconbtn,.tid{background:var(--bg-tertiary);color:var(--text-secondary);border-color:var(--border-color)}
@@ -6843,17 +6844,17 @@ table.tbl,.composer textarea{background:var(--bg-secondary);border-color:var(--b
 .task-title,.head-title,.fval,.ival,.sval,.bc-value,.person-name{color:var(--text-primary)}
 .task-title-card .title-input{font-size:13.5px;font-weight:var(--font-bold);letter-spacing:0;line-height:1.55}
 .task-desc .txt,.fval .txt,.jtxt,.ctext{color:var(--text-secondary)}
-input[type=text],input[type=number],input[type=date],input[type=datetime-local],
-input[type=url],select,textarea{background:var(--bg-primary);border-color:var(--border-color);color:var(--text-primary)}
-input:focus,select:focus,textarea:focus{background:var(--bg-primary);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+input[type=text]:not(:where(.ui-task-dialog .ui-control)),input[type=number]:not(:where(.ui-task-dialog .ui-control)),input[type=date]:not(:where(.ui-task-dialog .ui-control)),input[type=datetime-local]:not(:where(.ui-task-dialog .ui-control)),
+input[type=url]:not(:where(.ui-task-dialog .ui-control)),select:not(:where(.ui-task-dialog .ui-control)),textarea:not(:where(.ui-task-dialog .ui-control)){background:var(--bg-primary);border-color:var(--border-color);color:var(--text-primary)}
+input:focus:not(:where(.ui-task-dialog .ui-control)),select:focus:not(:where(.ui-task-dialog .ui-control)),textarea:focus:not(:where(.ui-task-dialog .ui-control)){background:var(--bg-primary);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
 .chip{background:var(--bg-tertiary);border-color:var(--border-color);color:var(--text-secondary)}
 .chip:hover{border-color:var(--border-hover);color:var(--text-primary)}
 .chip.on{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
-.btn{border-radius:var(--radius-md);transition:all var(--transition-fast)}
-.btn.primary{background:var(--accent);color:#fff}
-.btn.primary:hover{background:var(--accent-hover)}
-.btn.ghost,.btn.ai{background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-primary)}
-.btn.ghost:hover,.btn.ai:hover{background:var(--bg-hover);border-color:var(--border-hover)}
+.btn:not(:where(.ui-task-dialog .ui-btn)){border-radius:var(--radius-md);transition:all var(--transition-fast)}
+.btn:not(:where(.ui-task-dialog .ui-btn)).primary{background:var(--accent);color:#fff}
+.btn:not(:where(.ui-task-dialog .ui-btn)).primary:hover{background:var(--accent-hover)}
+.btn:not(:where(.ui-task-dialog .ui-btn)).ghost,.btn:not(:where(.ui-task-dialog .ui-btn)).ai{background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-primary)}
+.btn:not(:where(.ui-task-dialog .ui-btn)).ghost:hover,.btn:not(:where(.ui-task-dialog .ui-btn)).ai:hover{background:var(--bg-hover);border-color:var(--border-hover)}
 .psbar,.pbar2{background:var(--bg-tertiary)}
 .psbar span,.pbar2 span{background:var(--accent)}
 .stats-half+.stats-half,.bc-div,.jrow+.jrow{border-color:var(--border-color)}
@@ -6988,7 +6989,7 @@ table.tbl tbody tr:hover{background:var(--bg-hover)}
 @container notification-workspace (max-width:920px) { .notification-toolbar{grid-template-columns:minmax(0,1fr) max-content}.notification-state-filter{grid-column:1;grid-row:1;justify-self:start}.notification-toolbar>#notification-reset{grid-column:2;grid-row:1}.notification-quick-filters{grid-column:1/-1;grid-row:2} }
 @container notification-workspace (max-width:560px) { .notification-toolbar{grid-template-columns:minmax(0,1fr)}.notification-state-filter{grid-column:1;grid-row:1;width:100%;align-items:flex-start;flex-direction:column;gap:6px}.notification-state-filter .notification-filter-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.notification-state-filter .notification-filter-chip{white-space:nowrap}.notification-quick-filters{grid-column:1;grid-row:2;align-items:flex-start;flex-direction:column;gap:var(--space-3)}.notification-filter-group{width:100%;align-items:flex-start;flex-direction:column;gap:6px}.notification-filter-options{width:100%}.notification-toolbar>#notification-reset{grid-column:1;grid-row:3;width:100%;justify-self:stretch} }
 @media (max-width:900px) { .notification-card{grid-template-columns:38px minmax(0,1fr)}.notification-card-actions{grid-column:2;width:100%;justify-content:flex-start}.notification-card-actions .btn-primary{width:160px;min-width:0;flex:0 1 160px}.notification-hero{align-items:flex-start;flex-direction:column;gap:var(--space-3)}.notification-header-actions{justify-content:flex-start}.notification-feed{padding:var(--space-4)} }
-@media (max-width:560px) { .notification-header-actions{width:100%}.notification-header-actions .btn{flex:1}.notification-stats{gap:6px 10px}.notification-stats span+span::before{display:none}.notification-card{padding:var(--space-3)}.notification-card-icon{width:36px;height:36px}.notification-feed-header{align-items:flex-start;gap:var(--space-2);margin-bottom:var(--space-3)}#notifications-newer{max-width:160px;white-space:normal} }
+@media (max-width:560px) { .notification-header-actions{width:100%}.notification-header-actions .btn:not(:where(.ui-task-dialog .ui-btn)){flex:1}.notification-stats{gap:6px 10px}.notification-stats span+span::before{display:none}.notification-card{padding:var(--space-3)}.notification-card-icon{width:36px;height:36px}.notification-feed-header{align-items:flex-start;gap:var(--space-2);margin-bottom:var(--space-3)}#notifications-newer{max-width:160px;white-space:normal} }
 
 .notif-dropdown-state { display:grid; justify-items:center; gap:10px; padding:18px 14px; color:var(--text-secondary); font-size:13px; text-align:center; }
 .notif-dropdown-error { color:var(--text-primary); }
@@ -7111,13 +7112,13 @@ table.tbl tbody tr:hover{background:var(--bg-hover)}
 .pip-decision-option small { color:var(--text-muted); font-size:var(--type-meta-size); line-height:var(--type-meta-line); }
 .pip-decision-consequence { margin:10px 0; padding:9px 10px; border-left:3px solid var(--accent); border-radius:5px; background:var(--accent-light); color:var(--text-secondary); font-size:var(--type-meta-size); line-height:var(--type-meta-line); }
 .pip-decision-reason { margin-bottom:0; }
-.pip-decision-reason textarea { resize:vertical; min-height:82px; }
+.pip-decision-reason textarea:not(:where(.ui-task-dialog .ui-control)) { resize:vertical; min-height:82px; }
 .pip-decision-reason > small { display:block; margin-top:4px; color:var(--text-muted); font-size:var(--type-meta-size);line-height:var(--type-meta-line); }
 .pip-decision-actions { display:flex; justify-content:flex-end; gap:8px; }
-.pip-decision-actions .btn:disabled { opacity:.48; cursor:not-allowed; filter:saturate(.45); }
+.pip-decision-actions .btn:not(:where(.ui-task-dialog .ui-btn)):disabled { opacity:.48; cursor:not-allowed; filter:saturate(.45); }
 @media (max-width:1050px) { .pip-task-card { grid-template-columns:minmax(220px,1fr) minmax(260px,1fr); } .pip-task-decision { grid-column:1 / -1; flex-direction:row; align-items:center; justify-content:space-between; } .pip-context-gaps { justify-content:flex-start; } }
 @media (max-width:760px) { .pip-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .pip-flow-steps { grid-template-columns:1fr; gap:9px; } .pip-flow-steps li::after { display:none; } .pip-queue-toolbar { align-items:stretch; flex-direction:column; } .pip-filter-group { justify-content:flex-start; } .pip-task-card { grid-template-columns:1fr; } .pip-task-decision { grid-column:auto; align-items:stretch; flex-direction:column; } .pip-context-gaps { justify-content:flex-start; } .pip-context-ok,.pip-view-only { text-align:left; } .pip-decision-context { grid-template-columns:repeat(2,minmax(0,1fr)); } .pip-decision-options { grid-template-columns:1fr; } }
-@media (max-width:480px) { .pip-flow-heading { flex-direction:column; } .pip-flow-heading .btn { width:100%; justify-content:center; } .pip-summary-grid { grid-template-columns:1fr; } .pip-filter-group { display:grid; grid-template-columns:1fr; } .pip-task-metrics { grid-template-columns:1fr; } .pip-decision-actions { flex-direction:column-reverse; } .pip-decision-actions .btn { width:100%; justify-content:center; } }
+@media (max-width:480px) { .pip-flow-heading { flex-direction:column; } .pip-flow-heading .btn:not(:where(.ui-task-dialog .ui-btn)) { width:100%; justify-content:center; } .pip-summary-grid { grid-template-columns:1fr; } .pip-filter-group { display:grid; grid-template-columns:1fr; } .pip-task-metrics { grid-template-columns:1fr; } .pip-decision-actions { flex-direction:column-reverse; } .pip-decision-actions .btn:not(:where(.ui-task-dialog .ui-btn)) { width:100%; justify-content:center; } }
 
 /* PI outcome in task card and audit log */
 .pip-history-summary {

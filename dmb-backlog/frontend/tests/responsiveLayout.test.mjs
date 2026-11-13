@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const index = read('index.html');
 const css = read('css/responsive.css');
 const componentsCss = read('css/components.css');
+const taskDialogCss = read('css/ui/task-dialog.css');
 const pagesCss = read('css/pages.css');
 const taskTable = read('js/components/backlogPage.js');
 const teamBacklog = read('js/components/backlogPage.js');
@@ -14,7 +15,7 @@ const fixture = read('tests/fixtures/responsive-shell.html');
 const filterToolbar = read('js/components/filterToolbar.js');
 const registryTablesCss = read('css/ui/registry-tables.css');
 const quickFilters = read('js/components/quickFilters.js');
-const tableUtils = read('js/components/tableUtils.js');
+const tableUtils = read('js/components/tableUtils.js') + read('js/ui/tableColumns.js');
 const expressEstimate = read('js/components/expressEstimate.js');
 
 assert.match(index, /responsive\.css\?v=\d+/, 'responsive stylesheet must be loaded');
@@ -25,7 +26,7 @@ assert.match(css, /overflow-x:\s*auto\s*!important/, 'wide tables must scroll ho
 assert.doesNotMatch(css, /\.table-container\s*\{[\s\S]*?scrollbar-gutter:\s*stable/, 'backlog tables must not reserve an empty vertical scrollbar gutter on the right');
 assert.match(css, /#tasks-table,[\s\S]*?#team-tasks-table\s*\{[\s\S]*?width:\s*100%[\s\S]*?min-width:\s*max-content/, 'backlog tables must fill ultra-wide workspaces without losing narrow-screen scrolling');
 assert.match(tableUtils, /containerWidth\s*-\s*intrinsicWidth/, 'calculated backlog columns must absorb unused wide-screen space');
-assert.match(tableUtils, /new ResizeObserver\(\(\)\s*=>\s*applyColumnWidths/, 'backlog column widths must react when the workspace is resized');
+assert.match(tableUtils, /new ResizeObserver\(\(\)\s*=>[\s\S]*applyColumnWidths/, 'backlog column widths must react when the workspace is resized');
 assert.match(componentsCss, /thead tr:first-child th:last-child\s*\{[\s\S]*?border-top-right-radius/, 'the original backlog header must follow the rounded table container');
 assert.match(registryTablesCss, /overflow:\s*hidden;[\s\S]*?border-radius:\s*var\(--radius-lg\) var\(--radius-lg\) 0 0;/, 'the shared sticky header must keep the same rounded top edge');
 assert.match(componentsCss, /quick-filters-single-row[\s\S]*repeat\(var\(--quick-filter-columns, 8\), minmax\(0, 1fr\)\)/, 'wide backlog pages must place all quick filters in one equal-width row');
@@ -90,8 +91,11 @@ assert.match(componentsCss, /\.qe-epic-block > \.qe-estimate-row\s*\{\s*min-widt
 assert.match(componentsCss, /\.qe-story-block > \.qe-estimate-row\s*\{\s*min-width:\s*786px/, 'story row width must compensate its 74px nesting offset');
 assert.doesNotMatch(componentsCss, /\.qe-estimate-row\s*\{[^}]*min-width:\s*max-content/, 'long hierarchy titles must not shift competency columns');
 assert.match(componentsCss, /\.qe-task-block\.qe-unestimated,[\s\S]*?border-color:\s*var\(--border-color\)\s*!important;[\s\S]*?border-left-color:\s*var\(--warning\)\s*!important;/, 'attention state must use only a left warning marker instead of an orange perimeter');
-assert.match(componentsCss, /@media\(max-width:960px\)\{[\s\S]*?&#task-detail-overlay\{padding:12px\}[\s\S]*?\.task-detail-modal\.modal\{max-height:calc\(100dvh - 24px\)\}/, 'task card must reduce its outer inset and follow the viewport at intermediate widths');
-assert.match(componentsCss, /@media\(max-width:720px\)\{[\s\S]*?&#task-detail-overlay\{padding:8px\}[\s\S]*?\.task-detail-modal \.head-row1\{[\s\S]*?grid-template-columns:minmax\(0,1fr\) auto/, 'task card header must reflow without introducing a separate mobile version');
+assert.match(taskDialogCss, /width:min\(1160px,100%\);height:min\(790px,calc\(100dvh - 48px\)\)/, 'task card must fit viewport at intermediate widths');
+assert.match(taskDialogCss, /@media\(max-width:700px\)\{[\s\S]*?--task-overlay-mobile-padding:0px[\s\S]*?width:100%;height:100dvh;max-height:100dvh;border-radius:0/, 'mobile card must fill the viewport');
+const taskTitleRule = taskDialogCss.match(/\.ui-task-dialog-title-row>\.ui-task-dialog-title\s*\{([^}]*)\}/)?.[1] || '';
+assert.match(taskTitleRule, /(?:^|;)\s*min-width:\s*0\s*(?:;|$)/, 'task title must shrink inside its flex row');
+assert.match(taskDialogCss, /\.ui-task-dialog-title-row\s*\{[^}]*display:\s*flex\s*;/, 'task card header must reflow without a separate mobile version');
 assert.match(componentsCss, /\.tabs-shell\.has-overflow \.tabs\{padding-left:42px;padding-right:42px\}/, 'overflowing task tabs must reserve space for the scroll arrows');
 assert.match(pagesCss, /\.quarterly-update-card\s*\{[\s\S]*?grid-template-areas:\s*"head progress start metrics footer"[\s\S]*?grid-template-columns:\s*minmax\(280px, 1\.5fr\)/, 'quarterly progress must use compact horizontal task cards on wide screens');
 assert.match(pagesCss, /\.quarterly-update-list\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)[\s\S]*?grid-auto-rows:\s*max-content/, 'quarterly progress must keep one elongated card per row');

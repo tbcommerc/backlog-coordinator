@@ -1,0 +1,108 @@
+/* Named registry composition from the approved 11 November references.
+   Every selector is opt-in: no Backlog or generic control rules. */
+:root #quarterly-metrics.ui-registry-reference[data-registry-reference=metrics]{gap:0;}
+:root .ui-registry-reference[data-registry-reference] .qmetric-signals{margin:16px 0;}
+:root .ui-registry-reference[data-registry-reference] .work-filter-tools{display:flex;gap:8px;}
+:root .ui-registry-reference[data-registry-reference] .work-toolbar .work-toolbar-primary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-column:1/-1;grid-row:2;}
+:root .ui-registry-reference[data-registry-reference] .work-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;margin:0;padding:8px 12px;}
+:root .ui-registry-reference[data-registry-reference] .work-toolbar-search{grid-column:1;grid-row:1;}
+:root .ui-registry-reference[data-registry-reference] .work-filter-tools{grid-column:2;grid-row:1;}
+:root .ui-registry-reference[data-registry-reference] .work-extra-filters{grid-column:1/-1;}
+:root .ui-registry-reference[data-registry-reference] .has-work-inspector:not(.inspector-conditions-expanded) .work-toolbar{display:none;}
+:root .ui-registry-reference[data-registry-reference] .has-work-inspector>.work-mobile-collection{display:none;}
+:root .ui-registry-reference[data-registry-reference] .ui-reference-result-count{display:block;margin:16px 0;font-size:var(--text-sm);color:var(--text-secondary);}
+:root .ui-registry-reference[data-registry-reference] .ui-reference-pins .form-label{white-space:nowrap;}
+:root .ui-registry-reference[data-registry-reference=review] .ui-route-tabs{margin:0 0 8px;}
+:root .ui-registry-reference[data-registry-reference=customer] .ui-registry-secondary{margin:0 0 12px;}
+:root .ui-registry-reference[data-registry-reference=customer] #customer-requests-content{padding-top:0!important;}
+:root .ui-registry-reference[data-registry-reference] .ui-reference-panel .ui-registry-sort .ui-control{--ui-size:var(--control-height-sm);}
+:root #work-projects-page.ui-registry-reference[data-registry-reference=projects]{gap:0;}
+:root #work-projects-page.ui-registry-reference .project-catalog-toolbar{margin:0;}
+@media(min-width:701px){
+ .main-content:has(>.ui-registry-reference[data-registry-reference=work]){padding-top:32px;}
+ :root .ui-registry-reference[data-registry-reference=work]{padding:0;gap:0;}
+ :root .ui-registry-reference[data-registry-reference] .work-collections{margin:0 0 8px;}
+}
+.ui-registry-reference .ui-page-header{margin:0 0 8px;align-items:center;}
+.ui-registry-reference .toolbar-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.ui-registry-reference .ui-reference-panel{background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:10px;padding:8px 12px;margin:0;gap:8px;}
+.ui-registry-reference .ui-reference-pins{display:grid;grid-template-columns:repeat(var(--registry-pin-count,5),minmax(0,1fr));gap:8px;width:100%;grid-column:1/-1;}
+.ui-registry-reference .ui-reference-pins[hidden]{display:none;}
+.ui-registry-reference .ui-reference-pins>.ui-field{margin:0;max-width:none;min-width:0;}
+.ui-registry-reference .ui-reference-pins .ui-control{--ui-size:var(--control-height-sm);--ui-font:var(--control-font-sm);}
+.ui-registry-reference .ui-reference-panel>.ui-registry-search{flex:1 1 240px;}
+.ui-registry-reference .qmetric-header-period>.qmetric-secondary{display:none;}
+.ui-registry-reference .qmetric-header-period{gap:8px;}
+.ui-registry-reference .qmetric-period-filter{gap:8px;}
+.ui-registry-reference .qmetric-period-filter .ui-field{margin:0;}
+.ui-registry-reference .qmetric-period-filter input{width:80px;}
+.ui-registry-reference .qmetric-period-filter select{width:108px;}
+.ui-registry-reference .qmetric-signals{margin:16px 0;}
+.ui-registry-reference .ui-reference-quick-toggle{display:none;}
+.ui-registry-reference .ui-reference-quick-toggle[hidden]{display:none!important;}
+.ui-registry-reference .ui-route-tabs{margin:8px 0;}
+.ui-registry-reference .ui-reference-panel .ui-registry-sort{flex:0 1 240px;}
+.ui-registry-reference .ui-reference-panel .ui-registry-sort .form-label{display:none;}
+.ui-registry-reference .ui-reference-panel .ui-registry-sort .ui-field{border:0;padding:0;}
+.ui-registry-reference .ui-reference-panel .ui-registry-sort select{border:1px solid var(--border-color);border-radius:var(--radius-md);padding-inline:12px;}
+.ui-registry-reference[data-registry-reference=customer] .ui-registry-collections{margin:16px 0;}
+.ui-registry-reference .project-catalog-search{display:flex;flex-wrap:wrap;}
+.ui-registry-reference .project-catalog-search-field{flex:1 1 240px;}
+.ui-registry-reference .project-catalog-actions{display:flex;gap:8px;}
+.ui-registry-reference .work-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;}
+.ui-registry-reference .work-toolbar-search{grid-column:1;grid-row:1;width:100%;}
+.ui-registry-reference .work-toolbar-search .ui-field{max-width:none;width:100%;}
+.ui-registry-reference .work-filter-tools{grid-column:2;grid-row:1;}
+.ui-registry-reference .work-toolbar-primary{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.ui-registry-reference .work-toolbar-primary .ui-field{margin:0;max-width:none;min-width:0;}
+.ui-registry-reference .work-toolbar-primary .ui-control{--ui-size:var(--control-height-sm);--ui-font:var(--control-font-sm);}
+.ui-registry-reference .work-toolbar [data-work-action=toggle-search]{display:none;}
+@media(max-width:700px){
+ :root .ui-registry-reference[data-registry-reference=projects] .ui-page-header{margin-bottom:16px;}
+ :root .ui-registry-reference[data-registry-reference=review] .ui-page-header{margin-bottom:24px;}
+ :root .ui-registry-reference[data-registry-reference=projects] .project-catalog-search-field{order:0;flex-basis:100%;}
+ :root .ui-registry-reference[data-registry-reference=projects] .ui-reference-pins{order:1;}
+ :root .ui-registry-reference[data-registry-reference=projects] .project-catalog-actions{order:2;flex-basis:100%;justify-content:flex-end;}
+ :root .ui-registry-reference[data-registry-reference=review] .ui-reference-panel{display:flex;flex-wrap:wrap;justify-content:flex-end;}
+ :root .ui-registry-reference[data-registry-reference=review] .ui-reference-panel>.ui-registry-search{order:0;flex-basis:100%;}
+ :root .ui-registry-reference[data-registry-reference=review] .ui-reference-pins{order:1;}
+ :root .ui-registry-reference[data-registry-reference=review] .ui-reference-panel>button{order:2;}
+ :root #work-projects-page.ui-registry-reference{padding:0;}
+ :root .ui-registry-reference[data-registry-reference] .ui-reference-panel{padding:8px;}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar{gap:8px;}
+ :root .ui-registry-reference[data-registry-reference] .work-secondary-toolbar{gap:8px;margin:16px 0;}
+ :root .ui-registry-reference[data-registry-reference] .work-secondary-toolbar .ui-reference-quick-toggle{margin:0;}
+ :root .ui-registry-reference[data-registry-reference] .work-sort-slot{margin-right:auto;}
+ :root .ui-registry-reference[data-registry-reference=work]{padding:16px 0;}
+ :root .ui-registry-reference[data-registry-reference] .ui-page-header{display:flex;flex-wrap:wrap!important;gap:16px;}
+ :root .ui-registry-reference[data-registry-reference] .toolbar-title{font-size:24px;line-height:32px;}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar .work-search-field{display:block;}
+ :root .ui-registry-reference[data-registry-reference] .ui-page-header .toolbar-title-wrap{flex:1 0 100%;}
+ :root .ui-registry-reference[data-registry-reference] .ui-page-header .toolbar-actions{flex:1 0 100%;justify-content:flex-end;}
+ :root .ui-registry-reference[data-registry-reference] .work-workspace-nav{display:inline-flex;}
+ :root .ui-registry-reference[data-registry-reference] [data-work-display-slot]{display:block;flex:0 1 auto;}
+ :root .ui-registry-reference[data-registry-reference] .work-mobile-collection{display:block;margin:0 0 8px;}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar-search{display:flex;}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar [data-work-action=toggle-search]{display:none;}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar .work-filter-tools [data-work-action=filters]{width:auto;padding:0 12px;}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar .work-filter-tools [data-work-action=filters]>span{display:inline;}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar .work-filter-tools [data-work-action=reset]{display:inline-flex;width:auto;padding:0 12px;}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar{grid-template-columns:minmax(0,1fr);}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar .work-filters{display:none;}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar .work-toolbar-primary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+ :root .ui-registry-reference[data-registry-reference] .work-toolbar-primary:empty{display:none;}
+ :root .ui-registry-reference[data-registry-reference] .work-filter-tools{grid-column:1;grid-row:3;}
+ .ui-registry-reference .ui-page-header{gap:8px;flex-wrap:wrap;}
+ .ui-registry-reference .ui-page-header .toolbar-title-wrap{flex-basis:100%;}
+ .ui-registry-reference .toolbar-actions{flex-basis:100%;justify-content:flex-end;}
+ .ui-registry-reference .qmetric-header-period{width:100%;}
+ .ui-registry-reference .ui-reference-pins,.ui-registry-reference .work-toolbar-primary{grid-template-columns:repeat(2,minmax(0,1fr));}
+ .ui-registry-reference .ui-reference-pins .ui-field-inline,.ui-registry-reference .work-toolbar-primary .ui-field-inline{display:flex;flex-direction:column;align-items:stretch;padding:1px 8px;gap:0;}
+ .ui-registry-reference .ui-reference-pins .ui-field-inline>.ui-control,.ui-registry-reference .work-toolbar-primary .ui-field-inline>.ui-control{width:100%;min-height:22px;height:22px;flex:auto;}
+ .ui-registry-reference .ui-reference-quick-toggle{display:flex;width:100%;margin:16px 0 8px;justify-content:flex-start;}
+ .ui-registry-reference .ui-reference-quick:not(.is-expanded){display:none;}
+ .ui-registry-reference .work-toolbar{grid-template-columns:minmax(0,1fr);}
+ .ui-registry-reference .work-toolbar-search{grid-column:1;}
+ .ui-registry-reference .work-filter-tools{grid-column:1;grid-row:3;justify-content:flex-end;}
+}
+@media(min-width:701px){.ui-registry-reference .work-mobile-collection{display:none;}}

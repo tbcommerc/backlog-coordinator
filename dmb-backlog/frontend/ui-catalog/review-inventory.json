@@ -17,7 +17,6 @@
     "/analytics/it",
     "/notifications",
     "/account/security",
-    "/settings",
     "/admin",
     "/audit-log",
     "/outbox-dead-letters",
@@ -27,52 +26,60 @@
   ],
   "routeEvidence": [
     {
-      "line": 264,
+      "line": 262,
       "text": "if (path === '/review' && !params.has('task')) return false;"
     },
     {
-      "line": 369,
+      "line": 367,
+      "text": "if(path==='/settings'){history.replaceState(history.state,'','#/notifications?section=preferences');return this.handleRoute();}"
+    },
+    {
+      "line": 368,
       "text": "if(path==='/team-backlog'){const legacy=new URLSearchParams(query);legacy.set('scope','team');history.replaceState(history.state,'','#/backlog?'+legacy.toString());return this.handleRoute();}"
     },
     {
-      "line": 370,
+      "line": 369,
       "text": "const isAssistantV2Route = path === '/assistant-v2' || path.startsWith('/assistant-v2/');"
     },
     {
-      "line": 375,
+      "line": 374,
       "text": "const isAgentV2Route = path === '/agent-v2' || path.startsWith('/agent-v2/');"
     },
     {
-      "line": 377,
+      "line": 376,
       "text": "const isCustomerRequestDetail = /^\\/customer\\/request\\/\\d+$/.test(path);"
     },
     {
-      "line": 378,
+      "line": 377,
       "text": "const isCustomerTaskDetail = /^\\/customer\\/task\\/\\d+$/.test(path);"
     },
     {
-      "line": 380,
+      "line": 379,
       "text": "if (/^\\/metrics(?:\\/|$)/.test(path)) window.toast?.('Метрики недоступны в режиме заказчика. Открыт раздел «Мои запросы».', 'warning');"
     },
     {
-      "line": 386,
+      "line": 385,
       "text": "if (path === '/kanban') {"
     },
     {
-      "line": 398,
+      "line": 397,
       "text": "const requiresAdmin = path === '/admin' || path === '/audit-log';"
     },
     {
-      "line": 399,
+      "line": 398,
       "text": "const requiresFullAdmin = path === '/audit-log' || path === '/outbox-dead-letters' || path === '/reporting-meetings';"
     },
     {
-      "line": 423,
+      "line": 422,
       "text": "const projectChanged = path === '/work-projects' && ['project','scope','major','mp','section','year','bucket','bq','bstate','bp','quarter','result','rp','cq','cp','horizon','keys','pq','pg','baseline','pteam','powner','pstate','psort','scale','cteam','cowner','cview'].some(key => new URLSearchParams(query).get(key) !== new URLSearchParams(from?.split('?')[1] || '').get(key));"
     },
     {
+      "line": 423,
+      "text": "const reviewChanged = path === '/review' && ['tab', 'requirement_review'].some(key => new URLSearchParams(query).get(key) !== new URLSearchParams(from?.split('?')[1] || '').get(key));"
+    },
+    {
       "line": 424,
-      "text": "const queryDrivenWorkPage = /^\\/metrics(?:\\/\\d+)?$/.test(path) || projectChanged || path === '/work-reports' || /^\\/work-tasks(?:\\/\\d+)?$/.test(path);"
+      "text": "const queryDrivenWorkPage = /^\\/metrics(?:\\/\\d+)?$/.test(path) || projectChanged || reviewChanged || path === '/work-reports' || /^\\/work-tasks(?:\\/\\d+)?$/.test(path);"
     },
     {
       "line": 425,
@@ -115,23 +122,23 @@
       "text": "} else if (path === '/meeting-capture') {"
     },
     {
-      "line": 547,
+      "line": 546,
       "text": "const pageName = names[path] || (/^\\/metrics\\/\\d+$/.test(path) ? 'Карточка метрики' : '') || (/^\\/work-tasks\\/\\d+$/.test(path) ? 'Рабочая задача' : '') || (requestMatch ? 'Запрос' : '') || (customerTaskMatch ? 'Задача по запросу' : '') || (reviewMatch ? 'Запрос заказчика' : path);"
     },
     {
-      "line": 557,
+      "line": 556,
       "text": "if (path === '/work-projects' && projectId) {"
     },
     {
-      "line": 561,
+      "line": 560,
       "text": "const currentName = path === '/work-projects' && projectId ? (projectSectionNames[new URLSearchParams(query).get('section')] || 'Обзор проекта') : pageName;"
     },
     {
-      "line": 567,
+      "line": 566,
       "text": "if (resolved.init && /^\\/metrics(?:\\/\\d+)?$/.test(path)) {"
     },
     {
-      "line": 597,
+      "line": 596,
       "text": "const enteringFocus = path === '/customer/create';"
     }
   ],
@@ -468,9 +475,9 @@
     },
     {
       "id": "settings",
-      "entry": "/settings",
-      "source": "js/components/settings.js",
-      "title": "Персональные настройки",
+      "entry": "/notifications?section=preferences",
+      "source": "js/components/notificationPreferences.js",
+      "title": "Настройки уведомлений",
       "declaredStates": [
         "loading",
         "empty",
@@ -485,7 +492,7 @@
       ],
       "code": "present",
       "live": "not-reverified",
-      "priorClaim": "browser-verified"
+      "priorClaim": "pending"
     },
     {
       "id": "admin",
@@ -3017,12 +3024,12 @@
     },
     {
       "path": "js/app.js",
-      "sha256": "8fda9e2a566ef3686885140c63c94e9c1d9c0dba39b8a00a555f12bd944e6538",
+      "sha256": "137a7168b1f24c49ca22c66100e813f0cf48ea60697644e2e170a184c61a8bad",
       "families": [
         {
           "family": "search",
           "lines": [
-            399,
+            400,
             525,
             528,
             530,
@@ -3039,82 +3046,82 @@
         {
           "family": "bulk",
           "lines": [
-            716
+            717
           ]
         },
         {
           "family": "status",
           "lines": [
-            54,
             55,
-            58,
+            56,
             59,
-            67,
-            181,
-            412
+            60,
+            68,
+            182,
+            413
           ]
         },
         {
           "family": "counter",
           "lines": [
             2,
-            54,
-            58,
+            55,
             59,
-            67,
-            412
+            60,
+            68,
+            413
           ]
         },
         {
           "family": "dialog",
           "lines": [
-            22,
-            102
+            23,
+            103
           ]
         },
         {
           "family": "confirmation",
           "lines": [
-            21,
-            363,
-            716,
-            837
+            22,
+            364,
+            717,
+            834
           ]
         },
         {
           "family": "field",
           "lines": [
-            399
+            400
           ]
         },
         {
           "family": "validation",
           "lines": [
-            21,
-            838
+            22,
+            835
           ]
         },
         {
           "family": "feedback",
           "lines": [
-            21,
-            136,
-            198,
-            354,
+            22,
+            137,
+            199,
+            355,
             456,
             507,
-            835,
-            836,
-            839
+            832,
+            833,
+            836
           ]
         },
         {
           "family": "viewState",
           "lines": [
-            168,
-            198,
-            412,
-            417,
+            169,
+            199,
+            413,
+            418,
             451,
             498
           ]
@@ -3122,15 +3129,15 @@
         {
           "family": "progress",
           "lines": [
-            91
+            92
           ]
         },
         {
           "family": "menu",
           "lines": [
             4,
-            432,
-            436,
+            433,
+            437,
             438,
             592
           ]
@@ -3138,41 +3145,40 @@
         {
           "family": "tooltip",
           "lines": [
-            390,
-            403,
-            406,
-            422
+            391,
+            404,
+            407,
+            423
           ]
         },
         {
           "family": "popover",
           "lines": [
             3,
-            149,
-            154,
-            165,
-            167,
+            150,
+            155,
+            166,
             168,
-            173,
-            181,
-            184,
+            169,
+            174,
+            182,
             185,
-            188,
+            186,
             189,
             190,
-            195,
-            198,
-            325,
-            336,
-            354,
-            400,
-            410,
-            414,
+            191,
+            196,
+            199,
+            326,
+            337,
+            355,
+            401,
+            411,
             415,
             416,
             417,
-            432,
-            436,
+            418,
+            433,
             437,
             438,
             482,
@@ -3187,45 +3193,44 @@
         {
           "family": "navigation",
           "lines": [
-            99,
-            113,
-            195,
-            343,
+            100,
+            114,
+            196,
             344,
             345,
-            393,
+            346,
             394,
-            436,
+            395,
             437,
             494,
             644,
             672,
             674,
-            698,
-            814
+            699,
+            811
           ]
         },
         {
           "family": "chart",
           "lines": [
-            391
+            392
           ]
         },
         {
           "family": "avatar",
           "lines": [
             2,
-            428
+            429
           ]
         },
         {
           "family": "collapse",
           "lines": [
-            390,
-            399,
-            406,
-            410,
-            427,
+            391,
+            400,
+            407,
+            411,
+            428,
             572,
             584,
             636,
@@ -3235,8 +3240,8 @@
         {
           "family": "permissions",
           "lines": [
-            743,
-            744
+            740,
+            741
           ]
         }
       ],
@@ -3278,56 +3283,62 @@
           "line": 6
         },
         {
+          "exported": "installStickyTableHeaders",
+          "local": "installStickyTableHeaders",
+          "from": "./ui/stickyTableHeader.js",
+          "line": 7
+        },
+        {
           "exported": "confirmAction",
           "local": "confirmAction",
           "from": "./uiFeedback.js",
-          "line": 21
+          "line": 22
         },
         {
           "exported": "formatErrorMessage",
           "local": "formatErrorMessage",
           "from": "./uiFeedback.js",
-          "line": 21
+          "line": 22
         },
         {
           "exported": "showFieldError",
           "local": "showFieldError",
           "from": "./uiFeedback.js",
-          "line": 21
+          "line": 22
         },
         {
           "exported": "showToast",
           "local": "showToast",
           "from": "./uiFeedback.js",
-          "line": 21
+          "line": 22
         },
         {
           "exported": "initModalAccessibility",
           "local": "initModalAccessibility",
           "from": "./modalAccessibility.js",
-          "line": 22
+          "line": 23
         }
       ],
       "entries": [
         {
           "name": "renderNotificationShell",
-          "line": 52
+          "line": 53
         },
         {
           "name": "renderLinkJiraList",
-          "line": 251
+          "line": 252
         },
         {
           "name": "renderLinkJiraTags",
-          "line": 260
+          "line": 261
         },
         {
           "name": "renderInvolvedTeams",
-          "line": 269
+          "line": 270
         },
         {
           "name": "renderAppShell",
-          "line": 378
+          "line": 379
         },
         {
           "name": "initApp",
@@ -3341,6 +3352,7 @@
         "./ui/actionMenu.js",
         "./ui/filterSelect.js",
         "./ui/segmented.js",
+        "./ui/stickyTableHeader.js",
         "./router.js",
         "./theme.js",
         "./components/login.js",
@@ -3765,21 +3777,21 @@
     },
     {
       "path": "js/components/admin.js",
-      "sha256": "001c3ee911a7f978da8fe9d15aa47daafc540962f65450ed17934bfe85f9e5ac",
+      "sha256": "c2d3bad9a82afe4b405b805530921b6a79f03c2175ea13f8a88030ebe1b5f8a2",
       "families": [
         {
           "family": "readOnlyField",
           "lines": [
             3,
-            1849
+            1846
           ]
         },
         {
           "family": "intervals",
           "lines": [
             2,
-            1170,
-            2895
+            1168,
+            2892
           ]
         },
         {
@@ -3792,8 +3804,8 @@
             785,
             843,
             1002,
-            1136,
-            1174
+            1134,
+            1172
           ]
         },
         {
@@ -3801,9 +3813,9 @@
           "lines": [
             118,
             978,
-            1166,
-            2858,
-            2869
+            1164,
+            2855,
+            2866
           ]
         },
         {
@@ -3812,24 +3824,24 @@
             891,
             924,
             928,
+            2130,
             2133,
-            2136,
-            2143
+            2140
           ]
         },
         {
           "family": "selection",
           "lines": [
             11,
-            1448,
-            1480,
-            1501,
+            1446,
+            1478,
+            1499,
+            1500,
             1502,
-            1504,
-            1505,
-            1516,
-            1658,
-            1661
+            1503,
+            1514,
+            1656,
+            1659
           ]
         },
         {
@@ -3847,12 +3859,12 @@
             952,
             956,
             1014,
-            1061,
-            1084,
-            1097,
-            1121,
-            1162,
-            1642
+            1060,
+            1082,
+            1095,
+            1119,
+            1160,
+            1640
           ]
         },
         {
@@ -3860,7 +3872,7 @@
           "lines": [
             120,
             982,
-            1171
+            1169
           ]
         },
         {
@@ -3870,8 +3882,8 @@
             12,
             508,
             511,
-            2924,
-            2925
+            2921,
+            2922
           ]
         },
         {
@@ -3883,31 +3895,31 @@
             240,
             271,
             288,
-            1268,
-            1269,
-            1366,
-            1722,
-            1723,
-            2022,
-            2023,
-            2049,
-            2285,
-            2461,
-            2614
+            1266,
+            1267,
+            1364,
+            1720,
+            1721,
+            2019,
+            2020,
+            2046,
+            2282,
+            2458,
+            2611
           ]
         },
         {
           "family": "confirmation",
           "lines": [
             267,
-            1352,
-            1416,
-            2011,
-            2374,
-            2426,
-            2475,
-            2597,
-            2694
+            1350,
+            1414,
+            2008,
+            2371,
+            2423,
+            2472,
+            2594,
+            2691
           ]
         },
         {
@@ -3921,26 +3933,26 @@
             933,
             934,
             978,
-            1121,
+            1119,
+            1164,
+            1165,
             1166,
             1167,
-            1168,
-            1169,
+            1271,
+            1272,
             1273,
-            1274,
             1275,
-            1277,
-            1281,
-            1282,
-            1473,
+            1279,
+            1280,
+            1471,
+            1654,
+            1655,
             1656,
             1657,
             1658,
             1659,
-            1660,
-            1661,
-            1763,
-            1779
+            1761,
+            1777
           ]
         },
         {
@@ -3954,16 +3966,16 @@
             178,
             179,
             180,
-            1375,
-            1378,
-            1659,
-            1900,
-            1909,
-            2298,
-            2313,
-            2335,
-            2557,
-            2872
+            1373,
+            1376,
+            1657,
+            1897,
+            1906,
+            2295,
+            2310,
+            2332,
+            2554,
+            2869
           ]
         },
         {
@@ -3971,33 +3983,33 @@
           "lines": [
             245,
             273,
-            1304,
-            1399,
-            1402,
-            1407,
-            1419,
-            1422,
-            1533,
-            1536,
-            1731,
-            1972,
-            1979,
-            1998,
-            2004,
-            2246,
-            2252,
-            2265,
-            2486,
-            2585,
-            2591,
-            2645,
-            2660,
-            2675,
+            1302,
+            1397,
+            1400,
+            1405,
+            1417,
+            1420,
+            1531,
+            1534,
+            1729,
+            1969,
+            1976,
+            1995,
+            2001,
+            2243,
+            2249,
+            2262,
+            2483,
+            2582,
+            2588,
+            2642,
+            2657,
+            2672,
+            2706,
             2709,
-            2712,
+            2735,
             2738,
-            2741,
-            2752
+            2749
           ]
         },
         {
@@ -4007,15 +4019,15 @@
             644,
             645,
             651,
-            1179,
-            1228,
-            2118,
-            2119,
-            2283,
-            2405,
-            2437,
-            2741,
-            3062
+            1177,
+            1226,
+            2115,
+            2116,
+            2280,
+            2402,
+            2434,
+            2738,
+            3059
           ]
         },
         {
@@ -4032,13 +4044,13 @@
             960,
             963,
             979,
-            1087,
-            1100,
-            1103,
-            1104,
-            1128,
-            1162,
-            1645
+            1085,
+            1098,
+            1101,
+            1102,
+            1126,
+            1160,
+            1643
           ]
         },
         {
@@ -4048,10 +4060,10 @@
             769,
             830,
             988,
-            1124,
-            1173,
-            1248,
-            1648
+            1122,
+            1171,
+            1246,
+            1646
           ]
         },
         {
@@ -4060,7 +4072,7 @@
             5,
             341,
             945,
-            1788
+            1786
           ]
         },
         {
@@ -4068,24 +4080,24 @@
           "lines": [
             619,
             981,
-            2029,
-            2034,
-            2078
+            2026,
+            2031,
+            2075
           ]
         },
         {
           "family": "drag",
           "lines": [
-            1470,
-            1523,
-            1540,
-            1548,
-            1572,
-            2337,
-            2345,
-            2949,
-            2950,
-            2965
+            1468,
+            1521,
+            1538,
+            1546,
+            1570,
+            2334,
+            2342,
+            2946,
+            2947,
+            2962
           ]
         },
         {
@@ -4095,13 +4107,13 @@
             162,
             163,
             164,
-            1351,
-            1392,
-            1393,
-            1409,
-            1410,
-            1520,
-            1538
+            1349,
+            1390,
+            1391,
+            1407,
+            1408,
+            1518,
+            1536
           ]
         },
         {
@@ -4113,9 +4125,9 @@
             848,
             1008,
             1012,
-            1792,
-            2801,
-            2802
+            1790,
+            2798,
+            2799
           ]
         }
       ],
@@ -4306,79 +4318,79 @@
         },
         {
           "name": "renderRolePreview",
-          "line": 1055
+          "line": 1054
         },
         {
           "name": "renderRolesTab",
-          "line": 1064
+          "line": 1063
         },
         {
           "name": "renderAuditTab",
-          "line": 1154
+          "line": 1152
         },
         {
           "name": "renderHomeTab",
-          "line": 1215
+          "line": 1213
         },
         {
           "name": "renderTimelineEventList",
-          "line": 1226
+          "line": 1224
         },
         {
           "name": "renderTimelineEventModal",
-          "line": 1265
+          "line": 1263
         },
         {
           "name": "renderDisplayTab",
-          "line": 1451
+          "line": 1449
         },
         {
           "name": "initDisplayDragDrop",
-          "line": 1545
+          "line": 1543
         },
         {
           "name": "renderNotificationTemplatesTab",
-          "line": 1636
+          "line": 1634
         },
         {
           "name": "renderNotificationTemplateForm",
-          "line": 1651
+          "line": 1649
         },
         {
           "name": "renderModal",
-          "line": 1702
+          "line": 1700
         },
         {
           "name": "renderTeamForm",
-          "line": 1770
+          "line": 1768
         },
         {
           "name": "renderUserForm",
-          "line": 1785
+          "line": 1783
         },
         {
           "name": "renderRoleForm",
-          "line": 1799
+          "line": 1797
         },
         {
           "name": "openCompetencyInlineEditor",
-          "line": 1887
+          "line": 1884
         },
         {
           "name": "showCompetencyInlineError",
-          "line": 1905
+          "line": 1902
         },
         {
           "name": "openDictModal",
-          "line": 2726
+          "line": 2723
         },
         {
           "name": "renderProjectForm",
-          "line": 2799
+          "line": 2796
         },
         {
           "name": "initAdmin",
-          "line": 3129
+          "line": 3126
         }
       ],
       "imports": [
@@ -4959,7 +4971,7 @@
     },
     {
       "path": "js/components/analytics.js",
-      "sha256": "c70615fd86b8d97c4dcccb1529535644fb76ce740612602535f2f6ef3ffa1059",
+      "sha256": "4e5799c3725d38da32cd522ece0c45c77771bad3e329ee571ca94830bd5489e6",
       "families": [
         {
           "family": "search",
@@ -5522,7 +5534,7 @@
     },
     {
       "path": "js/components/backlogPage.js",
-      "sha256": "a060b0b0f1b188cdc68a621a58e46f3c63d8ddf8e64ee16b52938eef2789d9bf",
+      "sha256": "ac9eefa50dfebbd30b33bc001f3454fdeb5183631745310c723edb25c087e91b",
       "families": [
         {
           "family": "pagination",
@@ -5534,25 +5546,25 @@
             145,
             191,
             280,
-            393,
-            394,
-            420,
-            467,
-            468,
-            475,
-            484,
-            485,
-            488,
-            489,
-            491,
-            977,
-            1009
+            422,
+            423,
+            450,
+            497,
+            498,
+            505,
+            514,
+            515,
+            518,
+            519,
+            521,
+            1007,
+            1039
           ]
         },
         {
           "family": "filter",
           "lines": [
-            465
+            495
           ]
         },
         {
@@ -5560,27 +5572,27 @@
           "lines": [
             102,
             337,
-            434,
-            450,
-            522,
-            632,
-            992
+            464,
+            480,
+            552,
+            662,
+            1022
           ]
         },
         {
           "family": "selection",
           "lines": [
-            521,
-            693,
-            702,
-            718,
-            719,
-            720,
-            721,
-            722,
-            727,
-            744,
-            773
+            551,
+            723,
+            732,
+            748,
+            749,
+            750,
+            751,
+            752,
+            757,
+            774,
+            803
           ]
         },
         {
@@ -5593,32 +5605,32 @@
             131,
             133,
             218,
-            414,
-            415,
-            706,
-            710,
-            714,
-            715,
-            716,
-            717,
-            730,
+            365,
+            444,
+            445,
             736,
-            738,
-            739,
-            742,
+            740,
+            744,
+            745,
             746,
             747,
-            762,
+            760,
             766,
-            774,
-            775,
-            778,
-            785,
-            799,
-            801,
-            870,
-            872,
-            904
+            768,
+            769,
+            772,
+            776,
+            792,
+            796,
+            804,
+            805,
+            808,
+            815,
+            829,
+            831,
+            900,
+            902,
+            934
           ]
         },
         {
@@ -5626,38 +5638,39 @@
           "lines": [
             11,
             15,
-            574,
-            919,
-            924,
-            935,
-            936,
-            937
+            604,
+            949,
+            954,
+            965,
+            966,
+            967
           ]
         },
         {
           "family": "dialog",
           "lines": [
-            414
+            444
           ]
         },
         {
           "family": "confirmation",
           "lines": [
-            1002,
-            1005
+            1032,
+            1035
           ]
         },
         {
           "family": "field",
           "lines": [
-            521,
-            693
+            551,
+            723
           ]
         },
         {
           "family": "feedback",
           "lines": [
-            386
+            10,
+            415
           ]
         },
         {
@@ -5668,13 +5681,22 @@
             125,
             139,
             186,
-            368,
-            382,
-            387,
-            527,
-            630,
-            635,
-            893
+            370,
+            372,
+            376,
+            377,
+            379,
+            380,
+            381,
+            390,
+            394,
+            411,
+            416,
+            427,
+            557,
+            660,
+            665,
+            923
           ]
         },
         {
@@ -5682,31 +5704,31 @@
           "lines": [
             15,
             53,
-            606,
-            927,
-            928
+            636,
+            957,
+            958
           ]
         },
         {
           "family": "menu",
           "lines": [
-            799,
-            804,
-            808,
-            809,
-            832,
-            849,
-            884
+            829,
+            834,
+            838,
+            839,
+            862,
+            879,
+            914
           ]
         },
         {
           "family": "tooltip",
           "lines": [
-            568,
-            569,
-            693,
-            696,
-            809
+            598,
+            599,
+            723,
+            726,
+            839
           ]
         },
         {
@@ -5719,49 +5741,50 @@
           "family": "navigation",
           "lines": [
             89,
-            406,
-            810,
-            876,
-            976,
-            984,
-            986,
-            1038
+            436,
+            840,
+            906,
+            1006,
+            1014,
+            1016,
+            1068
           ]
         },
         {
           "family": "table",
           "lines": [
-            517,
-            569,
-            630
+            547,
+            599,
+            660
           ]
         },
         {
           "family": "chart",
           "lines": [
-            800
+            830
           ]
         },
         {
           "family": "collapse",
           "lines": [
-            762,
-            815,
-            866
+            792,
+            845,
+            896
           ]
         },
         {
           "family": "download",
           "lines": [
             213,
-            811,
-            962
+            841,
+            992
           ]
         },
         {
           "family": "busy",
           "lines": [
-            630
+            380,
+            660
           ]
         },
         {
@@ -5771,17 +5794,17 @@
             17,
             112,
             267,
-            443,
-            462,
-            503,
-            560,
-            693,
-            707,
-            728,
-            745,
-            774,
-            968,
-            1036
+            473,
+            492,
+            533,
+            590,
+            723,
+            737,
+            758,
+            775,
+            804,
+            998,
+            1066
           ]
         }
       ],
@@ -5795,6 +5818,12 @@
         {
           "exported": "pagination",
           "local": "kitPagination",
+          "from": "../ui/forms.js",
+          "line": 10
+        },
+        {
+          "exported": "alert",
+          "local": "uiAlert",
           "from": "../ui/forms.js",
           "line": 10
         },
@@ -5835,72 +5864,76 @@
           "line": 341
         },
         {
-          "name": "renderCurrentView",
-          "line": 454
+          "name": "showBacklogNotice",
+          "line": 359
         },
         {
-          "name": "renderPagination",
+          "name": "renderCurrentView",
           "line": 484
         },
         {
+          "name": "renderPagination",
+          "line": 514
+        },
+        {
           "name": "renderTableView",
-          "line": 498
+          "line": 528
         },
         {
           "name": "renderCell",
-          "line": 559
+          "line": 589
         },
         {
           "name": "renderTasksTableStateMarkup",
-          "line": 625
+          "line": 655
         },
         {
           "name": "renderTasksTableState",
-          "line": 641
+          "line": 671
         },
         {
           "name": "renderTableRow",
-          "line": 677
+          "line": 707
         },
         {
           "name": "openBacklogBulkOps",
-          "line": 742
+          "line": 772
         },
         {
           "name": "openBacklogOperationsMenu",
-          "line": 765
+          "line": 795
         },
         {
           "name": "renderCardView",
-          "line": 887
-        },
-        {
-          "name": "renderCard",
-          "line": 907
-        },
-        {
-          "name": "renderDeadline",
-          "line": 911
-        },
-        {
-          "name": "renderPriority",
           "line": 917
         },
         {
+          "name": "renderCard",
+          "line": 937
+        },
+        {
+          "name": "renderDeadline",
+          "line": 941
+        },
+        {
+          "name": "renderPriority",
+          "line": 947
+        },
+        {
           "name": "renderStatus",
-          "line": 922
+          "line": 952
         },
         {
           "name": "renderProgress",
-          "line": 927
+          "line": 957
         },
         {
           "name": "renderCV",
-          "line": 932
+          "line": 962
         },
         {
           "name": "renderTags",
-          "line": 940
+          "line": 970
         }
       ],
       "imports": [
@@ -5984,45 +6017,41 @@
     },
     {
       "path": "js/components/customerPortal.js",
-      "sha256": "3207bbd854112cc2351bd10d8b2e32a33cea296c0a03281b481fc8fd2315caa6",
+      "sha256": "8f5e5fda24616ea6c2e8149abcd896b2f761c8f418c497cb90d4a18e6cff982f",
       "families": [
         {
           "family": "pagination",
           "lines": [
             3,
-            54,
+            51,
+            92,
             93,
-            94,
-            147,
-            234,
-            235,
-            236
+            146,
+            237,
+            238,
+            239
           ]
         },
         {
           "family": "search",
           "lines": [
-            43
+            45
           ]
         },
         {
           "family": "filter",
           "lines": [
             19,
-            41,
-            42,
-            45,
-            48,
-            60
+            57
           ]
         },
         {
           "family": "status",
           "lines": [
             14,
-            251,
-            404,
-            526
+            254,
+            397,
+            519
           ]
         },
         {
@@ -6034,84 +6063,85 @@
         {
           "family": "field",
           "lines": [
+            19,
             43,
-            44
+            45,
+            48
           ]
         },
         {
           "family": "feedback",
           "lines": [
-            475
+            468
           ]
         },
         {
           "family": "viewState",
           "lines": [
             21,
-            53,
-            124,
-            151,
-            153,
-            156,
-            217,
-            219,
-            221,
-            237,
-            475,
-            476,
-            542
+            50,
+            123,
+            150,
+            152,
+            155,
+            220,
+            222,
+            224,
+            240,
+            468,
+            469,
+            535
           ]
         },
         {
           "family": "progress",
           "lines": [
             2,
-            258,
-            259,
-            307,
-            443,
-            444,
-            522,
-            524,
-            530,
-            533,
-            561,
-            565
+            261,
+            262,
+            299,
+            436,
+            437,
+            515,
+            517,
+            523,
+            526,
+            554,
+            558
           ]
         },
         {
           "family": "tooltip",
           "lines": [
-            45,
-            251,
-            256
+            254,
+            259
           ]
         },
         {
           "family": "navigation",
           "lines": [
-            110,
-            165,
-            177,
-            347,
-            384,
-            404,
-            444,
-            495,
-            498,
-            526,
-            546
+            109,
+            164,
+            176,
+            340,
+            377,
+            397,
+            437,
+            488,
+            491,
+            519,
+            539
           ]
         },
         {
           "family": "busy",
           "lines": [
             20,
-            53,
-            123,
-            139,
-            150,
-            185
+            50,
+            122,
+            138,
+            149,
+            184
           ]
         }
       ],
@@ -6147,6 +6177,18 @@
           "line": 19
         },
         {
+          "exported": "field",
+          "local": "field",
+          "from": "../ui/primitives.js",
+          "line": 19
+        },
+        {
+          "exported": "icon",
+          "local": "icon",
+          "from": "../ui/primitives.js",
+          "line": 19
+        },
+        {
           "exported": "setButtonBusy",
           "local": "setButtonBusy",
           "from": "../ui/controls.js",
@@ -6160,55 +6202,55 @@
         },
         {
           "name": "initCustomerPortal",
-          "line": 63
+          "line": 60
         },
         {
           "name": "openDraftSession",
-          "line": 160
+          "line": 159
         },
         {
           "name": "renderRequestList",
-          "line": 211
+          "line": 214
         },
         {
           "name": "renderRequestCard",
-          "line": 241
+          "line": 244
         },
         {
           "name": "renderCardContext",
-          "line": 254
+          "line": 257
         },
         {
           "name": "renderRequestPage",
-          "line": 396
+          "line": 389
         },
         {
           "name": "renderCustomerOutline",
-          "line": 414
+          "line": 407
         },
         {
           "name": "renderLinkedTask",
-          "line": 441
+          "line": 434
         },
         {
           "name": "initRequestPage",
-          "line": 447
+          "line": 440
         },
         {
           "name": "renderCustomerTaskPage",
-          "line": 519
+          "line": 512
         },
         {
           "name": "renderCustomerFailure",
-          "line": 539
+          "line": 532
         },
         {
           "name": "initCustomerTaskPage",
-          "line": 550
+          "line": 543
         },
         {
           "name": "renderRequestDescription",
-          "line": 572
+          "line": 565
         }
       ],
       "imports": [
@@ -6352,7 +6394,7 @@
     },
     {
       "path": "js/components/customerReport.js",
-      "sha256": "bea1e7ae7b165ab3b644c9a9c5d52376414f691debcc03347da9f4c8cfb0b04a",
+      "sha256": "dcd1f273aa3233cf5c0a7de5688e8c3c76b11f2dc11904e34a18377dcc29d7fa",
       "families": [
         {
           "family": "status",
@@ -6760,7 +6802,7 @@
     },
     {
       "path": "js/components/directorateReport.js",
-      "sha256": "5cff27f98644b19d1ce95e552a1e50666e5979f7b9a8da522f99a58411b92ca9",
+      "sha256": "0034aabc5ec7204a1659174c51ed87c7281aa8318ad8a9e94900d145d92ded21",
       "families": [
         {
           "family": "readOnlyField",
@@ -6929,79 +6971,77 @@
     },
     {
       "path": "js/components/expressEstimate.js",
-      "sha256": "1e01a75a5665cdecdacb35cb125f8b53c0e0600facf30023321582d23ac4c27e",
+      "sha256": "40b052fe6f9961c810a44e7a376e4882eedb247af527c0ac84442664bae6af98",
       "families": [
         {
           "family": "pagination",
           "lines": [
             4,
-            935,
-            953,
-            978,
-            979
+            931,
+            949,
+            974,
+            975
           ]
         },
         {
           "family": "search",
           "lines": [
             540,
-            616,
-            884,
-            1021,
-            1023
+            612,
+            880,
+            1017,
+            1019
           ]
         },
         {
           "family": "filter",
           "lines": [
-            543,
-            544,
-            545
+            542
           ]
         },
         {
           "family": "selection",
           "lines": [
-            888,
+            884,
+            910,
             914,
-            918,
-            961,
-            988,
+            957,
+            984,
+            1000,
+            1001,
             1004,
-            1005,
-            1008,
+            1007,
             1011,
-            1015,
-            1033,
-            1034
+            1029,
+            1030
           ]
         },
         {
           "family": "status",
           "lines": [
-            1844
+            1840
           ]
         },
         {
           "family": "dialog",
           "lines": [
-            880,
-            881,
-            1093,
-            1771,
-            1772,
-            1837,
-            1884,
-            1885
+            876,
+            877,
+            1089,
+            1767,
+            1768,
+            1833,
+            1880,
+            1881
           ]
         },
         {
           "family": "confirmation",
           "lines": [
-            1090,
-            1162,
-            1186,
-            1205
+            1086,
+            1158,
+            1182,
+            1201
           ]
         },
         {
@@ -7013,18 +7053,18 @@
             298,
             299,
             540,
-            731,
-            732,
-            759,
-            776,
-            777,
-            797,
-            812,
-            827,
-            862,
+            727,
+            728,
+            755,
+            772,
+            773,
+            793,
+            808,
+            823,
+            858,
+            880,
             884,
-            888,
-            961
+            957
           ]
         },
         {
@@ -7032,33 +7072,33 @@
           "lines": [
             498,
             501,
-            1047,
-            1048,
-            1059,
-            1066,
-            1094,
-            1117,
-            1170,
-            1194,
-            1212,
-            1418,
-            1504,
-            1545,
-            1654,
-            1669,
-            1672,
+            1043,
+            1044,
+            1055,
+            1062,
+            1090,
+            1113,
+            1166,
+            1190,
+            1208,
+            1414,
+            1500,
+            1541,
+            1650,
+            1665,
+            1668,
+            1671,
             1675,
-            1679,
-            1693,
-            1696,
-            1699,
-            1800,
-            1838,
-            1930,
-            1942,
-            1971,
-            2035,
-            2037
+            1689,
+            1692,
+            1695,
+            1796,
+            1834,
+            1926,
+            1938,
+            1967,
+            2031,
+            2033
           ]
         },
         {
@@ -7068,16 +7108,16 @@
             132,
             174,
             513,
-            928,
-            936,
-            993,
-            994
+            924,
+            932,
+            989,
+            990
           ]
         },
         {
           "family": "progress",
           "lines": [
-            1025
+            1021
           ]
         },
         {
@@ -7099,27 +7139,27 @@
             357,
             358,
             426,
-            549,
-            550,
-            689,
+            545,
+            546,
+            685,
+            688,
             692,
-            696,
-            728,
-            741,
-            759,
-            769,
-            780,
-            795,
-            803,
-            812,
-            820,
-            830,
-            839,
-            856,
+            724,
+            737,
+            755,
+            765,
+            776,
+            791,
+            799,
+            808,
+            816,
+            826,
+            835,
+            852,
+            853,
             857,
-            861,
-            862,
-            872
+            858,
+            868
           ]
         },
         {
@@ -7131,24 +7171,24 @@
         {
           "family": "navigation",
           "lines": [
-            1877,
-            1912
+            1873,
+            1908
           ]
         },
         {
           "family": "table",
           "lines": [
             349,
-            764,
-            816,
-            1853
+            760,
+            812,
+            1849
           ]
         },
         {
           "family": "chart",
           "lines": [
-            730,
-            796
+            726,
+            792
           ]
         },
         {
@@ -7156,39 +7196,39 @@
           "lines": [
             329,
             330,
-            1852
+            1848
           ]
         },
         {
           "family": "drag",
           "lines": [
-            725,
-            792,
-            1337,
-            1346
+            721,
+            788,
+            1333,
+            1342
           ]
         },
         {
           "family": "busy",
           "lines": [
             3,
-            936,
-            994,
-            1111,
-            1116,
-            1483,
-            1533,
-            1629
+            932,
+            990,
+            1107,
+            1112,
+            1479,
+            1529,
+            1625
           ]
         },
         {
           "family": "permissions",
           "lines": [
-            846,
-            853,
-            1872,
-            1873,
-            1874
+            842,
+            849,
+            1868,
+            1869,
+            1870
           ]
         }
       ],
@@ -7239,63 +7279,63 @@
         },
         {
           "name": "renderReadinessCard",
-          "line": 567
+          "line": 563
         },
         {
           "name": "renderTaskBlock",
-          "line": 671
+          "line": 667
         },
         {
           "name": "renderEpicBlock",
-          "line": 709
+          "line": 705
         },
         {
           "name": "renderEpicEditPanel",
-          "line": 752
+          "line": 748
         },
         {
           "name": "renderStoryBlock",
-          "line": 788
+          "line": 784
         },
         {
           "name": "renderStoryEditPanel",
-          "line": 808
+          "line": 804
         },
         {
           "name": "renderUnestimatedLabel",
-          "line": 838
+          "line": 834
         },
         {
           "name": "renderSaveState",
-          "line": 842
+          "line": 838
         },
         {
           "name": "renderEffortInline",
-          "line": 846
+          "line": 842
         },
         {
           "name": "renderEffortChips",
-          "line": 868
+          "line": 864
         },
         {
           "name": "showImportModal",
-          "line": 878
+          "line": 874
         },
         {
           "name": "showConfirm",
-          "line": 1090
+          "line": 1086
         },
         {
           "name": "showIncompleteEstimateModal",
-          "line": 1761
+          "line": 1757
         },
         {
           "name": "showCompleteEstimateModal",
-          "line": 1796
+          "line": 1792
         },
         {
           "name": "showEstimateHandoffModal",
-          "line": 1870
+          "line": 1866
         }
       ],
       "imports": [
@@ -7309,351 +7349,371 @@
     },
     {
       "path": "js/components/filterToolbar.js",
-      "sha256": "b3bb1fdffd8bd09d7271e635a11614c87a590aa724cd7443945a880e41074855",
+      "sha256": "d93602a0ad90c36c6d903f359f604851f5e047fbf694fa0801ba1ac621e6e4b1",
       "families": [
         {
           "family": "intervals",
           "lines": [
-            2,
-            1489,
-            1493,
-            1548,
-            1550
+            4,
+            1565,
+            1569,
+            1624,
+            1626
           ]
         },
         {
           "family": "search",
           "lines": [
-            331,
-            332,
-            831,
-            859,
-            1143,
-            1146,
-            1147,
-            1150,
-            1151,
-            1162,
-            1480,
-            1485,
-            1882,
-            1883
+            333,
+            334,
+            775,
+            836,
+            864,
+            1196,
+            1199,
+            1200,
+            1203,
+            1204,
+            1215,
+            1556,
+            1561,
+            1760,
+            1761
           ]
         },
         {
           "family": "filter",
           "lines": [
-            334,
-            827,
-            828,
-            834,
-            854,
-            1183,
-            1338,
-            1345,
-            1348,
-            1350,
-            1363,
-            1378,
-            1506,
-            1888,
-            1892,
-            1893
+            336,
+            832,
+            833,
+            839,
+            859,
+            877,
+            1236,
+            1395,
+            1396,
+            1402,
+            1409,
+            1416,
+            1419,
+            1421,
+            1438,
+            1453,
+            1582,
+            1766,
+            1770,
+            1771
           ]
         },
         {
           "family": "selection",
           "lines": [
-            4,
-            314,
-            572,
-            769,
-            781,
-            938,
-            944,
-            949,
-            951,
-            952,
-            953,
-            964,
-            979,
-            1473,
-            1552,
-            1781,
-            1783
+            6,
+            316,
+            574,
+            771,
+            785,
+            959,
+            985,
+            991,
+            996,
+            998,
+            999,
+            1000,
+            1011,
+            1026,
+            1549,
+            1628
           ]
         },
         {
           "family": "bulk",
           "lines": [
-            90,
-            794,
-            795,
-            796,
-            803,
-            811,
-            819,
-            887,
-            1103,
-            1104,
-            1109
+            92,
+            798,
+            799,
+            800,
+            807,
+            815,
+            824,
+            904,
+            1156,
+            1157,
+            1162
           ]
         },
         {
           "family": "confirmation",
           "lines": [
-            5,
-            489
+            7,
+            491
           ]
         },
         {
           "family": "field",
           "lines": [
-            312,
             314,
-            437,
-            781,
-            831,
-            859,
-            1473,
-            1480,
-            1485
+            316,
+            439,
+            775,
+            785,
+            836,
+            864,
+            1549,
+            1556,
+            1561
           ]
         },
         {
           "family": "validation",
           "lines": [
-            1525,
-            1530,
-            1549
+            1601,
+            1606,
+            1625
           ]
         },
         {
           "family": "feedback",
           "lines": [
-            1499
+            1575
           ]
         },
         {
           "family": "viewState",
           "lines": [
-            49,
-            1144
+            51,
+            1197
           ]
         },
         {
           "family": "progress",
           "lines": [
-            160,
-            650,
-            1241
+            162,
+            652,
+            1294
           ]
         },
         {
           "family": "tooltip",
           "lines": [
-            301,
-            304,
-            309,
-            378,
-            763,
-            791,
-            796,
-            798,
+            303,
+            306,
+            311,
+            380,
+            765,
+            795,
             800,
-            801,
             802,
-            1333,
-            1345,
-            1352,
-            1433
+            804,
+            805,
+            806,
+            876,
+            1388,
+            1397,
+            1402,
+            1404,
+            1410,
+            1416,
+            1423,
+            1509
           ]
         },
         {
           "family": "popover",
           "lines": [
-            3,
-            307,
-            310,
-            311,
+            5,
+            309,
+            312,
             313,
             315,
-            343,
-            346,
-            363,
-            367,
-            377,
-            381,
-            382,
+            317,
+            345,
+            348,
+            365,
+            369,
+            379,
             383,
-            405,
-            408,
+            384,
+            385,
+            407,
             410,
-            411,
-            436,
-            468,
-            514,
-            766,
-            767,
+            412,
+            413,
+            438,
+            470,
+            516,
             768,
-            773,
-            864,
-            923,
-            926,
-            1170,
-            1467,
-            1497,
-            1498,
-            1500,
-            1505,
-            1508,
-            1509,
-            1583,
-            1586
+            769,
+            770,
+            775,
+            776,
+            873,
+            881,
+            940,
+            944,
+            1223,
+            1543,
+            1573,
+            1574,
+            1576,
+            1581,
+            1584,
+            1585,
+            1659,
+            1662
           ]
         },
         {
           "family": "chart",
           "lines": [
-            302,
-            305,
-            309,
-            378,
-            764,
-            796,
-            798,
+            304,
+            307,
+            311,
+            380,
+            766,
+            783,
             800,
-            801,
-            830,
-            836,
-            838,
+            802,
+            804,
+            805,
+            835,
             841,
-            1340,
-            1343,
-            1345,
-            1353,
-            1434
+            843,
+            846,
+            1400,
+            1402,
+            1405,
+            1411,
+            1414,
+            1416,
+            1424,
+            1510
           ]
         },
         {
           "family": "collapse",
           "lines": [
-            301,
-            795,
-            835
+            303,
+            799,
+            840
           ]
         },
         {
           "family": "permissions",
           "lines": [
-            1,
-            69,
-            75,
-            86
+            3,
+            71,
+            77,
+            88
           ]
         }
       ],
       "uiImports": [
         {
+          "exported": "refreshStickyTableHeaders",
+          "local": "refreshStickyTableHeaders",
+          "from": "../ui/stickyTableHeader.js",
+          "line": 1
+        },
+        {
           "exported": "dateRange",
           "local": "dateRange",
           "from": "../ui/intervals.js",
-          "line": 2
+          "line": 4
         },
         {
           "exported": "numberRange",
           "local": "numberRange",
           "from": "../ui/intervals.js",
-          "line": 2
+          "line": 4
         },
         {
           "exported": "validateRanges",
           "local": "validateRanges",
           "from": "../ui/intervals.js",
-          "line": 2
+          "line": 4
         },
         {
           "exported": "createPopover",
           "local": "createPopover",
           "from": "../ui/popover.js",
-          "line": 3
+          "line": 5
         },
         {
           "exported": "bindPopover",
           "local": "bindPopover",
           "from": "../ui/popover.js",
-          "line": 3
+          "line": 5
         },
         {
           "exported": "selectionList",
           "local": "selectionList",
           "from": "../ui/selectionList.js",
-          "line": 4
+          "line": 6
         },
         {
           "exported": "filterSelectionList",
           "local": "filterSelectionList",
           "from": "../ui/selectionList.js",
-          "line": 4
+          "line": 6
         },
         {
           "exported": "confirmAction",
           "local": "confirmAction",
           "from": "../uiFeedback.js",
-          "line": 5
+          "line": 7
         },
         {
           "exported": "pageHeader",
           "local": "pageHeader",
           "from": "../ui/primitives.js",
-          "line": 9
+          "line": 11
         },
         {
           "exported": "segmentedControl",
           "local": "segmentedControl",
           "from": "../ui/segmented.js",
-          "line": 10
+          "line": 12
         }
       ],
       "entries": [
         {
           "name": "renderSavedViewsControl",
-          "line": 298
+          "line": 300
         },
         {
           "name": "initSavedViews",
-          "line": 341
+          "line": 343
         },
         {
           "name": "renderToolbar",
-          "line": 749
+          "line": 751
         },
         {
           "name": "initToolbarControls",
-          "line": 872
+          "line": 889
         },
         {
           "name": "initToolbar",
-          "line": 1125
+          "line": 1178
         },
         {
           "name": "renderAll",
-          "line": 1131
+          "line": 1184
         },
         {
           "name": "renderFilterButtons",
-          "line": 1313
+          "line": 1368
         },
         {
           "name": "showRangeError",
-          "line": 1520
-        },
-        {
-          "name": "initStickyTableHeader",
-          "line": 1684
+          "line": 1596
         }
       ],
       "imports": [
+        "../ui/stickyTableHeader.js",
+        "../ui/stickyTableHeader.js",
         "../taskCardPermissions.js",
         "../ui/intervals.js",
         "../ui/popover.js",
@@ -8721,7 +8781,7 @@
     },
     {
       "path": "js/components/metricsQuarterly.js",
-      "sha256": "9dfa5e89d24872311fc0ed0a7099f03f14ffc514c937cdb713be7c46237845c8",
+      "sha256": "8436339521bf675e66d9302d1150980443d28cd451ed6bd8bd9b81fcb93702e6",
       "families": [
         {
           "family": "readOnlyField",
@@ -8791,7 +8851,7 @@
         {
           "family": "search",
           "lines": [
-            110
+            113
           ]
         },
         {
@@ -8799,9 +8859,10 @@
           "lines": [
             3,
             105,
-            116,
+            112,
+            115,
+            117,
             121,
-            308,
             323,
             345
           ]
@@ -8858,9 +8919,9 @@
             27,
             28,
             29,
-            110,
-            111,
-            112,
+            108,
+            113,
+            114,
             152,
             179,
             184,
@@ -8975,7 +9036,7 @@
         {
           "family": "collapse",
           "lines": [
-            114,
+            115,
             136,
             147,
             148,
@@ -9210,106 +9271,140 @@
     },
     {
       "path": "js/components/modal.js",
-      "sha256": "0f3a39fb4faaba9f4b4f564f0310eb916bd55a8a5431d2551aeb29cfaab78ee9",
+      "sha256": "40a3b8fb613d220c1b3897a7126ecfe43990bafe7b4a57b49aa06bde8788d0be",
       "families": [
+        {
+          "family": "readOnlyField",
+          "lines": [
+            24,
+            5751,
+            6035,
+            6140,
+            6222,
+            6237,
+            6274
+          ]
+        },
+        {
+          "family": "sectionCard",
+          "lines": [
+            24,
+            1865,
+            6147,
+            6149,
+            6150,
+            6152,
+            6219,
+            6232,
+            6254,
+            6272,
+            6294
+          ]
+        },
+        {
+          "family": "dataTable",
+          "lines": [
+            6273
+          ]
+        },
         {
           "family": "pagination",
           "lines": [
             1,
-            4234,
-            4260,
-            4405
+            4248,
+            4274,
+            4419
           ]
         },
         {
           "family": "search",
           "lines": [
-            299,
-            570
+            301,
+            572
           ]
         },
         {
           "family": "selection",
           "lines": [
-            4214,
-            4224,
-            4244,
-            4402,
-            4418,
-            4419,
-            4420,
-            4421,
-            4430,
-            4431,
-            6268
+            4228,
+            4238,
+            4258,
+            4416,
+            4432,
+            4433,
+            4434,
+            4435,
+            4444,
+            4445,
+            6301
           ]
         },
         {
           "family": "bulk",
           "lines": [
-            4029,
-            4041,
-            4053,
-            4056,
-            4062,
-            4066,
-            4074,
-            4075,
-            4094,
-            4095,
-            4102,
-            4106,
-            4107,
-            4112,
-            4114,
-            4115,
-            4124,
-            4136,
-            4137,
-            4139,
-            4143,
+            4043,
+            4055,
+            4067,
+            4070,
+            4076,
+            4080,
+            4088,
+            4089,
+            4108,
+            4109,
+            4116,
+            4120,
+            4121,
+            4126,
+            4128,
+            4129,
+            4138,
+            4150,
             4151,
-            4154,
-            4156,
+            4153,
+            4157,
+            4165,
             4168,
-            4180,
-            4190,
-            4234,
-            4240,
-            4268,
-            4270,
-            4298,
-            4316,
-            4321,
-            4344,
-            4518,
-            4560,
-            4566,
-            4585,
-            4586,
-            4588,
-            4591,
-            4603,
-            4614,
-            4619,
-            4627,
-            4629,
-            4635,
-            4636,
+            4170,
+            4182,
+            4194,
+            4204,
+            4248,
+            4254,
+            4282,
+            4284,
+            4312,
+            4330,
+            4335,
+            4358,
+            4532,
+            4574,
+            4580,
+            4599,
+            4600,
+            4602,
+            4605,
+            4617,
+            4628,
+            4633,
+            4641,
             4643,
-            4653,
-            4665,
-            4666,
-            4671,
-            4673,
+            4649,
+            4650,
+            4657,
+            4667,
+            4679,
             4680,
-            4681,
-            4682,
             4685,
-            4697,
-            4703,
-            4710,
-            7060
+            4687,
+            4694,
+            4695,
+            4696,
+            4699,
+            4711,
+            4717,
+            4724,
+            7094
           ]
         },
         {
@@ -9317,53 +9412,53 @@
           "lines": [
             3,
             10,
-            1292,
-            1293,
             1294,
-            1297,
-            1298,
-            1301,
-            1433,
-            2724,
+            1295,
+            1296,
+            1299,
+            1300,
+            1303,
+            1435,
             2738,
-            2743,
-            2744,
-            2799,
-            3933,
-            3934,
-            3944,
-            5896,
-            5898,
-            5900,
-            5901,
-            5902,
-            6126,
-            6127,
-            6133,
-            6141,
-            6142,
-            6196,
-            6197,
-            6624,
-            6625
+            2752,
+            2757,
+            2758,
+            2813,
+            3947,
+            3948,
+            3958,
+            5919,
+            5921,
+            5923,
+            5924,
+            5925,
+            6170,
+            6171,
+            6177,
+            6185,
+            6186,
+            6223,
+            6226,
+            6659,
+            6660
           ]
         },
         {
           "family": "counter",
           "lines": [
-            2870,
-            2881,
-            3050,
-            3095,
-            3187,
-            3190,
-            3193,
-            3194,
-            3195,
-            3199,
-            3200,
-            6182,
-            6636
+            2884,
+            2895,
+            3064,
+            3109,
+            3201,
+            3204,
+            3207,
+            3208,
+            3209,
+            3213,
+            3214,
+            6221,
+            6671
           ]
         },
         {
@@ -9371,245 +9466,264 @@
           "lines": [
             21,
             22,
-            1700,
-            1701,
-            5927,
-            5937,
-            5938,
-            7807,
-            7809,
-            7999,
-            8000,
-            8001,
-            8002,
-            8004,
-            8032,
-            8035,
-            8039
+            1702,
+            1703,
+            5955,
+            5965,
+            5966,
+            7837,
+            7839,
+            8037,
+            8038,
+            8039,
+            8040,
+            8042,
+            8070,
+            8073,
+            8077
           ]
         },
         {
           "family": "dialog",
           "lines": [
-            238,
-            403,
+            23,
+            240,
             405,
-            406,
-            1668,
-            1669,
-            2794,
-            2795,
-            3776,
-            3781,
-            3782,
-            3828,
-            3831,
-            3832,
-            3906,
-            3910,
-            3911,
-            3968,
-            4125,
-            4136,
-            4156,
-            4168,
-            4169,
-            4337,
-            4818,
-            4820,
-            6021,
-            6023,
-            7996,
-            7997,
-            8067
+            407,
+            408,
+            1670,
+            1671,
+            2808,
+            2809,
+            3790,
+            3795,
+            3796,
+            3842,
+            3845,
+            3846,
+            3920,
+            3924,
+            3925,
+            3982,
+            4139,
+            4150,
+            4170,
+            4182,
+            4183,
+            4351,
+            4832,
+            4834,
+            6050,
+            6052,
+            6063,
+            8034,
+            8035,
+            8105
           ]
         },
         {
           "family": "confirmation",
           "lines": [
-            41,
-            116,
-            117,
+            43,
             118,
-            123,
-            214,
-            1873,
-            2441,
-            2773,
-            3774,
-            3837,
-            4657,
-            4702,
-            6582,
-            6676,
-            6874,
-            6879,
-            6881,
-            6905,
-            7709,
-            7785,
-            8015
+            119,
+            120,
+            125,
+            216,
+            1887,
+            2455,
+            2787,
+            3788,
+            3851,
+            4671,
+            4716,
+            6617,
+            6709,
+            6908,
+            6913,
+            6915,
+            6939,
+            7745,
+            7815,
+            8053
           ]
         },
         {
           "family": "field",
           "lines": [
             21,
-            1135,
-            1136,
-            1756,
-            1769,
-            2284,
-            2290,
-            2294,
+            1137,
+            1138,
+            1758,
+            1771,
             2298,
             2304,
-            2307,
-            2326,
-            2328,
-            2329,
-            2332,
-            2333,
-            2336,
-            2337,
+            2308,
+            2312,
+            2318,
+            2321,
             2340,
-            2341,
-            2344,
-            2345,
-            2348,
-            2349,
+            2342,
+            2343,
+            2346,
+            2347,
             2350,
+            2351,
+            2354,
+            2355,
+            2358,
+            2359,
+            2362,
             2363,
             2364,
-            2367,
-            2370,
-            2371,
-            2374,
-            2383,
-            2387,
-            2402,
-            2404,
-            2407,
+            2377,
+            2378,
+            2381,
+            2384,
+            2385,
+            2388,
+            2397,
+            2401,
+            2416,
             2418,
-            2419,
-            2422,
-            2423,
-            2429,
-            2855,
-            2871,
-            2879,
-            2887,
-            2888,
-            2892,
+            2421,
+            2432,
+            2433,
+            2436,
+            2437,
+            2443,
+            2869,
+            2885,
             2893,
-            2895,
-            2896,
-            2898,
-            2899,
             2901,
             2902,
+            2906,
+            2907,
+            2909,
+            2910,
+            2912,
             2913,
-            2919,
-            2923,
+            2915,
+            2916,
             2927,
-            2930,
-            2947,
-            2958,
-            2964,
-            2974,
-            2979,
+            2933,
+            2937,
+            2941,
+            2944,
+            2961,
+            2972,
+            2978,
             2988,
-            2989,
-            2990,
-            2991,
-            2996,
+            2993,
             3002,
-            3007,
-            3008,
-            3009,
-            3014,
-            3015,
-            3019,
-            4224,
-            4274,
-            4276,
-            4278,
-            4280,
-            4285,
-            4287,
-            4289,
-            4291,
-            4293,
-            4311,
-            4842,
-            5707,
-            5710,
-            5712,
-            5713,
-            5714,
-            5715,
-            5719,
-            6083,
-            6107,
-            6167,
-            6182,
-            6264,
-            6268,
-            6352,
-            6364,
-            6391,
-            7484,
-            7485
+            3003,
+            3004,
+            3005,
+            3010,
+            3016,
+            3021,
+            3022,
+            3023,
+            3028,
+            3029,
+            3033,
+            4238,
+            4288,
+            4290,
+            4292,
+            4294,
+            4299,
+            4301,
+            4303,
+            4305,
+            4307,
+            4325,
+            4856,
+            5729,
+            5732,
+            5734,
+            5735,
+            5736,
+            5737,
+            5741,
+            6126,
+            6211,
+            6221,
+            6223,
+            6224,
+            6225,
+            6226,
+            6227,
+            6228,
+            6233,
+            6238,
+            6239,
+            6240,
+            6241,
+            6242,
+            6243,
+            6244,
+            6245,
+            6246,
+            6249,
+            6250,
+            6251,
+            6297,
+            6301,
+            6385,
+            6397,
+            6424,
+            7520,
+            7521
           ]
         },
         {
           "family": "validation",
           "lines": [
-            538,
-            2882,
-            2948,
-            2956,
-            2965,
-            3044,
-            3168,
-            3224,
-            3227,
-            3235,
-            3240,
-            7084,
-            7086,
-            7088,
-            7090,
-            7099,
-            7103,
-            7105,
-            7107,
-            7737
+            540,
+            2896,
+            2962,
+            2970,
+            2979,
+            3058,
+            3182,
+            3238,
+            3241,
+            3249,
+            3254,
+            7118,
+            7120,
+            7122,
+            7124,
+            7133,
+            7137,
+            7139,
+            7141,
+            7773
           ]
         },
         {
           "family": "feedback",
           "lines": [
-            169,
-            1032,
-            1985,
-            2807,
-            3786,
-            3835,
-            4349,
-            4856,
-            6544,
-            7413
+            1,
+            171,
+            1034,
+            1999,
+            2821,
+            3800,
+            3849,
+            4363,
+            4870,
+            6579,
+            7449
           ]
         },
         {
           "family": "viewState",
           "lines": [
-            73,
-            729,
-            734,
-            737,
-            738,
+            75,
+            731,
+            736,
             739,
             740,
             741,
@@ -9617,254 +9731,268 @@
             743,
             744,
             745,
+            746,
             747,
-            750,
-            754,
-            757,
-            1741,
-            1745,
-            1982,
-            1990,
-            1991,
-            2006,
-            2017,
-            2026,
-            3346,
-            3370,
-            5355,
-            5360,
-            5361,
-            5362,
-            5363,
-            5368,
-            5464,
-            6276,
-            6277,
-            6285,
-            6287,
-            6301,
-            6357,
-            7342,
-            7382,
-            7914,
-            7981
+            749,
+            752,
+            756,
+            759,
+            1743,
+            1747,
+            1847,
+            1865,
+            1866,
+            1867,
+            1868,
+            1874,
+            1996,
+            2004,
+            2005,
+            2020,
+            2031,
+            2040,
+            3360,
+            3384,
+            5369,
+            5374,
+            5375,
+            5376,
+            5377,
+            5382,
+            5478,
+            5480,
+            5481,
+            6309,
+            6310,
+            6311,
+            6318,
+            6320,
+            6334,
+            6390,
+            6549,
+            7252,
+            7377,
+            7418,
+            7842,
+            7843,
+            7844,
+            7950,
+            7951,
+            8018,
+            8019
           ]
         },
         {
           "family": "upload",
           "lines": [
-            1769,
-            4842,
-            5293,
-            6364
+            1771,
+            4856,
+            5307,
+            6397
           ]
         },
         {
           "family": "progress",
           "lines": [
             10,
-            1006,
-            1165,
-            1244,
-            1332,
-            1371,
-            1374,
-            1375,
-            1403,
-            2190,
-            2191,
-            2225,
-            2226,
-            2350,
-            2351,
-            2573,
-            2725,
-            4019,
-            4031,
-            4043,
-            4727,
-            4752,
-            4777,
-            4806,
-            5134,
-            5718,
-            5719,
-            5789,
-            6129,
-            6199,
-            6633,
-            6634,
-            6742,
-            7055,
-            7056,
-            7057,
-            7120,
-            7161,
-            7463,
-            7692,
-            7696,
-            7697,
-            7700,
-            7712,
-            7719,
-            7743,
-            7753,
-            7754,
-            7757,
-            7758,
-            7762
+            1008,
+            1167,
+            1246,
+            1334,
+            1373,
+            1376,
+            1377,
+            1405,
+            2204,
+            2205,
+            2239,
+            2240,
+            2364,
+            2365,
+            2587,
+            2739,
+            4033,
+            4045,
+            4057,
+            4741,
+            4766,
+            4791,
+            4820,
+            5148,
+            5740,
+            5741,
+            5812,
+            6173,
+            6228,
+            6668,
+            6669,
+            6775,
+            7089,
+            7090,
+            7091,
+            7154,
+            7194,
+            7499,
+            7728,
+            7732,
+            7733,
+            7736,
+            7748,
+            7755,
+            7779,
+            7789,
+            7790,
+            7793,
+            7794,
+            7798
           ]
         },
         {
           "family": "tooltip",
           "lines": [
             8,
-            1686,
-            1689,
-            1692,
-            4300,
-            5702,
-            5723,
-            5728,
-            5897,
-            5903,
-            6091,
-            6105,
-            6177,
-            6178,
-            6179,
-            6231,
-            6390,
-            6562
+            1688,
+            1691,
+            1694,
+            4314,
+            5724,
+            5745,
+            5920,
+            5927,
+            6075,
+            6134,
+            6266,
+            6423,
+            6597
           ]
         },
         {
           "family": "popover",
           "lines": [
             7,
-            566,
-            1757,
-            2645,
-            2646,
-            3497,
-            3498,
-            3502,
-            3524,
-            3528,
-            3531,
-            3535,
-            3540,
+            568,
+            1759,
+            2659,
+            2660,
+            3511,
+            3512,
+            3516,
+            3538,
+            3542,
             3545,
-            3551,
-            3561,
-            3566,
-            3572,
-            3577,
-            3578,
-            3584,
-            3585,
-            3596,
-            3602,
-            3607,
-            3612,
-            3622,
-            3627,
-            3628,
-            3629,
-            3631,
-            3634,
-            3652,
-            6352
+            3549,
+            3554,
+            3559,
+            3565,
+            3575,
+            3580,
+            3586,
+            3591,
+            3592,
+            3598,
+            3599,
+            3610,
+            3616,
+            3621,
+            3626,
+            3636,
+            3641,
+            3642,
+            3643,
+            3645,
+            3648,
+            3666,
+            6385
           ]
         },
         {
           "family": "navigation",
           "lines": [
-            287,
-            420,
-            424,
-            2082,
-            2756,
-            3474,
-            3478,
-            5574,
-            7798,
-            7825,
-            7826,
-            7830,
-            8106
+            289,
+            422,
+            426,
+            2096,
+            2770,
+            3488,
+            3492,
+            5593,
+            7828,
+            7858,
+            7859,
+            7863,
+            8144
           ]
         },
         {
           "family": "table",
           "lines": [
-            1053,
-            3920,
-            4849,
-            6234,
-            6526,
-            7430
+            1055,
+            3934,
+            4863,
+            6269,
+            6561,
+            7466
           ]
         },
         {
           "family": "date",
           "lines": [
-            4280
+            4294
           ]
         },
         {
           "family": "chart",
           "lines": [
-            967,
-            987,
-            1035,
-            1071,
-            1075,
-            1079,
-            1342,
-            1356,
-            1367,
-            1381,
-            1419,
-            1457,
-            1492,
-            1504,
-            1515,
-            1551,
-            1558,
-            1563,
-            1577,
-            1687,
-            1690,
-            1693,
-            1703,
-            1707,
-            1711,
-            1715,
-            1749,
-            1752,
-            1761,
-            1770,
-            1788,
-            1945,
-            2161,
-            2323,
-            2359,
-            2378,
-            2399,
-            2414,
-            3731,
-            4824,
-            4832,
-            4839,
-            4871,
-            4875,
-            5429,
-            6349,
-            6351,
-            6353,
-            6366,
-            7416
+            969,
+            989,
+            1037,
+            1073,
+            1077,
+            1081,
+            1344,
+            1358,
+            1369,
+            1383,
+            1421,
+            1459,
+            1494,
+            1506,
+            1517,
+            1553,
+            1560,
+            1565,
+            1579,
+            1689,
+            1692,
+            1695,
+            1705,
+            1709,
+            1713,
+            1717,
+            1751,
+            1754,
+            1763,
+            1772,
+            1790,
+            1959,
+            2175,
+            2337,
+            2373,
+            2392,
+            2413,
+            2428,
+            3745,
+            4838,
+            4846,
+            4853,
+            4885,
+            4889,
+            5443,
+            6382,
+            6384,
+            6386,
+            6399,
+            7452
           ]
         },
         {
@@ -9876,96 +10004,93 @@
         {
           "family": "collapse",
           "lines": [
-            563,
-            605,
-            610,
-            3579,
-            3630,
-            4128,
-            4129,
-            5174,
-            5954,
-            6105,
-            6108,
-            6187,
-            6237,
-            6238,
-            6352
+            565,
+            607,
+            612,
+            3593,
+            3644,
+            4142,
+            4143,
+            5188,
+            5982,
+            6231,
+            6385
           ]
         },
         {
           "family": "download",
           "lines": [
-            5274
+            5288
           ]
         },
         {
           "family": "drag",
           "lines": [
-            2035,
-            4925
+            2049,
+            4939
           ]
         },
         {
           "family": "busy",
           "lines": [
             22,
-            77,
-            153,
-            174,
-            210,
-            376,
-            379,
-            380,
+            79,
+            155,
+            176,
+            212,
+            378,
             381,
-            1993,
-            2008,
-            3285,
-            3339,
-            3345,
-            3348,
-            3376,
-            3681,
-            3728,
-            3730,
-            5457,
-            6055,
-            6688,
-            6689,
-            6692,
-            6696,
-            6897,
-            6918,
-            6996,
-            7240,
-            7289,
-            7336,
-            7344,
-            7388,
-            7502,
-            7525,
-            7573,
-            7735,
-            7777,
-            7912,
-            7978
+            382,
+            383,
+            2007,
+            2022,
+            3299,
+            3353,
+            3359,
+            3362,
+            3390,
+            3695,
+            3742,
+            3744,
+            5471,
+            6098,
+            6721,
+            6722,
+            6725,
+            6729,
+            6931,
+            6952,
+            7030,
+            7275,
+            7324,
+            7371,
+            7379,
+            7424,
+            7538,
+            7561,
+            7609,
+            7771,
+            7948,
+            8015
           ]
         },
         {
           "family": "permissions",
           "lines": [
-            3136,
-            5732,
-            6176,
-            6177,
-            6178,
-            6179,
-            6258,
-            6263,
-            6268,
-            6271,
-            6545,
-            7828
+            24,
+            3150,
+            5751,
+            5755,
+            6274,
+            6291,
+            6296,
+            6301,
+            6304,
+            6580,
+            6737,
+            6831,
+            7071,
+            7861
           ]
         }
       ],
@@ -9973,6 +10098,12 @@
         {
           "exported": "pagination",
           "local": "kitPagination",
+          "from": "../ui/forms.js",
+          "line": 1
+        },
+        {
+          "exported": "alert",
+          "local": "uiAlert",
           "from": "../ui/forms.js",
           "line": 1
         },
@@ -10047,216 +10178,240 @@
           "local": "tabNavigationTarget",
           "from": "../ui/controls.js",
           "line": 22
+        },
+        {
+          "exported": "enhanceDialogOverlay",
+          "local": "enhanceDialogOverlay",
+          "from": "../modalAccessibility.js",
+          "line": 23
+        },
+        {
+          "exported": "readOnlyField",
+          "local": "readOnlyField",
+          "from": "../ui/detailComponents.js",
+          "line": 24
+        },
+        {
+          "exported": "sectionCard",
+          "local": "sectionCard",
+          "from": "../ui/detailComponents.js",
+          "line": 24
+        },
+        {
+          "exported": "descriptionList",
+          "local": "descriptionList",
+          "from": "../ui/detailComponents.js",
+          "line": 24
         }
       ],
       "entries": [
         {
           "name": "renderExternalTaskChangeBanner",
-          "line": 126
+          "line": 128
         },
         {
           "name": "showCreateDuplicateWarning",
-          "line": 401
+          "line": 403
         },
         {
           "name": "showTaskFormErrorSummary",
-          "line": 692
+          "line": 694
         },
         {
           "name": "renderInvolvedTeams",
-          "line": 806
+          "line": 808
         },
         {
           "name": "renderLinkJiraTags",
-          "line": 811
+          "line": 813
         },
         {
           "name": "renderViewerBanner",
-          "line": 957
+          "line": 959
         },
         {
           "name": "renderLockBanner",
-          "line": 977
+          "line": 979
         },
         {
           "name": "showConflictModal",
-          "line": 1012
+          "line": 1014
         },
         {
           "name": "renderStatusBadge",
-          "line": 1293
+          "line": 1295
         },
         {
           "name": "renderPriorityBadge",
-          "line": 1297
+          "line": 1299
         },
         {
           "name": "renderTagBadge",
-          "line": 1301
+          "line": 1303
         },
         {
           "name": "renderBKpiRow",
-          "line": 1329
+          "line": 1331
         },
         {
           "name": "renderOverviewDashboard",
-          "line": 1399
+          "line": 1401
         },
         {
           "name": "renderDocsTab",
-          "line": 1600
+          "line": 1602
         },
         {
           "name": "renderReportsTab",
-          "line": 1605
+          "line": 1607
         },
         {
           "name": "renderHistoryTab",
-          "line": 1610
+          "line": 1612
         },
         {
           "name": "renderTaskDetailModalLegacy",
-          "line": 1657
+          "line": 1659
         },
         {
           "name": "initActivityTabs",
-          "line": 1801
+          "line": 1803
         },
         {
           "name": "renderAttachmentsList",
-          "line": 1861
+          "line": 1871
         },
         {
           "name": "initAttachmentForm",
-          "line": 1971
+          "line": 1985
         },
         {
           "name": "initTaskDetailModalLegacy",
-          "line": 2059
+          "line": 2073
         },
         {
           "name": "renderEditForm",
-          "line": 2242
+          "line": 2256
         },
         {
           "name": "openTaskModal",
-          "line": 2687
+          "line": 2701
         },
         {
           "name": "renderModal",
-          "line": 2713
+          "line": 2727
         },
         {
           "name": "initModal",
-          "line": 2717
+          "line": 2731
         },
         {
           "name": "renderTaskCard",
-          "line": 2721
+          "line": 2735
         },
         {
           "name": "openCreateTaskModal",
-          "line": 2765
+          "line": 2779
         },
         {
           "name": "renderCreateTaskForm",
-          "line": 2792
+          "line": 2806
         },
         {
           "name": "renderCreateTaskFormFieldsV30",
-          "line": 2874
+          "line": 2888
         },
         {
           "name": "renderCreateTaskFormFields",
-          "line": 2907
+          "line": 2921
         },
         {
           "name": "initCreateTaskModal",
-          "line": 3026
+          "line": 3040
         },
         {
           "name": "showCreateApiFieldError",
-          "line": 3231
+          "line": 3245
         },
         {
           "name": "renderReplyIndicator",
-          "line": 3390
+          "line": 3404
         },
         {
           "name": "renderCommentList",
-          "line": 3471
+          "line": 3485
         },
         {
           "name": "initCommentForm",
-          "line": 3491
+          "line": 3505
         },
         {
           "name": "openConfirmModal",
-          "line": 3772
+          "line": 3786
         },
         {
           "name": "showConfirmModal",
-          "line": 3774
+          "line": 3788
         },
         {
           "name": "showEditExitModal",
-          "line": 3826
+          "line": 3840
         },
         {
           "name": "showErrorModal",
-          "line": 3904
+          "line": 3918
         },
         {
           "name": "renderBulkSummary",
-          "line": 4094
+          "line": 4108
         },
         {
           "name": "showBulkResultModal",
-          "line": 4114
+          "line": 4128
         },
         {
           "name": "showBulkOpsModal",
-          "line": 4154
+          "line": 4168
         },
         {
           "name": "showBulkError",
-          "line": 4190
+          "line": 4204
         },
         {
           "name": "renderStep",
-          "line": 4208
+          "line": 4222
         },
         {
           "name": "renderFieldList",
-          "line": 4552
+          "line": 4566
         },
         {
           "name": "renderPreview",
-          "line": 5156
+          "line": 5170
         },
         {
           "name": "renderErrors",
-          "line": 5186
+          "line": 5200
         },
         {
           "name": "renderRowErrors",
-          "line": 5199
+          "line": 5213
         },
         {
           "name": "showPrioritiserRequirementsModal",
-          "line": 6016
+          "line": 6045
         },
         {
           "name": "renderPipDecisionOutcome",
-          "line": 6483
+          "line": 6516
         },
         {
           "name": "renderTaskDetailModal",
-          "line": 7970
+          "line": 8007
         },
         {
           "name": "initTaskDetailModal",
-          "line": 8011
+          "line": 8049
         }
       ],
       "imports": [
@@ -10281,7 +10436,9 @@
         "../taskCommentDraft.js",
         "../taskCardMarkdown.js",
         "../ui/primitives.js",
-        "../ui/controls.js"
+        "../ui/controls.js",
+        "../modalAccessibility.js",
+        "../ui/detailComponents.js"
       ]
     },
     {
@@ -10313,104 +10470,218 @@
       "imports": []
     },
     {
-      "path": "js/components/notifications.js",
-      "sha256": "1b56703421644c799c4b8380857ae26205544f4b8dbe093905be2ea2d68ad38f",
+      "path": "js/components/notificationPreferences.js",
+      "sha256": "9fa8c3ebf497497979329d3e0497d6c56a8f95e06b6dc5d3e8fdc605752d2688",
       "families": [
         {
-          "family": "pagination",
+          "family": "sectionCard",
           "lines": [
             3,
-            151,
-            207,
-            232,
-            247
-          ]
-        },
-        {
-          "family": "filter",
-          "lines": [
-            17,
-            166,
-            171,
-            224,
-            225,
-            226,
-            231,
-            244,
-            245
+            8
           ]
         },
         {
           "family": "status",
           "lines": [
-            52,
-            55,
-            57,
-            58,
-            65,
-            66,
-            200,
-            202,
-            203,
-            217,
-            273,
-            316
+            1,
+            51
           ]
         },
         {
-          "family": "counter",
+          "family": "field",
           "lines": [
-            2,
-            17,
-            202,
-            203
-          ]
-        },
-        {
-          "family": "feedback",
-          "lines": [
-            219,
-            256,
-            257,
-            283,
-            298
+            2
           ]
         },
         {
           "family": "viewState",
           "lines": [
-            16,
-            20,
-            186,
-            207,
-            208,
-            219,
-            220,
-            232,
-            236
+            5,
+            41,
+            59,
+            90,
+            91
           ]
         },
         {
           "family": "navigation",
           "lines": [
-            132,
-            229,
-            304
+            20
           ]
         },
         {
           "family": "busy",
           "lines": [
-            18,
+            4,
+            42,
+            62,
+            76,
+            77,
+            93,
+            99
+          ]
+        },
+        {
+          "family": "permissions",
+          "lines": [
+            50
+          ]
+        }
+      ],
+      "uiImports": [
+        {
+          "exported": "button",
+          "local": "button",
+          "from": "../ui/primitives.js",
+          "line": 1
+        },
+        {
+          "exported": "badge",
+          "local": "badge",
+          "from": "../ui/primitives.js",
+          "line": 1
+        },
+        {
+          "exported": "icon",
+          "local": "icon",
+          "from": "../ui/primitives.js",
+          "line": 1
+        },
+        {
+          "exported": "toggleSwitch",
+          "local": "toggleSwitch",
+          "from": "../ui/switch.js",
+          "line": 2
+        },
+        {
+          "exported": "sectionCard",
+          "local": "sectionCard",
+          "from": "../ui/detailComponents.js",
+          "line": 3
+        },
+        {
+          "exported": "setButtonBusy",
+          "local": "setButtonBusy",
+          "from": "../ui/controls.js",
+          "line": 4
+        }
+      ],
+      "entries": [
+        {
+          "name": "renderNotificationPreferences",
+          "line": 7
+        },
+        {
+          "name": "initNotificationPreferences",
+          "line": 13
+        }
+      ],
+      "imports": [
+        "../ui/primitives.js",
+        "../ui/switch.js",
+        "../ui/detailComponents.js",
+        "../ui/controls.js",
+        "./viewState.js"
+      ]
+    },
+    {
+      "path": "js/components/notifications.js",
+      "sha256": "613b18ae70ca21baa7d0a345494b5dd3a61d6ff7e8911173d069a21cdaa39df5",
+      "families": [
+        {
+          "family": "pagination",
+          "lines": [
+            4,
+            152,
             208,
-            220,
-            251,
-            258,
-            265,
-            270,
+            234,
+            250
+          ]
+        },
+        {
+          "family": "filter",
+          "lines": [
+            18,
+            167,
+            172,
+            225,
+            226,
+            227,
+            233,
+            247,
+            248
+          ]
+        },
+        {
+          "family": "status",
+          "lines": [
+            53,
+            56,
+            58,
+            59,
+            66,
+            67,
+            201,
+            203,
+            204,
+            218,
             276,
-            281,
-            299
+            319
+          ]
+        },
+        {
+          "family": "counter",
+          "lines": [
+            3,
+            18,
+            203,
+            204
+          ]
+        },
+        {
+          "family": "feedback",
+          "lines": [
+            220,
+            259,
+            260,
+            286,
+            301
+          ]
+        },
+        {
+          "family": "viewState",
+          "lines": [
+            17,
+            21,
+            187,
+            208,
+            209,
+            220,
+            221,
+            234,
+            239
+          ]
+        },
+        {
+          "family": "navigation",
+          "lines": [
+            133,
+            307
+          ]
+        },
+        {
+          "family": "busy",
+          "lines": [
+            19,
+            209,
+            221,
+            254,
+            261,
+            268,
+            273,
+            279,
+            284,
+            302
           ]
         }
       ],
@@ -10419,76 +10690,77 @@
           "exported": "filterValues",
           "local": "filterValues",
           "from": "../ui/filterValues.js",
-          "line": 1
+          "line": 2
         },
         {
           "exported": "toggleFilterValues",
           "local": "toggleChoice",
           "from": "../ui/filterValues.js",
-          "line": 1
+          "line": 2
         },
         {
           "exported": "counter",
           "local": "counter",
           "from": "../ui/dataDisplay.js",
-          "line": 2
+          "line": 3
         },
         {
           "exported": "loadMore",
           "local": "loadMore",
           "from": "../ui/specialized.js",
-          "line": 3
+          "line": 4
         },
         {
           "exported": "button",
           "local": "button",
           "from": "../ui/primitives.js",
-          "line": 17
+          "line": 18
         },
         {
           "exported": "icon",
           "local": "icon",
           "from": "../ui/primitives.js",
-          "line": 17
+          "line": 18
         },
         {
           "exported": "pageHeader",
           "local": "pageHeader",
           "from": "../ui/primitives.js",
-          "line": 17
+          "line": 18
         },
         {
           "exported": "filterChip",
           "local": "filterChip",
           "from": "../ui/primitives.js",
-          "line": 17
+          "line": 18
         },
         {
           "exported": "setButtonBusy",
           "local": "setButtonBusy",
           "from": "../ui/controls.js",
-          "line": 18
+          "line": 19
         }
       ],
       "entries": [
         {
           "name": "renderItem",
-          "line": 46
+          "line": 47
         },
         {
           "name": "renderItems",
-          "line": 71
+          "line": 72
         },
         {
           "name": "renderNotifications",
-          "line": 223
+          "line": 224
         },
         {
           "name": "initNotifications",
-          "line": 235
+          "line": 237
         }
       ],
       "imports": [
+        "./notificationPreferences.js",
         "../ui/filterValues.js",
         "../ui/dataDisplay.js",
         "../ui/specialized.js",
@@ -10699,62 +10971,62 @@
     },
     {
       "path": "js/components/projectManagement.js",
-      "sha256": "6709e38c11336ffcd3605b8a6e20c87b0868b80a7bd8b0349ae11f307ab6c9d7",
+      "sha256": "2e50472b6ab2bb41bf4da134e9fd26fbccc67ae67dee846714ec267f48e3bf5a",
       "families": [
         {
           "family": "readOnlyField",
           "lines": [
             1,
-            68
+            79
           ]
         },
         {
           "family": "sectionCard",
           "lines": [
             1,
-            68,
-            76,
-            94
+            79,
+            87,
+            105
           ]
         },
         {
           "family": "dataTable",
           "lines": [
             2,
-            55,
-            62
+            66,
+            73
           ]
         },
         {
           "family": "tableCell",
           "lines": [
             2,
-            56,
-            57,
-            58,
-            63,
-            65,
-            66
+            67,
+            68,
+            69,
+            74,
+            76,
+            77
           ]
         },
         {
           "family": "pagination",
           "lines": [
             7,
-            74,
-            76
+            85,
+            87
           ]
         },
         {
           "family": "search",
           "lines": [
-            53
+            55
           ]
         },
         {
           "family": "filter",
           "lines": [
-            53
+            56
           ]
         },
         {
@@ -10762,8 +11034,8 @@
           "lines": [
             3,
             14,
-            56,
-            68
+            67,
+            79
           ]
         },
         {
@@ -10771,18 +11043,22 @@
           "lines": [
             3,
             52,
-            53,
-            94
+            55,
+            57,
+            58,
+            60,
+            61,
+            105
           ]
         },
         {
           "family": "feedback",
           "lines": [
             6,
-            92,
-            94,
-            97,
-            98
+            103,
+            105,
+            108,
+            109
           ]
         },
         {
@@ -10790,10 +11066,10 @@
           "lines": [
             5,
             48,
-            69,
-            72,
-            92,
-            101
+            80,
+            83,
+            103,
+            112
           ]
         },
         {
@@ -10806,8 +11082,10 @@
         {
           "family": "navigation",
           "lines": [
-            91,
-            101
+            97,
+            98,
+            101,
+            112
           ]
         },
         {
@@ -10815,9 +11093,9 @@
           "lines": [
             2,
             41,
-            55,
-            56,
-            62
+            66,
+            67,
+            73
           ]
         },
         {
@@ -10826,20 +11104,21 @@
             7,
             29,
             35,
-            58,
-            65,
-            68,
-            76
+            69,
+            76,
+            79,
+            87
           ]
         },
         {
           "family": "collapse",
           "lines": [
             30,
-            53,
-            68,
-            76,
-            83
+            55,
+            79,
+            87,
+            92,
+            94
           ]
         }
       ],
@@ -10893,6 +11172,12 @@
           "line": 3
         },
         {
+          "exported": "icon",
+          "local": "icon",
+          "from": "../ui/primitives.js",
+          "line": 3
+        },
+        {
           "exported": "formatErrorMessage",
           "local": "formatErrorMessage",
           "from": "../uiFeedback.js",
@@ -10913,7 +11198,7 @@
     },
     {
       "path": "js/components/projectUi.js",
-      "sha256": "27d38c26efd240d7444775ac7f56be556051ba41c7044c4471298d7aee62d153",
+      "sha256": "ba5cbaa415f0ee205b04605b90c4a659805356cacfaa8c52fb35f1f4a59f7338",
       "families": [
         {
           "family": "field",
@@ -10945,54 +11230,54 @@
     },
     {
       "path": "js/components/projectWorkspace.js",
-      "sha256": "ead8e684f31224282ca159bddf66f50be4a12add240a0a96e04c5cb1ad42e37d",
+      "sha256": "223e5ae25a14b2046e842006103dba46899626a82b68c33adf3d06e1b7ac1050",
       "families": [
         {
           "family": "dataTable",
           "lines": [
             3,
-            45,
-            134
+            66,
+            149
           ]
         },
         {
           "family": "tableCell",
           "lines": [
             3,
-            134
+            149
           ]
         },
         {
           "family": "pagination",
           "lines": [
-            9,
-            44,
-            45,
-            46,
-            136,
-            137
+            10,
+            65,
+            66,
+            67,
+            151,
+            152
           ]
         },
         {
           "family": "search",
           "lines": [
-            38
+            41
           ]
         },
         {
           "family": "filter",
           "lines": [
-            115
+            130
           ]
         },
         {
           "family": "status",
           "lines": [
             4,
-            15,
-            44,
-            45,
-            93
+            16,
+            65,
+            66,
+            108
           ]
         },
         {
@@ -11000,90 +11285,92 @@
           "lines": [
             4,
             5,
-            93,
-            100
+            108,
+            115
           ]
         },
         {
           "family": "field",
           "lines": [
             4,
-            38,
-            54,
-            55,
-            93,
-            111
+            41,
+            77,
+            108,
+            126
           ]
         },
         {
           "family": "feedback",
           "lines": [
-            8,
-            33
+            9,
+            34
           ]
         },
         {
           "family": "viewState",
           "lines": [
-            7,
-            14,
-            33,
-            35,
-            50,
-            78,
-            86,
-            120
+            8,
+            15,
+            34,
+            36,
+            73,
+            93,
+            101,
+            135
           ]
         },
         {
           "family": "tooltip",
           "lines": [
-            44,
-            45,
-            112,
-            131,
-            132
+            65,
+            66,
+            127,
+            146,
+            147
           ]
         },
         {
           "family": "navigation",
           "lines": [
-            21,
-            25,
-            96,
-            97,
-            98,
-            100,
-            118,
-            131,
-            132,
-            137
+            22,
+            26,
+            111,
+            112,
+            113,
+            115,
+            133,
+            146,
+            147,
+            152
           ]
         },
         {
           "family": "table",
           "lines": [
             3,
-            45,
-            112,
-            131,
-            132,
-            134
+            66,
+            127,
+            146,
+            147,
+            149
           ]
         },
         {
           "family": "date",
           "lines": [
-            9,
-            44,
-            45,
-            132
+            10,
+            65,
+            66,
+            147
           ]
         },
         {
           "family": "collapse",
           "lines": [
-            136
+            41,
+            46,
+            58,
+            151
           ]
         }
       ],
@@ -11125,22 +11412,40 @@
           "line": 4
         },
         {
+          "exported": "pageHeader",
+          "local": "pageHeader",
+          "from": "../ui/primitives.js",
+          "line": 4
+        },
+        {
+          "exported": "icon",
+          "local": "icon",
+          "from": "../ui/primitives.js",
+          "line": 4
+        },
+        {
           "exported": "mountTabs",
           "local": "mountTabs",
           "from": "../ui/controls.js",
           "line": 5
         },
         {
+          "exported": "segmentedControl",
+          "local": "segmentedControl",
+          "from": "../ui/segmented.js",
+          "line": 6
+        },
+        {
           "exported": "formatErrorMessage",
           "local": "formatErrorMessage",
           "from": "../uiFeedback.js",
-          "line": 8
+          "line": 9
         }
       ],
       "entries": [
         {
           "name": "initProjectWorkspace",
-          "line": 18
+          "line": 19
         }
       ],
       "imports": [
@@ -11149,6 +11454,7 @@
         "../ui/dataTable.js",
         "../ui/primitives.js",
         "../ui/controls.js",
+        "../ui/segmented.js",
         "../htmlUtils.js",
         "./viewState.js",
         "../uiFeedback.js",
@@ -11565,7 +11871,7 @@
     },
     {
       "path": "js/components/reportingStatuses.js",
-      "sha256": "b268902a7fcb6a8b7ccd3b93d4d8cc9b29abf20b9774ae8416f119f778e516fe",
+      "sha256": "2d6ba924ab53627a9629605f5d068dd12e4da05a9701d61675827862b79c90ce",
       "families": [
         {
           "family": "pagination",
@@ -11814,7 +12120,7 @@
     },
     {
       "path": "js/components/reports.js",
-      "sha256": "94ed145885cee6979e2ed98f0a92b8a20360254d737ebe2f087d1aac5ffaa910",
+      "sha256": "a4878acf7a53131d8951cc30f9b91dfaa2830373ec93ff7fc0997e9f82183273",
       "families": [
         {
           "family": "readOnlyField",
@@ -12714,45 +13020,44 @@
     },
     {
       "path": "js/components/reviewPage.js",
-      "sha256": "e0d86c2c50da8e96d206adefe34d89bc548274b2932767c8b0e96ba93110974f",
+      "sha256": "51992714fe90216ac8114ea9c1bacae65667c9c49ac95302d4187a8726a782b0",
       "families": [
         {
           "family": "pagination",
           "lines": [
             3,
-            145,
-            192,
-            200,
-            207
+            150,
+            209,
+            217,
+            224
           ]
         },
         {
           "family": "search",
           "lines": [
-            63
+            60
           ]
         },
         {
           "family": "filter",
           "lines": [
             2,
-            62,
-            74,
-            159
+            64,
+            164
           ]
         },
         {
           "family": "selection",
           "lines": [
-            71
+            69
           ]
         },
         {
           "family": "status",
           "lines": [
             20,
-            252,
-            272
+            269,
+            289
           ]
         },
         {
@@ -12762,50 +13067,45 @@
           ]
         },
         {
-          "family": "tabs",
-          "lines": [
-            54
-          ]
-        },
-        {
           "family": "dialog",
           "lines": [
-            413,
-            415
+            430,
+            432
           ]
         },
         {
           "family": "field",
           "lines": [
-            63,
+            2,
+            60,
+            64,
             65,
             66,
             67,
             68,
             69,
-            70,
-            71,
-            322,
-            394,
-            398,
-            406
+            78,
+            339,
+            411,
+            415,
+            423
           ]
         },
         {
           "family": "validation",
           "lines": [
-            394,
-            455,
-            527
+            411,
+            472,
+            544
           ]
         },
         {
           "family": "feedback",
           "lines": [
-            175,
-            258,
-            415,
-            529
+            192,
+            275,
+            432,
+            546
           ]
         },
         {
@@ -12813,74 +13113,76 @@
           "lines": [
             4,
             50,
-            82,
-            92,
-            118,
-            123,
-            125,
-            140,
-            149,
-            153,
+            80,
+            90,
+            122,
+            127,
+            129,
+            144,
+            154,
             158,
-            175,
-            176,
-            190,
-            191,
+            163,
             192,
-            199,
-            206,
-            258,
-            282,
-            323
+            193,
+            207,
+            208,
+            209,
+            216,
+            223,
+            275,
+            299,
+            340
           ]
         },
         {
           "family": "tooltip",
           "lines": [
-            252,
-            532
+            269,
+            549
           ]
         },
         {
           "family": "navigation",
           "lines": [
-            54,
-            252,
-            258,
-            259,
-            270,
-            271,
-            272,
-            317,
-            318,
-            324,
-            471,
-            493,
-            505
+            269,
+            275,
+            276,
+            287,
+            288,
+            289,
+            334,
+            335,
+            341,
+            488,
+            510,
+            522
           ]
         },
         {
           "family": "collapse",
           "lines": [
-            272
+            61,
+            96,
+            97,
+            289
           ]
         },
         {
           "family": "busy",
           "lines": [
-            431,
-            453,
-            459,
-            460,
-            466,
-            528
+            448,
+            470,
+            476,
+            477,
+            483,
+            545
           ]
         },
         {
           "family": "permissions",
           "lines": [
-            512,
-            515
+            529,
+            532
           ]
         }
       ],
@@ -12916,6 +13218,36 @@
           "line": 2
         },
         {
+          "exported": "button",
+          "local": "button",
+          "from": "../ui/primitives.js",
+          "line": 2
+        },
+        {
+          "exported": "field",
+          "local": "field",
+          "from": "../ui/primitives.js",
+          "line": 2
+        },
+        {
+          "exported": "icon",
+          "local": "icon",
+          "from": "../ui/primitives.js",
+          "line": 2
+        },
+        {
+          "exported": "pageHeader",
+          "local": "pageHeader",
+          "from": "../ui/primitives.js",
+          "line": 2
+        },
+        {
+          "exported": "routeTabs",
+          "local": "routeTabs",
+          "from": "../ui/primitives.js",
+          "line": 2
+        },
+        {
           "exported": "loadMore",
           "local": "loadMore",
           "from": "../ui/specialized.js",
@@ -12929,47 +13261,47 @@
         },
         {
           "name": "initReviewPage",
-          "line": 86
+          "line": 84
         },
         {
           "name": "renderListLoading",
-          "line": 158
+          "line": 163
         },
         {
           "name": "renderReviewList",
-          "line": 171
+          "line": 188
         },
         {
           "name": "renderReviewCard",
-          "line": 239
+          "line": 256
         },
         {
           "name": "renderReviewDetailPage",
-          "line": 255
+          "line": 272
         },
         {
           "name": "initReviewDetailPage",
-          "line": 275
+          "line": 292
         },
         {
           "name": "renderReviewOutline",
-          "line": 296
+          "line": 313
         },
         {
           "name": "renderAttentionPanel",
-          "line": 328
+          "line": 345
         },
         {
           "name": "renderActionFeedback",
-          "line": 471
+          "line": 488
         },
         {
           "name": "renderActionError",
-          "line": 473
+          "line": 490
         },
         {
           "name": "showFieldError",
-          "line": 527
+          "line": 544
         }
       ],
       "imports": [
@@ -12985,184 +13317,8 @@
       ]
     },
     {
-      "path": "js/components/settings.js",
-      "sha256": "1bdb278b1f6659f048d70fc097615a097c7f9992fccb32d40f173dde09caab5c",
-      "families": [
-        {
-          "family": "readOnlyField",
-          "lines": [
-            2,
-            98
-          ]
-        },
-        {
-          "family": "status",
-          "lines": [
-            5,
-            99,
-            191
-          ]
-        },
-        {
-          "family": "tabs",
-          "lines": [
-            5,
-            8,
-            69,
-            70,
-            73,
-            90,
-            95
-          ]
-        },
-        {
-          "family": "field",
-          "lines": [
-            6
-          ]
-        },
-        {
-          "family": "viewState",
-          "lines": [
-            9,
-            92,
-            181,
-            199,
-            230,
-            231
-          ]
-        },
-        {
-          "family": "navigation",
-          "lines": [
-            42
-          ]
-        },
-        {
-          "family": "chart",
-          "lines": [
-            63
-          ]
-        },
-        {
-          "family": "avatar",
-          "lines": [
-            1,
-            97
-          ]
-        },
-        {
-          "family": "busy",
-          "lines": [
-            8,
-            182,
-            202,
-            216,
-            217,
-            233,
-            239
-          ]
-        },
-        {
-          "family": "permissions",
-          "lines": [
-            190
-          ]
-        }
-      ],
-      "uiImports": [
-        {
-          "exported": "avatar",
-          "local": "avatar",
-          "from": "../ui/dataDisplay.js",
-          "line": 1
-        },
-        {
-          "exported": "descriptionList",
-          "local": "descriptionList",
-          "from": "../ui/detailComponents.js",
-          "line": 2
-        },
-        {
-          "exported": "button",
-          "local": "button",
-          "from": "../ui/primitives.js",
-          "line": 5
-        },
-        {
-          "exported": "badge",
-          "local": "badge",
-          "from": "../ui/primitives.js",
-          "line": 5
-        },
-        {
-          "exported": "icon",
-          "local": "icon",
-          "from": "../ui/primitives.js",
-          "line": 5
-        },
-        {
-          "exported": "pageHeader",
-          "local": "pageHeader",
-          "from": "../ui/primitives.js",
-          "line": 5
-        },
-        {
-          "exported": "tab",
-          "local": "tab",
-          "from": "../ui/primitives.js",
-          "line": 5
-        },
-        {
-          "exported": "toggleSwitch",
-          "local": "toggleSwitch",
-          "from": "../ui/switch.js",
-          "line": 6
-        },
-        {
-          "exported": "segmentedControl",
-          "local": "segmentedControl",
-          "from": "../ui/segmented.js",
-          "line": 7
-        },
-        {
-          "exported": "mountTabs",
-          "local": "mountTabs",
-          "from": "../ui/controls.js",
-          "line": 8
-        },
-        {
-          "exported": "setButtonBusy",
-          "local": "setButtonBusy",
-          "from": "../ui/controls.js",
-          "line": 8
-        }
-      ],
-      "entries": [
-        {
-          "name": "renderSettings",
-          "line": 46
-        },
-        {
-          "name": "initSettings",
-          "line": 110
-        }
-      ],
-      "imports": [
-        "../ui/dataDisplay.js",
-        "../ui/detailComponents.js",
-        "../htmlUtils.js",
-        "../theme.js",
-        "../ui/primitives.js",
-        "../ui/switch.js",
-        "../ui/segmented.js",
-        "../ui/controls.js",
-        "./viewState.js"
-      ]
-    },
-    {
       "path": "js/components/sidebar.js",
-      "sha256": "8f1937d532a5737c23550c649599fc9ac7ec290c2665ff0ea36ec5482e820a44",
+      "sha256": "b300e52859795ec7c844b4dea6737374d4eaf4c2e5dd62cf5906aa6b9023ebea",
       "families": [
         {
           "family": "status",
@@ -13192,7 +13348,7 @@
           "family": "tooltip",
           "lines": [
             44,
-            146
+            142
           ]
         },
         {
@@ -13219,15 +13375,14 @@
             123,
             128,
             134,
-            139,
-            158
+            154
           ]
         },
         {
           "family": "chart",
           "lines": [
             51,
-            147
+            143
           ]
         },
         {
@@ -13236,9 +13391,9 @@
             15,
             16,
             17,
-            155,
-            177,
-            192
+            151,
+            173,
+            188
           ]
         }
       ],
@@ -13257,7 +13412,7 @@
         },
         {
           "name": "initSidebar",
-          "line": 153
+          "line": 149
         }
       ],
       "imports": [
@@ -13290,7 +13445,7 @@
     },
     {
       "path": "js/components/tableUtils.js",
-      "sha256": "e7b4fd0360e34c7812f409aca5fa70d38f578215e9757304528e7c4d1c14b3a4",
+      "sha256": "083a6ec3abbdca30513e5a57aef742c879ef2df8d45620a4b8d86f1f6919f25a",
       "families": [
         {
           "family": "sorting",
@@ -13967,7 +14122,7 @@
     },
     {
       "path": "js/components/workQueue.js",
-      "sha256": "166cba35a9489c6f4a7c3552044b396e952a2683f888f6afeeb0c45d6503746b",
+      "sha256": "784cebbca7c1e66a12c5c9b1aec6a8ec1b41f904701d821450cb8391f755fe84",
       "families": [
         {
           "family": "pagination",
@@ -14746,7 +14901,7 @@
     },
     {
       "path": "js/components/workTasks.js",
-      "sha256": "b14b32a17b1d62b6babaabfc131bfb8e081f56147551222adb7a98d2bb21d234",
+      "sha256": "1b4910c8ff0ee05e37dfe9381fd3be334de24e3d7ecb97627ccec8c6cc484073",
       "families": [
         {
           "family": "splitPane",
@@ -14759,8 +14914,8 @@
           "family": "pagination",
           "lines": [
             10,
-            442,
-            521
+            462,
+            541
           ]
         },
         {
@@ -14775,39 +14930,39 @@
             7,
             81,
             87,
-            149,
             153,
-            163,
-            214,
-            370
+            157,
+            167,
+            232,
+            390
           ]
         },
         {
           "family": "selection",
           "lines": [
-            159
+            163
           ]
         },
         {
           "family": "bulk",
           "lines": [
             93,
-            409
+            429
           ]
         },
         {
           "family": "status",
           "lines": [
             10,
-            411,
-            442
+            431,
+            462
           ]
         },
         {
           "family": "counter",
           "lines": [
             7,
-            149
+            153
           ]
         },
         {
@@ -14815,7 +14970,7 @@
           "lines": [
             7,
             47,
-            159
+            163
           ]
         },
         {
@@ -14823,31 +14978,31 @@
           "lines": [
             8,
             21,
-            430
+            450
           ]
         },
         {
           "family": "viewState",
           "lines": [
             9,
-            356,
-            362,
-            365,
-            442,
-            448
+            376,
+            382,
+            385,
+            462,
+            468
           ]
         },
         {
           "family": "menu",
           "lines": [
             14,
-            424
+            444
           ]
         },
         {
           "family": "tooltip",
           "lines": [
-            233
+            251
           ]
         },
         {
@@ -14857,63 +15012,63 @@
             57,
             58,
             61,
-            264,
-            306,
-            308,
-            341,
-            554
+            284,
+            326,
+            328,
+            361,
+            574
           ]
         },
         {
           "family": "table",
           "lines": [
-            442
+            462
           ]
         },
         {
           "family": "date",
           "lines": [
             10,
-            411,
-            442
+            431,
+            462
           ]
         },
         {
           "family": "chart",
           "lines": [
             87,
-            123
+            127
           ]
         },
         {
           "family": "collapse",
           "lines": [
             87,
-            129,
-            130,
-            167,
-            179,
-            457,
-            489,
-            500,
-            544
+            133,
+            134,
+            171,
+            197,
+            477,
+            509,
+            520,
+            564
           ]
         },
         {
           "family": "busy",
           "lines": [
-            366,
             386,
-            394,
-            450
+            406,
+            414,
+            470
           ]
         },
         {
           "family": "permissions",
           "lines": [
             38,
-            125,
-            337
+            129,
+            357
           ]
         }
       ],
@@ -15002,7 +15157,7 @@
         },
         {
           "name": "openSelected",
-          "line": 295
+          "line": 315
         }
       ],
       "imports": [
@@ -15118,13 +15273,13 @@
     },
     {
       "path": "js/modalAccessibility.js",
-      "sha256": "a8c23c06ccea752210e50bf5ba473ee9d0226a75c407d676935715b3c253a187",
+      "sha256": "68605f14c210c1b2e9ae18e9c6cbc529e185eb5751af12eb6a0c7d38dcbd815a",
       "families": [
         {
           "family": "detailPanel",
           "lines": [
-            89,
-            90
+            88,
+            89
           ]
         },
         {
@@ -15135,10 +15290,10 @@
             24,
             26,
             84,
-            121,
-            125,
-            130,
-            131
+            124,
+            128,
+            133,
+            134
           ]
         },
         {
@@ -15154,7 +15309,7 @@
       "entries": [
         {
           "name": "initModalAccessibility",
-          "line": 115
+          "line": 118
         }
       ],
       "imports": []
@@ -15193,49 +15348,49 @@
     },
     {
       "path": "js/router.js",
-      "sha256": "c3315704ff8d64cc537d6e3ec2b391ccca9be0331d8cfa592dd3d3b7f16c0fe5",
+      "sha256": "93694216efa0d4127a106f7c37d30356276e0184fc9fa9254ae197d341a1fe76",
       "families": [
         {
           "family": "viewState",
           "lines": [
             2,
-            403
+            402
           ]
         },
         {
           "family": "navigation",
           "lines": [
-            83,
-            171,
-            183,
-            216,
-            225,
-            246,
-            261,
-            346,
-            381,
+            82,
+            169,
+            181,
+            214,
+            223,
+            244,
+            259,
+            344,
+            380,
+            410,
             411,
             412,
             413,
-            414,
             469,
             504,
             512,
             513,
-            549,
-            554,
-            558,
+            548,
+            553,
+            557,
+            561,
             562,
-            563,
-            571
+            570
           ]
         },
         {
           "family": "permissions",
           "lines": [
-            379,
-            397,
-            403
+            378,
+            396,
+            402
           ]
         }
       ],
@@ -15260,7 +15415,6 @@
         "./components/reports.js",
         "./components/analytics.js",
         "./components/notifications.js",
-        "./components/settings.js",
         "./components/admin.js",
         "./components/customerPortal.js",
         "./components/agentChat.js",
@@ -15339,7 +15493,7 @@
     },
     {
       "path": "js/taskCardRates.js",
-      "sha256": "11ee14127ba9cce3ee646f00842207acc536539d0be76820a05d343f994d77d8",
+      "sha256": "dd5fabac5dd399fd6c706e14ebcbca32389099988737b801468c5cbe30d68dfc",
       "families": [],
       "uiImports": [],
       "entries": [],
@@ -15405,7 +15559,7 @@
     },
     {
       "path": "js/theme.js",
-      "sha256": "3a8342322c7aa5b0ecc2cb988d4e4e3068a82e5b75be7c1e2c7adc208cad6760",
+      "sha256": "85c8858a4664340ec99a1b412f17509808e0032d3d582de706554de67f0d745a",
       "families": [],
       "uiImports": [],
       "entries": [],
@@ -15535,7 +15689,7 @@
     },
     {
       "path": "js/ui/dataTable.js",
-      "sha256": "17d50dbe3ea7388d3dba622a9260d9eb8e33a8cf2a288e40f097b17c1f5aeb32",
+      "sha256": "120f4681f24015359a16447fc993bbb5538b556f8d67bd82125a4a3d9bf324fa",
       "families": [
         {
           "family": "dataTable",
@@ -15776,7 +15930,7 @@
     },
     {
       "path": "js/ui/filterSelect.js",
-      "sha256": "f96a116a8a60d285d47be9a76e873c9a0b1519c22ed6b3cd9f169960d0e4e6d1",
+      "sha256": "5d8320c54c9040da2ee76f77bcccb019758553c70ac74e3d465f3ee1dd669011",
       "families": [
         {
           "family": "pagination",
@@ -15841,15 +15995,15 @@
     },
     {
       "path": "js/ui/forms.js",
-      "sha256": "e0ce2a28a6d9efde09db8cb2474bba101e2372a34533035e07a7578d0bbf176a",
+      "sha256": "8c469ff741f91e2fff4cb20c79a85562aaf3c352feb66e9eae5ce75c19329111",
       "families": [
         {
           "family": "pagination",
           "lines": [
-            16,
-            19,
             20,
-            24
+            23,
+            24,
+            28
           ]
         },
         {
@@ -15861,7 +16015,7 @@
         {
           "family": "viewState",
           "lines": [
-            15
+            19
           ]
         }
       ],
@@ -15874,7 +16028,7 @@
     },
     {
       "path": "js/ui/index.js",
-      "sha256": "ac39d67ad968bad95e92b7537aa95ff8c9f75d0046fd462a05e8ad76c46603c7",
+      "sha256": "d23853dae9ba84be14e165f87471df24f0799602d0e3b9c58c4883bb78e60e05",
       "families": [
         {
           "family": "readOnlyField",
@@ -16152,7 +16306,7 @@
     },
     {
       "path": "js/ui/primitives.js",
-      "sha256": "493c5ebeb6cb574e29dc78d2f32050923fa4f6be7e5ba67bfe066d5f9bcd9285",
+      "sha256": "dca55dc38966c1a485aeca344c79758532e8fe586bd0b7efaec75b8a4f83ec5f",
       "families": [
         {
           "family": "filter",
@@ -16185,7 +16339,8 @@
           "lines": [
             113,
             119,
-            122
+            122,
+            127
           ]
         },
         {
@@ -16239,7 +16394,7 @@
     },
     {
       "path": "js/ui/segmented.js",
-      "sha256": "e6cb70023f73515baeaf740f39418c245710d15911f1ae93be948ade300b4f00",
+      "sha256": "d23ed38aefa1fda2c98da39706f63dd138125b0f5149ea3e3103454610956595",
       "families": [],
       "uiImports": [],
       "entries": [],
@@ -16406,6 +16561,51 @@
         "../htmlUtils.js",
         "./primitives.js"
       ]
+    },
+    {
+      "path": "js/ui/stickyTableHeader.js",
+      "sha256": "bee75ce9f8b69877fe2df7a04510c717d52ae5c7e8918255c6caff7cd5b00077",
+      "families": [
+        {
+          "family": "dataTable",
+          "lines": [
+            59
+          ]
+        },
+        {
+          "family": "sorting",
+          "lines": [
+            69,
+            109
+          ]
+        },
+        {
+          "family": "selection",
+          "lines": [
+            104,
+            168,
+            169
+          ]
+        },
+        {
+          "family": "table",
+          "lines": [
+            33,
+            86,
+            89,
+            134,
+            148
+          ]
+        }
+      ],
+      "uiImports": [],
+      "entries": [
+        {
+          "name": "initStickyTableHeader",
+          "line": 49
+        }
+      ],
+      "imports": []
     },
     {
       "path": "js/ui/switch.js",
@@ -16576,10 +16776,10 @@
         "js/components/directorateReport.js",
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
+        "js/components/modal.js",
         "js/components/projectManagement.js",
         "js/components/reports.js",
         "js/components/requestPresentation.js",
-        "js/components/settings.js",
         "js/components/workTaskDrawer.js"
       ]
     },
@@ -16588,6 +16788,8 @@
       "consumers": [
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
+        "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/projectManagement.js",
         "js/components/workTaskDrawer.js"
       ]
@@ -16607,6 +16809,7 @@
       "consumers": [
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
+        "js/components/modal.js",
         "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
         "js/components/workReports.js"
@@ -16810,6 +17013,7 @@
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/notifications.js",
         "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
@@ -16819,7 +17023,6 @@
         "js/components/reports.js",
         "js/components/requestPresentation.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
@@ -16862,9 +17065,7 @@
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/projectWorkspace.js",
-        "js/components/reportingStatuses.js",
-        "js/components/reviewPage.js",
-        "js/components/settings.js"
+        "js/components/reportingStatuses.js"
       ]
     },
     {
@@ -16945,6 +17146,7 @@
         "js/components/metricsMigration.js",
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/outboxDeadLetters.js",
         "js/components/projectManagement.js",
         "js/components/projectUi.js",
@@ -16957,7 +17159,6 @@
         "js/components/requestPresentation.js",
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/workBoard.js",
         "js/components/workProductivity.js",
         "js/components/workProjects.js",
@@ -17062,6 +17263,7 @@
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
         "js/components/projectManagement.js",
@@ -17073,7 +17275,6 @@
         "js/components/reports.js",
         "js/components/requestLifecycle.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/viewState.js",
         "js/components/workBoard.js",
@@ -17216,6 +17417,7 @@
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/navbar.js",
+        "js/components/notificationPreferences.js",
         "js/components/notifications.js",
         "js/components/projectManagement.js",
         "js/components/projectWorkspace.js",
@@ -17224,7 +17426,6 @@
         "js/components/reports.js",
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/workProjects.js",
         "js/components/workReports.js",
@@ -17288,7 +17489,6 @@
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
         "js/components/reports.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/taskAttachments.js",
         "js/components/workProjects.js",
@@ -17302,7 +17502,6 @@
         "js/app.js",
         "js/components/admin.js",
         "js/components/modal.js",
-        "js/components/settings.js",
         "js/components/taskComments.js",
         "js/components/workQueue.js"
       ]
@@ -17388,6 +17587,7 @@
         "js/components/meetingCapture.js",
         "js/components/metrics.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/notifications.js",
         "js/components/outboxDeadLetters.js",
         "js/components/quarterlyGoalsUpdate.js",
@@ -17395,7 +17595,6 @@
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/viewState.js",
         "js/components/workBoard.js",
         "js/components/workRelations.js",
@@ -17423,13 +17622,13 @@
         "js/components/metrics.js",
         "js/components/metricsQuarterly.js",
         "js/components/modal.js",
+        "js/components/notificationPreferences.js",
         "js/components/quarterlyGoalsUpdate.js",
         "js/components/quickEdit.js",
         "js/components/reportingStatuses.js",
         "js/components/reports.js",
         "js/components/requirementReviews.js",
         "js/components/reviewPage.js",
-        "js/components/settings.js",
         "js/components/sidebar.js",
         "js/components/viewState.js",
         "js/components/workProjects.js",

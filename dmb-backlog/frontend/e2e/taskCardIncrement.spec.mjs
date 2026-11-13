@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
 
+async function expectDownloadControls(page, filename) {
+  const controls = page.getByRole('button', { name: `Скачать ${filename}`, exact: true });
+  await expect(controls).toHaveCount(2); // File name and the adjacent download icon.
+  await expect(controls.filter({ hasText: filename })).toBeVisible();
+  await expect(controls.filter({ has: page.locator('svg') })).toBeVisible();
+}
+
 async function openTaskCard(page, hash = '#/tasks?task=42') {
   await page.goto(`/e2e/fixtures/taskCardIncrement.html${hash}`);
   await expect(page.locator('html')).toHaveAttribute('data-fixture-ready', 'true');
@@ -12,7 +19,7 @@ test('sys показывает число и список файлов, а за�
   await filesTab.click();
 
   await expect(filesTab).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('button', { name: 'Скачать ux-audit.pdf' })).toBeVisible();
+  await expectDownloadControls(page, 'ux-audit.pdf');
   const dropZone = page.getByRole('button', { name: 'Добавить файлы к задаче' });
   await expect(dropZone).toHaveAttribute('tabindex', '0');
   await expect(dropZone).toHaveAttribute('aria-describedby', 'attachment-drop-hint');
@@ -30,7 +37,7 @@ test('legacy hash tab=files открывает каноническую вкла
   await openTaskCard(page, '#/tasks?task=42&tab=files');
   const filesTab = page.getByRole('tab', { name: /Ссылки и файлы · 2/ });
   await expect(filesTab).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('button', { name: 'Скачать ux-audit.pdf' })).toBeVisible();
+  await expectDownloadControls(page, 'ux-audit.pdf');
   await expect(page.locator('#mbody')).toHaveAttribute('aria-labelledby', 'task-tab-sys');
 });
 
@@ -116,7 +123,9 @@ test('вкладки имеют ARIA-семантику и управляютс�
 test('V30 показывает и редактирует четыре возвращённых атрибута', async ({ page }) => {
   await openTaskCard(page);
   await expect(page.locator('.task-comment')).toContainText('Только для рабочей группы');
-  const assessment = page.locator('.cl-grid.assessment');
+  const assessment = page.locator('.ui-task-detail-grid.assessment');
+  await page.locator('.effort-disclosure > summary').click();
+  await expect(assessment).toBeVisible();
   await expect(assessment).toContainText('17 ч/д');
   await expect(assessment).toContainText('40%');
   await expect(assessment).toContainText('75%');
@@ -142,7 +151,7 @@ test('read-only режим сохраняет просмотр, но убира�
   await expect(page.getByRole('button', { name: /Ответить/ })).toHaveCount(0);
 
   await page.locator('#task-tab-sys').click();
-  await expect(page.getByRole('button', { name: 'Скачать ux-audit.pdf' })).toBeVisible();
+  await expectDownloadControls(page, 'ux-audit.pdf');
   await expect(page.getByRole('button', { name: 'Добавить файлы к задаче' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Удалить/ })).toHaveCount(0);
 

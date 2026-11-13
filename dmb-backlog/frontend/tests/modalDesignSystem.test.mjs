@@ -31,7 +31,7 @@ assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*?\.feedback-confirm-actio
 assert.match(accessibility, /\.conflict-overlay, \.modal-backdrop, dialog/);
 assert.match(accessibility, /overlay\.matches\('dialog, \[role="dialog"\], \[role="alertdialog"\]'\)/);
 assert.match(accessibility, /!overlay\.matches\('dialog'\) \|\| overlay\.open/);
-assert.match(accessibility, /else if \(dialog\.matches\('dialog'\)\) dialog\.close\(\)/);
+assert.match(accessibility, /else if \(dialog\.matches\('dialog'\)\) \{ event\.stopImmediatePropagation\(\); dialog\.close\(\); \}/);
 
 assert.doesNotMatch(reports, /window\.confirm\s*\(/);
 assert.match(reports, /await showReportingMeetingForm\(meeting, 'complete'\)/);
@@ -47,9 +47,9 @@ assert.match(catalog, /document\.documentElement\.dataset\.ready = 'true'/);
 // Особая композиция карточки задачи остаётся отдельным workspace-контрактом.
 assert.match(css, /Карточка задачи: только более заметное закрытие, без изменения layout/);
 assert.match(css, /:is\(#task-detail-overlay, #create-task-overlay\) :is\(\.iconbtn\.close, \.task-detail-btn-close\)/);
-assert.match(modal, /class="task-detail-modal modal" id="task-detail-modal"/);
+assert.match(modal, /class="task-detail-modal ui-task-dialog" id="task-detail-modal"/);
 assert.match(read('../css/components.css'), /:is\(#task-detail-overlay, #create-task-overlay\):not\(\.modal-closing\) \.task-detail-modal/);
-assert.match(modal, /<div class="mhead" id="mhead"><\/div>/);
-assert.match(modal, /<div class="tabs ui-tabs" id="tabs" role="tablist"/);
-assert.match(modal, /<div class="mbody" id="mbody" role="tabpanel" tabindex="0"><\/div>/);
-assert.match(modal, /<div class="mfoot" id="mfoot"><\/div>/);
+assert.match(modal, /<div class="ui-task-dialog-head" id="mhead"><\/div>/);
+assert.match(modal, /<div class="ui-tabs ui-task-dialog-tabs" id="tabs" role="tablist"/);
+assert.match(modal, /<div class="ui-task-dialog-body" id="mbody" role="tabpanel" tabindex="0"><\/div>/);
+assert.match(modal, /<div class="ui-task-dialog-foot" id="mfoot"><\/div>/);

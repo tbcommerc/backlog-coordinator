@@ -1,4 +1,16 @@
 /* Floating geometry is calculated by popover.js; all visual roles live here. */
+/* Named editor keeps controls visible while its list scrolls. */
+:root .ui-popover.ui-popover-columns-editor { display:flex; flex-direction:column; width:28rem; height:min(36rem, calc(100dvh - 16px)); overflow:hidden; }
+.ui-popover-columns-editor.ui-popover-columns .column-settings-list { display:flex; flex-direction:column; min-height:0; overflow:auto; overscroll-behavior:contain; gap:0; }
+.ui-popover-columns-editor .col-drag-item { flex:0 0 auto; }
+.ui-popover-columns-editor .col-drag-item[hidden] { display:none; }
+.ui-popover-columns-editor .col-order-number { display:none; }
+.ui-popover-columns-editor .ui-popover-header, .ui-popover-columns-editor .ui-popover-actions, .ui-popover-columns-editor .ui-popover-field, .ui-popover-columns-editor .ui-popover-hint { flex-shrink:0; }
+.ui-popover-columns-editor .ui-popover-hint { margin:0; font-size:var(--text-xs); }
+.ui-popover-columns-editor [data-column-count] { color:var(--text-secondary); font-size:var(--text-xs); }
+.ui-popover-columns-editor input[type="checkbox"] { color-scheme:dark; }
+[data-theme="light"] .ui-popover-columns-editor input[type="checkbox"] { color-scheme:light; }
+.ui-popover-columns-editor .col-drag-item[data-col="id"] { cursor:default; }
 :root .ui-popover {
   position: fixed;
   inset: auto;

@@ -20,6 +20,10 @@ import { createTaskCommentDraftSession, parseCommentTarget } from '../taskCommen
 import { renderTaskCardMarkdown } from '../taskCardMarkdown.js';
 import { button as uiButton, control as uiControl, fieldFrame as uiFieldFrame, tab as uiTab } from '../ui/primitives.js';
 import { setButtonBusy, tabNavigationTarget } from '../ui/controls.js';
+import { descriptionList as uiDescriptionList, sectionCard as uiSectionCard } from '../ui/detailComponents.js';
+import { renderViewState } from './viewState.js';
+import { enhanceDialogOverlay } from '../modalAccessibility.js';
+import { taskNumber, sumTaskMeasurements, taskMeasurementCost, sumTaskCosts } from '../taskCardNumbers.js';
 
 // === DMB Backlog — Подробная карточка задачи (Master-Detail) ===
 // === Референс: Карточка задачи - референс.html ===
@@ -55,6 +59,52 @@ let _taskRealtimeBound = false;
 const _taskCardRequestGate = createTaskCardRequestGate();
 const _taskCommentDraftSession = createTaskCommentDraftSession();
 let _commentTargetHandled = null;
+let _cardReadStates = {};
+
+function cardReadState(kind) {
+  return _cardReadStates[kind] ||= { loading: false, loaded: false, error: '' };
+}
+
+function cardReadFeedback(kind, subject) {
+  const state = cardReadState(kind);
+  if (state.loading) return renderViewState({ kind: 'loading', scope: 'partial', title: 'Загружаем ' + subject + '…' });
+  if (!state.error) return '';
+  return renderViewState({ kind: state.loaded ? 'stale' : 'error', scope: 'partial',
+    title: state.loaded ? 'Не удалось обновить ' + subject : 'Не удалось загрузить ' + subject,
+    message: state.loaded ? 'Показаны ранее загруженные данные. Повторите обновление.' : 'Проверьте подключение и повторите попытку.',
+    actionLabel: 'Повторить', actionAttrs: { 'data-action': 'retry-card-read', 'data-read-kind': kind } });
+}
+
+async function cardReadRequest(kind, taskId, operation, onSuccess, render) {
+  const state = cardReadState(kind);
+  if (state.loading || !cardMatchesCurrentTask(taskId)) return;
+  const request = _taskCardRequestGate.start(kind, taskId);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  request.signal.addEventListener('abort', abort, { once: true });
+  const timeout = setTimeout(abort, 15000);
+  state.loading = true;
+  state.error = '';
+  render();
+  try {
+    const result = await Promise.race([operation(controller.signal), new Promise((_, reject) => {
+      controller.signal.addEventListener('abort', () => reject(new Error('Read cancelled or timed out')), { once: true });
+    })]);
+    if (!_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) return;
+    onSuccess(result);
+    state.loaded = true;
+  } catch (error) {
+    if (request.signal.aborted || !_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) return;
+    state.error = 'read-failed';
+  } finally {
+    clearTimeout(timeout);
+    request.signal.removeEventListener('abort', abort);
+    if (_taskCardRequestGate.finish(request.token) && cardMatchesCurrentTask(taskId)) {
+      state.loading = false;
+      render();
+    }
+  }
+}
 
 function newTaskRequestId() {
   return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -234,9 +284,10 @@ function activateTaskModalFocusTrap(root) {
   deactivateTaskModalFocusTrap();
   _taskFocusTrapRoot = root;
   _taskFocusTrapHandler = event => {
-    if (event.key !== 'Tab') return;
+    if (event.key !== 'Tab' || event.defaultPrevented) return;
     const activeDialog = document.getElementById('confirm-modal-overlay')
       || document.getElementById('card-conflict-overlay')
+      || document.getElementById('prioritiser-requirements-overlay')
       || _taskFocusTrapRoot;
     if (!activeDialog?.isConnected) return;
     const focusable = Array.from(activeDialog.querySelectorAll(
@@ -1665,7 +1716,7 @@ function renderTaskDetailModalLegacy(task, app) {
   const hasTaskId = !!t.id;
 
   return `
-    <div class="modal-overlay" id="task-detail-overlay">
+    <div class="modal-overlay ui-task-dialog-overlay" id="task-detail-overlay">
       <div class="task-detail-modal" id="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="task-detail-title">
 
         <!-- B-Header -->
@@ -1841,26 +1892,25 @@ function initActivityTabs() {
 async function loadAttachments(taskId, app) {
   const api = app?.api || window.app?.api;
   if (!api || !taskId) return;
-  const requestedTaskId = Number(taskId);
-  try {
-    const data = await api.get(`/tasks/${taskId}/attachments`);
-    if (Number(currentTask?.id) !== requestedTaskId) return;
+  await cardReadRequest('attachments', Number(taskId), signal => api.get(`/tasks/${taskId}/attachments`, { signal }), data => {
     _attachmentsCache = data.items || [];
-  } catch (e) {
-    if (Number(currentTask?.id) !== requestedTaskId) return;
-    console.error('Failed to load attachments:', e);
-    _attachmentsCache = [];
-  }
-  cardState.filesCount = _attachmentsCache.length;
-  const filesHeading = document.getElementById('task-files-heading');
-  if (filesHeading) filesHeading.lastChild.textContent = 'Файлы' + (cardState.filesCount ? ' · ' + cardState.filesCount : '');
-  cardRenderTabs();
-  renderAttachmentsList();
+    cardState.filesCount = _attachmentsCache.length;
+  }, () => {
+    const filesHeading = document.getElementById('task-files-heading');
+    if (filesHeading) filesHeading.lastChild.textContent = 'Файлы' + (cardState.filesCount ? ' · ' + cardState.filesCount : '');
+    cardRenderTabs();
+    renderAttachmentsList();
+  });
 }
 
 function renderAttachmentsList() {
   const container = document.getElementById('attachments-list-container');
-  renderAttachments(container, _attachmentsCache, { canDelete: cardEditPermission().allowed });
+  if (!container) return;
+  const state = cardReadState('attachments');
+  const feedback = cardReadFeedback('attachments', 'файлы');
+  if (!state.loaded && (state.loading || state.error)) { container.innerHTML = feedback; return; }
+  renderAttachments(container, _attachmentsCache, { canDelete: cardEditPermission().allowed, variant: 'task-detail' });
+  if (feedback) container.insertAdjacentHTML('afterbegin', feedback);
 }
 
 window.__deleteAttachment = async function(taskId, attachmentId) {
@@ -3446,7 +3496,7 @@ async function loadComments(taskId, app) {
     if (commentsData.status === 'fulfilled') {
       _commentsCache = commentsData.value.items || [];
       _commentsLoadedTaskId = requestedTaskId;
-      cardState.commentsCount = _commentsCache.length;
+      cardState.commentsCount = cardCommentCount(_commentsCache);
       cardRenderTabs();
     } else {
       console.error('Failed to load comments:', commentsData.reason);
@@ -3470,7 +3520,7 @@ async function loadComments(taskId, app) {
 
 function renderCommentList() {
   const container = document.getElementById('comments-list-container');
-  renderComments(container, _commentsCache, _usersCache, { canReply: cardCommentPermission().allowed });
+  renderComments(container, _commentsCache, _usersCache, { canReply: cardCommentPermission().allowed, variant: 'task-detail' });
   const targetId = parseCommentTarget(window.location.hash);
   const targetKey = targetId && currentTask?.id ? `${currentTask.id}:${targetId}` : null;
   if (container && _commentsLoadedTaskId === Number(currentTask?.id) && cardState.tab === 'com' && targetKey && _commentTargetHandled !== targetKey) {
@@ -5409,6 +5459,9 @@ const CARD_IC = {
   copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7L12 4.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19.5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 8l5-5 5 5M12 3v12"/>',
+  'arrow-right': '<path d="M5 12h14M12 5l7 7-7 7"/>',
+  external: '<path d="M15 3h6v6M10 14 21 3M18 13v7H4V6h7"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
   check: '<path d="M20 6L9 17l-5-5"/>',
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
@@ -5426,7 +5479,7 @@ const CARD_IC = {
 };
 
 function cardIcon(n) {
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (CARD_IC[n] || '') + '</svg>';
+  return '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (CARD_IC[n] || '') + '</svg>';
 }
 
 const CARD_ROLES = [
@@ -5463,6 +5516,7 @@ let cardPs = null;
 let cardReportingContext = null;
 let cardReportingLoading = false;
 let cardReportingDrafts = new Map();
+let cardReportingEditors = new Set();
 let _cardEscHandler = null;
 let _cardToastTimer = null;
 let _cardRouteTabHandler = null;
@@ -5535,6 +5589,7 @@ function cardReportingDraftNames() {
 
 function clearCardReportingDrafts() {
   cardReportingDrafts.clear();
+  cardReportingEditors.clear();
 }
 
 function cardSetReportingDraft(kind, meetingId, text, didDemo) {
@@ -5556,13 +5611,17 @@ function cardSetReportingDraft(kind, meetingId, text, didDemo) {
 }
 
 function cardCaptureReportingDraft(target) {
-  const card = target?.closest?.('.reporting-status-card');
+  const card = target?.closest?.('.ui-task-report');
   const kind = card?.dataset.reportingKind || target?.dataset.reportingText || target?.dataset.reportingDemo;
   const meetingId = card?.dataset.reportingMeetingId || target?.dataset.reportingMeetingId;
   if (!kind || meetingId == null || meetingId === '') return null;
   const textInput = card?.querySelector(`[data-reporting-text="${kind}"]`);
   const demoInput = card?.querySelector(`[data-reporting-demo="${kind}"]`);
-  return cardSetReportingDraft(kind, meetingId, textInput?.value || '', demoInput?.checked || false);
+  const draft = cardSetReportingDraft(kind, meetingId, textInput?.value || '', demoInput?.checked || false);
+  card?.classList.toggle('is-dirty', Boolean(draft));
+  const badge = card?.querySelector('.ui-task-report-head>.ui-badge');
+  if (badge) badge.outerHTML = uiBadge({ label: draft ? 'Черновик' : cardFindReportingItem(kind, meetingId)?.current_status?.text ? 'Готов' : 'Не заполнен', tone: draft ? 'warning' : 'neutral' });
+  return draft;
 }
 
 export function normalizeTaskCardTab(tab) {
@@ -5587,11 +5646,13 @@ async function cardActivateTab(tab, app, syncRoute = true) {
     _commentFormInitialized = false;
     setTimeout(() => { initCommentForm(currentTask?.id, app); renderCommentList(); }, 0);
   }
-  if (validTab === 'log') await cardLoadHistory(app);
-  if (validTab === 'rep') await cardLoadReportingContext(app);
   cardRenderTabs();
   cardRenderBody();
   cardRenderFooter();
+  if (validTab === 'log') await cardLoadHistory(app);
+  if (validTab === 'rep') await cardLoadReportingContext(app);
+  if (validTab === 'sys') await loadAttachments(currentTask.id, app);
+  if (validTab === 'sys') await loadAttachments(currentTask.id, app);
   return validTab;
 }
 
@@ -5603,11 +5664,7 @@ function cardNow() {
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 function cardPerson(n) {
-  if (!n) return '—';
-  const p = String(n).trim().split(/\s+/);
-  if (p.length < 2 || !p[0] || !p[1]) return n;
-  if (/^[А-ЯЁA-Zа-яёa-z]\.$/.test(p[0])) return n;
-  return p[0][0] + '. ' + p[1];
+  return String(n ?? '').trim() || '—';
 }
 function cardCustomerDepartment(customerName, fallback = '') {
   if (!customerName || !cardDict) return fallback;
@@ -5660,9 +5717,9 @@ function cardBuildRates(items) {
   return buildCompetencyRateTable(items);
 }
 function cardRate(key) {
-  if (!cardRates) return 0;
+  if (!cardRates) return null;
   const comp = CARD_RATES_MAP[key];
-  if (!comp) return 0;
+  if (!comp || !cardRates[comp] || !Object.keys(cardRates[comp]).length) return null;
   const task = cardCur() || {};
   const year = deadlineYearFromReference(
     { name: task.deadline },
@@ -5671,21 +5728,17 @@ function cardRate(key) {
   return competencyRateForYear(cardRates, comp, year);
 }
 function cardCalcCost(o) {
-  if (!o || !cardRates) return null;
-  let s = 0, a = false;
-  CARD_ROLES.forEach(r => { const v = +o[r.key]; if (v) { a = true; s += v * cardRate(r.key); } });
-  return a ? s : null;
+  return sumTaskCosts(CARD_ROLES.map(r => [o?.[r.key], cardRate(r.key)]));
 }
 function cardCalcSum(o) {
-  let s = 0, a = false;
-  CARD_ROLES.forEach(r => { const v = +o[r.key]; if (v) { a = true; s += v; } });
-  return a ? Math.round(s * 100) / 100 : null;
+  return sumTaskMeasurements(CARD_ROLES.map(r => o?.[r.key]));
 }
 function cardCvCalc(cost, fin) { return calculateCv(cost, fin); }
 function cardCvCls(v) { if (v == null) return ''; return v < 0.3 ? 'cv-good' : (v <= 1 ? 'cv-warn' : 'cv-bad'); }
 function cardDiffPct(eo, ftz) {
-  if (eo == null || eo === 0 || eo === '') return { txt: '—', cls: 'd-neutral' };
-  if (ftz == null || ftz === '') return { txt: '—', cls: 'd-neutral' };
+  eo = taskNumber(eo); ftz = taskNumber(ftz);
+  if (eo === null || ftz === null) return { txt: '—', cls: 'd-neutral' };
+  if (eo === 0) return ftz === 0 ? { txt: '0%', cls: 'd-neutral' } : { txt: 'Нет базы', cls: 'd-neutral' };
   const p = Math.round((ftz - eo) / eo * 100);
   if (p < 0) return { txt: p + '%', cls: 'd-good' };
   if (p > 0) return { txt: '+' + p + '%', cls: 'd-bad' };
@@ -5715,8 +5768,8 @@ function cardTaC(k, v, r, maxLength) { return uiControl({ kind: 'textarea', valu
 function cardDateC(k, v) { return uiControl({ type: 'date', value: v || '', attrs: { 'data-k': k, 'aria-label': cardFieldLabel(k) } }); }
 
 function cardProgressEditor(value) {
-  const progress = Math.min(100, Math.max(0, Math.round((+value || 0) / 5) * 5));
-  return '<div class="prog-edit" style="--progress-position:' + progress + '%"><output class="progress-value" data-progress-value>' + progress + '%</output><input type="range" min="0" max="100" step="5" data-k="progress" value="' + progress + '" aria-label="Прогресс, процентов"></div>';
+  const progress = Math.min(100, Math.max(0, Math.round(+value || 0)));
+  return '<div class="ui-task-progress-editor" style="--progress-position:' + progress + '%"><output class="ui-task-progress-value" data-progress-value>' + progress + '%</output><input type="range" min="0" max="100" step="1" data-k="progress" value="' + progress + '" aria-label="Прогресс, процентов"></div>';
 }
 function cardF(l, inner, o) {
   o = o || {};
@@ -5737,11 +5790,11 @@ function cardChipsStatic(arr) {
 }
 function cardChipsTeams(all, selArr, field) {
   const ordered = all.slice().sort((a, b) => (selArr.indexOf(b) >= 0 ? 1 : 0) - (selArr.indexOf(a) >= 0 ? 1 : 0));
-  return '<div class="chips">' + ordered.map(x => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
+  return '<div class="chips">' + ordered.map(x => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" aria-pressed="' + (selArr.indexOf(x) >= 0) + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
 }
 function cardChipsTags(all, selArr, field, editable) {
   if (!editable) return selArr.length ? '<div class="chips">' + selArr.map(x => '<span class="chip static">' + cardIcon('tag') + escapeHtml(x) + '</span>').join('') + '</div>' : '—';
-  return '<div class="chips">' + all.map(x => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
+  return '<div class="chips">' + all.map(x => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" aria-pressed="' + (selArr.indexOf(x) >= 0) + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
 }
 function cardSec(t, i) { return '<h3 class="sec"><span class="sic">' + cardIcon(i) + '</span>' + escapeHtml(t) + '</h3>'; }
 function cardLnk(u) { const safe = safeExternalUrl(u); return safe ? '<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + cardIcon('link') + escapeHtml(u) + '</a>' : 'Некорректная ссылка'; }
@@ -5893,15 +5946,14 @@ function cardRenderHeader() {
   const el = document.getElementById('mhead');
   if (!el) return;
   const t = cardCur();
-  let h = '<div class="head-row1"><div class="row-badges">';
-  h += '<button class="ui-link tid" data-action="copy-id" title="Скопировать ID">' + escapeHtml(t.publicId || formatTaskPublicId(t.id)) + cardIcon('copy') + '</button>';
-  h += uiBadge({ label: t.type, tone: 'accent', className: 'task-head-chip', attrs: { id: 'hType' } });
-  h += '</div><div class="row-status">';
-  h += uiBadge({ label: t.status, tone: taskStatusTone(t.status), className: 'task-head-chip', attrs: { id: 'hStatus' } });
-  h += uiBadge({ label: t.priority, tone: taskPriorityTone(t.priority), className: 'task-head-chip', attrs: { id: 'hPrio' } });
-  h += '</div><div class="row-actions">' + (cardState.editing ? '<span class="editbadge"><span class="editbadge-mark" aria-hidden="true">' + cardIcon('warning') + '</span>Редактирование</span>' : '') + '' + uiButton({ label: 'Копировать ссылку на задачу', iconMarkup: cardIcon('link'), iconOnly: true, variant: 'ghost', className: 'iconbtn', attrs: { 'data-action': 'copy-link' } }) + uiButton({ label: 'Закрыть карточку задачи', iconMarkup: cardIcon('x'), iconOnly: true, size: 'large', variant: 'ghost', className: 'iconbtn close', attrs: { 'data-action': 'close', title: 'Закрыть (Esc)' } }) + '</div></div>';
-  h += '<h1 class="head-title" id="task-detail-title" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</h1>';
-  el.innerHTML = h;
+  const meta = '<button class="ui-link ui-task-dialog-id" data-action="copy-id" title="Скопировать ID">' + escapeHtml(t.publicId || formatTaskPublicId(t.id)) + '</button>'
+    + uiBadge({ label: t.type, tone: 'neutral', attrs: { id: 'hType' } })
+    + '<span class="ui-task-dialog-project">' + escapeHtml(t.project || '') + '</span>';
+  const actions = uiButton({ label: 'Копировать ссылку на задачу', iconMarkup: cardIcon('link'), iconOnly: true, variant: 'ghost', attrs: { 'data-action': 'copy-link' } })
+    + uiButton({ label: 'Закрыть карточку задачи', iconMarkup: cardIcon('x'), iconOnly: true, variant: 'ghost', attrs: { 'data-action': 'close', title: 'Закрыть (Esc)' } });
+  el.innerHTML = '<div class="ui-task-dialog-head-row"><div class="ui-task-dialog-meta">' + meta + '</div><div class="ui-task-dialog-actions">' + actions + '</div></div>'
+    + '<div class="ui-task-dialog-title-row"><h1 class="ui-task-dialog-title" id="task-detail-title" title="' + escapeHtml(cardState.editing ? cardState.current.title : t.title) + '">' + escapeHtml(cardState.editing ? cardState.current.title : t.title) + '</h1>'
+    + (cardState.editing ? uiBadge({ label: 'Редактирование', tone: 'accent', className: 'ui-task-dialog-edit-badge' }) : '') + '</div>';
 }
 
 function cardRenderTabs() {
@@ -5916,7 +5968,7 @@ function cardRenderTabs() {
   };
   el.innerHTML = CARD_TABS.map(x => {
     const selected = cardState.tab === x[0];
-    return uiTab({ id: 'task-tab-' + x[0], label: label(x), panelId: 'mbody', selected, iconMarkup: cardIcon(x[2]), className: 'tab' + (selected ? ' on' : ''), attrs: { 'data-tab': x[0] } });
+    return uiTab({ id: 'task-tab-' + x[0], label: label(x), panelId: 'mbody', selected, className: 'ui-task-dialog-tab', attrs: { 'data-tab': x[0] } });
   }).join('');
   cardSyncTabsOverflow();
   if (focusedTab) document.getElementById('task-tab-' + normalizeTaskCardTab(focusedTab))?.focus({ preventScroll: true });
@@ -6015,34 +6067,33 @@ function cardPrioritiserChecklist(items, className = '') {
 
 function showPrioritiserRequirementsModal(kind, items) {
   document.getElementById('prioritiser-requirements-overlay')?.remove();
+  const origin = document.activeElement;
   const calculation = kind === 'value' ? 'финансового эффекта' : 'приоритета';
   const overlay = document.createElement('div');
   overlay.id = 'prioritiser-requirements-overlay';
   overlay.className = 'modal-overlay prioritiser-requirements-overlay';
   overlay.style.zIndex = '1250';
-  overlay.innerHTML = '<div class="prioritiser-requirements-modal app-modal app-modal--small" role="dialog" aria-modal="true" aria-labelledby="prioritiser-requirements-title">' +
+  overlay.innerHTML = '<div class="prioritiser-requirements-modal ui-task-requirements app-modal app-modal--small" role="dialog" aria-modal="true" aria-labelledby="prioritiser-requirements-title">' +
     '<div class="app-modal__header"><h3 class="app-modal__title" id="prioritiser-requirements-title">Не хватает данных для расчёта ' + calculation + '</h3>' +
-    '<button type="button" class="btn btn-ghost btn-lg square-icon ui-btn prioritiser-requirements-x" data-modal-close aria-label="Закрыть">' + cardIcon('x') + '</button></div>' +
+    uiButton({label:'Закрыть',variant:'ghost',iconMarkup:cardIcon('x'),iconOnly:true,className:'prioritiser-requirements-x',attrs:{'data-modal-close':true}}) + '</div>' +
     '<div class="app-modal__body"><p>Заполните отмеченные поля в карточке задачи и повторите расчёт.</p>' +
     cardPrioritiserChecklist(items, 'agent-check-list-modal') + '</div>' +
-    '<div class="prioritiser-requirements-actions app-modal__footer"><button type="button" class="btn btn-primary btn-sm" data-action="close-requirements">Закрыть</button></div>' +
+    '<div class="prioritiser-requirements-actions app-modal__footer">' + uiButton({label:'Закрыть',variant:'primary',attrs:{'data-action':'close-requirements'}}) + '</div>' +
     '</div>';
-  const host = document.getElementById('task-detail-overlay') || document.body;
-  host.appendChild(overlay);
+  document.body.appendChild(overlay);
+  enhanceDialogOverlay(overlay, origin);
 
   const closeButton = overlay.querySelector('[data-action="close-requirements"]');
   const close = () => {
-    document.removeEventListener('keydown', onKeydown);
     overlay.remove();
+    if (origin?.isConnected) origin.focus({ preventScroll: true });
   };
-  const onKeydown = event => { if (event.key === 'Escape') close(); };
   overlay.querySelector('.prioritiser-requirements-x')?.addEventListener('click', close);
   closeButton?.addEventListener('click', close);
-  document.addEventListener('keydown', onKeydown);
   closeButton?.focus();
 }
 
-function cardPrioritiserButton(kind) {
+function cardPrioritiserButton(kind, label = 'AI-расчёт') {
   const running = cardState.prioritiserRunning === kind;
   const action = kind === 'value' ? 'ai-calc-fin' : 'ps-calc';
   const requirements = cardPrioritiserRequirements(kind);
@@ -6052,7 +6103,7 @@ function cardPrioritiserButton(kind) {
   const tooltipBody = permission.allowed
     ? '<span class="agent-check-title">Для расчёта нужны поля</span>' + cardPrioritiserChecklist(requirements)
     : '<span class="agent-check-title">Расчёт недоступен</span><span>' + escapeHtml(permission.reason) + '</span>';
-  return '<span class="agent-check-wrap">' + uiButton({ label: running ? 'Расчёт…' : 'AI-расчёт', variant: 'ai', iconMarkup: cardIcon('spark'), attrs: { 'data-action': action, 'aria-describedby': tooltipId, 'aria-busy': running, disabled } })
+  return '<span class="agent-check-wrap">' + uiButton({ label: running ? 'Расчёт…' : label, variant: 'ai', iconMarkup: cardIcon('spark'), attrs: { 'data-action': action, 'aria-describedby': tooltipId, 'aria-busy': running, disabled } })
     + '<span class="agent-check-tooltip" id="' + tooltipId + '" role="tooltip">' + tooltipBody + '</span></span>';
 }
 function cardKpiBlock(t, e) {
@@ -6091,22 +6142,15 @@ function cardStatV30(label, value) {
   return '<div class="stat"><div class="slab">' + label + '<span class="lk" title="Только чтение">' + cardIcon('lock') + '</span></div><div class="sval">' + value + '</div></div>';
 }
 function cardKpiBlockV30(t, e) {
-  const cost = cardCalcCost(t.eo), fcost = cardCalcCost(t.ftz), eo = cardCalcSum(t.eo), ftz = cardCalcSum(t.ftz);
-  const displayFin = cardEffectiveFin(t), displayFinJust = cardEffectiveFinJust(t);
-  const cvE = (t.cv == null || t.cv === '') ? cardCvCalc(cost, displayFin) : Number(t.cv), cvF = cardCvCalc(fcost, displayFin);
-  let h = '<div class="stats"><div class="stats-half"><div class="stats-title">План (ЭО)</div>'
-    + cardStatV30('Оценка трудозатрат', '<span data-dyn="eo">' + cardFmtNum(eo) + '</span> <small>ч/д</small>')
-    + cardStatV30('Стоимость по ЭО', '<span data-dyn="cost">' + cardFmtMoney(cost) + '</span>')
-    + cardStatV30('C/V по ЭО', '<span data-dyn="cvE" class="' + cardCvCls(cvE) + '">' + (cvE == null ? '—' : cvE.toLocaleString('ru-RU')) + '</span>')
-    + '</div><div class="stats-half"><div class="stats-title">Факт (ФТЗ)</div>'
-    + cardStatV30('Фактические трудозатраты', '<span data-dyn="ftz">' + cardFmtNum(ftz) + '</span> <small>ч/д</small>')
-    + cardStatV30('Стоимость по ФТЗ', '<span data-dyn="fcost">' + cardFmtMoney(fcost) + '</span>')
-    + cardStatV30('C/V по ФТЗ', '<span data-dyn="cvF" class="' + cardCvCls(cvF) + '">' + (cvF == null ? '—' : cvF.toLocaleString('ru-RU')) + '</span>') + '</div></div>';
-  h += '<div class="psrow"><div class="bigcard"><div class="bc-head"><span class="bc-title">Priority Score</span><span class="lk" title="Автоматически">' + cardIcon('lock') + '</span>' + cardPrioritiserButton('priority') + '</div><div class="bc-value"><span data-dyn="ps" class="' + cardPsCls(t.priorityScore) + '">' + (t.priorityScore == null ? '—' : t.priorityScore) + '</span> <small>/ 100</small></div><div class="psbar"><span id="psBar" style="width:' + (t.priorityScore || 0) + '%"></span></div><div class="bc-div"></div><details class="jdetails"><summary class="ui-disclosure-text">Обоснование агента</summary><div class="jtxt">' + (t.priorityJust ? cardNl2br(t.priorityJust) : '—') + '</div></details><div class="aipop" id="psPop"></div></div>';
-  h += '<div class="bigcard"><div class="bc-head"><span class="bc-title">Финансовый эффект</span>' + cardPrioritiserButton('value') + '</div>';
-  if (e) h += '<div class="bc-value" style="font-size:18px"><input class="input ui-control" type="number" step="0.1" min="0" data-k="finEffect" aria-label="Финансовый эффект" value="' + (t.finEffect == null ? '' : t.finEffect) + '" style="max-width:150px;display:inline-block"> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><div class="jlab">Обоснование расчёта</div><div class="jtxt">' + cardTaC('finJust', t.finJust, 3) + '</div>';
-  else h += '<div class="bc-value"><span data-dyn="fin">' + cardFmtNum(displayFin, 2) + '</span> <small>млн ₽</small></div><div class="psbar hide"></div><div class="bc-div"></div><details class="jdetails"><summary class="ui-disclosure-text">Обоснование расчёта</summary><div class="jtxt">' + (displayFinJust ? cardNl2br(displayFinJust) : '—') + '</div></details>';
-  return h + '<div class="aipop" id="finPop"></div></div></div>';
+  const cost = cardCalcCost(t.eo), fcost = cardCalcCost(t.ftz);
+  const dyn = (key, value) => '<span data-dyn="' + key + '">' + value + '</span>';
+  const metric = (label, value, note) => '<div class="ui-task-detail-metric"><span class="ui-task-detail-note">' + label + '</span><div class="ui-task-detail-metric-value">' + value + '</div>' + note + '</div>';
+  let h = '<div class="ui-task-detail-metrics">';
+  h += metric('Трудозатраты, план', dyn('eo', cardFmtNum(cardCalcSum(t.eo))) + ' ч/д', '<span class="ui-task-detail-note">Факт: ' + dyn('ftz', cardFmtNum(cardCalcSum(t.ftz))) + ' ч/д</span>');
+  h += metric('Стоимость, план', dyn('cost', cardFmtMoney(cost)), '<span class="ui-task-detail-note">Факт: ' + dyn('fcost', cardFmtMoney(fcost)) + '</span>');
+  h += metric('Priority Score <span class="ui-task-detail-metric-help" tabindex="0" role="note" aria-label="Priority Score — рекомендация агента от 0 до 100; не заменяет выбранный приоритет" title="Рекомендация агента от 0 до 100; не заменяет выбранный приоритет">' + cardMainIcon('info') + '</span>', dyn('ps', t.priorityScore == null ? '—' : t.priorityScore) + ' <span class="ui-task-detail-note">/ 100</span>', '<span class="ui-task-detail-note">Рекомендация агента</span>');
+  h += metric('Финансовый эффект', dyn('finDisplay', t.finEffect == null ? 'Не рассчитан' : cardFmtNum(t.finEffect, 2) + ' млн ₽'), cardPrioritiserButton('value', 'Рассчитать'));
+  return h + '</div><div id="psPop"></div><div id="finPop"></div>';
 }
 
 function cardBodyMain(t, e) {
@@ -6124,7 +6168,7 @@ function cardBodyMain(t, e) {
   h += cardSec('Исполнение и команды', 'user');
   h += cardGrid4(
     cardF('Статус задачи', e ? cardSel('status', statuses, t.status) : cardV(uiBadge({ label: t.status, tone: taskStatusTone(t.status) }))),
-    cardF('Приоритет', e ? cardSel('priority', priorities, t.priority) : cardV(uiBadge({ label: t.priority, tone: taskPriorityTone(t.priority) }))),
+    cardF('Приоритет', e ? cardSel('priority', priorities, t.priority) : cardV(uiBadge({ label: t.priority, tone: /^высок/i.test(t.priority || '') ? 'warning' : taskPriorityTone(t.priority) }))),
     cardF('Срок выполнения', e ? cardSel('deadline', deadlines, t.deadline) : cardV('<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>')),
     cardF('Прогресс', e ? cardProgressEditor(t.progress) : cardV(uiProgress({ value: t.progress, showValue: true }))),
     cardF('Ответственная команда', e ? cardSel('team', teams, t.team) : cardV('<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>')),
@@ -6167,79 +6211,148 @@ function cardCustomerReference(key, items, value, fallback, editing, departmentI
   return '<select class="input ui-control" data-k="' + key + '" aria-label="' + escapeHtml(cardFieldLabel(key)) + '"><option value="">Не выбрано</option>' + shown.map(i => '<option value="' + i.id + '"' + (String(i.id) === String(value) ? ' selected' : '') + '>' + escapeHtml(i.name) + '</option>').join('') + (shown.length < items.length ? '<option value="__all">Показать всех контактных лиц…</option>' : '') + '</select>';
 }
 
+function cardMainField(label, markup, key = '', editing = false, className = '') {
+  const interactive = key && !editing && cardEditPermission().allowed;
+  return {
+    label,
+    valueMarkup: '<span class="desc-val ui-task-detail-value">' + markup + '</span>',
+    className: 'icell ui-task-detail-field ' + className,
+    attrs: interactive ? { 'data-inline-edit': key, role: 'button', tabindex: '0', 'aria-label': 'Изменить: ' + label, title: 'Нажмите, чтобы изменить' } : {},
+  };
+}
+
+function cardMainSection(title, content, options = {}) {
+  return uiSectionCard({ title, content, variant: 'plain', className: 'ui-task-detail-section', ...options });
+}
+
+function cardMainIcon(name) {
+  const shape = name === 'info' ? '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>'
+    : name === 'up' ? '<path d="m18 15-6-6-6 6"/>' : '<path d="m6 9 6 6 6-6"/>';
+  return '<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shape + '</svg>';
+}
+
+function cardMainEditField(key, label, markup, options = {}) {
+  const id = 'task-edit-' + key;
+  const control = markup.replace(/<(input|select|textarea)\b/, '<$1 id="' + id + '"');
+  return uiFieldFrame({ id, label, controlMarkup: '<div class="desc-val">' + control + '</div>',
+    required: key === 'title', className: 'icell ui-task-edit-field' + (options.full ? ' ui-task-edit-full' : ''), hint: options.hint || '' });
+}
+
+function cardMainExtraFields(t, e) {
+  const f = (label, value, key = '') => cardMainField(label, value, key, e);
+  const active = key => e && (!cardState.entryField || cardState.entryField === key);
+  return uiDescriptionList({ className: 'ui-task-detail-grid', items: [
+    f('Подразделение', cardCustomerReference('customerDeptId', cardDict?.departments, t.customerDeptId, t.customerDept, active('customerDeptId')), 'customerDeptId'),
+    f('Клиент ДИД', cardCustomerReference('didClientId', cardDict?.didClientGroups, t.didClientId, t.didClientName, active('didClientId')), 'didClientId'),
+    f('Канал поступления', active('channel') ? taskFormEditControl('channel', t.channel) : escapeHtml(t.channel || 'Не указан'), 'channel'),
+    f('Дата получения', active('receivedAt') ? taskFormEditControl('receivedAt', t.receivedAt) : cardFmtDate(t.receivedAt), 'receivedAt'),
+    f('Метрический KR', 'План: ' + (t.metricKrPlan == null ? 'Не задан' : cardFmtNum(t.metricKrPlan) + ' ' + escapeHtml(t.metricKrUnit || '')) + ' · Факт: ' + (t.metricKrFact == null ? 'Не измерен' : cardFmtNum(t.metricKrFact) + ' ' + escapeHtml(t.metricKrUnit || ''))),
+  ] });
+}
+
+function cardMainAssessment(t, e) {
+  const active = key => e && (!cardState.entryField || cardState.entryField === key);
+  return uiDescriptionList({ className: 'ui-task-detail-grid assessment', items: [
+    cardMainField('Общая оценка трудозатрат, ч/д', active('effortDays') ? cardNumC('effortDays', t.effortDays, 1, 10000) : (t.effortDays == null ? 'Не оценено' : cardFmtNum(t.effortDays) + ' ч/д'), 'effortDays', e),
+    cardMainField('Вес оценки, %', active('weightPercent') ? cardNumC('weightPercent', t.weightPercent, 1, 100) : (t.weightPercent == null ? 'Не задан' : cardFmtNum(t.weightPercent) + '%'), 'weightPercent', e),
+    cardMainField('Прогноз выполнения, %', active('forecastPercent') ? cardNumC('forecastPercent', t.forecastPercent, 1, 100) : (t.forecastPercent == null ? 'Не задан' : cardFmtNum(t.forecastPercent) + '%'), 'forecastPercent', e),
+    cardMainField('Оценка завершённости (Hard)', cardGradePill(t.hardScore)),
+    cardMainField('Оценка взаимодействия (Soft)', cardGradePill(t.softScore)),
+  ] });
+}
+
+function cardMainJustifications(t, e) {
+  const cvE = t.cv == null || t.cv === '' ? cardCvCalc(cardCalcCost(t.eo), t.finEffect) : Number(t.cv);
+  const cvF = cardCvCalc(cardCalcCost(t.ftz), t.finEffect);
+  return uiDescriptionList({ className: 'ui-task-detail-grid', items: [
+    cardMainField('C/V по ЭО', '<span data-dyn="cvE">' + (cvE == null ? 'Нет расчёта' : cvE.toLocaleString('ru-RU')) + '</span>'),
+    cardMainField('C/V по ФТЗ', '<span data-dyn="cvF">' + (cvF == null ? 'Нет расчёта' : cvF.toLocaleString('ru-RU')) + '</span>'),
+    cardMainField('Обоснование агента', (t.priorityJust ? cardNl2br(t.priorityJust) : 'Обоснование пока не добавлено') + '<div>' + cardPrioritiserButton('priority') + '</div>'),
+    cardMainField('Обоснование расчёта', e ? cardTaC('finJust', t.finJust, 3) : (t.finJust ? cardNl2br(t.finJust) : 'Обоснование пока не добавлено')),
+  ] });
+}
+
+function cardMainFullEditor(t) {
+  const f = cardMainEditField;
+  let h = '<div class="ui-task-detail-composition ui-task-edit-composition"><div class="ui-task-edit-grid">';
+  h += f('title', 'Название', uiControl({ value: t.title, attrs: { 'data-k': 'title', maxlength: 255, 'aria-label': 'Название задачи' } }), { full: true });
+  h += f('status', 'Статус', cardSel('status', cardNameList('statuses'), t.status));
+  h += f('assignee', 'Исполнитель', taskFormEditControl('assignee', t.assignee));
+  h += f('deadline', 'Срок', taskFormEditControl('deadline', t.deadline));
+  h += f('priority', 'Приоритет', taskFormEditControl('priority', t.priority));
+  h += f('progress', 'Прогресс, %', cardNumC('progress', t.progress, 1, 100));
+  h += f('team', 'Ответственная команда', taskFormEditControl('team', t.team), { hint: 'Команда ответственности задачи' });
+  h += f('description', 'Описание', cardTaC('description', t.description, 3, taskFormMeta('description').maxLength), { full: true });
+  h += f('comment', 'Внутренний комментарий', cardTaC('comment', t.comment, 3, taskFormMeta('comment').maxLength), { full: true });
+  h += '</div><p class="ui-task-detail-hint">' + cardMainIcon('info') + 'Изменения применятся только после сохранения.</p>';
+  h += '<div class="ui-task-edit-secondary">' + cardMainSection('Участники и классификация', uiDescriptionList({ className: 'ui-task-detail-grid', items: [
+    cardMainField('Бизнес-заказчик', taskFormEditControl('customer', t.customer)),
+    cardMainField('Проект', taskFormEditControl('project', t.project)),
+    cardMainField('Тип задачи', taskFormEditControl('type', t.type)),
+    cardMainField('Вовлечённые команды', cardChipsTeams(cardNameList('teams'), t.otherTeams, 'otherTeams')),
+    cardMainField('Метки', cardChipsTags(cardNameList('tags'), t.tags, 'tags', true)),
+  ] }) + cardMainExtraFields(t, true));
+  h += cardMainSection('Оценка и прогноз', cardMainAssessment(t, true) + uiDescriptionList({ className: 'ui-task-detail-grid', items: [cardMainField('Финансовый эффект, млн ₽', cardNumC('finEffect', t.finEffect, .1) + cardPrioritiserButton('value'))] }));
+  h += cardMainSection('Трудозатраты, стоимость и обоснования', '<div class="ui-table-scroll">' + cardEffortTable(t, true) + '</div>' + cardMainJustifications(t, true));
+  return h + '</div><div id="psPop"></div><div id="finPop"></div></div>';
+}
+
 function cardBodyMainV30(t, e) {
-  const teams = cardNameList('teams'), users = cardNameList('users'), projects = cardNameList('projects');
-  const types = cardNameList('taskTypes'), priorities = cardNameList('priorities'), statuses = cardNameList('statuses');
-  const deadlines = cardNameList('deadlines'), channels = cardNameList('channels'), customers = cardNameList('customers'), tags = cardNameList('tags');
-  const edit = key => e && (!cardState.entryField || cardState.entryField === key);
-  const fullEdit = e && !cardState.entryField;
-  const canEdit = cardEditPermission().allowed;
-  const titleEditAttrs = e || !canEdit ? '"' : ' inline-edit-target" data-inline-edit="title" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('title')) + '" title="Нажмите, чтобы изменить"';
-  const descriptionEditAttrs = e || !canEdit ? '"' : ' inline-edit-target" data-inline-edit="description" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('description')) + '" title="Нажмите, чтобы изменить"';
-  const commentEditAttrs = e || !canEdit ? '"' : ' inline-edit-target" data-inline-edit="comment" role="button" tabindex="0" aria-label="Изменить: ' + escapeHtml(taskFormLabel('comment')) + '" title="Нажмите, чтобы изменить"';
-  const descriptionEditor = edit('description') ? taskFormEditControl('description', t.description) : '';
-  let h = '<div class="task-top"><div class="task-title-card"><div class="desc-label">' + taskFormLabel('title') + '</div><div class="task-title-row' + titleEditAttrs + '>';
-  h += edit('title') ? '<div class="title-edit-wrap">' + uiControl({ value: t.title, className: 'title-input', attrs: { 'data-k': 'title', maxlength: 255, 'aria-label': taskFormLabel('title') } }) + '<span class="tcount task-character-counter" id="titleCount"></span></div>' : '<div class="task-title">' + escapeHtml(t.title) + '</div>';
-  h += '</div></div><div class="task-desc"><div class="desc-label">' + taskFormLabel('description') + '</div>';
-  if (descriptionEditor) {
-    h += '<div class="desc-val' + descriptionEditAttrs + '>' + descriptionEditor + '</div>';
-  } else {
-    h += '<div class="task-description-shell' + (cardState.descriptionExpanded ? ' is-expanded' : '') + '"><div class="desc-val' + descriptionEditAttrs + '><div class="txt task-description-content" id="task-description-content">' + renderTaskCardMarkdown(t.description) + '</div></div><div class="task-description-fade" aria-hidden="true"></div><button type="button" class="ui-link task-description-toggle" data-action="toggle-description" aria-controls="task-description-content" aria-expanded="' + (cardState.descriptionExpanded ? 'true' : 'false') + '" hidden>Показать полностью</button></div>';
-  }
-  h += '</div>';
-  h += '<div class="task-desc task-comment"><div class="desc-label">Внутренний комментарий задачи</div><div class="desc-val' + commentEditAttrs + '>' + (edit('comment') ? taskFormEditControl('comment', t.comment) : '<span class="txt">' + (t.comment ? cardNl2br(t.comment) : '—') + '</span>') + '</div></div></div>';
+  if (e && !cardState.entryField) return cardMainFullEditor(t);
+  const edit = key => e && cardState.entryField === key;
+  const f = (label, value, key = '', cls = '') => cardMainField(label, value, key, e, cls);
+  const person = (value, id) => value ? '<span class="ui-task-detail-person">' + uiAvatar({ name: value, size: 24, id }) + '<span>' + escapeHtml(value) + '</span></span>' : 'Не назначен';
+  const textControl = (key, value, empty = 'Не указан') => edit(key) ? taskFormEditControl(key, value) : escapeHtml(value || empty);
+  const list = items => uiDescriptionList({ className: 'ui-task-detail-grid', items });
+  const more = cardState.attributesExpanded || ['customerDeptId', 'didClientId', 'channel', 'receivedAt'].includes(cardState.entryField);
+  const effortOpen = ['effortDays', 'weightPercent', 'forecastPercent', 'finEffect', 'finJust'].includes(cardState.entryField);
+  let h = '<div class="ui-task-detail-composition">';
+  if (edit('title')) h += '<div class="ui-task-edit-grid">' + cardMainEditField('title', 'Название', uiControl({ value: t.title, attrs: { 'data-k': 'title', maxlength: 255, 'aria-label': 'Название задачи' } }), { full: true }) + '</div>';
+  h += '<section class="ui-task-detail-summary" aria-label="Рабочая сводка">' + uiDescriptionList({ className: 'ui-task-detail-summary-grid', items: [
+    f('Статус', edit('status') ? cardSel('status', cardNameList('statuses'), t.status) : uiBadge({ label: t.status || 'Не задан', tone: taskStatusTone(t.status) }), 'status'),
+    f('Исполнитель', edit('assignee') ? taskFormEditControl('assignee', t.assignee) : person(t.assignee, 'assigneeAva'), 'assignee'),
+    f('Срок', textControl('deadline', t.deadline), 'deadline'),
+    f('Приоритет', edit('priority') ? taskFormEditControl('priority', t.priority) : uiBadge({ label: t.priority || 'Не задан', tone: /^высок/i.test(t.priority || '') ? 'warning' : taskPriorityTone(t.priority) }), 'priority'),
+    f('Прогресс', edit('progress') ? cardNumC('progress', t.progress, 1, 100) : uiProgress({ value: t.progress, showValue: true }), 'progress', 'ui-task-detail-progress'),
+  ] }) + '</section>';
+  const description = edit('description') ? taskFormEditControl('description', t.description) : '<div class="task-description-shell' + (cardState.descriptionExpanded ? ' is-expanded' : '') + '"><div class="txt task-description-content" id="task-description-content">' + (t.description ? renderTaskCardMarkdown(t.description) : '<p>Описание пока не добавлено.</p>') + '</div><div class="task-description-fade" aria-hidden="true"></div><button type="button" class="ui-link task-description-toggle" data-action="toggle-description" aria-controls="task-description-content" aria-expanded="' + (cardState.descriptionExpanded ? 'true' : 'false') + '" hidden>Показать полностью</button></div>';
+  const comment = '<div class="ui-task-detail-optional task-comment">' + (edit('comment') ? cardMainEditField('comment', 'Внутренний комментарий', taskFormEditControl('comment', t.comment), { full: true }) : '<div class="ui-task-detail-note">' + (t.comment ? '<span>Внутренний комментарий</span><p>' + cardNl2br(t.comment) + '</p>' : 'Внутренний комментарий не добавлен') + '</div>' + (cardEditPermission().allowed && !e ? uiButton({ label: t.comment ? 'Изменить комментарий' : 'Добавить комментарий', variant: 'ghost', iconMarkup: cardIcon(t.comment ? 'edit' : 'plus'), attrs: { 'data-inline-edit': 'comment' } }) : '')) + '</div>';
+  h += cardMainSection('Описание', uiDescriptionList({ className: 'ui-task-detail-text-grid', items: [f('Описание задачи', description, 'description', 'ui-task-detail-label-hidden')] }) + comment);
   if (!e) h += cardPipDecisionBanner(true);
-  const requirementWorkspace = window.app?.features?.agent_v2;
-  if (!e && requirementWorkspace?.enabled && requirementWorkspace?.pilot_allowed && requirementWorkspace?.operator_role) h += '<div class="task-requirement-entry">' + uiButton({ label: 'Открыть БТ в Агенте V2', variant: 'ai', attrs: { 'data-action': 'open-requirement-workspace' } }) + '</div>';
-  h += cardSec('Паспорт задачи', 'file') + '<div class="bento">';
-  h += '<div class="cl sp3" id="clExec" style="border-left:3px solid ' + cardStatusHex(t.status) + '"><div class="cl-h">' + cardIcon('trend') + '<span>Исполнение</span></div><div class="cl-grid exec">'
-    + cardIcell('Статус задачи', edit('status') ? cardSel('status', statuses, t.status) : uiBadge({ label: t.status, tone: taskStatusTone(t.status) }), { editKey: e ? '' : 'status' })
-    + cardIcell(taskFormLabel('priority'), edit('priority') ? taskFormEditControl('priority', t.priority) : uiBadge({ label: t.priority, tone: taskPriorityTone(t.priority) }), { editKey: e ? '' : 'priority' })
-    + cardIcell(taskFormLabel('deadline'), edit('deadline') ? taskFormEditControl('deadline', t.deadline) : '<span class="vchip">' + cardIcon('cal') + escapeHtml(t.deadline) + '</span>', { editKey: e ? '' : 'deadline' })
-    + cardIcell('Прогресс', edit('progress') ? cardProgressEditor(t.progress) : uiProgress({ value: t.progress, showValue: true }), { editKey: e ? '' : 'progress' })
-    + '<div class="icell exec-grades"><div class="ilab"><span class="flt">Оценки</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="ival grades"><span class="grade-wrap">Hard ' + cardGradePill(t.hardScore) + '</span><span class="grade-wrap">Soft ' + cardGradePill(t.softScore) + '</span></div></div></div></div>';
-  h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('trend') + '<span>Оценка и прогноз</span></div><div class="cl-grid assessment">'
-    + cardIcell('Общая оценка трудозатрат, ч/д', edit('effortDays') ? cardNumC('effortDays', t.effortDays, 1, 10000) : (t.effortDays == null ? '—' : cardFmtNum(t.effortDays) + ' ч/д'), { editKey: e ? '' : 'effortDays' })
-    + cardIcell('Вес оценки, %', edit('weightPercent') ? cardNumC('weightPercent', t.weightPercent, 1, 100) : (t.weightPercent == null ? '—' : cardFmtNum(t.weightPercent) + '%'), { editKey: e ? '' : 'weightPercent' })
-    + cardIcell('Прогноз выполнения, %', edit('forecastPercent') ? cardNumC('forecastPercent', t.forecastPercent, 1, 100) : (t.forecastPercent == null ? '—' : cardFmtNum(t.forecastPercent) + '%'), { editKey: e ? '' : 'forecastPercent' })
-    + '</div></div>';
-  h += '<div class="cl half"><div class="cl-h">' + cardIcon('team') + '<span>Команда</span></div><div class="cl-grid duo">'
-    + cardIcell(taskFormLabel('assignee'), '<div class="person-ival">' + uiAvatar({ name: t.assignee, size: 32, id: 'assigneeAva' }) + '<div class="person-assignee-control">' + (edit('assignee') ? taskFormEditControl('assignee', t.assignee) : '<span class="person-name">' + escapeHtml(cardPerson(t.assignee)) + '</span>') + '</div></div>', { editKey: e ? '' : 'assignee', valueClass: 'execution-inline-field' })
-    + cardIcell(taskFormLabel('team'), edit('team') ? taskFormEditControl('team', t.team) : '<span class="vchip">' + cardIcon('team') + escapeHtml(t.team) + '</span>', { editKey: e ? '' : 'team', valueClass: 'execution-inline-field' })
-    + cardIcell('Другие вовлечённые команды · ' + t.otherTeams.length, edit('otherTeams') ? cardChipsTeams(teams, t.otherTeams, 'otherTeams') : cardChipsStatic(t.otherTeams), { span2: true, editKey: e ? '' : 'otherTeams' }) + '</div></div>';
-  h += '<div class="cl half"><div class="cl-h">' + cardIcon('user') + '<span>Заказчик</span></div><div class="cl-grid duo">'
-    + cardIcell(taskFormLabel('customer'), '<div class="person-ival">' + uiAvatar({ name: t.customer, size: 32, id: 'custAva' }) + '<div class="person-assignee-control">' + (edit('customer') ? taskFormEditControl('customer', t.customer) : '<span class="person-name">' + escapeHtml(cardPerson(t.customer)) + '</span>') + '</div></div>', { editKey: e ? '' : 'customer', valueClass: 'customer-row-field' })
-    + cardIcell('Подразделение', cardCustomerReference('customerDeptId', cardDict?.departments, t.customerDeptId, t.customerDept, edit('customerDeptId')), { editKey: e ? '' : 'customerDeptId', valueClass: 'customer-row-field' })
-    + cardIcell('Клиент ДИД', cardCustomerReference('didClientId', cardDict?.didClientGroups, t.didClientId, t.didClientName, edit('didClientId')), { editKey: e ? '' : 'didClientId', valueClass: 'customer-row-field' })
-    + cardIcell(taskFormLabel('channel'), fullEdit ? taskFormEditControl('channel', t.channel) : cardV(escapeHtml(t.channel)), { valueClass: 'customer-row-field' })
-    + cardIcell(taskFormLabel('receivedAt'), fullEdit ? taskFormEditControl('receivedAt', t.receivedAt) : cardV(cardFmtDate(t.receivedAt)), { valueClass: 'customer-row-field' }) + '</div></div>';
-  h += '<div class="cl sp3"><div class="cl-h">' + cardIcon('tag') + '<span>Классификация</span></div><div class="cl-grid classify">'
-    + cardIcell(taskFormLabel('project'), edit('project') ? taskFormEditControl('project', t.project) : '<span class="vchip">' + cardIcon('folder') + escapeHtml(t.project) + '</span>', { editKey: e ? '' : 'project', valueClass: 'classification-inline-field' })
-    + cardIcell(taskFormLabel('type'), edit('type') ? taskFormEditControl('type', t.type) : '<span class="ttype">' + escapeHtml(t.type) + '</span>', { editKey: e ? '' : 'type', valueClass: 'classification-inline-field' })
-    + cardIcell('Метрический KR', '<span class="metric-kr-values">План: ' + (t.metricKrPlan == null ? '—' : cardFmtNum(t.metricKrPlan) + (t.metricKrUnit ? ' ' + escapeHtml(t.metricKrUnit) : '')) + ' <span class="vs">·</span> Факт: ' + (t.metricKrFact == null ? '—' : cardFmtNum(t.metricKrFact) + (t.metricKrUnit ? ' ' + escapeHtml(t.metricKrUnit) : '')) + '</span>')
-    + cardIcell('Метки', cardChipsTags(tags, t.tags, 'tags', edit('tags')), { editKey: e ? '' : 'tags' }) + '</div></div></div>';
-  return h + cardSec('Ключевые показатели', 'trend') + cardKpiBlockV30(t, fullEdit) + cardEffortDisclosure(t, fullEdit);
+  const feature = window.app?.features?.agent_v2;
+  if (!e && feature?.enabled && feature?.pilot_allowed && feature?.operator_role) h += '<div class="task-requirement-entry">' + uiButton({ label: 'Открыть БТ в Агенте V2', variant: 'ai', attrs: { 'data-action': 'open-requirement-workspace' } }) + '</div>';
+  const attrs = list([
+    f('Ответственная команда', textControl('team', t.team, 'Не указана'), 'team'),
+    f('Бизнес-заказчик', edit('customer') ? taskFormEditControl('customer', t.customer) : person(t.customer, 'custAva'), 'customer'),
+    f('Проект', textControl('project', t.project), 'project'),
+    f('Тип задачи', edit('type') ? taskFormEditControl('type', t.type) : uiBadge({ label: t.type || 'Не задан' }), 'type'),
+    f('Вовлечённые команды', edit('otherTeams') ? cardChipsTeams(cardNameList('teams'), t.otherTeams, 'otherTeams') : escapeHtml(t.otherTeams.join(' · ') || 'Не указаны'), 'otherTeams'),
+    f('Метки', edit('tags') ? cardChipsTags(cardNameList('tags'), t.tags, 'tags', true) : '<span class="ui-task-detail-chips">' + (t.tags.length ? t.tags.map(label => uiBadge({ label })).join('') : 'Не добавлены') + '</span>', 'tags'),
+  ]);
+  h += cardMainSection('Участники и классификация', attrs + '<div class="ui-task-detail-extra" id="task-extra-attributes"' + (more ? '' : ' hidden') + '>' + cardMainExtraFields(t, e) + '</div>', { actions: uiButton({ label: more ? 'Скрыть атрибуты' : 'Все атрибуты', variant: 'ghost', iconMarkup: cardMainIcon(more ? 'up' : 'down'), attrs: { 'data-action': 'toggle-card-attributes', 'aria-expanded': String(!!more), 'aria-controls': 'task-extra-attributes' } }) });
+  h += cardMainSection('Оценки и показатели', cardKpiBlockV30(t, false));
+  h += '<details class="ui-collapse-section ui-task-detail-effort effort-disclosure"' + (effortOpen ? ' open' : '') + '><summary class="ui-disclosure-text">Трудозатраты, стоимость и обоснования</summary><div class="ui-table-scroll">' + cardEffortTable(t, false) + '</div>' + cardMainSection('Оценка и прогноз', cardMainAssessment(t, e)) + cardMainSection('Обоснования и показатели C/V', cardMainJustifications(t, false)) + '</details>';
+  return h + '</div>';
 }
 
 function cardEffortTable(t, e) {
   let rows = '';
   CARD_ROLES.forEach(r => {
     const eoV = t.eo[r.key], ftzV = t.ftz[r.key];
-    const eoRub = (+eoV) ? +eoV * cardRate(r.key) : null;
-    const ftzRub = (+ftzV) ? +ftzV * cardRate(r.key) : null;
-    const d = cardDiffPct(+eoV || null, +ftzV || null);
-    rows += '<tr><td><b>' + r.name + '</b></td><td class="num">' + cardRate(r.key).toLocaleString('ru-RU') + '</td><td class="num">' + (e ? cardNumC('eo.' + r.key, eoV, 0.5) : cardFmtNum(eoV)) + '</td><td class="num" title="Тянется из внешней БД (Jira)">' + cardFmtNum(ftzV) + '</td><td class="num" data-costrow="' + r.key + '">' + (eoRub ? cardFmtMoney(eoRub) : '—') + '</td><td class="num" data-ftzrow="' + r.key + '">' + (ftzRub ? cardFmtMoney(ftzRub) : '—') + '</td><td class="num"><span class="diff ' + d.cls + '" data-diffrow="' + r.key + '">' + d.txt + '</span></td></tr>';
+    const eoRub = taskMeasurementCost(eoV, cardRate(r.key));
+    const ftzRub = taskMeasurementCost(ftzV, cardRate(r.key));
+    const d = cardDiffPct(eoV, ftzV);
+    rows += '<tr><td><b>' + r.name + '</b></td><td class="num">' + cardFmtNum(cardRate(r.key)) + '</td><td class="num">' + (e ? cardNumC('eo.' + r.key, eoV, 0.5) : cardFmtNum(eoV)) + '</td><td class="num" title="Тянется из внешней БД (Jira)">' + cardFmtNum(ftzV) + '</td><td class="num" data-costrow="' + r.key + '">' + cardFmtMoney(eoRub) + '</td><td class="num" data-ftzrow="' + r.key + '">' + cardFmtMoney(ftzRub) + '</td><td class="num"><span class="diff ' + d.cls + '" data-diffrow="' + r.key + '">' + d.txt + '</span></td></tr>';
   });
   const eoSum = cardCalcSum(t.eo), ftzSum = cardCalcSum(t.ftz), dt = cardDiffPct(eoSum, ftzSum);
   return '<table class="ui-table ui-table-data tbl"><colgroup><col style="width:23%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:15%"><col style="width:15%"><col style="width:14%"></colgroup><thead><tr><th>Компетенция</th><th class="num">Ставка, ₽/ч-д</th><th class="num">ЭО, ч/д</th><th class="num">ФТЗ, ч/д</th><th class="num">ЭО, ₽</th><th class="num">ФТЗ, ₽</th><th class="num">Разница</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td>Итого</td><td class="num">—</td><td class="num">' + cardFmtNum(eoSum) + '</td><td class="num">' + cardFmtNum(ftzSum) + '</td><td class="num"><span data-dyn="costTotal">' + cardFmtMoney(cardCalcCost(t.eo)) + '</span></td><td class="num"><span data-dyn="fcostTotal">' + cardFmtMoney(cardCalcCost(t.ftz)) + '</span></td><td class="num"><span class="diff ' + dt.cls + '" data-dyn="diffTotal">' + dt.txt + '</span></td></tr></tfoot></table>';
 }
 function cardEffortDisclosure(t, e) {
-  return '<details class="effort-disclosure">'
-    + '<summary class="ui-disclosure-text"><span class="effort-disclosure-title">' + cardIcon('edit') + 'Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)</span><span class="effort-disclosure-hint">Развернуть</span></summary>'
-    + '<div class="effort-disclosure-body">' + cardEffortTable(t, e)
-    + '<div class="field effort-source"><div class="flabel"><span class="flt">Источник ФТЗ</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">Фактические трудозатраты поступают из внешней БД, связанной с Jira. Разница &lt; 0 — факт ниже оценки, &gt; 0 — перерасход.</span></div></div>'
-    + '</div></details>';
+  return cardMainSection('Трудозатраты и стоимость: план (ЭО) / факт (ФТЗ)',
+    '<div class="ui-table-scroll">' + cardEffortTable(t, e) + '</div><p class="ui-task-detail-note">Фактические трудозатраты поступают из внешней БД, связанной с Jira. Разница меньше 0 — факт ниже оценки, больше 0 — перерасход.</p>',
+    { collapsible: true, open: e, className: 'ui-task-detail-disclosure effort-disclosure' });
 }
+
 function cardReportingDate(value) {
   if (!value) return 'Дата ещё не назначена';
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -6252,56 +6365,40 @@ function cardReportingItem(item) {
   const meetingId = cardReportingMeetingId(item);
   const values = cardReportingValuesForItem(item);
   const reportingDirty = cardReportingDrafts.has(cardReportingDraftKey(item.kind, meetingId));
-  const colors = { directorate: '#6C4CD4', did: '#1F9D44', key_projects: '#2E6BE6' };
-  const icons = { directorate: 'trend', did: 'clock', key_projects: 'flag' };
-  const color = colors[item.kind] || '#64748b';
   const canEdit = !!item.can_edit;
-  let h = '<div class="repcard reporting-status-card' + (reportingDirty ? ' is-dirty' : '') + '" data-reporting-kind="' + escapeHtml(item.kind) + '" data-reporting-meeting-id="' + escapeHtml(meetingId) + '">';
-  h += '<div class="rc-head"><span class="ric" style="background:' + color + '22;color:' + color + '">' + cardIcon(icons[item.kind] || 'flag') + '</span><div><h4>' + escapeHtml(item.title) + '</h4><div class="reporting-status-date">' + escapeHtml(cardReportingDate(meeting?.scheduled_date)) + '</div></div></div><div class="stack">';
-  h += '<div class="field reporting-status-field"><div class="flabel"><span class="flt">Статус прошлой встречи' + (item.previous_meeting?.scheduled_date ? ' · ' + escapeHtml(cardReportingDate(item.previous_meeting.scheduled_date)) : '') + '</span><span class="lk">' + cardIcon('lock') + '</span></div><div class="fval"><span class="txt">' + (previous.text ? cardNl2br(previous.text) : '—') + '</span></div></div>';
-  h += '<div class="field reporting-status-field"><div class="flabel"><span class="flt">Статус к ближайшей встрече</span></div><div class="fval">';
-  h += canEdit
-    ? uiControl({ kind: 'textarea', value: values.text, className: 'task-detail-input', attrs: { 'data-reporting-text': item.kind, 'data-reporting-meeting-id': meetingId, rows: 6, maxlength: 5000, placeholder: 'Опишите прогресс, риски и следующие шаги', 'aria-label': 'Статус к ближайшей встрече: ' + item.title } })
-    : '<span class="txt">' + (current.text ? cardNl2br(current.text) : '—') + '</span>';
-  h += '</div></div>';
-  if (item.kind === 'did') {
-    h += '<div class="field"><div class="flabel"><span class="flt">Демо для ДИД</span></div><div class="fval"><label class="switch' + (canEdit ? '' : ' view') + '"><input type="checkbox" data-reporting-demo="did" data-reporting-meeting-id="' + escapeHtml(meetingId) + '" ' + (values.didDemo ? 'checked' : '') + (canEdit ? '' : ' disabled') + '><span class="sl"></span>' + (values.didDemo ? 'да' : 'нет') + '</label></div></div>';
-  }
-  h += '<div class="reporting-status-meta">' + (current.updated_at ? 'Обновлено ' + escapeHtml(cardFmtDT(current.updated_at)) + (current.updated_by_name ? ' · ' + escapeHtml(current.updated_by_name) : '') : 'Статус ещё не заполнялся') + '</div>';
-  if (canEdit) h += uiButton({ label: 'Сохранить статус', variant: 'primary', iconMarkup: cardIcon('check'), className: 'reporting-status-save', attrs: { 'data-action': 'save-reporting-status', 'data-reporting-kind': item.kind, 'data-meeting-id': meetingId, 'data-version': values.version } });
-  else h += '<div class="reporting-status-note">' + escapeHtml(item.edit_reason || 'Статус доступен только для просмотра.') + '</div>';
-  return h + '</div></div>';
+  const editing = canEdit && (cardReportingEditors.has(cardReportingDraftKey(item.kind, meetingId)) || reportingDirty);
+  const attrs = { 'data-reporting-kind': item.kind, 'data-meeting-id': meetingId };
+  const editButton = canEdit ? uiButton({ label: current.text ? 'Изменить' : 'Добавить статус', variant: current.text ? 'ghost' : 'secondary', iconMarkup: cardIcon(current.text ? 'edit' : 'plus'), attrs: { ...attrs, 'data-action': 'edit-reporting-status' } }) : '';
+  const compact = !editing && !current.text && !previous.text && !current.did_demo;
+  const today = new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Moscow'});
+  const date = meeting?.scheduled_date ? (meeting.scheduled_date < today ? 'Встреча: ' : 'Следующая: ') + cardReportingDate(meeting.scheduled_date) : cardReportingDate(null);
+  let h = '<section class="ui-task-report' + (compact ? ' ui-task-report--compact' : '') + (reportingDirty ? ' is-dirty' : '') + '" data-reporting-kind="' + escapeHtml(item.kind) + '" data-reporting-meeting-id="' + escapeHtml(meetingId) + '">';
+  h += '<div class="ui-task-report-head"><div><h3>' + escapeHtml(item.title) + '</h3><p class="ui-task-secondary-meta">' + escapeHtml(date) + '</p></div>' + (compact ? editButton : uiBadge({ label: reportingDirty ? 'Черновик' : current.text ? 'Готов' : 'Не заполнен', tone: reportingDirty ? 'warning' : current.text ? 'success' : 'neutral' })) + '</div>';
+  if (compact) return h + (!canEdit ? '<p class="ui-task-secondary-meta">' + escapeHtml(item.edit_reason || 'Доступно только для просмотра') + '</p>' : '') + '</section>';
+  h += '<div class="ui-task-report-body"><div><div class="ui-task-secondary-label">Предыдущий' + (item.previous_meeting?.scheduled_date ? ' · ' + escapeHtml(cardReportingDate(item.previous_meeting.scheduled_date)) : ' статус') + '</div><p class="' + (previous.text ? 'ui-task-secondary-text' : 'ui-task-secondary-meta') + '">' + (previous.text ? cardNl2br(previous.text) : 'Статус не заполнен.') + '</p></div><div><div class="ui-task-secondary-label">Статус к ближайшей встрече</div>';
+  h += editing ? uiControl({ kind: 'textarea', value: values.text, attrs: { 'data-reporting-text': item.kind, 'data-reporting-meeting-id': meetingId, rows: 3, maxlength: 5000, placeholder: 'Опишите прогресс, риски и следующие шаги', 'aria-label': 'Статус к ближайшей встрече: ' + item.title } }) : '<p class="' + (current.text ? 'ui-task-secondary-text' : 'ui-task-secondary-meta') + '">' + (current.text ? cardNl2br(current.text) : 'Статус ещё не заполнен.') + '</p>';
+  if (item.kind === 'did') h += editing ? '<label class="ui-task-report-demo"><input type="checkbox" data-reporting-demo="did" data-reporting-meeting-id="' + escapeHtml(meetingId) + '"' + (values.didDemo ? ' checked' : '') + '> Демо для ДИД</label>' : '<p class="ui-task-secondary-meta">Демо для ДИД: ' + (values.didDemo ? 'да' : 'нет') + '</p>';
+  h += '</div></div><div class="ui-task-report-foot"><span class="ui-task-secondary-meta">' + (reportingDirty ? 'Изменения не сохранены' : current.updated_at ? 'Сохранён ' + escapeHtml(cardFmtDT(current.updated_at)) + (current.updated_by_name ? ' · ' + escapeHtml(current.updated_by_name) : '') : canEdit ? 'Статус ещё не заполнялся' : escapeHtml(item.edit_reason || 'Доступно только для просмотра')) + '</span>';
+  h += editing ? '<div class="ui-task-secondary-actions">' + uiButton({ label: 'Отменить', attrs: { ...attrs, 'data-action': 'cancel-reporting-status' } }) + uiButton({ label: 'Сохранить статус', variant: 'primary', iconMarkup: cardIcon('check'), attrs: { ...attrs, 'data-action': 'save-reporting-status', 'data-version': values.version } }) + '</div>' : editButton;
+  return h + '</div></section>';
 }
 function cardBodyRep() {
-  if (cardReportingLoading) return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="card-reporting-loading content-loading-state">Загрузка календаря и статусов…</div>';
-  if (!cardReportingContext) return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="card-reporting-loading">Не удалось загрузить статусы. Переключитесь на вкладку ещё раз.</div>';
-  return cardSec('Отчётные статусы для встреч', 'flag') + '<div class="reporting-status-help">Статус сохраняется отдельно от остальных полей карточки. После фиксации факта встречи он автоматически станет предыдущим.</div><div class="repgrid">'
+  const feedback = cardReadFeedback('reporting-context', 'отчётные статусы');
+  if (!cardReportingContext) return cardSec('Отчётные статусы для встреч', 'flag') + (feedback || renderViewState({ kind: 'loading', scope: 'partial', title: 'Загрузка отчётных статусов…' }));
+  if (!cardReportingContext.items.length) return feedback + renderViewState({ kind: 'empty', scope: 'partial', title: 'Нет назначенных встреч', message: 'Отчётные статусы появятся после назначения встречи.' });
+  return cardSecondaryHeading('Статусы к встречам', 'Каждая встреча сохраняется отдельно', uiBadge({ label: cardSecondaryCount(cardReportingContext.items.length, ['встреча','встречи','встреч']) })) + feedback + '<div class="ui-task-reports">'
     + cardReportingContext.items.map(cardReportingItem).join('') + '</div>';
 }
 
 async function cardLoadReportingContext(app, expectedTaskId = currentTask?.id) {
   const api = app?.api || window.app?.api;
   const taskId = Number(expectedTaskId);
-  if (!api || !cardMatchesCurrentTask(taskId) || cardReportingLoading) return null;
-  const request = _taskCardRequestGate.start('reporting-context', taskId);
-  cardReportingLoading = true;
-  if (cardState.tab === 'rep') cardRenderBody();
-  try {
-    const context = await api.get(`/tasks/${taskId}/reporting-statuses/context`, { signal: request.signal });
-    if (!_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) return null;
-    cardReportingContext = context;
-    return context;
-  } catch (error) {
-    if (request.signal.aborted || !_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) return null;
-    cardReportingContext = null;
-    cardToast('Не удалось загрузить отчётные статусы', 'err');
-    return null;
-  } finally {
-    if (_taskCardRequestGate.finish(request.token) && cardMatchesCurrentTask(taskId)) {
-      cardReportingLoading = false;
-      if (cardState.tab === 'rep') cardRenderBody();
-    }
-  }
+  if (!api || !cardMatchesCurrentTask(taskId)) return null;
+  await cardReadRequest('reporting-context', taskId,
+    signal => api.get(`/tasks/${taskId}/reporting-statuses/context`, { signal }),
+    context => { cardReportingContext = context; },
+    () => { cardReportingLoading = cardReadState('reporting-context').loading; if (cardState.tab === 'rep') cardRenderBody(); });
+  return cardReportingContext;
 }
 
 async function cardSaveReportingStatus(button, app) {
@@ -6329,7 +6426,7 @@ async function cardSaveReportingStatus(button, app) {
     });
     if (!cardMatchesCurrentTask(taskId)) return;
     cardReportingDrafts.delete(draftKey);
-    cardReportingContext = null;
+    cardReportingEditors.delete(draftKey);
     await cardLoadReportingContext(app);
     cardUpdateDirty();
     cardToast('Отчётный статус сохранён', 'ok');
@@ -6339,37 +6436,43 @@ async function cardSaveReportingStatus(button, app) {
   }
 }
 
+function cardSecondaryHeading(title, subtitle = '', actions = '') {
+  return '<div class="ui-task-secondary-head"><div><h2>' + escapeHtml(title) + '</h2>' + (subtitle ? '<p class="ui-task-secondary-meta">' + escapeHtml(subtitle) + '</p>' : '') + '</div>' + actions + '</div>';
+}
+function cardSecondaryCount(number, forms) {
+  const last = number % 10, pair = number % 100;
+  return number + ' ' + forms[pair >= 11 && pair <= 14 ? 2 : last === 1 ? 0 : last >= 2 && last <= 4 ? 1 : 2];
+}
+function cardCommentCount(items = []) {
+  return items.reduce((sum, item) => sum + 1 + cardCommentCount(item.replies || []), 0);
+}
 function cardBodyCom() {
-  const n = cardState.commentsCount;
+  const n = cardCommentCount(_commentsCache);
   const permission = cardCommentPermission();
   const draft = _taskCommentDraftSession.snapshot(currentTask?.id);
   const form = permission.allowed
-    ? '<section id="comment-form-container" aria-label="Новый комментарий" style="margin-top:16px;border-top:1px solid var(--tline);padding-top:16px;">'
+    ? '<section id="comment-form-container" class="ui-task-composer" aria-label="Новый комментарий">'
       + '<div id="reply-indicator" class="reply-indicator" style="display:none;">'
       + '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>'
       + '<span class="reply-indicator-text"></span>'
       + '<button type="button" class="btn btn-ghost btn-sm square-icon ui-btn reply-indicator-cancel" onclick="window.__cancelReply()" aria-label="Отменить ответ"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
-      + '<div style="position:relative;"><textarea class="input ui-control task-detail-input" id="comment-textarea" rows="3" aria-label="Текст нового комментария" aria-controls="mention-dropdown" aria-autocomplete="list" aria-expanded="false" placeholder="Напишите комментарий... Используйте @ для упоминания пользователей">' + escapeHtml(draft?.text || '') + '</textarea><div id="mention-dropdown" class="ui-mention-popover" hidden></div></div>'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;"><span class="text-muted" id="comment-draft-status" role="status" aria-live="polite"' + (draft?.text ? '' : ' hidden') + '>Черновик сохранён в карточке</span><button type="button" class="btn btn-secondary btn-sm ui-btn task-detail-btn task-detail-btn-primary" id="comment-submit-btn"' + (draft?.text?.trim() ? '' : ' disabled') + '><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить</button></div>'
+      + '<div class="ui-task-composer-input"><label class="ui-task-secondary-label" for="comment-textarea">Ваш комментарий</label><textarea class="ui-control" id="comment-textarea" rows="3" aria-label="Текст нового комментария" aria-controls="mention-dropdown" aria-autocomplete="list" aria-expanded="false" placeholder="Напишите комментарий. Для упоминания введите @">' + escapeHtml(draft?.text || '') + '</textarea><div id="mention-dropdown" class="ui-mention-popover" hidden></div></div>'
+      + '<div class="ui-task-composer-foot"><span class="ui-task-secondary-meta" id="comment-draft-status" role="status" aria-live="polite"' + (draft?.text ? '' : ' hidden') + '>Черновик сохранён в карточке</span><button type="button" class="btn btn-primary btn-sm ui-btn" id="comment-submit-btn"' + (draft?.text?.trim() ? '' : ' disabled') + '><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить</button></div>'
       + '</section>'
     : '<div class="reporting-status-note" role="note" style="margin-top:16px;">' + escapeHtml(permission.reason) + '</div>';
-  return cardSec('Комментарии' + (n ? ' · ' + n : ''), 'msg')
-    + '<div id="comments-list-container"><div class="content-loading-state" style="text-align:center;padding:20px">Загрузка комментариев…</div></div>'
-    + form;
+  return '<div class="ui-task-discussion">' + cardSecondaryHeading('Обсуждение задачи', '', '<span class="ui-task-secondary-meta">' + (n ? cardSecondaryCount(n, ['комментарий','комментария','комментариев']) : 'Нет комментариев') + '</span>')
+    + '<div id="comments-list-container">' + renderViewState({ kind: 'loading', scope: 'partial', title: 'Загрузка комментариев…' }) + '</div>' + form + '</div>';
 }
 function cardBodyFiles() {
   const n = cardState.filesCount;
   const permission = cardEditPermission();
   const uploader = permission.allowed
     ? '<input type="file" id="attachment-file-input" class="attachment-file-input-hidden" multiple tabindex="-1" aria-hidden="true">'
-      + '<div id="attachment-drop-zone" class="attachment-drop-zone" role="button" tabindex="0" aria-label="Добавить файлы к задаче" aria-describedby="attachment-drop-hint">'
-      + '<svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
-      + '<div class="attachment-drop-text">Перетащите файлы сюда или <span class="attachment-drop-browse">выберите</span></div>'
-      + '<div class="attachment-drop-hint" id="attachment-drop-hint">Макс. размер: 50 МиБ</div></div>'
+      + '<div id="attachment-drop-zone" class="ui-task-file-drop" role="button" tabindex="0" aria-label="Добавить файлы к задаче" aria-describedby="attachment-drop-hint">'
+      + '<strong>' + cardIcon('upload') + ' Перетащите файлы сюда</strong><p class="ui-task-secondary-meta" id="attachment-drop-hint">или выберите файлы · до 50 МиБ на файл</p></div>'
     : '<div class="reporting-status-note" role="note">' + escapeHtml(permission.reason) + '</div>';
-  return cardSec('Файлы' + (n ? ' · ' + n : ''), 'folder').replace('<h3 ', '<h3 id="task-files-heading" ')
-    + uploader
-    + '<div id="attachments-list-container" class="attachments-list-container"></div>';
+  return '<section class="ui-task-material-section ui-task-files">' + cardSecondaryHeading('Файлы', '', permission.allowed ? uiButton({ label: 'Добавить файлы', iconMarkup: cardIcon('upload'), attrs: { 'data-action': 'pick-attachments' } }) : '')
+    + '<div id="attachments-list-container" class="attachments-list-container"></div>' + uploader + '</section>';
 }
 
 function cardHydrateAttachments() {
@@ -6395,17 +6498,15 @@ function cardLinksField(label, links, e, addId, delAct, addAct, ph) {
   return cardF(label, inner, { span2: true });
 }
 function cardBodySys(t, e) {
-  let h = cardSec('Ссылки и артефакты', 'link');
-  h += cardGrid(cardF('Ссылка на макеты', e ? cardTxtC('mockupUrl', t.mockupUrl) : cardV(t.mockupUrl ? cardLnk(t.mockupUrl) : '—'), { span2: true }));
-  h += cardGrid(cardLinksField('Ссылки на Jira', t.jiraLinks, e, 'newJira', 'del-jira', 'add-jira', 'https://jira…/ISSUE-123'));
-  h += cardGrid(cardLinksField('Ссылки на бизнес-требования', t.reqLinks, e, 'newReq', 'del-req', 'add-req', 'https://docs…/requirements'));
+  const row = (label, content) => '<div class="ui-task-material-row"><div><div class="ui-task-secondary-label">' + escapeHtml(label) + '</div>' + content + '</div></div>';
+  const links = values => values.map(url => { const safe = safeExternalUrl(url); return safe ? '<a class="ui-task-material-link" href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer"><span>' + escapeHtml(url) + '</span>' + cardIcon('external') + '</a>' : '<span class="ui-task-secondary-meta">Некорректная ссылка</span>'; }).join('') || '<span class="ui-task-secondary-meta">Не добавлены</span>';
+  let h = '<section class="ui-task-material-section">' + cardSecondaryHeading('Материалы и требования', '', !e && cardEditPermission().allowed ? uiButton({ label: 'Изменить ссылки', iconMarkup: cardIcon('edit'), attrs: { 'data-action': 'edit' } }) : '');
+  h += row('Макеты', e ? cardTxtC('mockupUrl', t.mockupUrl) : links(t.mockupUrl ? [t.mockupUrl] : []));
+  h += e ? cardLinksField('Ссылки на Jira', t.jiraLinks, e, 'newJira', 'del-jira', 'add-jira', 'https://jira…/ISSUE-123') : row('Jira', links(t.jiraLinks));
+  h += e ? cardLinksField('Бизнес-требования', t.reqLinks, e, 'newReq', 'del-req', 'add-req', 'https://docs…/requirements') : row('Бизнес-требования', links(t.reqLinks));
+  h += '</section>';
   h += cardBodyFiles();
-  h += cardSec('Системная информация', 'user');
-  h += cardGrid(
-    cardF('Автор задачи', cardROv('<span class="vchip">' + uiAvatar({ name: t.author, size: 24 }) + '' + escapeHtml(cardPerson(t.author)) + '</span>'), { lock: true }),
-    cardF('Дата создания задачи', cardROv(cardFmtDT(t.createdAt)), { lock: true }),
-    cardF('Дата последнего изменения', cardROv(cardFmtDT(t.updatedAt)), { lock: true, span2: true }),
-  );
+  h += uiSectionCard({ title: 'Системная информация', variant: 'plain', collapsible: true, open: false, className: 'ui-task-material-system', content: uiDescriptionList({ items: [{ label: 'Автор', value: cardPerson(t.author) }, { label: 'Создана', value: cardFmtDT(t.createdAt) }, { label: 'Обновлена', value: cardFmtDT(t.updatedAt) }] }) });
   return h;
 }
 
@@ -6511,19 +6612,30 @@ function cardHistoryValue(fieldName, value) {
   return item?.name || item?.title || item?.login || item?.email || value;
 }
 
+function cardHistoryDate(value) {
+  if (!value) return 'Дата не указана';
+  const date = new Date(value), today = new Date();
+  if (Number.isNaN(date.getTime())) return 'Дата не указана';
+  const time = date.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+  if (date.toDateString() === today.toDateString()) return time;
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return 'Вчера, ' + time;
+  return date.toLocaleDateString('ru-RU', {day:'numeric',month:'short',...(date.getFullYear() !== today.getFullYear() ? {year:'numeric'} : {})}) + ', ' + time;
+}
 function cardBodyLog() {
-  const items = cardState.history;
-  let rows = '';
-  if (!items.length) {
-    rows = '<tr><td colspan="5" style="text-align:center;color:var(--tfaint)">История изменений пуста</td></tr>';
-  } else {
-    items.forEach(r => {
+  const items = [...cardState.history].sort((a, b) => (Date.parse(b.changed_at) || 0) - (Date.parse(a.changed_at) || 0) || (Number(b.id) || 0) - (Number(a.id) || 0));
+  const state = cardReadState('task-history');
+  const feedback = cardReadFeedback('task-history', 'историю изменений');
+  if (!state.loaded && (state.loading || state.error)) return feedback;
+  if (!items.length) return feedback + renderViewState({ kind: 'empty', scope: 'partial', title: 'История изменений пуста' });
+  const rows = items.map(r => {
       const oldValue = cardHistoryValue(r.field_name, r.old_value);
       const newValue = cardHistoryValue(r.field_name, r.new_value);
-      rows += '<tr><td>' + cardFmtDT(r.changed_at) + '</td><td><b>' + escapeHtml(r.changed_by_name || 'Система') + '</b></td><td>' + escapeHtml(r.field_name === 'attachment' ? 'Вложение' : (r.field_label || window.app?.fieldLabels?.[r.field_name] || r.field_name || 'Поле')) + '</td><td>' + escapeHtml(oldValue != null ? String(oldValue) : '—') + '</td><td>' + escapeHtml(newValue != null ? String(newValue) : '—') + '</td></tr>';
-    });
-  }
-  return cardPipDecisionBanner(false) + cardSec('История изменений (лог) · ' + items.length, 'clock') + '<table class="ui-table ui-table-data tbl"><colgroup><col style="width:16%"><col style="width:18%"><col style="width:24%"><col style="width:21%"><col style="width:21%"></colgroup><thead><tr><th>Дата</th><th>Пользователь</th><th>Поле</th><th>Старое значение</th><th>Новое значение</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      const name = r.changed_by_name || 'Система';
+      const label = r.field_label || window.app?.fieldLabels?.[r.field_name] || (r.field_name === 'attachment' ? 'Вложение' : r.field_name || 'Поле');
+      return '<article class="ui-task-history-item"><time class="ui-task-secondary-meta" datetime="' + escapeHtml(r.changed_at || '') + '">' + escapeHtml(cardHistoryDate(r.changed_at)) + '</time>' + uiAvatar({ name, size: 28 }) + '<div class="ui-task-history-copy"><strong>' + escapeHtml(name) + '</strong><p>' + escapeHtml(label) + '</p>' + (oldValue != null || newValue != null ? '<div class="ui-task-history-change">' + (oldValue != null ? '<del>' + escapeHtml(String(oldValue)) + '</del>' + cardIcon('arrow-right') : '') + '<span>' + escapeHtml(newValue != null ? String(newValue) : 'Не указано') + '</span></div>' : '') + '</div></article>';
+  }).join('');
+  return feedback + cardSecondaryHeading('История изменений', '', '<span class="ui-task-secondary-meta">Сначала новые · ' + cardSecondaryCount(items.length,['запись','записи','записей']) + '</span>') + cardPipDecisionBanner(false) + '<div class="ui-task-history">' + rows + '</div>';
 }
 
 function cardRenderBody() {
@@ -6538,11 +6650,12 @@ function cardRenderBody() {
   else if (cardState.tab === 'sys') h = cardBodySys(t, fullEdit);
   else if (cardState.tab === 'work') h = '<div id="task-work-list"></div><div id="task-work-relations"></div>';
   else h = cardBodyLog();
+  el.classList.toggle('ui-task-secondary', cardState.tab !== 'main');
   el.setAttribute('role', 'tabpanel');
   el.setAttribute('aria-labelledby', 'task-tab-' + cardState.tab);
   el.setAttribute('tabindex', '0');
   el.innerHTML = '<div id="td-lock-banner" style="display:none;"></div><div id="td-viewer-banner" style="display:none;"></div><div class="form-error-summary" id="card-form-error-summary" role="alert" hidden></div>' + h;
-  if (cardState.tab === 'work') { mountWorkList(el.querySelector('#task-work-list'), window.app, currentTask.id, null, false, false, {canCreate:cardEditPermission().allowed}); mountRelations(el.querySelector('#task-work-relations'), window.app, 'major', currentTask.id, () => currentTask.version, {canEdit:cardEditPermission().allowed}); }
+  if (cardState.tab === 'work') { mountWorkList(el.querySelector('#task-work-list'), window.app, currentTask.id, null, false, false, {canCreate:cardEditPermission().allowed, composition:'task-detail'}); mountRelations(el.querySelector('#task-work-relations'), window.app, 'major', currentTask.id, () => currentTask.version, {canEdit:cardEditPermission().allowed, composition:'task-detail'}); }
   cardSyncDescriptionDisclosure();
   cardRefreshDynamic();
   cardRenderPrioritiserValueProposal();
@@ -6579,7 +6692,7 @@ function cardRenderFooter() {
   if (!el) return;
   const t = cardCur();
   if (cardState.tab === 'rep' && !cardState.editing) {
-    el.innerHTML = '<div class="fmeta">Отчётные статусы имеют собственную кнопку сохранения для каждой встречи.</div><span class="dirty" id="dirty" role="status" aria-live="polite"><i></i>Несохранённых статусов · ' + cardReportingDirtyCount() + '</span>';
+    el.innerHTML = '<div class="fmeta">Каждая встреча сохраняется отдельно.</div><div class="factions"><span class="dirty" id="dirty" role="status" aria-live="polite"><i></i>Несохранённых статусов · ' + cardReportingDirtyCount() + '</span>' + uiButton({ label: 'Закрыть', attrs: { 'data-action': 'close' } }) + '</div>';
     cardUpdateDirty();
     return;
   }
@@ -6589,14 +6702,17 @@ function cardRenderFooter() {
     ? 'Быстрое редактирование · ' + escapeHtml(cardFieldLabel(cardState.entryField))
     : 'Редактирование карточки';
   const meta = cardState.editing
-    ? '<div class="edit-change-summary"><strong>' + editingTitle + '</strong><span id="card-change-summary" role="status" aria-live="polite">Изменений пока нет</span></div>'
-    : '<b>Автор:</b> ' + escapeHtml(cardPerson(t.author)) + ' · <b>Создана:</b> ' + cardFmtDT(t.createdAt) + ' · <b>Изменена:</b> ' + cardFmtDT(t.updatedAt);
-  let h = '<div class="fmeta">' + meta + '</div><div class="factions"><span class="task-network-status" role="status" hidden></span><span class="dirty" id="dirty"><i></i>Не сохранено</span>';
+    ? '<span id="card-change-summary" role="status" aria-live="polite">Изменений пока нет</span>'
+    : 'Обновлено ' + cardFmtDT(t.updatedAt);
+  const contextualMeta = !cardState.editing && !editPermission.allowed ? escapeHtml(editPermission.reason) : !cardState.editing && cardState.tab === 'com' ? 'Комментарии публикуются отдельно от изменений задачи.' : !cardState.editing && cardState.tab === 'sys' ? 'Файлы добавляются сразу. Ссылки — после сохранения задачи.' : !cardState.editing && cardState.tab === 'log' ? 'История фиксирует сохранённые изменения.' : !cardState.editing && cardState.tab === 'work' ? 'Рабочие задачи сохраняются отдельно.' : meta;
+  let h = '<div class="fmeta">' + contextualMeta + '</div><div class="factions"><span class="task-network-status" role="status" hidden></span><span class="dirty" id="dirty"><i></i>Не сохранено</span>';
   h += cardState.editing
-    ? uiButton({ label: 'Выйти из редактирования', iconMarkup: cardIcon('x'), attrs: { id: 'cardCancelBtn', 'data-action': 'cancel' } })
+    ? uiButton({ label: 'Отменить', iconMarkup: cardIcon('x'), attrs: { id: 'cardCancelBtn', 'data-action': 'cancel' } })
       + uiButton({ label: 'Сохранить', variant: 'primary', iconMarkup: cardIcon('check'), attrs: { id: 'saveBtn', 'data-action': 'save', disabled: true } })
+    : ['com', 'sys', 'log', 'work'].includes(cardState.tab)
+      ? uiButton({ label: 'Закрыть', attrs: { 'data-action': 'close' } })
     : editPermission.allowed
-      ? uiButton({ label: 'Редактировать', variant: 'primary', iconMarkup: cardIcon('edit'), attrs: { 'data-action': 'edit', disabled: !!lockedByOther, title: lockedByOther ? 'Задача редактируется другим пользователем' : undefined } })
+      ? uiButton({ label: 'Редактировать задачу', variant: 'primary', iconMarkup: cardIcon('edit'), attrs: { 'data-action': 'edit', disabled: !!lockedByOther, title: lockedByOther ? 'Задача редактируется другим пользователем' : undefined } })
       : uiButton({ label: 'Только просмотр', iconMarkup: cardIcon('lock'), attrs: { disabled: true, title: editPermission.reason, 'aria-label': 'Только просмотр. ' + editPermission.reason } });
   el.innerHTML = h + '</div>';
   cardUpdateDirty();
@@ -6619,7 +6735,7 @@ function cardRefreshDynamic() {
   const ftzT = cardCalcSum(t.ftz), eoSum = cardCalcSum(t.eo);
   const cvE = cardCvCalc(cost, t.finEffect), cvF = cardCvCalc(fcost, t.finEffect);
   const set = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
-  set('task-detail-title', el => { el.textContent = t.title; el.title = t.title; });
+  set('task-detail-title', el => { const title = cardState.editing ? cardState.current.title : t.title; el.textContent = title; el.title = title; });
   set('hType', el => { el.textContent = t.type || '—'; });
   set('hStatus', el => { el.textContent = t.status; el.className = 'badge ui-badge task-head-chip'; el.dataset.uiTone = taskStatusTone(t.status); });
   set('hPrio', el => { el.textContent = t.priority; el.className = 'badge ui-badge task-head-chip'; el.dataset.uiTone = taskPriorityTone(t.priority); });
@@ -6642,6 +6758,7 @@ function cardRefreshDynamic() {
     else if (k === 'fcost') el.textContent = cardFmtMoney(fcost);
     else if (k === 'ftz') el.textContent = cardFmtNum(ftzT);
     else if (k === 'fin') el.textContent = cardFmtNum(t.finEffect, 2);
+    else if (k === 'finDisplay') el.textContent = t.finEffect == null ? 'Не рассчитан' : cardFmtNum(t.finEffect, 2) + ' млн ₽';
     else if (k === 'ps') { el.textContent = (t.priorityScore == null ? '—' : t.priorityScore); el.className = cardPsCls(t.priorityScore); }
     else if (k === 'cvE') { el.textContent = (cvE == null ? '—' : cvE.toLocaleString('ru-RU')); el.className = cardCvCls(cvE); }
     else if (k === 'cvF') { el.textContent = (cvF == null ? '—' : cvF.toLocaleString('ru-RU')); el.className = cardCvCls(cvF); }
@@ -6650,15 +6767,13 @@ function cardRefreshDynamic() {
     else if (k === 'diffTotal') { const d = cardDiffPct(eoSum, ftzT); el.textContent = d.txt; el.className = 'diff ' + d.cls; }
   });
   document.querySelectorAll('#task-detail-overlay [data-costrow]').forEach(el => {
-    const v = +t.eo[el.dataset.costrow] || 0;
-    el.textContent = v ? cardFmtMoney(v * cardRate(el.dataset.costrow)) : '—';
+    el.textContent = cardFmtMoney(taskMeasurementCost(t.eo[el.dataset.costrow], cardRate(el.dataset.costrow)));
   });
   document.querySelectorAll('#task-detail-overlay [data-ftzrow]').forEach(el => {
-    const v = +t.ftz[el.dataset.ftzrow] || 0;
-    el.textContent = v ? cardFmtMoney(v * cardRate(el.dataset.ftzrow)) : '—';
+    el.textContent = cardFmtMoney(taskMeasurementCost(t.ftz[el.dataset.ftzrow], cardRate(el.dataset.ftzrow)));
   });
   document.querySelectorAll('#task-detail-overlay [data-diffrow]').forEach(el => {
-    const d = cardDiffPct(+t.eo[el.dataset.diffrow] || null, +t.ftz[el.dataset.diffrow] || null);
+    const d = cardDiffPct(t.eo[el.dataset.diffrow], t.ftz[el.dataset.diffrow]);
     el.textContent = d.txt; el.className = 'diff ' + d.cls;
   });
 }
@@ -6671,7 +6786,7 @@ function cardUpdateDirty() {
   const reportingFooter = cardState.tab === 'rep' && !cardState.editing;
   const reportingChangesCount = cardReportingDirtyCount();
   if (d) {
-    const footerDirty = reportingFooter ? reportingChangesCount > 0 : cardState.dirty;
+    const footerDirty = reportingFooter ? reportingChangesCount > 0 : cardState.dirty && !cardState.editing;
     d.style.display = footerDirty ? 'inline-flex' : 'none';
     d.innerHTML = '<i></i>' + (reportingFooter ? 'Несохранённых статусов' : 'Не сохранено') + ' · ' + (reportingFooter ? reportingChangesCount : changesCount);
   }
@@ -6679,23 +6794,23 @@ function cardUpdateDirty() {
   if (summary) {
     const visibleFields = changes.slice(0, 3).map(change => change.field);
     const remaining = Math.max(0, changesCount - visibleFields.length);
-    summary.textContent = changesCount
-      ? 'Изменено: ' + visibleFields.join(', ') + (remaining ? ' и ещё ' + remaining : '')
-      : 'Изменений пока нет';
+    const fieldWord = changesCount % 10 === 1 && changesCount % 100 !== 11 ? 'поле' : changesCount % 10 >= 2 && changesCount % 10 <= 4 && (changesCount % 100 < 12 || changesCount % 100 > 14) ? 'поля' : 'полей';
+    summary.textContent = changesCount ? 'Не сохранено · ' + changesCount + ' ' + fieldWord : 'Изменений пока нет';
+    summary.title = visibleFields.join(', ') + (remaining ? ' и ещё ' + remaining : '');
   }
   const saveButton = document.getElementById('saveBtn');
   if (saveButton) {
     setButtonBusy(saveButton, cardState.saving);
     saveButton.disabled = !cardState.dirty || cardState.saving;
-    const label = changesCount ? 'Сохранить · ' + changesCount : 'Сохранить';
+    const label = 'Сохранить';
     // Keep the clicked node alive when blur/change fires between pointer events.
     if (!cardState.saving && saveButton.textContent.trim() !== label) saveButton.innerHTML = cardIcon('check') + '<span>' + label + '</span>';
   }
   const cancelButton = document.getElementById('cardCancelBtn');
   if (cancelButton) {
     cancelButton.disabled = cardState.saving;
-    const label = changesCount ? 'Отменить изменения' : 'Выйти из редактирования';
-    if (cancelButton.textContent.trim() !== label) cancelButton.innerHTML = cardIcon('x') + '<span>' + label + '</span>';
+    const label = 'Отменить';
+    if (cancelButton.textContent.trim() !== label) cancelButton.innerHTML = '<span>' + label + '</span>';
   }
   document.querySelectorAll('#task-detail-overlay .field-modified').forEach(field => field.classList.remove('field-modified'));
   if (!cardState.editing || !cardState.draft) return;
@@ -6743,7 +6858,7 @@ function cardHighlightSavedFields(changes) {
     mockupUrl: 'Ссылка на макеты', statuses: 'Отчётные статусы', demoDid: 'Демо для ДИД',
     tags: 'Метки', otherTeams: 'Другие вовлечённые команды', jiraLinks: 'Jira', reqLinks: 'бизнес-требования',
   };
-  const labelElements = Array.from(document.querySelectorAll('#task-detail-overlay .flt, #task-detail-overlay .ilab, #task-detail-overlay .flabel, #task-detail-overlay .jlab, #task-detail-overlay .bc-title, #task-detail-overlay .slab'));
+  const labelElements = Array.from(document.querySelectorAll('#task-detail-overlay .flt, #task-detail-overlay .ilab, #task-detail-overlay .flabel, #task-detail-overlay .jlab, #task-detail-overlay .bc-title, #task-detail-overlay .slab, #task-detail-overlay .ui-readonly-label'));
   changes.forEach(change => {
     let target = null;
     if (change.key === 'title') target = document.querySelector('#task-detail-overlay .task-title-row');
@@ -6751,7 +6866,7 @@ function cardHighlightSavedFields(changes) {
     else {
       const expected = String(aliases[change.key] || change.field.replace(' (ЭО)', '')).toLocaleLowerCase('ru-RU');
       const label = labelElements.find(el => el.textContent.trim().toLocaleLowerCase('ru-RU').includes(expected));
-      const container = label?.closest('.icell, .field, .task-title-card, .task-desc, .repcard, .bigcard, .cl');
+      const container = label?.closest('.icell, .field, .task-title-card, .task-desc, .repcard, .bigcard, .cl, .ui-readonly-field');
       target = container?.querySelector(':scope > .ival, :scope > .fval, .task-title-row, .desc-val') || container;
     }
     target?.classList.add('field-saved');
@@ -6987,7 +7102,7 @@ async function cardStartEdit(app, focusKey = '') {
   cardRender();
   const renderedCardBody = document.getElementById('mbody');
   if (renderedCardBody) renderedCardBody.scrollTop = cardBodyScrollTop;
-  cardToast(cardState.dirty ? 'Черновик редактирования восстановлен' : 'Режим редактирования включён', 'ok');
+  if (cardState.dirty) cardToast('Черновик редактирования восстановлен', 'ok');
   cardFocusEditField(focusKey || 'title');
 }
 
@@ -7052,7 +7167,8 @@ function cardValidate(d) {
   if (d.forecastPercent != null && (!Number.isFinite(Number(d.forecastPercent)) || Number(d.forecastPercent) < 0 || Number(d.forecastPercent) > 100)) return { message: 'Прогноз выполнения должен быть от 0 до 100%.', key: 'forecastPercent' };
   if (isTaskDateInFuture(d.receivedAt)) return { message: 'Дата поступления не может быть в будущем.', key: 'receivedAt' };
   const status = normalizedTaskStatus(d.status);
-  const progress = Math.max(0, Math.min(100, Math.round((+d.progress || 0) / 5) * 5));
+  if (d.progress == null || d.progress === '' || !Number.isInteger(Number(d.progress)) || Number(d.progress) < 0 || Number(d.progress) > 100) return { message: 'Укажите прогресс целым числом от 0 до 100%.', key: 'progress' };
+  const progress = Number(d.progress);
   if (status === 'ВЫПОЛНЕНА' && progress !== 100) return { message: 'Для выполненной задачи прогресс должен быть равен 100%.', key: 'progress', syncKey: 'status' };
   if (progress === 100 && status !== 'ВЫПОЛНЕНА') return { message: 'Прогресс 100% допустим только для статуса «Выполнена».', key: 'status', syncKey: 'progress' };
   if (d.mockupUrl && !cardUrlOk(d.mockupUrl)) return { message: 'Некорректная ссылка на макеты (ожидается http(s)://…).', key: 'mockupUrl' };
@@ -7123,7 +7239,6 @@ const CARD_DIFF_TRACK = [
   ['tags', 'Метки (теги)'], ['otherTeams', 'Другие вовлечённые команды'],
   ['jiraLinks', 'Ссылки на Jira'], ['reqLinks', 'Ссылки на бизнес-требования'],
 ];
-const CARD_AUTO_SAVE_INLINE_FIELDS = new Set(['priority', 'deadline']);
 
 function cardFieldLabel(key) {
   return CARD_DIFF_TRACK.find(([field]) => field === key)?.[1] || key;
@@ -7158,7 +7273,7 @@ function cardPayload(source = cardState.draft) {
     owner_id: m.userId ? m.userId(d.assignee) : null,
     involved_teams: d.otherTeams.map(n => (m.teamId ? m.teamId(n) : null)).filter(id => id != null),
     tags: d.tags,
-    progress: Math.max(0, Math.min(100, Math.round((+d.progress || 0) / 5) * 5)),
+    progress: Number(d.progress),
     effort_days: d.effortDays != null && d.effortDays !== '' ? Math.round(+d.effortDays) : null,
     financial_effect: d.finEffect != null && d.finEffect !== '' ? +d.finEffect : null,
     financial_effect_justification: d.finJust || null,
@@ -7201,7 +7316,6 @@ async function cardReloadTask(app, expectedTaskId = currentTask?.id) {
     currentTask = data;
     setTaskModalDocumentTitle(data);
     cardState.current = buildCardState(data);
-    cardState.history = [];
     await cardLoadHistory(app, taskId);
     return cardMatchesCurrentTask(taskId) ? data : null;
   } catch (error) {
@@ -7216,22 +7330,19 @@ async function cardLoadHistory(app, expectedTaskId = currentTask?.id) {
   const api = app?.api || window.app?.api;
   const taskId = Number(expectedTaskId);
   if (!api || !cardMatchesCurrentTask(taskId)) return;
-  const request = _taskCardRequestGate.start('task-history', taskId);
-  try {
-    const data = await api.get(`/tasks/${taskId}/history`, { signal: request.signal });
-    if (!_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) return;
-    cardState.history = Array.isArray(data) ? data : [];
-  } catch (error) {
-    if (!request.signal.aborted && _taskCardRequestGate.isCurrent(request.token, taskId) && cardMatchesCurrentTask(taskId)) cardState.history = [];
-  } finally {
-    _taskCardRequestGate.finish(request.token);
-  }
+  await cardReadRequest('task-history', taskId, signal => api.get(`/tasks/${taskId}/history`, { signal }),
+    data => { cardState.history = Array.isArray(data) ? data : []; },
+    () => { cardRenderTabs(); if (cardState.tab === 'log') cardRenderBody(); });
 }
 
-async function cardUndoSavedChanges(app, previousSnapshot, expectedTaskId = currentTask?.id) {
+async function cardUndoSavedChanges(app, previousSnapshot, expectedTaskId = currentTask?.id, savedVersion = null) {
   const api = app?.api || window.app?.api;
   const taskId = Number(expectedTaskId);
   if (!api || !previousSnapshot || !cardMatchesCurrentTask(taskId)) return;
+  if (!Number.isInteger(savedVersion) || currentTask.version !== savedVersion) {
+    cardToast('Задача уже изменилась. Отмена этого сохранения недоступна', 'warn');
+    return;
+  }
   const permission = cardEditPermission();
   if (!permission.allowed) {
     cardToast(permission.reason, 'warn');
@@ -7260,7 +7371,7 @@ async function cardUndoSavedChanges(app, previousSnapshot, expectedTaskId = curr
   try {
     const currentPayload = cardPayload(cardState.current);
     const previousPayload = cardPayload(previousSnapshot);
-    const patch = { version: currentTask.version || 0, client_request_id: newTaskRequestId() };
+    const patch = { version: savedVersion, client_request_id: newTaskRequestId() };
     Object.keys(previousPayload).forEach(field => {
       if (field === 'version') return;
       if (JSON.stringify(currentPayload[field] ?? null) !== JSON.stringify(previousPayload[field] ?? null)) patch[field] = previousPayload[field];
@@ -7339,7 +7450,7 @@ async function cardSaveEdit(app) {
 
   try {
     const patchPayload = { ...cardPatchPayload(), client_request_id: _cardSaveRequestId || (_cardSaveRequestId = newTaskRequestId()) };
-    await runTaskSaveWithSingleRetry(
+    const savedResponse = await runTaskSaveWithSingleRetry(
       () => taskSaveRequestWithTimeout(signal => api.patch(`/tasks/${taskId}`, patchPayload, { signal })),
       () => setButtonBusy(btn, true, 'Повторяем…')
     );
@@ -7362,7 +7473,7 @@ async function cardSaveEdit(app) {
     notifyTaskSaved();
     cardToast('Сохранено · изменений: ' + changes.length, 'ok');
     const savedTaskId = Number(currentTask?.id);
-    cardToastAction('Сохранено · изменений: ' + changes.length, 'Отменить', () => cardUndoSavedChanges(app, previousSnapshot, savedTaskId));
+    cardToastAction('Сохранено · изменений: ' + changes.length, 'Отменить', () => cardUndoSavedChanges(app, previousSnapshot, savedTaskId, savedResponse?.version));
   } catch (e) {
     if (!cardMatchesCurrentTask(taskId)) return;
     if(e?.status===403)document.dispatchEvent(new CustomEvent('dmb:task-access-denied',{detail:{taskId}}));
@@ -7427,16 +7538,16 @@ function cardShowConflict(detail, app) {
         <span>Текущая версия: <strong>${currentVer}</strong></span>
       </div>
       ${hasChanges
-        ? `<div class="conflict-diff-wrap"><table class="ui-table ui-table-editor diff-table diff-table--selectable">
+        ? `<div class="conflict-diff-wrap"><table class="ui-table ui-table-editor diff-table diff-table--selectable ui-task-conflict-table">
             <thead><tr><th scope="col">Серверная версия</th><th scope="col">Моя версия</th><th>Поле</th><th>На сервере</th><th>Ваше значение</th></tr></thead>
             <tbody>${rows}</tbody></table></div>`
         : '<div class="diff-empty">Все поля совпадают — различий не обнаружено</div>'}
       </div>
-      <div class="conflict-actions conflict-actions--row app-modal__footer">
-        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-primary" id="cc-btn-save" ${!hasChanges ? 'disabled' : ''}>Сохранить выбранные</button>
-        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-danger" id="cc-btn-force">Принудительно сохранить</button>
-        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-secondary" id="cc-btn-refresh">Обновить с сервера</button>
-        <button class="btn btn-secondary btn-sm ui-btn conflict-btn conflict-btn-ghost" id="cc-btn-cancel" data-modal-close>Отмена</button>
+      <div class="ui-task-conflict-actions app-modal__footer">
+        ${uiButton({label:'Сохранить выбранные',variant:'primary',attrs:{id:'cc-btn-save',disabled:!hasChanges}})}
+        ${uiButton({label:'Принудительно сохранить',attrs:{id:'cc-btn-force'}})}
+        ${uiButton({label:'Обновить с сервера',attrs:{id:'cc-btn-refresh'}})}
+        ${uiButton({label:'Отмена',attrs:{id:'cc-btn-cancel','data-modal-close':true}})}
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -7689,7 +7800,7 @@ async function cardSuggestStatusProgressSync(changedKey, changedValue) {
   if (_statusProgressSuggestionPending || !cardState.editing || !cardState.draft) return;
   const draft = cardState.draft;
   const status = normalizedTaskStatus(draft.status);
-  const progress = Math.max(0, Math.min(100, Math.round((+draft.progress || 0) / 5) * 5));
+  const progress = Number(draft.progress);
   let targetKey = null;
   let targetValue = null;
   let message = '';
@@ -7739,8 +7850,7 @@ function cardOnField(ev, app = window.app) {
   let v = el.value;
   if (el.type === 'checkbox') v = el.checked;
   else if (el.type === 'number' || el.type === 'range') {
-    v = (v === '') ? null : Math.max(0, +v);
-    if (k === 'progress') v = Math.min(100, Math.round(v / 5) * 5);
+    v = (v === '') ? null : (k === 'progress' ? Number(v) : Math.max(0, +v));
   }
   cardSetPath(cardState.draft, k, v);
   if (k === 'customer') {
@@ -7752,7 +7862,7 @@ function cardOnField(ev, app = window.app) {
   if (k === 'customerDeptId') { cardState.draft.customerDept = (cardDict.departments || []).find(i => String(i.id) === String(v))?.name || ''; cardRenderBody(); }
   if (k === 'progress') {
     document.querySelectorAll('#task-detail-overlay [data-k="progress"]').forEach(el2 => { if (el2 !== el) el2.value = v; });
-    const progressEditor = el.closest('.prog-edit');
+    const progressEditor = el.closest('.ui-task-progress-editor');
     if (progressEditor) {
       progressEditor.style.setProperty('--progress-position', v + '%');
       const progressValue = progressEditor.querySelector('[data-progress-value]');
@@ -7771,12 +7881,6 @@ function cardOnField(ev, app = window.app) {
     cardUpdateDirty();
   }
   cardRefreshDynamic();
-  if (ev.type === 'change' && cardState.entryField === k && CARD_AUTO_SAVE_INLINE_FIELDS.has(k) && cardDiffChanges(cardState.current, cardState.draft).length === 1) {
-    clearTimeout(_cardQuickSaveTimer);
-    _cardQuickSaveTimer = setTimeout(() => {
-      if (cardState.editing && cardState.entryField === k && cardDiffChanges(cardState.current, cardState.draft).length === 1 && !cardState.saving) cardSaveEdit(app);
-    }, 250);
-  }
 }
 
 async function cardConfirmTabChange(nextTab) {
@@ -7793,12 +7897,26 @@ async function cardOnClick(ev, app) {
   const actEl = ev.target.closest('[data-action]');
   if (actEl) {
     const a = actEl.dataset.action;
+    if (a === 'retry-card-read') {
+      const kind = actEl.dataset.readKind;
+      const taskId = currentTask.id;
+      const tab = cardState.tab;
+      if (kind === 'attachments') await loadAttachments(currentTask.id, app);
+      else if (kind === 'task-history') await cardLoadHistory(app);
+      else if (kind === 'reporting-context') await cardLoadReportingContext(app);
+      if (cardMatchesCurrentTask(taskId) && cardState.tab === tab && !actEl.isConnected) {
+        const retry = Array.from(document.querySelectorAll('#task-detail-overlay [data-read-kind]')).find(button => button.dataset.readKind === kind);
+        (retry || document.getElementById('task-tab-' + tab))?.focus({ preventScroll: true });
+      }
+      return;
+    }
     if (a === 'open-requirement-workspace') {
       const taskId = currentTask?.id;
       if (taskId && await cardRequestClose()) window.location.hash = '#/agent-v2?object_type=task&object_id=' + encodeURIComponent(taskId);
       return;
     }
     if (a === 'close') { cardRequestClose(); return; }
+    if (a === 'toggle-card-attributes') { cardState.attributesExpanded = !cardState.attributesExpanded; cardRenderBody(); return; }
     if (a === 'toggle-description') {
       cardState.descriptionExpanded = !cardState.descriptionExpanded;
       cardSyncDescriptionDisclosure();
@@ -7813,6 +7931,17 @@ async function cardOnClick(ev, app) {
     if (a === 'edit') { cardStartEdit(app); return; }
     if (a === 'cancel') { cardCancelEdit(app); return; }
     if (a === 'save') { cardSaveEdit(app); return; }
+    if (a === 'edit-reporting-status' || a === 'cancel-reporting-status') {
+      const kind = actEl.dataset.reportingKind, meetingId = actEl.dataset.meetingId;
+      if (!cardFindReportingItem(kind, meetingId)?.can_edit) return;
+      const key = cardReportingDraftKey(kind, meetingId);
+      if (a === 'edit-reporting-status') cardReportingEditors.add(key);
+      else { cardReportingEditors.delete(key); cardReportingDrafts.delete(key); }
+      cardRenderBody(); cardUpdateDirty();
+      document.querySelector('[data-reporting-text="' + kind + '"]')?.focus();
+      return;
+    }
+    if (a === 'pick-attachments') { document.getElementById('attachment-file-input')?.click(); return; }
     if (a === 'save-reporting-status') { cardSaveReportingStatus(actEl, app); return; }
     if (a === 'copy-id') {
       const publicId = formatTaskPublicId(currentTask);
@@ -7899,6 +8028,8 @@ async function cardOnClick(ev, app) {
     cardState.dirty = true;
     cardRenderBody();
     cardUpdateDirty();
+    Array.from(document.querySelectorAll('#task-detail-overlay [data-toggle]'))
+      .find(button => button.dataset.toggle === field && button.dataset.val === val)?.focus({ preventScroll: true });
     return;
   }
 }
@@ -7907,6 +8038,7 @@ function cardReset() {
   clearTimeout(_cardQuickSaveTimer);
   clearTimeout(_cardAttachmentHydrationTimer);
   _taskCardRequestGate.cancelAll();
+  _cardReadStates = {};
   _taskCommentDraftSession.clearAll();
   _cardAttachmentHydrationTimer = null;
   cardState = { tab: 'main', editing: false, dirty: false, saving: false, prioritiserRunning: '', replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0, descriptionExpanded: false };
@@ -7951,7 +8083,7 @@ async function cardInit(app) {
   if (cardState.tab === 'main' || cardState.tab === 'log') cardRenderBody();
   await Promise.all([loadComments(taskId, app), loadAttachments(taskId, app)]);
   if (!isActive()) return;
-  cardState.commentsCount = _commentsCache.length;
+  cardState.commentsCount = cardCommentCount(_commentsCache);
   cardState.filesCount = _attachmentsCache.length;
   cardRenderTabs();
   if (cardState.tab === 'com') { _commentFormInitialized = false; initCommentForm(taskId, app); }
@@ -7969,6 +8101,7 @@ async function cardInit(app) {
 
 export function renderTaskDetailModal(task, app) {
   _taskCardRequestGate.cancelAll();
+  _cardReadStates = {};
   _taskCommentDraftSession.clearAll();
   currentTask = task;
   if (task?.id) _taskCommentDraftSession.begin(task.id);
@@ -7993,16 +8126,16 @@ export function renderTaskDetailModal(task, app) {
   _pendingCommentSubmission = null;
   _commentSubmitting = false;
   return `
-    <div class="modal-overlay" id="task-detail-overlay">
-      <div class="task-detail-modal modal" id="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="task-detail-title">
-        <div class="mhead" id="mhead"></div>
-        <div class="tabs-shell" id="task-tabs-shell">
-          <button type="button" class="btn btn-ghost btn-sm square-icon ui-btn tabs-scroll tabs-scroll-left" data-action="scroll-tabs-left" aria-label="Прокрутить вкладки влево" disabled>‹</button>
-          <div class="tabs ui-tabs" id="tabs" role="tablist" aria-label="Разделы карточки задачи" aria-orientation="horizontal"></div>
-          <button type="button" class="btn btn-ghost btn-sm square-icon ui-btn tabs-scroll tabs-scroll-right" data-action="scroll-tabs-right" aria-label="Прокрутить вкладки вправо" disabled>›</button>
+    <div class="modal-overlay ui-task-dialog-overlay" id="task-detail-overlay">
+      <div class="task-detail-modal ui-task-dialog" id="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="task-detail-title">
+        <div class="ui-task-dialog-head" id="mhead"></div>
+        <div class="ui-task-dialog-tabs-shell" id="task-tabs-shell">
+          <button type="button" class="ui-surface-action ui-task-dialog-scroll ui-task-dialog-scroll-left" data-action="scroll-tabs-left" aria-label="Прокрутить вкладки влево" disabled>‹</button>
+          <div class="ui-tabs ui-task-dialog-tabs" id="tabs" role="tablist" aria-label="Разделы карточки задачи" aria-orientation="horizontal"></div>
+          <button type="button" class="ui-surface-action ui-task-dialog-scroll ui-task-dialog-scroll-right" data-action="scroll-tabs-right" aria-label="Прокрутить вкладки вправо" disabled>›</button>
         </div>
-        <div class="mbody" id="mbody" role="tabpanel" tabindex="0"></div>
-        <div class="mfoot" id="mfoot"></div>
+        <div class="ui-task-dialog-body" id="mbody" role="tabpanel" tabindex="0"></div>
+        <div class="ui-task-dialog-foot" id="mfoot"></div>
       </div>
       <div class="toast" id="card-toast"></div>
     </div>`;

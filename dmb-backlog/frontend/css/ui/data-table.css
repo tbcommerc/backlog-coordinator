@@ -1,4 +1,4 @@
-.ui-data-table { min-width: 0; max-width: 100%; contain: inline-size; }
+.ui-data-table { --ui-table-hover-bg: var(--bg-tertiary); min-width: 0; max-width: 100%; contain: inline-size; }
 .ui-data-table-scroll { max-width: 100%; overflow-x: auto; }
 .ui-data-table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ui-data-table-toolbar, .ui-data-table-footer { padding: var(--space-3); }
@@ -11,8 +11,9 @@
 .ui-data-table .ui-table-sort { font: inherit; text-transform: inherit; letter-spacing: inherit; white-space: normal; text-align: left; }
 .ui-data-table[data-ui-responsive="scroll"] table { min-width: 36rem; }
 .ui-data-table[hidden], .ui-table-cell[hidden] { display: none; }
-.ui-data-table .ui-table.ui-table-data > tbody > tr:hover { background: var(--bg-hover); }
-:root .ui-data-table .ui-table.ui-table-data > tbody > tr:hover > td { background: transparent; }
+.ui-data-table .ui-table.ui-table-data > tbody > tr:hover { background: var(--ui-table-hover-bg); }
+/* Cells remain opaque so horizontally pinned columns also cover scrolled content. */
+:root .ui-data-table .ui-table.ui-table-data > tbody > tr:hover > td { background: var(--ui-table-hover-bg); }
 @media (max-width: 700px) {
   .ui-data-table[data-ui-responsive="cards"] table,
   .ui-data-table[data-ui-responsive="cards"] tbody { display: block; }

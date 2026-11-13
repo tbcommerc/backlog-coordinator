@@ -21,7 +21,7 @@
   .work-queue-note, .no-eff, .b-head-channel, .b-delta, span.diff, .dirty,
   .qe-unestimated-label, .directorate-type, .quarterly-light,
   .team-weekly-signal, .team-weekly-delta
-) {
+):not(:where(.ui-task-dialog .ui-badge)) {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;

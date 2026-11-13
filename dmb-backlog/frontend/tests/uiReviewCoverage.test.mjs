@@ -24,7 +24,7 @@ test('numbered pagination bounds huge totals and preserves per-consumer hooks',(
 test('every ordinary pager uses the common implementation',()=>{
  for(const name of ['admin','backlogPage','metrics','auditLog','customerPortal','modal','outboxDeadLetters','workUi']){
   const text=readFileSync(new URL('../js/components/'+name+'.js',import.meta.url),'utf8');
-  assert.match(text,/import \{ pagination(?: as \w+)? \} from ['"]\.\.\/ui\/forms.js['"]/ ,name);
+  assert.match(text,/import \{[^}]*\bpagination(?: as \w+)?(?:\s*,[^}]*)? \} from ['"]\.\.\/ui\/forms.js['"]/ ,name);
   assert.doesNotMatch(text,/for \(let p = 1; p <= totalPages|<span>\$\{(?:data\.)?page\} \/ \$\{(?:data\.)?pages\}/,name);
  }
 });

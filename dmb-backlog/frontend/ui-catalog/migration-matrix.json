@@ -1,5 +1,5 @@
 {
-  "reviewed": "2026-10-26",
+  "reviewed": "2026-11-09",
   "status": "historical-snapshot",
   "statesContract": "Матрица фиксирует 117 активных поверхностей. browser-verified означает проверку реального потребителя в перечисленных сценариях, а не наличие CSS-класса. Общие состояния компонентов дополнительно проверяются каталогом; темы, плотность, mobile и coarse pointer — вычисленными размерами, источник геометрии и запрет обходов — по коду. Список states перечисляет применимые состояния: полный перебор всех сочетаний бизнес-данных не заявляется. Предметные расчёты, таблицы и ограничения не заменяются UI kit; адресные исключения и неактивные поверхности перечислены ниже. Подключение общих классов не означает полного визуального соответствия всех сочетаний состояний. Проверка согласованности 17.10.2026 сравнивает вычисленные стили повторяющихся компонентов на 22 поверхностях; оформление таблиц принадлежит UI Kit, предметная геометрия — страницам. Дополнение 19.10.2026: размещение и подтверждение результата выделены из helper-модуля в самостоятельные поверхности. Сложные диалоги дополнительно проверены на 320×568. Изолированные проверки 19.10 не заменяют живой QA-проход 18.10. Дополнение 22.10.2026: унификация реестров проверена отдельно; подробности в docs/dev-testing/VISUAL_REFRESH_2026-10-22.md. 26.10.2026: редактор отчётов удалён из админки по решению пользователя.",
   "surfaces": [
@@ -521,16 +521,16 @@
     },
     {
       "id": "settings",
-      "title": "Персональные настройки",
+      "title": "Настройки уведомлений",
       "family": 4,
-      "source": "frontend/js/components/settings.js",
-      "entry": "/settings",
+      "source": "frontend/js/components/notificationPreferences.js",
+      "entry": "/notifications?section=preferences",
       "components": [
         "Button",
         "Control",
         "ViewState"
       ],
-      "local": "Профиль только для чтения",
+      "local": "Встроенное раскрытие настроек уведомлений",
       "tests": [
         "uiKitSettings.spec.mjs",
         "uiKitFamilyContract.spec.mjs",
@@ -543,9 +543,9 @@
         "ready",
         "readonly"
       ],
-      "status": "browser-verified",
-      "verification": "Браузерная проверка реального потребителя; конкретная область подтверждения перечислена отдельно. Каталог и проверки исходников дополняют её.",
-      "verifiedScope": "Реальный модуль страницы и сценарии перечисленных наборов; общие размеры дополнительно измеряются в браузере. Применимые бизнес-состояния не означают полный перебор всех сочетаний входных данных. Дополнительно: сравнение вычисленных стилей общих компонентов с эталоном UI Kit.",
+      "status": "pending",
+      "verification": "Модуль перенесён в уведомления; прежняя приёмка settings не переносится автоматически.",
+      "verifiedScope": "Проверки реального компонента в uiKitSettings; полная live-приёмка отдельно.",
       "contractEvidence": [
         "frontend/tests/uiSizingOwnership.test.mjs",
         "frontend/tests/uiMigrationMatrix.test.mjs"
@@ -3945,6 +3945,7 @@
     "frontend/js/components/metricsQuarterly.js",
     "frontend/js/components/modal.js",
     "frontend/js/components/navbar.js",
+    "frontend/js/components/notificationPreferences.js",
     "frontend/js/components/notifications.js",
     "frontend/js/components/outboxDeadLetters.js",
     "frontend/js/components/projectManagement.js",
@@ -3959,7 +3960,6 @@
     "frontend/js/components/requestPresentation.js",
     "frontend/js/components/requirementReviews.js",
     "frontend/js/components/reviewPage.js",
-    "frontend/js/components/settings.js",
     "frontend/js/components/sidebar.js",
     "frontend/js/components/tableSelection.js",
     "frontend/js/components/tableUtils.js",
@@ -4060,7 +4060,6 @@
     "frontend/js/components/requestPresentation.js": "shared-renderer-or-helper",
     "frontend/js/components/requirementReviews.js": "active-surface",
     "frontend/js/components/reviewPage.js": "active-surface",
-    "frontend/js/components/settings.js": "active-surface",
     "frontend/js/components/sidebar.js": "active-surface",
     "frontend/js/components/tableSelection.js": "shared-renderer-or-helper",
     "frontend/js/components/tableUtils.js": "shared-renderer-or-helper",
@@ -4089,7 +4088,8 @@
     "frontend/js/components/metricsQuarterly.js": "active-surface",
     "frontend/js/components/projectManagement.js": "active-surface",
     "frontend/js/components/projectUi.js": "active-surface",
-    "frontend/js/components/metricsPresentation.js": "helper"
+    "frontend/js/components/metricsPresentation.js": "helper",
+    "frontend/js/components/notificationPreferences.js": "embedded-surface"
   },
   "exceptions": [
     {

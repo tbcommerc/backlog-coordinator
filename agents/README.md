@@ -16,7 +16,7 @@
 
 Из корня репозитория: `powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1`.
 
-Оценщик по умолчанию выключен; его включает `-IncludeValuePriorityAssessor` (старый псевдоним `-IncludePrioritiser` сохранён). Экспериментальный бизнес-аналитик входит в обычный запуск; новый флаг `-IncludeBusinessAnalystExperimental` имеет прежнюю семантику `-IncludeAgentV2`. Для отключения всех агентных сервисов используется `-WithoutAgents`.
+Агентские сервисы по умолчанию не запускаются. `-IncludeAgents` включает комплект V1, meeting-analyzer и экспериментальный V2; помощник по бэклогу подключается при наличии его `.env`. Task Prioritiser остаётся отдельной опцией `-IncludeValuePriorityAssessor` (псевдоним `-IncludePrioritiser` сохранён). Флаг `-WithoutAgents` принудительно выключает и останавливает агентские сервисы. Старые адреса флагов `-IncludeBusinessAnalystExperimental` и `-IncludeAgentV2` сохранены.
 
 Публичные API, URL страниц, переменные окружения `AGENT_*`, `AGENT_V2_*`, `PRIORITISER_*`, имена БД и внутренних Docker-сервисов сохранены для совместимости. В частности, экспериментальная страница по-прежнему открывается по `#/agent-v2`. Существующие локальные окружения `.venv`, `.venv-agent-v2`, `.venv-prioritiser` остаются в корне; окружение ассистента находится внутри `agents/backlog-assistant/.venv`.
 

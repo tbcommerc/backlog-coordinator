@@ -22,6 +22,7 @@ export { showFormErrors, clearFormErrors } from './validation.js';
 export { readOnlyField, descriptionList, bindReadOnlyFields, sectionCard } from './detailComponents.js';
 export { detailPanel, bindDetailPanel } from './detailPanel.js';
 export { dataTable, tableCell, bindDataTable } from './dataTable.js';
+export { autoSizeColumns, applyColumnWidths, registerColumnInteractions, installRegistryColumns } from './tableColumns.js';
 export { entityPicker, bindEntityPicker } from './entityPicker.js';
 export { dateRange, numberRange, validateRanges } from './intervals.js';
 export { stepForm, setStepForm, bindStepForm } from './stepForm.js';

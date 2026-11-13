@@ -25,7 +25,7 @@
 ## Запуск проекта из чата
 
 - На запросы «Запусти проект», «Подними проект» и аналогичные выполняй из корня `powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1` и дождись итогового health-check.
-- Стандартный локальный запуск включает PostgreSQL, Redis, Alembic-миграции, AI-агента, backend и встроенную раздачу frontend; Task Prioritiser по умолчанию не запускается из-за высокого расхода памяти.
+- Стандартный локальный запуск включает PostgreSQL, Redis, Alembic-миграции, backend и встроенную раздачу frontend; AI-агенты и Task Prioritiser по умолчанию не запускаются. Агентский комплект включай только по прямому запросу пользователя с флагом `-IncludeAgents`.
 - Task Prioritiser включай только по прямому запросу пользователя, добавляя к команде запуска флаг `-IncludeValuePriorityAssessor`.
 - После успешного запуска сообщай адрес приложения `http://127.0.0.1:8000`, адреса API-документации и расположение логов `.runtime/`.
 - На запрос статуса выполняй `powershell -ExecutionPolicy Bypass -File scripts/project-status.ps1`.

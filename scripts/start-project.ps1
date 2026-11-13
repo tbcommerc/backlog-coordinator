@@ -1,6 +1,7 @@
 ﻿[CmdletBinding()]
 param(
     [switch]$WithoutAgents,
+    [switch]$IncludeAgents,
     [switch]$SkipDependencyInstall,
     [Alias('IncludePrioritiser')]
     [switch]$IncludeValuePriorityAssessor,
@@ -12,15 +13,23 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-# Agent V2 is included in the standard launch unless all agents are disabled.
-$IncludeBusinessAnalystExperimental = [switch](-not $WithoutAgents)
+$agentServicesRequested = [bool]($IncludeAgents -or $IncludeValuePriorityAssessor -or
+    $IncludeBusinessAnalystExperimental -or $IncludeBacklogAssistant)
+$WithoutAgents = [switch]($WithoutAgents -or -not $agentServicesRequested)
+
+if ($WithoutAgents) {
+    $IncludeValuePriorityAssessor = [switch]$false
+    $IncludeBusinessAnalystExperimental = [switch]$false
+    $IncludeBacklogAssistant = [switch]$false
+} else {
+    # The supported agent bundle includes V1, meeting-analyzer, and fork-based V2.
+    $IncludeBusinessAnalystExperimental = [switch]$true
+}
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 . (Join-Path $PSScriptRoot "agent-common.ps1")
-if (Test-Path (Join-Path $projectRoot 'agents/backlog-assistant/.env')) { $IncludeBacklogAssistant = [switch]$true }
-if ($WithoutAgents) {
-    $IncludeValuePriorityAssessor = [switch]$false
-    $IncludeBacklogAssistant = [switch]$false
+if (-not $WithoutAgents -and (Test-Path (Join-Path $projectRoot 'agents/backlog-assistant/.env'))) {
+    $IncludeBacklogAssistant = [switch]$true
 }
 $composeFile = Join-Path $projectRoot "compose.yaml"
 $runtimeDir = Join-Path $projectRoot ".runtime"
@@ -125,6 +134,12 @@ if (-not $dockerEngineReady) {
     }
     if (-not $dockerEngineReady) {
         throw "Docker Engine is unavailable. Start Docker Desktop and try again."
+    }
+}
+
+if ($WithoutAgents) {
+    foreach ($independentAgent in @('business-analyst','business-analyst-experimental','meeting-analyzer','value-priority-assessor','backlog-assistant')) {
+        & (Join-Path $PSScriptRoot 'stop-agent.ps1') -Agent $independentAgent
     }
 }
 

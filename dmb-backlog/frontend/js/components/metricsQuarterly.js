@@ -1,3 +1,4 @@
+import { mountRegistryPanel } from '../ui/registryPanel.js';
 import {eventNames,localDate,authorName,readable,changes,annualSummary} from './metricsPresentation.js';
 import {escapeHtml as esc} from '../htmlUtils.js';
 import {pageHeader,button,badge,filterChip,icon,tabs as kitTabs,field as kitField,fieldFrame,checkbox} from '../ui/primitives.js';
@@ -102,18 +103,18 @@ function registry(p){
  const annual=p.get('view')==='year',hidden=new Set((p.get('hidden_columns')||'').split(','));
  const extraKeys=['team_id','owner_id','project_id','metric_state','period_state','archived','scope'],active=extraKeys.filter(k=>p.get(k)&&(k!=='scope'||p.get(k)!=='all'));
  const signals=Object.entries(attentionLabels),chosen=filterValues(p.get('attention'));
- const signal=(k,label)=>filterChip({label,count:list.summary[k]??0,selected:chosen.includes(k),attrs:{'data-qact':'attention','data-key':k}});
+ const signal=(k,label)=>filterChip({label,icon:({missing_fact:'file-question',awaiting_close:'clock',not_achieved:'target',overdue:'alert-circle'})[k],count:list.summary[k]??0,selected:chosen.includes(k),attrs:{'data-qact':'attention','data-key':k}});
  const shortcuts=signals;
- const columnsButton=!annual?button({label:'Колонки',icon:'columns',iconOnly:true,variant:'ghost',attrs:{id:'quarterly-columns-button'}}):'';
+ const columnsButton=!annual?button({label:'Колонки',icon:'settings',iconOnly:true,size:'small',variant:'secondary',attrs:{id:'quarterly-columns-button'}}):'';
  const period=`<div class="qmetric-header-period" role="group" aria-label="Период"><span class="qmetric-secondary">Период</span>${segmentedControl({label:'Представление',value:annual?'year':'quarter',items:[{value:'quarter',label:'Квартал',attrs:{'data-qact':'view','data-view':'quarter'}},{value:'year',label:'Год',attrs:{'data-qact':'view','data-view':'year'}}]})}<div class="qmetric-period-filter">${field('year','Год',p.get('year'),'number','min="1" max="9999" aria-label="Год"',true)}${!annual?select('quarter','Квартал',[1,2,3,4].map(id=>({id,name:id+' квартал'})),p.get('quarter'),'data-ui-filter-select',true):''}</div></div>`;
- const header=pageHeader({title:'Метрики',className:'ui-registry-header',titleAccessory:period,actions:`<div class="ui-registry-actions">${columnsButton}${options.can_create?button({label:'Новая метрика',icon:'plus',variant:'primary',attrs:{'data-qact':'create'}}):''}</div>`});
+ const header=pageHeader({title:'Метрики',className:'ui-registry-header',titleAccessory:period,actions:`<div class="ui-registry-actions">${options.can_create?button({label:'Новая метрика',icon:'plus',size:'small',variant:'primary',attrs:{'data-qact':'create'}}):''}${columnsButton}</div>`});
  const filtered=active.length||chosen.length||p.get('q')||(p.get('sort')&&p.get('sort')!=='title');
  const filters=`<form id="quarterly-filters" class="qmetric-filters">
- ${header}<div class="qmetric-toolbar ui-registry-toolbar">
- <label class="qmetric-search ui-search-field"><span class="sr-only">Поиск</span>${icon('search')}<input name="q" type="search" class="input ui-control" aria-label="Поиск" placeholder="Поиск метрик…" value="${esc(p.get('q')||'')}"></label>
+ ${header}<div class="filter-panel"><div class="filter-toolbar-row ui-filter-toolbar-stacked">
+ <label class="relative filter-search-wrap ui-filter-search"><span class="sr-only">Поиск</span>${icon('search')}<input name="q" type="search" class="input ui-control input-sm" aria-label="Поиск" placeholder="Поиск метрик…" value="${esc(p.get('q')||'')}"></label>
  <input type="hidden" name="view" value="${annual?'year':'quarter'}">
- <div class="qmetric-tools">${button({label:'Все фильтры'+(active.length?' · '+active.length:''),icon:'sliders-horizontal',attrs:{'data-qact':'filters','aria-expanded':false,'aria-controls':'qmetric-filter-extra'}})}${button({label:'Сброс',icon:'rotate-ccw',attrs:{'data-qact':'reset',disabled:!filtered}})}</div>
- </div>
+ <div class="filter-toolbar-controls">${button({label:'Все фильтры'+(active.length?' · '+active.length:''),icon:'sliders-horizontal',size:'small',className:'filter-catalog-trigger',attrs:{'data-qact':'filters','aria-expanded':false,'aria-controls':'qmetric-filter-extra'}})}${button({label:'Сброс',icon:'rotate-ccw',size:'small',className:'filter-reset-btn',attrs:{'data-qact':'reset',disabled:!filtered}})}</div>
+ </div></div>
  <div id="qmetric-filter-extra" data-filter-extra hidden>
  <div class="qmetric-filter-more">${category('team_id','Команды',options.teams,p.get('team_id')||'')}${category('owner_id','Владельцы',options.users,p.get('owner_id')||'')}${category('project_id','Проекты',options.projects,p.get('project_id')||'')}${category('metric_state','Состояние метрики',choices(['draft','tracking','paused']),p.get('metric_state')||'')}${category('period_state','Состояние периода',choices(['draft','active','completed','cancelled']),p.get('period_state')||'')}${filterField('scope','Область',[{id:'all',name:'Все метрики'},{id:'mine',name:'Мои метрики'}],p.get('scope')||'all')}</div>
  <div class="qmetric-filter-actions"><div class="qmetric-filter-order">${filterField('sort','Сортировка',[{id:'title',name:'По названию'},{id:'updated',name:'По изменению'},{id:'due',name:'По сроку замера'},...(!annual?[{id:'progress',name:'По числовому прогрессу'}]:[])],p.get('sort')||'title')}</div>${checkbox({id:'qmetric-archived',label:'Включая архив',checked:p.get('archived')==='true',attrs:{name:'archived'}})}<div class="qmetric-filter-submit">${button({label:'Сбросить',variant:'ghost',attrs:{'data-qact':'reset'}})}${button({label:'Применить фильтры',variant:'primary',attrs:{type:'submit'}})}</div></div></div></form>
@@ -307,7 +308,7 @@ async function save(event){
 async function refresh(){const html=await renderQuarterlyMetrics(app);if(!html)return;root.outerHTML=html;initQuarterlyMetrics(app);}
 function applyFilters(){const form=root.querySelector('#quarterly-filters');if(!form)return;const f=new FormData(form),values={page:null};for(const k of ['q','year','view','scope','sort'])values[k]=f.get(k)||'';values.quarter=f.get('quarter')||params().get('quarter');for(const k of ['team_id','owner_id','project_id','metric_state','period_state'])values[k]=f.getAll(k).join(',');values.archived=f.has('archived')?'true':null;values.attention=params().get('attention')||null;if(values.view==='year'&&values.sort==='progress')values.sort='title';navigate(values);}
 export function initQuarterlyMetrics(application){
- app=application;root=document.getElementById('quarterly-metrics');if(!root)return;
+ app=application;root=document.getElementById('quarterly-metrics');if(!root)return;mountRegistryPanel(root,'metrics');
  const tablist=root.querySelector('[role=tablist]');if(tablist)mountTabs(tablist,tabId=>{returnCardTab=tabId;navigate({section:tabId.replace('qmetric-sections-','').replace('-tab','')},true);});
  root.querySelectorAll('[data-qmetric-comment]').forEach(details=>{const summary=details.querySelector('summary'),preview=summary.textContent;details.addEventListener('toggle',()=>{summary.textContent=details.open?'Свернуть комментарий':preview;});});
  columnsPopover?.destroy();columnsPopover=null;const colButton=root.querySelector('#quarterly-columns-button');if(colButton){const panel=root.querySelector('#quarterly-columns');columnsPopover=bindPopover({trigger:colButton,panel,label:'Колонки',align:'end'});panel.addEventListener('change',()=>{navigate({hidden_columns:[...panel.querySelectorAll('input[type=checkbox]:not(:checked)')].map(x=>x.value).join(',')});});}

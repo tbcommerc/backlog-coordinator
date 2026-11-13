@@ -1,8 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
 import { mockApp } from './helpers/backlogMock.mjs';
 
-for (const theme of ['light', 'dark']) test(`quick edit toggle: ${theme}`, async ({ page }) => {
+for (const theme of ['light', 'dark']) test(`quick edit toggle: ${theme}`, async ({ page }, testInfo) => {
   await mockApp(page);
   await page.addInitScript(t => localStorage.setItem('dmb_theme', t), theme);
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -13,8 +12,7 @@ for (const theme of ['light', 'dark']) test(`quick edit toggle: ${theme}`, async
   await toggle.click();
   await expect(page.locator('#qe-toolbar-backlog')).toBeVisible();
   await page.mouse.move(0, 0);
-  mkdirSync('../docs/dev-testing/evidence/quick-edit-toggle-2026-11-04', { recursive: true });
-  await page.screenshot({ path: `../docs/dev-testing/evidence/quick-edit-toggle-2026-11-04/after-${theme}.png`, fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`after-${theme}.png`), fullPage: true });
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   const active = await toggle.evaluate(el => getComputedStyle(el).backgroundColor);
   await toggle.click();

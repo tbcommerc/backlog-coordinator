@@ -1,3 +1,4 @@
+import { mountRegistryPanel } from '../ui/registryPanel.js';
 import { filterValues, filterMatches, setFilterValue, encodeFilterValues } from '../ui/filterValues.js';
 import { filterChip, button, field, icon, pageHeader, routeTabs } from '../ui/primitives.js';
 import { loadMore } from '../ui/specialized.js';
@@ -92,6 +93,7 @@ export async function initReviewPage(app) {
   reviewApp = app;
   reviewCurrentUser = app.store.get('currentUser') || null;
   restoreQueueControls();
+  mountRegistryPanel(document.getElementById('review-queue-card'),'review');
   const panel=document.getElementById('review-filters-panel'), toggle=document.getElementById('review-filters-toggle');
   toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));});
   panel.addEventListener('keydown',event=>{if(event.key==='Escape'){panel.hidden=true;toggle.setAttribute('aria-expanded','false');toggle.focus();}});

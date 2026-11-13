@@ -7,6 +7,16 @@
   padding-top:var(--ui-table-sticky-gap);
   background:var(--bg-primary);
 }
+/* The scroll viewport excludes the registry's 1px outer border. Cover it too,
+   including behind the rounded corners, without shifting header columns. */
+.ui-table-sticky-header::before {
+  content:'';
+  position:absolute;
+  inset:0 -1px;
+  z-index:-1;
+  background:inherit;
+  pointer-events:none;
+}
 .ui-table-sticky-surface {
   overflow:hidden;
   border-radius:var(--radius-lg) var(--radius-lg) 0 0;
@@ -34,6 +44,8 @@
 /* Allow a surrounding registry surface to own its single enclosing border. */
 .ui-data-table.ui-table-embedded[data-ui-table="registry"] { border:0; border-radius:0; }
 :root .ui-table[data-ui-table="registry"] {
+  /* Sticky identity cells must hide text moving underneath on row hover. */
+  --ui-table-hover-bg:color-mix(in srgb,var(--text-primary) 5%,var(--bg-primary));
   --ui-table-padding-y:var(--table-cell-padding-y);
   --ui-table-padding-x:var(--space-3);
 }

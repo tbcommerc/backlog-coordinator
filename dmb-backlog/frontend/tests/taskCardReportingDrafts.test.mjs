@@ -33,7 +33,8 @@ export function setReportingDraftForTest(kind, meetingId, text, didDemo = false)
   const demoInput = { checked: didDemo };
   const card = {
     dataset: { reportingKind: kind, reportingMeetingId: String(meetingId) },
-    querySelector(selector) { return selector.includes('data-reporting-text') ? textInput : demoInput; },
+    classList: { toggle() {} },
+    querySelector(selector) { return selector.includes('data-reporting-text') ? textInput : selector.includes('data-reporting-demo') ? demoInput : null; },
   };
   const target = {
     dataset: { reportingText: kind, reportingMeetingId: String(meetingId) },

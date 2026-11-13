@@ -11,10 +11,14 @@
 | Каталог | Назначение | Локальный запуск |
 |---|---|---|
 | `dmb-backlog/` | FastAPI backend и встроенная раздача SPA | Стандартный запуск, порт 8000 |
-| `agents/business-analyst/` | AI Business Analyst Assistant V1 | Стандартный запуск, порт 9000 |
-| `agents/business-analyst-experimental/` | Целевой fork V1: подготовка и ревью БТ | Обязателен в start-project.ps1, порт 9300; UI `#/agent-v2` |
-| `agents/backlog-assistant/` | Самостоятельный помощник с OpenCode runtime и ограниченным Data API | `-IncludeBacklogAssistant`; скрипт также включает его при наличии agents/backlog-assistant/.env |
+| `agents/business-analyst/` | AI Business Analyst Assistant V1 | `-IncludeAgents`, порт 9000 |
+| `agents/business-analyst-experimental/` | Целевой fork V1: подготовка и ревью БТ | `-IncludeAgents`, порт 9300; UI `#/agent-v2` |
+| `agents/backlog-assistant/` | Самостоятельный помощник с OpenCode runtime и ограниченным Data API | `-IncludeAgents` и локальный `.env`; порты 9400/9450 |
 | `agents/value-priority-assessor/` | Финансовый эффект и приоритет | Только явный `-IncludeValuePriorityAssessor`, порт 9100 |
+
+Политика launcher сверена 12.11.2026: без `-IncludeAgents` запускается только
+основной контур DMB, PostgreSQL и Redis; ранее запущенные принадлежащие проекту
+агентские процессы штатно останавливаются.
 
 Режим запуска сервиса не заменяет его настройки доступа и allowlist. Основной backend хранит рабочие сущности и проксирует разрешённые запросы к агентам. Новые контуры включают рабочие задачи/проекты, согласование редакций БТ, поручения встреч и безопасность учётных записей.
 

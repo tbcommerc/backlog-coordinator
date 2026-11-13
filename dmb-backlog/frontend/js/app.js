@@ -5,13 +5,14 @@ import { bindActionMenu } from './ui/actionMenu.js';
 import { installFilterSelects } from './ui/filterSelect.js';
 import { installSegmentedControls } from './ui/segmented.js';
 import { installStickyTableHeaders } from './ui/stickyTableHeader.js';
+import { installRegistryColumns } from './ui/tableColumns.js';
 /**
  * DMB Backlog - Main Application
  * Entry point, initializes router and store
  */
 console.log('[DMB] app.js v20260910 pip-flow-v5.1 loaded');
 
-import { Router, createTaskOpenHandler } from './router.js?v=233';
+import { Router, createTaskOpenHandler } from './router.js?v=234';
 import { applyThemePreference } from './theme.js';
 import { renderLogin, initLogin } from './components/login.js?v=3';
 import { Store } from './store.js';
@@ -694,6 +695,7 @@ class App {
   async init() {
     this.disposeFilterSelects ||= installFilterSelects();
     this.disposeSegmentedControls ||= installSegmentedControls();
+    this.disposeRegistryColumns ||= installRegistryColumns();
     this.disposeStickyTableHeaders ||= installStickyTableHeaders();
     this.applyTheme();
     if (location.hash.startsWith('#/activate')) { showSetup(this); return; }

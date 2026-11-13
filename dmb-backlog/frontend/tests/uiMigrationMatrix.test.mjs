@@ -61,7 +61,7 @@ test('button-specific important dimensions cannot override the shared size contr
 
 test('compound CSS references declared tokens or documented dynamic layout variables', () => {
   const css=read('frontend/css/ui/popover.css');
-  const definitions=read('frontend/css/tokens.css')+read('frontend/css/ui/sizing.css')+css;
+  const definitions=read('frontend/css/tokens.css')+read('frontend/css/ui/sizing.css')+read('frontend/css/ui/filter-catalog.css')+css;
   const declared=new Set([...definitions.matchAll(/(--[a-z0-9-]+)\s*:/g)].map(match=>match[1]));
   declared.add('--ui-column-rows');
   for(const [,token] of css.matchAll(/var\((--[a-z0-9-]+)/g)) assert.ok(declared.has(token),`Undefined token: ${token}`);

@@ -253,7 +253,7 @@ def _comment_response(comment: TaskComment, user_name: str | None, replies=None)
     return CommentResponse(
         id=comment.id, task_id=comment.task_id, user_id=comment.user_id,
         user_name=user_name, text=comment.text, mentioned_user_ids=mentions,
-        parent_id=comment.parent_id, replies=replies, created_at=comment.created_at,
+        parent_id=comment.parent_id, replies=replies if replies is not None else [], created_at=comment.created_at,
     )
 
 

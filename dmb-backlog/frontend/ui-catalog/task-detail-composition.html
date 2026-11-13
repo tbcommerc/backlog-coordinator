@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Композиция карточки задачи · UI Kit</title>
+<link rel="stylesheet" href="../css/fonts.css"><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/base.css"><link rel="stylesheet" href="../css/ui/kit.css"><link rel="stylesheet" href="catalog.css">
+</head><body class="ui-catalog"><header class="catalog-heading"><h1>Композиция карточки задачи</h1><p>Рабочая сводка, простые разделы, дополнительные атрибуты по запросу.</p><button class="btn btn-secondary ui-btn" id="theme">Переключить тему</button></header><main id="catalog-main"><section class="catalog-section catalog-section--wide" id="sample"></section></main>
+<script type="module">
+import {descriptionList, sectionCard} from '../js/ui/detailComponents.js';
+import {badge} from '../js/ui/primitives.js';
+import {progress} from '../js/ui/dataDisplay.js';
+const list=(items,className='')=>descriptionList({className:'ui-task-detail-grid '+className,items:items.map(([label,valueMarkup])=>({label,valueMarkup,className:'ui-task-detail-field'}))});
+document.querySelector('#sample').innerHTML='<div class="ui-task-detail-composition"><section class="ui-task-detail-summary" aria-label="Рабочая сводка">'+list([['Статус',badge({label:'В работе',tone:'info'})],['Исполнитель','Анна Смирнова'],['Срок','20 ноября 2026'],['Приоритет',badge({label:'Высокий',tone:'warning'})],['Прогресс',progress({value:40,showValue:true})]],'ui-task-detail-summary-grid')+'</section>'+sectionCard({title:'Описание',variant:'plain',className:'ui-task-detail-section',content:'Клиент видит статус заявки и следующий шаг в личном кабинете.'})+sectionCard({title:'Участники и классификация',variant:'plain',className:'ui-task-detail-section',content:list([['Команда','Клиентский опыт'],['Бизнес-заказчик','Елена Орлова'],['Проект','Клиентский портал']])})+sectionCard({title:'Трудозатраты, стоимость и обоснования',variant:'plain',className:'ui-task-detail-effort',collapsible:true,open:false,content:list([['Оценка трудозатрат','12 ч/д'],['Плановая стоимость','360 000 ₽'],['Факт','120 000 ₽']])})+'</div>';
+document.querySelector('#theme').onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';};
+</script></body></html>

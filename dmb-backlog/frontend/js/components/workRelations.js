@@ -5,13 +5,39 @@ import { setButtonBusy } from '../ui/controls.js';
 import { escapeHtml as esc } from '../htmlUtils.js';
 import { mountWorkPicker } from './workPicker.js';
 
-export async function mountRelations(root, app, kind, id, version, { canEdit = true } = {}) {
+export async function mountRelations(root, app, kind, id, version, { canEdit = true, composition = '' } = {}) {
     if (!root) return;
     root.removeAttribute('aria-busy');
     const prefix = 'relations-' + crypto.randomUUID();
     const ids = { kind:prefix+'-kind', target:prefix+'-target', url:prefix+'-url', placement:prefix+'-placement' };
     const error = name => `<p role="alert" tabindex="-1" data-${name}></p>`;
     root.innerHTML = `<details><summary class="ui-disclosure-text">Зависимости</summary><div data-relations>Загрузка…</div>${canEdit ? `<form data-dependency>${field({id:ids.kind,label:'Зависит от',kind:'select',options:[{value:'work',label:'Рабочая задача'},{value:'major',label:'Текущая задача'}]})}${field({id:ids.target,label:'Номер работы',type:'number',required:true})}${button({label:'Добавить зависимость',attrs:{type:'submit'}})}</form>` : ''}${error('error')}</details>${kind==='major' ? `<details><summary class="ui-disclosure-text">Внешнее исполнение</summary><p>Только ссылки. Подключение к трекеру не настроено.</p><div data-external></div>${canEdit ? `<form data-external-form>${field({id:ids.url,label:'Ссылка на внешнюю работу',type:'url',required:true})}${button({label:'Добавить ссылку',attrs:{type:'submit'}})}</form>` : ''}${error('external-error')}</details>${canEdit ? `<details><summary class="ui-disclosure-text">Привязать существующую рабочую задачу</summary><form data-placement>${field({id:ids.placement,label:'Номер рабочей задачи',type:'number',required:true})}${button({label:'Показать перенос',attrs:{type:'submit'}})}</form><div data-placement-preview></div>${error('placement-error')}</details>` : ''}` : ''}`;
+    if (composition === 'task-detail' && kind === 'major') {
+        root.classList.add('ui-task-work-relations');
+        const dependencies = root.querySelector('[data-relations]').closest('details');
+        const external = root.querySelector('[data-external]').closest('details');
+        const placement = root.querySelector('[data-placement]')?.closest('details');
+        const section = document.createElement('section');
+        section.className = 'ui-task-external-work';
+        section.innerHTML = '<div class="ui-task-secondary-head"><h2>Внешнее исполнение</h2>' + (canEdit ? button({ label:'Добавить', variant:'ghost', icon:'plus', attrs:{'data-task-external-toggle':'','aria-expanded':'false'} }) : '') + '</div><p class="ui-task-secondary-meta">Работы, которые ведутся в другой системе. Ссылки на документы находятся во вкладке «Ссылки и файлы».</p>';
+        external.querySelector('summary')?.remove();
+        external.querySelector(':scope>p:not([role])')?.remove();
+        section.append(...external.childNodes);
+        external.replaceWith(section);
+        root.prepend(section);
+        dependencies.querySelector('summary').textContent = 'Зависимости этой задачи';
+        if (placement) { placement.dataset.taskPlacement = ''; placement.hidden = true; }
+        const externalForm = section.querySelector('[data-external-form]');
+        if (externalForm) {
+            externalForm.hidden = true;
+            section.querySelector('[data-task-external-toggle]').onclick = event => {
+                externalForm.hidden = !externalForm.hidden;
+                event.currentTarget.setAttribute('aria-expanded', String(!externalForm.hidden));
+                if (!externalForm.hidden) externalForm.querySelector('input')?.focus();
+            };
+        }
+    }
+    if (composition === 'task-detail') window.lucide?.createIcons();
     const content = root.querySelector('[data-relations]');
     const live = () => root.isConnected && root.contains(content);
     const showError = (node, err) => { if(live()){node.textContent=err.message;node.focus();} };

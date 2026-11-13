@@ -3,7 +3,6 @@
 :root .sticky-toolbar:has([data-filter-scope=backlog]) .toolbar-title-row { align-items:flex-start; }
 :root .sticky-toolbar:has([data-filter-scope=backlog]) .toolbar-actions { flex-wrap:wrap; gap:6px; }
 :root .table-container:has(#tasks-tbody) { background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--registry-radius); }
-:root #tasks-table .th-label { white-space:normal; overflow:visible; text-overflow:clip; letter-spacing:normal; }
 #breadcrumb-nav[hidden] { display:none; }
 @media(max-width:640px) {
  :root { --registry-padding:12px; }

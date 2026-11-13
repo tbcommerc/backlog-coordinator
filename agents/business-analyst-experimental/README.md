@@ -24,7 +24,7 @@
 
 ## Границы безопасности
 
-- в конфигурации сервиса исходно `AGENT_V2_ENABLED=false`; стандартный launcher обязательно включает и запускает V2 (проверено 12.10.2026);
+- в конфигурации сервиса исходно `AGENT_V2_ENABLED=false`; launcher включает и запускает V2 только вместе с комплектом `-IncludeAgents` (сверено 12.11.2026);
 - отдельные kill switch, pilot allowlist, secret, порт `9300` и PostgreSQL DB;
 - доверенные `user_id` и роль BA/PO формирует только DMB gateway;
 - связанный объект передаётся как авторизованный read-only snapshot;
@@ -39,6 +39,8 @@
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/start-project.ps1
 ```
+
+Чтобы запустить сервис V2, добавьте `-IncludeAgents`.
 
 После health-check доступны:
 

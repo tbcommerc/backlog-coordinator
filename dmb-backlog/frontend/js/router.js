@@ -420,7 +420,8 @@ export class Router {
         this.syncAssistantFocusMode(path);
         const fromPath = from?.split('?')[0];
         const projectChanged = path === '/work-projects' && ['project','scope','major','mp','section','year','bucket','bq','bstate','bp','quarter','result','rp','cq','cp','horizon','keys','pq','pg','baseline','pteam','powner','pstate','psort','scale','cteam','cowner','cview'].some(key => new URLSearchParams(query).get(key) !== new URLSearchParams(from?.split('?')[1] || '').get(key));
-        const queryDrivenWorkPage = /^\/metrics(?:\/\d+)?$/.test(path) || projectChanged || path === '/work-reports' || /^\/work-tasks(?:\/\d+)?$/.test(path);
+        const reviewChanged = path === '/review' && ['tab', 'requirement_review'].some(key => new URLSearchParams(query).get(key) !== new URLSearchParams(from?.split('?')[1] || '').get(key));
+        const queryDrivenWorkPage = /^\/metrics(?:\/\d+)?$/.test(path) || projectChanged || reviewChanged || path === '/work-reports' || /^\/work-tasks(?:\/\d+)?$/.test(path);
         if (from !== null && path === fromPath && this.renderedPath === path && path !== '/meeting-capture' && !queryDrivenWorkPage) {
             if(path!=='/backlog'||handleBacklogQuery('#'+hash)){
               this.openDeepLinkedTask(path, query);

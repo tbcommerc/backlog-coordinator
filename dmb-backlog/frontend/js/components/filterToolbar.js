@@ -765,22 +765,24 @@ export function renderToolbar(scope, opts = {}) {
       <button class="btn btn-secondary btn-sm square-icon" id="${scope}-btn-column-settings" title="Настройка отображения столбцов" aria-label="Настройка отображения столбцов">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </button>
-      <div class="column-settings-dropdown ui-popover-columns" id="${scope}-column-settings-dropdown" hidden>
-        <div class="ui-popover-header"><strong class="ui-popover-title">Колонки</strong><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn" data-close-columns aria-label="Закрыть настройки колонок">×</button></div>
+      <div class="column-settings-dropdown ui-popover-columns ui-popover-columns-editor" id="${scope}-column-settings-dropdown" hidden>
+        <div class="ui-popover-header"><strong class="ui-popover-title">Столбцы</strong><button type="button" class="btn btn-ghost btn-sm square-icon ui-btn" data-close-columns aria-label="Закрыть настройки колонок">×</button></div>
         <div class="ui-popover-actions">
           <button class="btn btn-ghost btn-sm" id="${scope}-col-select-all">Выбрать все</button>
           <button class="btn btn-ghost btn-sm" id="${scope}-col-default">Стандартный вид</button>
-          <button class="btn btn-ghost btn-sm" id="${scope}-col-clear-all">Очистить все</button>
+          <button class="btn btn-ghost btn-sm" id="${scope}-col-clear-all">Скрыть остальные</button>
         </div>
-        <p class="ui-popover-hint">ID всегда виден первым. Остальные колонки: перетащите строку или используйте Alt + ↑ / ↓ на флажке.</p>
+        <div class="ui-popover-field"><input class="input" type="search" data-column-search aria-label="Найти столбец" placeholder="Найти столбец…"><span data-column-count role="status" aria-atomic="true"></span><button type="button" class="btn btn-ghost btn-sm" data-column-undo hidden>Отменить выбор столбцов</button></div>
+        <p class="ui-popover-hint" id="${scope}-column-help">Изменения применяются сразу. Порядок: перетаскивание или Alt + ↑ / ↓.</p>
+        <div class="sr-only" aria-live="polite" data-column-announcement></div>
         <div class="column-settings-list" id="${scope}-column-settings-list">
           ${colOrder.map(key => {
             const val = colOpts[key];
             if (val === undefined) return '';
             return `<div class="col-drag-item" data-col="${escapeAttr(key)}">
-              <span class="col-drag-handle" aria-hidden="true">⠿</span>
+              <span class="col-drag-handle" aria-hidden="true">${key === 'id' ? '' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01" stroke-linecap="round"/></svg>'}</span>
               <span class="col-order-number" aria-hidden="true"></span>
-              <label class="ui-selection-option"><input type="checkbox" data-col="${escapeAttr(key)}" ${key === 'id' ? 'checked disabled' : val ? 'checked' : ''}><span>${escapeAttr(getLabel(key))}</span></label>
+              <label class="ui-selection-option"><input type="checkbox" aria-describedby="${scope}-column-help" data-col="${escapeAttr(key)}" ${key === 'id' ? 'checked disabled' : val ? 'checked' : ''}><span>${escapeAttr(getLabel(key))}${key === 'id' ? ' · всегда виден' : ''}</span></label>
             </div>`;
           }).join('')}
         </div>
@@ -810,10 +812,11 @@ export function renderToolbar(scope, opts = {}) {
         ${exportBtn}
       </span>` : '';
 
-  const hasActions = !!(addTaskHtml || bulkOpsBtn || quickEditBtn || importBtn || opts.viewToggle !== false || opts.columnSettings || opts.excel !== false || opts.refresh !== false);
+  const hasActions = !!(opts.actionsPrefix || addTaskHtml || bulkOpsBtn || quickEditBtn || importBtn || opts.viewToggle !== false || opts.columnSettings || opts.excel !== false || opts.refresh !== false);
 
   const actionsHtml = hasActions ? `
     <div class="toolbar-actions">
+      ${opts.actionsPrefix || ''}
       ${addTaskHtml}
       ${savedViewsHtml}
       ${opts.columnSettings ? columnSettingsHtml : ''}
@@ -937,8 +940,38 @@ export function initToolbarControls(scope, opts = {}) {
   const colDropdown = document.getElementById(`${scope}-column-settings-dropdown`);
   const colList = document.getElementById(`${scope}-column-settings-list`);
   if (colBtn && colDropdown) {
-    const columnsPopover = bindPopover({ trigger: colBtn, panel: colDropdown, label: 'Настройка колонок', align: 'end' });
+    let cancelColumnDrag = () => {};
+    const columnsPopover = bindPopover({ trigger: colBtn, panel: colDropdown, label: 'Настройка колонок', align: 'end', onClose: () => cancelColumnDrag() });
     colDropdown.querySelector('[data-close-columns]')?.addEventListener('click', () => columnsPopover.close());
+
+    const search = colDropdown.querySelector('[data-column-search]');
+    const refreshColumns = () => {
+      const query = search.value.trim().toLocaleLowerCase('ru');
+      const rows = [...colList.querySelectorAll('.col-drag-item')];
+      rows.forEach(row => { row.hidden = !row.querySelector('label').textContent.toLocaleLowerCase('ru').includes(query); });
+      const selected = rows.filter(row => row.querySelector('input').checked).length;
+      const found = rows.filter(row => !row.hidden).length;
+      colDropdown.querySelector('[data-column-count]').textContent = `Показано ${selected} из ${rows.length}${query ? ` · Найдено: ${found}` : ''}`;
+    };
+    let previousSelection = null;
+    const undo = colDropdown.querySelector('[data-column-undo]');
+    colDropdown.addEventListener('click', event => {
+      if (event.target.closest(`#${scope}-col-select-all, #${scope}-col-clear-all`)) {
+        previousSelection = { ...columnSettings }; undo.hidden = false;
+      }
+    }, true);
+    undo.addEventListener('click', () => {
+      if (!previousSelection) return;
+      Object.assign(columnSettings, previousSelection);
+      colList.querySelectorAll('input').forEach(cb => { cb.checked = !!columnSettings[cb.dataset.col]; });
+      previousSelection = null; undo.hidden = true;
+      renderFilterButtons(scope, allTasksCache[scope]); onColumnChange?.(); refreshColumns(); search.focus();
+    });
+    search.addEventListener('input', refreshColumns);
+    colDropdown.addEventListener('change', refreshColumns);
+    colDropdown.addEventListener('click', () => queueMicrotask(refreshColumns));
+    colBtn.addEventListener('click', refreshColumns);
+    refreshColumns();
 
     function onColCheckChange(e) {
       const cb = e.target;
@@ -1009,12 +1042,14 @@ export function initToolbarControls(scope, opts = {}) {
         const row = event.target.closest('.col-drag-item');
         if (!row) return;
         event.preventDefault(); event.stopPropagation();
-        const sibling = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+        let sibling = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+        while (sibling?.hidden) sibling = event.key === 'ArrowUp' ? sibling.previousElementSibling : sibling.nextElementSibling;
         if (!sibling || row.dataset.col === 'id' || sibling.dataset.col === 'id') return;
         colList.insertBefore(row, event.key === 'ArrowUp' ? sibling : sibling.nextSibling);
         columnOrder.splice(0, columnOrder.length, ...[...colList.children].map(item => item.dataset.col));
         updateColumnOrderNumbers(colList);
         event.target.focus();
+        colDropdown.querySelector('[data-column-announcement]').textContent = `${row.querySelector('label').textContent.trim()}: позиция ${columnOrder.indexOf(row.dataset.col) + 1}`;
         onColumnOrderChange?.();
       });
       let dragSrc = null;
@@ -1043,6 +1078,7 @@ export function initToolbarControls(scope, opts = {}) {
           colList.insertBefore(dragSrc, dropPosition === 'drop-before' ? dropTarget : dropTarget.nextSibling);
         }
         const changed = commit && dragStarted && !!dropTarget;
+        const movedRow = dragSrc;
         dragSrc?.classList.remove('is-dragging');
         dragSrc = null;
         dragStarted = false;
@@ -1052,8 +1088,11 @@ export function initToolbarControls(scope, opts = {}) {
         columnOrder.length = 0;
         newOrder.forEach(k => columnOrder.push(k));
         updateColumnOrderNumbers(colList);
+        movedRow.querySelector('input').focus();
+        colDropdown.querySelector('[data-column-announcement]').textContent = `${movedRow.querySelector('label').textContent.trim()}: позиция ${columnOrder.indexOf(movedRow.dataset.col) + 1}`;
         if (onColumnOrderChange) onColumnOrderChange();
       };
+      cancelColumnDrag = () => finishPointerDrag(false);
       const onPointerMove = (e) => {
         if (!dragSrc) return;
         if (!dragStarted && Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) < 4) return;
@@ -1063,7 +1102,7 @@ export function initToolbarControls(scope, opts = {}) {
         }
         e.preventDefault();
         const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.col-drag-item');
-        if (!target || target.dataset.col === 'id' || target === dragSrc || !colList.contains(target)) return;
+        if (!target || target.hidden || target.dataset.col === 'id' || target === dragSrc || !colList.contains(target)) { clearDropIndicators(); return; }
         const rect = target.getBoundingClientRect();
         const sourceRect = dragSrc.getBoundingClientRect();
         const differentVisualColumn = Math.abs(sourceRect.left - rect.left) > Math.min(sourceRect.width, rect.width) / 2;
@@ -1079,7 +1118,7 @@ export function initToolbarControls(scope, opts = {}) {
       const onPointerUp = () => finishPointerDrag(true);
       const onPointerCancel = () => finishPointerDrag(false);
       colList.addEventListener('pointerdown', (e) => {
-        if (e.button !== 0 || e.target.closest('input, button')) return;
+        if (e.button !== 0 || !e.target.closest('.col-drag-handle')) return;
         const item = e.target.closest('.col-drag-item');
         if (item?.dataset.col === 'id') return;
         if (!item) return;

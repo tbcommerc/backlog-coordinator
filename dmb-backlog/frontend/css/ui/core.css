@@ -123,6 +123,15 @@
 .ui-alert[data-ui-tone="success"] { background: var(--success-light); color: var(--success-text); }
 .ui-alert p { margin: 0; }
 .ui-alert strong + p { margin-top: var(--space-1); }
+.ui-alert[data-ui-variant="inline"] { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-3); }
+.ui-alert[data-ui-variant="inline"] > .ui-icon { flex:none; align-self:flex-start; margin-top:var(--space-1); }
+.ui-alert-content { flex:1 1 240px; min-width:0; overflow-wrap:anywhere; }
+.ui-alert-content > p { color:inherit; }
+.ui-alert-action { flex:none; margin-left:auto; }
+@media (max-width:480px) {
+  .ui-alert[data-ui-variant="inline"] { display:grid; grid-template-columns:auto minmax(0,1fr); }
+  .ui-alert-action { grid-column:2; margin-left:0; }
+}
 .ui-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .ui-editor-stack { display: grid; gap: var(--space-4); }
 .ui-checkbox { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-height); color: var(--text-secondary); font-size: var(--text-sm); cursor: pointer; }

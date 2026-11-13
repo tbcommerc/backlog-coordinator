@@ -12,7 +12,7 @@
 :root .ui-filter-catalog {
   --filter-catalog-width:48rem;
   display:flex; flex-direction:column;
-  height:min(600px,calc(100dvh - 220px)); overflow:hidden; padding:0;
+  height:min(600px,max(320px,calc(100dvh - 220px))); overflow:hidden; padding:0;
 }
 .ui-filter-catalog .filter-catalog-header {
   flex:none; padding:var(--space-4); margin:0; border-bottom:0;
@@ -58,10 +58,20 @@
 @media (max-width:640px) {
   :root .ui-filter-toolbar-stacked { grid-template-columns:minmax(0,1fr); }
   .ui-filter-toolbar-stacked .filter-toolbar-controls { grid-column:1; grid-row:3; justify-content:flex-end; }
-  :root .ui-pinned-filters { grid-template-columns:minmax(0,1fr); }
+  :root .ui-pinned-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  :root .ui-pinned-filters .filter-btn {
+    display:grid; grid-template-columns:minmax(0,1fr) auto;
+    gap:0 var(--space-1); padding:var(--space-1) var(--space-2); text-align:left;
+  }
+  .ui-pinned-filters .filter-label { grid-column:1; grid-row:1; }
+  .ui-pinned-filters .filter-value { grid-column:1; grid-row:2; max-width:100%; }
+  .ui-pinned-filters .filter-chevron { grid-column:2; grid-row:1/3; }
   :root .ui-filter-catalog { height:calc(100dvh - 16px); }
   .ui-filter-catalog .filter-catalog-grid { grid-template-columns:minmax(0,1fr); }
   .ui-filter-catalog .filter-catalog-header { flex-wrap:nowrap; }
   .ui-filter-catalog-item { grid-template-columns:minmax(0,1fr) var(--control-touch); }
   .ui-filter-catalog-footer { flex-wrap:wrap; }
+}
+@media (max-height:480px) {
+  :root .ui-filter-catalog { height:calc(100dvh - 16px); }
 }

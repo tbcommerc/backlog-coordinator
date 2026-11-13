@@ -80,7 +80,7 @@ function createHeader(table) {
   }
 
   function build() {
-    const focused = wrapper ? [...projection.querySelectorAll('button, input, [tabindex], a')].indexOf(document.activeElement) : -1;
+    const focused = [...(projection || head).querySelectorAll('button, input, [tabindex], a')].indexOf(document.activeElement);
     wrapper?.remove();
     wrapper = document.createElement('div');
     wrapper.className = 'ui-table-sticky-header';
@@ -106,7 +106,7 @@ function createHeader(table) {
           original.checked = control.checked;
           original.dispatchEvent(new Event('change', { bubbles: true }));
         });
-      } else if (!original.closest('[data-sort]')) {
+      } else if (!original.closest('[data-sort]') && !original.matches('.th-resize-handle')) {
         control.addEventListener('click', event => { event.preventDefault(); original.click(); });
       }
       // Backlog sorting and resizing already delegate via data-source-table.
@@ -157,7 +157,7 @@ function createHeader(table) {
       projection.querySelectorAll('col')[index].style.width = width;
       copy.style.width = copy.style.minWidth = copy.style.maxWidth = width;
       // Retain the resolved UI Kit appearance even outside a page-specific ancestor.
-      for (const property of ['padding', 'height', 'font-size', 'font-weight', 'line-height', 'letter-spacing', 'text-align', 'text-transform', 'color', 'background-color', 'border-bottom']) copy.style.setProperty(property, style.getPropertyValue(property));
+      for (const property of ['padding', 'height', 'font-size', 'font-weight', 'line-height', 'letter-spacing', 'text-align', 'text-transform', 'white-space', 'overflow-wrap', 'word-break', 'color', 'background-color', 'border-bottom']) copy.style.setProperty(property, style.getPropertyValue(property));
       if (style.position === 'sticky' && style.left !== 'auto') {
         copy.style.position = 'relative';
         copy.style.left = '0';
