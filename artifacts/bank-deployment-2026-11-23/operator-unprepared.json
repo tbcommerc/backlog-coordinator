@@ -1,0 +1,11 @@
+{
+  "result": "failed",
+  "project": "codex-core-rehearsal-20261123-144427",
+  "checks": [
+    "configuration and immutable image validated"
+  ],
+  "writers_stopped": false,
+  "database_schema_action": "validate_only",
+  "image_id": "sha256:5b352fbd4f4e1ec2cd212f65c1767ee9045a49ae368c0b40d18875b965071ad4",
+  "error": "DBA preparation required: migration_required; expected revision d453b20d51f9"
+}

@@ -1,6 +1,13 @@
 # Таблицы рабочих реестров
 
 Проверено по коду: 11.11.2026. Визуальный эталон — таблица страницы «Бэклог».
+
+Дополнительная проверка 23.11.2026: публичные функции общего модуля
+`tableColumns.js` зарегистрированы семейством `TableColumns` в
+`frontend/ui-catalog/family-contracts.mjs`. Это метаданные владения UI Kit;
+алгоритмы и оформление таблиц не менялись. Полный Node.js набор — 504 PASS;
+`registryColumns.spec.mjs` вместе с `registryReferencePanels.spec.mjs` — 25 PASS
+в Windows Chromium. Это fixture-регрессия, отдельная от живого стенда.
 Исполняемый контракт: [tableColumns.js](../frontend/js/ui/tableColumns.js), [registry-tables.css](../frontend/css/ui/registry-tables.css),
 [tables.css](../frontend/css/ui/tables.css) и [DataTable](../frontend/js/ui/dataTable.js).
 

@@ -65,6 +65,8 @@ function normalizedRole(user = currentUser()) {
 
 export function hasWritePermission(scope) {
   const user = currentUser();
+  const taskScope = user.permissions?.task_edit;
+  if (taskScope != null) return taskScope === 'all' || (taskScope === 'team' && user.team_id != null);
   const role = normalizedRole(user);
   const roleCanEdit = GLOBAL_EDITOR_ROLES.has(role) || TEAM_EDITOR_ROLES.has(role);
   if (!roleCanEdit) return false;
@@ -115,14 +117,14 @@ const columnDirectoryMap = {
   did_client_group: { url: '/tasks/reference', labelField: 'name', responseField: 'did_client_groups' },
 };
 
-async function loadDirectories() {
+export async function loadDirectories() {
   const ownerGeneration=directoryGeneration;
   const entries = Object.entries(columnDirectoryMap);
   const results = await Promise.allSettled(entries.map(async ([colKey, info]) => {
     if (directoryCache[colKey]) return;
-    const resp = await fetch(`/api/v1${info.url}`);
-    if (!resp.ok) throw new Error(`Failed to load ${info.url}`);
-    const payload = await resp.json();
+    const api = window.app?.api;
+    if (!api) throw new Error('API client is unavailable');
+    const payload = await api.get(info.url);
     const data = info.responseField ? (payload[info.responseField] || []) : payload;
     const items = data.map((item, index) => ({
       value: String(item[info.labelField]),

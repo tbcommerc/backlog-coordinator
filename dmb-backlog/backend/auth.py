@@ -237,12 +237,16 @@ def decode_token(token: str):
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM],
             audience=settings.AUTH_AUDIENCE, issuer=settings.AUTH_ISSUER,
-            options={"require_exp": True, "require_iat": True, "require_sub": True,
+            options={"require_iat": True, "require_sub": True,
                      "require_aud": True, "require_iss": True, "require_jti": True})
         if not isinstance(payload.get("sub"), str) or not payload["sub"].isascii() or not payload["sub"].isdigit() or not 0 < int(payload["sub"]) <= 2147483647:
             return None
-        if type(payload.get("iat")) is not int or type(payload.get("exp")) is not int or payload["exp"] <= payload["iat"] or payload["iat"] > int(__import__('time').time()) + 5:
+        if type(payload.get("iat")) is not int or payload["iat"] > int(__import__('time').time()) + 5:
             return None
+        # Only refresh tokens may omit expiry. Access JWTs remain short-lived.
+        if payload.get("type") == "access" or "exp" in payload:
+            if type(payload.get("exp")) is not int or payload["exp"] <= payload["iat"]:
+                return None
         uuid.UUID(payload["sid"])
         uuid.UUID(payload["jti"])
         if type(payload.get("auth_version")) is not int or payload["auth_version"] < 1:
@@ -311,6 +315,26 @@ def require_role(allowed_roles: list):
             )
         return current_user
     return role_checker
+
+
+def user_permissions(user: User) -> dict[str, str]:
+    """One profile contract for login, refresh and /me; NULL never grants access."""
+    role = user.role
+    levels = {"none", "read", "read_own", "write_own", "read_write", "read_all",
+              "write_all", "available", "partial", "full"}
+    result = {}
+    for key in ("backlog_dmb", "backlog_team", "reports", "analytics", "customer", "settings", "admin"):
+        value = getattr(role, key + "_access", None)
+        result[key] = value if value in levels else "none"
+    result.update(
+        customer_portal_mode="only" if is_customer_portal_only(user) else "standard",
+        review=get_request_review_access(user),
+        task_edit=get_task_action_scope(user, "edit"),
+        task_comment=get_task_action_scope(user, "comment"),
+        task_delete=get_task_action_scope(user, "delete"),
+        pip_decision="available" if can_make_pip_decision(user) else "none",
+    )
+    return result
 
 
 def check_permission(user: User, permission: str, level: str = "read") -> bool:

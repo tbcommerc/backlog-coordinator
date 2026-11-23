@@ -2,6 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {API} from '../js/api.js';
 
+test('unlimited session clears a previously scheduled expiry warning', () => {
+  const api = new API();
+  api.sessionExpiresAt = Date.now() + 3600000;
+  api.idleTimeout = 900000;
+  const timer = setTimeout(() => assert.fail('obsolete session warning'), 10000);
+  api.sessionWarningTimer = timer;
+  api.rememberSession({session_expires_at: null, idle_timeout_seconds: null});
+  assert.equal(api.sessionExpiresAt, null);
+  assert.equal(api.idleTimeout, null);
+  assert.equal(timer._destroyed, true);
+});
+
 test('password setup succeeds on an empty 204 response with a JSON content type', async () => {
   const old = globalThis.fetch;
   let calls = 0;

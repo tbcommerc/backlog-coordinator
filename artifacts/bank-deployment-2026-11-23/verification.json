@@ -1,0 +1,16 @@
+{
+  "backend_postgresql_passed": 58,
+  "integration_passed": 21,
+  "runtime_create_alter_drop_denied": true,
+  "bank_profile_has_no_database_or_migration_service": true,
+  "runtime_role": "restricted",
+  "no_runtime_schema_changes": true,
+  "source_unchanged": true,
+  "initial_artifact_user_role_dictionary_counts": [
+    0,
+    0,
+    0
+  ],
+  "bank_vm_verified": false,
+  "working_database_used": false
+}

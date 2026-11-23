@@ -1,0 +1,55 @@
+[
+  {
+    "profile": "qa.ba-a",
+    "results": [
+      "open",
+      {
+        "draftNotSaved": true
+      },
+      {
+        "saved": true
+      },
+      {
+        "undoRestored": true
+      },
+      {
+        "restored": true
+      },
+      {
+        "tab": "main",
+        "selected": "true"
+      },
+      {
+        "tab": "rep",
+        "selected": "true"
+      },
+      {
+        "tab": "com",
+        "selected": "true"
+      },
+      {
+        "tab": "sys",
+        "selected": "true"
+      },
+      {
+        "tab": "log",
+        "selected": "true"
+      },
+      {
+        "tab": "work",
+        "selected": "true"
+      },
+      {
+        "closed": true
+      }
+    ],
+    "access": {
+      "accessible": true,
+      "taskId": 327,
+      "title": "DEV-QA-UI-REVIEW-20261027 — карточка портала",
+      "teamId": 11,
+      "version": 4,
+      "permission": "team"
+    }
+  }
+]

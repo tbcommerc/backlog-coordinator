@@ -100,6 +100,9 @@ export class API {
     }
 
     rememberSession(data) {
+        clearTimeout(this.sessionWarningTimer);
+        this.sessionExpiresAt = null;
+        this.idleTimeout = null;
         if (!data?.session_expires_at) return;
         this.sessionExpiresAt = Date.parse(data.session_expires_at);
         this.lastBusinessActivity = Date.parse(data.last_activity_at);
@@ -159,8 +162,15 @@ export class API {
         const response = await fetch(url, options);
         
         this.assertAuthContext(context);
-        if (response.status === 401 && !path.startsWith('/auth/') && !path.startsWith('/admin/users') && !path.startsWith('/admin/roles')) {
-            const refreshed = await this.refreshToken();
+        // Safe reads (including /auth/me and admin lists) can refresh. Credential
+        // mutations must never be replayed after a failed password/confirmation.
+        const sensitiveMutation = !['GET', 'HEAD'].includes(method) && (
+            path.startsWith('/auth/') || path.startsWith('/admin/users') || path.startsWith('/admin/roles')
+        );
+        if (response.status === 401 && !sensitiveMutation) {
+            // Another concurrent request may already have refreshed the token.
+            const refreshed = this.accessToken && options.headers.Authorization !== `Bearer ${this.accessToken}`
+                ? true : await this.refreshToken();
             this.assertAuthContext(context);
             if (refreshed) {
                 options.headers = this.getHeaders();

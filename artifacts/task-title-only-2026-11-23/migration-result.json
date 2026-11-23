@@ -1,0 +1,7 @@
+{
+  "result": "passed",
+  "upgrade": "d352a19c40e8 -> d453b20d51f9",
+  "title_only_insert": true,
+  "unsafe_downgrade_blocked_without_data_loss": true,
+  "empty_table_downgrade_and_reupgrade": true
+}

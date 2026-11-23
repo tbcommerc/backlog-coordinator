@@ -1,0 +1,22 @@
+[
+  {
+    "scenario": "registry-light-1440",
+    "identical": true
+  },
+  {
+    "scenario": "registry-dark-1366",
+    "identical": true
+  },
+  {
+    "scenario": "work-editor",
+    "identical": true
+  },
+  {
+    "scenario": "modal-catalog",
+    "identical": false
+  },
+  {
+    "scenario": "task-before",
+    "identical": false
+  }
+]

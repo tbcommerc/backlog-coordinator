@@ -1,0 +1,225 @@
+[
+  {
+    "profile": "qa.ba-a",
+    "results": [
+      "open",
+      {
+        "tab": "main",
+        "selected": "true"
+      },
+      {
+        "tab": "rep",
+        "selected": "true"
+      },
+      {
+        "tab": "com",
+        "selected": "true"
+      },
+      {
+        "tab": "sys",
+        "selected": "true"
+      },
+      {
+        "tab": "log",
+        "selected": "true"
+      },
+      {
+        "tab": "work",
+        "selected": "true"
+      },
+      {
+        "closed": false
+      }
+    ],
+    "access": {
+      "accessible": true,
+      "taskId": 327,
+      "title": "DEV-QA-UI-REVIEW-20261027 — карточка портала",
+      "teamId": 11,
+      "version": 4,
+      "permission": "team"
+    }
+  },
+  {
+    "profile": "qa.ba-b",
+    "results": [
+      "open",
+      {
+        "tab": "main",
+        "selected": "true"
+      },
+      {
+        "tab": "rep",
+        "selected": "true"
+      },
+      {
+        "tab": "com",
+        "selected": "true"
+      },
+      {
+        "tab": "sys",
+        "selected": "true"
+      },
+      {
+        "tab": "log",
+        "selected": "true"
+      },
+      {
+        "tab": "work",
+        "selected": "true"
+      },
+      {
+        "closed": true
+      }
+    ],
+    "access": {
+      "accessible": true,
+      "taskId": 327,
+      "title": "DEV-QA-UI-REVIEW-20261027 — карточка портала",
+      "teamId": 11,
+      "version": 4,
+      "permission": "team"
+    }
+  },
+  {
+    "profile": "qa.ba-no-team",
+    "results": [
+      "open",
+      {
+        "tab": "main",
+        "selected": "true"
+      },
+      {
+        "tab": "rep",
+        "selected": "true"
+      },
+      {
+        "tab": "com",
+        "selected": "true"
+      },
+      {
+        "tab": "sys",
+        "selected": "true"
+      },
+      {
+        "tab": "log",
+        "selected": "true"
+      },
+      {
+        "tab": "work",
+        "selected": "true"
+      },
+      {
+        "closed": true
+      }
+    ],
+    "access": {
+      "accessible": true,
+      "taskId": 327,
+      "title": "DEV-QA-UI-REVIEW-20261027 — карточка портала",
+      "teamId": 11,
+      "version": 4,
+      "permission": "team"
+    }
+  },
+  {
+    "profile": "qa.po-a",
+    "results": [
+      "open",
+      {
+        "tab": "main",
+        "selected": "true"
+      },
+      {
+        "tab": "rep",
+        "selected": "true"
+      },
+      {
+        "tab": "com",
+        "selected": "true"
+      },
+      {
+        "tab": "sys",
+        "selected": "true"
+      },
+      {
+        "tab": "log",
+        "selected": "true"
+      },
+      {
+        "tab": "work",
+        "selected": "true"
+      },
+      {
+        "closed": true
+      }
+    ],
+    "access": {
+      "accessible": true,
+      "taskId": 327,
+      "title": "DEV-QA-UI-REVIEW-20261027 — карточка портала",
+      "teamId": 11,
+      "version": 4,
+      "permission": "team"
+    }
+  },
+  {
+    "profile": "qa.admin",
+    "results": [
+      "open",
+      {
+        "tab": "main",
+        "selected": "true"
+      },
+      {
+        "tab": "rep",
+        "selected": "true"
+      },
+      {
+        "tab": "com",
+        "selected": "true"
+      },
+      {
+        "tab": "sys",
+        "selected": "true"
+      },
+      {
+        "tab": "log",
+        "selected": "true"
+      },
+      {
+        "tab": "work",
+        "selected": "true"
+      },
+      {
+        "closed": true
+      }
+    ],
+    "access": {
+      "accessible": true,
+      "taskId": 327,
+      "title": "DEV-QA-UI-REVIEW-20261027 — карточка портала",
+      "teamId": 11,
+      "version": 4,
+      "permission": "all"
+    }
+  },
+  {
+    "profile": "qa.customer-a",
+    "results": [],
+    "access": {
+      "accessible": false,
+      "status": 403,
+      "permission": "none"
+    }
+  },
+  {
+    "profile": "qa.no-access",
+    "results": [],
+    "access": {
+      "accessible": false,
+      "status": 403,
+      "permission": "none"
+    }
+  }
+]

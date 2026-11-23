@@ -15,13 +15,28 @@ from config import settings
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['report', 'cutover', 'preserve-passwords', 'recover-admin', 'prune'])
+    parser.add_argument('operation', choices=['report', 'cutover', 'preserve-passwords', 'recover-admin', 'prune', 'bootstrap-admin', 'reference-report', 'reconcile-references', 'configure-admin-access'])
     parser.add_argument('--mapping', type=Path, help='Approved JSON object: user ID -> login')
     parser.add_argument('--user-id', type=int)
     parser.add_argument('--reason')
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--login', help='Approved login for the first administrator')
+    parser.add_argument('--name', help='Display name for the first administrator')
+    parser.add_argument('--demo-data', action='store_true', help='Synthetic demonstration data; requires an empty workspace')
     args = parser.parse_args()
     with SessionLocal() as db:
+        if args.demo_data and args.operation != 'bootstrap-admin':
+            parser.error('--demo-data is only supported with bootstrap-admin')
+        if args.operation == 'reference-report':
+            from services.reference_catalog import REFERENCE_MODELS
+            from models import DictionaryItem
+            report = {}
+            for kind, model in REFERENCE_MODELS.items():
+                report[kind] = {'editor_rows': db.query(DictionaryItem).filter_by(dict_type=kind).count(),
+                    'unbound_rows': db.query(DictionaryItem).filter_by(dict_type=kind, reference_id=None).count(),
+                    'reference_rows': db.query(model).count()}
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return
         if args.operation == 'report':
             rows = db.query(User).order_by(User.id).all()
             seen, report = {}, []
@@ -37,6 +52,31 @@ def main():
             return
         if not args.apply or not args.reason or not sys.stdin.isatty():
             parser.error('Mutation requires an interactive protected console, --apply and --reason')
+        if args.operation == 'bootstrap-admin':
+            if not args.login or not args.name:
+                parser.error('--login and --name are required')
+            from services.stand_setup import bootstrap_admin
+            user, result = bootstrap_admin(db, args.login, args.name, args.reason, args.demo_data)
+            accounts.commit(db)
+            print('First administrator created. Set a password on the /#/activate page.')
+            print('One-time code (do not capture terminal output):', result['token'])
+            print('Expires:', result['expires_at'].isoformat())
+            return
+        if args.operation == 'reconcile-references':
+            from services.reference_catalog import reconcile_references
+            added = reconcile_references(db)
+            sessions.event(db, 'reconcile_references', reason=args.reason)
+            accounts.commit(db)
+            print(f'Reference binding complete; {added} legacy dictionary entries added. Existing FK IDs preserved.')
+            return
+        if args.operation == 'configure-admin-access':
+            if not args.user_id:
+                parser.error('--user-id is required; no implicit account selection')
+            from services.stand_setup import configure_admin_access
+            user = configure_admin_access(db, args.user_id, args.reason)
+            accounts.commit(db)
+            print(f'Administrative access configured for user ID {user.id}. Password and team preserved; log in again.')
+            return
         if args.operation == 'prune':
             from services.auth_retention import prune
             print(json.dumps(prune(db)))
@@ -98,4 +138,13 @@ def main():
             print('Expires:', result['expires_at'].isoformat())
 
 if __name__ == '__main__':
-    main()
+    from fastapi import HTTPException
+    from sqlalchemy.exc import SQLAlchemyError
+    try:
+        main()
+    except HTTPException as exc:
+        print(f'Operation refused ({exc.status_code}): {exc.detail}', file=sys.stderr)
+        raise SystemExit(1)
+    except SQLAlchemyError:
+        print('Database operation failed; no activation code was disclosed. Check migrations and database availability.', file=sys.stderr)
+        raise SystemExit(1)

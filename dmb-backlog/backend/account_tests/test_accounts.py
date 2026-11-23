@@ -59,11 +59,89 @@ def session_double(**changes):
     user=SimpleNamespace(id=1,is_active=True,credential_state='ready',auth_version=2,role=None)
     return db,user,row
 
-@pytest.mark.parametrize('changes',[{'revoked_at':sessions.now()},{'auth_version':1},{'absolute_expires_at':sessions.now()-timedelta(seconds=1)},{'last_activity_at':sessions.now()-timedelta(minutes=31)}])
-def test_session_revocation_and_expiry(changes):
+@pytest.mark.parametrize('changes',[{'revoked_at':sessions.now()},{'auth_version':1}])
+def test_session_revocation(changes):
     db,user,_=session_double(**changes)
     with pytest.raises(HTTPException) as error:sessions.check_session(db,user,'s',2)
     assert error.value.status_code==401
+
+
+@pytest.mark.parametrize('admin', [False, True])
+def test_session_has_no_idle_or_absolute_timeout(admin):
+    db, user, row = session_double(absolute_expires_at=sessions.now()-timedelta(days=365),
+        last_activity_at=sessions.now()-timedelta(days=365))
+    user.role = SimpleNamespace(admin_access='full' if admin else 'none')
+    assert sessions.check_session(db, user, 's', 2) is row
+
+
+def test_refresh_without_expiry_and_access_expiry():
+    import uuid
+    from auth import create_refresh_token
+    from config import settings
+    from jose import jwt
+    data = {'sub': '1', 'sid': str(uuid.uuid4()), 'auth_version': 1}
+    token = create_refresh_token(data, jti=str(uuid.uuid4()), family_id=data['sid'])
+    payload = decode_token(token)
+    assert payload['type'] == 'refresh'
+    assert 'exp' not in payload
+    payload['type'] = 'access'
+    assert decode_token(jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)) is None
+    assert decode_token(create_access_token(data, timedelta(seconds=-60))) is None
+    assert decode_token(create_access_token(data))['type'] == 'access'
+
+
+def test_refresh_cleanup_preserves_active_session_history():
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import Session
+    from refresh_sessions import cleanup_expired_sessions
+    engine = create_engine('sqlite:///:memory:')
+    # Only session tables, no users, credentials, roles or team fixtures.
+    with engine.begin() as connection:
+        connection.exec_driver_sql('CREATE TABLE auth_sessions (id TEXT PRIMARY KEY, revoked_at DATETIME)')
+        connection.exec_driver_sql('CREATE TABLE refresh_sessions (id INTEGER PRIMARY KEY, auth_session_id TEXT)')
+        connection.execute(text('INSERT INTO auth_sessions VALUES (:id, :revoked)'), [
+            {'id': 'active', 'revoked': None},
+            {'id': 'recent', 'revoked': sessions.now()},
+            {'id': 'old', 'revoked': sessions.now()-timedelta(days=2)}])
+        connection.exec_driver_sql("INSERT INTO refresh_sessions VALUES (1, 'active'), (2, 'recent'), (3, 'old')")
+    with Session(engine) as db:
+        assert cleanup_expired_sessions(db) == 1
+        assert db.execute(text('SELECT id FROM refresh_sessions ORDER BY id')).scalars().all() == [1, 2]
+    engine.dispose()
+
+
+def test_timeless_refresh_still_supports_logout(monkeypatch):
+    import uuid
+    import refresh_sessions
+    from auth import create_refresh_token
+    sid = str(uuid.uuid4())
+    token = create_refresh_token({'sub': '1', 'sid': sid, 'auth_version': 2},
+        jti=str(uuid.uuid4()), family_id=sid)
+    db, user, row = session_double()
+    db.query.return_value.filter.return_value.first.return_value = row
+    monkeypatch.setattr(refresh_sessions, 'lock_user', lambda *args: user)
+    refresh_sessions.revoke_refresh_session(db, token)
+    assert row.revoked_at is not None
+    assert row.revoke_reason == 'logout'
+    db.commit.assert_called_once()
+    with pytest.raises(HTTPException):
+        sessions.check_session(db, user, sid, 2)
+
+
+def test_refresh_remains_valid_years_later(monkeypatch):
+    import uuid
+    from datetime import datetime
+    from jose import jwt
+    from auth import create_refresh_token
+    sid = str(uuid.uuid4())
+    token = create_refresh_token({'sub': '1', 'sid': sid, 'auth_version': 2},
+        jti=str(uuid.uuid4()), family_id=sid)
+    class FutureDatetime(datetime):
+        @classmethod
+        def utcnow(cls):
+            return datetime.utcnow() + timedelta(days=3650)
+    monkeypatch.setattr(jwt, 'datetime', FutureDatetime)
+    assert decode_token(token)['sid'] == sid
 
 def test_session_ready_and_version():
     db,user,row=session_double()

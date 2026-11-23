@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_TIMEOUT_SECONDS: int = 30
+    DATABASE_REQUIRE_RESTRICTED_ROLE: bool = False
     REDIS_URL: Optional[str] = None
     EVENT_STREAM_NAME: str = "dmb:events"
     EVENT_STREAM_MAXLEN: int = 10000
@@ -81,9 +82,6 @@ class Settings(BaseSettings):
     
     AUTH_ISSUER: str = "dmb-backlog"
     AUTH_AUDIENCE: str = "dmb-browser"
-    AUTH_SESSION_HOURS: int = 8
-    AUTH_IDLE_MINUTES: int = 30
-    AUTH_ADMIN_IDLE_MINUTES: int = 15
     AUTH_MAX_SESSIONS: int = 5
     AUTH_INVITE_MINUTES: int = 1440
     AUTH_RECOVERY_MINUTES: int = 30
@@ -114,6 +112,8 @@ class Settings(BaseSettings):
 
     # AI Business Analyst Assistant (agent service)
     AGENT_BASE_URL: str = "http://127.0.0.1:9000"
+    # Core-only deployments explicitly opt out of the optional BA dependency.
+    AGENT_READINESS_REQUIRED: bool = True
     AGENT_RECOVERY_READ_ONLY: bool = False
     AGENT_SECRET: str = DEFAULT_AGENT_SECRET
     AGENT_TIMEOUT_SECONDS: float = 180.0

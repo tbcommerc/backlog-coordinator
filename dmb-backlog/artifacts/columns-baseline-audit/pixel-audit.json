@@ -1,0 +1,57 @@
+[
+  {
+    "file": "registry-dark-1366-win32-actual.png",
+    "changedPixels": 2192,
+    "bounds": [
+      24,
+      619,
+      182,
+      650
+    ],
+    "onlySidebar": true
+  },
+  {
+    "file": "registry-dark-1440-win32-actual.png",
+    "changedPixels": 2192,
+    "bounds": [
+      24,
+      619,
+      182,
+      650
+    ],
+    "onlySidebar": true
+  },
+  {
+    "file": "registry-light-1366-win32-actual.png",
+    "changedPixels": 2175,
+    "bounds": [
+      24,
+      619,
+      182,
+      650
+    ],
+    "onlySidebar": true
+  },
+  {
+    "file": "registry-light-1440-win32-actual.png",
+    "changedPixels": 2175,
+    "bounds": [
+      24,
+      619,
+      182,
+      650
+    ],
+    "onlySidebar": true
+  },
+  {
+    "file": "detail-edit-light-1440-win32-actual.png",
+    "changedPixels": 2200,
+    "bounds": [
+      24,
+      619,
+      900,
+      663
+    ],
+    "onlySidebar": false
+  }
+]

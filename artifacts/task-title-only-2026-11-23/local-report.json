@@ -1,0 +1,80 @@
+{
+  "result": "passed",
+  "source_sha256": "59ccdbddfcf8c4f50f7d0b7dbacb3c079a965638447c9b8910e6c27c5327443b",
+  "image_tag": "dmb-backlog:rehearsal-59ccdbddfcf8",
+  "project": "codex-core-rehearsal-20261123-134443",
+  "checks": [
+    {
+      "name": "production image built",
+      "result": "passed"
+    },
+    {
+      "name": "HTTPS readiness with DEBUG=false",
+      "result": "passed",
+      "detail": {
+        "database": "ok",
+        "outbox_pending": 0,
+        "outbox_dead_lettered": 0,
+        "outbox_oldest_seconds": 0,
+        "redis": "ok",
+        "attachment_storage": "ok",
+        "agent": "not_required",
+        "prioritiser": "disabled",
+        "agent_v2": "disabled"
+      }
+    },
+    {
+      "name": "first administrator activated over verified HTTPS",
+      "result": "passed"
+    },
+    {
+      "name": "production HTTPS cookie/login/refresh smoke",
+      "result": "passed",
+      "detail": {
+        "priorities": 3,
+        "statuses": 13,
+        "task_types": 4,
+        "channels": 2,
+        "teams": 1
+      }
+    },
+    {
+      "name": "real ClamAV ready for attachment acceptance",
+      "result": "passed"
+    },
+    {
+      "name": "real browser creates/edits a task, checks attachments, renews concurrent reads and opens related core registers",
+      "result": "passed"
+    },
+    {
+      "name": "observer cannot administer or create tasks",
+      "result": "passed"
+    },
+    {
+      "name": "API redirect preserves HTTPS origin through both proxies",
+      "result": "passed"
+    },
+    {
+      "name": "natural access expiry and refresh cycle 1",
+      "result": "passed"
+    },
+    {
+      "name": "natural access expiry and refresh cycle 2",
+      "result": "passed"
+    },
+    {
+      "name": "restart preserves users, dictionaries and tasks",
+      "result": "passed"
+    },
+    {
+      "name": "populated old schema upgrade preserves differing dictionary/FK IDs",
+      "result": "passed"
+    },
+    {
+      "name": "backup restored into a different DB and application login verified",
+      "result": "passed"
+    }
+  ],
+  "image_id": "sha256:d1d325c5c33a5cf66849416794d5a2a1350f1c552be8880a5064bd4592339ccf",
+  "cleanup": "completed"
+}

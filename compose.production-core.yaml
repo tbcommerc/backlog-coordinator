@@ -1,0 +1,97 @@
+# Bank profile: existing DBA-prepared PostgreSQL, no migration/DDL service.
+# The trusted bank ingress terminates HTTPS. No AI services.
+name: dmb-platform-production
+
+x-core-environment: &core-environment
+  DEBUG: "false"
+  RUN_STARTUP_SEED: "false"
+  RUN_STARTUP_MAINTENANCE: "false"
+  DATABASE_REQUIRE_RESTRICTED_ROLE: "true"
+  RUN_NOTIFICATION_SCHEDULER: "false"
+  MEETING_ANALYSIS_WORKER_ENABLED: "false"
+  AGENT_READINESS_REQUIRED: "false"
+  PRIORITISER_ENABLED: "false"
+  AGENT_V2_ENABLED: "false"
+  BACKLOG_ASSISTANT_ENABLED: "false"
+  DATABASE_URL: "${DMB_DATABASE_URL:?set existing DBA-prepared PostgreSQL URL for a DML-only runtime role}"
+  REDIS_URL: "${DMB_REDIS_URL:?set production Redis URL}"
+  SECRET_KEY: "${DMB_SECRET_KEY:?set unique production secret}"
+  AGENT_SECRET: "${DMB_AGENT_SECRET:?set unique production service secret}"
+  AUTH_RATE_HMAC_KEY: "${DMB_AUTH_RATE_HMAC_KEY:?set independent production rate secret}"
+  AUTH_ORIGINS: "${DMB_AUTH_ORIGINS:?set exact external HTTPS origins as JSON}"
+  CORS_ORIGINS: "${DMB_CORS_ORIGINS:?set external HTTPS origins as JSON}"
+  AUTH_ALLOWED_HOSTS: "${DMB_AUTH_ALLOWED_HOSTS:?set external and internal hosts as JSON}"
+  ATTACHMENT_STORAGE_DIR: /data/attachments
+  CLAMAV_HOST: clamav
+  OTEL_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+  OTEL_TRACE_SAMPLE_RATIO: "0.2"
+  OTEL_DEPLOYMENT_ENVIRONMENT: production-core
+
+services:
+  redis:
+    restart: unless-stopped
+    image: redis:7-alpine@sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c
+    environment:
+      REDIS_PASSWORD: "${DMB_REDIS_PASSWORD:?set production password}"
+    command: [sh, -c, 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep PONG']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks: [data]
+
+  backend:
+    restart: unless-stopped
+    image: "${DMB_BACKEND_IMAGE:?set immutable release image}"
+    environment: *core-environment
+    volumes: ["attachments:/data/attachments"]
+    depends_on:
+      redis: {condition: service_healthy}
+      otel-collector: {condition: service_started}
+      clamav: {condition: service_started}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready',timeout=5)"]
+      interval: 3s
+      timeout: 6s
+      retries: 40
+      start_period: 10s
+    deploy: {replicas: 2}
+    networks: [app, data]
+
+  clamav:
+    restart: unless-stopped
+    image: clamav/clamav:1.4.3@sha256:d39ad368e587cc204f71675c3982adbc6717b8c4cb309a7ee9a3213f7e684c50
+    volumes: ["clamav-data:/var/lib/clamav"]
+    networks: [app]
+
+  otel-collector:
+    restart: unless-stopped
+    image: otel/opentelemetry-collector-contrib:0.132.0@sha256:e0f565815b2b8e78eb9fdbb80f6190c921ab323aaa8ccceab3255c6d4225f4af
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes: ["./infrastructure/observability/otel-demo-core.yaml:/etc/otelcol-contrib/config.yaml:ro"]
+    networks: [app]
+
+  nginx:
+    restart: unless-stopped
+    image: nginx:1.27-alpine@sha256:62223d644fa234c3a1cc785ee14242ec47a77364226f1c811d2f669f96dc2ac8
+    ports: ["${DMB_HTTP_BIND:-127.0.0.1:8080}:8080"]
+    volumes:
+      - ./infrastructure/nginx/dmb.container.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend: {condition: service_healthy}
+    networks: [app]
+
+volumes:
+  redis-data:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-redis"
+  attachments:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-attachments"
+  clamav-data:
+    name: "${DMB_VOLUME_PREFIX:-dmb-platform}-clamav"
+
+networks:
+  app:
+  data: {internal: true}

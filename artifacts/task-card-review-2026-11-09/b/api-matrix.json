@@ -1,0 +1,582 @@
+{
+  "created_at": "2026-11-09T09:27:55.993333+00:00",
+  "base": "http://127.0.0.1:8000",
+  "results": [
+    {
+      "profile": "admin",
+      "expected_team_id": null,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "tribe-lead",
+      "expected_team_id": null,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "ba-a",
+      "expected_team_id": 11,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "ba-a-peer",
+      "expected_team_id": 11,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "ba-b",
+      "expected_team_id": 12,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "ba-no-team",
+      "expected_team_id": null,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "po-a",
+      "expected_team_id": 11,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "pl-a",
+      "expected_team_id": 11,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "cl-a",
+      "expected_team_id": 11,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "po-b",
+      "expected_team_id": 12,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "it-pl-a",
+      "expected_team_id": 11,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "it-pl-b",
+      "expected_team_id": 12,
+      "checks": {
+        "327": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        },
+        "326": {
+          "task": 200,
+          "comments": 200,
+          "attachments": 200,
+          "reporting": 200,
+          "work": 200
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "task_context": {
+        "327": {
+          "id": 327,
+          "team_id": 11,
+          "business_customer_id": 7
+        },
+        "326": {
+          "id": 326,
+          "team_id": 10,
+          "business_customer_id": null
+        }
+      },
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "customer-a",
+      "expected_team_id": null,
+      "checks": {
+        "327": {
+          "task": 403,
+          "comments": 403,
+          "attachments": 403,
+          "reporting": 403,
+          "work": 403
+        },
+        "326": {
+          "task": 403,
+          "comments": 403,
+          "attachments": 403,
+          "reporting": 403,
+          "work": 403
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": false,
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "customer-b",
+      "expected_team_id": null,
+      "checks": {
+        "327": {
+          "task": 403,
+          "comments": 403,
+          "attachments": 403,
+          "reporting": 403,
+          "work": 403
+        },
+        "326": {
+          "task": 403,
+          "comments": 403,
+          "attachments": 403,
+          "reporting": 403,
+          "work": 403
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": false,
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "customer-unlinked",
+      "expected_team_id": null,
+      "checks": {
+        "327": {
+          "task": 403,
+          "comments": 403,
+          "attachments": 403,
+          "reporting": 403,
+          "work": 403
+        },
+        "326": {
+          "task": 403,
+          "comments": 403,
+          "attachments": 403,
+          "reporting": 403,
+          "work": 403
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "logout": 204,
+      "me_after_logout": 401
+    },
+    {
+      "profile": "no-access",
+      "expected_team_id": null,
+      "checks": {
+        "327": {
+          "task": 403,
+          "comments": 403,
+          "attachments": 403,
+          "reporting": 403,
+          "work": 404
+        },
+        "326": {
+          "task": 403,
+          "comments": 403,
+          "attachments": 403,
+          "reporting": 403,
+          "work": 404
+        }
+      },
+      "login": 200,
+      "me": 200,
+      "identity_matches": true,
+      "team_matches": true,
+      "customer_binding_matches": true,
+      "logout": 204,
+      "me_after_logout": 401
+    }
+  ]
+}

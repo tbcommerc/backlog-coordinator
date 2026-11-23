@@ -94,6 +94,11 @@ class UserResponse(UserBase):
     can_export: bool = True
     permissions: Optional[Dict[str, str]] = None
 
+    @field_validator("can_edit", "can_delete", "can_export", "is_active", mode="before")
+    @classmethod
+    def safe_legacy_flags(cls, value):
+        return bool(value)
+
     class Config:
         from_attributes = True
 
@@ -205,6 +210,23 @@ class RoleResponse(RoleBase):
     id: int
     created_at: Optional[datetime] = None
 
+    @field_validator("status", mode="before")
+    @classmethod
+    def safe_legacy_status(cls, value):
+        return value or "in_dev"
+
+    @field_validator("backlog_dmb_access", "backlog_team_access", "reports_access", "analytics_access",
+                     "customer_access", "settings_access", "admin_access", mode="before")
+    @classmethod
+    def safe_legacy_access(cls, value):
+        return value if value in {"none", "read", "read_own", "write_own", "read_write", "read_all",
+                                  "write_all", "available", "partial", "full"} else "none"
+
+    @field_validator("can_edit_tasks", "can_delete_tasks", "can_export", mode="before")
+    @classmethod
+    def safe_legacy_flags(cls, value):
+        return bool(value)
+
     class Config:
         from_attributes = True
 
@@ -213,7 +235,7 @@ class RoleResponse(RoleBase):
 
 class TaskBase(BaseModel):
     did_client_group_id: Optional[int] = None
-    team_id: int
+    team_id: Optional[int] = None
     title: str = Field(max_length=255)
     description: Optional[str] = Field(None, max_length=10000)
     date_received: Optional[date] = None
@@ -302,10 +324,10 @@ class TaskBase(BaseModel):
 class TaskCreate(TaskBase):
     client_request_id: Optional[str] = Field(None, min_length=8, max_length=64)
     title: str = Field(min_length=1, max_length=255)
-    team_id: int
-    task_type_id: int
-    channel_id: int
-    date_received: date
+    team_id: Optional[int] = None
+    task_type_id: Optional[int] = None
+    channel_id: Optional[int] = None
+    date_received: Optional[date] = None
     priority_id: Optional[int] = None
     description: Optional[str] = Field(None, max_length=10000)
 
@@ -425,12 +447,6 @@ class TaskUpdate(BaseModel):
             raise ValueError('Введите название задачи')
         return value.strip()
 
-    @field_validator('team_id', 'task_type_id', 'channel_id', 'date_received')
-    @classmethod
-    def _validate_required_update_fields(cls, value):
-        if value is None:
-            raise ValueError('Обязательное поле не может быть пустым')
-        return value
     @field_validator('link_jira', mode='before')
     @classmethod
     def _normalize_link_jira(cls, v):
@@ -972,6 +988,7 @@ class DictionaryItemUpdate(BaseModel):
 
 class DictionaryItemResponse(DictionaryItemBase):
     id: int
+    reference_id: Optional[int] = None
     created_at: Optional[datetime] = None
     version: Optional[int] = 0
     lock_owner_id: Optional[int] = None

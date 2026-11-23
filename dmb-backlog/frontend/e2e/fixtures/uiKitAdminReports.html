@@ -50,6 +50,7 @@
         if (path === '/admin/column-labels') return structuredClone(fieldLabels);
         if (path.startsWith('/tasks/analytics/')) return { active_period: 'q4_2026', periods: [{ id: 'q3_2026', label: 'III квартал 2026' }, { id: 'q4_2026', label: 'IV квартал 2026' }], tasks: tasks.map((task, index) => ({ ...task, period_ids: [index ? 'q3_2026' : 'q4_2026'], effort_days: 10 + index, financial_effect: 300000, channel_name: index ? 'Внеплановый' : 'По бизнес-плану', department_name: 'Продукты', involved_team_names: ['Команда Б'], is_completed: index === 1, is_terminal: index === 1 })) };
         if (path === '/admin/teams') return structuredClone(teams);
+        if (path === '/tasks/reference') return { team_types: [{id:1,name:'Команда'}], project_statuses: [] };
         if (path === '/admin/users' && params.has('avatarCase')) return [{ ...user, name: 'Тестовый Пользователь', is_active: true }];
         if (path === '/admin/roles') return structuredClone(roles);
         if (path === '/admin/audit-log/filters') return {users:[],actions:[],entity_types:[]};

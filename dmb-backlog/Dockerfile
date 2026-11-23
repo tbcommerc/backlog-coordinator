@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app/backend
 
-COPY dmb-backlog/backend/requirements.lock /tmp/requirements.lock
+COPY dmb-backlog/backend/requirements-linux.lock /tmp/requirements.lock
 RUN pip install --no-cache-dir --require-hashes -r /tmp/requirements.lock
 
 COPY dmb-backlog/backend /app/backend

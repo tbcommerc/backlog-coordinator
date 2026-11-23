@@ -57,3 +57,13 @@ graphify-out/
 /agents/value-priority-assessor/build/
 /packages/dmb-agent-contracts/build/
 **/*.egg-info/
+
+# Generated local review material. Deliberately published evidence is added explicitly.
+/artifacts/
+/dmb-backlog/artifacts/
+/.impeccable/
+**/.playwright-artifacts-*/
+*.sqlite
+*.sqlite3
+*.bak
+*.backup

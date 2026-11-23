@@ -14,7 +14,7 @@ def _request(origin=None, base_url="https://dmb.example/"):
 
 def test_production_rejects_missing_or_untrusted_origin(monkeypatch):
     monkeypatch.setattr(settings, "DEBUG", False)
-    monkeypatch.setattr(settings, "CORS_ORIGINS", ["https://dmb.example"])
+    monkeypatch.setattr(settings, "AUTH_ORIGINS", ["https://dmb.example"])
     with pytest.raises(HTTPException):
         _require_trusted_origin(_request())
     with pytest.raises(HTTPException):
@@ -23,13 +23,13 @@ def test_production_rejects_missing_or_untrusted_origin(monkeypatch):
 
 def test_production_accepts_configured_origin(monkeypatch):
     monkeypatch.setattr(settings, "DEBUG", False)
-    monkeypatch.setattr(settings, "CORS_ORIGINS", ["https://dmb.example"])
+    monkeypatch.setattr(settings, "AUTH_ORIGINS", ["https://dmb.example"])
     _require_trusted_origin(_request("https://dmb.example"))
 
 
 def test_production_rejects_http_origin(monkeypatch):
     monkeypatch.setattr(settings, "DEBUG", False)
-    monkeypatch.setattr(settings, "CORS_ORIGINS", ["http://dmb.example"])
+    monkeypatch.setattr(settings, "AUTH_ORIGINS", ["http://dmb.example"])
     with pytest.raises(HTTPException, match="HTTPS"):
         _require_trusted_origin(_request("http://dmb.example", base_url="http://dmb.example/"))
 

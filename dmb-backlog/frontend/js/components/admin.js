@@ -14,6 +14,7 @@ import { renderViewState } from './viewState.js';
 import { TASK_COLUMNS, buildColumnLabels, buildColumnSettings, getAllColumnKeys } from './taskColumns.js';
 import { renderDictionariesTab } from './adminDictionaries.js?v=3';
 import { acquireDictionaryLock, DICTIONARY_CONFIG, getDictionaryChanges, persistDictionaryItems, releaseDictionaryLock, renderDictionaryForm, renderDictionaryRow, renderDictionaryRowAction, renderCompetencyRateControl } from './adminDictionaries.js?v=3';
+import { clearToolbarDirectories } from './filterToolbar.js?v=114';
 
 function escapeHtml(str) {
     const div = document.createElement('div');
@@ -721,7 +722,7 @@ function renderTeamsTab(app) {
 // ==================== PROJECTS TAB ====================
 
 function renderProjectsTab(app) {
-  const statuses = adminData.projectStatuses || [];
+  const statuses = adminData.projectStatusRefs || [];
   const users = adminData.users || [];
   const state = adminListState.projects;
   const query = state.search.trim().toLocaleLowerCase();
@@ -2579,6 +2580,10 @@ async function saveDictData(app) {
       document.getElementById('admin-modal-root').innerHTML = '';
       deactivateAdminModalFocus();
       await releaseDictLockIfHeld(app);
+      clearToolbarDirectories();
+      adminLoadState.teams = { status: 'idle' };
+      adminLoadState.projects = { status: 'idle' };
+      await app.loadReferenceData?.();
       toast(`Справочник сохранён: добавлено ${result.added}, изменено ${result.updated}, архивировано ${result.archived}`, 'success');
       await initAdmin(app);
     } catch (e) {
@@ -2799,7 +2804,7 @@ function renderProjectForm(data) {
     + adminField('project-code', 'Код проекта', data.code, { required: true, readonly: isEdit, attrs: { placeholder: 'Код проекта' } })
     + adminField('project-name', 'Название', data.name, { required: true, attrs: { placeholder: 'Название проекта' } })
     + adminField('project-description', 'Описание', data.description, { kind: 'textarea', attrs: { rows: 3, placeholder: 'Описание проекта' } })
-    + adminField('project-status', 'Статус', data.status_id, { kind: 'select', options: adminOptions(adminData.projectStatuses || []) })
+    + adminField('project-status', 'Статус', data.status_id, { kind: 'select', options: adminOptions(adminData.projectStatusRefs || []) })
     + adminField('project-pl', 'Ответственный PL', data.responsible_pl, { kind: 'select', options: adminOptions(adminData.users || []) });
 }
 
@@ -3059,14 +3064,14 @@ async function loadAdminTab(app, tab, force = false) {
   adminLoadState[tab] = { status: 'loading' };
   const loaders = {
     teams: async () => {
-      const [teams, users, types] = await Promise.all([app.api.get('/admin/teams'), app.api.get('/admin/users'), app.api.get('/admin/team-types')]);
-      adminData.teams = asItems(teams); adminData.users = asItems(users); adminData.teamTypeRefs = asItems(types);
+      const [teams, users, reference] = await Promise.all([app.api.get('/admin/teams'), app.api.get('/admin/users'), app.api.get('/tasks/reference')]);
+      adminData.teams = asItems(teams); adminData.users = asItems(users); adminData.teamTypeRefs = reference.team_types || [];
     },
     projects: async () => {
-      const [projects, statuses, users] = await Promise.all([
-        app.api.get('/admin/projects'), app.api.get('/admin/project-statuses'), app.api.get('/admin/users'),
+      const [projects, reference, users] = await Promise.all([
+        app.api.get('/admin/projects'), app.api.get('/tasks/reference'), app.api.get('/admin/users'),
       ]);
-      adminData.projects = asItems(projects); adminData.projectStatuses = asItems(statuses); adminData.users = asItems(users);
+      adminData.projects = asItems(projects); adminData.projectStatusRefs = reference.project_statuses || []; adminData.users = asItems(users);
     },
     businessCustomers: async () => {
       const [customers, departments] = await Promise.all([app.api.get('/admin/business-customers'), app.api.get('/admin/departments')]);

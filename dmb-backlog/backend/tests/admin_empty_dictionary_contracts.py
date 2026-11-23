@@ -35,7 +35,7 @@ def functions():
     for node in nodes:
         node.decorator_list=[]; node.returns=None; node.args.defaults=[]
         for arg in node.args.args: arg.annotation=None
-    scope=dict(HTTPException=HTTPError, DictLockResponse=lambda **kw:NS(**kw), datetime=datetime, timezone=timezone, timedelta=timedelta, DICT_LOCK_MINUTES=15, _dict_items_for_lock=lambda typ,db:db.items, _is_dict_lock_active=lambda item:bool(item.lock_owner_id), User=Item, Tag=Item, Department=Item, DictionaryItem=Item, text=lambda value:value)
+    scope=dict(synchronize_references=lambda db,typ:None, HTTPException=HTTPError, DictLockResponse=lambda **kw:NS(**kw), datetime=datetime, timezone=timezone, timedelta=timedelta, DICT_LOCK_MINUTES=15, _dict_items_for_lock=lambda typ,db:db.items, _is_dict_lock_active=lambda item:bool(item.lock_owner_id), User=Item, Tag=Item, Department=Item, DictionaryItem=Item, text=lambda value:value)
     exec(compile(ast.Module(body=nodes,type_ignores=[]),'admin_contracts','exec'),scope)
     return scope
 

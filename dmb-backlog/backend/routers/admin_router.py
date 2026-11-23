@@ -35,6 +35,7 @@ from schemas import (
 )
 from auth import get_current_user, require_permission
 from services.auth_limits import sensitive_limit
+from services.reference_catalog import lock_catalog, synchronize_references, REFERENCE_MODELS
 from audit_context import current_audit_request
 from idempotency import reserve_idempotency
 from outbox_admin import DeadLetterConflict, DeadLetterNotFound, requeue_dead_letter, serialize_dead_letter
@@ -668,6 +669,7 @@ def admin_get_users(
 
 from services import accounts
 from services.auth_limits import sensitive_limit
+from services.reference_catalog import lock_catalog, synchronize_references, REFERENCE_MODELS
 from account_schemas import Confirmation, ReasonConfirmation, LoginChange, AccessChange
 
 @router.post("/users", response_model=UserResponse, status_code=201, dependencies=[Depends(sensitive_limit)])
@@ -871,6 +873,11 @@ def get_dict_items(dict_type: str, db: Session):
 
 
 def _dictionary_usage_count(dict_type: str, item_id: int, db: Session) -> int:
+    if dict_type in REFERENCE_MODELS:
+        item = db.get(DictionaryItem, item_id)
+        if not item or item.reference_id is None:
+            return 0
+        item_id = item.reference_id
     task_fields = {
         "priority": [Task.priority_id], "status": [Task.status_id, Task.previous_status_id],
         "task_type": [Task.task_type_id], "channel": [Task.channel_id], "deadline": [Task.deadline_id],
@@ -921,6 +928,12 @@ def _check_dict_lock(dict_type: str, user: User, db: Session):
             status_code=423,
             detail=f"Справочник редактируется администратором {info['lock_owner_name']}. Доступен просмотр.",
         )
+
+
+def _prepare_reference_write(dict_type, user, db):
+    lock_catalog(db)
+    _check_dict_lock(dict_type, user, db)
+    synchronize_references(db, dict_type)
 
 
 @router.put("/dictionaries/{dict_type}/batch")
@@ -977,6 +990,7 @@ def save_dictionary_batch(
     added = updated = archived = 0
     next_version = current_version + 1
     try:
+        synchronize_references(db, dict_type)
         for position, payload in enumerate(data.items):
             values = {
                 "name": payload.name.strip(), "code": (payload.code or "").strip() or None,
@@ -1005,6 +1019,7 @@ def save_dictionary_batch(
                 target.lock_until = None
                 archived += 1
         db.flush()
+        synchronize_references(db, dict_type)
         active = db.query(model).filter(
             model.is_active == True if dict_type in {"department", "tag"} else (
                 (DictionaryItem.dict_type == dict_type) & (DictionaryItem.is_active == True)
@@ -1018,7 +1033,7 @@ def save_dictionary_batch(
     serialized = []
     for item in active:
         serialized.append({
-            "id": item.id, "dict_type": dict_type, "name": item.name, "code": item.code,
+            "id": item.id, "reference_id": getattr(item, "reference_id", None), "dict_type": dict_type, "name": item.name, "code": item.code,
             "color": item.color, "sort_order": item.sort_order or 0, "is_active": item.is_active,
             "version": item.version or next_version,
         })
@@ -1073,9 +1088,10 @@ def create_priority(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    _check_dict_lock("priority", current_user, db)
+    _prepare_reference_write("priority", current_user, db)
     item = DictionaryItem(dict_type="priority", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
+    synchronize_references(db, "priority")
     db.commit()
     db.refresh(item)
     return item
@@ -1087,9 +1103,10 @@ def create_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    _check_dict_lock("status", current_user, db)
+    _prepare_reference_write("status", current_user, db)
     item = DictionaryItem(dict_type="status", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
+    synchronize_references(db, "status")
     db.commit()
     db.refresh(item)
     return item
@@ -1101,9 +1118,10 @@ def create_task_type(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    _check_dict_lock("task_type", current_user, db)
+    _prepare_reference_write("task_type", current_user, db)
     item = DictionaryItem(dict_type="task_type", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
+    synchronize_references(db, "task_type")
     db.commit()
     db.refresh(item)
     return item
@@ -1119,10 +1137,11 @@ def update_priority(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "priority").first()
     if not item:
         raise HTTPException(status_code=404, detail="Priority not found")
-    _check_dict_lock("priority", current_user, db)
+    _prepare_reference_write("priority", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     item.version = (item.version or 0) + 1
+    synchronize_references(db, "priority")
     db.commit()
     db.refresh(item)
     return item
@@ -1138,10 +1157,11 @@ def update_status(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "status").first()
     if not item:
         raise HTTPException(status_code=404, detail="Status not found")
-    _check_dict_lock("status", current_user, db)
+    _prepare_reference_write("status", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     item.version = (item.version or 0) + 1
+    synchronize_references(db, "status")
     db.commit()
     db.refresh(item)
     return item
@@ -1157,10 +1177,11 @@ def update_task_type(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "task_type").first()
     if not item:
         raise HTTPException(status_code=404, detail="Task type not found")
-    _check_dict_lock("task_type", current_user, db)
+    _prepare_reference_write("task_type", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     item.version = (item.version or 0) + 1
+    synchronize_references(db, "task_type")
     db.commit()
     db.refresh(item)
     return item
@@ -1172,11 +1193,12 @@ def delete_priority(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
+    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "priority").first()
     if not item:
         raise HTTPException(status_code=404, detail="Priority not found")
-    _check_dict_lock("priority", current_user, db)
+    _prepare_reference_write("priority", current_user, db)
     item.is_active = False
+    synchronize_references(db, "priority")
     db.commit()
     return {"message": "Priority deleted"}
 
@@ -1187,11 +1209,12 @@ def delete_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
+    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "status").first()
     if not item:
         raise HTTPException(status_code=404, detail="Status not found")
-    _check_dict_lock("status", current_user, db)
+    _prepare_reference_write("status", current_user, db)
     item.is_active = False
+    synchronize_references(db, "status")
     db.commit()
     return {"message": "Status deleted"}
 
@@ -1202,11 +1225,12 @@ def delete_task_type(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
+    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "task_type").first()
     if not item:
         raise HTTPException(status_code=404, detail="Task type not found")
-    _check_dict_lock("task_type", current_user, db)
+    _prepare_reference_write("task_type", current_user, db)
     item.is_active = False
+    synchronize_references(db, "task_type")
     db.commit()
     return {"message": "Task type deleted"}
 
@@ -1269,9 +1293,10 @@ def create_channel(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    _check_dict_lock("channel", current_user, db)
+    _prepare_reference_write("channel", current_user, db)
     item = DictionaryItem(dict_type="channel", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
+    synchronize_references(db, "channel")
     db.commit()
     db.refresh(item)
     return item
@@ -1287,10 +1312,11 @@ def update_channel(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "channel").first()
     if not item:
         raise HTTPException(status_code=404, detail="Channel not found")
-    _check_dict_lock("channel", current_user, db)
+    _prepare_reference_write("channel", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     item.version = (item.version or 0) + 1
+    synchronize_references(db, "channel")
     db.commit()
     db.refresh(item)
     return item
@@ -1302,11 +1328,12 @@ def delete_channel(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
+    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "channel").first()
     if not item:
         raise HTTPException(status_code=404, detail="Channel not found")
-    _check_dict_lock("channel", current_user, db)
+    _prepare_reference_write("channel", current_user, db)
     item.is_active = False
+    synchronize_references(db, "channel")
     db.commit()
     return {"message": "Channel deleted"}
 
@@ -1325,9 +1352,10 @@ def create_deadline(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    _check_dict_lock("deadline", current_user, db)
+    _prepare_reference_write("deadline", current_user, db)
     item = DictionaryItem(dict_type="deadline", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
+    synchronize_references(db, "deadline")
     db.commit()
     db.refresh(item)
     return item
@@ -1343,10 +1371,11 @@ def update_deadline(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "deadline").first()
     if not item:
         raise HTTPException(status_code=404, detail="Deadline not found")
-    _check_dict_lock("deadline", current_user, db)
+    _prepare_reference_write("deadline", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     item.version = (item.version or 0) + 1
+    synchronize_references(db, "deadline")
     db.commit()
     db.refresh(item)
     return item
@@ -1358,11 +1387,12 @@ def delete_deadline(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
+    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "deadline").first()
     if not item:
         raise HTTPException(status_code=404, detail="Deadline not found")
-    _check_dict_lock("deadline", current_user, db)
+    _prepare_reference_write("deadline", current_user, db)
     item.is_active = False
+    synchronize_references(db, "deadline")
     db.commit()
     return {"message": "Deadline deleted"}
 
@@ -1473,9 +1503,10 @@ def create_team_type(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    _check_dict_lock("team_type", current_user, db)
+    _prepare_reference_write("team_type", current_user, db)
     item = DictionaryItem(dict_type="team_type", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
+    synchronize_references(db, "team_type")
     db.commit()
     db.refresh(item)
     return item
@@ -1491,10 +1522,11 @@ def update_team_type(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "team_type").first()
     if not item:
         raise HTTPException(status_code=404, detail="Team type not found")
-    _check_dict_lock("team_type", current_user, db)
+    _prepare_reference_write("team_type", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     item.version = (item.version or 0) + 1
+    synchronize_references(db, "team_type")
     db.commit()
     db.refresh(item)
     return item
@@ -1506,11 +1538,12 @@ def delete_team_type(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
+    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "team_type").first()
     if not item:
         raise HTTPException(status_code=404, detail="Team type not found")
-    _check_dict_lock("team_type", current_user, db)
+    _prepare_reference_write("team_type", current_user, db)
     item.is_active = False
+    synchronize_references(db, "team_type")
     db.commit()
     return {"message": "Team type deleted"}
 
@@ -1529,9 +1562,10 @@ def create_project_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    _check_dict_lock("project_status", current_user, db)
+    _prepare_reference_write("project_status", current_user, db)
     item = DictionaryItem(dict_type="project_status", **data.model_dump(exclude={"dict_type"}))
     db.add(item)
+    synchronize_references(db, "project_status")
     db.commit()
     db.refresh(item)
     return item
@@ -1547,10 +1581,11 @@ def update_project_status(
     item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "project_status").first()
     if not item:
         raise HTTPException(status_code=404, detail="Project status not found")
-    _check_dict_lock("project_status", current_user, db)
+    _prepare_reference_write("project_status", current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     item.version = (item.version or 0) + 1
+    synchronize_references(db, "project_status")
     db.commit()
     db.refresh(item)
     return item
@@ -1562,11 +1597,12 @@ def delete_project_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("admin", "partial"))
 ):
-    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id).first()
+    item = db.query(DictionaryItem).filter(DictionaryItem.id == item_id, DictionaryItem.dict_type == "project_status").first()
     if not item:
         raise HTTPException(status_code=404, detail="Project status not found")
-    _check_dict_lock("project_status", current_user, db)
+    _prepare_reference_write("project_status", current_user, db)
     item.is_active = False
+    synchronize_references(db, "project_status")
     db.commit()
     return {"message": "Project status deleted"}
 
@@ -1847,12 +1883,20 @@ def get_display_setting(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    setting = db.query(DisplaySetting).filter(DisplaySetting.page == page).first()
+    if page == "shared":
+        # Shared saves target the two registry pages; read the same storage.
+        rows = {row.page: row for row in db.query(DisplaySetting).filter(
+            DisplaySetting.page.in_(["backlog_dmb", "team_backlog", "shared"])).all()}
+        setting = rows.get("backlog_dmb") or rows.get("team_backlog") or rows.get("shared")
+        if setting is None:
+            return DisplaySettingResponse(id=0, page=page, settings={})
+    else:
+        setting = db.query(DisplaySetting).filter(DisplaySetting.page == page).first()
     if not setting:
         raise HTTPException(status_code=404, detail="Display settings not found")
     return DisplaySettingResponse(
         id=setting.id,
-        page=setting.page,
+        page=page,
         settings=json.loads(setting.settings) if isinstance(setting.settings, str) else setting.settings,
         created_at=setting.created_at,
         updated_at=setting.updated_at,

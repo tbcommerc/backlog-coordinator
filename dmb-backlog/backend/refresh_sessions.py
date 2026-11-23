@@ -13,13 +13,15 @@ hash_refresh_token = digest
 
 
 def cleanup_expired_sessions(db):
-    return db.query(RefreshSession).filter(RefreshSession.expires_at < now()-timedelta(days=1)).delete(synchronize_session=False)
+    # Keep replay history for the entire lifetime of an active session.
+    revoked = db.query(AuthSession.id).filter(AuthSession.revoked_at < now()-timedelta(days=1))
+    return db.query(RefreshSession).filter(RefreshSession.auth_session_id.in_(revoked)).delete(synchronize_session=False)
 
 
 def issue_refresh_session(db, user, session):
     jti = str(uuid.uuid4())
-    token = create_refresh_token({'sub': str(user.id), 'sid': session.id, 'auth_version': user.auth_version,
-        'exp': int(utc(session.absolute_expires_at).timestamp())}, jti=jti, family_id=session.id)
+    token = create_refresh_token({'sub': str(user.id), 'sid': session.id, 'auth_version': user.auth_version},
+        jti=jti, family_id=session.id)
     row = RefreshSession(user_id=user.id, jti=jti, family_id=session.id, auth_session_id=session.id,
         token_hash=digest(token), expires_at=session.absolute_expires_at)
     db.add(row)

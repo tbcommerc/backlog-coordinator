@@ -44,7 +44,7 @@
 .ui-task-detail-composition .task-description-content p + p { margin-top:12px; }
 .ui-task-edit-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px 20px; }
 .ui-task-edit-full { grid-column:1/-1; }
-.ui-task-edit-field { margin:0; min-width:0; }
+.ui-task-edit-field { margin:0; min-width:0; grid-template-columns:minmax(0,1fr); }
 .ui-task-edit-field .form-label { font-size:12px; line-height:18px; color:var(--text-secondary); font-weight:400; }
 .ui-task-edit-field .form-hint { margin:0; font-size:12px; line-height:18px; color:var(--text-secondary); }
 .ui-task-edit-field textarea.ui-control { min-height:94px; resize:vertical; }

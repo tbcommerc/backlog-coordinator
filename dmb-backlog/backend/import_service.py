@@ -20,7 +20,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
-from auth import can_edit_task
+from auth import can_edit_task, get_task_action_scope
 from services.task_metrics import calculate_cost_value_ratio
 
 from models import (
@@ -169,7 +169,11 @@ def build_field_map(db: Session) -> tuple:
     """
     labels = db.query(FieldLabel).all()
     db_key_to_label = {fl.key: fl.label for fl in labels}
-    field_map = {}
+    field_map = {_norm(key): key for key in IMPORTABLE_FIELDS}
+    field_map[_norm('Название задачи')] = 'title'
+    field_map[_norm('Название')] = 'title'
+    field_map[_norm('Название задачи')] = 'title'
+    field_map[_norm('Название')] = 'title'
     for key, label in [('did_client_group_id', 'Клиент ДИД'), ('business_customer_id', 'Бизнес-заказчик')]:
         field_map[_norm(key)] = key
         field_map[_norm(label)] = key
@@ -182,13 +186,9 @@ def build_field_map(db: Session) -> tuple:
             field_map[_norm(fl.label)] = fl.key
             field_map[_norm(fl.key)] = fl.key
 
-    required_fields = set()
-    for fl in labels:
-        if fl.is_required and fl.key in IMPORTABLE_SET:
-            required_fields.add(fl.key)
-    # Обязательные поля по умолчанию (title/team_id) — даже если field_labels не заполнены
-    required_fields.add('title')
-    required_fields.add('team_id')
+    # Task creation has one business-required field, independently of legacy
+    # field-label flags. Do not mutate protected dictionary metadata.
+    required_fields = {'title'}
 
     return field_map, db_key_to_label, required_fields
 
@@ -478,7 +478,8 @@ def _build_task(db: Session, task_data: dict, jira_links: List[str],
     task.actual_effort_days = compute_actual_effort_days(
         {f: getattr(task, f) for f in ACTUAL_EFFORT_FIELDS})
     if task.status_id is None:
-        task.status_id = 1  # НОВАЯ ЗАДАЧА
+        default_status = db.query(TaskStatus).filter(TaskStatus.code == 'new').first()
+        task.status_id = default_status.id if default_status else None
     if task.date_received is None:
         task.date_received = date.today()
     if task.created_by is None:
@@ -578,6 +579,8 @@ def import_tasks_from_csv(db: Session, raw: bytes, current_user: User) -> dict:
         if task is None:
             result['skipped'] += 1
             continue
+        if task.team_id is None and get_task_action_scope(current_user, 'edit') == 'team':
+            task.team_id = current_user.team_id
         if not can_edit_task(current_user, task.team_id):
             result['errors'].append(make_error(
                 row_num, 'team_id', db_key_to_label, '', 'permission_denied',

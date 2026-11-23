@@ -88,9 +88,9 @@ export async function initKanban(app) {
                 statusNameToId[t.status_name] = t.status_id;
             }
         });
-        // Дополняем из /admin/statuses (DictionaryItem.id: 4-16) — только те статусы, что не нашли в задачах
+        // Reference IDs belong to statuses, not to dictionary editor rows.
         try {
-            const statusList = await app.api.get('/admin/statuses');
+            const { statuses: statusList } = await app.api.get('/tasks/reference');
             (Array.isArray(statusList) ? statusList : (statusList.items || [])).forEach(s => {
                 if (statusNameToId[s.name] == null) {
                     statusNameToId[s.name] = s.id;

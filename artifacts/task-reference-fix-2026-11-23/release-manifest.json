@@ -1,0 +1,32 @@
+{
+  "scope": "core demo and six task reference fixes; no AI agents",
+  "qualification": "passed",
+  "image_tag": "dmb-backlog:rehearsal-46175567dbf6",
+  "image_id": "sha256:833a6fd4f18a755c4ca6db14debed7deb16f9ebc620e08d6d3a9e344b93532a3",
+  "source_sha256": "46175567dbf6bd34b7d6b74acece775799caf1e4f37b4061ad174bd494b5aa01",
+  "platform": "linux/amd64",
+  "runtime_user": "dmb",
+  "runtime_or_secret_file_count": 0,
+  "source_unchanged_during_rehearsal": true,
+  "bank_vm_verified": false,
+  "files_sha256": {
+    "compose.demo-core.yaml": "6d1e44a53ee4860aa853c56cc0173b38d344e32a53337583835212dd1ff4018f",
+    "compose.production.yaml": "217e20e03f0127dd5b1a4f396cd49574b8fcb2b105b0319fa088bf44d8dd9860",
+    "dmb-backlog/Dockerfile": "9235b7ce663ed120867c5b5bceee39367aff55fcbd2c23dac9ce22d8c80bf03c",
+    "scripts/rehearse-demo-core.py": "c72609114f1c75c86e3f79d139176b27c8f649a21885ac3c6438fc661b6cdc6f",
+    "dmb-backlog/backend/requirements-linux.lock": "d221fc5f17eb673baae7368db4e205308a6cddd5c53a26eb24fa2c08128b04c8",
+    "dmb-backlog/backend/routers/tasks_router.py": "2ed30ed33ebb058eb7ca063679e34dd6ea7f9f0db5710c327e80cb08f7714ff9",
+    "dmb-backlog/backend/deployment_tests/rehearsal_fixture.py": "8cc1676d385848afd5388cba23f0cbcdc727d1e8d705c2f96cf86a61230a6a39",
+    "dmb-backlog/backend/deployment_tests/test_task_reference_integrity.py": "519708d16679764c337e3a10c404e04021542ef0e523fdd86fe1808fdcbe46d6",
+    "dmb-backlog/frontend/js/taskCardReferences.js": "7dfe7e76b6f4cb040dd2d266acc0f537d7626cf7bf419bff027f22281469c8cc",
+    "dmb-backlog/frontend/js/components/modal.js": "195f641eef543d37d2fc5d128e47e85598607dfefe892d4b7af07b9b16f2ac96",
+    "dmb-backlog/frontend/css/ui/task-detail-composition.css": "888934f84c5b2c933da12c519de99865258e1c7ce6d86a1e4fc684dd33a40005",
+    "dmb-backlog/frontend/e2e/taskCardReferenceIntegrity.spec.mjs": "eed6122e934069878eff2cb23afe6aa8333bb7e312ed602ee2160cf0c1f21010",
+    "dmb-backlog/frontend/e2e/deploymentStand.spec.mjs": "56002940db414b596f1cced4ae3cd66faa06961322f35719ae5398951e6cff3a",
+    "dmb-backlog/frontend/tests/taskCardReferences.test.mjs": "52e4a87f1ce4ec75221e617bed026177f2d018f636a046fc375cd98bfecce73f",
+    "dmb-backlog/playwright.deployment.config.mjs": "dac2888aab93448b4170f0c39bd993139de6e2f519999f669e12986f444704c1",
+    "infrastructure/nginx/dmb.container.conf": "635a0cc62dfa27128fca56a3d18f51f74ab364a96219712aac900f0f67bb06df",
+    "infrastructure/nginx/dmb.demo-tls.conf": "ab9bfd0c6adfae7ace1e21cef3319f35b88eb8b0242b587073f7caa8783ae338",
+    "infrastructure/observability/otel-demo-core.yaml": "0c8bc77ea2fcd53e847bf5cc413d85771aa23488675958ec64bd6cfdeca0e1c3"
+  }
+}

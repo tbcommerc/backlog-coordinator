@@ -1,0 +1,110 @@
+[
+  {
+    "surface": "backlog",
+    "theme": "light",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "backlog",
+    "theme": "dark",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "backlog",
+    "theme": "light",
+    "width": 390,
+    "overflow": false
+  },
+  {
+    "surface": "metrics",
+    "theme": "light",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "metrics",
+    "theme": "dark",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "metrics",
+    "theme": "light",
+    "width": 390,
+    "overflow": false
+  },
+  {
+    "surface": "projects",
+    "theme": "light",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "projects",
+    "theme": "dark",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "projects",
+    "theme": "light",
+    "width": 390,
+    "overflow": false
+  },
+  {
+    "surface": "review",
+    "theme": "light",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "review",
+    "theme": "dark",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "review",
+    "theme": "light",
+    "width": 390,
+    "overflow": false
+  },
+  {
+    "surface": "work",
+    "theme": "light",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "work",
+    "theme": "dark",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "work",
+    "theme": "light",
+    "width": 390,
+    "overflow": false
+  },
+  {
+    "surface": "customer",
+    "theme": "light",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "customer",
+    "theme": "dark",
+    "width": 1440,
+    "overflow": false
+  },
+  {
+    "surface": "customer",
+    "theme": "light",
+    "width": 390,
+    "overflow": false
+  }
+]

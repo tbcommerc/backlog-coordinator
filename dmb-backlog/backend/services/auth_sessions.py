@@ -1,6 +1,6 @@
 """Stable server sessions. User locks serialize lifecycle, login and refresh."""
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from fastapi import HTTPException
 from models import AuthSession, AuthChallenge, RefreshSession, SecurityEvent, User
 from config import settings
@@ -28,10 +28,8 @@ def lock_user(db, user_id):
 
 def check_session(db, user, sid, version):
     session = db.query(AuthSession).filter(AuthSession.id == sid, AuthSession.user_id == user.id).populate_existing().first()
-    idle = settings.AUTH_ADMIN_IDLE_MINUTES if user.role and user.role.admin_access == 'full' else settings.AUTH_IDLE_MINUTES
     if (not user.is_active or user.credential_state != 'ready' or user.auth_version != version or
-        not session or session.auth_version != version or session.revoked_at or
-        utc(session.absolute_expires_at) <= now() or utc(session.last_activity_at) + timedelta(minutes=idle) <= now()):
+        not session or session.auth_version != version or session.revoked_at):
         raise HTTPException(401, 'SESSION_INVALID')
     return session
 
@@ -56,7 +54,8 @@ def new_session(db, user, request):
     timestamp = now()
     session = AuthSession(id=str(uuid.uuid4()), user_id=user.id, auth_version=user.auth_version,
         created_at=timestamp, last_activity_at=timestamp,
-        absolute_expires_at=timestamp + timedelta(hours=settings.AUTH_SESSION_HOURS),
+        # Compatibility with the existing NOT NULL column; no session deadline.
+        absolute_expires_at=datetime(9999, 1, 1, tzinfo=timezone.utc),
         ip_address=(request.client.host if request.client else '')[:64],
         client_label=request.headers.get('user-agent', '')[:256])
     db.add(session)

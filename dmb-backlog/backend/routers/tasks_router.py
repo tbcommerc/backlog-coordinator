@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.orm.exc import StaleDataError
 from services.task_metrics import calculate_cost_value_ratio
 from services.pip_decisions import load_latest_pip_decisions
@@ -47,6 +47,19 @@ def _require_reference(db, model, value, field_name, label):
             }],
         )
 
+def _require_involved_teams(db, values):
+    if not values:
+        return
+    existing = {row.id for row in db.query(Team.id).filter(Team.id.in_(set(values))).all()}
+    for index, value in enumerate(values):
+        if value not in existing:
+            raise HTTPException(422, detail=[{
+                "loc": ["body", "involved_teams", index],
+                "msg": "Выбранная вовлечённая команда больше не существует. Обновите форму.",
+                "type": "value_error.reference",
+            }])
+
+
 from database import engine, get_db, db_lower
 from models import DidClientGroup, Task, User, Team, TaskHistory, TaskStatus, Priority, Deadline, Channel, Department, Project, TaskType, BusinessCustomer, AuditLog, CompetencyCostHistory, FieldLabel, Tag, IssueTag, DictionaryItem, TaskComment
 from idempotency import reserve_idempotency
@@ -64,6 +77,7 @@ from auth import (
     can_access_task,
     can_edit_task,
     is_task_global_editor,
+    get_task_action_scope,
     can_comment_task,
     can_make_pip_decision,
     task_read_scope_clause,
@@ -769,50 +783,35 @@ def get_task_reference(
     current_user: User = Depends(get_current_user)
 ):
     """Return reference data for task editing (statuses, priorities, etc.)"""
-    dictionary_orders = {
-        dict_type: {
-            (item.name or "").strip().casefold(): item.sort_order or 0
-            for item in db.query(DictionaryItem).filter(
-                DictionaryItem.dict_type == dict_type,
-                DictionaryItem.is_active == True,
-            ).all()
-        }
-        for dict_type in ("priority", "deadline", "task_type", "channel")
-    }
-
-    def ordered(items, dict_type=None, direct_order=None):
-        order_by_name = dictionary_orders.get(dict_type, {})
-        return sorted(items, key=lambda item: (
-            direct_order(item) if direct_order else order_by_name.get((item.name or "").strip().casefold(), 10**9),
-            (item.name or "").casefold(),
-            item.id,
-        ))
-
-    statuses = db.query(TaskStatus).order_by(TaskStatus.sort_order).all()
-    priorities = ordered(db.query(Priority).all(), "priority")
-    deadlines = ordered(db.query(Deadline).all(), "deadline")
+    from services.reference_catalog import reference_options
+    statuses = reference_options(db, "status")
+    priorities = reference_options(db, "priority")
+    deadlines = reference_options(db, "deadline")
     teams = db.query(Team).order_by(Team.name).all()
     projects = db.query(Project).order_by(Project.name).all()
-    task_types = ordered(db.query(TaskType).filter((TaskType.code != "metric_kr") | TaskType.code.is_(None)).all(), "task_type")
-    channels = ordered(db.query(Channel).all(), "channel")
-    departments = ordered(db.query(Department).all(), direct_order=lambda item: item.sort_order or 0)
-    business_customers = db.query(BusinessCustomer).order_by(BusinessCustomer.name).all()
+    task_types = [item for item in reference_options(db, "task_type") if item["code"] != "metric_kr"]
+    channels = reference_options(db, "channel")
+    departments = db.query(Department).filter(Department.is_active.is_(True)).order_by(Department.sort_order, Department.name).all()
+    business_customers = db.query(BusinessCustomer).options(joinedload(BusinessCustomer.department)).order_by(BusinessCustomer.name).all()
 
     users = db.query(User).filter(User.is_active == True).order_by(User.name).all()
 
     return {
         "did_client_groups": [{"id": g.id, "name": g.name, "code": g.code, "sort_order": g.sort_order or 0} for g in db.query(DidClientGroup).filter_by(is_active=True).order_by(DidClientGroup.sort_order, DidClientGroup.name)],
-        "statuses": [{"id": s.id, "name": s.name, "sort_order": s.sort_order or 0} for s in statuses],
-        "priorities": [{"id": p.id, "name": p.name, "sort_order": dictionary_orders["priority"].get((p.name or "").strip().casefold(), 10**9)} for p in priorities],
-        "deadlines": [{"id": d.id, "name": d.name, "sort_order": dictionary_orders["deadline"].get((d.name or "").strip().casefold(), 10**9)} for d in deadlines],
+        "statuses": statuses,
+        "priorities": priorities,
+        "deadlines": deadlines,
         "teams": [{"id": t.id, "name": t.name} for t in teams],
-        "projects": [{"id": p.id, "name": p.name} for p in projects],
-        "task_types": [{"id": t.id, "name": t.name, "sort_order": dictionary_orders["task_type"].get((t.name or "").strip().casefold(), 10**9)} for t in task_types],
-        "channels": [{"id": c.id, "name": c.name, "sort_order": dictionary_orders["channel"].get((c.name or "").strip().casefold(), 10**9)} for c in channels],
+        "projects": [{"id": p.id, "name": p.name, "code": p.code} for p in projects],
+        "task_types": task_types,
+        "channels": channels,
+        "team_types": reference_options(db, "team_type"),
+        "project_statuses": reference_options(db, "project_status"),
         "departments": [{"id": d.id, "name": d.name, "sort_order": d.sort_order or 0} for d in departments],
-        "business_customers": [{"id": b.id, "name": b.name, "department_id": b.department_id} for b in business_customers],
-        "users": [{"id": u.id, "name": u.name, "team_id": u.team_id} for u in users],
-        "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in db.query(Tag).order_by(Tag.name).all()]
+        "business_customers": [{"id": b.id, "name": b.name, "department_id": b.department_id,
+            "department_name": b.department.name if b.department else None} for b in business_customers],
+        "users": [{"id": u.id, "name": u.name, "login": u.login, "team_id": u.team_id} for u in users],
+        "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in db.query(Tag).filter(Tag.is_active.is_(True)).order_by(Tag.name).all()]
     }
 
 
@@ -975,10 +974,16 @@ def create_task_in_transaction(task_data: TaskCreate, db: Session, current_user:
             return task_to_response(existing, db)
         raise HTTPException(status_code=409, detail="Результат повторного запроса больше недоступен")
 
-    _require_reference(db, Team, task_data.team_id, "team_id", "Ответственная команда")
-    _require_reference(db, TaskType, task_data.task_type_id, "task_type_id", "Тип задачи")
-    _require_reference(db, Channel, task_data.channel_id, "channel_id", "Канал поступления")
+    team_id = task_data.team_id
+    if team_id is None and get_task_action_scope(current_user, "edit") == "team":
+        team_id = current_user.team_id
+        if team_id is None:
+            raise HTTPException(403, "Для командного редактора не настроена область команды")
     optional_references = (
+        (Team, team_id, "team_id", "Ответственная команда"),
+        (TaskType, task_data.task_type_id, "task_type_id", "Тип задачи"),
+        (Channel, task_data.channel_id, "channel_id", "Канал поступления"),
+        (Department, task_data.department_id, "department_id", "Подразделение"),
         (DidClientGroup, task_data.did_client_group_id, "did_client_group_id", "Клиент ДИД"),
         (Project, task_data.project_id, "project_id", "Проект"),
         (BusinessCustomer, task_data.business_customer_id, "business_customer_id", "Бизнес-заказчик"),
@@ -988,6 +993,7 @@ def create_task_in_transaction(task_data: TaskCreate, db: Session, current_user:
     for model, value, field_name, label in optional_references:
         if value is not None:
             _require_reference(db, model, value, field_name, label)
+    _require_involved_teams(db, task_data.involved_teams)
 
     # Defaults are resolved by stable dictionary values, never by magic IDs.
     status_id = task_data.status_id
@@ -995,18 +1001,14 @@ def create_task_in_transaction(task_data: TaskCreate, db: Session, current_user:
         default_status = db.query(TaskStatus).filter(TaskStatus.code == "new").first()
         if default_status is None:
             default_status = next((item for item in db.query(TaskStatus).all() if item.name.casefold() == "новая задача"), None)
-        if default_status is None:
-            raise HTTPException(status_code=500, detail="В справочнике отсутствует статус «Новая задача»")
-        status_id = default_status.id
+        status_id = default_status.id if default_status else None
     else:
         _require_reference(db, TaskStatus, status_id, "status_id", "Статус")
 
     priority_id = task_data.priority_id
     if priority_id is None:
         default_priority = next((item for item in db.query(Priority).all() if item.name.casefold() == "средний"), None)
-        if default_priority is None:
-            raise HTTPException(status_code=500, detail="В справочнике отсутствует приоритет «Средний»")
-        priority_id = default_priority.id
+        priority_id = default_priority.id if default_priority else None
     else:
         _require_reference(db, Priority, priority_id, "priority_id", "Приоритет")
 
@@ -1024,7 +1026,7 @@ def create_task_in_transaction(task_data: TaskCreate, db: Session, current_user:
     created_now = datetime.now(timezone.utc)
 
     task = Task(
-        team_id=task_data.team_id,
+        team_id=team_id,
         title=task_data.title,
         description=task_data.description,
         date_received=task_data.date_received or date.today(),
@@ -1245,6 +1247,8 @@ def update_task(
         # своей команды. Проектный офис (админ) может редактировать все задачи.
         requested_team_id = task_data.team_id if "team_id" in task_data.model_fields_set else None
         authorize_task("edit", task, current_user, requested_team_id)
+        if "team_id" in task_data.model_fields_set and requested_team_id is None and not is_task_global_editor(current_user):
+            raise HTTPException(403, "Снимать команду задачи может только редактор всех команд")
 
         request_key = str(task_data.client_request_id or '').strip()
         idempotency, is_new_request = reserve_idempotency(
@@ -1291,6 +1295,7 @@ def update_task(
         tag_names = update_data.pop('tags', None)
 
         reference_fields = {
+            'department_id': (Department, 'Подразделение'),
             'did_client_group_id': (DidClientGroup, 'Клиент ДИД'),
             'team_id': (Team, 'Ответственная команда'),
             'task_type_id': (TaskType, 'Тип задачи'),
@@ -1306,6 +1311,7 @@ def update_task(
             value = update_data.get(field_name)
             if value is not None:
                 _require_reference(db, model, value, field_name, label)
+        _require_involved_teams(db, update_data.get('involved_teams'))
 
         if submitted_version != (task.version or 0):
             current = task_to_response(task, db)
@@ -1688,10 +1694,13 @@ def preview_bulk_action(request: BulkActionRequest, db: Session = Depends(get_db
         errors.append(f"Для статуса '{status_obj.name}' требуется указать причину")
 
     target_team_id = fields.get('team_id') if 'team_id' in fields else None
+    clearing_team_denied = 'team_id' in fields and target_team_id is None and not is_task_global_editor(current_user)
     accessible = []
     inaccessible = []
     for task in tasks:
         allowed = can_comment_task(current_user, task.team_id) if request.action == 'comment' else (can_access_task('delete', task, current_user) if request.action == 'delete' else can_edit_task(current_user, task.team_id, target_team_id))
+        if request.action not in {'comment', 'delete'} and clearing_team_denied:
+            allowed = False
         (accessible if allowed else inaccessible).append(task)
 
     done_status = db.query(TaskStatus).filter(TaskStatus.name == "ВЫПОЛНЕНА").first() if request.action == 'close' else None
@@ -1790,6 +1799,9 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
 
     fields_to_update = request.fields or request.updates or {}
 
+    if 'team_id' in fields_to_update and fields_to_update['team_id'] is None and not is_task_global_editor(current_user):
+        raise HTTPException(403, "Снимать команду задачи может только редактор всех команд")
+
     if set(fields_to_update) & set(ACTUAL_EFFORT_FIELDS) and not is_task_global_editor(current_user):
         raise HTTPException(status_code=403, detail="Фактические трудозатраты может корректировать только администратор")
 
@@ -1833,6 +1845,7 @@ def bulk_action(request: BulkActionRequest, db: Session = Depends(get_db), curre
     for key, model in BULK_REFERENCE_MODELS.items():
         if fields_to_update.get(key) is not None:
             _require_reference(db, model, fields_to_update[key], key, key)
+    _require_involved_teams(db, fields_to_update.get('involved_teams'))
 
     status_id = fields_to_update.get('status_id')
     if status_id:

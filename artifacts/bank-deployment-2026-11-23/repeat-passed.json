@@ -1,0 +1,40 @@
+{
+  "result": "passed",
+  "project": "codex-core-rehearsal-20261123-144427",
+  "checks": [
+    "configuration and immutable image validated",
+    "existing schema and DML-only runtime role verified without DDL",
+    "application writers stopped for the release",
+    "attachment scanner ready before publishing ingress",
+    "application ready on the DBA-prepared database"
+  ],
+  "writers_stopped": false,
+  "database_schema_action": "validate_only",
+  "image_id": "sha256:5b352fbd4f4e1ec2cd212f65c1767ee9045a49ae368c0b40d18875b965071ad4",
+  "schema": {
+    "status": "ok",
+    "current": [
+      "d453b20d51f9"
+    ],
+    "expected": [
+      "d453b20d51f9"
+    ],
+    "runtime_role": "restricted",
+    "structure": "ok"
+  },
+  "readiness": {
+    "status": "ready",
+    "checks": {
+      "schema": "ok",
+      "database": "ok",
+      "outbox_pending": 0,
+      "outbox_dead_lettered": 0,
+      "outbox_oldest_seconds": 0,
+      "redis": "ok",
+      "attachment_storage": "ok",
+      "agent": "not_required",
+      "prioritiser": "disabled",
+      "agent_v2": "disabled"
+    }
+  }
+}

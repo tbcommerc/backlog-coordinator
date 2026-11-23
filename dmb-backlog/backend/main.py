@@ -65,6 +65,10 @@ async def lifespan(app: FastAPI):
     # Fail before schema/seed operations when production secrets are unsafe.
     validate_runtime_settings()
     init_db()
+    if not settings.DEBUG:
+        from schema_guard import require_current_schema
+        with engine.connect() as connection:
+            require_current_schema(connection)
     if should_run_startup_seed():
         from seed import seed_dict_always, seed_initial_data, seed_team_resources, migrate_team_fk_ids, seed_field_labels
         seed_dict_always()
@@ -304,6 +308,12 @@ async def readiness_check():
             dead_lettered = db.query(EventOutbox).filter(
                 EventOutbox.dead_lettered_at.is_not(None)
             ).count()
+            if not settings.DEBUG:
+                from schema_guard import schema_status
+                schema = schema_status(db.connection())
+                checks['schema'] = schema['status']
+                if schema['status'] != 'ok':
+                    ready = False
         finally:
             db.close()
         checks["database"] = "ok"
@@ -355,9 +365,12 @@ async def readiness_check():
             ready = False
             checks[name] = f"error:{type(exc).__name__}"
 
-    dependency_probes = [
-        probe("agent", f"{settings.AGENT_BASE_URL.rstrip('/')}/api/agent/ready"),
-    ]
+    dependency_probes = []
+    if settings.AGENT_READINESS_REQUIRED:
+        dependency_probes.append(probe("agent", f"{settings.AGENT_BASE_URL.rstrip('/')}/api/agent/ready"))
+    else:
+        checks["agent"] = "not_required"
+
     if settings.PRIORITISER_ENABLED:
         dependency_probes.append(
             probe("prioritiser", f"{settings.PRIORITISER_BASE_URL.rstrip('/')}/ready")

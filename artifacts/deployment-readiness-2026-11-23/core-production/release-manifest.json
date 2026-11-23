@@ -1,0 +1,25 @@
+{
+  "scope": "core demo rehearsal; no AI agents",
+  "qualification": "passed",
+  "image_tag": "dmb-backlog:rehearsal-a27cf1405410",
+  "image_id": "sha256:ebf7e11219016dc6efed00a2400acf3a64eb7b771e157af66e5a9efe259ea477",
+  "source_sha256": "a27cf1405410280a6438b352fd6e6359586e0f7aa2d210b26c1a01d896e882c4",
+  "platform": "linux/amd64",
+  "runtime_user": "dmb",
+  "runtime_or_secret_file_count": 0,
+  "files_sha256": {
+    "compose.demo-core.yaml": "6d1e44a53ee4860aa853c56cc0173b38d344e32a53337583835212dd1ff4018f",
+    "compose.production.yaml": "217e20e03f0127dd5b1a4f396cd49574b8fcb2b105b0319fa088bf44d8dd9860",
+    "dmb-backlog/Dockerfile": "9235b7ce663ed120867c5b5bceee39367aff55fcbd2c23dac9ce22d8c80bf03c",
+    "dmb-backlog/backend/requirements-linux.lock": "d221fc5f17eb673baae7368db4e205308a6cddd5c53a26eb24fa2c08128b04c8",
+    "scripts/rehearse-demo-core.py": "4bbbd843e450dbc6bd769e6cc8e730c0374dc7afc8434a757280c424d7e4361f",
+    "dmb-backlog/playwright.deployment.config.mjs": "dac2888aab93448b4170f0c39bd993139de6e2f519999f669e12986f444704c1",
+    "dmb-backlog/frontend/e2e/deploymentStand.spec.mjs": "17ba36af50225acd2b09ec8ffb765bf6581dbd8882edb8bf8f2d826fc1cb665d",
+    "infrastructure/nginx/dmb.container.conf": "635a0cc62dfa27128fca56a3d18f51f74ab364a96219712aac900f0f67bb06df",
+    "infrastructure/nginx/dmb.demo-tls.conf": "ab9bfd0c6adfae7ace1e21cef3319f35b88eb8b0242b587073f7caa8783ae338",
+    "infrastructure/observability/otel-demo-core.yaml": "0c8bc77ea2fcd53e847bf5cc413d85771aa23488675958ec64bd6cfdeca0e1c3",
+    "infrastructure/observability/otel-collector.yaml": "53f32b582910808b2fc74abc9db4f74e24ab14acbf6ee187776173d19bb6bf6d",
+    ".env.production.example": "133884f1ceecc567051169e3390a5fd0c3b04633cf400c0b38b206c1cad9e51b"
+  },
+  "source_unchanged_during_rehearsal": true
+}

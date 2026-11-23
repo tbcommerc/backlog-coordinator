@@ -1,4 +1,4 @@
-import { pagination as kitPagination } from '../ui/forms.js';
+import { pagination as kitPagination, alert as uiAlert } from '../ui/forms.js';
 import { taskStatusTone, taskPriorityTone } from '../taskDisplay.js';
 import { badge as uiBadge } from '../ui/primitives.js';
 import { mountRelations } from './workRelations.js?v=3';
@@ -24,6 +24,9 @@ import { descriptionList as uiDescriptionList, sectionCard as uiSectionCard } fr
 import { renderViewState } from './viewState.js';
 import { enhanceDialogOverlay } from '../modalAccessibility.js';
 import { taskNumber, sumTaskMeasurements, taskMeasurementCost, sumTaskCosts } from '../taskCardNumbers.js';
+import { TASK_REFERENCES, referenceId, uniqueReferenceByName, taskReferenceId,
+  taskReferenceIdentity, taskReferenceOptions, selectTaskReference, involvedTeamIds,
+  restoreReferenceDraft, involvedTeamOptions, toggleInvolvedTeam } from '../taskCardReferences.js';
 
 // === DMB Backlog — Подробная карточка задачи (Master-Detail) ===
 // === Референс: Карточка задачи - референс.html ===
@@ -67,6 +70,13 @@ function cardReadState(kind) {
 
 function cardReadFeedback(kind, subject) {
   const state = cardReadState(kind);
+  if (kind === 'task-dictionaries') {
+    if (!state.loading && !state.error) return '';
+    return uiAlert({variant:'inline', live:true, tone:state.loading?'info':state.loaded?'warning':'danger',
+      title:state.loading?'Загружаем справочники…':state.loaded?'Не удалось обновить справочники':'Не удалось загрузить справочники',
+      message:state.loading?'Сохранённые значения видны; выбор станет доступен после загрузки.':'Изменение справочных полей недоступно. Черновик сохранён, повторите загрузку.',
+      action:state.loading?null:{label:'Повторить',attrs:{'data-action':'retry-card-read','data-read-kind':kind}}});
+  }
   if (state.loading) return renderViewState({ kind: 'loading', scope: 'partial', title: 'Загружаем ' + subject + '…' });
   if (!state.error) return '';
   return renderViewState({ kind: state.loaded ? 'stale' : 'error', scope: 'partial',
@@ -564,7 +574,7 @@ function restoreCardEditDraft() {
       cardToast('Черновик редактирования устарел и не был восстановлен', 'warn');
       return false;
     }
-    cardState.draft = saved.draft;
+    cardState.draft = restoreReferenceDraft(saved.draft, cardState.current, cardDict);
     cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
     return cardState.dirty;
   } catch (_) {
@@ -2732,7 +2742,7 @@ export function closeTaskDetailModal(options = {}) {
 // ============================================================
 //  OPEN TASK MODAL (главная точка входа)
 // ============================================================
-export function revokeTaskModalAccess(){closeTaskDetailModal({skipNetwork:true,preserveRoute:true,immediate:true,restoreFocus:false});currentTask=null;currentModal=null;cardState.current=null;cardState.history=[];cardDict=null;cardMaps=null;onSaveCallback=null;const create=document.getElementById('create-task-overlay');if(create){clearCreateTaskDraft();closeCreateTaskModal();create.remove();}}
+export function revokeTaskModalAccess(){closeTaskDetailModal({skipNetwork:true,preserveRoute:true,immediate:true,restoreFocus:false});currentTask=null;currentModal=null;cardState.current=null;cardState.history=[];cardDict=null;onSaveCallback=null;const create=document.getElementById('create-task-overlay');if(create){clearCreateTaskDraft();closeCreateTaskModal();create.remove();}}
 
 export function openTaskModal(task = null) {
   ensureTaskRealtimeEvents();
@@ -2877,10 +2887,10 @@ function renderCreateTaskForm() {
 const TASK_FORM_SCHEMA = Object.freeze({
   title: { label: 'Название', required: true, createId: 'create-title', type: 'text', maxLength: 255 },
   description: { label: 'Описание', createId: 'create-description', type: 'textarea', maxLength: 10000 },
-  team: { label: 'Ответственная команда', required: true, createId: 'create-team', type: 'select', dict: 'teams' },
-  type: { label: 'Тип задачи', required: true, createId: 'create-task-type', type: 'select', dict: 'taskTypes' },
-  channel: { label: 'Канал поступления', required: true, createId: 'create-channel', type: 'select', dict: 'channels' },
-  receivedAt: { label: 'Дата получения', required: true, createId: 'create-date-received', type: 'date' },
+  team: { label: 'Ответственная команда', required: false, createId: 'create-team', type: 'select', dict: 'teams' },
+  type: { label: 'Тип задачи', required: false, createId: 'create-task-type', type: 'select', dict: 'taskTypes' },
+  channel: { label: 'Канал поступления', required: false, createId: 'create-channel', type: 'select', dict: 'channels' },
+  receivedAt: { label: 'Дата получения', required: false, createId: 'create-date-received', type: 'date' },
   project: { label: 'Проект', createId: 'create-project', type: 'select', dict: 'projects' },
   priority: { label: 'Приоритет', createId: 'create-priority', type: 'select', dict: 'priorities' },
   deadline: { label: 'Срок выполнения', createId: 'create-deadline', type: 'select', dict: 'deadlines' },
@@ -3162,19 +3172,23 @@ async function initCreateTaskModal(app) {
 async function populateCreateSelects(app) {
   const api = app?.api || window.app?.api;
   if (!api) return;
+  let createCatalog = {};
   function populate(items, selectId, placeholder = 'Выберите', preferredName = '') {
     const select = document.getElementById(selectId);
     if (!select) return;
     const list = Array.isArray(items) ? items : [];
+    const referenceKey = Object.keys(TASK_REFERENCES).find(key => TASK_FORM_SCHEMA[key]?.createId === selectId);
+    const labels = referenceKey ? new Map(taskReferenceOptions({}, referenceKey, createCatalog).map(item => [String(item.id), item.label])) : new Map();
     select.innerHTML = '<option value="">' + escapeHtml(placeholder) + '</option>' + list.map(item => {
       const name = item.name || item.title || item.label || '';
-      return '<option value="' + escapeHtml(String(item.id)) + '">' + escapeHtml(name) + '</option>';
+      return '<option value="' + escapeHtml(String(item.id)) + '">' + escapeHtml(labels.get(String(item.id)) || name) + '</option>';
     }).join('');
     const preferred = list.find(item => String(item.name || '').toLocaleUpperCase('ru-RU') === preferredName.toLocaleUpperCase('ru-RU'));
     if (preferred) select.value = String(preferred.id);
   }
   try {
     const ref = await api.get('/tasks/reference');
+    createCatalog = {...ref, taskTypes:ref.task_types, customers:ref.business_customers};
     _createReferenceUsers = Array.isArray(ref.users) ? ref.users : [];
     populate(ref.teams, 'create-team');
     const currentUser = app?.store?.get('currentUser') || window.app?.store?.get('currentUser');
@@ -4772,7 +4786,7 @@ export function importTasksFromExcel(app, onSuccess) {
   const existing = document.getElementById('import-tasks-overlay');
   if (existing) existing.remove();
 
-  const REQUIRED_IMPORT_FIELDS = ['title', 'team_id'];
+  const REQUIRED_IMPORT_FIELDS = ['title'];
 
   const ROW_INT_FIELDS = ['effort_days', 'progress'];
   const ROW_FLOAT_FIELDS = [
@@ -5098,12 +5112,8 @@ export function importTasksFromExcel(app, onSuccess) {
       seen.add(key);
     }
     const hasTitle = normalized.some(h => h === 'название задачи' || h === 'title');
-    const hasTeam = normalized.some(h => h === 'ответственная команда' || h === 'team_id');
     if (!hasTitle) {
       errs.push('Не найдена обязательная колонка "Название задачи" (первая строка файла или первого листа Excel)');
-    }
-    if (!hasTeam) {
-      errs.push('Не найдена обязательная колонка "Ответственная команда" (первая строка файла или первого листа Excel)');
     }
     return errs;
   }
@@ -5510,7 +5520,6 @@ const CARD_TABS = [
 let cardState = { tab: 'main', editing: false, dirty: false, saving: false, prioritiserRunning: '', replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0, descriptionExpanded: false };
 let cardRates = null;
 let cardDict = null;
-let cardMaps = null;
 let cardAi = null;
 let cardPs = null;
 let cardReportingContext = null;
@@ -5668,9 +5677,7 @@ function cardPerson(n) {
 }
 function cardCustomerDepartment(customerName, fallback = '') {
   if (!customerName || !cardDict) return fallback;
-  const customer = (cardDict.customers || []).find(item =>
-    [item?.name, item?.login, item?.email].some(value => value === customerName)
-  );
+  const customer = (cardDict.customers || []).find(item => referenceId(item.id) === taskReferenceId(cardCur(), 'customer', cardDict));
   if (!customer) return fallback;
   if (customer.department_name || customer.customer_department) {
     return customer.department_name || customer.customer_department;
@@ -5722,7 +5729,7 @@ function cardRate(key) {
   if (!comp || !cardRates[comp] || !Object.keys(cardRates[comp]).length) return null;
   const task = cardCur() || {};
   const year = deadlineYearFromReference(
-    { name: task.deadline },
+    { id:taskReferenceId(task, 'deadline', cardDict), name: task.deadline },
     cardDict?.deadlines || [],
   );
   return competencyRateForYear(cardRates, comp, year);
@@ -5755,6 +5762,12 @@ function cardGradePill(v) {
   return '<span class="pill status ' + cls + '" title="' + desc + '">' + escapeHtml(v) + '</span>';
 }
 function cardSel(k, options, v) {
+  if (TASK_REFERENCES[k]) {
+    const state = cardCur();
+    return uiControl({kind:'select', value:taskReferenceId(state, k, cardDict) ?? '',
+      options:[{value:'',label:'Не выбрано'}, ...taskReferenceOptions(state, k, cardDict)],
+      attrs:{'data-k':k, 'aria-label':cardFieldLabel(k)}});
+  }
   const opts = options.filter(value => value !== '');
   if (v && opts.indexOf(v) === -1) opts.unshift(v);
   return uiControl({ kind: 'select', value: v || '', options: [{ value: '', label: 'Не выбрано' }, ...opts.map(value => ({ value, label: value }))], attrs: { 'data-k': k, 'aria-label': cardFieldLabel(k) } });
@@ -5789,12 +5802,11 @@ function cardChipsStatic(arr) {
   return arr.length ? '<div class="chips">' + arr.map(x => '<span class="chip static">' + cardIcon('team') + escapeHtml(x) + '</span>').join('') + '</div>' : '—';
 }
 function cardChipsTeams(all, selArr, field) {
-  const ordered = all.slice().sort((a, b) => (selArr.indexOf(b) >= 0 ? 1 : 0) - (selArr.indexOf(a) >= 0 ? 1 : 0));
-  return '<div class="chips">' + ordered.map(x => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" aria-pressed="' + (selArr.indexOf(x) >= 0) + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
+  return '<div class="chips">' + involvedTeamOptions(cardCur(),cardDict).map(row => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (row.selected ? 'on' : '') + '" aria-pressed="' + row.selected + '" data-toggle="' + field + '" data-val="' + row.id + '">' + (row.selected ? cardIcon('check') : cardIcon('plus')) + escapeHtml(row.name) + (row.historical ? ' (недоступно)' : '') + '</button>').join('') + '</div>';
 }
 function cardChipsTags(all, selArr, field, editable) {
   if (!editable) return selArr.length ? '<div class="chips">' + selArr.map(x => '<span class="chip static">' + cardIcon('tag') + escapeHtml(x) + '</span>').join('') + '</div>' : '—';
-  return '<div class="chips">' + all.map(x => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" aria-pressed="' + (selArr.indexOf(x) >= 0) + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + '</button>').join('') + '</div>';
+  return '<div class="chips">' + [...new Set([...all, ...selArr])].map(x => '<button type="button" class="btn btn-secondary btn-sm ui-btn chip ' + (selArr.indexOf(x) >= 0 ? 'on' : '') + '" aria-pressed="' + (selArr.indexOf(x) >= 0) + '" data-toggle="' + field + '" data-val="' + escapeHtml(x) + '">' + (selArr.indexOf(x) >= 0 ? cardIcon('check') : cardIcon('plus')) + escapeHtml(x) + (all.includes(x) ? '' : ' (недоступно)') + '</button>').join('') + '</div>';
 }
 function cardSec(t, i) { return '<h3 class="sec"><span class="sic">' + cardIcon(i) + '</span>' + escapeHtml(t) + '</h3>'; }
 function cardLnk(u) { const safe = safeExternalUrl(u); return safe ? '<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + cardIcon('link') + escapeHtml(u) + '</a>' : 'Некорректная ссылка'; }
@@ -5815,6 +5827,11 @@ function buildCardState(task) {
   const num = v => (v == null || v === '') ? null : Number(v);
   const fin = v => num(v);
   return {
+    referenceSchemaVersion: 1,
+    teamId: referenceId(t.team_id), statusId: referenceId(t.status_id),
+    priorityId: referenceId(t.priority_id), projectId: referenceId(t.project_id),
+    customerId: referenceId(t.business_customer_id), assigneeId: referenceId(t.owner_id),
+    otherTeamIds: Array.isArray(t.involved_teams) ? t.involved_teams.map(referenceId) : [],
     id: t.id,
     publicId: formatTaskPublicId(t),
     title: t.title || '',
@@ -5873,39 +5890,30 @@ async function cardLoadDict(app, expectedTaskId = currentTask?.id) {
   const api = app?.api || window.app?.api;
   const taskId = Number(expectedTaskId);
   if (!api || !cardMatchesCurrentTask(taskId)) return false;
-  const request = _taskCardRequestGate.start('task-dictionaries', taskId);
   const norm = r => Array.isArray(r) ? r : ((r && r.items) || []);
+  await cardReadRequest('task-dictionaries', taskId, async signal => {
   const [ref, legacyTaskTypes, legacyChannels] = await Promise.all([
-    api.get('/tasks/reference', { signal: request.signal }).catch(() => null),
-    api.get('/admin/task-types', { signal: request.signal }).catch(() => []),
-    api.get('/admin/channels', { signal: request.signal }).catch(() => []),
+    api.get('/tasks/reference', { signal }),
+    api.get('/admin/task-types', { signal }).catch(() => []),
+    api.get('/admin/channels', { signal }).catch(() => []),
   ]);
-  if (!_taskCardRequestGate.isCurrent(request.token, taskId) || !cardMatchesCurrentTask(taskId)) {
-    _taskCardRequestGate.finish(request.token);
-    return false;
-  }
-  const cached = app || window.app || {};
+  if (!Array.isArray(ref?.priorities) || !Array.isArray(ref?.statuses)) throw new Error('Invalid task reference response');
+  return {ref, legacyTaskTypes, legacyChannels};
+  }, ({ref, legacyTaskTypes, legacyChannels}) => {
   cardDict = {
-    teams: norm(ref?.teams || cached.teams),
-    users: norm(ref?.users || cached.users).filter(u => u.is_active !== false),
-    projects: norm(ref?.projects || cached.projects),
-    statuses: norm(ref?.statuses || cached.statuses),
-    priorities: norm(ref?.priorities || cached.priorities),
-    deadlines: norm(ref?.deadlines || cached.deadlines),
-    taskTypes: norm(ref?.task_types || cached.taskTypes),
-    channels: norm(ref?.channels || cached.channels),
-    didClientGroups: norm(ref?.did_client_groups || cached.didClientGroups),
-    customers: norm(ref?.business_customers || cached.businessCustomers),
-    departments: norm(ref?.departments || cached.departments),
-    tags: norm(ref?.tags || cached.tags),
+    teams: norm(ref.teams), users: norm(ref.users).filter(u => u.is_active !== false),
+    projects: norm(ref.projects), statuses: norm(ref.statuses), priorities: norm(ref.priorities),
+    deadlines: norm(ref.deadlines), taskTypes: norm(ref.task_types), channels: norm(ref.channels),
+    didClientGroups: norm(ref.did_client_groups), customers: norm(ref.business_customers),
+    departments: norm(ref.departments), tags: norm(ref.tags).filter(item => item.is_active !== false),
   };
-  cardBuildMaps();
   const recoverLegacyRef = (state, nameKey, idKey, legacyItems, canonicalItems) => {
     if (!state || state[nameKey] || state[idKey] == null) return;
     const legacy = norm(legacyItems).find(x => Number(x?.id) === Number(state[idKey]));
     if (!legacy?.name) return;
     const key = String(legacy.name).trim().toLocaleLowerCase('ru-RU');
-    const canonical = norm(canonicalItems).find(x => String(x?.name || '').trim().toLocaleLowerCase('ru-RU') === key);
+    const matches = norm(canonicalItems).filter(x => String(x?.name || '').trim().toLocaleLowerCase('ru-RU') === key);
+    const canonical = matches.length === 1 ? matches[0] : null;
     if (!canonical) return;
     state[nameKey] = canonical.name;
     state[idKey] = Number(canonical.id);
@@ -5914,34 +5922,17 @@ async function cardLoadDict(app, expectedTaskId = currentTask?.id) {
   recoverLegacyRef(cardState.current, 'channel', 'channelId', legacyChannels, cardDict.channels);
   recoverLegacyRef(cardState.draft, 'type', 'taskTypeId', legacyTaskTypes, cardDict.taskTypes);
   recoverLegacyRef(cardState.draft, 'channel', 'channelId', legacyChannels, cardDict.channels);
-  _taskCardRequestGate.finish(request.token);
-  return true;
+  }, () => {
+    if (document.getElementById('task-detail-overlay') && cardMatchesCurrentTask(taskId)) {
+      cardRenderBody(); cardUpdateDirty();
+    }
+  });
+  const state = cardReadState('task-dictionaries');
+  return cardMatchesCurrentTask(taskId) && state.loaded && !state.error;
 }
 function cardNameList(key) {
   return (cardDict && cardDict[key] ? cardDict[key] : []).map(x => (x && (x.name || x.login || x.email)) || '').filter(Boolean);
 }
-function cardBuildMaps() {
-  const idMap = key => {
-    const m = {};
-    (cardDict && cardDict[key] ? cardDict[key] : []).forEach(x => {
-      const n = x && (x.name || x.title || x.login || x.email);
-      if (n) m[n] = x.id;
-    });
-    return m;
-  };
-  const statuses = idMap('statuses'), priorities = idMap('priorities'), deadlines = idMap('deadlines'),
-    teams = idMap('teams'), projects = idMap('projects'), taskTypes = idMap('taskTypes'),
-    channels = idMap('channels'), customers = idMap('customers'), users = idMap('users');
-  const idOf = (m, n) => { if (!n) return null; const id = m[n]; return id === undefined ? null : id; };
-  cardMaps = {
-    statusId: n => idOf(statuses, n), priorityId: n => idOf(priorities, n),
-    deadlineId: n => idOf(deadlines, n), teamId: n => idOf(teams, n),
-    projectId: n => idOf(projects, n), typeId: n => idOf(taskTypes, n),
-    channelId: n => idOf(channels, n), customerId: n => idOf(customers, n),
-    userId: n => idOf(users, n),
-  };
-}
-
 function cardRenderHeader() {
   const el = document.getElementById('mhead');
   if (!el) return;
@@ -6206,9 +6197,11 @@ function cardCustomerReference(key, items, value, fallback, editing, departmentI
   if (!editing) return cardV(escapeHtml(items.find(i => String(i.id) === String(value))?.name || fallback || '—'));
   const preferred = items;
   const shown = preferred.slice();
-  const selected = items.find(i => String(i.id) === String(value));
-  if (selected && !shown.includes(selected)) shown.unshift(selected);
-  return '<select class="input ui-control" data-k="' + key + '" aria-label="' + escapeHtml(cardFieldLabel(key)) + '"><option value="">Не выбрано</option>' + shown.map(i => '<option value="' + i.id + '"' + (String(i.id) === String(value) ? ' selected' : '') + '>' + escapeHtml(i.name) + '</option>').join('') + (shown.length < items.length ? '<option value="__all">Показать всех контактных лиц…</option>' : '') + '</select>';
+  if (referenceId(value) != null && !items.some(i => String(i.id) === String(value))) {
+    shown.unshift({id:referenceId(value), name:(fallback || 'ID ' + value) + ' (недоступно)', historical:true});
+  }
+  return uiControl({kind:'select', value:value || '', attrs:{'data-k':key, 'aria-label':cardFieldLabel(key)},
+    options:[{value:'',label:'Не выбрано'}, ...shown.map(i => ({value:String(i.id),label:i.name,disabled:!!i.historical}))]});
 }
 
 function cardMainField(label, markup, key = '', editing = false, className = '') {
@@ -6654,7 +6647,8 @@ function cardRenderBody() {
   el.setAttribute('role', 'tabpanel');
   el.setAttribute('aria-labelledby', 'task-tab-' + cardState.tab);
   el.setAttribute('tabindex', '0');
-  el.innerHTML = '<div id="td-lock-banner" style="display:none;"></div><div id="td-viewer-banner" style="display:none;"></div><div class="form-error-summary" id="card-form-error-summary" role="alert" hidden></div>' + h;
+  const dictionaryFeedback = cardReadFeedback('task-dictionaries', 'справочники');
+  el.innerHTML = '<div id="td-lock-banner" style="display:none;"></div><div id="td-viewer-banner" style="display:none;"></div><div class="form-error-summary" id="card-form-error-summary" role="alert" hidden></div>' + (dictionaryFeedback ? '<div class="ui-editor-stack">' + dictionaryFeedback + h + '</div>' : h);
   if (cardState.tab === 'work') { mountWorkList(el.querySelector('#task-work-list'), window.app, currentTask.id, null, false, false, {canCreate:cardEditPermission().allowed, composition:'task-detail'}); mountRelations(el.querySelector('#task-work-relations'), window.app, 'major', currentTask.id, () => currentTask.version, {canEdit:cardEditPermission().allowed, composition:'task-detail'}); }
   cardSyncDescriptionDisclosure();
   cardRefreshDynamic();
@@ -6664,8 +6658,8 @@ function cardRenderBody() {
   if (e) attachDictionarySearch(el, [
     { selector: '[data-k="team"]', label: 'Ответственная команда' },
     { selector: '[data-k="project"]', label: 'Проект' },
-    { selector: '[data-k="customer"]', label: 'Бизнес-заказчик', preferredValues: (cardDict.customers || []).filter(c => String(c.department_id) === String(t.customerDeptId)).map(c => c.name) },
-    { selector: '[data-k="assignee"]', label: 'Исполнитель', preferredValues: userValuesForTeam(cardDict?.users, cardMaps?.teamId(t.team), true) },
+    { selector: '[data-k="customer"]', label: 'Бизнес-заказчик', preferredValues: (cardDict?.customers || []).filter(c => String(c.department_id) === String(t.customerDeptId)).map(c => String(c.id)) },
+    { selector: '[data-k="assignee"]', label: 'Исполнитель', preferredValues: userValuesForTeam(cardDict?.users, taskReferenceId(t, 'team', cardDict)) },
   ]);
   el.querySelectorAll('.agent-check-wrap').forEach(wrapper => {
     const trigger = wrapper.querySelector('button');
@@ -6676,6 +6670,7 @@ function cardRenderBody() {
     }
   });
   cardHydrateAttachments();
+  cardApplyReferenceAvailability(el);
   if (cardState.tab === 'com') {
     const taskId = Number(currentTask?.id);
     _commentFormInitialized = false;
@@ -6685,6 +6680,17 @@ function cardRenderBody() {
       initCommentForm(taskId, window.app);
     });
   }
+}
+
+function cardApplyReferenceAvailability(root) {
+  const state = cardReadState('task-dictionaries');
+  const unavailable = !state.loaded || state.loading || !!state.error;
+  root.querySelectorAll('[data-k], [data-toggle="otherTeams"], [data-toggle="tags"]').forEach(control => {
+    if (!TASK_REFERENCES[control.dataset.k] && !['customerDeptId','didClientId'].includes(control.dataset.k) && !control.dataset.toggle) return;
+    control.disabled = unavailable;
+    const trigger = control.closest('.dict-search-control')?.querySelector('.dict-combobox-trigger');
+    if (trigger) trigger.disabled = unavailable;
+  });
 }
 
 function cardRenderFooter() {
@@ -6881,6 +6887,8 @@ function cardStatePathValue(source, path) {
 }
 
 function cardStatePathChanged(path) {
+  if (path === 'otherTeams') return JSON.stringify(involvedTeamIds(cardState.current,cardDict)) !== JSON.stringify(involvedTeamIds(cardState.draft,cardDict));
+  if (TASK_REFERENCES[path]) return taskReferenceIdentity(cardState.current, path, cardDict) !== taskReferenceIdentity(cardState.draft, path, cardDict);
   return JSON.stringify(cardStatePathValue(cardState.current, path) ?? null)
     !== JSON.stringify(cardStatePathValue(cardState.draft, path) ?? null);
 }
@@ -6916,6 +6924,11 @@ async function cardRevealFirstChangedField(app) {
 }
 
 function cardSetPath(o, p, v) {
+  if (TASK_REFERENCES[p]) {
+    o[p] = v;
+    o[TASK_REFERENCES[p].id] = referenceId(uniqueReferenceByName(cardDict?.[TASK_REFERENCES[p].dict], v)?.id);
+    return;
+  }
   const parts = p.split('.');
   let x = o;
   for (let i = 0; i < parts.length - 1; i++) x = x[parts[i]];
@@ -7159,21 +7172,30 @@ function normalizedTaskStatus(value) {
 }
 
 function cardValidate(d) {
+  const references = cardReadState('task-dictionaries');
+  if (!references.loaded || references.loading || references.error) {
+    const change = cardDiffChanges(cardState.current, d).find(item => TASK_REFERENCES[item.key] || ['customerDeptId','didClientId','otherTeams','tags'].includes(item.key));
+    if (change) return {message:'Сначала повторите загрузку справочников.', key:change.key};
+  }
   if (!String(d.title || '').trim()) return { message: 'Укажите название задачи — поле обязательно.', key: 'title' };
-  if (d.type !== cardState.current.type && (!String(d.type || '').trim() || d.type === '—')) return { message: 'Укажите тип задачи — поле обязательно.', key: 'type' };
-  if (!String(d.team || '').trim() || d.team === '—') return { message: 'Укажите ответственную команду — поле обязательно.', key: 'team' };
   if (d.effortDays != null && (!Number.isInteger(Number(d.effortDays)) || Number(d.effortDays) < 0 || Number(d.effortDays) > 10000)) return { message: 'Общая оценка трудозатрат должна быть целым числом от 0 до 10 000.', key: 'effortDays' };
   if (d.weightPercent != null && (!Number.isFinite(Number(d.weightPercent)) || Number(d.weightPercent) < 0 || Number(d.weightPercent) > 100)) return { message: 'Вес оценки должен быть от 0 до 100%.', key: 'weightPercent' };
   if (d.forecastPercent != null && (!Number.isFinite(Number(d.forecastPercent)) || Number(d.forecastPercent) < 0 || Number(d.forecastPercent) > 100)) return { message: 'Прогноз выполнения должен быть от 0 до 100%.', key: 'forecastPercent' };
   if (isTaskDateInFuture(d.receivedAt)) return { message: 'Дата поступления не может быть в будущем.', key: 'receivedAt' };
   const status = normalizedTaskStatus(d.status);
-  if (d.progress == null || d.progress === '' || !Number.isInteger(Number(d.progress)) || Number(d.progress) < 0 || Number(d.progress) > 100) return { message: 'Укажите прогресс целым числом от 0 до 100%.', key: 'progress' };
+  if (!Number.isInteger(Number(d.progress)) || Number(d.progress) < 0 || Number(d.progress) > 100) return { message: 'Укажите прогресс целым числом от 0 до 100%.', key: 'progress' };
   const progress = Number(d.progress);
   if (status === 'ВЫПОЛНЕНА' && progress !== 100) return { message: 'Для выполненной задачи прогресс должен быть равен 100%.', key: 'progress', syncKey: 'status' };
   if (progress === 100 && status !== 'ВЫПОЛНЕНА') return { message: 'Прогресс 100% допустим только для статуса «Выполнена».', key: 'status', syncKey: 'progress' };
   if (d.mockupUrl && !cardUrlOk(d.mockupUrl)) return { message: 'Некорректная ссылка на макеты (ожидается http(s)://…).', key: 'mockupUrl' };
-  if (d.channel !== cardState.current.channel && !(cardMaps?.channelId?.(d.channel) != null)) return { message: 'Не удалось определить выбранный канал. Обновите карточку и повторите.', key: 'channel' };
-  if (d.type !== cardState.current.type && !(cardMaps?.typeId?.(d.type) != null)) return { message: 'Не удалось определить выбранный тип задачи. Обновите карточку и повторите.', key: 'type' };
+  for (const [key, meta] of Object.entries(TASK_REFERENCES)) {
+    if (taskReferenceIdentity(d, key, cardDict) === taskReferenceIdentity(cardState.current, key, cardDict)) continue;
+    const state = cardReadState('task-dictionaries');
+    if (!state.loaded || state.loading || state.error) return {message:'Сначала повторите загрузку справочников.', key};
+    const id = taskReferenceId(d, key, cardDict);
+    if (d[key] && id == null) return {message:'Выберите значение справочника.', key};
+    if (id != null && !(cardDict?.[meta.dict] || []).some(item => referenceId(item.id) === id)) return {message:'Значение больше недоступно. Обновите справочники.', key};
+  }
   return null;
 }
 
@@ -7183,11 +7205,12 @@ function cardApiErrorInfos(error) {
     title: 'title', team_id: 'team', task_type_id: 'type', channel_id: 'channel',
     date_received: 'receivedAt', project_id: 'project', priority_id: 'priority',
     deadline_id: 'deadline', business_customer_id: 'customer', owner_id: 'assignee',
+    department_id: 'customerDeptId', did_client_group_id: 'didClientId', involved_teams: 'otherTeams',
     link_mockups: 'mockupUrl', description: 'description', comment: 'comment', effort_days: 'effortDays',
     assessment_weight: 'weightPercent', completion_forecast: 'forecastPercent',
   };
   return details.map(item => {
-    const apiField = Array.isArray(item?.loc) ? item.loc[item.loc.length - 1] : null;
+    const apiField = Array.isArray(item?.loc) ? (item.loc[0] === 'body' ? item.loc[1] : item.loc[item.loc.length - 1]) : null;
     const key = keyByApiField[apiField];
     return key ? { key, message: item.msg || 'Проверьте значение' } : null;
   }).filter(Boolean);
@@ -7208,7 +7231,7 @@ function cardClearFieldError(key) {
 }
 
 function cardShowFieldError(key, message) {
-  const controls = Array.from(document.querySelectorAll('#task-detail-overlay [data-k]')).filter(control => control.dataset.k === key);
+  const controls = Array.from(document.querySelectorAll('#task-detail-overlay [data-k], #task-detail-overlay [data-toggle]')).filter(control => (control.dataset.k || control.dataset.toggle) === key);
   const target = controls[0] || null;
   controls.forEach(control => {
     control.classList.add('input-error');
@@ -7246,7 +7269,11 @@ function cardFieldLabel(key) {
 function cardDiffChanges(a, b) {
   const ch = [];
   CARD_DIFF_TRACK.forEach(p => {
-    if (JSON.stringify(a[p[0]]) !== JSON.stringify(b[p[0]])) ch.push({ key: p[0], field: p[1], old: cardPretty(a[p[0]]), nw: cardPretty(b[p[0]]) });
+    const changed = TASK_REFERENCES[p[0]]
+      ? taskReferenceIdentity(a, p[0], cardDict) !== taskReferenceIdentity(b, p[0], cardDict)
+      : p[0] === 'otherTeams' ? JSON.stringify(involvedTeamIds(a,cardDict)) !== JSON.stringify(involvedTeamIds(b,cardDict))
+      : JSON.stringify(a[p[0]]) !== JSON.stringify(b[p[0]]);
+    if (changed) ch.push({ key: p[0], field: p[1], old: cardPretty(a[p[0]]), nw: cardPretty(b[p[0]]) });
   });
   CARD_ROLES.forEach(r => { if (+a.eo[r.key] !== +b.eo[r.key]) ch.push({ key: `eo.${r.key}`, field: r.name + ' (ЭО)', old: cardPretty(a.eo[r.key]), nw: cardPretty(b.eo[r.key]) }); });
   return ch;
@@ -7254,24 +7281,23 @@ function cardDiffChanges(a, b) {
 
 function cardPayload(source = cardState.draft) {
   const d = source;
-  const m = cardMaps || {};
   const p = {
     title: String(d.title || '').trim(),
     description: d.description || null,
     comment: d.comment || null,
     date_received: d.receivedAt || null,
-    status_id: m.statusId ? m.statusId(d.status) : null,
-    priority_id: m.priorityId ? m.priorityId(d.priority) : null,
-    deadline_id: m.deadlineId ? m.deadlineId(d.deadline) : null,
-    team_id: m.teamId ? m.teamId(d.team) : null,
-    project_id: m.projectId ? m.projectId(d.project) : null,
-    task_type_id: (m.typeId && m.typeId(d.type) != null) ? m.typeId(d.type) : (d.type === cardState.current.type ? cardState.current.taskTypeId : null),
-    channel_id: (m.channelId && m.channelId(d.channel) != null) ? m.channelId(d.channel) : (d.channel === cardState.current.channel ? cardState.current.channelId : null),
+    status_id: taskReferenceId(d, 'status', cardDict),
+    priority_id: taskReferenceId(d, 'priority', cardDict),
+    deadline_id: taskReferenceId(d, 'deadline', cardDict),
+    team_id: taskReferenceId(d, 'team', cardDict),
+    project_id: taskReferenceId(d, 'project', cardDict),
+    task_type_id: taskReferenceId(d, 'type', cardDict),
+    channel_id: taskReferenceId(d, 'channel', cardDict),
     did_client_group_id: d.didClientId ? Number(d.didClientId) : null,
     department_id: d.customerDeptId ? Number(d.customerDeptId) : null,
-    business_customer_id: m.customerId ? m.customerId(d.customer) : null,
-    owner_id: m.userId ? m.userId(d.assignee) : null,
-    involved_teams: d.otherTeams.map(n => (m.teamId ? m.teamId(n) : null)).filter(id => id != null),
+    business_customer_id: taskReferenceId(d, 'customer', cardDict),
+    owner_id: taskReferenceId(d, 'assignee', cardDict),
+    involved_teams: involvedTeamIds(d, cardDict),
     tags: d.tags,
     progress: Number(d.progress),
     effort_days: d.effortDays != null && d.effortDays !== '' ? Math.round(+d.effortDays) : null,
@@ -7822,7 +7848,7 @@ async function cardSuggestStatusProgressSync(changedKey, changedValue) {
     if (changedKey === 'status' && normalizedTaskStatus(cardState.draft.status) !== normalizedTaskStatus(changedValue)) return;
     if (changedKey === 'progress' && Number(cardState.draft.progress) !== Number(changedValue)) return;
     cardSetPath(cardState.draft, targetKey, targetValue);
-    document.querySelectorAll(`#task-detail-overlay [data-k="${targetKey}"]`).forEach(control => { control.value = String(targetValue); });
+    document.querySelectorAll(`#task-detail-overlay [data-k="${targetKey}"]`).forEach(control => { control.value = TASK_REFERENCES[targetKey] ? String(taskReferenceId(cardState.draft, targetKey, cardDict) ?? '') : String(targetValue); });
     cardClearFieldError(targetKey);
     cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
     cardUpdateDirty();
@@ -7852,14 +7878,13 @@ function cardOnField(ev, app = window.app) {
   else if (el.type === 'number' || el.type === 'range') {
     v = (v === '') ? null : (k === 'progress' ? Number(v) : Math.max(0, +v));
   }
-  cardSetPath(cardState.draft, k, v);
-  if (k === 'customer') {
-    cardState.draft.customerDept = cardCustomerDepartment(v, '');
-    cardState.draft.customerDeptId = String((cardDict.customers || []).find(i => i.name === v)?.department_id ?? '');
-  }
+  if (TASK_REFERENCES[k]) {
+    if (!selectTaskReference(cardState.draft, k, v, cardDict)) return;
+  } else cardSetPath(cardState.draft, k, v);
   cardState.dirty = cardDiffChanges(cardState.current, cardState.draft).length > 0;
   cardUpdateDirty();
-  if (k === 'customerDeptId') { cardState.draft.customerDept = (cardDict.departments || []).find(i => String(i.id) === String(v))?.name || ''; cardRenderBody(); }
+  if (k === 'customerDeptId') { cardState.draft.customerDept = (cardDict?.departments || []).find(i => String(i.id) === String(v))?.name || ''; cardRenderBody(); }
+  if (k === 'customer') cardRenderBody();
   if (k === 'progress') {
     document.querySelectorAll('#task-detail-overlay [data-k="progress"]').forEach(el2 => { if (el2 !== el) el2.value = v; });
     const progressEditor = el.closest('.ui-task-progress-editor');
@@ -7873,8 +7898,8 @@ function cardOnField(ev, app = window.app) {
     void cardSuggestStatusProgressSync(k, v);
   }
   if (k === 'team') {
-    const teamId = cardMaps?.teamId(v);
-    document.querySelector('#task-detail-overlay [data-k="assignee"]')?._dictionarySearchRefresh?.(userValuesForTeam(cardDict?.users, teamId, true));
+    const teamId = taskReferenceId(cardState.draft, 'team', cardDict);
+    document.querySelector('#task-detail-overlay [data-k="assignee"]')?._dictionarySearchRefresh?.(userValuesForTeam(cardDict?.users, teamId));
   }
   if (k === 'demoDid') {
     cardRenderBody();
@@ -7902,6 +7927,7 @@ async function cardOnClick(ev, app) {
       const taskId = currentTask.id;
       const tab = cardState.tab;
       if (kind === 'attachments') await loadAttachments(currentTask.id, app);
+      else if (kind === 'task-dictionaries') await cardLoadDict(app, taskId);
       else if (kind === 'task-history') await cardLoadHistory(app);
       else if (kind === 'reporting-context') await cardLoadReportingContext(app);
       if (cardMatchesCurrentTask(taskId) && cardState.tab === tab && !actEl.isConnected) {
@@ -8021,10 +8047,14 @@ async function cardOnClick(ev, app) {
   const chip = ev.target.closest('[data-toggle]');
   if (chip && cardState.editing) {
     const field = chip.dataset.toggle;
+    cardClearFieldError(field);
     const val = chip.dataset.val;
     const arr = cardState.draft[field];
-    const i = arr.indexOf(val);
-    if (i >= 0) arr.splice(i, 1); else arr.push(val);
+    if (field === 'otherTeams') toggleInvolvedTeam(cardState.draft,val,cardDict);
+    else {
+      const i = arr.indexOf(val);
+      if (i >= 0) arr.splice(i, 1); else arr.push(val);
+    }
     cardState.dirty = true;
     cardRenderBody();
     cardUpdateDirty();
@@ -8042,7 +8072,7 @@ function cardReset() {
   _taskCommentDraftSession.clearAll();
   _cardAttachmentHydrationTimer = null;
   cardState = { tab: 'main', editing: false, dirty: false, saving: false, prioritiserRunning: '', replyFor: null, current: null, draft: null, history: [], commentsCount: 0, filesCount: 0, descriptionExpanded: false };
-  cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
+  cardRates = null; cardDict = null; cardAi = null; cardPs = null;
   cardReportingContext = null; cardReportingLoading = false;
   clearCardReportingDrafts();
   _commentsCache = [];
@@ -8073,10 +8103,10 @@ async function cardInit(app) {
   if (!api || !isActive()) return;
   if (cardState.tab === 'rep') await cardLoadReportingContext(app, taskId);
   if (!isActive()) return;
-  const ratesData = await api.get('/admin/competency-costs').catch(() => []);
+  const [ratesData] = await Promise.all([api.get('/admin/competency-costs').catch(() => []), cardLoadDict(app, taskId)]);
   if (!isActive()) return;
   cardRates = cardBuildRates(ratesData);
-  if (!(await cardLoadDict(app, taskId)) || !isActive()) return;
+  if (!isActive()) return;
   cardRender();
   await cardLoadHistory(app, taskId);
   if (!isActive()) return;
@@ -8110,7 +8140,7 @@ export function renderTaskDetailModal(task, app) {
   cardState.tab = cardTabFromRoute();
   cardState.editing = false; cardState.entryField = ''; cardState.dirty = false; cardState.saving = false; cardState.prioritiserRunning = ''; cardState.replyFor = null;
   cardState.history = []; cardState.commentsCount = 0; cardState.filesCount = 0; cardState.descriptionExpanded = false;
-  cardRates = null; cardDict = null; cardMaps = null; cardAi = null; cardPs = null;
+  cardRates = null; cardDict = null; cardAi = null; cardPs = null;
   cardReportingContext = null; cardReportingLoading = false;
   clearCardReportingDrafts();
   _commentsCache = [];

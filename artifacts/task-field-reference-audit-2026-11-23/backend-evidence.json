@@ -1,0 +1,25 @@
+{
+  "valid_foreign_keys": {
+    "count": 11,
+    "create": 201,
+    "read": 200,
+    "ids_and_names_preserved": true
+  },
+  "invalid_department": {
+    "method": "PATCH",
+    "status": 500,
+    "expected": 422
+  },
+  "archived_tag": {
+    "reference_status": 200,
+    "present_in_options": true,
+    "expected_present": false
+  },
+  "unknown_involved_team": {
+    "status": 200,
+    "stored": [
+      987654321
+    ],
+    "expected": 422
+  }
+}

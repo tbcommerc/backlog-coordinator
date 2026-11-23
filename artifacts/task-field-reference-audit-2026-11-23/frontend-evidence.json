@@ -1,0 +1,22 @@
+{
+  "duplicate_names": {
+    "selected_owner_id": 22,
+    "owner_option_values": [
+      "Иван Иванов",
+      "Иван Иванов"
+    ],
+    "selected_customer_id": 32,
+    "selected_customer_department_id": 101,
+    "actual_department_of_selected_customer": 102
+  },
+  "archived_department": {
+    "stored_id": 101,
+    "option_present": false,
+    "fallback_name_present": false
+  },
+  "reference_failure": {
+    "load_result": true,
+    "priorities": 0,
+    "statuses": 0
+  }
+}

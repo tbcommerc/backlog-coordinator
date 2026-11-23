@@ -1,0 +1,68 @@
+[
+  {
+    "file": "composition-variants-dark-win32-actual.png",
+    "changedPixels": 7133,
+    "bounds": [
+      49,
+      852,
+      850,
+      899
+    ],
+    "outsideSidebar": 7133
+  },
+  {
+    "file": "composition-variants-light-win32-actual.png",
+    "changedPixels": 7093,
+    "bounds": [
+      49,
+      852,
+      850,
+      899
+    ],
+    "outsideSidebar": 7093
+  },
+  {
+    "file": "detail-dark-1366-win32-actual.png",
+    "changedPixels": 2205,
+    "bounds": [
+      24,
+      391,
+      693,
+      650
+    ],
+    "outsideSidebar": 13
+  },
+  {
+    "file": "detail-dark-1440-win32-actual.png",
+    "changedPixels": 2192,
+    "bounds": [
+      24,
+      619,
+      182,
+      650
+    ],
+    "outsideSidebar": 0
+  },
+  {
+    "file": "detail-light-1366-win32-actual.png",
+    "changedPixels": 2175,
+    "bounds": [
+      24,
+      619,
+      182,
+      650
+    ],
+    "outsideSidebar": 0
+  },
+  {
+    "file": "detail-light-1440-win32-actual.png",
+    "changedPixels": 2175,
+    "bounds": [
+      24,
+      619,
+      182,
+      650
+    ],
+    "outsideSidebar": 0
+  }
+]

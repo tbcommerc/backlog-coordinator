@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-23",
+  "backend_postgresql": {
+    "passed": 53,
+    "new_title_only_cases": 9
+  },
+  "frontend_unit": {
+    "passed": 511,
+    "failed": 0
+  },
+  "chromium_regression": {
+    "passed": 23,
+    "failed": 0,
+    "new_title_only_cases": 5
+  },
+  "final_capture_run": {
+    "passed": 5,
+    "failed": 0,
+    "change": "Reset scroll position before full viewport screenshots"
+  },
+  "visual_review": {
+    "result": "passed for changed required-field indicators and empty-field states",
+    "viewports": [
+      1440,
+      390
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "observed": "Title is the only required marker; create button enabled; optional team/type/channel/date empty; existing controls/composition retained; no golden changes."
+  },
+  "working_database_modified": false,
+  "bank_vm_verified": false
+}

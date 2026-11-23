@@ -20,7 +20,7 @@ export function cardDiffPayloadForTest(task, patch) {
   cardState.current = buildCardState(task);
   cardState.draft = JSON.parse(JSON.stringify(cardState.current));
   Object.assign(cardState.draft, patch);
-  cardMaps = null;
+  cardDict = null;
   return {
     changes: cardDiffChanges(cardState.current, cardState.draft),
     payload: cardPayload(cardState.draft),

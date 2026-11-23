@@ -29,6 +29,7 @@ export const families = [
  ['SectionCard','sectionCard','.ui-section-card','default loading empty error open closed actions footer hidden','uiKitDetailComponents.spec.mjs'],
  ['DetailPanel','detailPanel bindDetailPanel','.ui-detail-panel','modal inline fullscreen busy guarded escape focus dispose mobile','uiKitDetailComponents.spec.mjs'],
  ['DataTable','dataTable bindDataTable','.ui-data-table','default empty loading error sort controlled keyboard dispose scroll cards hidden','uiKitDataTable.spec.mjs'],
+ ['TableColumns','autoSizeColumns applyColumnWidths registerColumnInteractions installRegistryColumns','.ui-table .ui-table-scroll','resize pointer keyboard persist pin reset hidden','registryColumns.spec.mjs'],
  ['TableCell','tableCell','.ui-table-cell','text number date link badge markup zero empty long escaping','uiKitDataTable.spec.mjs'],
  ['EntityPicker','entityPicker bindEntityPicker','.ui-entity-picker','idle loading ready empty error retry selected clear required disabled reset stale abort dispose keyboard long','uiKitEntityPicker.spec.mjs'],
  ['Intervals','dateRange numberRange validateRanges','.ui-interval','empty partial zero equal reversed required disabled readonly min max step hidden mobile','uiKitIntervals.spec.mjs'],

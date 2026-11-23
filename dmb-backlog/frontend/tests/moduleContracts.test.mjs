@@ -53,7 +53,7 @@ assert.match(modal, /isTaskDateInFuture\(receivedAt\)/);
 assert.match(modal, /function normalizedTaskStatus\(value\)/);
 assert.match(modal, /status === 'ВЫПОЛНЕНА' && progress !== 100/);
 assert.match(modal, /progress === 100 && status !== 'ВЫПОЛНЕНА'/);
-assert.match(modal, /Укажите ответственную команду — поле обязательно/);
+assert.doesNotMatch(modal, /Укажите ответственную команду — поле обязательно/);
 assert.match(modal, /async function cardSuggestStatusProgressSync\(changedKey, changedValue\)/);
 assert.match(modal, /Согласовать статус и прогресс/);
 assert.match(modal, /targetValue = 100/);

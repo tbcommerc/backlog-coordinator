@@ -8,7 +8,7 @@ from datetime import datetime
 from database import get_db
 from models import User, AuthSession, AuthChallenge, SecurityEvent
 from schemas import LoginRequest, TokenResponse, UserResponse
-from auth import verify_password, create_access_token, get_current_user, get_request_review_access, is_customer_portal_only, get_task_action_scope, can_make_pip_decision
+from auth import user_permissions, verify_password, create_access_token, get_current_user, get_request_review_access, is_customer_portal_only, get_task_action_scope, can_make_pip_decision
 from rate_limit import get_rate_limiter, rate_limit_key
 from refresh_sessions import issue_refresh_session, revoke_refresh_session, rotate_refresh_session, cleanup_expired_sessions
 from config import settings
@@ -78,9 +78,9 @@ async def login(request: Request, response: Response, login_data: LoginRequest, 
     access_token = create_access_token({"sub": str(user.id), "sid": session.id, "auth_version": user.auth_version})
 
     return TokenResponse(
-        session_expires_at=session.absolute_expires_at,
+        session_expires_at=None,
         last_activity_at=session.last_activity_at,
-        idle_timeout_seconds=60 * (settings.AUTH_ADMIN_IDLE_MINUTES if user.role and user.role.admin_access == 'full' else settings.AUTH_IDLE_MINUTES),
+        idle_timeout_seconds=None,
         access_token=access_token,
         expires_in=max(0, __import__("auth").decode_token(access_token)["exp"] - int(__import__("time").time())),
         user={
@@ -92,24 +92,10 @@ async def login(request: Request, response: Response, login_data: LoginRequest, 
             "role_id": user.role_id,
             "team_id": user.team_id,
             "team_name": user.team_rel.name if user.team_rel else None,
-            "can_edit": user.can_edit,
-            "can_delete": user.can_delete,
-            "can_export": user.can_export,
-            "permissions": {
-                "backlog_dmb": user.role.backlog_dmb_access if user.role else "none",
-                "backlog_team": user.role.backlog_team_access if user.role else "none",
-                "reports": user.role.reports_access if user.role else "none",
-                "analytics": user.role.analytics_access if user.role else "none",
-                "customer": user.role.customer_access if user.role else "none",
-                "settings": user.role.settings_access if user.role else "none",
-                "admin": user.role.admin_access if user.role else "none",
-                "customer_portal_mode": "only" if is_customer_portal_only(user) else "standard",
-                "review": get_request_review_access(user),
-                "task_edit": get_task_action_scope(user, "edit"),
-                "task_comment": get_task_action_scope(user, "comment"),
-                "task_delete": get_task_action_scope(user, "delete"),
-                "pip_decision": "available" if can_make_pip_decision(user) else "none",
-            }
+            "can_edit": bool(user.can_edit),
+            "can_delete": bool(user.can_delete),
+            "can_export": bool(user.can_export),
+            "permissions": user_permissions(user)
         }
     )
 
@@ -135,9 +121,9 @@ async def refresh_token(request: Request, response: Response, db: Session = Depe
     access_token = create_access_token(token_data)
     
     return TokenResponse(
-        session_expires_at=session.absolute_expires_at,
+        session_expires_at=None,
         last_activity_at=session.last_activity_at,
-        idle_timeout_seconds=60 * (settings.AUTH_ADMIN_IDLE_MINUTES if user.role and user.role.admin_access == 'full' else settings.AUTH_IDLE_MINUTES),
+        idle_timeout_seconds=None,
         access_token=access_token,
         expires_in=max(0, __import__("auth").decode_token(access_token)["exp"] - int(__import__("time").time())),
         user={
@@ -149,24 +135,10 @@ async def refresh_token(request: Request, response: Response, db: Session = Depe
             "role_id": user.role_id,
             "team_id": user.team_id,
             "team_name": user.team_rel.name if user.team_rel else None,
-            "can_edit": user.can_edit,
-            "can_delete": user.can_delete,
-            "can_export": user.can_export,
-            "permissions": {
-                "backlog_dmb": user.role.backlog_dmb_access if user.role else "none",
-                "backlog_team": user.role.backlog_team_access if user.role else "none",
-                "reports": user.role.reports_access if user.role else "none",
-                "analytics": user.role.analytics_access if user.role else "none",
-                "customer": user.role.customer_access if user.role else "none",
-                "settings": user.role.settings_access if user.role else "none",
-                "admin": user.role.admin_access if user.role else "none",
-                "customer_portal_mode": "only" if is_customer_portal_only(user) else "standard",
-                "review": get_request_review_access(user),
-                "task_edit": get_task_action_scope(user, "edit"),
-                "task_comment": get_task_action_scope(user, "comment"),
-                "task_delete": get_task_action_scope(user, "delete"),
-                "pip_decision": "available" if can_make_pip_decision(user) else "none",
-            }
+            "can_edit": bool(user.can_edit),
+            "can_delete": bool(user.can_delete),
+            "can_export": bool(user.can_export),
+            "permissions": user_permissions(user)
         }
     )
 
@@ -189,24 +161,10 @@ def get_me(current_user: User = Depends(get_current_user)):
         created_at=current_user.created_at,
         role_name=current_user.role.name if current_user.role else None,
         team_name=current_user.team_rel.name if current_user.team_rel else None,
-        can_edit=current_user.can_edit,
-        can_delete=current_user.can_delete,
-        can_export=current_user.can_export,
-        permissions={
-            "backlog_dmb": current_user.role.backlog_dmb_access if current_user.role else "none",
-            "backlog_team": current_user.role.backlog_team_access if current_user.role else "none",
-            "reports": current_user.role.reports_access if current_user.role else "none",
-            "analytics": current_user.role.analytics_access if current_user.role else "none",
-            "customer": current_user.role.customer_access if current_user.role else "none",
-            "settings": current_user.role.settings_access if current_user.role else "none",
-            "admin": current_user.role.admin_access if current_user.role else "none",
-            "customer_portal_mode": "only" if is_customer_portal_only(current_user) else "standard",
-            "review": get_request_review_access(current_user),
-            "task_edit": get_task_action_scope(current_user, "edit"),
-            "task_comment": get_task_action_scope(current_user, "comment"),
-            "task_delete": get_task_action_scope(current_user, "delete"),
-            "pip_decision": "available" if can_make_pip_decision(current_user) else "none",
-        },
+        can_edit=bool(current_user.can_edit),
+        can_delete=bool(current_user.can_delete),
+        can_export=bool(current_user.can_export),
+        permissions=user_permissions(current_user),
     )
 
 
@@ -310,10 +268,9 @@ def reauthenticate(data: Reauthenticate, db: Session = Depends(get_db), current_
 
 @router.get('/sessions')
 def own_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    rows = db.query(AuthSession).filter(AuthSession.user_id == current_user.id, AuthSession.revoked_at.is_(None),
-        AuthSession.absolute_expires_at > sessions.now()).order_by(AuthSession.created_at.desc()).all()
+    rows = db.query(AuthSession).filter(AuthSession.user_id == current_user.id, AuthSession.revoked_at.is_(None)).order_by(AuthSession.created_at.desc()).all()
     return [{'id': r.id, 'created_at': r.created_at, 'last_activity_at': r.last_activity_at,
-        'absolute_expires_at': r.absolute_expires_at, 'ip_address': r.ip_address,
+        'absolute_expires_at': None, 'ip_address': r.ip_address,
         'client_label': r.client_label, 'is_current': r.id == current_user._auth_sid} for r in rows]
 
 

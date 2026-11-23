@@ -1,0 +1,320 @@
+
+> test:design
+> playwright test --config=playwright.design.config.mjs
+
+
+Running 37 tests using 2 workers
+
+(node:29496) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13216) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  2 frontend\e2e\taskCardRemediation.spec.mjs:12:3 › full card light 1366 (5.1s)
+  ok  1 frontend\e2e\taskCardRemediation.spec.mjs:12:3 › full card light 1440 (5.6s)
+  ok  3 frontend\e2e\taskCardRemediation.spec.mjs:12:3 › full card light 390 (3.7s)
+  ok  4 frontend\e2e\taskCardRemediation.spec.mjs:12:3 › full card light 320 (3.6s)
+  ok  6 frontend\e2e\taskCardRemediation.spec.mjs:12:3 › full card dark 1366 (4.6s)
+  ok  5 frontend\e2e\taskCardRemediation.spec.mjs:12:3 › full card dark 1440 (5.6s)
+  ok  7 frontend\e2e\taskCardRemediation.spec.mjs:12:3 › full card dark 390 (3.6s)
+  ok  8 frontend\e2e\taskCardRemediation.spec.mjs:12:3 › full card dark 320 (3.5s)
+  ok  9 frontend\e2e\taskCardRemediation.spec.mjs:33:47 › priority remains draft until explicit save (2.7s)
+  ok 10 frontend\e2e\taskCardRemediation.spec.mjs:33:47 › deadline remains draft until explicit save (2.6s)
+  ok 11 frontend\e2e\taskCardRemediation.spec.mjs:44:1 › history error preserves rows and count, retry restores data (3.0s)
+  ok 12 frontend\e2e\taskCardRemediation.spec.mjs:59:1 › files error never claims successful empty state (2.3s)
+  ok 13 frontend\e2e\taskCardRemediation.spec.mjs:70:1 › reporting retry keeps independent drafts (2.3s)
+  ok 14 frontend\e2e\taskCardRemediation.spec.mjs:84:1 › AI Escape closes one layer and restores focus (3.3s)
+  ok 15 frontend\e2e\taskCardRemediation.spec.mjs:101:1 › multi-select retains focus and exposes selection (2.4s)
+  ok 16 frontend\e2e\taskCardRemediation.spec.mjs:114:1 › undo refuses a newer server version (3.3s)
+  ok 18 frontend\e2e\taskCardRemediation.spec.mjs:149:1 › stale files preserve rows and recover without changing tabs (2.1s)
+  ok 17 frontend\e2e\taskCardRemediation.spec.mjs:126:1 › validation and failed save keep input; double submit writes once (4.2s)
+  ok 19 frontend\e2e\taskCardRemediation.spec.mjs:162:40 › full SPA card light (8.2s)
+  ok 20 frontend\e2e\taskCardRemediation.spec.mjs:162:40 › full SPA card dark (8.2s)
+  ok 21 frontend\e2e\taskCardRemediation.spec.mjs:181:1 › forced colors and reduced motion retain keyboard path at 200 percent equivalent (2.3s)
+  ok 22 frontend\e2e\taskCardRemediation.spec.mjs:193:40 › four meetings and measured contrast light (2.3s)
+  ok 23 frontend\e2e\taskCardRemediation.spec.mjs:193:40 › four meetings and measured contrast dark (2.1s)
+  ok 24 frontend\e2e\taskCardRemediation.spec.mjs:221:1 › duplicate and unsafe links retain input; clipboard failure is honest (3.3s)
+  ok 25 frontend\e2e\taskCardRemediation.spec.mjs:238:40 › lower card and readonly light (3.8s)
+  ok 26 frontend\e2e\taskCardRemediation.spec.mjs:238:40 › lower card and readonly dark (3.0s)
+  x  27 frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot light 1440 (5.4s)
+  x  28 frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot light 1366 (4.9s)
+(node:28556) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25252) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 29 frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot light 390 (4.2s)
+  x  30 frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot dark 1440 (7.0s)
+(node:29040) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  31 frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot dark 1366 (4.7s)
+(node:18180) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 32 frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot dark 390 (4.8s)
+  ok 33 frontend\e2e\workDesignPilot.spec.mjs:44:1 › search and cancelled filters preserve the registry context (4.2s)
+  ok 34 frontend\e2e\workDesignPilot.spec.mjs:59:1 › header refresh and relocated sort retain queue context (4.4s)
+  ok 36 frontend\e2e\workDesignPilot.spec.mjs:87:40 › composition variants light (1.1s)
+  ok 37 frontend\e2e\workDesignPilot.spec.mjs:87:40 › composition variants dark (1.2s)
+  x  35 frontend\e2e\workDesignPilot.spec.mjs:76:1 › editing keeps assignee and deadline ahead of the description (6.4s)
+
+
+  1) frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot light 1440 ──────────────────────────
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      1109 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: registry-light-1440-win32.png
+
+    Call log:
+      - Expect "toHaveScreenshot(registry-light-1440-win32.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 1109 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 1109 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      12 |   } else {
+      13 |     if (info.project.metadata.designVisual) {
+    > 14 |       await expect(page).toHaveScreenshot(`${name}-${process.platform}.png`, { animations: 'disabled', maxDiffPixels: 80 });
+         |                          ^
+      15 |     } else {
+      16 |       await info.attach(name, { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
+      17 |     }
+        at image (D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:14:26)
+        at D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:26:11
+
+    attachment #1: registry-light-1440-win32 (image/png) ───────────────────────────────────────────
+    Expected: frontend\e2e\workDesignPilot.spec.mjs-snapshots\registry-light-1440-win32.png
+    Received: test-results\workDesignPilot-design-pilot-light-1440\registry-light-1440-win32-actual.png
+    Diff:     test-results\workDesignPilot-design-pilot-light-1440\registry-light-1440-win32-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\workDesignPilot-design-pilot-light-1440\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\workDesignPilot-design-pilot-light-1440\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\workDesignPilot-design-pilot-light-1440\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot light 1366 ──────────────────────────
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      1109 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: registry-light-1366-win32.png
+
+    Call log:
+      - Expect "toHaveScreenshot(registry-light-1366-win32.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 1109 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 1109 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      12 |   } else {
+      13 |     if (info.project.metadata.designVisual) {
+    > 14 |       await expect(page).toHaveScreenshot(`${name}-${process.platform}.png`, { animations: 'disabled', maxDiffPixels: 80 });
+         |                          ^
+      15 |     } else {
+      16 |       await info.attach(name, { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
+      17 |     }
+        at image (D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:14:26)
+        at D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:26:11
+
+    attachment #1: registry-light-1366-win32 (image/png) ───────────────────────────────────────────
+    Expected: frontend\e2e\workDesignPilot.spec.mjs-snapshots\registry-light-1366-win32.png
+    Received: test-results\workDesignPilot-design-pilot-light-1366\registry-light-1366-win32-actual.png
+    Diff:     test-results\workDesignPilot-design-pilot-light-1366\registry-light-1366-win32-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\workDesignPilot-design-pilot-light-1366\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\workDesignPilot-design-pilot-light-1366\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\workDesignPilot-design-pilot-light-1366\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot dark 1440 ───────────────────────────
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      1022 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: registry-dark-1440-win32.png
+
+    Call log:
+      - Expect "toHaveScreenshot(registry-dark-1440-win32.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 1022 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 1022 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      12 |   } else {
+      13 |     if (info.project.metadata.designVisual) {
+    > 14 |       await expect(page).toHaveScreenshot(`${name}-${process.platform}.png`, { animations: 'disabled', maxDiffPixels: 80 });
+         |                          ^
+      15 |     } else {
+      16 |       await info.attach(name, { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
+      17 |     }
+        at image (D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:14:26)
+        at D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:26:11
+
+    attachment #1: registry-dark-1440-win32 (image/png) ────────────────────────────────────────────
+    Expected: frontend\e2e\workDesignPilot.spec.mjs-snapshots\registry-dark-1440-win32.png
+    Received: test-results\workDesignPilot-design-pilot-dark-1440\registry-dark-1440-win32-actual.png
+    Diff:     test-results\workDesignPilot-design-pilot-dark-1440\registry-dark-1440-win32-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\workDesignPilot-design-pilot-dark-1440\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\workDesignPilot-design-pilot-dark-1440\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\workDesignPilot-design-pilot-dark-1440\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot dark 1366 ───────────────────────────
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      1022 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: registry-dark-1366-win32.png
+
+    Call log:
+      - Expect "toHaveScreenshot(registry-dark-1366-win32.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 1022 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 1022 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      12 |   } else {
+      13 |     if (info.project.metadata.designVisual) {
+    > 14 |       await expect(page).toHaveScreenshot(`${name}-${process.platform}.png`, { animations: 'disabled', maxDiffPixels: 80 });
+         |                          ^
+      15 |     } else {
+      16 |       await info.attach(name, { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
+      17 |     }
+        at image (D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:14:26)
+        at D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:26:11
+
+    attachment #1: registry-dark-1366-win32 (image/png) ────────────────────────────────────────────
+    Expected: frontend\e2e\workDesignPilot.spec.mjs-snapshots\registry-dark-1366-win32.png
+    Received: test-results\workDesignPilot-design-pilot-dark-1366\registry-dark-1366-win32-actual.png
+    Diff:     test-results\workDesignPilot-design-pilot-dark-1366\registry-dark-1366-win32-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\workDesignPilot-design-pilot-dark-1366\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\workDesignPilot-design-pilot-dark-1366\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\workDesignPilot-design-pilot-dark-1366\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) frontend\e2e\workDesignPilot.spec.mjs:76:1 › editing keeps assignee and deadline ahead of the description
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      1109 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: detail-edit-light-1440-win32.png
+
+    Call log:
+      - Expect "toHaveScreenshot(detail-edit-light-1440-win32.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 1109 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 1109 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      12 |   } else {
+      13 |     if (info.project.metadata.designVisual) {
+    > 14 |       await expect(page).toHaveScreenshot(`${name}-${process.platform}.png`, { animations: 'disabled', maxDiffPixels: 80 });
+         |                          ^
+      15 |     } else {
+      16 |       await info.attach(name, { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
+      17 |     }
+        at image (D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:14:26)
+        at D:\Проект\dmb-backlog\frontend\e2e\workDesignPilot.spec.mjs:84:9
+
+    attachment #1: detail-edit-light-1440-win32 (image/png) ────────────────────────────────────────
+    Expected: frontend\e2e\workDesignPilot.spec.mjs-snapshots\detail-edit-light-1440-win32.png
+    Received: test-results\workDesignPilot-editing-ke-c4312-ne-ahead-of-the-description\detail-edit-light-1440-win32-actual.png
+    Diff:     test-results\workDesignPilot-editing-ke-c4312-ne-ahead-of-the-description\detail-edit-light-1440-win32-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\workDesignPilot-editing-ke-c4312-ne-ahead-of-the-description\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\workDesignPilot-editing-ke-c4312-ne-ahead-of-the-description\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\workDesignPilot-editing-ke-c4312-ne-ahead-of-the-description\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5 failed
+    frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot light 1440 ───────────────────────────
+    frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot light 1366 ───────────────────────────
+    frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot dark 1440 ────────────────────────────
+    frontend\e2e\workDesignPilot.spec.mjs:22:3 › design pilot dark 1366 ────────────────────────────
+    frontend\e2e\workDesignPilot.spec.mjs:76:1 › editing keeps assignee and deadline ahead of the description
+  32 passed (1.4m)

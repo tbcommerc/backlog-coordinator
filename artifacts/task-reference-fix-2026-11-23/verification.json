@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-23",
+  "backend_postgresql": {
+    "passed": 44,
+    "new_reference_tests": 8
+  },
+  "frontend_unit": {
+    "passed": 511,
+    "failed": 0
+  },
+  "chromium_final": {
+    "passed": 18,
+    "failed": 0,
+    "reference_cases": 9,
+    "composition_cases": 9
+  },
+  "additional_card_regression": {
+    "first_pass": 39,
+    "first_failed": 1,
+    "isolated_retry_passed": 1,
+    "case": "nested AI dialog Escape focus restoration"
+  },
+  "visual_review": {
+    "result": "passed for changed task-card states",
+    "viewports": [
+      1440,
+      390
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "observed": "Full final screens inspected; controls fit columns, draft/error/retry visible; existing UI Kit composition retained; no golden updates."
+  },
+  "bank_vm_verified": false,
+  "working_database_modified": false
+}

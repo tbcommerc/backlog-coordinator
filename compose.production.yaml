@@ -18,6 +18,9 @@ x-backend-environment: &backend-environment
   INTERSERVICE_CIRCUIT_FAILURE_THRESHOLD: "5"
   INTERSERVICE_CIRCUIT_RESET_SECONDS: "30"
   CORS_ORIGINS: "${DMB_CORS_ORIGINS:?set DMB_CORS_ORIGINS as JSON array}"
+  AUTH_ORIGINS: "${DMB_AUTH_ORIGINS:?set DMB_AUTH_ORIGINS to the exact external HTTPS origins as JSON array}"
+  AUTH_ALLOWED_HOSTS: "${DMB_AUTH_ALLOWED_HOSTS:?set DMB_AUTH_ALLOWED_HOSTS as JSON array including the external hostname and internal health-check hosts}"
+  AUTH_RATE_HMAC_KEY: "${DMB_AUTH_RATE_HMAC_KEY:?set an independent AUTH rate-limit secret of at least 32 characters}"
   ATTACHMENT_STORAGE_DIR: "/data/attachments"
   CLAMAV_HOST: "clamav"
   CLAMAV_PORT: "3310"
@@ -227,7 +230,7 @@ services:
     networks: [app]
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.132.0@sha256:0b3b73f3d10af5f08c04b6ef3958f272d0866b2437033c31a4952773dfa178b7
+    image: otel/opentelemetry-collector-contrib:0.132.0@sha256:e0f565815b2b8e78eb9fdbb80f6190c921ab323aaa8ccceab3255c6d4225f4af
     restart: unless-stopped
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     volumes:

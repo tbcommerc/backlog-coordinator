@@ -27,6 +27,7 @@ def saved(db,row,user):
 
 @router.get('/options')
 def options(db:Session=Depends(get_db),user:User=Depends(get_current_user)):
+    from services.reference_catalog import reference_options
     def rows(model):
         return [dict(id=x.id,name=x.name) for x in db.query(model).order_by(model.name)]
     t=today();quarter=(t.month-1)//3+1
@@ -41,7 +42,7 @@ def options(db:Session=Depends(get_db),user:User=Depends(get_current_user)):
         key=f'{p.start_date}|{p.end_date}'
         periods.setdefault(key,dict(key=key,label=p.label,start_date=p.start_date,end_date=p.end_date))
     return jsonable_encoder(dict(today=t,current_period=current,periods=list(periods.values()),
-        teams=rows(Team),projects=rows(Project),priorities=rows(Priority),business_customers=rows(BusinessCustomer),
+        teams=rows(Team),projects=rows(Project),priorities=reference_options(db, "priority"),business_customers=rows(BusinessCustomer),
         departments=rows(Department),did_client_groups=rows(DidClientGroup),
         users=[dict(id=x.id,name=x.name,team_id=x.team_id) for x in db.query(User).filter_by(is_active=True).order_by(User.name) if not is_customer_portal_only(x)],
         meetings=[dict(id=x.id,kind=x.kind,scheduled_date=x.scheduled_date,state=x.state) for x in db.query(ReportingMeeting).filter(ReportingMeeting.state.in_(['planned','held'])).order_by(ReportingMeeting.scheduled_date.desc())],

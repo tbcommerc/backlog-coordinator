@@ -539,7 +539,7 @@ class Task(Base):
     did_client_group_id = Column(Integer, ForeignKey("did_client_groups.id"), nullable=True)
     did_client_group = relationship("DidClientGroup")
     public_id = Column(String(12), nullable=True)
-    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     date_received = Column(Date, nullable=True)
@@ -1002,9 +1002,11 @@ class Report(Base):
 
 class DictionaryItem(Base):
     __tablename__ = "dictionary_items"
+    __table_args__ = (Index("uq_dictionary_reference", "dict_type", "reference_id", unique=True),)
 
     id = Column(Integer, primary_key=True, index=True)
     dict_type = Column(String(50), nullable=False, index=True)
+    reference_id = Column(Integer, nullable=True)
     name = Column(String(100), nullable=False)
     code = Column(String(50), nullable=True)
     color = Column(String(20), nullable=True)

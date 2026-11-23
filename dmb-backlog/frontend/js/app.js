@@ -822,6 +822,8 @@ class App {
       const response = await this.auth.login(email, password);
       this.store.set('currentUser', response.user);
       await this.loadFeatures();
+      await this.loadFieldLabels();
+      await this.loadReferenceData();
       this.renderAppLayout();
       this.router.init();
       // router.init resolves the preserved deep link after authentication.

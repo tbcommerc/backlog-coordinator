@@ -1,0 +1,35 @@
+{
+  "qualification": "passed",
+  "scope": "bank core; DBA-prepared schema; no runtime DDL; no AI",
+  "image_tag": "dmb-backlog:bank-core-20261123-aa7f45f555db",
+  "tested_image_tag": "dmb-backlog:rehearsal-aa7f45f555db",
+  "image_id": "sha256:5b352fbd4f4e1ec2cd212f65c1767ee9045a49ae368c0b40d18875b965071ad4",
+  "source_sha256": "aa7f45f555db4e085567a3411e653f8d8cd3299b0fd0b565abc608710ef68baf",
+  "schema_revision": "d453b20d51f9",
+  "platform": "linux/amd64",
+  "runtime_user": "dmb",
+  "runtime_file_count": 0,
+  "source_unchanged_during_rehearsal": true,
+  "bank_vm_verified": false,
+  "files_sha256": {
+    "compose.production-core.yaml": "c00d9252c3caaa3b0a71b1d6837a50e1c88866686b78e379ddc68868e2159a18",
+    ".env.production-core.example": "b965323961e264338276cf548e122ab6a068515ef6e4648898acdbb4a89cd860",
+    "scripts/deploy-core.py": "b94100e1008dcfc533e3f1ca5e6ea0a7931483fb6d96308f7c836ab056ad8732",
+    "scripts/rehearse-demo-core.py": "357792a5fb5d75e0dc7d2b8c13f4939b1bf690062cc940b41bd779dc7821868f",
+    "dmb-backlog/Dockerfile": "9235b7ce663ed120867c5b5bceee39367aff55fcbd2c23dac9ce22d8c80bf03c",
+    "dmb-backlog/backend/config.py": "7d0b2897bc0aea727ffb05b71904cc9bee0ff661dc573c323293e86f14cd906d",
+    "dmb-backlog/backend/main.py": "6699139021f48121b9b2efa2c604a947401ec327a1b5805fc81dec4e862c0887",
+    "dmb-backlog/backend/schema_guard.py": "78827caf26773dadb8108c90987601306dbb7295d575723ead1f49196f81df1a",
+    "dmb-backlog/backend/schema_sql.py": "e746f782f2f5137bbc7d7c247e298e59b64399090450f544a875ea0be5a6edaf",
+    "dmb-backlog/backend/alembic/env.py": "43cb4282dca2f7f262a35fff27f9cf4511d072a1d5089b0af3861612cb7f5a1e",
+    "infrastructure/postgres/runtime-role-grants.sql": "79f978eed76f841b4a7cb09e157985bfabac05243ff65fa695dcd80ffa35d420",
+    "infrastructure/nginx/dmb.container.conf": "635a0cc62dfa27128fca56a3d18f51f74ab364a96219712aac900f0f67bb06df",
+    "infrastructure/observability/otel-demo-core.yaml": "0c8bc77ea2fcd53e847bf5cc413d85771aa23488675958ec64bd6cfdeca0e1c3"
+  },
+  "sql_sha256": {
+    "initial-schema.sql": "57f7ad1ecbe2b60e348f831b37736cbe9893489fad6f4de685280f3256edbce6",
+    "runtime-role-grants.sql": "79f978eed76f841b4a7cb09e157985bfabac05243ff65fa695dcd80ffa35d420",
+    "upgrade-from-d251c98e30f7.sql": "ab4262eed4306604afba22fc8b83becb35db562bcaf4cdc7080d821db8eb3396",
+    "upgrade-from-d352a19c40e8.sql": "2c22152ce5a367513392c2180993edbfe8ea674cabf380020f2e29c967cb4444"
+  }
+}
